@@ -11,7 +11,7 @@ The onboarding process follows this exact sequence:
 ```
 Sign Up (Clerk) 
   ↓
-/onboarding/welcome (Welcome to GrowthAddicts)
+/onboarding/welcome (Welcome to Coachful)
   ↓
 /onboarding/create-profile-intro (Create your public profile)
   ↓

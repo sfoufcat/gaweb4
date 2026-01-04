@@ -65,7 +65,7 @@ const TRACK_LABELS: Record<UserTrack, string> = {
 // SYSTEM PROMPTS
 // =============================================================================
 
-const BASE_SYSTEM_PROMPT = `You are a focused productivity assistant for entrepreneurs using Growth Addicts, a daily accountability app. 
+const BASE_SYSTEM_PROMPT = `You are a focused productivity assistant for entrepreneurs using Coachful, a daily accountability app. 
 
 You ONLY respond with valid JSON following the exact schema provided. No markdown, no explanations, just clean JSON.
 

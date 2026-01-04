@@ -2,11 +2,11 @@
  * Demo Site Utilities
  * 
  * Provides utilities for detecting demo subdomain and managing demo sessions.
- * Used by demo.growthaddicts.com for showcasing the coach dashboard without authentication.
+ * Used by demo.coachful.co for showcasing the coach dashboard without authentication.
  */
 
 // Demo subdomains that should trigger demo mode
-const DEMO_SUBDOMAINS = ['demo.growthaddicts.com', 'demo.localhost'];
+const DEMO_SUBDOMAINS = ['demo.coachful.co', 'demo.localhost'];
 
 /**
  * Check if the current hostname is a demo subdomain
@@ -59,7 +59,7 @@ export function getDemoSessionId(): string {
  */
 export const DEMO_USER = {
   id: 'demo-coach-user',
-  email: 'coach@demo.growthaddicts.com',
+  email: 'coach@demo.coachful.co',
   firstName: 'Adam',
   lastName: 'Coach',
   name: 'Coach Adam',

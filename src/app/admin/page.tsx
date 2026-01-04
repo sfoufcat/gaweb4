@@ -71,7 +71,7 @@ export default function AdminPage() {
           Admin Panel
         </h1>
         <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-          Manage users and squads across Growth Addicts
+          Manage users and squads across Coachful
         </p>
       </div>
 

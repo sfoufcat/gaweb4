@@ -24,8 +24,8 @@ import type { OrgBranding } from '@/types';
 // Can use same secret or a different one
 const WEBHOOK_SECRET = process.env.CLERK_EMAIL_WEBHOOK_SECRET || process.env.CLERK_WEBHOOK_SECRET;
 
-const PLATFORM_DEFAULT_SENDER = 'Growth Addicts <notifications@growthaddicts.com>';
-const PLATFORM_FALLBACK_SENDER = 'Growth Addicts <hi@updates.growthaddicts.com>';
+const PLATFORM_DEFAULT_SENDER = 'Coachful <notifications@coachful.co>';
+const PLATFORM_FALLBACK_SENDER = 'Coachful <hi@updates.coachful.co>';
 
 // =============================================================================
 // TYPES
@@ -120,7 +120,7 @@ function customizeEmailContent(
   let customSubject = subject;
   let customHtml = htmlBody;
   
-  if (branding?.appTitle && branding.appTitle !== 'GrowthAddicts') {
+  if (branding?.appTitle && branding.appTitle !== 'Coachful') {
     // Replace generic references with tenant branding
     customSubject = customSubject.replace(/Clerk/g, branding.appTitle);
     customHtml = customHtml.replace(/Clerk/g, branding.appTitle);

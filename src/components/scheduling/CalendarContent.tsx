@@ -83,9 +83,9 @@ function EventItem({ event, onRespond }: EventItemProps) {
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//GrowthAddicts//Scheduling//EN',
+      'PRODID:-//Coachful//Scheduling//EN',
       'BEGIN:VEVENT',
-      `UID:${event.id}@growthaddicts.com`,
+      `UID:${event.id}@coachful.co`,
       `DTSTART:${startTime.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
       `DTEND:${new Date(endDateTime).toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
       `SUMMARY:${event.title}`,

@@ -212,7 +212,7 @@ async function sendNotificationEmail({
   const organizationId = user.primaryOrganizationId || null;
   const appTitle = await getAppTitleForEmail(organizationId);
   const logoUrl = await getLogoUrlForEmail(organizationId);
-  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+  const teamName = appTitle === 'Coachful' ? 'Coachful' : appTitle;
 
   // Check for custom template
   const templateType = NOTIFICATION_TYPE_TO_TEMPLATE_TYPE[type];

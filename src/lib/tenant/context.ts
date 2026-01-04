@@ -79,7 +79,7 @@ export async function getTenantContext(): Promise<TenantContext | null> {
  * 
  * This ensures that:
  * - On tenant domains, the domain's org is always used (cannot be spoofed)
- * - On platform domain (app.growthaddicts.com), NO tenant data is shown
+ * - On platform domain (app.coachful.co), NO tenant data is shown
  *   Platform domain is for admin/management, not user experience
  * 
  * @returns The effective organization ID for queries, or null on platform domain

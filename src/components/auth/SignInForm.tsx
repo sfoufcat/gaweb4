@@ -18,14 +18,14 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
   const { signIn, isLoaded, setActive } = useSignIn();
   const router = useRouter();
   
-  // Check if we're on the marketing domain (growthaddicts.com without subdomain)
+  // Check if we're on the marketing domain (coachful.co without subdomain)
   const [isMarketingDomain, setIsMarketingDomain] = useState(false);
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname.toLowerCase();
-      // Marketing domain: growthaddicts.com or www.growthaddicts.com (not subdomains)
-      const isMarketing = hostname === 'growthaddicts.com' || hostname === 'www.growthaddicts.com';
+      // Marketing domain: coachful.co or www.coachful.co (not subdomains)
+      const isMarketing = hostname === 'coachful.co' || hostname === 'www.coachful.co';
       setIsMarketingDomain(isMarketing);
     }
   }, []);

@@ -37,7 +37,7 @@ const LOGO_COLORS = [
  * Extract initials from a business name
  * Examples:
  * - "John Doe Coaching" -> "JD"
- * - "Growth Addicts" -> "GA"
+ * - "Coachful" -> "GA"
  * - "Acme" -> "AC"
  * - "A" -> "A"
  */

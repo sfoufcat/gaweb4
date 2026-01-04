@@ -14,7 +14,7 @@ import { ReactNode } from 'react';
 export function ConditionalMain({ children }: { children: ReactNode }) {
   return (
     // pb-24 clears the fixed mobile nav bar, lg:pb-0 removes it on desktop
-    <main className="min-h-screen pb-24 lg:pb-0">
+    <main className="min-h-dvh pb-24 lg:pb-0">
       {children}
     </main>
   );

@@ -5,7 +5,7 @@ import { dark } from '@clerk/themes';
 import { useEffect, useState, useMemo } from 'react';
 
 const STORAGE_KEY = 'ga-theme';
-const PLATFORM_DOMAIN = 'https://growthaddicts.com';
+const PLATFORM_DOMAIN = 'https://coachful.co';
 
 // Custom dark theme variables to match app design
 const darkAppearance = {
@@ -132,7 +132,7 @@ export function ClerkThemeProvider({
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   
-  // Detect satellite domain (custom domains that aren't growthaddicts.com/app or localhost)
+  // Detect satellite domain (custom domains that aren't coachful.co/app or localhost)
   const domainWithoutPort = hostname.split(':')[0];
   const isSatellite = Boolean(
     domainWithoutPort && 
@@ -218,7 +218,7 @@ export function ClerkThemeProvider({
     // Use tenant's subdomain as primary domain if available, otherwise fall back to platform
     // This is critical: custom domain sessions sync FROM the subdomain, not the platform
     const primaryDomain = subdomain 
-      ? `https://${subdomain}.growthaddicts.com`
+      ? `https://${subdomain}.coachful.co`
       : PLATFORM_DOMAIN;
     
     // Build redirect URL - after sign-in, return to the original custom domain

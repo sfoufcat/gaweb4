@@ -112,7 +112,7 @@ export function AdminPlatformSettingsTab() {
           Platform Settings
         </h2>
         <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-          Global configuration for the GrowthAddicts platform.
+          Global configuration for the Coachful platform.
         </p>
       </div>
 

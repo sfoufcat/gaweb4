@@ -751,7 +751,7 @@ export function CustomizeBrandingTab() {
         
         // Seamless session handoff
         const targetUrl = `https://${data.domain.domain}/coach/customize`;
-        const syncUrl = `https://app.growthaddicts.com/auth/sync?target=${encodeURIComponent(targetUrl)}`;
+        const syncUrl = `https://app.coachful.co/auth/sync?target=${encodeURIComponent(targetUrl)}`;
         
         setTimeout(() => {
           window.location.href = syncUrl;
@@ -1364,7 +1364,7 @@ export function CustomizeBrandingTab() {
               className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl hover:bg-brand-accent/90 transition-colors font-albert font-medium"
             >
               <ExternalLink className="w-4 h-4" />
-              Go to {tenantRequired.subdomain}.growthaddicts.com
+              Go to {tenantRequired.subdomain}.coachful.co
             </a>
           ) : (
             <p className="text-[#a7a39e] dark:text-[#7d8190] font-albert text-sm">
@@ -1951,7 +1951,7 @@ export function CustomizeBrandingTab() {
                     className="flex-1 px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-brand-accent dark:ring-brand-accent/20 dark:focus:ring-brand-accent/20 focus:border-brand-accent dark:focus:border-brand-accent"
                   />
                   <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">
-                    .growthaddicts.com
+                    .coachful.co
                   </span>
                 </div>
                 <button
@@ -1975,10 +1975,10 @@ export function CustomizeBrandingTab() {
                 <div className="flex items-center gap-2 p-3 bg-brand-accent/10 rounded-xl">
                   <Link2 className="w-4 h-4 text-brand-accent" />
                   <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-mono">
-                    https://{currentSubdomain}.growthaddicts.com
+                    https://{currentSubdomain}.coachful.co
                   </span>
                   <a
-                    href={`https://${currentSubdomain}.growthaddicts.com`}
+                    href={`https://${currentSubdomain}.coachful.co`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="ml-auto text-brand-accent hover:opacity-70 transition-opacity"

@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     const returnDomain = searchParams.get('return_domain');
     
     // Use the return domain if provided, otherwise fall back to primary domain
-    const primaryDomain = process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.com';
+    const primaryDomain = process.env.NEXT_PUBLIC_APP_URL || 'https://coachful.co';
     const baseUrl = returnDomain || primaryDomain;
     
     if (!userId) {
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error('[STRIPE_CONNECT_CALLBACK] Error:', error);
-    const primaryDomainFallback = process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.com';
+    const primaryDomainFallback = process.env.NEXT_PUBLIC_APP_URL || 'https://coachful.co';
     return NextResponse.redirect(new URL('/coach?tab=customize&stripe=error', primaryDomainFallback));
   }
 }

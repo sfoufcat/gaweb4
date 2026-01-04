@@ -4,7 +4,7 @@ import type { BillingStatus, ClerkPublicMetadata } from '@/lib/admin-utils-clerk
 
 /**
  * POST /api/checkout/check-existing-member
- * Checks if an email belongs to an existing paying GrowthAddicts member
+ * Checks if an email belongs to an existing paying Coachful member
  * 
  * Used during guest checkout to prevent duplicate accounts
  */
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     if (hasActiveBilling) {
       return NextResponse.json({ 
         isExistingMember: true,
-        message: 'You are already a GrowthAddicts paying member.',
+        message: 'You are already a Coachful paying member.',
       });
     }
 

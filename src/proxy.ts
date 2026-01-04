@@ -83,12 +83,12 @@ function hasActiveOrgSubscription(
 // DOMAIN CONFIGURATION (Inline for Edge Runtime compatibility)
 // =============================================================================
 
-// Base domain - migrated to growthaddicts.com
-const BASE_DOMAIN = 'growthaddicts.com';
+// Base domain - migrated to coachful.co
+const BASE_DOMAIN = 'coachful.co';
 const PLATFORM_ADMIN_DOMAIN = `app.${BASE_DOMAIN}`;
 const MARKETING_DOMAIN = BASE_DOMAIN;
 
-// Demo subdomain - special handling for demo.growthaddicts.com
+// Demo subdomain - special handling for demo.coachful.co
 const DEMO_DOMAIN = `demo.${BASE_DOMAIN}`;
 
 // Platform domains that are NOT tenant-scoped
@@ -97,8 +97,8 @@ const PLATFORM_DOMAINS = [
   `www.${BASE_DOMAIN}`,              // www variant
   PLATFORM_ADMIN_DOMAIN,             // Platform admin domain
   DEMO_DOMAIN,                        // Demo site (no auth required)
-  'pro.growthaddicts.com',           // Legacy domain
-  'www.pro.growthaddicts.com',       // Legacy www variant
+  'pro.coachful.co',           // Legacy domain
+  'www.pro.coachful.co',       // Legacy www variant
   'growthaddicts.app',               // Legacy domain after .com migration
   'www.growthaddicts.app',           // Legacy www variant
   'app.growthaddicts.app',           // Legacy platform admin domain
@@ -160,7 +160,7 @@ function parseHost(hostname: string): ParsedHost {
     return { type: 'subdomain', hostname: normalizedHost, subdomain };
   }
   
-  // Check for subdomain of pro.growthaddicts.com (legacy)
+  // Check for subdomain of pro.coachful.co (legacy)
   const proSubdomainMatch = normalizedHost.match(/^([a-z0-9-]+)\.pro\.growthaddicts\.com$/);
   if (proSubdomainMatch) {
     const subdomain = proSubdomainMatch[1];
@@ -549,7 +549,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   }
   
   // ==========================================================================
-  // DEMO SITE BYPASS (demo.growthaddicts.com)
+  // DEMO SITE BYPASS (demo.coachful.co)
   // ==========================================================================
   
   // Demo site bypasses all authentication and shows the coach dashboard
@@ -641,7 +641,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   }
   
   // ==========================================================================
-  // LEGACY DOMAIN REDIRECT (growthaddicts.app -> growthaddicts.com)
+  // LEGACY DOMAIN REDIRECT (growthaddicts.app -> coachful.co)
   // ==========================================================================
   
   // Redirect legacy .app subdomains to .com subdomains (permanent redirect for SEO)
@@ -652,9 +652,9 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     // Skip www/app as these are handled by vercel.json redirects
     if (subdomain !== 'www' && subdomain !== 'app') {
       const newUrl = new URL(request.url);
-      newUrl.host = `${subdomain}.growthaddicts.com`;
+      newUrl.host = `${subdomain}.coachful.co`;
       newUrl.port = '';
-      console.log(`[MIDDLEWARE] Redirecting legacy subdomain ${subdomain}.growthaddicts.app to ${subdomain}.growthaddicts.com`);
+      console.log(`[MIDDLEWARE] Redirecting legacy subdomain ${subdomain}.growthaddicts.app to ${subdomain}.coachful.co`);
       return NextResponse.redirect(newUrl, 301);
     }
   }
@@ -776,7 +776,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   
   // Marketing domain: Show CoachLandingPage at root
   // The main domain is reserved for marketing only - no app features
-  // Users must go to tenant domains or app.growthaddicts.com for the app
+  // Users must go to tenant domains or app.coachful.co for the app
   if (isMarketingDomain(hostname)) {
     // Root path shows CoachLandingPage directly (no rewrite needed - page.tsx is the landing page)
     // /marketplace is the member dashboard - redirect to sign-in if accessed on marketing domain
@@ -817,15 +817,15 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     }
     
     // Handle non-allowed routes on marketing domain
-    // IMPORTANT: Do NOT redirect to app.growthaddicts.com - that's for super_admins only!
+    // IMPORTANT: Do NOT redirect to app.coachful.co - that's for super_admins only!
     // Instead, redirect to appropriate location based on user state
       const { userId, sessionClaims } = await auth();
       const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
       
-      // Super admins can go to app.growthaddicts.com
+      // Super admins can go to app.coachful.co
       if (userId && publicMetadata?.role === 'super_admin') {
-        console.log(`[PROXY] Marketing domain: super_admin ${userId} accessing ${pathname}, redirecting to app.growthaddicts.com`);
-        return NextResponse.redirect(`https://app.growthaddicts.com${pathname}`, 302);
+        console.log(`[PROXY] Marketing domain: super_admin ${userId} accessing ${pathname}, redirecting to app.coachful.co`);
+        return NextResponse.redirect(`https://app.coachful.co${pathname}`, 302);
       }
       
       // Authenticated users - send to onboarding profile page
@@ -843,7 +843,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   }
   
   // Platform admin domain: Restrict to super_admins only
-  // Regular users and coaches should use their tenant subdomains, not app.growthaddicts.com
+  // Regular users and coaches should use their tenant subdomains, not app.coachful.co
   if (isPlatformAdminDomain(hostname)) {
     // Allow public routes (auth, api, static assets, access-denied page)
     const isPlatformPublicRoute = 

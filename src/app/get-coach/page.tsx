@@ -9,7 +9,7 @@ import { useDemoMode } from '@/contexts/DemoModeContext';
 /**
  * Get Your Personal Coach Page
  * 
- * Landing page for personal coaching services with Growth Addicts.
+ * Landing page for personal coaching services with Coachful.
  * Features coach profile, benefits, and CTA to the coaching intake form.
  */
 
@@ -467,7 +467,7 @@ export default function PersonalCoachPage() {
             Ready to accelerate your growth?
           </h2>
           <p className="font-albert text-[16px] text-white/70 mb-8">
-            Join hundreds of Growth Addicts members who are transforming their lives with personal coaching.
+            Join hundreds of Coachful members who are transforming their lives with personal coaching.
           </p>
           <Link 
             href={`/get-coach/form?plan=${selectedPlan}`}

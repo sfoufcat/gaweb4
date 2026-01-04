@@ -1125,8 +1125,8 @@ export default function CoachPlanPage() {
         >
           <p className="font-sans text-[14px] text-text-secondary">
             Questions? Contact us at{' '}
-            <a href="mailto:hello@growthaddicts.com" className="text-brand-accent underline underline-offset-2">
-              hello@growthaddicts.com
+            <a href="mailto:hello@coachful.co" className="text-brand-accent underline underline-offset-2">
+              hello@coachful.co
             </a>
           </p>
         </motion.div>
@@ -1480,7 +1480,7 @@ export default function CoachPlanPage() {
 
                 {/* Contact Support Button */}
                 <a
-                  href="mailto:hello@growthaddicts.com"
+                  href="mailto:hello@coachful.co"
                   className="block w-full bg-brand-accent hover:bg-[#8b6847] text-white font-sans font-semibold text-[14px] py-3 px-6 rounded-xl text-center transition-colors"
                 >
                   Contact Support

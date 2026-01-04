@@ -1,5 +1,5 @@
 /**
- * Poll Types for GrowthAddicts Chat
+ * Poll Types for Coachful Chat
  * 
  * These types define the data model for polls in the chat system.
  * Polls can be created by users in squad chats and other channels.
@@ -61,7 +61,7 @@ export interface PollFormData {
 // Using ga_ prefix to avoid conflict with Stream Chat's native polls feature
 export interface PollMessageExtraData {
   ga_poll_id: string;
-  ga_poll_kind: 'growthaddicts_poll';
+  ga_poll_kind: 'coachful_poll';
   // Embedded poll data for real-time display (denormalized)
   ga_poll_data?: ChatPollState;
 }

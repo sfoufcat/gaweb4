@@ -170,7 +170,7 @@ export function SquadInviteDialog({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Join ${squadName} on GrowthAddicts`,
+          title: `Join ${squadName} on Coachful`,
           text: getShareText(),
           url: inviteUrl,
         });
@@ -189,11 +189,11 @@ export function SquadInviteDialog({
   const getShareText = (): string => {
     switch (squadType) {
       case 'premium':
-        return `Join my Premium ${squadTitleBranded} "${squadName}" on GrowthAddicts! Get accountability coaching and grow with us.`;
+        return `Join my Premium ${squadTitleBranded} "${squadName}" on Coachful! Get accountability coaching and grow with us.`;
       case 'private':
-        return `You're invited to join my private ${squadLower} "${squadName}" on GrowthAddicts!`;
+        return `You're invited to join my private ${squadLower} "${squadName}" on Coachful!`;
       default:
-        return `Join my ${squadLower} "${squadName}" on GrowthAddicts and let's grow together!`;
+        return `Join my ${squadLower} "${squadName}" on Coachful and let's grow together!`;
     }
   };
 
@@ -226,7 +226,7 @@ export function SquadInviteDialog({
       case 'private':
         return 'Share the code or link with friends you want to invite.';
       default:
-        return `Your friends will join Growth Addicts and will be automatically added to this ${squadLower}.`;
+        return `Your friends will join Coachful and will be automatically added to this ${squadLower}.`;
     }
   };
 

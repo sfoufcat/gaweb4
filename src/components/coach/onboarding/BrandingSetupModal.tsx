@@ -19,7 +19,7 @@ const GA_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a
 
 // Preset accent colors for easy selection
 const PRESET_COLORS = [
-  { name: 'GrowthAddicts Brown', value: '#a07855' },
+  { name: 'Coachful Brown', value: '#a07855' },
   { name: 'Ocean Blue', value: '#3b82f6' },
   { name: 'Emerald Green', value: '#10b981' },
   { name: 'Royal Purple', value: '#8b5cf6' },
@@ -242,7 +242,7 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
               <div className="relative w-20 h-20 rounded-2xl overflow-hidden shadow-lg border-2 border-emerald-500/30">
                 <Image
                   src={GA_LOGO_URL}
-                  alt="Growth Addicts"
+                  alt="Coachful"
                   fill
                   className="object-cover"
                   unoptimized

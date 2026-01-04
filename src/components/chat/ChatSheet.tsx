@@ -441,7 +441,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         style={{ height: '85dvh', maxHeight: '85dvh' }}
       >
         {/* Grabber (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 flex-shrink-0 touch-none select-none cursor-grab active:cursor-grabbing">
+        <div ref={handleRef} {...handleProps} className="flex justify-center pt-4 pb-3 flex-shrink-0 touch-none select-none cursor-grab active:cursor-grabbing">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#272d38] rounded-full" />
         </div>
 

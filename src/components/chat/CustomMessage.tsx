@@ -20,7 +20,7 @@ import type { ChatPollState } from '@/types/poll';
 /**
  * CustomMessage Component
  * 
- * Custom message renderer for Growth Addicts chat:
+ * Custom message renderer for Coachful chat:
  * - Message bubble with proper alignment (my messages right, others left)
  * - Avatar for others only
  * - Timestamp inside bubble (time only, e.g., "6:02 PM")
@@ -298,9 +298,9 @@ export function CustomMessage() {
     );
   }
 
-  // Check-in notification messages (from GrowthAddicts Bot)
+  // Check-in notification messages (from Coachful Bot)
   // These are special messages posted when users complete their morning check-in
-  const isCheckinNotification = !!(message as typeof message & { checkin_notification?: boolean }).checkin_notification || sender?.id === 'growthaddicts-bot';
+  const isCheckinNotification = !!(message as typeof message & { checkin_notification?: boolean }).checkin_notification || sender?.id === 'coachful-bot';
   
   if (isCheckinNotification) {
     return (

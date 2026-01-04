@@ -549,7 +549,7 @@ export function CoachPlanTab() {
               </div>
 
               <p className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2]">
-                Your subscription is managed by a Growth Addicts administrator. You don&apos;t need to manage billing directly.
+                Your subscription is managed by a Coachful administrator. You don&apos;t need to manage billing directly.
               </p>
             </div>
 

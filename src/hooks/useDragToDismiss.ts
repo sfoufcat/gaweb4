@@ -120,6 +120,12 @@ export function useDragToDismiss({
     const handle = handleRef.current;
     if (!handle || disabled) return;
 
+    // Apply touch styles directly to ensure they're not overridden by className props
+    handle.style.touchAction = 'none';
+    handle.style.userSelect = 'none';
+    handle.style.webkitUserSelect = 'none';
+    (handle.style as unknown as Record<string, string>).webkitTouchCallout = 'none';
+
     const handleTouchStart = (e: TouchEvent) => {
       // Don't preventDefault on touchstart - iOS Safari needs the initial touch
       // to not be prevented for subsequent touch events to work properly.

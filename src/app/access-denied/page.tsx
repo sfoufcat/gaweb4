@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ShieldX, ArrowRight, Home } from 'lucide-react';
 
 export const metadata = {
-  title: 'Access Denied | GrowthAddicts',
+  title: 'Access Denied | Coachful',
   description: 'This domain is restricted to platform administrators only.',
 };
 
@@ -28,11 +28,11 @@ export default function AccessDeniedPage() {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a
-            href="https://www.growthaddicts.com"
+            href="https://www.coachful.co"
             className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] rounded-xl font-albert text-[15px] font-semibold hover:opacity-90 transition-opacity"
           >
             <Home className="w-4 h-4" />
-            Go to GrowthAddicts
+            Go to Coachful
           </a>
           
           <Link
@@ -46,7 +46,7 @@ export default function AccessDeniedPage() {
         
         {/* Help text */}
         <p className="font-sans text-[13px] text-[#a7a39e] dark:text-[#7d8190] mt-8">
-          Need help? Contact support@growthaddicts.com
+          Need help? Contact support@coachful.co
         </p>
       </div>
     </div>

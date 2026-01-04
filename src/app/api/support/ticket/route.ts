@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     if (!isFreshdeskConfigured()) {
       console.error('[SUPPORT_TICKET] Freshdesk not configured - missing FRESHDESK_API_KEY or FRESHDESK_DOMAIN');
       return NextResponse.json(
-        { error: 'Support form is temporarily unavailable. Please email us directly at hello@growthaddicts.com' },
+        { error: 'Support form is temporarily unavailable. Please email us directly at hello@coachful.co' },
         { status: 503 }
       );
     }
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[SUPPORT_TICKET] Error:', error);
     return NextResponse.json(
-      { error: 'Unable to submit your request. Please email us directly at hello@growthaddicts.com' },
+      { error: 'Unable to submit your request. Please email us directly at hello@coachful.co' },
       { status: 500 }
     );
   }

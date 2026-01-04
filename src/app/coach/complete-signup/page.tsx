@@ -134,7 +134,7 @@ export default function CompleteSignupPage() {
           <div className="w-20 h-20 mx-auto mb-6 relative">
             <Image
               src={LOGO_URL}
-              alt="Growth Addicts"
+              alt="Coachful"
               fill
               className="object-cover rounded-2xl"
               unoptimized

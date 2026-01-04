@@ -23,8 +23,8 @@ import { parseHost } from '@/lib/tenant/parseHost';
 import { DEFAULT_EMAIL_DEFAULTS } from '@/types';
 
 // Email senders for verification emails
-const PLATFORM_DEFAULT_SENDER = 'Growth Addicts <notifications@growthaddicts.com>';
-const PLATFORM_FALLBACK_SENDER = 'Growth Addicts <hi@updates.growthaddicts.com>';
+const PLATFORM_DEFAULT_SENDER = 'Coachful <notifications@coachful.co>';
+const PLATFORM_FALLBACK_SENDER = 'Coachful <hi@updates.coachful.co>';
 
 // =============================================================================
 // HELPER FUNCTIONS

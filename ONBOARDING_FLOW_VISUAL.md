@@ -15,7 +15,7 @@
 │  STEP 1: Welcome Screen                                                  │
 │  /onboarding/welcome                                                     │
 │  ─────────────────────────────────────────────────────────────────────  │
-│  • Big gradient "Welcome to GrowthAddicts !" heading                     │
+│  • Big gradient "Welcome to Coachful !" heading                     │
 │  • Friendly welcome message                                              │
 │  • Checklist:                                                            │
 │    □ Enable notifications                                                │
@@ -224,11 +224,11 @@ Design System:
 ══════════════════════════════════════════════════════════════════════════
 
 Welcome Screen:
-https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/GrowthAddicts--Backup-?
+https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/Coachful--Backup-?
 node-id=694-3035
 
 Create Profile Intro:
-https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/GrowthAddicts--Backup-?
+https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/Coachful--Backup-?
 node-id=409-3877
 
 ```

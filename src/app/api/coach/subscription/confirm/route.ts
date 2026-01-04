@@ -273,7 +273,7 @@ export async function POST(req: Request) {
 
     // Complete any pending referral and apply rewards
     try {
-      const referralResponse = await fetch(new URL('/api/coach-referral/complete', process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.com').toString(), {
+      const referralResponse = await fetch(new URL('/api/coach-referral/complete', process.env.NEXT_PUBLIC_APP_URL || 'https://coachful.co').toString(), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

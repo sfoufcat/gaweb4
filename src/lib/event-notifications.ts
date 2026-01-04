@@ -393,7 +393,7 @@ async function sendEventEmail({
   // Get tenant branding
   const organizationId = job.organizationId || user.primaryOrganizationId || null;
   const appTitle = await getAppTitleForEmail(organizationId);
-  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+  const teamName = appTitle === 'Coachful' ? 'Coachful' : appTitle;
 
   const userTimezone = user.timezone || 'UTC';
   const firstName = user.firstName || 'there';

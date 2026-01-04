@@ -78,8 +78,8 @@ export function CoachReferralCard() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join GrowthAddicts',
-          text: 'Build your coaching platform with GrowthAddicts. Use my referral code to get 1 month free!',
+          title: 'Join Coachful',
+          text: 'Build your coaching platform with Coachful. Use my referral code to get 1 month free!',
           url: data.referralUrl,
         });
       } catch (err) {

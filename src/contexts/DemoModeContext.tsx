@@ -12,7 +12,7 @@ const CoachQuizModal = dynamic(
 
 interface DemoModeContextValue {
   isDemoMode: boolean;
-  isDemoSite: boolean; // True when on demo.growthaddicts.com
+  isDemoSite: boolean; // True when on demo.coachful.co
   // Signup modal for demo fallback actions
   isSignupModalOpen: boolean;
   openSignupModal: () => void;
@@ -28,7 +28,7 @@ interface DemoModeProviderProps {
 /**
  * DemoModeProvider
  * 
- * Demo mode is ONLY active on demo.growthaddicts.com.
+ * Demo mode is ONLY active on demo.coachful.co.
  * The toggle has been removed - demo mode is exclusively for the demo subdomain.
  * 
  * Also provides a signup modal that can be triggered from anywhere in the app
@@ -79,7 +79,7 @@ export function DemoModeProvider({ children }: DemoModeProviderProps) {
 /**
  * Hook to access demo mode state
  * 
- * Note: Demo mode is only active on demo.growthaddicts.com.
+ * Note: Demo mode is only active on demo.coachful.co.
  * There is no toggle - it's determined purely by the subdomain.
  * 
  * Also provides openSignupModal() to trigger the coach signup modal

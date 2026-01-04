@@ -237,7 +237,7 @@ export async function GET(
           id: 'demo-coach',
           userId: 'demo-coach-user',
           name: 'Coach Adam',
-          email: 'coach@demo.growthaddicts.com',
+          email: 'coach@demo.coachful.co',
           imageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
         },
         tasks: demoTasks,

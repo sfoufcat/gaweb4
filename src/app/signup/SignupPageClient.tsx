@@ -48,8 +48,8 @@ export default function SignupPageClient({
   const customDomain = hostname.split(':')[0];
   const currentOrigin = `https://${customDomain}`;
   const subdomainBase = tenantSubdomain 
-    ? `https://${tenantSubdomain}.growthaddicts.com`
-    : 'https://growthaddicts.com';
+    ? `https://${tenantSubdomain}.coachful.co`
+    : 'https://coachful.co';
   const iframeSrc = `${subdomainBase}/join/embedded?origin=${encodeURIComponent(currentOrigin)}`;
 
   // Handle OAuth for satellite domains
@@ -64,7 +64,7 @@ export default function SignupPageClient({
     if (!isSatellite) return;
     
     const handleMessage = (event: MessageEvent) => {
-      if (!event.origin.includes('growthaddicts.com') && !event.origin.includes('growthaddicts.app')) {
+      if (!event.origin.includes('coachful.co') && !event.origin.includes('growthaddicts.app')) {
         return;
       }
       

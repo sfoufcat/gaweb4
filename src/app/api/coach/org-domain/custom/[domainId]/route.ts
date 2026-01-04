@@ -386,7 +386,7 @@ export async function DELETE(
     return NextResponse.json({ 
       success: true,
       removedDomain: domainData.domain,
-      redirectUrl: subdomain ? `https://${subdomain}.growthaddicts.com/coach/customize` : null
+      redirectUrl: subdomain ? `https://${subdomain}.coachful.co/coach/customize` : null
     });
   } catch (error) {
     console.error('[COACH_CUSTOM_DOMAIN_DELETE] Error:', error);

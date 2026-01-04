@@ -117,13 +117,13 @@ export async function GET(
     const dtStart = formatICSDate(callDate);
     const dtEnd = formatICSDate(endDate);
     const dtStamp = formatICSDate(new Date());
-    const uid = `squad-call-${squadId}-${callDate.getTime()}@growthaddicts.com`;
+    const uid = `squad-call-${squadId}-${callDate.getTime()}@coachful.co`;
 
     // Build ICS content
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Growth Addicts//Squad Calls//EN',
+      'PRODID:-//Coachful//Squad Calls//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
       'BEGIN:VEVENT',

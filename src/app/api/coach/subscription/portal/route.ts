@@ -73,7 +73,7 @@ export async function POST() {
     }
 
     const stripe = getStripeClient();
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.app';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coachful.co';
 
     // Create portal session
     const portalSession = await stripe.billingPortal.sessions.create({

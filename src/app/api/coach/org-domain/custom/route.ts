@@ -122,10 +122,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid domain format' }, { status: 400 });
     }
     
-    // Don't allow growthaddicts.com/app subdomains as custom domains
-    if (normalizedDomain.endsWith('.growthaddicts.com') || normalizedDomain.endsWith('.growthaddicts.app')) {
+    // Don't allow coachful.co/app subdomains as custom domains
+    if (normalizedDomain.endsWith('.coachful.co') || normalizedDomain.endsWith('.growthaddicts.app')) {
       return NextResponse.json({ 
-        error: 'Cannot add growthaddicts.com/app domains as custom domains. Use the subdomain setting instead.' 
+        error: 'Cannot add coachful.co/app domains as custom domains. Use the subdomain setting instead.' 
       }, { status: 400 });
     }
     

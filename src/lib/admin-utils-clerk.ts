@@ -393,7 +393,7 @@ export async function requireCoachWithOrg(options?: {
         const orgDomain = await getOrgDomain(userOrgId);
         if (orgDomain?.subdomain) {
           subdomain = orgDomain.subdomain;
-          tenantUrl = `https://${orgDomain.subdomain}.growthaddicts.com`;
+          tenantUrl = `https://${orgDomain.subdomain}.coachful.co`;
         }
       } catch (error) {
         console.error('[requireCoachWithOrg] Error looking up org domain:', error);

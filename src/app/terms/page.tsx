@@ -54,10 +54,10 @@ export default function TermsPage() {
                 1. Acceptance of Terms
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
-                By accessing or using GrowthAddicts (&quot;the Service&quot;), operated by Influencee Agency OÜ, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the Service.
+                By accessing or using Coachful (&quot;the Service&quot;), operated by Influencee Agency OÜ, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the Service.
               </p>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
-                GrowthAddicts is a personal development and accountability platform designed to help users achieve their goals through structured daily practices, community support, and progress tracking.
+                Coachful is a personal development and accountability platform designed to help users achieve their goals through structured daily practices, community support, and progress tracking.
               </p>
               <div className="bg-[#faf8f6] rounded-xl p-4 border border-[#e1ddd8]">
                 <p className="font-sans text-[14px] text-text-secondary">
@@ -88,7 +88,7 @@ export default function TermsPage() {
                 3. Subscription and Payment
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
-                GrowthAddicts offers subscription-based services. By subscribing, you agree to:
+                Coachful offers subscription-based services. By subscribing, you agree to:
               </p>
               <ul className="list-disc pl-6 space-y-2 font-sans text-[15px] text-text-secondary mb-4">
                 <li>Pay the applicable subscription fees as described at the time of purchase</li>
@@ -122,7 +122,7 @@ export default function TermsPage() {
                 5. Intellectual Property
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
-                The Service and its original content, features, and functionality are owned by GrowthAddicts and are protected by international copyright, trademark, and other intellectual property laws.
+                The Service and its original content, features, and functionality are owned by Coachful and are protected by international copyright, trademark, and other intellectual property laws.
               </p>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed">
                 You retain ownership of any content you create or upload to the Service, but grant us a license to use, display, and distribute such content in connection with the Service.
@@ -134,7 +134,7 @@ export default function TermsPage() {
                 6. Disclaimers
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
-                GrowthAddicts is a personal development tool and is not a substitute for professional medical, psychological, or financial advice. The Service is provided &quot;as is&quot; without warranties of any kind.
+                Coachful is a personal development tool and is not a substitute for professional medical, psychological, or financial advice. The Service is provided &quot;as is&quot; without warranties of any kind.
               </p>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed">
                 Results may vary. While we provide tools and support for goal achievement, success depends on individual effort, circumstances, and consistency.
@@ -146,7 +146,7 @@ export default function TermsPage() {
                 7. Limitation of Liability
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed">
-                To the maximum extent permitted by law, GrowthAddicts shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the Service.
+                To the maximum extent permitted by law, Coachful shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the Service.
               </p>
             </section>
 
@@ -174,8 +174,8 @@ export default function TermsPage() {
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
                 If you have any questions about these Terms, please contact us at{' '}
-                <a href="mailto:hello@growthaddicts.com" className="text-brand-accent hover:underline">
-                  hello@growthaddicts.com
+                <a href="mailto:hello@coachful.co" className="text-brand-accent hover:underline">
+                  hello@coachful.co
                 </a>
               </p>
               <div className="bg-[#faf8f6] rounded-xl p-4 border border-[#e1ddd8]">

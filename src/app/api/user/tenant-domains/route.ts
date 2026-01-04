@@ -94,7 +94,7 @@ export async function GET() {
         if (customDomain) {
           tenantUrl = `https://${customDomain}`;
         } else if (subdomain) {
-          tenantUrl = `https://${subdomain}.growthaddicts.com`;
+          tenantUrl = `https://${subdomain}.coachful.co`;
         }
         
         tenantDomains.push({

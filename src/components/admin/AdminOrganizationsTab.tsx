@@ -308,7 +308,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                       className="text-brand-accent hover:underline font-albert text-sm flex items-center gap-1"
                     >
                       <Globe className="w-4 h-4" />
-                      {selectedOrg.subdomain}.growthaddicts.com
+                      {selectedOrg.subdomain}.coachful.co
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   )}

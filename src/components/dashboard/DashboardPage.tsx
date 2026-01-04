@@ -44,7 +44,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 /**
  * Homepage / Dashboard
- * Matches EXACTLY: https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/GrowthAddicts--Backup-?node-id=1484-8842&m=dev
+ * Matches EXACTLY: https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/Coachful--Backup-?node-id=1484-8842&m=dev
  * Mobile design adapted for desktop/responsive
  */
 
@@ -844,7 +844,7 @@ export function DashboardPage() {
         <div className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl overflow-hidden relative">
           <Image 
             src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af"
-            alt="Growth Addicts Logo"
+            alt="Coachful Logo"
             fill
             className="object-cover"
             priority
@@ -852,7 +852,7 @@ export function DashboardPage() {
         </div>
         <div>
           <h1 className="text-5xl sm:text-7xl font-serif font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-tight mb-4">
-            Growth Addicts
+            Coachful
           </h1>
           <p className="text-[#5f5a55] dark:text-[#b2b6c2] text-lg max-w-md mx-auto">
             Define your mission. Align your life. Find your tribe.
@@ -1445,7 +1445,7 @@ export function DashboardPage() {
           {isMissedCheckin ? (
             <>
               <p className={`font-albert ${isMobile ? 'text-[22px]' : 'text-[26px]'} text-white leading-[1.2] tracking-[-1.3px] font-medium mb-2`}>
-                Welcome to GrowthAddicts! 🚀
+                Welcome to Coachful! 🚀
               </p>
               <p className={`font-sans ${isMobile ? 'text-[13px]' : 'text-[14px]'} text-white/90 leading-[1.4]`}>
                 Your morning check-in starts tomorrow.
@@ -1454,7 +1454,7 @@ export function DashboardPage() {
           ) : (
             <>
               <p className={`font-albert ${isMobile ? 'text-[24px]' : 'text-[28px]'} text-white leading-[1.2] tracking-[-1.3px] font-medium mb-2`}>
-                Welcome to GrowthAddicts! 🚀
+                Welcome to Coachful! 🚀
               </p>
               <p className={`font-sans ${isMobile ? 'text-[14px]' : 'text-[15px]'} text-white/90 leading-[1.3]`}>
                 Let&apos;s crush your goals.

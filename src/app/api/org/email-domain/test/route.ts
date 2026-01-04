@@ -6,7 +6,7 @@ import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ensureCoachHasOrganization } from '@/lib/clerk-organizations';
 import type { OrgBranding, UserRole } from '@/types';
 
-const PLATFORM_DEFAULT_SENDER = 'Growth Addicts <hi@updates.growthaddicts.com>';
+const PLATFORM_DEFAULT_SENDER = 'Coachful <hi@updates.coachful.co>';
 
 /**
  * POST /api/org/email-domain/test

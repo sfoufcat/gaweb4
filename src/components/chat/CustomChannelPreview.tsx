@@ -7,7 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 /**
  * CustomChannelPreview Component
  * 
- * Custom channel list item for Growth Addicts chat:
+ * Custom channel list item for Coachful chat:
  * - Avatar on left
  * - Channel name and last message preview
  * - Timestamp on right

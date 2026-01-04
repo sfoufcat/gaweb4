@@ -6,7 +6,7 @@ import { ContactSupportForm } from './ContactSupportForm';
 import { FeatureVotingBoard } from './FeatureVotingBoard';
 import { PrivateFeedbackForm } from './PrivateFeedbackForm';
 
-const SUPPORT_EMAIL = 'hello@growthaddicts.com';
+const SUPPORT_EMAIL = 'hello@coachful.co';
 
 export function CoachSupportTab() {
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);

@@ -152,13 +152,13 @@ export async function PATCH(
           }
           // If same subdomain, nothing to do
           
-          tenantUrl = `https://${finalSubdomain}.growthaddicts.com`;
+          tenantUrl = `https://${finalSubdomain}.coachful.co`;
         } else {
           // No subdomain resolved - org will have auto-generated one from createOrganizationForCoach
           const orgDomain = await getOrgDomain(organizationId);
           if (orgDomain?.subdomain) {
             finalSubdomain = orgDomain.subdomain;
-            tenantUrl = `https://${orgDomain.subdomain}.growthaddicts.com`;
+            tenantUrl = `https://${orgDomain.subdomain}.coachful.co`;
           }
         }
         

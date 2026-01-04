@@ -445,7 +445,7 @@ export default function CoachPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Demo Mode Banner - shown on demo.growthaddicts.com */}
+      {/* Demo Mode Banner - shown on demo.coachful.co */}
       {isDemoSite && <DemoModeBanner />}
       
       {/* Feature Tour Overlay */}

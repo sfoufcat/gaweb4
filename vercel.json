@@ -56,20 +56,38 @@
   "redirects": [
     {
       "source": "/:path*",
+      "has": [{ "type": "host", "value": "growthaddicts.com" }],
+      "destination": "https://coachful.co/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.growthaddicts.com" }],
+      "destination": "https://coachful.co/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "app.growthaddicts.com" }],
+      "destination": "https://app.coachful.co/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
       "has": [{ "type": "host", "value": "growthaddicts.app" }],
-      "destination": "https://growthaddicts.com/:path*",
+      "destination": "https://coachful.co/:path*",
       "permanent": true
     },
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "www.growthaddicts.app" }],
-      "destination": "https://growthaddicts.com/:path*",
+      "destination": "https://coachful.co/:path*",
       "permanent": true
     },
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "app.growthaddicts.app" }],
-      "destination": "https://app.growthaddicts.com/:path*",
+      "destination": "https://app.coachful.co/:path*",
       "permanent": true
     }
   ]

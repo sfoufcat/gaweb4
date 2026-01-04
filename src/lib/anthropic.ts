@@ -84,7 +84,7 @@ const GOAL_REJECT_PATTERNS: Array<{ pattern: RegExp; reason: string; suggestion:
 // AI PROMPTS
 // ============================================================================
 
-const IDENTITY_SYSTEM_PROMPT = `You are the Onboarding Validation Engine for GrowthAddicts.
+const IDENTITY_SYSTEM_PROMPT = `You are the Onboarding Validation Engine for Coachful.
 
 Your job is to evaluate and correct user-submitted identity statements.
 
@@ -195,7 +195,7 @@ If the user's submission is already valid, still rewrite it cleaner.
   "suggested_rewrite": "I am a mentor for founders"
 }`;
 
-const GOAL_SYSTEM_PROMPT = `You are the Onboarding Validation Engine for GrowthAddicts.
+const GOAL_SYSTEM_PROMPT = `You are the Onboarding Validation Engine for Coachful.
 
 Your job is to evaluate and correct user-submitted SMART goals.
 
@@ -579,7 +579,7 @@ export interface TransformationTextResult {
   error?: string;
 }
 
-const TRANSFORMATION_PROMPT = `You are a motivational copywriter for GrowthAddicts, a personal growth app.
+const TRANSFORMATION_PROMPT = `You are a motivational copywriter for Coachful, a personal growth app.
 
 Your job is to write ONE SHORT, punchy sentence that explains why THIS journey will work for them.
 

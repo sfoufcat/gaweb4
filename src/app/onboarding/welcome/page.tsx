@@ -81,7 +81,7 @@ const VALUE_PROPS = [
 ];
 
 /**
- * Welcome to GrowthAddicts Screen
+ * Welcome to Coachful Screen
  * First step in the onboarding flow after signup
  * Premium redesign matching /start page
  */

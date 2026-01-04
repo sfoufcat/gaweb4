@@ -213,7 +213,7 @@ async function sendInviteEmail({
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const appTitle = await getAppTitleForEmail(organizationId);
   const logoUrl = await getLogoUrlForEmail(organizationId);
-  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+  const teamName = appTitle === 'Coachful' ? 'Coachful' : appTitle;
   
   // Generate the correct invite URL based on funnel type
   let inviteUrl: string;

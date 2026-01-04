@@ -32,7 +32,7 @@ I've successfully built the complete goal-setting experience for the onboarding 
 
 ### 1. Goal Input Experience
 - **Typewriter Effect**: Cycling through example goals
-  - "launch the GrowthAddicts app..."
+  - "launch the Coachful app..."
   - "grow to $50k MRR..."
   - "lose 10 kg..."
   - And more
@@ -219,7 +219,7 @@ Goals stored in Firebase `users` collection:
 ## 🎯 Examples to Test
 
 ### Good Goals (Will Pass)
-- "Launch the GrowthAddicts app"
+- "Launch the Coachful app"
 - "Grow to $50k MRR"
 - "Lose 10 kg"
 - "Complete my first marathon"

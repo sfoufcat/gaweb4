@@ -126,9 +126,9 @@ export async function createTicket(payload: FreshdeskTicketPayload): Promise<Fre
       console.error('[FRESHDESK] API error:', response.status, JSON.stringify(errorData, null, 2));
       
       // Provide user-friendly error messages
-      let userMessage = 'Unable to submit your request. Please email us directly at hello@growthaddicts.com';
+      let userMessage = 'Unable to submit your request. Please email us directly at hello@coachful.co';
       if (response.status === 401) {
-        userMessage = 'Support system authentication error. Please email us directly at hello@growthaddicts.com';
+        userMessage = 'Support system authentication error. Please email us directly at hello@coachful.co';
       } else if (response.status === 400) {
         userMessage = errorData.description || 'Invalid request. Please check your input and try again.';
       }

@@ -690,7 +690,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
               className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl hover:bg-brand-accent/90 transition-colors font-medium"
             >
               <ExternalLink className="w-4 h-4" />
-              Go to {tenantRequired.subdomain}.growthaddicts.com
+              Go to {tenantRequired.subdomain}.coachful.co
             </a>
           ) : (
             <p className="text-text-muted dark:text-[#7f8694] text-sm">

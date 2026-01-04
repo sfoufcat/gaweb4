@@ -13,7 +13,7 @@ interface GoalInputProps {
 }
 
 const EXAMPLE_GOALS = [
-  "launch the GrowthAddicts app...",
+  "launch the Coachful app...",
   "grow to $50k MRR...",
   "lose 10 kg...",
   "complete my first marathon...",

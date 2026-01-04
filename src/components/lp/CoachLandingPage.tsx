@@ -46,18 +46,18 @@ const TRUST_LOGOS = [
 
 const TESTIMONIALS = [
   {
-    quote: "I had 40 clients in a Circle community. 12 were active. I moved to GrowthAddicts. Now I can see exactly who's doing the work. My renewal rate went from 60% to 85%.",
+    quote: "I had 40 clients in a Circle community. 12 were active. I moved to Coachful. Now I can see exactly who's doing the work. My renewal rate went from 60% to 85%.",
     name: 'David L.',
     title: 'Executive Coach',
     clients: '40 clients',
     revenue: '$32K/mo',
   },
   {
-    quote: "Skool was great for building an audience. But my PAID clients? They got lost in the noise. GrowthAddicts separates the two. My premium clients get accountability.",
+    quote: "Skool was great for building an audience. But my PAID clients? They got lost in the noise. Coachful separates the two. My premium clients get accountability.",
     name: 'Jen T.',
     title: 'Business Coach',
     clients: '28 clients',
-    note: 'Uses both Skool + GrowthAddicts',
+    note: 'Uses both Skool + Coachful',
   },
   {
     quote: "The Alignment Score changed everything. My clients actually compete to have the highest score. I've never seen this level of engagement with any other tool.",
@@ -159,7 +159,7 @@ const FAQ = [
   },
   {
     q: 'Do I need to stop using Skool/Circle?',
-    a: 'No. Many coaches use Skool for free community and GrowthAddicts for paid clients who need accountability.',
+    a: 'No. Many coaches use Skool for free community and Coachful for paid clients who need accountability.',
   },
   {
     q: 'What if my clients don\'t log in?',
@@ -282,14 +282,14 @@ export function CoachLandingPage() {
                 <div className="w-10 h-10 rounded-xl overflow-hidden relative">
                   <Image
                     src={LOGO_URL}
-                    alt="GrowthAddicts"
+                    alt="Coachful"
                     fill
                     className="object-cover"
                     unoptimized
                   />
                 </div>
                 <span className="hidden sm:inline font-albert text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-tight">
-                  GrowthAddicts
+                  Coachful
                 </span>
               </Link>
 
@@ -355,7 +355,7 @@ export function CoachLandingPage() {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <p className="font-sans text-[18px] sm:text-[20px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
-                <span>GrowthAddicts is the only coaching platform where clients don't just listen - they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>.</span>
+                <span>Coachful is the only coaching platform where clients don't just listen - they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>.</span>
                 <span className="block h-3 sm:hidden" />
                 <span className="hidden sm:inline"> </span>
                 <span>Track habits, daily commitments, and accountability scores. Start delivering proof, not promises.</span>
@@ -378,7 +378,7 @@ export function CoachLandingPage() {
                 <ArrowRight className="w-5 h-5" />
               </button>
               <a
-                href="https://demo.growthaddicts.com"
+                href="https://demo.coachful.co"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-6 py-4 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert text-[16px] font-medium transition-colors"
@@ -594,7 +594,7 @@ export function CoachLandingPage() {
               Finally. Accountability That Scales.
             </h2>
             <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-2xl mx-auto mb-16">
-              GrowthAddicts replaces your patchwork of tools with one platform built for coaches who need <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">results</strong>, not vanity metrics.
+              Coachful replaces your patchwork of tools with one platform built for coaches who need <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">results</strong>, not vanity metrics.
             </p>
             
             {/* Before/After */}
@@ -633,7 +633,7 @@ export function CoachLandingPage() {
                 <div className="flex items-center gap-2 mb-6">
                   <Zap className="w-5 h-5 text-emerald-500" />
                   <span className="font-albert text-[14px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
-                    After: With GrowthAddicts
+                    After: With Coachful
                   </span>
                 </div>
                 <ul className="space-y-3 flex-1">
@@ -825,7 +825,7 @@ export function CoachLandingPage() {
                   <div className="p-4 flex items-center justify-center w-16 sm:w-24 flex-shrink-0 order-1 sm:order-3">
                     <Image
                       src="/logo.jpg"
-                      alt="GrowthAddicts"
+                      alt="Coachful"
                       width={32}
                       height={32}
                       className="rounded-lg"
@@ -1170,25 +1170,25 @@ export function CoachLandingPage() {
                 <div className="w-8 h-8 rounded-lg overflow-hidden relative">
                   <Image
                     src={LOGO_URL}
-                    alt="GrowthAddicts"
+                    alt="Coachful"
                     fill
                     className="object-cover"
                     unoptimized
                   />
                 </div>
                 <span className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  GrowthAddicts
+                  Coachful
                 </span>
               </div>
               
               <div className="flex items-center gap-6 text-[#5f5a55] dark:text-[#b2b6c2]">
                 <Link href="/privacy" className="font-sans text-[14px] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors">Privacy</Link>
                 <Link href="/terms" className="font-sans text-[14px] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors">Terms</Link>
-                <a href="mailto:support@growthaddicts.com" className="font-sans text-[14px] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors">Contact</a>
+                <a href="mailto:support@coachful.co" className="font-sans text-[14px] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors">Contact</a>
               </div>
               
               <p className="font-sans text-[13px] text-[#a7a39e] dark:text-[#7d8190]">
-                © 2025 GrowthAddicts. Built for coaches who get results.
+                © 2025 Coachful. Built for coaches who get results.
               </p>
             </div>
           </div>

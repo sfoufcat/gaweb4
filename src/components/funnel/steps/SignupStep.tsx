@@ -126,7 +126,7 @@ export function SignupStep({
   const [iframeUserInfo, setIframeUserInfo] = useState<IframeUserInfo | null>(null);
 
   // Determine if we're on a custom domain (satellite)
-  const isCustomDomain = !hostname.includes('growthaddicts.com') && 
+  const isCustomDomain = !hostname.includes('coachful.co') && 
                          !hostname.includes('growthaddicts.app') &&
                          !hostname.includes('localhost') &&
                          !hostname.includes('127.0.0.1');
@@ -267,8 +267,8 @@ export function SignupStep({
     if (isCustomDomain && iframeUserInfo && !isSignedIn) {
       // Redirect to sign-in with redirect back to callback
       const subdomainBase = subdomain 
-        ? `https://${subdomain}.growthaddicts.com`
-        : 'https://growthaddicts.com';
+        ? `https://${subdomain}.coachful.co`
+        : 'https://coachful.co';
       const returnUrl = `https://${hostname}/join/callback?flowSessionId=${flowSessionId}`;
       // Use sign-in OAuth flow to get them signed in on this domain
       window.location.href = `${subdomainBase}/sign-in?redirect_url=${encodeURIComponent(returnUrl)}`;
@@ -287,8 +287,8 @@ export function SignupStep({
     if (isCustomDomain) {
       // Custom domain: Redirect to subdomain which handles Clerk OAuth
       const subdomainBase = subdomain 
-        ? `https://${subdomain}.growthaddicts.com`
-        : 'https://growthaddicts.com';
+        ? `https://${subdomain}.coachful.co`
+        : 'https://coachful.co';
       
       // Return URL with flowSessionId so we can link after auth
       const returnUrl = `https://${hostname}/join/callback?flowSessionId=${flowSessionId}`;
@@ -332,7 +332,7 @@ export function SignupStep({
 
     const handleMessage = (event: MessageEvent) => {
       // Validate origin
-      if (!event.origin.includes('growthaddicts.com') && !event.origin.includes('growthaddicts.app')) {
+      if (!event.origin.includes('coachful.co') && !event.origin.includes('growthaddicts.app')) {
         return;
       }
       
@@ -567,8 +567,8 @@ export function SignupStep({
 
   // Construct URLs for iframe
   const subdomainBase = subdomain 
-    ? `https://${subdomain}.growthaddicts.com`
-    : 'https://growthaddicts.com';
+    ? `https://${subdomain}.coachful.co`
+    : 'https://coachful.co';
   const currentOrigin = isCustomDomain ? `https://${hostname}` : (typeof window !== 'undefined' ? window.location.origin : '');
   const iframeSrc = `${subdomainBase}/join/embedded?origin=${encodeURIComponent(currentOrigin)}&flowSessionId=${flowSessionId}`;
 

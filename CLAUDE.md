@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GAweb3 is a productivity and accountability SaaS platform built with Next.js 16+. It's a multi-tenant coaching platform where coaches can create organizations with custom domains, programs, and squads to support their clients.
+Coachful is a productivity and accountability SaaS platform built with Next.js 16+. It's a multi-tenant coaching platform where coaches can create organizations with custom domains, programs, and squads to support their clients.
 
 ## Development Commands
 
@@ -41,8 +41,8 @@ npm run doppler:sync     # Download secrets to .env.local
 ## Architecture
 
 ### Multi-Tenancy Model
-- Platform operates on `app.growthaddicts.com` (admin/platform)
-- Coaches get subdomains: `{org}.growthaddicts.com`
+- Platform operates on `app.coachful.co` (admin/platform)
+- Coaches get subdomains: `{org}.coachful.co`
 - Coaches can also use custom domains
 - Tenant resolution happens in `src/proxy.ts` (middleware)
 
@@ -153,7 +153,7 @@ The project uses relaxed warnings for:
 
 ## Demo Mode
 
-The app supports a demo mode (`demo.growthaddicts.com`) that simulates data without authentication. Demo logic is in:
+The app supports a demo mode (`demo.coachful.co`) that simulates data without authentication. Demo logic is in:
 - `src/contexts/DemoModeContext.tsx`
 - `src/contexts/DemoSessionContext.tsx`
 - `src/lib/demo-*.ts` files

@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 /**
  * Create Your Public Profile Intro Screen
  * Second step in the onboarding flow
- * Figma: https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/GrowthAddicts--Backup-?node-id=409-3877&m=dev
+ * Figma: https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/Coachful--Backup-?node-id=409-3877&m=dev
  */
 export default function CreateProfileIntroPage() {
   const router = useRouter();

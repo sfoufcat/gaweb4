@@ -217,14 +217,14 @@ export default function OnboardingProfilePage() {
             <div className="w-10 h-10 rounded-xl overflow-hidden relative">
               <Image
                 src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af"
-                alt="Growth Addicts"
+                alt="Coachful"
                 fill
                 className="object-cover"
                 unoptimized
               />
             </div>
             <span className="font-albert text-[18px] font-bold tracking-[-0.5px] text-[#1a1a1a] dark:text-[#f5f5f8]">
-              GrowthAddicts
+              Coachful
             </span>
           </div>
           

@@ -99,7 +99,7 @@ export async function sendSquadInviteEmail(
   // Get tenant branding
   const appTitle = await getAppTitleForEmail(organizationId || null);
   const logoUrl = await getLogoUrlForEmail(organizationId || null);
-  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+  const teamName = appTitle === 'Coachful' ? 'Coachful' : appTitle;
   
   const recipientName = toName || 'there';
   const inviteUrl = `${APP_BASE_URL}/invite/${inviteCode}`;
@@ -221,7 +221,7 @@ export async function sendCommunityInviteEmail(
   // Get tenant branding
   const appTitle = await getAppTitleForEmail(organizationId || null);
   const logoUrl = await getLogoUrlForEmail(organizationId || null);
-  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+  const teamName = appTitle === 'Coachful' ? 'Coachful' : appTitle;
   
   const recipientName = toName || 'there';
 
@@ -340,7 +340,7 @@ export async function sendOrganizationInviteEmail(
   // Get tenant branding
   const appTitle = await getAppTitleForEmail(organizationId || null);
   const logoUrl = await getLogoUrlForEmail(organizationId || null);
-  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+  const teamName = appTitle === 'Coachful' ? 'Coachful' : appTitle;
   
   const recipientName = toName || 'there';
 

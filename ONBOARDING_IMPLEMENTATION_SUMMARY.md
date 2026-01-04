@@ -8,7 +8,7 @@ The first part of the onboarding flow for Growth Addicts has been successfully i
 
 ### New Pages Created
 
-1. **`/onboarding/welcome`** - Welcome to GrowthAddicts screen
+1. **`/onboarding/welcome`** - Welcome to Coachful screen
    - Based on Figma design (node-id=694-3035)
    - Features welcome message with gradient heading
    - Shows checklist of onboarding steps

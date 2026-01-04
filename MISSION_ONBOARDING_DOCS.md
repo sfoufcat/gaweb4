@@ -350,5 +350,5 @@ font-sans text-2xl tracking-[-0.5px] leading-[1.3]
 ---
 
 **Last Updated**: November 2025  
-**Maintained By**: GrowthAddicts Team
+**Maintained By**: Coachful Team
 

@@ -3,7 +3,46 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isSuperAdmin } from '@/lib/admin-utils-shared';
-import type { ClientCoachingData, UserRole, Coach } from '@/types';
+import type { ClientCoachingData, UserRole, Coach, Program, ProgramEnrollment } from '@/types';
+
+/**
+ * Helper to check if user has an active individual program enrollment
+ * This allows users enrolled in 1:1 programs to access their coaching data
+ * even if they don't have coachingStatus metadata set
+ */
+async function checkActiveIndividualEnrollment(
+  userId: string,
+  organizationId: string
+): Promise<boolean> {
+  try {
+    const enrollmentsSnapshot = await adminDb.collection('program_enrollments')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
+      .where('status', 'in', ['active', 'upcoming'])
+      .get();
+
+    if (enrollmentsSnapshot.empty) {
+      return false;
+    }
+
+    // Check if any enrollment is for an individual program
+    for (const doc of enrollmentsSnapshot.docs) {
+      const enrollment = doc.data() as ProgramEnrollment;
+      const programDoc = await adminDb.collection('programs').doc(enrollment.programId).get();
+      if (programDoc.exists) {
+        const program = programDoc.data() as Program;
+        if (program.type === 'individual') {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  } catch (err) {
+    console.error('[COACHING_DATA] Error checking active enrollment:', err);
+    return false;
+  }
+}
 
 /**
  * GET /api/coaching/data
@@ -36,21 +75,30 @@ export async function GET(request: Request) {
 
     const role = publicMetadata?.role;
     // Check both new coachingStatus and legacy coaching flag for backward compatibility
-    const hasCoaching = publicMetadata?.coachingStatus === 'active' || publicMetadata?.coaching === true;
+    const hasCoachingMetadata = publicMetadata?.coachingStatus === 'active' || publicMetadata?.coaching === true;
     const isSuperAdminUser = isSuperAdmin(role);
+
+    // MULTI-TENANCY: Get organization ID from tenant context (needed for enrollment check)
+    const organizationId = await getEffectiveOrgId();
 
     // Determine which user's data to fetch
     let fetchUserId = userId;
     if (targetUserId && isSuperAdminUser) {
       // Super admin can view any user's coaching data
       fetchUserId = targetUserId;
-    } else if (!hasCoaching && !isSuperAdminUser) {
-      // Non-coaching users without super admin access
-      return NextResponse.json({ error: 'Coaching subscription required' }, { status: 403 });
+    } else if (!hasCoachingMetadata && !isSuperAdminUser) {
+      // No coaching metadata - check for active individual program enrollment as fallback
+      if (organizationId) {
+        const hasIndividualEnrollment = await checkActiveIndividualEnrollment(userId, organizationId);
+        if (!hasIndividualEnrollment) {
+          return NextResponse.json({ error: 'Coaching subscription required' }, { status: 403 });
+        }
+        // User has individual program enrollment - allow access
+      } else {
+        // No org context and no coaching metadata
+        return NextResponse.json({ error: 'Coaching subscription required' }, { status: 403 });
+      }
     }
-
-    // MULTI-TENANCY: Get organization ID from tenant context
-    const organizationId = await getEffectiveOrgId();
     
     if (!organizationId) {
       // On platform domain, return empty state

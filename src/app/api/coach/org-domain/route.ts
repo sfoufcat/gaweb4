@@ -41,7 +41,7 @@ export async function GET() {
       subdomain: orgDomain?.subdomain || null,
       primaryDomain: orgDomain?.primaryDomain || null,
       tenantUrl: orgDomain?.subdomain 
-        ? `https://${orgDomain.subdomain}.growthaddicts.com`
+        ? `https://${orgDomain.subdomain}.coachful.co`
         : null,
       customDomains: customDomains.map(d => ({
         id: d.id,
@@ -124,7 +124,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({
         success: true,
         subdomain: normalizedSubdomain,
-        tenantUrl: `https://${normalizedSubdomain}.growthaddicts.com`,
+        tenantUrl: `https://${normalizedSubdomain}.coachful.co`,
         message: 'No change needed',
       });
     }
@@ -186,7 +186,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({
       success: true,
       subdomain: normalizedSubdomain,
-      tenantUrl: `https://${normalizedSubdomain}.growthaddicts.com`,
+      tenantUrl: `https://${normalizedSubdomain}.coachful.co`,
     });
   } catch (error) {
     // Handle tenant required error

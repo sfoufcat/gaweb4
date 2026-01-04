@@ -44,7 +44,7 @@ export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherPr
     if (tenantDomains.length > 0) {
       const matchingTenant = tenantDomains.find(t => {
         if (t.customDomain && hostname === t.customDomain) return true;
-        if (t.subdomain && (hostname === `${t.subdomain}.growthaddicts.com` || hostname === `${t.subdomain}.growthaddicts.app`)) return true;
+        if (t.subdomain && (hostname === `${t.subdomain}.coachful.co` || hostname === `${t.subdomain}.growthaddicts.app`)) return true;
         return false;
       });
       setCurrentOrgId(matchingTenant?.organizationId || null);
@@ -112,7 +112,7 @@ export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherPr
     // Check if this is the current tenant
     const hostname = window.location.hostname;
     const isCurrent = (org.customDomain && hostname === org.customDomain) ||
-                      (org.subdomain && (hostname === `${org.subdomain}.growthaddicts.com` || hostname === `${org.subdomain}.growthaddicts.app`));
+                      (org.subdomain && (hostname === `${org.subdomain}.coachful.co` || hostname === `${org.subdomain}.growthaddicts.app`));
     
     if (isCurrent) {
       // Already on this tenant, just close dropdown
@@ -179,7 +179,7 @@ export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherPr
             {orgsWithUrls.map(org => {
               const hostname = window.location.hostname;
               const isCurrent = (org.customDomain && hostname === org.customDomain) ||
-                                (org.subdomain && (hostname === `${org.subdomain}.growthaddicts.com` || hostname === `${org.subdomain}.growthaddicts.app`));
+                                (org.subdomain && (hostname === `${org.subdomain}.coachful.co` || hostname === `${org.subdomain}.growthaddicts.app`));
               
               return (
                 <button
@@ -212,7 +212,7 @@ export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherPr
                       {org.name}
                     </div>
                     <div className="text-xs text-text-secondary truncate">
-                      {org.customDomain || `${org.subdomain}.growthaddicts.com`}
+                      {org.customDomain || `${org.subdomain}.coachful.co`}
                     </div>
                   </div>
                   

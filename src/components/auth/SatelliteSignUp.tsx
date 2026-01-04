@@ -43,8 +43,8 @@ export function SatelliteSignUp({ subdomain, customDomain, logoUrl, appTitle, re
   // Construct URLs
   const currentOrigin = `https://${customDomain}`;
   const subdomainBase = subdomain 
-    ? `https://${subdomain}.growthaddicts.com`
-    : 'https://growthaddicts.com';
+    ? `https://${subdomain}.coachful.co`
+    : 'https://coachful.co';
   
   // Determine the final redirect URL after auth
   // If redirectUrl is a relative path, prepend the current origin
@@ -103,7 +103,7 @@ export function SatelliteSignUp({ subdomain, customDomain, logoUrl, appTitle, re
     // Listen for postMessage from iframe (email/password auth success)
     const handleMessage = (event: MessageEvent) => {
       // Validate origin - must be from subdomain or primary domain
-      if (!event.origin.includes('growthaddicts.com') && !event.origin.includes('growthaddicts.app')) {
+      if (!event.origin.includes('coachful.co') && !event.origin.includes('growthaddicts.app')) {
         return;
       }
       

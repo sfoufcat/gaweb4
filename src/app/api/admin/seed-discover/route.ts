@@ -130,14 +130,14 @@ const EVENT_UPDATES = [
     eventId: 'event-1',
     title: 'Pre-event reminder',
     content: 'Please check your inbox for the Zoom link and prep materials. We recommend having a notebook ready and joining from a quiet space.',
-    authorName: 'GrowthAddicts',
+    authorName: 'Coachful',
   },
   {
     id: 'update-2',
     eventId: 'event-1',
     title: 'Worksheet available',
     content: "We've uploaded the habit tracking worksheet to your dashboard. Feel free to print it before the session!",
-    authorName: 'GrowthAddicts',
+    authorName: 'Coachful',
   },
 ];
 

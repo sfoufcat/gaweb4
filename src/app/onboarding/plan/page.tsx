@@ -465,7 +465,7 @@ export default function PlanPage() {
                 ) : (
                   <>
                     By clicking &quot;Start your transformation&quot;, I agree that the plan I have selected will automatically renew until I cancel. 
-                    GrowthAddicts will automatically charge my payment method <span className="font-semibold text-text-secondary">{selectedPlanData?.price}</span> every{' '}
+                    Coachful will automatically charge my payment method <span className="font-semibold text-text-secondary">{selectedPlanData?.price}</span> every{' '}
                     <span className="font-semibold text-text-secondary">{selectedPlan === 'premium' ? 'month' : 'month'}</span>.
                   </>
                 )}{' '}
@@ -490,7 +490,7 @@ export default function PlanPage() {
                       30-day satisfaction guarantee
                     </h3>
                     <p className="font-sans text-[14px] text-[#15803d] leading-relaxed">
-                      If you don't see noticeable progress in the GrowthAddicts system despite completing your daily required tasks, you can request a full refund within 30 days.
+                      If you don't see noticeable progress in the Coachful system despite completing your daily required tasks, you can request a full refund within 30 days.
                     </p>
                   </div>
                 </div>
@@ -618,7 +618,7 @@ export default function PlanPage() {
               className="mb-16"
             >
               <h2 className="font-albert text-[28px] lg:text-[32px] text-text-primary tracking-[-1.5px] text-center mb-8">
-                People love GrowthAddicts
+                People love Coachful
               </h2>
               <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
                 {TESTIMONIALS.map((testimonial, index) => (
@@ -657,7 +657,7 @@ export default function PlanPage() {
                   Vincent's experience
                 </h2>
                 <p className="font-sans text-[15px] text-text-secondary max-w-lg mx-auto">
-                  Hear how Growth Addicts helped Vincent stay consistent and transform his daily habits.
+                  Hear how Coachful helped Vincent stay consistent and transform his daily habits.
                 </p>
               </div>
               <div className="max-w-3xl mx-auto">

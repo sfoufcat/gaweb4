@@ -219,7 +219,7 @@ async function sendInviteEmail({
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const appTitle = await getAppTitleForEmail(organizationId);
   const logoUrl = await getLogoUrlForEmail(organizationId);
-  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+  const teamName = appTitle === 'Coachful' ? 'Coachful' : appTitle;
   
   const inviteUrl = `${APP_BASE_URL}/join/${programSlug}/${funnelSlug}?invite=${inviteCode}`;
   const recipientName = name || 'there';

@@ -35,7 +35,7 @@ interface QueueStats {
 const SAMPLE_VARIABLES: Record<string, string> = {
   firstName: 'Sarah',
   email: 'sarah@example.com',
-  ctaUrl: 'https://growthaddicts.com/signup',
+  ctaUrl: 'https://coachful.co/signup',
   quizClientCount: '25-50',
   quizFrustrations: 'Manual check-ins, No visibility into engagement',
   quizImpactFeatures: 'Tracking client progress, Squad accountability groups',

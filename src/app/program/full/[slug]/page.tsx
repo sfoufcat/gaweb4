@@ -103,7 +103,7 @@ export default function ProgramFullPage() {
                 <div className="w-8 h-8 rounded-lg overflow-hidden relative">
                   <Image
                     src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af"
-                    alt="GrowthAddicts"
+                    alt="Coachful"
                     fill
                     className="object-cover"
                     unoptimized

@@ -2,7 +2,7 @@
  * Demo API Utilities
  * 
  * Provides demo data handlers for API routes when in demo mode.
- * Used by demo.growthaddicts.com to showcase the platform without real data.
+ * Used by demo.coachful.co to showcase the platform without real data.
  */
 
 import { NextResponse } from 'next/server';
@@ -40,7 +40,7 @@ import {
 import { DEMO_USER, DEMO_ORGANIZATION } from './demo-utils';
 
 // Demo subdomains that should trigger demo mode
-const DEMO_SUBDOMAINS = ['demo.growthaddicts.com', 'demo.localhost'];
+const DEMO_SUBDOMAINS = ['demo.coachful.co', 'demo.localhost'];
 
 /**
  * Check if the current request is from the demo site

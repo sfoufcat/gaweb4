@@ -160,20 +160,11 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Convert a date + time in a specific timezone to a UTC Date object
+ * Convert a date string (YYYY-MM-DD) + time in a specific timezone to a UTC Date object
  */
-function createDateInTimezone(date: Date, hours: number, minutes: number, timezone: string): Date {
-  // Format the date as YYYY-MM-DD
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const dateStr = `${year}-${month}-${day}`;
-
+function createDateInTimezone(dateStr: string, hours: number, minutes: number, timezone: string): Date {
   // Create a datetime string in the target timezone
   const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-
-  // Use Intl.DateTimeFormat to get the UTC offset for this timezone at this date/time
-  // Then create the correct UTC timestamp
   const localDateTimeStr = `${dateStr}T${timeStr}`;
 
   // Parse as if it's in the target timezone by using the timezone-aware formatter
@@ -213,18 +204,32 @@ function createDateInTimezone(date: Date, hours: number, minutes: number, timezo
 }
 
 /**
- * Get the day of week for a date in a specific timezone
+ * Get day of week from a date string (YYYY-MM-DD)
+ * Returns 0 = Sunday, 1 = Monday, ..., 6 = Saturday
  */
-function getDayOfWeekInTimezone(date: Date, timezone: string): number {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    weekday: 'short',
-  });
-  const weekday = formatter.format(date);
-  const dayMap: Record<string, number> = {
-    'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
-  };
-  return dayMap[weekday] ?? date.getDay();
+function getDayOfWeekFromDateString(dateStr: string): number {
+  // Parse the date string components directly to avoid timezone issues
+  const [year, month, day] = dateStr.split('-').map(Number);
+  // Create date at noon UTC to avoid any timezone edge cases
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  return date.getUTCDay();
+}
+
+/**
+ * Add days to a date string (YYYY-MM-DD) and return the new date string
+ */
+function addDaysToDateString(dateStr: string, days: number): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days, 12, 0, 0));
+  return date.toISOString().split('T')[0];
+}
+
+/**
+ * Compare two date strings (YYYY-MM-DD)
+ * Returns negative if a < b, 0 if equal, positive if a > b
+ */
+function compareDateStrings(a: string, b: string): number {
+  return a.localeCompare(b);
 }
 
 function calculateAvailableSlots(
@@ -241,21 +246,25 @@ function calculateAvailableSlots(
   const minNoticeMs = availability.minNoticeHours * 60 * 60 * 1000;
   const timezone = availability.timezone || 'America/New_York';
 
-  const currentDate = new Date(rangeStart);
-  currentDate.setHours(0, 0, 0, 0);
+  // Work with date strings (YYYY-MM-DD) to avoid timezone confusion
+  // The client sends dates like "2026-01-04" which represent the date they see
+  const startDateStr = rangeStart.toISOString().split('T')[0];
+  const endDateStr = rangeEnd.toISOString().split('T')[0];
 
-  while (currentDate <= rangeEnd) {
-    // Get day of week in the coach's timezone
-    const dayOfWeek = getDayOfWeekInTimezone(currentDate, timezone);
+  let currentDateStr = startDateStr;
+
+  while (compareDateStrings(currentDateStr, endDateStr) <= 0) {
+    // Get day of week directly from the date string (avoids timezone confusion)
+    const dayOfWeek = getDayOfWeekFromDateString(currentDateStr);
     const daySchedule = availability.weeklySchedule[dayOfWeek] || [];
 
     for (const timeSlot of daySchedule) {
       const [startHour, startMin] = timeSlot.start.split(':').map(Number);
       const [endHour, endMin] = timeSlot.end.split(':').map(Number);
 
-      // Create slot times in the coach's timezone
-      const slotStart = createDateInTimezone(currentDate, startHour, startMin, timezone);
-      const slotEnd = createDateInTimezone(currentDate, endHour, endMin, timezone);
+      // Create slot times in the coach's timezone using the date string
+      const slotStart = createDateInTimezone(currentDateStr, startHour, startMin, timezone);
+      const slotEnd = createDateInTimezone(currentDateStr, endHour, endMin, timezone);
 
       let currentSlotStart = new Date(slotStart);
 
@@ -316,7 +325,8 @@ function calculateAvailableSlots(
       }
     }
 
-    currentDate.setDate(currentDate.getDate() + 1);
+    // Move to next day using date string arithmetic
+    currentDateStr = addDaysToDateString(currentDateStr, 1);
   }
 
   return slots;

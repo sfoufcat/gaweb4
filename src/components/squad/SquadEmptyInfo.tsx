@@ -7,7 +7,7 @@
  * Extracted from original SquadEmptyState for reuse in discovery page, coach view, etc.
  * 
  * Matches Figma design:
- * https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/GrowthAddicts--Backup-?node-id=751-9578
+ * https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/Coachful--Backup-?node-id=751-9578
  */
 
 interface SquadEmptyInfoProps {

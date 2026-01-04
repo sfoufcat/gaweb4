@@ -29,7 +29,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
     subject: '{{firstName}}, about those {{quizClientCount}} clients...',
     htmlContent: `
 <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="GrowthAddicts" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
+  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="Coachful" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
   
   <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">Hey {{firstName}},</h1>
   
@@ -38,7 +38,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    That's exactly why we built GrowthAddicts. You wanted help with <strong>{{quizImpactFeatures}}</strong> – and that's all set up and waiting for you.
+    That's exactly why we built Coachful. You wanted help with <strong>{{quizImpactFeatures}}</strong> – and that's all set up and waiting for you.
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
@@ -64,7 +64,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
     subject: 'Still struggling with {{quizFrustrations}}?',
     htmlContent: `
 <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="GrowthAddicts" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
+  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="Coachful" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
   
   <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">{{firstName}}, let me be direct:</h1>
   
@@ -73,7 +73,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    Here's what coaches like you are doing with GrowthAddicts:
+    Here's what coaches like you are doing with Coachful:
   </p>
   
   <ul style="font-size: 16px; color: #5f5a55; line-height: 1.8; margin-bottom: 24px; padding-left: 20px;">
@@ -105,7 +105,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
     subject: 'Last email about your {{quizClientCount}} clients',
     htmlContent: `
 <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="GrowthAddicts" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
+  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="Coachful" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
   
   <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">{{firstName}}, this is my last email</h1>
   
@@ -122,7 +122,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    Coaches who use GrowthAddicts see <strong>40% higher client retention</strong> because they can finally track who's doing the work – and who needs attention before they drop off.
+    Coaches who use Coachful see <strong>40% higher client retention</strong> because they can finally track who's doing the work – and who needs attention before they drop off.
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
@@ -135,7 +135,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   
   <p style="font-size: 14px; color: #8a8580; margin-top: 32px;">
     All the best,<br>
-    The GrowthAddicts Team
+    The Coachful Team
   </p>
 </div>
     `,
@@ -147,10 +147,10 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   {
     flowId: 'testimonial_request',
     name: 'Testimonial Request - Day 14',
-    subject: 'How\'s GrowthAddicts working for your {{quizClientCount}} clients?',
+    subject: 'How\'s Coachful working for your {{quizClientCount}} clients?',
     htmlContent: `
 <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="GrowthAddicts" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
+  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="Coachful" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
   
   <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">Hey {{firstName}}!</h1>
   
@@ -159,7 +159,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    If GrowthAddicts has made a difference for you and your {{quizClientCount}} clients, I'd be incredibly grateful if you could share a quick testimonial. It helps other coaches discover us.
+    If Coachful has made a difference for you and your {{quizClientCount}} clients, I'd be incredibly grateful if you could share a quick testimonial. It helps other coaches discover us.
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
@@ -167,7 +167,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    <strong>Not loving it?</strong> Reply and tell me why. I personally read every response and want to make GrowthAddicts better for coaches like you.
+    <strong>Not loving it?</strong> Reply and tell me why. I personally read every response and want to make Coachful better for coaches like you.
   </p>
   
   <p style="font-size: 14px; color: #8a8580; margin-top: 32px;">
@@ -320,7 +320,7 @@ export async function sendTemplatedEmail(
     
     // Send email
     const { data, error } = await resend.emails.send({
-      from: 'GrowthAddicts <notifications@growthaddicts.com>',
+      from: 'Coachful <notifications@coachful.co>',
       to: recipientEmail,
       subject,
       html,
@@ -515,7 +515,7 @@ export async function processEmailQueue(): Promise<{ processed: number; sent: nu
       // Build default variables
       const variables: Record<string, string> = {
         ...queueItem.variables,
-        ctaUrl: 'https://growthaddicts.com/coach/plan',
+        ctaUrl: 'https://coachful.co/coach/plan',
         firstName: queueItem.variables?.firstName || 'there',
       };
       

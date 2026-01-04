@@ -444,8 +444,8 @@ export default function MyCoachPage() {
                   </h2>
                   <p className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-md mx-auto">
                     If you have questions, contact support at{' '}
-                    <a href="mailto:hi@growthaddicts.com" className="text-brand-accent hover:underline">
-                      hi@growthaddicts.com
+                    <a href="mailto:hi@coachful.co" className="text-brand-accent hover:underline">
+                      hi@coachful.co
                     </a>
                   </p>
                 </div>

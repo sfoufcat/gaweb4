@@ -16,8 +16,8 @@ import type { OrgBranding } from '@/types';
 
 const WEBHOOK_SECRET = process.env.CLERK_EMAIL_WEBHOOK_SECRET || process.env.CLERK_WEBHOOK_SECRET;
 
-const PLATFORM_DEFAULT_SENDER = 'Growth Addicts <notifications@growthaddicts.com>';
-const PLATFORM_FALLBACK_SENDER = 'Growth Addicts <hi@updates.growthaddicts.com>';
+const PLATFORM_DEFAULT_SENDER = 'Coachful <notifications@coachful.co>';
+const PLATFORM_FALLBACK_SENDER = 'Coachful <hi@updates.coachful.co>';
 
 // =============================================================================
 // TYPES
@@ -117,8 +117,8 @@ async function getTenantSender(organizationId: string | null): Promise<string> {
   }
   
   // Use org's app title with platform sender
-  if (branding?.appTitle && branding.appTitle !== 'GrowthAddicts') {
-    return `${branding.appTitle} <notifications@growthaddicts.com>`;
+  if (branding?.appTitle && branding.appTitle !== 'Coachful') {
+    return `${branding.appTitle} <notifications@coachful.co>`;
   }
   
   return PLATFORM_DEFAULT_SENDER;
@@ -132,9 +132,9 @@ function customizeEmailContent(
   let customSubject = subject;
   let customHtml = htmlBody;
   
-  if (branding?.appTitle && branding.appTitle !== 'GrowthAddicts') {
-    customSubject = customSubject.replace(/GrowthAddicts/g, branding.appTitle);
-    customHtml = customHtml.replace(/GrowthAddicts/g, branding.appTitle);
+  if (branding?.appTitle && branding.appTitle !== 'Coachful') {
+    customSubject = customSubject.replace(/Coachful/g, branding.appTitle);
+    customHtml = customHtml.replace(/Coachful/g, branding.appTitle);
   }
   
   return { subject: customSubject, html: customHtml };

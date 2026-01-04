@@ -388,7 +388,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
       // Redirect to coach onboarding profile page on the main domain
       // This ensures users leave demo mode and enter their real account
       onClose();
-      window.location.href = 'https://growthaddicts.com/coach/onboarding/profile';
+      window.location.href = 'https://coachful.co/coach/onboarding/profile';
     } catch (err: unknown) {
       console.error('Create org error:', err);
       const error = err as { message?: string };
@@ -489,7 +489,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
               )}
 
               <AnimatePresence mode="wait">
-                {/* Step 1: Why GrowthAddicts */}
+                {/* Step 1: Why Coachful */}
                 {step === 'why' && (
                   <motion.div
                     key="why"
@@ -503,14 +503,14 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
                       <div className="w-14 h-14 rounded-2xl overflow-hidden mx-auto mb-4 relative">
                         <Image
                           src={LOGO_URL}
-                          alt="GrowthAddicts"
+                          alt="Coachful"
                           fill
                           className="object-cover"
                           unoptimized
                         />
                       </div>
                       <h2 className="font-albert text-[26px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1px]">
-                        Why GrowthAddicts?
+                        Why Coachful?
                       </h2>
                       <p className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] mt-2">
                         Built for coaches who want results, not just engagement
@@ -807,7 +807,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
                         transition={{ delay: 0.3 }}
                         className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] mt-2"
                       >
-                        GrowthAddicts was built for coaches exactly like you
+                        Coachful was built for coaches exactly like you
                       </motion.p>
                     </div>
                     
@@ -899,7 +899,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
                     <div className="text-center mb-6">
                       <Image 
                         src={LOGO_URL}
-                        alt="GrowthAddicts"
+                        alt="Coachful"
                         width={56}
                         height={56}
                         className="w-14 h-14 rounded-xl mx-auto mb-4 shadow-md"
@@ -1050,7 +1050,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
                     <div className="text-center mb-6">
                       <Image 
                         src={LOGO_URL}
-                        alt="GrowthAddicts"
+                        alt="Coachful"
                         width={56}
                         height={56}
                         className="w-14 h-14 rounded-xl mx-auto mb-4 shadow-md"

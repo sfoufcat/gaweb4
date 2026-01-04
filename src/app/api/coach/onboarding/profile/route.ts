@@ -183,7 +183,7 @@ export async function POST(req: Request) {
       success: true,
       nextStep: 'needs_plan',
       subdomain: subdomain || undefined,
-      tenantUrl: subdomain ? `https://${subdomain}.growthaddicts.com` : undefined,
+      tenantUrl: subdomain ? `https://${subdomain}.coachful.co` : undefined,
     });
     
   } catch (error) {

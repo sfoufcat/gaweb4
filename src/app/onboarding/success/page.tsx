@@ -305,7 +305,7 @@ function CheckoutSuccessContent() {
               </div>
 
               <h1 className="font-albert text-[42px] lg:text-[52px] text-text-primary tracking-[-2px] leading-[1.2] mb-4">
-                {joinedSquadName ? `You're in! 🎉` : 'Welcome to GrowthAddicts!'}
+                {joinedSquadName ? `You're in! 🎉` : 'Welcome to Coachful!'}
               </h1>
               
               <p className="font-sans text-[18px] text-text-secondary leading-[1.5]">

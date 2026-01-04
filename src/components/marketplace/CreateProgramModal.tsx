@@ -285,7 +285,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                     <div className="pt-8 pb-6 px-6 text-center">
                       <Image 
                         src={LOGO_URL}
-                        alt="Growth Addicts"
+                        alt="Coachful"
                         width={64}
                         height={64}
                         className="w-16 h-16 rounded-2xl mx-auto mb-5 shadow-lg"
@@ -362,7 +362,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                       <div className="text-center mb-6">
                         <Image 
                           src={LOGO_URL}
-                          alt="Growth Addicts"
+                          alt="Coachful"
                           width={56}
                           height={56}
                           className="w-14 h-14 rounded-xl mx-auto mb-4 shadow-md"
@@ -661,7 +661,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                       
                       <p className="text-center font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190] pt-2">
                         Want to create another program?{' '}
-                        <a href="mailto:support@growthaddicts.com" className="text-brand-accent hover:underline">
+                        <a href="mailto:support@coachful.co" className="text-brand-accent hover:underline">
                           Contact us
                         </a>
                       </p>

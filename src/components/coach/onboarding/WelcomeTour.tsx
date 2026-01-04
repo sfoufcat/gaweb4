@@ -13,14 +13,14 @@ import {
   X,
   CheckCircle2,
 } from 'lucide-react';
-import { GrowthAddictsLogo } from '@/components/shared/GrowthAddictsLogo';
+import { CoachfulLogo } from '@/components/shared/CoachfulLogo';
 
 // Welcome tour cards - showcasing platform features
 // First card is yellow (brand), others have varied colors
 const WELCOME_CARDS = [
   {
     id: 'welcome',
-    icon: GrowthAddictsLogo,
+    icon: CoachfulLogo,
     iconBg: 'from-[#FFD036] to-[#f5a623]', // Yellow/brand for first card
     title: 'Welcome to Your Coaching Platform! 🎉',
     subtitle: 'Everything you need to build a thriving coaching business',

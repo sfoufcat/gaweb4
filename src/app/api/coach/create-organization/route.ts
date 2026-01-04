@@ -114,7 +114,7 @@ export async function POST(req: Request) {
     if (quizData?.referralCode && email) {
       try {
         const referralResponse = await fetch(
-          new URL('/api/coach-referral/track', process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.com').toString(),
+          new URL('/api/coach-referral/track', process.env.NEXT_PUBLIC_APP_URL || 'https://coachful.co').toString(),
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

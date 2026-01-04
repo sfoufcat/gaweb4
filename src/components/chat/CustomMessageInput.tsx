@@ -19,7 +19,7 @@ import type { PollFormData, ChatPollState } from '@/types/poll';
 /**
  * CustomMessageInput Component
  * 
- * Custom message input for Growth Addicts chat:
+ * Custom message input for Coachful chat:
  * - Clean, pill-shaped input container
  * - Plus button on left (for attachments)
  * - Text input in center
@@ -315,7 +315,7 @@ export function CustomMessageInput() {
       await channel.sendMessage({
         text: `📊 ${pollData.question}`,
         ga_poll_id: poll.id,
-        ga_poll_kind: 'growthaddicts_poll',
+        ga_poll_kind: 'coachful_poll',
         ga_poll_data: poll,
         ...(thread?.id ? { parent_id: thread.id } : {}),
       } as any);

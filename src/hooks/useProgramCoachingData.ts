@@ -91,7 +91,8 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
       setHasActiveEnrollment(promoData.hasActiveIndividualEnrollment || false);
       
       // If user has active enrollment, fetch full coaching data
-      if (promoData.hasActiveIndividualEnrollment && promoData.coachingChatChannelId) {
+      // Note: chatChannelId may not exist if coach hasn't started a chat yet
+      if (promoData.hasActiveIndividualEnrollment) {
         // Set coach info from promo data
         if (promoData.coachInfo) {
           setCoach({

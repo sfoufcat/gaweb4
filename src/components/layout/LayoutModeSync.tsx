@@ -27,11 +27,11 @@ export function LayoutModeSync() {
       return;
     }
     
-    // Check if we're on the marketing domain (growthaddicts.com / www.growthaddicts.com)
+    // Check if we're on the marketing domain (coachful.co / www.coachful.co)
     const hostname = window.location.hostname;
     const isMarketingDomain = 
-      hostname === 'growthaddicts.com' || 
-      hostname === 'www.growthaddicts.com';
+      hostname === 'coachful.co' || 
+      hostname === 'www.coachful.co';
     
     // Determine if this is a fullscreen page (same logic as middleware)
     const isProfileEditOnboarding = pathname === '/profile' && 

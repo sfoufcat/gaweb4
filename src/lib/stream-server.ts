@@ -5,7 +5,7 @@ import type { StreamChat } from 'stream-chat';
 let streamClient: StreamChat | null = null;
 
 // System bot user ID - used for automated messages
-export const SYSTEM_BOT_USER_ID = 'growthaddicts-bot';
+export const SYSTEM_BOT_USER_ID = 'coachful-bot';
 
 // Initialize Stream Chat client (server-side)
 export const getStreamServerClient = async () => {
@@ -75,7 +75,7 @@ export const syncUserToStream = async (
 };
 
 /**
- * Ensures the GrowthAddicts system bot user exists in Stream.
+ * Ensures the Coachful system bot user exists in Stream.
  * This user is used for sending automated notifications like
  * morning check-in updates.
  */
@@ -88,9 +88,9 @@ export const ensureSystemBotUser = async (client: StreamChat) => {
       // Create the bot user - use type assertion for custom fields
       await client.upsertUser({
         id: SYSTEM_BOT_USER_ID,
-        name: 'GrowthAddicts Bot',
+        name: 'Coachful Bot',
         // Use a placeholder image - you can replace with your logo URL
-        image: 'https://api.dicebear.com/7.x/bottts/svg?seed=growthaddicts&backgroundColor=a07855',
+        image: 'https://api.dicebear.com/7.x/bottts/svg?seed=coachful&backgroundColor=a07855',
         role: 'admin', // Bots should have admin role to post anywhere
         is_bot: true,
       } as Parameters<typeof client.upsertUser>[0]);
@@ -101,8 +101,8 @@ export const ensureSystemBotUser = async (client: StreamChat) => {
     // Try to upsert anyway - might just be a query issue
     await client.upsertUser({
       id: SYSTEM_BOT_USER_ID,
-      name: 'GrowthAddicts Bot',
-      image: 'https://api.dicebear.com/7.x/bottts/svg?seed=growthaddicts&backgroundColor=a07855',
+      name: 'Coachful Bot',
+      image: 'https://api.dicebear.com/7.x/bottts/svg?seed=coachful&backgroundColor=a07855',
       role: 'admin',
       is_bot: true,
     } as Parameters<typeof client.upsertUser>[0]);

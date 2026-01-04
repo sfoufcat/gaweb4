@@ -1339,7 +1339,7 @@ export function AdminUsersTab({
                         disabled={subdomainLoading}
                       />
                       <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">
-                        .growthaddicts.com
+                        .coachful.co
                       </span>
                     </div>
                     {subdomainError && (
@@ -1429,7 +1429,7 @@ export function AdminUsersTab({
                         Preview:
                       </p>
                       <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-mono">
-                        https://{subdomain.toLowerCase()}.growthaddicts.com
+                        https://{subdomain.toLowerCase()}.coachful.co
                       </p>
                       <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
                         {coachTier.charAt(0).toUpperCase() + coachTier.slice(1)} tier

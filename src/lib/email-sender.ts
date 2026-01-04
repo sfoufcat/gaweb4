@@ -22,11 +22,11 @@ import type { OrgBranding, FirebaseUser, CoachEmailPreferences, OrgSettings } fr
 import { DEFAULT_COACH_EMAIL_PREFERENCES } from '@/types';
 
 // Platform default senders
-export const PLATFORM_DEFAULT_SENDER = 'Growth Addicts <hi@updates.growthaddicts.com>';
-export const PLATFORM_AUTH_SENDER = 'Growth Addicts <notifications@growthaddicts.com>';
+export const PLATFORM_DEFAULT_SENDER = 'Coachful <hi@updates.coachful.co>';
+export const PLATFORM_AUTH_SENDER = 'Coachful <notifications@coachful.co>';
 
 // App URL for links in emails
-export const APP_BASE_URL = process.env.APP_BASE_URL || 'https://pro.growthaddicts.com';
+export const APP_BASE_URL = process.env.APP_BASE_URL || 'https://pro.coachful.co';
 
 // =============================================================================
 // TYPES
@@ -439,12 +439,12 @@ export async function getLogoUrlForEmail(organizationId: string | null): Promise
 }
 
 /**
- * Get the app title for email (tenant's title or "Growth Addicts")
+ * Get the app title for email (tenant's title or "Coachful")
  */
 export async function getAppTitleForEmail(organizationId: string | null): Promise<string> {
-  if (!organizationId) return 'Growth Addicts';
+  if (!organizationId) return 'Coachful';
   
   const branding = await getOrgBrandingForEmail(organizationId);
-  return branding?.appTitle || 'Growth Addicts';
+  return branding?.appTitle || 'Coachful';
 }
 

@@ -1868,8 +1868,8 @@ export function generateDemoBranding(): DemoBranding {
       accentDark: '#b8896a',
     },
     socialLinks: {
-      website: 'https://growthaddicts.com',
-      instagram: 'https://instagram.com/growthaddicts',
+      website: 'https://coachful.co',
+      instagram: 'https://instagram.com/coachful',
     },
   };
 }

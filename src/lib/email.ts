@@ -66,7 +66,7 @@ export async function sendWelcomeEmail({
   // Get tenant branding for customization
   const appTitle = await getAppTitleForEmail(organizationId || null);
   const logoUrl = await getLogoUrlForEmail(organizationId || null);
-  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+  const teamName = appTitle === 'Coachful' ? 'Coachful' : appTitle;
   const dashboardUrl = `${APP_URL}/`;
   const name = firstName || 'there';
 
@@ -179,7 +179,7 @@ export async function sendAbandonedEmail({
   // Get tenant branding for customization
   const appTitle = await getAppTitleForEmail(organizationId || null);
   const logoUrl = await getLogoUrlForEmail(organizationId || null);
-  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+  const teamName = appTitle === 'Coachful' ? 'Coachful' : appTitle;
   const planUrl = resumeUrl || `${APP_URL}/onboarding/plan`;
   const name = firstName || 'there';
 
@@ -559,7 +559,7 @@ export async function sendPaymentFailedEmail({
   // Get tenant branding
   const appTitle = await getAppTitleForEmail(organizationId);
   const logoUrl = await getLogoUrlForEmail(organizationId);
-  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+  const teamName = appTitle === 'Coachful' ? 'Coachful' : appTitle;
   
   // Calculate grace period details
   const graceEnd = new Date(graceEndsAt);

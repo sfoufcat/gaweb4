@@ -1515,7 +1515,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl hover:bg-brand-accent/90 transition-colors font-albert font-medium"
               >
                 <ExternalLink className="w-4 h-4" />
-                Go to {tenantRequired.subdomain}.growthaddicts.com
+                Go to {tenantRequired.subdomain}.coachful.co
               </a>
             ) : (
               <p className="text-[#a7a39e] dark:text-[#7d8190] font-albert text-sm">

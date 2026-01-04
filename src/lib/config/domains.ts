@@ -2,13 +2,12 @@
  * Domain Configuration
  * 
  * Centralized domain configuration for the multi-tenant architecture.
- * This file makes it easy to manage domain configuration (now using growthaddicts.com)
- * by changing a single value.
+ * This file makes it easy to manage domain configuration.
  * 
  * Domain Structure:
- * - Marketing: growthaddicts.com - public marketing site
- * - Platform Admin: app.growthaddicts.com - super admin management
- * - Tenant: {org}.growthaddicts.com or custom domains - coach instances
+ * - Marketing: coachful.co - public marketing site
+ * - Platform Admin: app.coachful.co - super admin management
+ * - Tenant: {org}.coachful.co or custom domains - coach instances
  */
 
 // =============================================================================
@@ -16,17 +15,18 @@
 // =============================================================================
 
 /**
- * Base domain - change this to switch to growthaddicts.com
+ * Base domain for the Coachful platform
  */
-export const BASE_DOMAIN = 'growthaddicts.com';
+export const BASE_DOMAIN = 'coachful.co';
 
 /**
  * Alternative/legacy domains that should also be recognized
  * These will be treated as platform domains
  */
 export const LEGACY_DOMAINS = [
+  'growthaddicts.com',      // Legacy domain - redirect to coachful.co
   'pro.growthaddicts.com',
-  'growthaddicts.app',  // Legacy domain after migration to .com
+  'growthaddicts.app',
 ];
 
 // =============================================================================
@@ -69,7 +69,7 @@ export const DEV_HOSTS = [
 
 /**
  * Pattern to match tenant subdomains
- * Captures the subdomain from URLs like "acme.growthaddicts.com"
+ * Captures the subdomain from URLs like "acme.coachful.co"
  */
 export const TENANT_SUBDOMAIN_PATTERN = new RegExp(
   `^([a-z0-9-]+)\\.${BASE_DOMAIN.replace('.', '\\.')}$`

@@ -7,8 +7,8 @@ import { DashboardPage } from '@/components/dashboard/DashboardPage';
 /**
  * Homepage - Dynamic based on domain
  * 
- * - Marketing domain (growthaddicts.com): Shows CoachLandingPage
- * - Tenant domains (*.growthaddicts.com): Shows Dashboard
+ * - Marketing domain (coachful.co): Shows CoachLandingPage
+ * - Tenant domains (*.coachful.co): Shows Dashboard
  */
 export default function HomePage() {
   const [isMarketingDomain, setIsMarketingDomain] = useState<boolean | null>(null);
@@ -18,8 +18,8 @@ export default function HomePage() {
     // Only show landing page on actual marketing domain
     // Localhost and tenant subdomains should show dashboard
     const isMarketing = 
-      hostname === 'growthaddicts.com' || 
-      hostname === 'www.growthaddicts.com';
+      hostname === 'coachful.co' || 
+      hostname === 'www.coachful.co';
     
     setIsMarketingDomain(isMarketing);
     

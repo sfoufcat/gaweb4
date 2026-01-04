@@ -56,7 +56,7 @@ export async function GET() {
       const codeData = codeDoc.data() as CoachReferralCode;
       
       // Generate referral URL
-      const referralUrl = `https://growthaddicts.com?ref=${codeData.code}`;
+      const referralUrl = `https://coachful.co?ref=${codeData.code}`;
       
       return NextResponse.json({
         code: codeData.code,
@@ -119,7 +119,7 @@ export async function GET() {
     console.log(`[COACH_REFERRAL] Created referral code ${newCode} for org ${organizationId}`);
     
     // Generate referral URL
-    const referralUrl = `https://growthaddicts.com?ref=${newCode}`;
+    const referralUrl = `https://coachful.co?ref=${newCode}`;
     
     return NextResponse.json({
       code: newCode,

@@ -65,7 +65,7 @@ function generateICS(event: UnifiedEvent): string {
     ? new Date(event.endDateTime)
     : new Date(startDate.getTime() + durationMinutes * 60 * 1000);
 
-  const uid = `${event.id}@growthaddicts.io`;
+  const uid = `${event.id}@coachful.co`;
   const dtstamp = formatICSDate(new Date());
   const dtstart = formatICSDate(startDate);
   const dtend = formatICSDate(endDate);
@@ -96,7 +96,7 @@ function generateICS(event: UnifiedEvent): string {
   const icsLines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//GrowthAddicts//Events//EN',
+    'PRODID:-//Coachful//Events//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
@@ -116,7 +116,7 @@ function generateICS(event: UnifiedEvent): string {
 
   // Add organizer if available
   if (event.hostName) {
-    icsLines.push(`ORGANIZER;CN=${escapeICSText(event.hostName)}:mailto:noreply@growthaddicts.io`);
+    icsLines.push(`ORGANIZER;CN=${escapeICSText(event.hostName)}:mailto:noreply@coachful.co`);
   }
 
   // Add alarm (reminder 15 minutes before)

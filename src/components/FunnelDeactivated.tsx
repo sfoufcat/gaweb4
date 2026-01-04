@@ -50,11 +50,11 @@ export function FunnelDeactivated({ coachName, platformName }: FunnelDeactivated
         <div className="space-y-3">
           {/* Go back / home */}
           <a
-            href="https://growthaddicts.com"
+            href="https://coachful.co"
             className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-brand-accent hover:bg-brand-accent/90 text-white font-medium rounded-xl transition-colors font-albert"
           >
             <ArrowLeft className="w-5 h-5" />
-            Go to Growth Addicts
+            Go to Coachful
           </a>
           
           {/* Reload to check again */}

@@ -14,7 +14,7 @@ import type { CoachOnboardingState } from '@/types';
  * - Has organization:
  *   - needs_profile: return '/coach/onboarding/profile'
  *   - needs_plan: return '/coach/onboarding/plans'
- *   - active: return 'https://{subdomain}.growthaddicts.com/coach'
+ *   - active: return 'https://{subdomain}.coachful.co/coach'
  */
 export async function POST() {
   try {
@@ -85,7 +85,7 @@ export async function POST() {
       if (orgDomain?.subdomain) {
         const subdomain = orgDomain.subdomain;
         return NextResponse.json({ 
-          redirect: `https://${subdomain}.growthaddicts.com/coach`,
+          redirect: `https://${subdomain}.coachful.co/coach`,
           crossDomain: true,
         });
       }

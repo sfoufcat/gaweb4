@@ -15,7 +15,7 @@ import { SquadDiscovery } from './SquadDiscovery';
  * SquadEmptyInfo component for reuse in other contexts (e.g., coach view).
  * 
  * Matches Figma design:
- * https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/GrowthAddicts--Backup-?node-id=751-9578
+ * https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/Coachful--Backup-?node-id=751-9578
  */
 
 export function SquadEmptyState() {

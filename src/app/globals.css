@@ -122,7 +122,20 @@
   .mb-safe {
     margin-bottom: env(safe-area-inset-bottom);
   }
-  
+
+  /* Combined padding + safe area (Tailwind classes conflict, so we need combined utilities) */
+  .pb-safe-3 {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+
+  /* Dynamic viewport height for iOS Safari edge-to-edge */
+  .min-h-dvh {
+    min-height: 100dvh;
+  }
+  .h-dvh {
+    height: 100dvh;
+  }
+
   /* Min-height variants for full-screen layouts */
   .min-h-screen-safe {
     min-height: calc(100vh + env(safe-area-inset-top) + env(safe-area-inset-bottom));

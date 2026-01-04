@@ -1965,7 +1965,7 @@ export type AIResponse = SuggestTasksResponse | HelpCompleteTaskResponse | Track
 
 /**
  * Access source for organization membership
- * - platform_billing: User pays GrowthAddicts directly
+ * - platform_billing: User pays Coachful directly
  * - coach_billing: Coach handles billing (Stripe Connect)
  * - manual: Coach manually grants access (external billing)
  * - invite_code: User redeemed an invite code
@@ -1975,7 +1975,7 @@ export type OrgAccessSource = 'platform_billing' | 'coach_billing' | 'manual' | 
 
 /**
  * Organization billing mode
- * - platform: Users pay GrowthAddicts directly
+ * - platform: Users pay Coachful directly
  * - coach: Coach handles all billing via Stripe Connect
  * - external: Coach bills users outside the app
  * - mixed: Combination of methods allowed
@@ -2247,9 +2247,9 @@ export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | '
 
 /**
  * Platform organization ID constant
- * This is the "GrowthAddicts Platform" org for existing platform users
+ * This is the "Coachful Platform" org for existing platform users
  */
-export const PLATFORM_ORGANIZATION_SLUG = 'growthaddicts-platform';
+export const PLATFORM_ORGANIZATION_SLUG = 'coachful-platform';
 
 // =============================================================================
 // ORGANIZATION BRANDING TYPES
@@ -2379,7 +2379,7 @@ export interface OrgBranding {
   horizontalLogoUrl: string | null; // Custom horizontal/wide logo URL (replaces square logo + title if set)
   horizontalLogoUrlDark: string | null; // Custom horizontal logo URL for dark mode (null = use horizontalLogoUrl)
   logoSource?: LogoSource;       // 'generated' = auto-created from initials, 'custom' = coach-uploaded
-  appTitle: string;              // App title shown in sidebar (default: "Growth Addicts")
+  appTitle: string;              // App title shown in sidebar (default: "Coachful")
   colors: OrgBrandingColors;
   menuTitles?: OrgMenuTitles;    // Customizable menu titles (optional, uses defaults if not set)
   menuIcons?: OrgMenuIcons;      // Customizable menu icons/emojis (optional, uses defaults if not set)
@@ -2406,7 +2406,7 @@ export const DEFAULT_BRANDING_COLORS: OrgBrandingColors = {
   accentDarkForeground: '#ffffff',   // White text on brown
 };
 
-export const DEFAULT_APP_TITLE = 'GrowthAddicts';
+export const DEFAULT_APP_TITLE = 'Coachful';
 export const DEFAULT_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af';
 
 export const DEFAULT_MENU_TITLES: OrgMenuTitles = {
@@ -2458,7 +2458,7 @@ export const DEFAULT_EMAIL_SETTINGS: OrgEmailSettings = {
   status: 'not_started',
   dnsRecords: [],
   verifiedAt: null,
-  fromName: 'Growth Addicts',
+  fromName: 'Coachful',
   replyTo: null,
 };
 
@@ -2500,7 +2500,7 @@ export type CustomDomainStatus = 'pending' | 'verified' | 'failed';
 export interface OrgDomain {
   id: string;                    // Auto-generated document ID
   organizationId: string;        // Clerk Organization ID (unique)
-  subdomain: string;             // e.g., "acme" for acme.growthaddicts.com (unique, lowercase)
+  subdomain: string;             // e.g., "acme" for acme.coachful.co (unique, lowercase)
   primaryDomain?: string;        // Display domain (subdomain or verified custom domain)
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp

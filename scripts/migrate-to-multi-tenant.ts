@@ -3,7 +3,7 @@
  * 
  * This script migrates the existing single-tenant app to the multi-tenant architecture:
  * 
- * 1. Creates the "GrowthAddicts Platform" organization in Clerk
+ * 1. Creates the "Coachful Platform" organization in Clerk
  * 2. Creates org_settings for the platform org
  * 3. Creates org_domains entry for the platform org
  * 4. Migrates all existing users without org membership to the platform org
@@ -25,8 +25,8 @@ import type { OrgMembership, OrgSettings, UserTier, UserTrack, OrgRole } from '.
 // CONFIGURATION
 // =============================================================================
 
-const PLATFORM_ORG_NAME = 'GrowthAddicts Platform';
-const PLATFORM_ORG_SLUG = 'growthaddicts-platform';
+const PLATFORM_ORG_NAME = 'Coachful Platform';
+const PLATFORM_ORG_SLUG = 'coachful-platform';
 const PLATFORM_SUBDOMAIN = 'platform'; // For org_domains entry
 
 // Parse command line arguments
@@ -188,18 +188,18 @@ async function createPlatformOrgDomain(organizationId: string): Promise<void> {
   const domainData = {
     organizationId,
     subdomain: PLATFORM_SUBDOMAIN,
-    primaryDomain: `${PLATFORM_SUBDOMAIN}.growthaddicts.com`,
+    primaryDomain: `${PLATFORM_SUBDOMAIN}.coachful.co`,
     createdAt: now,
     updatedAt: now,
   };
   
   if (isDryRun) {
-    log(`Would create platform org domain: ${PLATFORM_SUBDOMAIN}.growthaddicts.com`);
+    log(`Would create platform org domain: ${PLATFORM_SUBDOMAIN}.coachful.co`);
     return;
   }
   
   await db.collection('org_domains').add(domainData);
-  log(`Created platform org domain: ${PLATFORM_SUBDOMAIN}.growthaddicts.com`, 'success');
+  log(`Created platform org domain: ${PLATFORM_SUBDOMAIN}.coachful.co`, 'success');
 }
 
 async function migrateExistingUsers(platformOrgId: string): Promise<void> {

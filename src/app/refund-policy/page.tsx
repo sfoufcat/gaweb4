@@ -64,7 +64,7 @@ export default function RefundPolicyPage() {
                   Our 30-Day Satisfaction Guarantee
                 </h2>
                 <p className="font-sans text-[15px] text-[#15803d] leading-relaxed mb-3">
-                  We believe in our system. If you commit to GrowthAddicts for 30 days, complete your daily tasks every day, and don&apos;t see any progress towards your goals, we&apos;ll give you a full refund. No questions asked.
+                  We believe in our system. If you commit to Coachful for 30 days, complete your daily tasks every day, and don&apos;t see any progress towards your goals, we&apos;ll give you a full refund. No questions asked.
                 </p>
                 <p className="font-sans text-[12px] text-[#166534]/70">
                   Influencee Agency OÜ · Ahtri 12, Tallinn 10151, Estonia
@@ -91,7 +91,7 @@ export default function RefundPolicyPage() {
                   <li><strong>Complete daily tasks:</strong> You must have completed your morning check-in, evening check-in, and all assigned daily focus tasks for at least 22 out of 30 days</li>
                   <li><strong>Active engagement:</strong> You must have actively used the goal tracking and habit features</li>
                   <li><strong>Request within timeframe:</strong> Your refund request must be submitted within 30 days of your initial subscription purchase</li>
-                  <li><strong>First-time subscribers only:</strong> This guarantee applies only to your first subscription with GrowthAddicts</li>
+                  <li><strong>First-time subscribers only:</strong> This guarantee applies only to your first subscription with Coachful</li>
                 </ul>
               </div>
 
@@ -117,7 +117,7 @@ export default function RefundPolicyPage() {
                 To request a refund under our 30-day guarantee:
               </p>
               <ol className="list-decimal pl-6 space-y-2 font-sans text-[15px] text-text-secondary">
-                <li>Email us at <a href="mailto:hello@growthaddicts.com" className="text-brand-accent hover:underline">hello@growthaddicts.com</a> with the subject line &quot;30-Day Guarantee Refund Request&quot;</li>
+                <li>Email us at <a href="mailto:hello@coachful.co" className="text-brand-accent hover:underline">hello@coachful.co</a> with the subject line &quot;30-Day Guarantee Refund Request&quot;</li>
                 <li>Include your account email address and the date of your subscription</li>
                 <li>Briefly explain why you feel you haven&apos;t made progress despite completing the program</li>
                 <li>Our team will review your account activity and respond within 3-5 business days</li>
@@ -133,7 +133,7 @@ export default function RefundPolicyPage() {
                 You can cancel your subscription at any time:
               </p>
               <ul className="list-disc pl-6 space-y-2 font-sans text-[15px] text-text-secondary">
-                <li><strong>How to cancel:</strong> Visit your account settings and click &quot;Cancel Subscription&quot;, or email us at hello@growthaddicts.com</li>
+                <li><strong>How to cancel:</strong> Visit your account settings and click &quot;Cancel Subscription&quot;, or email us at hello@coachful.co</li>
                 <li><strong>Effective date:</strong> Cancellation takes effect at the end of your current billing period</li>
                 <li><strong>Access after cancellation:</strong> You&apos;ll retain full access to all features until your subscription period ends</li>
                 <li><strong>No partial refunds:</strong> We do not provide refunds for partial months of service after the 30-day guarantee period</li>
@@ -190,8 +190,8 @@ export default function RefundPolicyPage() {
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed">
                 For any questions about refunds or cancellations, please contact us at{' '}
-                <a href="mailto:hello@growthaddicts.com" className="text-brand-accent hover:underline">
-                  hello@growthaddicts.com
+                <a href="mailto:hello@coachful.co" className="text-brand-accent hover:underline">
+                  hello@coachful.co
                 </a>
               </p>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mt-4 mb-4">
@@ -199,7 +199,7 @@ export default function RefundPolicyPage() {
               </p>
               <div className="bg-[#faf8f6] rounded-xl p-4 border border-[#e1ddd8]">
                 <p className="font-sans text-[14px] text-text-secondary">
-                  <strong>Influencee Agency OÜ</strong> (owner of GrowthAddicts)<br />
+                  <strong>Influencee Agency OÜ</strong> (owner of Coachful)<br />
                   Ahtri 12, Tallinn 10151, Estonia
                 </p>
               </div>

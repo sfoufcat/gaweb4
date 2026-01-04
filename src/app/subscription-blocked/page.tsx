@@ -292,7 +292,7 @@ export default function SubscriptionBlockedPage() {
         {/* Help Text */}
         <p className="text-center text-gray-500 text-sm mt-6">
           Need help?{' '}
-          <a href="mailto:support@growthaddicts.com" className="text-[#2dd4bf] hover:underline">
+          <a href="mailto:support@coachful.co" className="text-[#2dd4bf] hover:underline">
             Contact support
           </a>
         </p>

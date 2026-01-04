@@ -573,13 +573,13 @@ export function AdminAttributionTab() {
           <div className="bg-white dark:bg-[#1a1e26] rounded-lg p-3">
             <div className="font-sans text-xs font-semibold text-[#5f5a55] dark:text-[#b2b6c2] mb-1">Google Ads:</div>
             <code className="font-mono text-xs text-brand-accent break-all">
-              growthaddicts.com/?utm_source=google&utm_medium=cpc&utm_campaign=coaching_platform
+              coachful.co/?utm_source=google&utm_medium=cpc&utm_campaign=coaching_platform
             </code>
           </div>
           <div className="bg-white dark:bg-[#1a1e26] rounded-lg p-3">
             <div className="font-sans text-xs font-semibold text-[#5f5a55] dark:text-[#b2b6c2] mb-1">Cold Email (Woodpecker):</div>
             <code className="font-mono text-xs text-brand-accent break-all">
-              growthaddicts.com/?utm_source=woodpecker&utm_medium=email&utm_campaign=cold_outreach_jan26
+              coachful.co/?utm_source=woodpecker&utm_medium=email&utm_campaign=cold_outreach_jan26
             </code>
           </div>
         </div>

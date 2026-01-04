@@ -25,13 +25,13 @@ The Daily Focus system allows users to define up to **3 main tasks** for each da
 The implementation matches these Figma designs:
 
 1. **Daily Focus list + backlog:**  
-   https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/GrowthAddicts--Backup-?node-id=1760-8420&m=dev
+   https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/Coachful--Backup-?node-id=1760-8420&m=dev
 
 2. **"Define focus" bottom sheet (Add / Edit task):**  
-   https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/GrowthAddicts--Backup-?node-id=1760-8323&m=dev
+   https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/Coachful--Backup-?node-id=1760-8323&m=dev
 
 3. **"Manage focus" bottom sheet (completion dialog):**  
-   https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/GrowthAddicts--Backup-?node-id=1484-8842&m=dev
+   https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/Coachful--Backup-?node-id=1484-8842&m=dev
 
 ---
 

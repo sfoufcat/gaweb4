@@ -116,8 +116,8 @@ export function EmailTemplateEditor({ isVerified, appTitle, logoUrl }: EmailTemp
   // Preview variables
   const previewVariables: TemplateVariables = {
     firstName: 'John',
-    appTitle: appTitle || 'Growth Addicts',
-    teamName: appTitle || 'Growth Addicts',
+    appTitle: appTitle || 'Coachful',
+    teamName: appTitle || 'Coachful',
     logoUrl: logoUrl || '/logo.jpg',
     ctaUrl: 'https://example.com/action',
     year: new Date().getFullYear().toString(),

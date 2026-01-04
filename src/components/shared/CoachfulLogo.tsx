@@ -169,6 +169,7 @@ export function CoachfulLogo({ className = 'w-8 h-8', animated = true }: Coachfu
 export default CoachfulLogo;
 
 // Legacy export for backward compatibility
+// Legacy export for backward compatibility
 export { CoachfulLogo as GrowthAddictsLogo };
 
 

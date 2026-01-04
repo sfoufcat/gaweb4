@@ -40,7 +40,7 @@ idle → validating → (good | needs_improvement) → saving → success
 
 - Typewriter-style input with prefix "I want to..."
 - Example goals cycle through:
-  - "launch the GrowthAddicts app..."
+  - "launch the Coachful app..."
   - "grow to $50k MRR..."
   - "lose 10 kg..."
   - etc.
@@ -120,7 +120,7 @@ The `validateGoal` function in `src/lib/anthropic.ts` uses Claude to:
 4. Confirm it's clear and actionable
 
 Good goals:
-- "Launch the GrowthAddicts app"
+- "Launch the Coachful app"
 - "Grow to $50k MRR"
 - "Lose 10 kg"
 

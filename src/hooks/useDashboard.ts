@@ -7,7 +7,7 @@ import type { Habit, MorningCheckIn, EveningCheckIn, Task, Squad, SquadMember } 
 // Check if we're on demo site (doesn't use hooks, safe for use in hook body)
 function isDemoSite(): boolean {
   if (typeof window === 'undefined') return false;
-  return window.location.hostname === 'demo.growthaddicts.com';
+  return window.location.hostname === 'demo.coachful.co';
 }
 
 export interface ProgramEnrollmentWithDetails {

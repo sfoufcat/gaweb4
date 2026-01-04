@@ -53,7 +53,7 @@ export default function SubscriptionPolicyPage() {
               <div className="bg-[#faf8f6] rounded-xl p-4 border border-[#e1ddd8] mb-6">
                 <p className="font-sans text-[14px] text-text-secondary">
                   <strong>Service Provider:</strong><br />
-                  Influencee Agency OÜ (owner of GrowthAddicts)<br />
+                  Influencee Agency OÜ (owner of Coachful)<br />
                   Ahtri 12, Tallinn 10151, Estonia
                 </p>
               </div>
@@ -64,7 +64,7 @@ export default function SubscriptionPolicyPage() {
                 1. Subscription Plans
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
-                GrowthAddicts offers the following subscription plans:
+                Coachful offers the following subscription plans:
               </p>
               
               <div className="bg-white rounded-xl border border-[#e1ddd8] p-6 mb-4">
@@ -181,8 +181,8 @@ export default function SubscriptionPolicyPage() {
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
                 For billing questions or issues, please contact us at{' '}
-                <a href="mailto:billing@growthaddicts.com" className="text-brand-accent hover:underline">
-                  billing@growthaddicts.com
+                <a href="mailto:billing@coachful.co" className="text-brand-accent hover:underline">
+                  billing@coachful.co
                 </a>
               </p>
               <div className="bg-[#faf8f6] rounded-xl p-4 border border-[#e1ddd8]">

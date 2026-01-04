@@ -140,7 +140,7 @@ export default function CoachWelcomePage() {
             <div className="relative w-20 h-20 rounded-2xl overflow-hidden shadow-lg">
               <Image
                 src={LOGO_URL}
-                alt="Growth Addicts"
+                alt="Coachful"
                 fill
                 className="object-cover"
                 unoptimized
@@ -152,7 +152,7 @@ export default function CoachWelcomePage() {
           </div>
           
           <h1 className="font-albert text-[36px] sm:text-[44px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
-            Welcome to Growth Addicts! 🎉
+            Welcome to Coachful! 🎉
           </h1>
           
           <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-lg mx-auto">

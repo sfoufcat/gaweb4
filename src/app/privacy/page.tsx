@@ -54,7 +54,7 @@ export default function PrivacyPage() {
                 1. Introduction
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
-                GrowthAddicts, operated by Influencee Agency OÜ (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;), is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our service.
+                Coachful, operated by Influencee Agency OÜ (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;), is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our service.
               </p>
               <div className="bg-[#faf8f6] rounded-xl p-4 border border-[#e1ddd8]">
                 <p className="font-sans text-[14px] text-text-secondary">
@@ -207,8 +207,8 @@ export default function PrivacyPage() {
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
                 If you have questions about this Privacy Policy or want to exercise your rights, contact us at{' '}
-                <a href="mailto:privacy@growthaddicts.com" className="text-brand-accent hover:underline">
-                  privacy@growthaddicts.com
+                <a href="mailto:privacy@coachful.co" className="text-brand-accent hover:underline">
+                  privacy@coachful.co
                 </a>
               </p>
               <div className="bg-[#faf8f6] rounded-xl p-4 border border-[#e1ddd8]">

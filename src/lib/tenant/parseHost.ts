@@ -22,7 +22,7 @@ export interface ParsedHost {
 /**
  * Parse a hostname to determine tenant routing
  * 
- * @param hostname - The hostname from the request (e.g., "acme.growthaddicts.com")
+ * @param hostname - The hostname from the request (e.g., "acme.coachful.co")
  * @returns Parsed host information
  */
 export function parseHost(hostname: string): ParsedHost {
