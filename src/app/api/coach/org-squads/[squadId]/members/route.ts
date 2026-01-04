@@ -155,6 +155,12 @@ export async function POST(
       updatedAt: new Date().toISOString(),
     });
 
+    // Update user document with squadId reference (for /api/squad/me to find)
+    await adminDb.collection('users').doc(userId).set({
+      squadIds: FieldValue.arrayUnion(squadId),
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+
     // If adding as coach, update the squad's coachId
     if (roleInSquad === 'coach') {
       await adminDb.collection('squads').doc(squadId).update({

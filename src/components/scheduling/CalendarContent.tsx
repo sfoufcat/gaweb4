@@ -315,81 +315,82 @@ function EventItem({ event, onRespond, onCancel, onReschedule }: EventItemProps)
             </div>
           )}
 
-          {/* Confirmed event actions - full width outside flex container */}
-          {isConfirmed && (
-            <div className="mt-4 space-y-2">
-              {event.meetingLink && (
-                <a
-                  href={event.meetingLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-brand-accent to-brand-accent/90 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:opacity-90 active:scale-95 transition-all duration-200"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Join Call
-                </a>
-              )}
-              <div className="grid grid-cols-2 gap-2">
-                {onReschedule && (
-                  <button
-                    onClick={() => onReschedule(event)}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] hover:shadow-sm active:scale-95 transition-all duration-200"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Reschedule
-                  </button>
-                )}
-                {onCancel && (
-                  <button
-                    onClick={() => setShowCancelConfirm(true)}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-red-600 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 hover:shadow-sm active:scale-95 transition-all duration-200"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    Cancel
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Cancel confirmation dialog - outside action buttons for full width */}
-          {showCancelConfirm && (
-            <div className="mt-3 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl">
-              <p className="text-sm font-medium text-red-700 dark:text-red-300 mb-3">
-                Are you sure you want to cancel this call?
-              </p>
-              <textarea
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="Reason for cancellation (optional)"
-                rows={2}
-                className="w-full px-3 py-2 text-sm bg-white dark:bg-[#1e222a] border border-red-200 dark:border-red-800/30 rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-3"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setShowCancelConfirm(false);
-                    setCancelReason('');
-                  }}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-                >
-                  Keep Call
-                </button>
-                <button
-                  onClick={() => {
-                    onCancel?.(event.id, cancelReason || undefined);
-                    setShowCancelConfirm(false);
-                    setCancelReason('');
-                  }}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
-                >
-                  Cancel Call
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* Confirmed event actions - OUTSIDE flex container for full width */}
+      {isConfirmed && (
+        <div className="mt-4 space-y-2">
+          {event.meetingLink && (
+            <a
+              href={event.meetingLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-brand-accent to-brand-accent/90 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:opacity-90 active:scale-95 transition-all duration-200"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Join Call
+            </a>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            {onReschedule && (
+              <button
+                onClick={() => onReschedule(event)}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] hover:shadow-sm active:scale-95 transition-all duration-200"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Reschedule
+              </button>
+            )}
+            {onCancel && (
+              <button
+                onClick={() => setShowCancelConfirm(true)}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-red-600 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 hover:shadow-sm active:scale-95 transition-all duration-200"
+              >
+                <XCircle className="w-4 h-4" />
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Cancel confirmation dialog - OUTSIDE flex container for full width */}
+      {showCancelConfirm && (
+        <div className="mt-3 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl">
+          <p className="text-sm font-medium text-red-700 dark:text-red-300 mb-3">
+            Are you sure you want to cancel this call?
+          </p>
+          <textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Reason for cancellation (optional)"
+            rows={2}
+            className="w-full px-3 py-2 text-sm bg-white dark:bg-[#1e222a] border border-red-200 dark:border-red-800/30 rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-3"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setShowCancelConfirm(false);
+                setCancelReason('');
+              }}
+              className="flex-1 px-4 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            >
+              Keep Call
+            </button>
+            <button
+              onClick={() => {
+                onCancel?.(event.id, cancelReason || undefined);
+                setShowCancelConfirm(false);
+                setCancelReason('');
+              }}
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+            >
+              Cancel Call
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

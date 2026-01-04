@@ -13,10 +13,14 @@ import { ReactNode } from 'react';
  */
 export function ConditionalMain({ children }: { children: ReactNode }) {
   return (
-    // pb-24 clears the fixed mobile nav bar, lg:pb-0 removes it on desktop
-    <main className="min-h-dvh pb-24 lg:pb-0">
-      {children}
-    </main>
+    <>
+      {/* Fixed background - extends behind iOS Safari toolbar for seamless appearance */}
+      <div className="fixed inset-0 bg-surface-primary dark:bg-[#05070b] -z-10" />
+      {/* pb-24 clears the fixed mobile nav bar, lg:pb-0 removes it on desktop */}
+      <main className="min-h-dvh pb-24 lg:pb-0">
+        {children}
+      </main>
+    </>
   );
 }
 

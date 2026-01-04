@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { headers } from 'next/headers';
 import { adminDb } from '@/lib/firebase-admin';
 import type { CoachAvailability, UnifiedEvent } from '@/types';
+import type { ClerkPublicMetadata } from '@/lib/admin-utils-clerk';
 
 interface AvailableSlot {
   start: string;
@@ -21,18 +23,37 @@ interface AvailableSlot {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId, orgId } = await auth();
+    const { userId, orgId, sessionClaims } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!orgId) {
+    // Get organization ID from multiple sources (priority order):
+    // 1. Tenant context from headers (set by middleware for custom domains/subdomains)
+    // 2. Clerk's native org session
+    // 3. User's publicMetadata (primaryOrganizationId or organizationId)
+    const headersList = await headers();
+    const tenantOrgId = headersList.get('x-tenant-org-id');
+
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const primaryOrgId = typeof publicMetadata?.primaryOrganizationId === 'string' ? publicMetadata.primaryOrganizationId : undefined;
+    const legacyOrgId = typeof publicMetadata?.organizationId === 'string' ? publicMetadata.organizationId : undefined;
+
+    const resolvedOrgId = tenantOrgId || orgId || primaryOrgId || legacyOrgId;
+
+    if (!resolvedOrgId) {
       return NextResponse.json(
         { error: 'Organization context required' },
         { status: 400 }
       );
     }
+
+    // Use resolvedOrgId from here on (guaranteed to be string after the check above)
+    const organizationId: string = resolvedOrgId;
+
+    console.log('[AVAILABLE_SLOTS] Org ID sources - tenant:', tenantOrgId, 'clerk:', orgId, 'primary:', primaryOrgId, 'legacy:', legacyOrgId);
+    console.log('[AVAILABLE_SLOTS] Using organizationId:', organizationId);
 
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
@@ -68,10 +89,10 @@ export async function GET(request: NextRequest) {
     // Get coach availability settings for this organization
     const availabilityDoc = await adminDb
       .collection('coach_availability')
-      .doc(orgId)
+      .doc(organizationId)
       .get();
 
-    console.log('[AVAILABLE_SLOTS] orgId:', orgId);
+    console.log('[AVAILABLE_SLOTS] organizationId:', organizationId);
     console.log('[AVAILABLE_SLOTS] Document exists:', availabilityDoc.exists);
     if (availabilityDoc.exists) {
       console.log('[AVAILABLE_SLOTS] Document data:', JSON.stringify(availabilityDoc.data(), null, 2));
@@ -81,7 +102,7 @@ export async function GET(request: NextRequest) {
     if (!availabilityDoc.exists) {
       // Use defaults
       availability = {
-        odId: orgId,
+        odId: organizationId,
         coachUserId: '',
         weeklySchedule: {
           0: [],
@@ -127,7 +148,7 @@ export async function GET(request: NextRequest) {
     // Get existing events in the date range
     const eventsSnapshot = await adminDb
       .collection('events')
-      .where('organizationId', '==', orgId)
+      .where('organizationId', '==', organizationId)
       .where('startDateTime', '>=', rangeStart.toISOString())
       .where('startDateTime', '<=', rangeEnd.toISOString())
       .where('status', 'in', ['confirmed', 'pending_response', 'proposed'])

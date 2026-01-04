@@ -197,6 +197,12 @@ async function addUserToSquad(
     updatedAt: now,
   });
 
+  // Update user document with squadId reference (for /api/squad/me to find)
+  await adminDb.collection('users').doc(userId).set({
+    squadIds: FieldValue.arrayUnion(squadId),
+    updatedAt: now,
+  }, { merge: true });
+
   // Add user to squad chat
   try {
     const squadDoc = await adminDb.collection('squads').doc(squadId).get();
