@@ -528,6 +528,21 @@ html.dark {
   background-color: #05070b;
 }
 
+/* Fixed background that extends behind iOS Safari toolbar during scroll */
+/* Uses ::before pseudo-element for reliable coverage of dynamic viewport */
+html::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-color: #faf8f6;
+  z-index: -100;
+  pointer-events: none;
+}
+
+html.dark::before {
+  background-color: #05070b;
+}
+
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;
