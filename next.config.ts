@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/__clerk/:path*',
-        destination: 'https://frontend-api.clerk.services/:path*',
+        destination: 'https://clerk.coachful.co/:path*',
       },
     ];
   },
