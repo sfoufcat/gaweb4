@@ -6,13 +6,15 @@ import { ReactNode } from 'react';
  * ConditionalMain
  *
  * Main content wrapper that provides consistent layout.
- * Background comes from body element.
+ * Background extends into iOS safe area for transparent effect behind Safari's bottom bar.
+ *
+ * The main-content-safe class uses negative margin + padding technique to allow the
+ * background to extend into the safe area while keeping content properly inset.
  */
 export function ConditionalMain({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-dvh pb-24 lg:pb-0">
+    <main className="main-content-safe bg-app-bg">
       {children}
     </main>
   );
 }
-

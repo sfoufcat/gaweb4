@@ -26,13 +26,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import type { 
-  CoachIntegration, 
+import type {
+  CoachIntegration,
   IntegrationProviderMeta,
   IntegrationProvider,
   IntegrationCategory,
   WebhookEventType,
   WEBHOOK_EVENTS,
+  GoogleCalendarSettings,
 } from '@/lib/integrations/types';
 
 interface IntegrationsTabProps {
@@ -56,12 +57,11 @@ const PROVIDER_ICONS: Record<IntegrationProvider, React.ElementType> = {
   deepgram: Mic,
   assemblyai: Mic,
   zoom: Video,
-  google_meet: Video,
 };
 
 // Category labels
 const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
-  calendar: 'Calendar',
+  calendar: 'Calendar & Meetings',
   data: 'Data Export',
   tasks: 'Task Management',
   notifications: 'Notifications',
@@ -69,7 +69,6 @@ const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
   scheduling: 'Scheduling',
   transcription: 'Transcription',
   knowledge: 'Knowledge Base',
-  meetings: 'Video Meetings',
 };
 
 export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps) {
@@ -282,6 +281,33 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
     setError(null);
   };
 
+  // Update Google Calendar feature toggles
+  const updateGoogleCalendarSettings = async (
+    integrationId: string,
+    field: 'enableCalendarSync' | 'enableMeetLinks',
+    value: boolean
+  ) => {
+    try {
+      const response = await fetch(`/api/coach/integrations/${integrationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: { [field]: value },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update settings');
+      }
+
+      // Refresh integrations list
+      await fetchIntegrations();
+    } catch (err) {
+      console.error('Error updating Google Calendar settings:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update settings');
+    }
+  };
+
   // Check if provider requires higher tier
   const isTierLocked = (provider: IntegrationProviderMeta): boolean => {
     const tierOrder = ['starter', 'pro', 'scale'];
@@ -392,6 +418,45 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
                         )}
                       </div>
                     </div>
+
+                    {/* Feature toggles for Google Calendar */}
+                    {integration.provider === 'google_calendar' && (
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => updateGoogleCalendarSettings(
+                              integration.id,
+                              'enableCalendarSync',
+                              !(integration.settings as GoogleCalendarSettings)?.enableCalendarSync
+                            )}
+                            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                              (integration.settings as GoogleCalendarSettings)?.enableCalendarSync !== false
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                            }`}
+                          >
+                            <Calendar className="w-3 h-3 inline mr-1" />
+                            Calendar
+                          </button>
+                          <button
+                            onClick={() => updateGoogleCalendarSettings(
+                              integration.id,
+                              'enableMeetLinks',
+                              !(integration.settings as GoogleCalendarSettings)?.enableMeetLinks
+                            )}
+                            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                              (integration.settings as GoogleCalendarSettings)?.enableMeetLinks
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                            }`}
+                          >
+                            <Video className="w-3 h-3 inline mr-1" />
+                            Meet
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"

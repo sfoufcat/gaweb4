@@ -143,9 +143,7 @@ export async function POST(req: NextRequest) {
         case 'zoom':
           authUrl = getZoomOAuthUrl(state);
           break;
-        case 'google_meet':
-          authUrl = getGoogleOAuthUrl(state, providerMeta.scopes || [], 'google_meet');
-          break;
+        // Note: google_meet is now part of google_calendar (enableMeetLinks toggle)
         default:
           return NextResponse.json(
             { error: 'OAuth not supported for this provider' },
@@ -353,10 +351,12 @@ export async function DELETE(req: NextRequest) {
 // OAuth URL Generators
 // =============================================================================
 
-function getGoogleOAuthUrl(state: string, scopes: string[], provider: 'google_calendar' | 'google_sheets' | 'google_meet'): string {
+function getGoogleOAuthUrl(state: string, scopes: string[], provider: 'google_calendar' | 'google_sheets'): string {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
   const callbackPath = provider;
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/coach/integrations/${callbackPath}/callback`;
+  // Use calendar subdomain for OAuth callbacks to avoid auth issues on subdomains
+  const baseUrl = process.env.GOOGLE_OAUTH_REDIRECT_BASE_URL || 'https://calendar.coachful.co';
+  const redirectUri = `${baseUrl}/api/coach/integrations/${callbackPath}/callback`;
 
   if (!clientId) {
     throw new Error('GOOGLE_OAUTH_CLIENT_ID not configured');
@@ -488,7 +488,9 @@ function getAirtableOAuthUrl(state: string, scopes: string[]): string {
 
 function getZoomOAuthUrl(state: string): string {
   const clientId = process.env.ZOOM_OAUTH_CLIENT_ID;
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/coach/integrations/zoom/callback`;
+  // Use calendar subdomain for OAuth callbacks to avoid auth issues on subdomains
+  const baseUrl = process.env.ZOOM_OAUTH_REDIRECT_BASE_URL || 'https://calendar.coachful.co';
+  const redirectUri = `${baseUrl}/api/coach/integrations/zoom/callback`;
 
   if (!clientId) {
     throw new Error('ZOOM_OAUTH_CLIENT_ID not configured');

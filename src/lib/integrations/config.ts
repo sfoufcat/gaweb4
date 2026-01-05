@@ -35,7 +35,7 @@ export function getConfiguredIntegrations(): Record<string, boolean> {
 
     // Video meeting integrations
     zoom: !!(process.env.ZOOM_OAUTH_CLIENT_ID && process.env.ZOOM_OAUTH_CLIENT_SECRET),
-    google_meet: !!(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET),
+    // Note: Google Meet is now part of google_calendar integration (enableMeetLinks toggle)
   };
 }
 

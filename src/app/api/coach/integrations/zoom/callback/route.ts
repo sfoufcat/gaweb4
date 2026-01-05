@@ -45,7 +45,9 @@ export async function GET(req: NextRequest) {
     // Exchange code for tokens
     const clientId = process.env.ZOOM_OAUTH_CLIENT_ID;
     const clientSecret = process.env.ZOOM_OAUTH_CLIENT_SECRET;
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/coach/integrations/zoom/callback`;
+    // Use calendar subdomain for OAuth callbacks to avoid auth issues on subdomains
+    const baseUrl = process.env.ZOOM_OAUTH_REDIRECT_BASE_URL || 'https://calendar.coachful.co';
+    const redirectUri = `${baseUrl}/api/coach/integrations/zoom/callback`;
 
     if (!clientId || !clientSecret) {
       console.error('[ZOOM_CALLBACK] Missing OAuth credentials');

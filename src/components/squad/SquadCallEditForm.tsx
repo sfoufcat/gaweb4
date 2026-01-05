@@ -168,9 +168,21 @@ export function SquadCallEditForm({
         if (response.ok) {
           const data = await response.json();
           const integrations = data.integrations || [];
+
+          // Check for Zoom integration
+          const zoomConnected = integrations.some(
+            (i: { provider: string; status: string }) => i.provider === 'zoom' && i.status === 'connected'
+          );
+
+          // Check for Google Calendar with Meet Links enabled
+          const googleCalendar = integrations.find(
+            (i: { provider: string; status: string }) => i.provider === 'google_calendar' && i.status === 'connected'
+          );
+          const googleMeetEnabled = googleCalendar?.settings?.enableMeetLinks === true;
+
           setConnectedIntegrations({
-            zoom: integrations.some((i: { provider: string; status: string }) => i.provider === 'zoom' && i.status === 'connected'),
-            google_meet: integrations.some((i: { provider: string; status: string }) => i.provider === 'google_meet' && i.status === 'connected'),
+            zoom: zoomConnected,
+            google_meet: googleMeetEnabled,
           });
         }
       } catch (err) {
@@ -891,7 +903,7 @@ export function SquadCallEditForm({
                     Connect Zoom or Google Meet to automatically generate meeting links when scheduling calls.
                   </p>
                   <a
-                    href="/coach/settings?tab=integrations"
+                    href="/coach?tab=scheduling"
                     className="inline-flex items-center gap-1.5 mt-2 font-albert text-[12px] text-brand-accent hover:text-brand-accent/90 font-medium"
                   >
                     <Settings className="w-3.5 h-3.5" />

@@ -103,7 +103,7 @@ export default async function RootLayout({
       appTitle={ssrBranding.branding.appTitle}
       subdomain={ssrBranding.subdomain}
     >
-      <html lang="en" className="bg-[#faf8f6] dark:bg-[#05070b]" suppressHydrationWarning>
+      <html lang="en" suppressHydrationWarning>
         <head>
           {/* Critical CSS for layout - prevents layout shift by being in initial HTML */}
           <style dangerouslySetInnerHTML={{
@@ -127,21 +127,23 @@ export default async function RootLayout({
                   try {
                     var stored = localStorage.getItem('ga-theme');
                     var orgDefault = '${ssrBranding.branding.defaultTheme || DEFAULT_THEME}';
-                    
+                    var isDark = false;
+
                     if (stored === 'dark') {
-                      document.documentElement.classList.add('dark');
+                      isDark = true;
                     } else if (stored === 'light') {
-                      // Explicit light mode - no dark class
+                      isDark = false;
                     } else if (orgDefault === 'dark') {
-                      // No user preference, use org default
-                      document.documentElement.classList.add('dark');
+                      isDark = true;
                     } else if (orgDefault === 'system') {
-                      // Use system preference
-                      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                        document.documentElement.classList.add('dark');
-                      }
+                      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                     }
-                    // Default: light mode (no action needed)
+
+                    if (isDark) {
+                      document.documentElement.classList.add('dark');
+                    }
+                    // Set initial background for iOS safe area (cleared once content loads)
+                    document.documentElement.style.setProperty('--initial-bg', isDark ? '#05070b' : '#faf8f6');
                   } catch (e) {}
                 })();
               `,

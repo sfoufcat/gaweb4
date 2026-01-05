@@ -128,6 +128,26 @@
     padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
   }
 
+  /* Safe Area Background Extension - extends element bg into iOS safe area */
+  /* Use --pb-base CSS var to set base padding, safe area is added on top */
+  .bg-extend-safe-bottom {
+    padding-bottom: calc(var(--pb-base, 0px) + env(safe-area-inset-bottom, 0px));
+    margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Main content wrapper with safe area extension (mobile only) */
+  .main-content-safe {
+    min-height: 100dvh;
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+    margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 1024px) {
+    .main-content-safe {
+      padding-bottom: 0;
+      margin-bottom: 0;
+    }
+  }
+
   /* Dynamic viewport height for iOS Safari edge-to-edge */
   .min-h-dvh {
     min-height: 100dvh;
@@ -521,11 +541,9 @@
 html {
   overflow-x: hidden;
   scrollbar-gutter: stable;
-  background-color: #faf8f6;
-}
-
-html.dark {
-  background-color: #05070b;
+  /* Background uses CSS variable set by theme script for initial load,
+     then content wrapper handles it for iOS safe area transparency */
+  background-color: var(--initial-bg, transparent);
 }
 
 body {

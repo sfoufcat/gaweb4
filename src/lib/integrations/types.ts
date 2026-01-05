@@ -15,8 +15,8 @@ import type { Timestamp } from 'firebase-admin/firestore';
 /**
  * Supported integration providers
  */
-export type IntegrationProvider = 
-  | 'google_calendar'   // Google Calendar for event sync
+export type IntegrationProvider =
+  | 'google_calendar'   // Google Calendar for event sync + Meet links
   | 'google_sheets'     // Google Sheets for data export
   | 'outlook_calendar'  // Microsoft Outlook/365 Calendar
   | 'notion'            // Notion for knowledge export
@@ -30,22 +30,20 @@ export type IntegrationProvider =
   | 'calcom'            // Cal.com external scheduling
   | 'deepgram'          // Deepgram transcription service
   | 'assemblyai'        // AssemblyAI transcription service
-  | 'zoom'              // Zoom video meetings
-  | 'google_meet';      // Google Meet video meetings       // AssemblyAI transcription service
+  | 'zoom';             // Zoom video meetings
 
 /**
  * Integration category for UI grouping
  */
-export type IntegrationCategory = 
-  | 'calendar'      // Calendar sync integrations
+export type IntegrationCategory =
+  | 'calendar'      // Calendar sync + video meeting integrations
   | 'data'          // Data export integrations
-  | 'tasks'         // Task management integrations  
+  | 'tasks'         // Task management integrations
   | 'notifications' // Notification integrations
   | 'automation'    // Webhook/automation integrations
   | 'scheduling'    // External scheduling links
   | 'transcription' // Meeting transcription
-  | 'knowledge'     // Knowledge base export
-  | 'meetings';     // Video meeting providers    // Knowledge base export
+  | 'knowledge';    // Knowledge base export
 
 /**
  * Provider metadata for display and configuration
@@ -68,8 +66,8 @@ export interface IntegrationProviderMeta {
 export const INTEGRATION_PROVIDERS: Record<IntegrationProvider, IntegrationProviderMeta> = {
   google_calendar: {
     id: 'google_calendar',
-    name: 'Google Calendar',
-    description: 'Sync coaching sessions and events to Google Calendar',
+    name: 'Google',
+    description: 'Sync events to Google Calendar and create Google Meet links',
     category: 'calendar',
     icon: 'Calendar',
     authType: 'oauth2',
@@ -222,23 +220,12 @@ export const INTEGRATION_PROVIDERS: Record<IntegrationProvider, IntegrationProvi
     id: 'zoom',
     name: 'Zoom',
     description: 'Auto-create Zoom meetings for coaching calls and squad sessions',
-    category: 'meetings',
+    category: 'calendar',
     icon: 'Video',
     authType: 'oauth2',
     scopes: ['meeting:write:admin', 'meeting:read:admin', 'user:read'],
     requiredTier: 'starter',
     docsUrl: 'https://developers.zoom.us/docs',
-  },
-  google_meet: {
-    id: 'google_meet',
-    name: 'Google Meet',
-    description: 'Auto-create Google Meet links for video sessions',
-    category: 'meetings',
-    icon: 'Video',
-    authType: 'oauth2',
-    scopes: ['https://www.googleapis.com/auth/calendar.events'],
-    requiredTier: 'starter',
-    docsUrl: 'https://developers.google.com/meet',
   },
 };
 
@@ -314,8 +301,7 @@ export type IntegrationSettings =
   | WebhookSettings
   | CalcomSettings
   | TranscriptionSettings
-  | ZoomSettings
-  | GoogleMeetSettings;
+  | ZoomSettings;
 
 /**
  * Google Calendar specific settings
@@ -327,6 +313,9 @@ export interface GoogleCalendarSettings {
   autoCreateEvents: boolean;
   eventPrefix?: string;         // Prefix for created events
   reminderMinutes?: number;
+  // Feature toggles
+  enableCalendarSync: boolean;  // Sync events to Google Calendar
+  enableMeetLinks: boolean;     // Auto-create Google Meet links
 }
 
 /**
@@ -468,15 +457,6 @@ export interface ZoomSettings {
   defaultDurationMinutes: number;
   enableWaitingRoom: boolean;
   enableRecording: boolean;
-}
-
-/**
- * Google Meet settings
- */
-export interface GoogleMeetSettings {
-  provider: 'google_meet';
-  calendarId: string;           // Calendar to create events on (usually 'primary')
-  autoCreateMeetings: boolean;  // Auto-create meetings when scheduling calls
 }
 
 // =============================================================================
