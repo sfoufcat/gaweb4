@@ -28,8 +28,6 @@ export type IntegrationProvider =
   | 'zapier'            // Zapier webhook automation
   | 'make'              // Make (Integromat) webhook automation
   | 'calcom'            // Cal.com external scheduling
-  | 'deepgram'          // Deepgram transcription service
-  | 'assemblyai'        // AssemblyAI transcription service
   | 'zoom';             // Zoom video meetings
 
 /**
@@ -42,7 +40,6 @@ export type IntegrationCategory =
   | 'notifications' // Notification integrations
   | 'automation'    // Webhook/automation integrations
   | 'scheduling'    // External scheduling links
-  | 'transcription' // Meeting transcription
   | 'knowledge';    // Knowledge base export
 
 /**
@@ -196,26 +193,6 @@ export const INTEGRATION_PROVIDERS: Record<IntegrationProvider, IntegrationProvi
     requiredTier: 'pro',
     docsUrl: 'https://cal.com/docs/api',
   },
-  deepgram: {
-    id: 'deepgram',
-    name: 'Deepgram',
-    description: 'AI-powered transcription for coaching calls',
-    category: 'transcription',
-    icon: 'Mic',
-    authType: 'api_key',
-    requiredTier: 'scale',
-    docsUrl: 'https://developers.deepgram.com',
-  },
-  assemblyai: {
-    id: 'assemblyai',
-    name: 'AssemblyAI',
-    description: 'Advanced transcription with speaker diarization',
-    category: 'transcription',
-    icon: 'Mic',
-    authType: 'api_key',
-    requiredTier: 'scale',
-    docsUrl: 'https://www.assemblyai.com/docs',
-  },
   zoom: {
     id: 'zoom',
     name: 'Zoom',
@@ -300,7 +277,6 @@ export type IntegrationSettings =
   | DiscordSettings
   | WebhookSettings
   | CalcomSettings
-  | TranscriptionSettings
   | ZoomSettings;
 
 /**
@@ -434,18 +410,6 @@ export interface CalcomSettings {
   eventTypeSlug?: string;       // Default event type
   embedEnabled: boolean;        // Show embedded booking widget
   autoCreateLinks: boolean;     // Auto-create booking links for clients
-}
-
-/**
- * Transcription service settings
- */
-export interface TranscriptionSettings {
-  provider: 'deepgram' | 'assemblyai';
-  language: string;             // ISO language code
-  speakerDiarization: boolean;
-  punctuation: boolean;
-  autoTranscribe: boolean;      // Auto-transcribe new recordings
-  summarize: boolean;           // Generate AI summary
 }
 
 /**
@@ -650,66 +614,6 @@ export interface CalendarSyncRecord {
   lastSyncedAt: Timestamp | string;
   syncDirection: 'pushed' | 'pulled';
   syncHash: string;             // Hash of event data for change detection
-}
-
-// =============================================================================
-// TRANSCRIPTION TYPES
-// =============================================================================
-
-/**
- * Call transcription record
- * Path: organizations/{orgId}/transcriptions/{transcriptionId}
- */
-export interface CallTranscription {
-  id: string;
-  integrationId: string;
-  provider: 'deepgram' | 'assemblyai';
-  
-  // Call reference
-  callType: 'coaching' | 'squad' | 'video_message';
-  callId: string;
-  callRecordingUrl?: string;
-  
-  // Transcription data
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  transcript?: string;
-  segments?: TranscriptionSegment[];
-  speakers?: TranscriptionSpeaker[];
-  
-  // AI summary
-  summary?: string;
-  keyPoints?: string[];
-  actionItems?: string[];
-  
-  // Metadata
-  durationSeconds?: number;
-  language?: string;
-  confidence?: number;
-  
-  // Timestamps
-  createdAt: Timestamp | string;
-  completedAt?: Timestamp | string;
-  error?: string;
-}
-
-/**
- * Transcription segment with timing
- */
-export interface TranscriptionSegment {
-  text: string;
-  startTime: number;    // seconds
-  endTime: number;      // seconds
-  speakerId?: string;
-  confidence: number;
-}
-
-/**
- * Speaker identification
- */
-export interface TranscriptionSpeaker {
-  id: string;
-  label?: string;       // e.g., "Speaker 1", or matched user name
-  userId?: string;      // If matched to a user
 }
 
 // =============================================================================

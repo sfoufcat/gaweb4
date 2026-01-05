@@ -5,6 +5,7 @@ import {
   Upload,
   Loader2,
   FileAudio,
+  FileText,
   X,
   CheckCircle2,
   AlertCircle,
@@ -33,7 +34,7 @@ interface RecordingUploadProps {
 
 type UploadStatus = 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
 
-const ACCEPTED_FORMATS = ['.mp3', '.m4a', '.wav', '.webm', '.ogg', '.mp4'];
+const ACCEPTED_FORMATS = ['.mp3', '.m4a', '.wav', '.webm', '.ogg', '.mp4', '.pdf'];;
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 
 /**
@@ -199,12 +200,15 @@ export function RecordingUpload({
           />
 
           <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <p className="font-medium">Upload Call Recording</p>
+          <p className="font-medium">Upload Recording or Document</p>
           <p className="text-sm text-muted-foreground mt-1">
             Drag and drop or click to select
           </p>
           <p className="text-xs text-muted-foreground mt-2">
             Supports: {ACCEPTED_FORMATS.join(', ')} (max 500MB)
+          </p>
+          <p className="text-xs text-muted-foreground">
+            PDFs are free. Audio/video uses summary credits.
           </p>
         </div>
       )}
@@ -214,7 +218,11 @@ export function RecordingUpload({
         <div className="border rounded-lg p-4">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-md bg-muted">
-              <FileAudio className="h-6 w-6 text-muted-foreground" />
+              {file.type === 'application/pdf' ? (
+                <FileText className="h-6 w-6 text-muted-foreground" />
+              ) : (
+                <FileAudio className="h-6 w-6 text-muted-foreground" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium truncate">{file.name}</p>

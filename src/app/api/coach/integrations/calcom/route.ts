@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     // Store as API key integration (handles both new and update)
     await storeApiKeyIntegration(
       orgId,
-      'calcom' as 'deepgram', // Type workaround - function accepts calcom too
+      'calcom',
       apiKey,
       settings,
       userId

@@ -7,7 +7,6 @@ import {
   FileText,
   CheckSquare,
   Zap,
-  Mic,
   Workflow,
   ExternalLink,
   Check,
@@ -54,8 +53,6 @@ const PROVIDER_ICONS: Record<IntegrationProvider, React.ElementType> = {
   zapier: Zap,
   make: Workflow,
   calcom: CalendarPlus,
-  deepgram: Mic,
-  assemblyai: Mic,
   zoom: Video,
 };
 
@@ -67,7 +64,6 @@ const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
   notifications: 'Notifications',
   automation: 'Automation',
   scheduling: 'Scheduling',
-  transcription: 'Transcription',
   knowledge: 'Knowledge Base',
 };
 

@@ -17,7 +17,6 @@ import {
   getConfiguredIntegrations,
   type IntegrationProvider,
   type WebhookSettings,
-  type TranscriptionSettings,
   type SlackSettings,
   type DiscordSettings,
   type CalcomSettings,
@@ -80,7 +79,7 @@ export async function GET() {
  * Body:
  * - provider: IntegrationProvider (required)
  * - webhookUrl?: string (for zapier/make)
- * - apiKey?: string (for deepgram/assemblyai)
+ * - apiKey?: string (for calcom)
  * - settings?: object (provider-specific settings)
  */
 export async function POST(req: NextRequest) {
@@ -244,9 +243,9 @@ export async function POST(req: NextRequest) {
 
         const integration = await storeApiKeyIntegration(
           organizationId,
-          'calcom' as 'deepgram' | 'assemblyai', // Type workaround
+          'calcom',
           apiKey,
-          calcomSettings as unknown as TranscriptionSettings,
+          calcomSettings,
           userId
         );
 
@@ -256,27 +255,11 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const transcriptionSettings: TranscriptionSettings = {
-        provider: provider as 'deepgram' | 'assemblyai',
-        language: settings?.language as string || 'en',
-        speakerDiarization: settings?.speakerDiarization === true,
-        punctuation: settings?.punctuation !== false,
-        autoTranscribe: settings?.autoTranscribe === true,
-        summarize: settings?.summarize === true,
-      };
-
-      const integration = await storeApiKeyIntegration(
-        organizationId,
-        provider as 'deepgram' | 'assemblyai',
-        apiKey,
-        transcriptionSettings,
-        userId
+      // No other API key integrations supported
+      return NextResponse.json(
+        { error: 'Unsupported API key integration provider' },
+        { status: 400 }
       );
-
-      return NextResponse.json({
-        success: true,
-        integration,
-      });
     }
 
     return NextResponse.json(

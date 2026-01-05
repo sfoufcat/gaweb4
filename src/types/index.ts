@@ -5185,7 +5185,10 @@ export interface UploadedRecording {
   fileName: string;
   fileUrl: string;
   fileSizeBytes: number;
-  durationSeconds?: number;          // Extracted from audio file
+  fileType?: 'audio' | 'video' | 'pdf';  // Type of uploaded file
+  durationSeconds?: number;          // Extracted from audio/video file
+  extractedText?: string;            // For PDFs: extracted text content
+  pageCount?: number;                // For PDFs: number of pages
   status: 'uploaded' | 'transcribing' | 'summarizing' | 'completed' | 'failed';
   callSummaryId?: string;            // Once processed
   processingError?: string;

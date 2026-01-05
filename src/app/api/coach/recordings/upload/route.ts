@@ -13,6 +13,7 @@ import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { transcribeCallWithGroq, checkCreditsAvailable, deductCredits, refundCredits } from '@/lib/platform-transcription';
 import { processCallSummary } from '@/lib/ai/call-summary';
+import { extractTextFromPdfBuffer } from '@/lib/pdf-extraction';
 import type { UserRole, OrgRole, ClerkPublicMetadata, UploadedRecording } from '@/types';
 
 // Max file size: 500MB
@@ -29,17 +30,23 @@ const ACCEPTED_MIME_TYPES = [
   'audio/ogg',
   'video/mp4', // Allow video files (will only use audio)
   'video/webm',
+  'application/pdf', // PDF documents for text extraction
 ];
+
+// Helper to check if file is a PDF
+const isPdf = (mimeType: string): boolean => mimeType === 'application/pdf';
 
 /**
  * POST /api/coach/recordings/upload
  *
- * Upload an external call recording for AI summary generation.
+ * Upload an external call recording or PDF for AI summary generation.
  *
  * Form data:
- * - file: Audio/video file
+ * - file: Audio/video file or PDF document
  * - clientUserId: Client user ID
  * - programEnrollmentId?: Optional enrollment context
+ *
+ * Note: PDFs are FREE (no credits charged). Audio/video uses credits.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -92,27 +99,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Estimate duration (rough estimate, 1 MB per minute for audio)
-    const estimatedMinutes = Math.max(1, Math.ceil(file.size / (1024 * 1024)));
+    const isFilePdf = isPdf(file.type);
+    
+    // For audio/video: check and deduct credits
+    // For PDFs: FREE, skip credit check
+    let estimatedMinutes = 0;
+    if (!isFilePdf) {
+      // Estimate duration (rough estimate, 1 MB per minute for audio)
+      estimatedMinutes = Math.max(1, Math.ceil(file.size / (1024 * 1024)));
 
-    // Check credits availability
-    const { available, remainingMinutes } = await checkCreditsAvailable(
-      organizationId,
-      estimatedMinutes
-    );
-
-    if (!available) {
-      return NextResponse.json(
-        {
-          error: `Insufficient credits. Need ~${estimatedMinutes} minutes, have ${remainingMinutes} remaining.`,
-        },
-        { status: 402 }
+      // Check credits availability
+      const { available, remainingMinutes } = await checkCreditsAvailable(
+        organizationId,
+        estimatedMinutes
       );
+
+      if (!available) {
+        return NextResponse.json(
+          {
+            error: `Insufficient credits. Need ~${estimatedMinutes} minutes, have ${remainingMinutes} remaining.`,
+          },
+          { status: 402 }
+        );
+      }
     }
 
     // Generate unique file path
     const timestamp = Date.now();
-    const extension = file.name.split('.').pop() || 'mp3';
     const storagePath = `organizations/${organizationId}/recordings/${timestamp}_${file.name}`;
 
     // Upload to Firebase Storage
@@ -139,6 +152,13 @@ export async function POST(request: NextRequest) {
       .doc(organizationId)
       .collection('uploaded_recordings');
 
+    // Determine file type for the record
+    const fileType: 'audio' | 'video' | 'pdf' = isFilePdf 
+      ? 'pdf' 
+      : file.type.startsWith('video/') 
+        ? 'video' 
+        : 'audio';
+
     const recordingData: Omit<UploadedRecording, 'id'> = {
       organizationId,
       uploadedBy: userId,
@@ -147,6 +167,7 @@ export async function POST(request: NextRequest) {
       fileName: file.name,
       fileUrl,
       fileSizeBytes: file.size,
+      fileType,
       status: 'uploaded',
       createdAt: FieldValue.serverTimestamp() as unknown as string,
       updatedAt: FieldValue.serverTimestamp() as unknown as string,
@@ -155,25 +176,41 @@ export async function POST(request: NextRequest) {
     const recordingRef = await recordingsRef.add(recordingData);
     const recordingId = recordingRef.id;
 
-    // Deduct credits (will refund on failure)
-    const deductResult = await deductCredits(organizationId, estimatedMinutes);
-    if (!deductResult.success) {
-      await recordingRef.update({ status: 'failed', processingError: 'Failed to deduct credits' });
-      return NextResponse.json({ error: 'Failed to process credits' }, { status: 500 });
+    // Deduct credits for audio/video only (PDFs are free)
+    if (!isFilePdf) {
+      const deductResult = await deductCredits(organizationId, estimatedMinutes);
+      if (!deductResult.success) {
+        await recordingRef.update({ status: 'failed', processingError: 'Failed to deduct credits' });
+        return NextResponse.json({ error: 'Failed to process credits' }, { status: 500 });
+      }
     }
 
-    // Process asynchronously
-    processRecording(
-      organizationId,
-      recordingId,
-      fileUrl,
-      userId,
-      clientUserId,
-      programEnrollmentId,
-      estimatedMinutes
-    ).catch((error) => {
-      console.error(`[RECORDING_UPLOAD] Error processing ${recordingId}:`, error);
-    });
+    // Process asynchronously based on file type
+    if (isFilePdf) {
+      processPdfUpload(
+        organizationId,
+        recordingId,
+        fileBuffer,
+        fileUrl,
+        userId,
+        clientUserId,
+        programEnrollmentId
+      ).catch((error) => {
+        console.error(`[RECORDING_UPLOAD] Error processing PDF ${recordingId}:`, error);
+      });
+    } else {
+      processRecording(
+        organizationId,
+        recordingId,
+        fileUrl,
+        userId,
+        clientUserId,
+        programEnrollmentId,
+        estimatedMinutes
+      ).catch((error) => {
+        console.error(`[RECORDING_UPLOAD] Error processing ${recordingId}:`, error);
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -315,6 +352,137 @@ async function processRecording(
     await refundCredits(orgId, estimatedMinutes);
 
     console.error(`[RECORDING_UPLOAD] Failed processing ${recordingId}:`, error);
+  }
+}
+
+/**
+ * Process PDF upload - extract text and generate summary
+ * PDFs are FREE (no credits used)
+ */
+async function processPdfUpload(
+  orgId: string,
+  recordingId: string,
+  fileBuffer: Buffer,
+  fileUrl: string,
+  coachUserId: string,
+  clientUserId: string,
+  programEnrollmentId: string | null
+): Promise<void> {
+  const recordingRef = adminDb
+    .collection('organizations')
+    .doc(orgId)
+    .collection('uploaded_recordings')
+    .doc(recordingId);
+
+  try {
+    // Update status to processing (we call it 'transcribing' for consistency)
+    await recordingRef.update({ status: 'transcribing' });
+
+    // Extract text from PDF
+    const pdfResult = await extractTextFromPdfBuffer(fileBuffer);
+    
+    if (!pdfResult.text || pdfResult.text.length < 50) {
+      throw new Error('PDF appears to be empty or contains too little text');
+    }
+
+    // Update with extracted text
+    await recordingRef.update({
+      status: 'summarizing',
+      extractedText: pdfResult.text,
+      pageCount: pdfResult.pageCount,
+    });
+
+    // Generate a unique call ID for this PDF
+    const callId = `pdf_${recordingId}`;
+
+    // Create a "transcription" record for the PDF (for consistency with audio flow)
+    const transcriptionsRef = adminDb
+      .collection('organizations')
+      .doc(orgId)
+      .collection('platform_transcriptions');
+
+    const transcriptionDoc = await transcriptionsRef.add({
+      organizationId: orgId,
+      callId,
+      recordingUrl: fileUrl,
+      status: 'completed',
+      transcript: pdfResult.text,
+      durationSeconds: 0, // PDFs don't have duration
+      language: 'en',
+      segments: [],
+      createdAt: FieldValue.serverTimestamp(),
+      completedAt: FieldValue.serverTimestamp(),
+    });
+
+    // Get coach and client info for summary
+    const [coachDoc, clientDoc] = await Promise.all([
+      adminDb.collection('users').doc(coachUserId).get(),
+      adminDb.collection('users').doc(clientUserId).get(),
+    ]);
+
+    const coachName = coachDoc.data()?.displayName || 'Coach';
+    const clientName = clientDoc.data()?.displayName || 'Client';
+
+    // Get program info if applicable
+    let programName: string | undefined;
+    let programId: string | undefined;
+    if (programEnrollmentId) {
+      const enrollmentDoc = await adminDb
+        .collection('program_enrollments')
+        .doc(programEnrollmentId)
+        .get();
+      if (enrollmentDoc.exists) {
+        programId = enrollmentDoc.data()?.programId;
+        if (programId) {
+          const programDoc = await adminDb.collection('programs').doc(programId).get();
+          programName = programDoc.data()?.title;
+        }
+      }
+    }
+
+    // Generate summary using the same AI service
+    const summaryResult = await processCallSummary(
+      orgId,
+      callId,
+      transcriptionDoc.id,
+      {
+        hostUserId: coachUserId,
+        hostName: coachName,
+        clientUserId,
+        clientName,
+        programId,
+        programEnrollmentId: programEnrollmentId || undefined,
+        programName,
+        recordingUrl: fileUrl,
+        callStartedAt: new Date().toISOString(),
+        callEndedAt: new Date().toISOString(),
+      }
+    );
+
+    if (!summaryResult.success) {
+      throw new Error(summaryResult.error || 'Summary generation failed');
+    }
+
+    // Update recording with summary ID
+    await recordingRef.update({
+      status: 'completed',
+      callSummaryId: summaryResult.summaryId,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    console.log(`[RECORDING_UPLOAD] Completed processing PDF ${recordingId}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    await recordingRef.update({
+      status: 'failed',
+      processingError: errorMessage,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    // No credits to refund for PDFs
+
+    console.error(`[RECORDING_UPLOAD] Failed processing PDF ${recordingId}:`, error);
   }
 }
 

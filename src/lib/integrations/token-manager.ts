@@ -433,7 +433,7 @@ export async function storeWebhookIntegration(
  */
 export async function storeApiKeyIntegration(
   orgId: string,
-  provider: 'deepgram' | 'assemblyai',
+  provider: 'calcom',
   apiKey: string,
   settings: IntegrationSettings,
   connectedBy: string
