@@ -1731,13 +1731,13 @@ function calculateWeekTaskDates(
   weekEndDayIndex: number,
   enrollmentStartDate: string,
   taskCount: number,
-  distribution: 'spread' | 'daily' = 'spread'
+  distribution: 'spread' | 'repeat-daily' = 'spread'
 ): string[] {
   const dates: string[] = [];
   const startDate = new Date(enrollmentStartDate + 'T00:00:00');
   const daysInWeek = weekEndDayIndex - weekStartDayIndex + 1;
 
-  if (distribution === 'daily' || daysInWeek <= 1) {
+  if (distribution === 'repeat-daily' || daysInWeek <= 1) {
     // All tasks on the first day of the week
     const dayDate = new Date(startDate);
     dayDate.setDate(dayDate.getDate() + weekStartDayIndex - 1);
