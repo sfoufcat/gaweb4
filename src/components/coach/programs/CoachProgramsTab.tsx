@@ -662,10 +662,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         // Client weeks don't exist yet - need to initialize
         setClientWeeks([]);
         setLoadedEnrollmentId(enrollmentId);
+      } else {
+        // Other error - still set enrollmentId to clear loading state
+        console.error('Error fetching client weeks:', response.status);
+        setClientWeeks([]);
+        setLoadedEnrollmentId(enrollmentId);
       }
     } catch (err) {
       console.error('Error fetching client weeks:', err);
       setClientWeeks([]);
+      setLoadedEnrollmentId(enrollmentId); // Set on error to clear loading state
     } finally {
       setLoadingClientWeeks(false);
     }
