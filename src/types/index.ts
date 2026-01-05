@@ -5235,3 +5235,13 @@ export const CREDIT_PACK_PRICING: Record<CreditPackType, number> = {
   20: 1000, // $10.00 in cents
 };
 
+/**
+ * TIER_CALL_CREDITS - Monthly call credits per coach tier
+ * Credits are in calls (1 call = 60 minutes)
+ */
+export const TIER_CALL_CREDITS: Record<CoachTier, number> = {
+  starter: 20,  // 20 calls/month = 1200 minutes
+  pro: 50,      // 50 calls/month = 3000 minutes
+  scale: 100,   // 100 calls/month = 6000 minutes
+};
+

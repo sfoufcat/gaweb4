@@ -10,6 +10,7 @@ import { DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_AP
 import { getStreamServerClient } from '@/lib/stream-server';
 import { addUserToOrganization } from '@/lib/clerk-organizations';
 import type { CoachingStatus, CoachingPlan, FlowSession, Program, ProgramEnrollment, ProgramInvite, NewProgramEnrollmentStatus, CoachTier, CoachSubscriptionStatus, Squad, SquadMember } from '@/types';
+import { TIER_CALL_CREDITS } from '@/types';
 import { checkExistingEnrollment } from '@/lib/enrollment-check';
 
 // =============================================================================
@@ -236,11 +237,21 @@ export async function POST(req: Request) {
         break;
       }
 
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice;
+        // Only handle subscription renewal invoices (not initial subscription)
+        if (invoice.billing_reason === 'subscription_cycle') {
+          console.log(`[STRIPE_WEBHOOK] invoice.paid (renewal) - invoiceId: ${invoice.id}, subscriptionId: ${invoice.subscription}`);
+          await handleSubscriptionRenewal(invoice);
+        }
+        break;
+      }
+
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         // For Connect events, event.account contains the connected account ID
         const connectedAccountId = (event as { account?: string }).account;
-        
+
         // Handle content purchases (one-time content payments via Stripe Connect)
         if (paymentIntent.metadata?.type === 'content_purchase') {
           console.log(`[STRIPE_WEBHOOK] payment_intent.succeeded (content) - paymentIntentId: ${paymentIntent.id}, contentType: ${paymentIntent.metadata?.contentType}, contentId: ${paymentIntent.metadata?.contentId}, connectedAccount: ${connectedAccountId || 'platform'}`);
@@ -250,8 +261,13 @@ export async function POST(req: Request) {
         else if (paymentIntent.metadata?.type === 'funnel_payment') {
           console.log(`[STRIPE_WEBHOOK] payment_intent.succeeded (funnel) - paymentIntentId: ${paymentIntent.id}, flowSessionId: ${paymentIntent.metadata?.flowSessionId}, connectedAccount: ${connectedAccountId || 'platform'}`);
           await handleFunnelPaymentSucceeded(paymentIntent);
+        }
+        // Handle credit pack purchases (platform payments)
+        else if (paymentIntent.metadata?.type === 'credit_purchase') {
+          console.log(`[STRIPE_WEBHOOK] payment_intent.succeeded (credit_purchase) - paymentIntentId: ${paymentIntent.id}, org: ${paymentIntent.metadata?.organizationId}, pack: ${paymentIntent.metadata?.packSize}`);
+          await handleCreditPurchasePaymentSucceeded(paymentIntent);
         } else {
-          console.log(`[STRIPE_WEBHOOK] payment_intent.succeeded - paymentIntentId: ${paymentIntent.id} (not a funnel or content payment, skipping)`);
+          console.log(`[STRIPE_WEBHOOK] payment_intent.succeeded - paymentIntentId: ${paymentIntent.id} (not a funnel, content, or credit payment, skipping)`);
         }
         break;
       }
@@ -550,7 +566,30 @@ async function handleCoachCheckoutCompleted(session: Stripe.Checkout.Session) {
   }, { merge: true });
   
   console.log(`[STRIPE_WEBHOOK] Updated org_settings for ${organizationId} with billing info`);
-  
+
+  // Allocate AI call summary credits based on tier
+  const effectiveTier = (tier as CoachTier) || 'starter';
+  const callCredits = TIER_CALL_CREDITS[effectiveTier] || 20;
+  const allocatedMinutes = callCredits * 60; // Convert calls to minutes
+
+  // Set initial credits, preserving purchased credits
+  const orgRef = adminDb.collection('organizations').doc(organizationId);
+  const orgDoc = await orgRef.get();
+  const existingCredits = orgDoc.exists ? orgDoc.data()?.summaryCredits : null;
+
+  await orgRef.set({
+    summaryCredits: {
+      allocatedMinutes,
+      usedMinutes: 0, // Reset plan usage at start of billing period
+      purchasedMinutes: existingCredits?.purchasedMinutes || 0, // Preserve purchased
+      usedPurchasedMinutes: existingCredits?.usedPurchasedMinutes || 0, // Preserve purchased usage
+      periodStart: now,
+      periodEnd: currentPeriodEnd || null,
+    },
+  }, { merge: true });
+
+  console.log(`[STRIPE_WEBHOOK] Allocated ${callCredits} call credits (${allocatedMinutes} min) for org ${organizationId}`);
+
   // Update coach_onboarding status to 'active'
   const onboardingRef = adminDb.collection('coach_onboarding').doc(organizationId);
   await onboardingRef.set({
@@ -1222,6 +1261,95 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   }
 
   console.log(`[STRIPE_WEBHOOK] Payment failed for user ${userDoc.id}, downgraded to free tier`);
+}
+
+/**
+ * Handle subscription renewal (invoice.paid with billing_reason='subscription_cycle')
+ * Resets AI call summary credits for the new billing period
+ */
+async function handleSubscriptionRenewal(invoice: Stripe.Invoice) {
+  const stripe = getStripe();
+  const subscriptionId = typeof invoice.subscription === 'string'
+    ? invoice.subscription
+    : invoice.subscription?.id;
+
+  if (!subscriptionId) {
+    console.log('[STRIPE_WEBHOOK] No subscription ID in renewal invoice');
+    return;
+  }
+
+  // Fetch subscription to check if it's a coach subscription
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+  // Check if this is a coach subscription by looking for metadata or org_settings
+  const organizationId = subscription.metadata?.organizationId;
+
+  if (!organizationId) {
+    // Try to find org by stripeSubscriptionId in org_settings
+    const orgSettingsQuery = await adminDb
+      .collection('org_settings')
+      .where('billing.stripeSubscriptionId', '==', subscriptionId)
+      .limit(1)
+      .get();
+
+    if (orgSettingsQuery.empty) {
+      console.log(`[STRIPE_WEBHOOK] Renewal invoice not for a coach subscription: ${subscriptionId}`);
+      return;
+    }
+
+    const orgSettingsDoc = orgSettingsQuery.docs[0];
+    const orgId = orgSettingsDoc.id;
+    const orgSettings = orgSettingsDoc.data();
+    const tier = (orgSettings.billing?.tier as CoachTier) || 'starter';
+
+    await resetCreditsForOrg(orgId, tier, invoice);
+    return;
+  }
+
+  // Get tier from org_settings
+  const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+  if (!orgSettingsDoc.exists) {
+    console.log(`[STRIPE_WEBHOOK] No org_settings for org ${organizationId}`);
+    return;
+  }
+
+  const orgSettings = orgSettingsDoc.data();
+  const tier = (orgSettings?.billing?.tier as CoachTier) || 'starter';
+
+  await resetCreditsForOrg(organizationId, tier, invoice);
+}
+
+/**
+ * Helper to reset credits for an organization on renewal
+ */
+async function resetCreditsForOrg(orgId: string, tier: CoachTier, invoice: Stripe.Invoice) {
+  const now = new Date().toISOString();
+  const callCredits = TIER_CALL_CREDITS[tier] || 20;
+  const allocatedMinutes = callCredits * 60;
+
+  // Calculate new period end
+  const periodEnd = invoice.lines.data[0]?.period?.end
+    ? new Date(invoice.lines.data[0].period.end * 1000).toISOString()
+    : null;
+
+  // Get org to preserve purchased credits
+  const orgRef = adminDb.collection('organizations').doc(orgId);
+  const orgDoc = await orgRef.get();
+  const existingCredits = orgDoc.exists ? orgDoc.data()?.summaryCredits : null;
+
+  // Reset plan credits, preserve purchased credits
+  await orgRef.set({
+    summaryCredits: {
+      allocatedMinutes,
+      usedMinutes: 0, // Reset plan usage
+      purchasedMinutes: existingCredits?.purchasedMinutes || 0,
+      usedPurchasedMinutes: existingCredits?.usedPurchasedMinutes || 0,
+      periodStart: now,
+      periodEnd,
+    },
+  }, { merge: true });
+
+  console.log(`[STRIPE_WEBHOOK] Reset credits for org ${orgId}: ${callCredits} calls (${allocatedMinutes} min), tier: ${tier}`);
 }
 
 /**
@@ -2205,6 +2333,57 @@ async function handleCreditPurchaseCompleted(session: Stripe.Checkout.Session) {
     console.log(`[STRIPE_WEBHOOK] Added ${creditsToAdd} credits (${minutesToAdd} minutes) to org ${organizationId}`);
   } catch (error) {
     console.error('[STRIPE_WEBHOOK] Error adding credits:', error);
+  }
+}
+
+/**
+ * Handle credit purchase from PaymentIntent (embedded checkout)
+ */
+async function handleCreditPurchasePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+  const organizationId = paymentIntent.metadata?.organizationId;
+  const packSize = paymentIntent.metadata?.packSize;
+  const credits = paymentIntent.metadata?.credits;
+
+  if (!organizationId || !packSize || !credits) {
+    console.error('[STRIPE_WEBHOOK] Credit purchase PaymentIntent missing required metadata:', { organizationId, packSize, credits });
+    return;
+  }
+
+  const creditsToAdd = parseInt(credits, 10);
+  // Convert credits (calls) to minutes (60 min per call)
+  const minutesToAdd = creditsToAdd * 60;
+
+  console.log(`[STRIPE_WEBHOOK] Credit purchase PaymentIntent succeeded - org: ${organizationId}, pack: ${packSize}, credits: ${creditsToAdd}`);
+
+  try {
+    const orgRef = adminDb.collection('organizations').doc(organizationId);
+
+    await adminDb.runTransaction(async (transaction) => {
+      const orgDoc = await transaction.get(orgRef);
+
+      if (!orgDoc.exists) {
+        throw new Error(`Organization ${organizationId} not found`);
+      }
+
+      const orgData = orgDoc.data();
+      const currentCredits = orgData?.summaryCredits || {
+        allocatedMinutes: 0,
+        usedMinutes: 0,
+        purchasedMinutes: 0,
+        usedPurchasedMinutes: 0,
+        periodStart: null,
+        periodEnd: null,
+      };
+
+      // Add to purchased minutes (never expire)
+      transaction.update(orgRef, {
+        'summaryCredits.purchasedMinutes': (currentCredits.purchasedMinutes || 0) + minutesToAdd,
+      });
+    });
+
+    console.log(`[STRIPE_WEBHOOK] Added ${creditsToAdd} credits (${minutesToAdd} minutes) to org ${organizationId} via PaymentIntent`);
+  } catch (error) {
+    console.error('[STRIPE_WEBHOOK] Error adding credits from PaymentIntent:', error);
   }
 }
 

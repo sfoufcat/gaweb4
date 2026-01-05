@@ -205,8 +205,12 @@ async function getEventTargetUserIds(job: EventScheduledJob): Promise<string[]> 
       return getSquadMembers(event.squadId, event.organizationId);
     
     case 'invite_only':
-      // For 1-on-1 coaching, notify the client
-      return event.attendeeIds || [];
+      // For 1-on-1 coaching, notify both the coach (host) and the client
+      const userIds: string[] = [...(event.attendeeIds || [])];
+      if (event.eventType === 'coaching_1on1' && event.hostUserId && !userIds.includes(event.hostUserId)) {
+        userIds.push(event.hostUserId);
+      }
+      return userIds;
     
     case 'rsvp':
       // For RSVP events, notify those who have RSVPed
@@ -451,15 +455,26 @@ async function sendEventEmail({
 
   const eventUrl = `${APP_URL}${getActionRoute(job)}`;
 
+  // For 1:1 coaching calls, show the "other person's" name
+  // Coach sees client name, client sees coach name
+  let eventTitle = job.eventTitle;
+  if (job.eventType === 'coaching_1on1') {
+    const isUserTheHost = userId === job.hostUserId;
+    const otherPersonName = isUserTheHost
+      ? (job.clientName || 'Client')
+      : (job.hostName || 'Coach');
+    eventTitle = `1:1 Call with ${otherPersonName}`;
+  }
+
   let subject: string;
   let textBody: string;
 
   switch (job.jobType) {
     case 'email_24h':
-      subject = `Reminder: ${job.eventTitle} is tomorrow`;
+      subject = `Reminder: ${eventTitle} is tomorrow`;
       textBody = `Hi ${firstName},
 
-This is a reminder that "${job.eventTitle}" is scheduled for ${dateStr} at ${eventTime} (that's ${userTime} your time).
+This is a reminder that "${eventTitle}" is scheduled for ${dateStr} at ${eventTime} (that's ${userTime} your time).
 
 ${eventUrl}
 
@@ -467,10 +482,10 @@ ${eventUrl}
       break;
 
     case 'email_1h':
-      subject = `${job.eventTitle} starts in 1 hour`;
+      subject = `${eventTitle} starts in 1 hour`;
       textBody = `Hi ${firstName},
 
-"${job.eventTitle}" starts in 1 hour: ${dateStr} at ${eventTime} (${userTime} your time).
+"${eventTitle}" starts in 1 hour: ${dateStr} at ${eventTime} (${userTime} your time).
 
 See you there 👊
 

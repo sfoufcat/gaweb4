@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
     const clientName = clientData?.firstName && clientData?.lastName
       ? `${clientData.firstName} ${clientData.lastName}`
       : clientData?.name || 'Client';
+    const clientAvatarUrl = clientData?.imageUrl || clientData?.avatarUrl;
 
     // Get coach availability for timezone
     const availabilityDoc = await adminDb
@@ -152,6 +153,9 @@ export async function POST(request: NextRequest) {
       hostName: coachName,
       hostAvatarUrl: coachAvatarUrl,
       isCoachLed: true,
+      clientUserId: clientId,
+      clientName,
+      clientAvatarUrl,
       attendeeIds: [userId, clientId],
       sendChatReminders: true,
       // Scheduling-specific fields

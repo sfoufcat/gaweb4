@@ -35,10 +35,11 @@ const CREDIT_PACKS: Record<CreditPackType, { name: string; credits: number; pric
 /**
  * POST /api/coach/credits/purchase
  *
- * Create a Stripe checkout session for purchasing credits
+ * Create a PaymentIntent for purchasing credits (embedded checkout)
  *
  * Body:
  * - packSize: 5 | 10 | 20
+ * - paymentMethodId?: string (optional - if provided, charge immediately)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { packSize } = body;
+    const { packSize, paymentMethodId } = body;
 
     // Validate pack size
     if (!packSize || !CREDIT_PACKS[packSize as CreditPackType]) {
@@ -99,26 +100,49 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create checkout session
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.coachful.co';
+    const stripe = getStripe();
 
-    const session = await getStripe().checkout.sessions.create({
-      customer: stripeCustomerId,
-      mode: 'payment',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: pack.name,
-              description: `${pack.credits} AI call summary credits for your coaching practice`,
-            },
-            unit_amount: pack.priceInCents,
-          },
-          quantity: 1,
+    // If paymentMethodId provided, charge the saved payment method immediately
+    if (paymentMethodId) {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: pack.priceInCents,
+        currency: 'usd',
+        customer: stripeCustomerId,
+        payment_method: paymentMethodId,
+        off_session: true,
+        confirm: true,
+        metadata: {
+          type: 'credit_purchase',
+          organizationId,
+          userId,
+          packSize: String(packSize),
+          credits: String(pack.credits),
         },
-      ],
+      });
+
+      if (paymentIntent.status === 'succeeded') {
+        // Credits will be added by the webhook, but we can return success immediately
+        return NextResponse.json({
+          success: true,
+          paymentIntentId: paymentIntent.id,
+        });
+      } else {
+        return NextResponse.json(
+          { error: 'Payment failed. Please try again or use a different card.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Create PaymentIntent for embedded checkout
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: pack.priceInCents,
+      currency: 'usd',
+      customer: stripeCustomerId,
+      setup_future_usage: 'off_session', // Save card for future use
+      automatic_payment_methods: {
+        enabled: true,
+      },
       metadata: {
         type: 'credit_purchase',
         organizationId,
@@ -126,16 +150,23 @@ export async function POST(request: NextRequest) {
         packSize: String(packSize),
         credits: String(pack.credits),
       },
-      success_url: `${baseUrl}/coach/settings/organization?credits=success&pack=${packSize}`,
-      cancel_url: `${baseUrl}/coach/settings/organization?credits=cancelled`,
     });
 
     return NextResponse.json({
-      checkoutUrl: session.url,
-      sessionId: session.id,
+      clientSecret: paymentIntent.client_secret,
+      organizationId,
     });
   } catch (error) {
-    console.error('[CREDITS_PURCHASE_API] Error creating checkout:', error);
+    console.error('[CREDITS_PURCHASE_API] Error:', error);
+
+    // Handle Stripe card errors specifically
+    if (error instanceof Stripe.errors.StripeCardError) {
+      return NextResponse.json(
+        { error: error.message || 'Card was declined' },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

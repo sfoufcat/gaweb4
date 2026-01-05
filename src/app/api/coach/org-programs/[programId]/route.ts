@@ -202,6 +202,19 @@ export async function PUT(
     if (body.coachInSquads !== undefined && currentData?.type === 'group') {
       updateData.coachInSquads = body.coachInSquads;
     }
+
+    // Handle hasModules flag (enables module-based structure)
+    if (body.hasModules !== undefined) {
+      updateData.hasModules = body.hasModules === true;
+    }
+
+    // Handle program orientation (daily vs weekly)
+    if (body.orientation !== undefined) {
+      const validOrientations = ['daily', 'weekly'];
+      if (validOrientations.includes(body.orientation)) {
+        updateData.orientation = body.orientation;
+      }
+    }
     
     // Subscription settings
     if (body.subscriptionEnabled !== undefined) updateData.subscriptionEnabled = body.subscriptionEnabled;

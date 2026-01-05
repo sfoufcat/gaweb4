@@ -326,6 +326,7 @@ export function CallSummarySettingsCard({ onSettingsChange }: CallSummarySetting
       <CreditPurchaseModal
         open={showPurchaseModal}
         onOpenChange={setShowPurchaseModal}
+        onPurchaseComplete={fetchData}
       />
     </>
   );

@@ -46,11 +46,13 @@ export function ProgramSidebarNav({
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(modules[0]?.id ? [modules[0].id] : []));
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string | number>>(new Set([1]));
 
-  const hasModules = program.hasModules && modules.length > 0;
+  // Check if program is configured for modules (may have 0 modules initially)
+  const isModuleMode = program.hasModules === true;
+  const hasExistingModules = modules.length > 0;
 
   // Calculate week structure for legacy programs (no modules)
   const legacyWeeks = useMemo(() => {
-    if (hasModules) return [];
+    if (isModuleMode && hasExistingModules) return [];
 
     const totalDays = program.lengthDays || 30;
     const includeWeekends = program.includeWeekends !== false;
@@ -77,7 +79,7 @@ export function ProgramSidebarNav({
         totalDays: daysInWeek.length,
       };
     });
-  }, [hasModules, program.lengthDays, program.includeWeekends, days]);
+  }, [isModuleMode, hasExistingModules, program.lengthDays, program.includeWeekends, days]);
 
   // Toggle module expansion
   const toggleModule = (moduleId: string) => {
@@ -169,8 +171,8 @@ export function ProgramSidebarNav({
 
       {/* Navigation tree */}
       <div className="space-y-1 max-h-[calc(100vh-320px)] overflow-y-auto pr-1">
-        {hasModules ? (
-          // Module-based structure
+        {hasExistingModules ? (
+          // Module-based structure (has modules)
           <>
             {modules.sort((a, b) => a.order - b.order).map((module) => {
               const moduleWeeks = getModuleWeeks(module.id);
@@ -310,28 +312,40 @@ export function ProgramSidebarNav({
               </button>
             )}
           </>
+        ) : isModuleMode || orientation === 'weekly' ? (
+          // Module mode but no modules yet - show prompt to create first module
+          <div className="text-center py-6 px-2">
+            <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center mx-auto mb-3">
+              <Folder className="w-6 h-6 text-[#a7a39e] dark:text-[#7d8190]" />
+            </div>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-1 font-albert">
+              No modules yet
+            </p>
+            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mb-4 font-albert">
+              Create modules to organize your program content into sections
+            </p>
+            {onAddModule && (
+              <button
+                onClick={onAddModule}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg text-sm font-medium font-albert hover:bg-brand-accent/90 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add First Module</span>
+              </button>
+            )}
+          </div>
         ) : (
-          // Legacy week-based structure (no modules)
+          // Legacy week-based structure (daily mode, no modules)
           legacyWeeks.map((week) => {
             const weekKey = week.weekNum;
             const isExpanded = expandedWeeks.has(weekKey);
 
             return (
               <div key={week.weekNum} className="mb-1">
-                {/* Week Header */}
+                {/* Week Header - Legacy mode is always daily */}
                 <button
-                  onClick={() => {
-                    if (orientation === 'weekly') {
-                      onSelect({ type: 'week', id: `week-${week.weekNum}`, weekNumber: week.weekNum });
-                    } else {
-                      toggleWeek(weekKey);
-                    }
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium font-albert transition-colors ${
-                    orientation === 'weekly' && isSelected({ type: 'week', id: `week-${week.weekNum}`, weekNumber: week.weekNum })
-                      ? 'bg-brand-accent/10 text-brand-accent'
-                      : 'bg-[#faf8f6] dark:bg-[#1e222a] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
-                  }`}
+                  onClick={() => toggleWeek(weekKey)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium font-albert transition-colors bg-[#faf8f6] dark:bg-[#1e222a] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]"
                 >
                   <div className="flex items-center gap-2">
                     {orientation === 'daily' && (

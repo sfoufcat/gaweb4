@@ -18,6 +18,7 @@ interface CourseWithSelection extends DiscoverCourse {
 export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSelectorProps) {
   const [courses, setCourses] = useState<DiscoverCourse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
@@ -30,13 +31,24 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
   useEffect(() => {
     async function fetchCourses() {
       try {
+        setError(null);
         const res = await fetch('/api/coach/org-discover/courses');
         if (res.ok) {
           const data = await res.json();
           setCourses(data.courses || []);
+        } else {
+          // Handle specific error codes
+          if (res.status === 401) {
+            setError('Please sign in to view courses');
+          } else if (res.status === 403) {
+            setError('You do not have permission to view courses');
+          } else {
+            setError('Failed to load courses');
+          }
         }
       } catch (err) {
         console.error('Error fetching courses:', err);
+        setError('Failed to connect to server');
       } finally {
         setLoading(false);
       }
@@ -67,7 +79,7 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
       if (next.has(module.id)) {
         next.delete(module.id);
         // Also deselect all lessons in this module
-        const lessonIds = module.lessons.map(l => l.id);
+        const lessonIds = (module.lessons || []).map(l => l.id);
         setSelectedLessons(prevLessons => {
           const nextLessons = new Set(prevLessons);
           lessonIds.forEach(id => nextLessons.delete(id));
@@ -76,7 +88,7 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
       } else {
         next.add(module.id);
         // Also select all lessons in this module
-        const lessonIds = module.lessons.map(l => l.id);
+        const lessonIds = (module.lessons || []).map(l => l.id);
         setSelectedLessons(prevLessons => {
           const nextLessons = new Set(prevLessons);
           lessonIds.forEach(id => nextLessons.add(id));
@@ -98,8 +110,8 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
       }
 
       // Check if all lessons in module are now selected
-      const moduleLessonIds = module.lessons.map(l => l.id);
-      const allSelected = moduleLessonIds.every(id => next.has(id));
+      const moduleLessonIds = (module.lessons || []).map(l => l.id);
+      const allSelected = moduleLessonIds.length > 0 && moduleLessonIds.every(id => next.has(id));
       const noneSelected = moduleLessonIds.every(id => !next.has(id));
 
       // Update module selection state
@@ -229,6 +241,10 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
             </label>
             {loading ? (
               <div className="h-10 bg-[#e1ddd8]/50 dark:bg-[#262b35]/50 rounded-lg animate-pulse" />
+            ) : error ? (
+              <p className="text-sm text-red-500 dark:text-red-400 font-albert">
+                {error}
+              </p>
             ) : courses.length === 0 ? (
               <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
                 No courses available. Create courses in the Discover section first.
