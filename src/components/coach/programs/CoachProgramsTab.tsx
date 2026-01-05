@@ -2972,7 +2972,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               }}
             />
           </div>
-          </div>
         ) : viewMode === 'cohorts' ? (
           // Cohorts View (Group programs only)
           <div>
