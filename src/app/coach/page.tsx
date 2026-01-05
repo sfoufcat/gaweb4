@@ -299,10 +299,14 @@ export default function CoachPage() {
 
   // Check authorization (skip on demo site)
   useEffect(() => {
+    // Skip auth redirect if coming from OAuth callback (give Clerk time to sync session)
+    if (searchParams.get('calendar_connected')) {
+      return;
+    }
     if (!isDemoSite && isLoaded && mounted && !hasAccess) {
       router.push('/');
     }
-  }, [hasAccess, isLoaded, router, mounted, isDemoSite]);
+  }, [hasAccess, isLoaded, router, mounted, isDemoSite, searchParams]);
 
   // Handle redirect param (for OAuth callback two-step redirect from subdomain to custom domain)
   useEffect(() => {

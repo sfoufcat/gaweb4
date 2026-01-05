@@ -88,9 +88,10 @@ function ChannelPreviewWithMobile(props: ChannelPreviewUIComponentProps) {
   // Detect coaching channels and show other member's name instead of "FirstName - Coaching"
   const channelId = channel.id;
   const isCoachingChannel = channelId?.startsWith('coaching-');
-  const channelName = displayTitle ||
-    (isCoachingChannel ? (otherMember?.user?.name || 'Coaching Chat') : (channelData?.name as string)) ||
-    'Chat';
+  // For coaching channels, ALWAYS use other member's name (ignore displayTitle which has "Name - Coaching")
+  const channelName = isCoachingChannel
+    ? (otherMember?.user?.name || 'Coaching Chat')
+    : (displayTitle || (channelData?.name as string) || 'Chat');
   const avatarUrl = channelImage || otherMember?.user?.image;
   const avatarInitial = channelName.charAt(0).toUpperCase();
   

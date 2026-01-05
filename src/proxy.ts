@@ -511,11 +511,12 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   // ==========================================================================
   // STATIC FILE BYPASS (Safety check - should already be excluded by matcher)
   // ==========================================================================
-  
+
   // Explicitly skip static files to prevent any processing issues
   if (
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/static/') ||
+    pathname.startsWith('/.well-known/') ||
     pathname.includes('.') && (
       pathname.endsWith('.css') ||
       pathname.endsWith('.js') ||
