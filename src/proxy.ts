@@ -1330,8 +1330,8 @@ export const proxy = clerkMiddleware(async (auth, request) => {
 
 export const config = {
   matcher: [
-    // Skip Next.js internals, static files, AND webhooks (webhooks verify via Svix signature, not middleware)
-    '/((?!_next|api/webhooks|api/clerk-emails|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Skip Next.js internals, static files, .well-known, AND webhooks (webhooks verify via Svix signature, not middleware)
+    '/((?!_next|\\.well-known|api/webhooks|api/clerk-emails|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     // Run for API routes EXCEPT webhooks (which are excluded above and handle their own auth via Svix)
     '/(api(?!/webhooks)(?!/clerk-emails)|trpc)(.*)',
   ],
