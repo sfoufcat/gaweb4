@@ -97,6 +97,7 @@ const PLATFORM_DOMAINS = [
   `www.${BASE_DOMAIN}`,              // www variant
   PLATFORM_ADMIN_DOMAIN,             // Platform admin domain
   DEMO_DOMAIN,                        // Demo site (no auth required)
+  `calendar.${BASE_DOMAIN}`,         // OAuth callback domain (neutral for calendar integrations)
   'pro.coachful.co',           // Legacy domain
   'www.pro.coachful.co',       // Legacy www variant
   'growthaddicts.app',               // Legacy domain after .com migration
