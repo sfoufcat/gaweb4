@@ -2,11 +2,14 @@
  * PDF Text Extraction Service
  *
  * Extracts text from PDF files for summarization.
+ * Uses pdfjs-dist for pure JavaScript PDF parsing without canvas dependencies.
  */
 
-// pdf-parse doesn't have proper ESM exports, using dynamic import
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdf = require('pdf-parse');
+import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
+import type { TextItem } from 'pdfjs-dist/types/src/display/api';
+
+// Disable worker for server-side usage
+GlobalWorkerOptions.workerSrc = '';
 
 export interface PdfExtractionResult {
   text: string;
@@ -32,21 +35,7 @@ export async function extractTextFromPdf(pdfUrl: string): Promise<PdfExtractionR
   }
 
   const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  // Parse the PDF
-  const data = await pdf(buffer);
-
-  return {
-    text: data.text.trim(),
-    pageCount: data.numpages,
-    metadata: {
-      title: data.info?.Title,
-      author: data.info?.Author,
-      subject: data.info?.Subject,
-      creator: data.info?.Creator,
-    },
-  };
+  return extractTextFromPdfBuffer(Buffer.from(arrayBuffer));
 }
 
 /**
@@ -55,16 +44,48 @@ export async function extractTextFromPdf(pdfUrl: string): Promise<PdfExtractionR
  * @returns Extracted text and page count
  */
 export async function extractTextFromPdfBuffer(buffer: Buffer): Promise<PdfExtractionResult> {
-  const data = await pdf(buffer);
+  // Convert Buffer to Uint8Array for pdfjs
+  const uint8Array = new Uint8Array(buffer);
+
+  // Load the PDF document
+  const loadingTask = getDocument({
+    data: uint8Array,
+    useSystemFonts: true,
+    disableFontFace: true,
+  });
+
+  const pdf = await loadingTask.promise;
+  const pageCount = pdf.numPages;
+
+  // Extract text from all pages
+  const textParts: string[] = [];
+
+  for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const textContent = await page.getTextContent();
+
+    const pageText = textContent.items
+      .filter((item): item is TextItem => 'str' in item)
+      .map((item) => item.str)
+      .join(' ');
+
+    textParts.push(pageText);
+  }
+
+  // Get metadata
+  const metadata = await pdf.getMetadata().catch(() => null);
+  const info = metadata?.info as Record<string, string> | undefined;
 
   return {
-    text: data.text.trim(),
-    pageCount: data.numpages,
-    metadata: {
-      title: data.info?.Title,
-      author: data.info?.Author,
-      subject: data.info?.Subject,
-      creator: data.info?.Creator,
-    },
+    text: textParts.join('\n\n').trim(),
+    pageCount,
+    metadata: info
+      ? {
+          title: info.Title,
+          author: info.Author,
+          subject: info.Subject,
+          creator: info.Creator,
+        }
+      : undefined,
   };
 }
