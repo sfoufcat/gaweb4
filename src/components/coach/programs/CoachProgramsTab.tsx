@@ -1794,6 +1794,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 const endDay = Math.min(startDay + 6, selectedProgram.lengthDays);
 
                 try {
+                  console.log('[onAddModule] Creating module:', { startDay, endDay, programId: selectedProgram.id });
                   const res = await fetch(`${apiBasePath}/${selectedProgram.id}/modules`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1803,22 +1804,25 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       endDayIndex: endDay,
                     }),
                   });
-                  if (res.ok) {
-                    const data = await res.json();
-                    setProgramModules([...programModules, data.module]);
-                    // Update hasModules if first module
-                    if (programModules.length === 0) {
-                      await fetch(`${apiBasePath}/${selectedProgram.id}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ hasModules: true }),
-                      });
-                      // Update local state
-                      setSelectedProgram({ ...selectedProgram, hasModules: true });
-                    }
+
+                  if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    console.error('[onAddModule] Failed:', res.status, errorData);
+                    alert(`Failed to create module: ${errorData.error || res.statusText}`);
+                    return;
+                  }
+
+                  const data = await res.json();
+                  console.log('[onAddModule] Created module:', data);
+                  setProgramModules([...programModules, data.module]);
+
+                  // Update hasModules if first module (API already does this, but update local state)
+                  if (programModules.length === 0) {
+                    setSelectedProgram({ ...selectedProgram, hasModules: true });
                   }
                 } catch (err) {
-                  console.error('Error creating module:', err);
+                  console.error('[onAddModule] Error:', err);
+                  alert('Failed to create module. Check console for details.');
                 }
               }}
               onAddWeek={async (moduleId: string) => {

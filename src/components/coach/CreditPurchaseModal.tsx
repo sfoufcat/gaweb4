@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useBrandingValues } from '@/contexts/BrandingContext';
 
 interface CreditPack {
   size: number;
@@ -103,6 +104,7 @@ function SavedCardsSelection({
   onPay,
   isProcessing,
   priceInCents,
+  accentColor,
 }: {
   savedMethods: SavedPaymentMethod[];
   selectedMethodId: string | null;
@@ -111,6 +113,7 @@ function SavedCardsSelection({
   onPay: () => void;
   isProcessing: boolean;
   priceInCents: number;
+  accentColor: string;
 }) {
   return (
     <div className="flex flex-col">
@@ -134,9 +137,13 @@ function SavedCardsSelection({
             className={cn(
               'w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 text-left',
               selectedMethodId === method.id
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-primary/50'
+                ? 'bg-[var(--accent-color)]/5'
+                : 'border-border hover:border-[var(--accent-color)]/50'
             )}
+            style={{
+              '--accent-color': accentColor,
+              borderColor: selectedMethodId === method.id ? accentColor : undefined,
+            } as React.CSSProperties}
           >
             {/* Card icon */}
             <div className="w-12 h-8 bg-gradient-to-br from-gray-600 to-gray-800 rounded-md flex items-center justify-center">
@@ -162,7 +169,7 @@ function SavedCardsSelection({
 
             {/* Selection indicator */}
             {selectedMethodId === method.id && (
-              <CircleCheck className="w-6 h-6 flex-shrink-0 text-primary" />
+              <CircleCheck className="w-6 h-6 flex-shrink-0" style={{ color: accentColor }} />
             )}
           </button>
         ))}
@@ -171,10 +178,14 @@ function SavedCardsSelection({
         <button
           type="button"
           onClick={onAddNew}
-          className="w-full p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all flex items-center gap-4 text-left"
+          className="w-full p-4 rounded-xl border-2 border-dashed border-border hover:opacity-80 transition-all flex items-center gap-4 text-left"
+          style={{ '--accent-color': accentColor } as React.CSSProperties}
         >
-          <div className="w-12 h-8 rounded-md flex items-center justify-center bg-primary/10">
-            <Plus className="w-5 h-5 text-primary" />
+          <div
+            className="w-12 h-8 rounded-md flex items-center justify-center"
+            style={{ backgroundColor: `${accentColor}15` }}
+          >
+            <Plus className="w-5 h-5" style={{ color: accentColor }} />
           </div>
           <span className="font-medium text-text-primary dark:text-[#f5f5f8]">
             Add new card
@@ -187,7 +198,8 @@ function SavedCardsSelection({
         type="button"
         onClick={onPay}
         disabled={!selectedMethodId || isProcessing}
-        className="w-full py-3.5 px-6 bg-primary text-primary-foreground rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+        className="w-full py-3.5 px-6 text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+        style={{ backgroundColor: accentColor }}
       >
         {isProcessing ? (
           <>
@@ -219,11 +231,13 @@ function StripePaymentForm({
   onBack,
   priceInCents,
   packCredits,
+  accentColor,
 }: {
   onSuccess: () => void;
   onBack: () => void;
   priceInCents: number;
   packCredits: number;
+  accentColor: string;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -325,7 +339,8 @@ function StripePaymentForm({
       <button
         type="submit"
         disabled={!stripe || isProcessing}
-        className="w-full py-3.5 px-6 bg-primary text-primary-foreground rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+        className="w-full py-3.5 px-6 text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+        style={{ backgroundColor: accentColor }}
       >
         {isProcessing ? (
           <>
@@ -362,6 +377,8 @@ export function CreditPurchaseModal({
 }: CreditPurchaseModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { colors } = useBrandingValues();
+  const accentColor = colors.accentLight;
 
   const [step, setStep] = useState<PurchaseStep>('selectPack');
   const [loading, setLoading] = useState(true);
@@ -602,9 +619,13 @@ export function CreditPurchaseModal({
                   className={cn(
                     'w-full p-4 rounded-lg border-2 transition-all text-left',
                     selectedPack?.size === pack.size
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50'
+                      ? 'bg-[var(--accent-color)]/5'
+                      : 'border-border hover:border-[var(--accent-color)]/50'
                   )}
+                  style={{
+                    '--accent-color': accentColor,
+                    borderColor: selectedPack?.size === pack.size ? accentColor : undefined,
+                  } as React.CSSProperties}
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -616,7 +637,7 @@ export function CreditPurchaseModal({
                     <div className="text-right">
                       <p className="text-lg font-semibold">{pack.priceFormatted}</p>
                       {selectedPack?.size === pack.size && (
-                        <Check className="h-4 w-4 text-primary ml-auto mt-1" />
+                        <Check className="h-4 w-4 ml-auto mt-1" style={{ color: accentColor }} />
                       )}
                     </div>
                   </div>
@@ -638,7 +659,8 @@ export function CreditPurchaseModal({
               type="button"
               onClick={handleContinue}
               disabled={!selectedPack}
-              className="w-full py-3 px-6 bg-primary text-primary-foreground rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 px-6 text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              style={{ backgroundColor: accentColor }}
             >
               <CreditCard className="h-4 w-4" />
               {selectedPack
@@ -681,6 +703,7 @@ export function CreditPurchaseModal({
               onPay={handlePayWithSavedMethod}
               isProcessing={isProcessingSavedPayment}
               priceInCents={selectedPack?.priceInCents || 0}
+              accentColor={accentColor}
             />
           </motion.div>
         );
@@ -696,7 +719,10 @@ export function CreditPurchaseModal({
           >
             <div className="relative mb-4">
               <div className="w-12 h-12 rounded-full border-2 border-muted" />
-              <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-primary animate-spin" />
+              <div
+                className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
+                style={{ borderTopColor: accentColor }}
+              />
             </div>
             <p className="text-muted-foreground">Setting up payment...</p>
           </motion.div>
@@ -713,7 +739,10 @@ export function CreditPurchaseModal({
           >
             <div className="relative mb-4">
               <div className="w-12 h-12 rounded-full border-2 border-muted" />
-              <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-primary animate-spin" />
+              <div
+                className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
+                style={{ borderTopColor: accentColor }}
+              />
             </div>
             <p className="text-muted-foreground">Processing payment...</p>
           </motion.div>
@@ -736,7 +765,7 @@ export function CreditPurchaseModal({
                 appearance: {
                   theme: isDark ? 'night' : 'stripe',
                   variables: {
-                    colorPrimary: '#7c3aed',
+                    colorPrimary: accentColor,
                     colorBackground: isDark ? '#1a1e26' : '#ffffff',
                     colorText: isDark ? '#e8e6e3' : '#1a1816',
                     ...(isDark && { colorTextSecondary: '#9ca3af' }),
@@ -749,14 +778,14 @@ export function CreditPurchaseModal({
                       borderColor: isDark ? '#313746' : '#e1ddd8',
                     },
                     '.Input:focus': {
-                      borderColor: '#7c3aed',
-                      boxShadow: '0 0 0 1px #7c3aed',
+                      borderColor: accentColor,
+                      boxShadow: `0 0 0 1px ${accentColor}`,
                     },
                     '.Tab': {
                       borderColor: isDark ? '#313746' : '#e1ddd8',
                     },
                     '.Tab--selected': {
-                      borderColor: '#7c3aed',
+                      borderColor: accentColor,
                       backgroundColor: isDark ? '#262b35' : '#faf8f6',
                     },
                   },
@@ -768,6 +797,7 @@ export function CreditPurchaseModal({
                 onBack={handleBackToMethodSelection}
                 priceInCents={selectedPack?.priceInCents || 0}
                 packCredits={selectedPack?.credits || 0}
+                accentColor={accentColor}
               />
             </Elements>
           </motion.div>
