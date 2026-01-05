@@ -15,21 +15,27 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
 
   if (skipAnimation) {
     return (
-      <div className="flex flex-col min-h-screen">
-        {children}
-      </div>
+      <>
+        <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] -z-10" />
+        <div className="min-h-screen relative">
+          {children}
+        </div>
+      </>
     );
   }
 
   return (
-    <motion.div
-      key={pathname}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-      className={isFullWidthPage ? 'flex flex-col min-h-screen' : 'max-w-7xl mx-auto p-4 sm:p-6 lg:p-10'}
-    >
-      {children}
-    </motion.div>
+    <>
+      <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] -z-10" />
+      <motion.div
+        key={pathname}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
+        className={`min-h-screen relative ${isFullWidthPage ? '' : 'max-w-7xl mx-auto p-4 sm:p-6 lg:p-10'}`}
+      >
+        {children}
+      </motion.div>
+    </>
   );
 }

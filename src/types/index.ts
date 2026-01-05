@@ -440,7 +440,7 @@ export interface GoalSaveResponse {
 // Task Types
 export type TaskStatus = 'pending' | 'completed';
 export type TaskListType = 'focus' | 'backlog';
-export type TaskSourceType = 'user' | 'program';
+export type TaskSourceType = 'user' | 'program' | 'call_suggestion';
 
 export interface Task {
   id: string;
@@ -456,9 +456,12 @@ export interface Task {
   updatedAt: string;
   completedAt?: string;
   // Program-related fields
-  sourceType?: TaskSourceType; // 'user' | 'program' - defaults to 'user'
+  sourceType?: TaskSourceType; // 'user' | 'program' | 'call_suggestion' - defaults to 'user'
   programEnrollmentId?: string | null; // FK to starter_program_enrollments
   programDayIndex?: number | null; // Which program day this task came from
+  // Call summary fields (when sourceType === 'call_suggestion')
+  callSummaryId?: string; // FK to call_summaries
+  suggestedTaskId?: string; // FK to suggested_tasks
 }
 
 export interface TaskFormData {
@@ -4152,9 +4155,16 @@ export interface UnifiedEvent {
   };
   
   // ═══════════════════════════════════════════════════════════════════════════
-  // POST-EVENT
+  // POST-EVENT & CALL RECORDING
   // ═══════════════════════════════════════════════════════════════════════════
   recordingUrl?: string;
+  callSummaryId?: string;                // FK to call_summaries collection
+  hasCallRecording?: boolean;            // Whether recording exists
+  recordingStatus?: 'recording' | 'processing' | 'ready' | 'failed';
+  streamVideoCallId?: string;            // Stream Video call ID
+  generateSummary?: boolean;             // Per-event override for auto-generation
+  meetingUrl?: string;                   // Zoom/Google Meet/manual link
+  meetingProvider?: 'zoom' | 'google_meet' | 'stream' | 'manual';
   
   // ═══════════════════════════════════════════════════════════════════════════
   // CHAT INTEGRATION
@@ -4880,4 +4890,175 @@ export type SchedulingNotificationType =
   | 'call_reminder_24h'             // 24 hour reminder
   | 'call_reminder_1h'              // 1 hour reminder
   | 'response_deadline_approaching'; // Deadline to respond approaching
+
+// ============================================================================
+// AI CALL SUMMARIES
+// ============================================================================
+
+/**
+ * CallSummary - AI-generated summary of a coaching call
+ * Stored in Firestore 'organizations/{orgId}/call_summaries/{summaryId}'
+ */
+export interface CallSummary {
+  id: string;
+  organizationId: string;
+  callId: string;                    // Stream Video call ID
+  eventId?: string;                  // UnifiedEvent ID
+  transcriptionId: string;
+  callType: 'coaching_1on1';         // Only 1:1 coaching calls supported
+
+  // Participants
+  hostUserId: string;
+  participantUserIds: string[];
+  clientUserId?: string;
+
+  // Program context
+  programId?: string;
+  programEnrollmentId?: string;
+  squadId?: string;
+
+  // Recording
+  recordingUrl?: string;             // Audio recording URL
+  recordingDurationSeconds?: number;
+
+  // AI Summary
+  summary: {
+    executive: string;
+    keyDiscussionPoints: string[];
+    clientProgress?: string;
+    challenges?: string[];
+    breakthroughs?: string[];
+    coachingNotes?: string;
+  };
+
+  // AI Action Items
+  actionItems: CallSummaryActionItem[];
+
+  followUpQuestions?: string[];
+
+  status: 'processing' | 'completed' | 'failed';
+  processingError?: string;
+  callDurationSeconds: number;
+  callStartedAt: string;
+  callEndedAt: string;
+
+  reviewedByCoach: boolean;
+  reviewedAt?: string;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * CallSummaryActionItem - Individual action item from AI summary
+ */
+export interface CallSummaryActionItem {
+  id: string;
+  description: string;
+  assignedTo: 'client' | 'coach' | 'both';
+  priority: 'high' | 'medium' | 'low';
+  category?: string;
+}
+
+/**
+ * SuggestedTask - Task suggested from call summary pending coach review
+ * Stored in Firestore 'organizations/{orgId}/suggested_tasks/{taskId}'
+ */
+export interface SuggestedTask {
+  id: string;
+  organizationId: string;
+  callSummaryId: string;
+  userId: string;                    // Client user ID
+  title: string;
+  notes?: string;
+  programEnrollmentId?: string;
+  status: 'pending_review' | 'approved' | 'rejected' | 'assigned';
+  assignedTaskId?: string;           // Task ID once assigned
+  reviewedBy?: string;               // Coach user ID who reviewed
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * UploadedRecording - Manually uploaded call recording for external calls
+ * Stored in Firestore 'organizations/{orgId}/uploaded_recordings/{recordingId}'
+ */
+export interface UploadedRecording {
+  id: string;
+  organizationId: string;
+  uploadedBy: string;                // Coach user ID
+  clientUserId?: string;
+  programEnrollmentId?: string;
+  fileName: string;
+  fileUrl: string;
+  fileSizeBytes: number;
+  durationSeconds?: number;          // Extracted from audio file
+  status: 'uploaded' | 'transcribing' | 'summarizing' | 'completed' | 'failed';
+  callSummaryId?: string;            // Once processed
+  processingError?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================================
+// ORGANIZATION MEETING & SUMMARY SETTINGS
+// ============================================================================
+
+/**
+ * MeetingIntegrations - External meeting provider integrations
+ */
+export interface MeetingIntegrations {
+  zoom?: {
+    connected: boolean;
+    accessToken: string;             // Encrypted
+    refreshToken: string;            // Encrypted
+    userId: string;
+    email: string;
+    expiresAt?: string;
+  };
+  googleMeet?: {
+    connected: boolean;
+    calendarId: string;              // Uses existing Google Calendar OAuth
+  };
+}
+
+/**
+ * SummarySettings - AI summary generation settings
+ */
+export interface SummarySettings {
+  autoGenerate: boolean;             // Auto-generate summaries for all calls
+  taskGenerationMode: 'auto' | 'approve' | 'disabled';
+}
+
+/**
+ * SummaryCredits - Credits tracking for AI summaries
+ */
+export interface SummaryCredits {
+  allocatedMinutes: number;          // From plan tier (1200, 3000, 6000) = calls × 60
+  usedMinutes: number;               // Minutes used this billing period
+  purchasedMinutes: number;          // Purchased credit packs (in minutes, never expire)
+  usedPurchasedMinutes: number;      // Purchased minutes used
+  periodStart: string;               // ISO date
+  periodEnd: string;                 // ISO date
+}
+
+/**
+ * MeetingProvider - Types of meeting providers
+ */
+export type MeetingProvider = 'zoom' | 'google_meet' | 'stream' | 'manual';
+
+/**
+ * CreditPackType - Available credit pack sizes
+ */
+export type CreditPackType = 5 | 10 | 20;
+
+/**
+ * CreditPackPricing - Pricing for credit packs
+ */
+export const CREDIT_PACK_PRICING: Record<CreditPackType, number> = {
+  5: 400,   // $4.00 in cents
+  10: 600,  // $6.00 in cents
+  20: 1000, // $10.00 in cents
+};
 

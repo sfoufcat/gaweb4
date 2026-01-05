@@ -34,7 +34,6 @@ import {
   Moon,
   BarChart3,
   GraduationCap,
-  Send,
   Loader2,
 } from 'lucide-react';
 import {
@@ -845,17 +844,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
     setShowNotesModal(true);
   };
 
-  // Go to chat
-  const handleGoToChat = () => {
-    if (isDemoMode) {
-      openSignupModal();
-      return;
-    }
-    if (coachingData?.chatChannelId) {
-      router.push(`/chat?channel=${coachingData.chatChannelId}`);
-    }
-  };
-
   // Format call time for display
   const formatCallTime = (datetime: string, timezone: string) => {
     try {
@@ -1126,18 +1114,9 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               onClick={() => setShowDMModal(true)}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
             >
-              <Send className="w-4 h-4" />
-              Send DM
+              <MessageCircle className="w-4 h-4" />
+              Chat
             </button>
-            {hasCoaching && coachingData?.chatChannelId && (
-              <button
-                onClick={handleGoToChat}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#11141b] hover:bg-[#e9e5e0] dark:hover:bg-[#171b22] rounded-full font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] transition-colors"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Chat
-              </button>
-            )}
             {hasCoaching && (
               <button
                 onClick={() => setShowCallModal(true)}
@@ -2148,6 +2127,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         <SendDMModal
           recipients={[dmRecipient]}
           onClose={() => setShowDMModal(false)}
+          channelId={coachingData?.chatChannelId}
         />
       )}
 

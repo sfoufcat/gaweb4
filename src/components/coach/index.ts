@@ -1,8 +1,11 @@
 export { AlignmentActivitiesSettings } from './AlignmentActivitiesSettings';
+export { CallSummaryCard } from './CallSummaryCard';
+export { CallSummarySettingsCard } from './CallSummarySettingsCard';
 export { ClientDetailSlideOver } from './ClientDetailSlideOver';
 export { ClientDetailView } from './ClientDetailView';
 export { CoachingClientsTab } from './CoachingClientsTab';
 export { CoachingClientView } from './CoachingClientView';
+export { CreditPurchaseModal } from './CreditPurchaseModal';
 export { CustomizeBrandingTab } from './CustomizeBrandingTab';
 export { ChannelManagementTab } from './ChannelManagementTab';
 export { InviteClientsDialog } from './InviteClientsDialog';
@@ -12,7 +15,9 @@ export { LimitReachedModal, useLimitCheck } from './LimitReachedModal';
 export { MarketplaceSettings } from './MarketplaceSettings';
 export { PaymentFailedBanner } from './PaymentFailedBanner';
 export { CoachReferralCard } from './CoachReferralCard';
+export { RecordingUpload } from './RecordingUpload';
 export { SendDMModal, type DMRecipient } from './SendDMModal';
+export { SuggestedTasksPanel } from './SuggestedTasksPanel';
 
 // Check-in flow management
 export { CoachCheckInsTab } from './checkins';

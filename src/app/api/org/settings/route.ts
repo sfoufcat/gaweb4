@@ -161,6 +161,22 @@ export async function PATCH(request: NextRequest) {
       };
     }
 
+    // AI Summary settings
+    if (body.summarySettings !== undefined) {
+      const summarySettings = body.summarySettings;
+
+      // Validate task generation mode
+      const validModes = ['auto', 'approve', 'disabled'];
+      if (summarySettings.taskGenerationMode && !validModes.includes(summarySettings.taskGenerationMode)) {
+        return NextResponse.json({ error: 'Invalid task generation mode' }, { status: 400 });
+      }
+
+      updateData.summarySettings = {
+        autoGenerate: summarySettings.autoGenerate !== false, // Default to true
+        taskGenerationMode: summarySettings.taskGenerationMode || 'approve',
+      };
+    }
+
     // Global tracking pixels settings
     if (body.globalTracking !== undefined) {
       // Allow null to clear global tracking

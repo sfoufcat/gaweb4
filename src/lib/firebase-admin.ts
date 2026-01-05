@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import { getStorage } from 'firebase-admin/storage';
 
 // Initialize Firebase Admin SDK (server-side only)
 const initAdmin = () => {
@@ -60,8 +61,9 @@ const initAdmin = () => {
 // Initialize admin
 initAdmin();
 
-// Export Firestore and Auth instances (settings already applied during init)
+// Export Firestore, Auth, and Storage instances (settings already applied during init)
 export const adminDb = getFirestore();
 export const adminAuth = getAuth();
+export const adminStorage = getStorage();
 
 export { initAdmin };

@@ -329,6 +329,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
+  // Handle credit pack purchase
+  if (checkoutType === 'credit_purchase') {
+    await handleCreditPurchaseCompleted(session);
+    return;
+  }
+
   // Handle guest checkout (no userId)
   if (!userId && (guestSessionId || isGuestCheckout)) {
     await handleGuestCheckoutCompleted(session, guestSessionId, plan);
@@ -2147,6 +2153,58 @@ async function handleProgramSubscriptionCheckoutCompleted(session: Stripe.Checko
       orderBumpsJson,
       now
     );
+  }
+}
+
+/**
+ * Handle credit pack purchase completion
+ * Adds purchased credits to the organization's summary credits
+ */
+async function handleCreditPurchaseCompleted(session: Stripe.Checkout.Session) {
+  const organizationId = session.metadata?.organizationId;
+  const packSize = session.metadata?.packSize;
+  const credits = session.metadata?.credits;
+
+  if (!organizationId || !packSize || !credits) {
+    console.error('[STRIPE_WEBHOOK] Credit purchase missing required metadata:', { organizationId, packSize, credits });
+    return;
+  }
+
+  const creditsToAdd = parseInt(credits, 10);
+  // Convert credits (calls) to minutes (60 min per call)
+  const minutesToAdd = creditsToAdd * 60;
+
+  console.log(`[STRIPE_WEBHOOK] Credit purchase completed - org: ${organizationId}, pack: ${packSize}, credits: ${creditsToAdd}`);
+
+  try {
+    const orgRef = adminDb.collection('organizations').doc(organizationId);
+
+    await adminDb.runTransaction(async (transaction) => {
+      const orgDoc = await transaction.get(orgRef);
+
+      if (!orgDoc.exists) {
+        throw new Error(`Organization ${organizationId} not found`);
+      }
+
+      const orgData = orgDoc.data();
+      const currentCredits = orgData?.summaryCredits || {
+        allocatedMinutes: 0,
+        usedMinutes: 0,
+        purchasedMinutes: 0,
+        usedPurchasedMinutes: 0,
+        periodStart: null,
+        periodEnd: null,
+      };
+
+      // Add to purchased minutes (never expire)
+      transaction.update(orgRef, {
+        'summaryCredits.purchasedMinutes': (currentCredits.purchasedMinutes || 0) + minutesToAdd,
+      });
+    });
+
+    console.log(`[STRIPE_WEBHOOK] Added ${creditsToAdd} credits (${minutesToAdd} minutes) to org ${organizationId}`);
+  } catch (error) {
+    console.error('[STRIPE_WEBHOOK] Error adding credits:', error);
   }
 }
 

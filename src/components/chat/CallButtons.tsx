@@ -3,78 +3,132 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
-import { Phone, Video } from 'lucide-react';
+import { Phone, Calendar } from 'lucide-react';
 import { useStreamVideoClient } from '@/contexts/StreamVideoContext';
 import type { Channel } from 'stream-chat';
 
 interface CallButtonsProps {
   channel: Channel | undefined;
   className?: string;
+  onSquadCallClick?: () => void;
 }
 
+type ChannelCallType = 'dm' | 'squad' | 'none';
+
 /**
- * Check if a channel supports calling
- * 
- * Only DM channels and Squad channels are allowed to have calls.
- * - DMs are identified by having exactly 2 members and NOT being a special channel
- * - Squad channels are identified by isSquadChannel flag or ID starting with 'squad-'
+ * Get the call type for a channel
+ *
+ * Returns:
+ * - 'dm' for direct message channels (1-on-1 calls)
+ * - 'squad' for squad channels (external meeting links)
+ * - 'none' for channels that don't support calls
  */
-export function canCallChannel(channel: Channel | undefined): boolean {
-  if (!channel) return false;
+export function getChannelCallType(channel: Channel | undefined): ChannelCallType {
+  if (!channel) return 'none';
 
   const channelId = channel.id;
   const channelData = channel.data as Record<string, unknown> | undefined;
-  
-  // Check for explicit flags first
-  if (channelData?.isDirectMessage === true) return true;
-  if (channelData?.isSquadChannel === true) return true;
-  
-  // Check for squad channel by ID pattern
-  if (channelId?.startsWith('squad-')) return true;
-  
-  // Check for DM channel by ID pattern and member count
-  if (channelId?.startsWith('dm-')) {
-    // Verify it's a 2-member DM
-    const memberCount = Object.keys(channel.state?.members || {}).length;
-    return memberCount === 2;
+
+  // Check for squad channel first
+  if (channelData?.isSquadChannel === true || channelId?.startsWith('squad-')) {
+    return 'squad';
   }
-  
+
+  // Check for DM channel
+  if (channelData?.isDirectMessage === true) return 'dm';
+  if (channelId?.startsWith('dm-')) {
+    const memberCount = Object.keys(channel.state?.members || {}).length;
+    if (memberCount === 2) return 'dm';
+  }
+
   // Explicitly disallow special channels
   const specialChannelIds = ['announcements', 'social-corner', 'share-wins'];
   if (channelId && specialChannelIds.includes(channelId)) {
-    return false;
+    return 'none';
   }
-  
-  // For any other channel, check if it looks like a DM (2 members, messaging type)
+
+  // For any other channel, check if it looks like a DM
   if (channel.type === 'messaging') {
     const memberCount = Object.keys(channel.state?.members || {}).length;
-    // If exactly 2 members and no special name, it's likely a DM
     if (memberCount === 2 && !channelData?.name) {
-      return true;
+      return 'dm';
     }
   }
-  
+
+  return 'none';
+}
+
+/**
+ * Check if a user can call another user in a DM
+ *
+ * Rules:
+ * - Coaches can call anyone
+ * - Clients can only call coaches (not other clients)
+ */
+export function canMakeDirectCall(
+  currentUserRole: string | undefined,
+  otherUserRole: string | undefined
+): boolean {
+  // Coaches and super coaches can call anyone
+  if (currentUserRole === 'coach' || currentUserRole === 'super_coach' ||
+      currentUserRole === 'admin' || currentUserRole === 'super_admin') {
+    return true;
+  }
+
+  // Members/clients can only call coaches
+  if (currentUserRole === 'member' || currentUserRole === 'user' || !currentUserRole) {
+    return otherUserRole === 'coach' || otherUserRole === 'super_coach' ||
+           otherUserRole === 'admin' || otherUserRole === 'super_admin';
+  }
+
   return false;
+}
+
+// Legacy function for backward compatibility
+export function canCallChannel(channel: Channel | undefined): boolean {
+  return getChannelCallType(channel) !== 'none';
 }
 
 /**
  * CallButtons Component
- * 
- * Renders audio and video call buttons for channels that support calling.
- * Only appears for DM and Squad channels.
+ *
+ * Renders call buttons based on channel type:
+ * - DM channels: Single phone icon for audio-first 1-on-1 calls
+ * - Squad channels: Calendar icon to view scheduled calls
+ *
+ * Call permissions:
+ * - Coaches can call anyone
+ * - Clients can only call coaches (not other clients)
  */
-export function CallButtons({ channel, className = '' }: CallButtonsProps) {
+export function CallButtons({ channel, className = '', onSquadCallClick }: CallButtonsProps) {
   const router = useRouter();
   const { user: clerkUser } = useUser();
   const { videoClient, activeCall, setActiveCall } = useStreamVideoClient();
   const [isStartingCall, setIsStartingCall] = useState(false);
   const [showAlreadyInCallPopup, setShowAlreadyInCallPopup] = useState(false);
 
-  // Check if calling is allowed for this channel
-  const canCall = canCallChannel(channel);
+  // Determine channel call type
+  const callType = getChannelCallType(channel);
 
-  // Start an audio or video call
-  const startCall = useCallback(async (withVideo: boolean) => {
+  // For DMs, check if the current user can call the other user
+  const canCall = (() => {
+    if (callType === 'none') return false;
+    if (callType === 'squad') return true; // Squad shows schedule UI
+
+    // For DMs, check role-based permissions
+    if (callType === 'dm' && clerkUser) {
+      const members = Object.values(channel?.state?.members || {});
+      const otherMember = members.find(m => m.user?.id !== clerkUser.id);
+      const currentUserRole = (clerkUser.publicMetadata as Record<string, unknown>)?.orgRole as string;
+      const otherUserRole = (otherMember?.user as Record<string, unknown> | undefined)?.role as string;
+      return canMakeDirectCall(currentUserRole, otherUserRole);
+    }
+
+    return false;
+  })();
+
+  // Start an audio call (video can be enabled during the call)
+  const startCall = useCallback(async () => {
     if (!videoClient || !channel || !clerkUser) return;
 
     // Check if already in a call
@@ -96,19 +150,15 @@ export function CallButtons({ channel, className = '' }: CallButtonsProps) {
         .filter(m => m.user?.id && m.user.id !== clerkUser.id)
         .map(m => m.user!.id);
 
-      // Determine if this is a squad channel
+      // Get channel metadata
       const channelData = channel.data as Record<string, unknown> | undefined;
-      const isSquadChannel = channelData?.isSquadChannel === true || channel.id?.startsWith('squad-');
       const channelName = (channelData?.name as string) || 'Chat';
       const channelImage = (channelData?.image as string) || undefined;
 
-      // IMPORTANT: For audio-only calls, disable camera BEFORE joining
-      // This prevents the SDK from auto-enabling the camera during join
-      if (!withVideo) {
-        await call.camera.disable();
-      }
+      // IMPORTANT: Audio-first - disable camera BEFORE joining
+      await call.camera.disable();
 
-      // Join the call - this will create it if it doesn't exist
+      // Join the call with audio-only recording enabled
       await call.join({
         create: true,
         ring: memberIds.length > 0,
@@ -117,17 +167,21 @@ export function CallButtons({ channel, className = '' }: CallButtonsProps) {
             channelId: channel.id,
             channelName,
             channelImage,
-            isSquadChannel,
-            isVideoCall: withVideo,
+            isSquadChannel: false,
+            isVideoCall: false,
+            callType: 'coaching_1on1',
           },
           members: memberIds.map(id => ({ user_id: id })),
+          settings_override: {
+            recording: {
+              mode: 'available',
+              audio_only: true,
+            },
+          },
         },
       });
 
-      // Enable camera only for video calls (audio calls already have it disabled)
-      if (withVideo) {
-        await call.camera.enable();
-      }
+      // Enable microphone
       await call.microphone.enable();
 
       // Set as active call
@@ -163,25 +217,28 @@ export function CallButtons({ channel, className = '' }: CallButtonsProps) {
   return (
     <>
       <div className={`flex items-center gap-1 ${className}`}>
-        {/* Audio call button */}
-        <button
-          onClick={() => startCall(false)}
-          disabled={isStartingCall || !videoClient}
-          className="w-10 h-10 flex items-center justify-center text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-full transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="Start audio call"
-        >
-          <Phone className="w-5 h-5" />
-        </button>
+        {/* DM channels: Single phone icon for audio call */}
+        {callType === 'dm' && (
+          <button
+            onClick={startCall}
+            disabled={isStartingCall || !videoClient}
+            className="w-10 h-10 flex items-center justify-center text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-full transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Start call"
+          >
+            <Phone className="w-5 h-5" />
+          </button>
+        )}
 
-        {/* Video call button */}
-        <button
-          onClick={() => startCall(true)}
-          disabled={isStartingCall || !videoClient}
-          className="w-10 h-10 flex items-center justify-center text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-full transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="Start video call"
-        >
-          <Video className="w-5 h-5" />
-        </button>
+        {/* Squad channels: Calendar icon to view scheduled calls */}
+        {callType === 'squad' && onSquadCallClick && (
+          <button
+            onClick={onSquadCallClick}
+            className="w-10 h-10 flex items-center justify-center text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-full transition-colors flex-shrink-0"
+            aria-label="View scheduled calls"
+          >
+            <Calendar className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Already in call popup */}
