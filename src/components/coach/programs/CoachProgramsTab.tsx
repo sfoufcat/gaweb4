@@ -856,7 +856,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
     const isClientMode = clientViewContext.mode === 'client' && selectedProgram.type === 'individual';
     // Only use client data if it matches the current context (prevents stale data)
-    const dataMatchesContext = loadedEnrollmentId === clientViewContext.enrollmentId;
+    const dataMatchesContext = clientViewContext.mode === 'client' && loadedEnrollmentId === clientViewContext.enrollmentId;
     const daysToUse = (isClientMode && dataMatchesContext) ? clientDays : programDays;
 
     // In client mode, we might not have days yet (they're created on first save)
@@ -2495,7 +2495,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   // For individual programs in client mode, use client week
                   const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
                   // Only use client data if it matches the current context (prevents stale data)
-                  const dataMatchesContext = loadedEnrollmentId === clientViewContext.enrollmentId;
+                  const dataMatchesContext = clientViewContext.mode === 'client' && loadedEnrollmentId === clientViewContext.enrollmentId;
                   const clientWeek = isClientMode && dataMatchesContext
                     ? clientWeeks.find(cw => cw.weekNumber === weekNumber)
                     : null;
@@ -2677,7 +2677,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 (() => {
                   // Check if we're in client mode and data is loading
                   const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
-                  const dataMatchesContext = loadedEnrollmentId === clientViewContext.enrollmentId;
+                  const dataMatchesContext = clientViewContext.mode === 'client' && loadedEnrollmentId === clientViewContext.enrollmentId;
 
                   // Show loading indicator when switching between clients
                   if (isClientMode && !dataMatchesContext) {
