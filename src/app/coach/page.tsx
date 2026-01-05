@@ -313,7 +313,7 @@ export default function CoachPage() {
   // Check authorization (skip on demo site)
   useEffect(() => {
     // Skip auth redirect if coming from OAuth callback (give Clerk time to sync session)
-    if (searchParams.get('calendar_connected')) {
+    if (searchParams.get('calendar_connected') || searchParams.get('integration_connected')) {
       return;
     }
     if (!isDemoSite && isLoaded && mounted && !hasAccess) {

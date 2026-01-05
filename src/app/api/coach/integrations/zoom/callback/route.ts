@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { storeIntegration, type ZoomSettings } from '@/lib/integrations';
+import { getOrgDomain } from '@/lib/tenant/resolveTenant';
 
 export async function GET(req: NextRequest) {
   try {
@@ -30,8 +31,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Decode state to get orgId and userId
-    let stateData: { orgId: string; userId: string; provider: string };
+    // Decode state to get orgId, userId, and originDomain
+    let stateData: { orgId: string; userId: string; provider: string; originDomain?: string; timestamp?: number };
     try {
       stateData = JSON.parse(Buffer.from(state, 'base64').toString());
     } catch {
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { orgId, userId } = stateData;
+    const { orgId, userId, originDomain } = stateData;
 
     // Exchange code for tokens
     const clientId = process.env.ZOOM_OAUTH_CLIENT_ID;
@@ -132,10 +133,36 @@ export async function GET(req: NextRequest) {
 
     console.log(`[ZOOM_CALLBACK] Successfully connected for org ${orgId}`);
 
-    // Redirect back to settings with success
-    return NextResponse.redirect(
-      new URL('/coach/settings?tab=integrations&connected=zoom', req.url)
-    );
+    // Two-step redirect pattern: subdomain first, then custom domain
+    // This ensures Clerk session is established on *.coachful.co before redirecting to custom domain
+    const orgDomain = await getOrgDomain(orgId);
+
+    // Default to origin domain if no subdomain found
+    if (!orgDomain?.subdomain) {
+      console.log(`[ZOOM_CALLBACK] No subdomain found for org ${orgId}, redirecting to origin`);
+      const redirectDomain = originDomain || 'app.coachful.co';
+      const successUrl = new URL('/coach', `https://${redirectDomain}`);
+      successUrl.searchParams.set('tab', 'scheduling');
+      successUrl.searchParams.set('integration_connected', 'zoom');
+      return NextResponse.redirect(successUrl);
+    }
+
+    const subdomain = orgDomain.subdomain;
+    const subdomainHost = `${subdomain}.coachful.co`;
+
+    const successUrl = new URL('/coach', `https://${subdomainHost}`);
+    successUrl.searchParams.set('tab', 'scheduling');
+    successUrl.searchParams.set('integration_connected', 'zoom');
+
+    // If origin is different from subdomain, include redirect param for second hop
+    if (originDomain && originDomain !== subdomainHost) {
+      const finalUrl = new URL('/coach', `https://${originDomain}`);
+      finalUrl.searchParams.set('tab', 'scheduling');
+      finalUrl.searchParams.set('integration_connected', 'zoom');
+      successUrl.searchParams.set('redirect', finalUrl.toString());
+    }
+
+    return NextResponse.redirect(successUrl);
   } catch (error) {
     console.error('[ZOOM_CALLBACK] Error:', error);
     return NextResponse.redirect(

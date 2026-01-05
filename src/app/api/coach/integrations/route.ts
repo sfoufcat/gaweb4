@@ -108,8 +108,10 @@ export async function POST(req: NextRequest) {
     if (providerMeta.authType === 'oauth2') {
       // For OAuth providers, return the auth URL
       // The actual OAuth flow is handled by separate callback routes
+      // Include origin domain for redirect after OAuth callback
+      const originDomain = req.headers.get('host') || 'app.coachful.co';
       const state = Buffer.from(
-        JSON.stringify({ orgId: organizationId, userId, provider })
+        JSON.stringify({ orgId: organizationId, userId, provider, originDomain, timestamp: Date.now() })
       ).toString('base64');
 
       let authUrl: string;
