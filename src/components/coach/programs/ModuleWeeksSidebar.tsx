@@ -324,14 +324,17 @@ export function ModuleWeeksSidebar({
   const handleWeeksReorder = useCallback(async (moduleId: string, reorderedWeeks: CalculatedWeek[]) => {
     // Find weeks without stored IDs
     const missingWeeks = reorderedWeeks.filter(w => !w.storedWeekId);
-    
+
+    // Start with a mutable copy of the weeks array
+    let weeksWithIds = [...reorderedWeeks];
+
     // If there are weeks without IDs, try to create them first
     if (missingWeeks.length > 0) {
       if (!onCreateMissingWeeks) {
         console.warn('[ModuleWeeksSidebar] Some weeks have not been saved yet and no create callback provided - cannot reorder');
         return;
       }
-      
+
       setIsCreatingWeeks(true);
       try {
         // Create the missing weeks
@@ -341,11 +344,11 @@ export function ModuleWeeksSidebar({
           startDayIndex: w.startDay,
           endDayIndex: w.endDay,
         }));
-        
+
         const newWeekIds = await onCreateMissingWeeks(weeksToCreate);
-        
-        // Update the reorderedWeeks with the new IDs
-        reorderedWeeks = reorderedWeeks.map(w => {
+
+        // Update weeksWithIds with the new IDs
+        weeksWithIds = weeksWithIds.map(w => {
           if (!w.storedWeekId && newWeekIds.has(w.weekNum)) {
             return { ...w, storedWeekId: newWeekIds.get(w.weekNum), moduleId };
           }
@@ -358,9 +361,16 @@ export function ModuleWeeksSidebar({
       }
       setIsCreatingWeeks(false);
     }
-    
+
+    // Filter out any weeks that still don't have IDs (shouldn't happen, but safety check)
+    const validWeeks = weeksWithIds.filter(w => w.storedWeekId);
+    if (validWeeks.length === 0) {
+      console.warn('[ModuleWeeksSidebar] No valid weeks with IDs to reorder');
+      return;
+    }
+
     // Convert CalculatedWeek[] to ProgramWeek[] format for the API
-    const weekData = reorderedWeeks.map(w => ({
+    const weekData = validWeeks.map(w => ({
       id: w.storedWeekId!,
       weekNumber: w.weekNum,
       moduleId: w.moduleId || moduleId,

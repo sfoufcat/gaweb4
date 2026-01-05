@@ -2411,41 +2411,41 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               }}
             />
 
-            {/* Content Editor - conditionally render based on selection */}
-            <div className="flex-1 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
-              {/* Client Selector for 1:1 programs - above form fields */}
+            {/* Content column - ClientSelector above, then details box */}
+            <div className="flex-1 flex flex-col gap-4">
+              {/* Client Selector for 1:1 programs - above details section */}
               {selectedProgram?.type === 'individual' && (
-                <div className="mb-6">
-                  <ClientSelector
-                    enrollments={programEnrollments}
-                    value={clientViewContext}
-                    onChange={async (context) => {
-                      setClientViewContext(context);
-                      // If selecting a client for the first time, check if we need to initialize their weeks
-                      if (context.mode === 'client' && selectedProgram) {
-                        const existingWeeks = await fetch(
-                          `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
-                        ).then(r => r.ok ? r.json() : { clientWeeks: [] });
+                <ClientSelector
+                  enrollments={programEnrollments}
+                  value={clientViewContext}
+                  onChange={async (context) => {
+                    setClientViewContext(context);
+                    // If selecting a client for the first time, check if we need to initialize their weeks
+                    if (context.mode === 'client' && selectedProgram) {
+                      const existingWeeks = await fetch(
+                        `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
+                      ).then(r => r.ok ? r.json() : { clientWeeks: [] });
 
-                        if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
-                          // Auto-initialize client weeks from template
-                          await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
-                        }
-                        // Fetch client-specific data
-                        await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
-                        await fetchClientDays(selectedProgram.id, context.enrollmentId!);
-                      } else {
-                        setClientWeeks([]);
-                        setClientDays([]);
+                      if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
+                        // Auto-initialize client weeks from template
+                        await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
                       }
-                    }}
-                    loading={loadingEnrollments}
-                    className="w-full max-w-sm"
-                  />
-                </div>
+                      // Fetch client-specific data
+                      await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
+                      await fetchClientDays(selectedProgram.id, context.enrollmentId!);
+                    } else {
+                      setClientWeeks([]);
+                      setClientDays([]);
+                    }
+                  }}
+                  loading={loadingEnrollments}
+                  className="w-full max-w-sm"
+                />
               )}
 
-              {loadingDetails ? (
+              {/* Content Editor - conditionally render based on selection */}
+              <div className="flex-1 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
+                {loadingDetails ? (
                 <div className="space-y-6 animate-pulse">
                   <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
                   <div className="space-y-2">
@@ -2971,6 +2971,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 setViewMode('days');
               }}
             />
+            </div>
           </div>
         ) : viewMode === 'cohorts' ? (
           // Cohorts View (Group programs only)

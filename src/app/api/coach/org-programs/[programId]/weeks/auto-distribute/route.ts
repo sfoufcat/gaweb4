@@ -114,6 +114,13 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden: Coach access required' }, { status: 403 });
     }
 
-    return NextResponse.json({ error: 'Failed to auto-distribute weeks' }, { status: 500 });
+    // Check for Firestore index errors
+    if (message.includes('index') || message.includes('The query requires an index')) {
+      return NextResponse.json({
+        error: 'Database index required. Please contact support or check Firestore console.'
+      }, { status: 500 });
+    }
+
+    return NextResponse.json({ error: `Failed to auto-distribute weeks: ${message}` }, { status: 500 });
   }
 }
