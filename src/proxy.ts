@@ -98,6 +98,7 @@ const PLATFORM_DOMAINS = [
   PLATFORM_ADMIN_DOMAIN,             // Platform admin domain
   DEMO_DOMAIN,                        // Demo site (no auth required)
   `calendar.${BASE_DOMAIN}`,         // OAuth callback domain (neutral for calendar integrations)
+  `azure.${BASE_DOMAIN}`,            // Microsoft identity verification domain
   'pro.coachful.co',           // Legacy domain
   'www.pro.coachful.co',       // Legacy www variant
   'growthaddicts.app',               // Legacy domain after .com migration

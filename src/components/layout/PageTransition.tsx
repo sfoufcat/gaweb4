@@ -15,7 +15,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
 
   if (skipAnimation) {
     return (
-      <div className="flex flex-col min-h-screen bg-app-bg">
+      <div className="flex flex-col min-h-screen">
         {children}
       </div>
     );
@@ -27,7 +27,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-      className={`bg-app-bg ${isFullWidthPage ? 'flex flex-col min-h-screen' : 'min-h-screen max-w-7xl mx-auto p-4 sm:p-6 lg:p-10'}`}
+      className={isFullWidthPage ? 'flex flex-col min-h-screen' : 'max-w-7xl mx-auto p-4 sm:p-6 lg:p-10'}
     >
       {children}
     </motion.div>
