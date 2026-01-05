@@ -57,8 +57,10 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  // themeColor removed to prevent Safari bar from turning opaque on scroll
-  // This ensures content remains visible behind the bar
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#faf8f6' },
+    { media: '(prefers-color-scheme: dark)', color: '#05070b' },
+  ],
 };
 
 /**
@@ -101,7 +103,7 @@ export default async function RootLayout({
       appTitle={ssrBranding.branding.appTitle}
       subdomain={ssrBranding.subdomain}
     >
-      <html lang="en" suppressHydrationWarning>
+      <html lang="en" className="bg-[#faf8f6] dark:bg-[#05070b]" suppressHydrationWarning>
         <head>
           {/* Critical CSS for layout - prevents layout shift by being in initial HTML */}
           <style dangerouslySetInnerHTML={{
