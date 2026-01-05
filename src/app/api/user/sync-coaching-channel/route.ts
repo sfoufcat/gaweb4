@@ -32,12 +32,22 @@ export async function POST() {
     }
 
     // Check if user has an active individual program enrollment
-    const enrollmentsSnapshot = await adminDb
+    // Use simple userId query and filter in memory to avoid index requirements
+    const allEnrollmentsSnapshot = await adminDb
       .collection('program_enrollments')
       .where('userId', '==', userId)
-      .where('organizationId', '==', organizationId)
-      .where('status', '==', 'active')
       .get();
+
+    // Filter to active enrollments in this org
+    const enrollmentDocs = allEnrollmentsSnapshot.docs.filter(doc => {
+      const data = doc.data();
+      return data.organizationId === organizationId && data.status === 'active';
+    });
+
+    const enrollmentsSnapshot = {
+      empty: enrollmentDocs.length === 0,
+      docs: enrollmentDocs
+    };
 
     if (enrollmentsSnapshot.empty) {
       return NextResponse.json({
@@ -194,7 +204,13 @@ export async function POST() {
 
   } catch (error) {
     console.error('[SYNC_COACHING_ERROR]', error);
-    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    return NextResponse.json({
+      error: 'Internal Error',
+      message: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? errorStack : undefined
+    }, { status: 500 });
   }
 }
 
@@ -221,12 +237,16 @@ export async function GET() {
     }
 
     // Check for individual enrollment
-    const enrollmentsSnapshot = await adminDb
+    // Use simple userId query and filter in memory to avoid index requirements
+    const allEnrollmentsSnapshot = await adminDb
       .collection('program_enrollments')
       .where('userId', '==', userId)
-      .where('organizationId', '==', organizationId)
-      .where('status', '==', 'active')
       .get();
+
+    const enrollmentDocs = allEnrollmentsSnapshot.docs.filter(doc => {
+      const data = doc.data();
+      return data.organizationId === organizationId && data.status === 'active';
+    });
 
     let hasIndividualEnrollment = false;
     let programName: string | null = null;
