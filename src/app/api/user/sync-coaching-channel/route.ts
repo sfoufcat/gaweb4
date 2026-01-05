@@ -251,7 +251,7 @@ export async function GET() {
     let hasIndividualEnrollment = false;
     let programName: string | null = null;
 
-    for (const doc of enrollmentsSnapshot.docs) {
+    for (const doc of enrollmentDocs) {
       const enrollment = doc.data() as ProgramEnrollment;
       const programDoc = await adminDb.collection('programs').doc(enrollment.programId).get();
 
