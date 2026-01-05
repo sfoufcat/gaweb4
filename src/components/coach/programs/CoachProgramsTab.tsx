@@ -15,7 +15,7 @@ import type { DiscoverCourse } from '@/types/discover';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft } from 'lucide-react';
 import { ScheduleCallModal } from '@/components/scheduling';
 import { ClientDetailSlideOver } from '@/components/coach';
 import { AIHelperModal } from '@/components/ai';
@@ -1722,27 +1722,109 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               )}
             </>
           ) : (
-            <>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className="text-brand-accent hover:text-brand-accent/90 font-albert text-sm"
-                >
-                  ← Back to Programs
-                </button>
-                <span className="text-[#e1ddd8] dark:text-[#262b35]">|</span>
-                <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            <div className="flex items-center gap-4 w-full overflow-x-auto scrollbar-hide">
+              {/* Back button - arrow icon only */}
+              <button
+                onClick={() => setViewMode('list')}
+                className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
+                title="Back to Programs"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+
+              {/* Program name and badge */}
+              <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
+                <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate max-w-[200px]">
                   {selectedProgram?.name}
                 </h2>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
                   selectedProgram?.type === 'group'
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                    : 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                    : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
                 }`}>
                   {selectedProgram?.type === 'group' ? 'Group' : '1:1'}
                 </span>
-                {/* Client Selector for 1:1 programs - shown in content view */}
-                {selectedProgram?.type === 'individual' && viewMode === 'days' && (
+              </div>
+
+              {/* Divider */}
+              <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
+
+              {/* Navigation tabs - pill style */}
+              <nav className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => setViewMode('days')}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert transition-all ${
+                    viewMode === 'days'
+                      ? 'bg-brand-accent text-white shadow-sm'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+                  }`}
+                >
+                  Content
+                </button>
+                <button
+                  onClick={() => {
+                    setViewMode('schedule');
+                    fetchOrganizationCourses();
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert flex items-center gap-1.5 transition-all ${
+                    viewMode === 'schedule'
+                      ? 'bg-brand-accent text-white shadow-sm'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  Schedule
+                </button>
+                {selectedProgram?.type === 'group' && (
+                  <button
+                    onClick={() => setViewMode('cohorts')}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert transition-all ${
+                      viewMode === 'cohorts'
+                        ? 'bg-brand-accent text-white shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+                    }`}
+                  >
+                    Cohorts
+                  </button>
+                )}
+                <button
+                  onClick={() => setViewMode('enrollments')}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert transition-all ${
+                    viewMode === 'enrollments'
+                      ? 'bg-brand-accent text-white shadow-sm'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+                  }`}
+                >
+                  Enrollments
+                </button>
+                <button
+                  onClick={() => setViewMode('landing')}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert flex items-center gap-1.5 transition-all ${
+                    viewMode === 'landing'
+                      ? 'bg-brand-accent text-white shadow-sm'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Landing Page
+                </button>
+                <button
+                  onClick={() => setViewMode('referrals')}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert flex items-center gap-1.5 transition-all ${
+                    viewMode === 'referrals'
+                      ? 'bg-brand-accent text-white shadow-sm'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+                  }`}
+                >
+                  <Gift className="w-3.5 h-3.5" />
+                  Referrals
+                </button>
+              </nav>
+
+              {/* Client Selector for 1:1 programs - moved to end */}
+              {selectedProgram?.type === 'individual' && viewMode === 'days' && (
+                <>
+                  <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
                   <ClientSelector
                     enrollments={programEnrollments}
                     value={clientViewContext}
@@ -1761,81 +1843,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       }
                     }}
                     loading={loadingEnrollments}
-                    className="w-48"
+                    className="flex-shrink-0"
                   />
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-1">
-                <button
-                  onClick={() => setViewMode('days')}
-                  className={`px-4 py-2 rounded-lg text-sm font-albert ${
-                    viewMode === 'days'
-                      ? 'bg-brand-accent/10 text-brand-accent'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-                  }`}
-                >
-                  Content
-                </button>
-                <button
-                  onClick={() => {
-                    setViewMode('schedule');
-                    fetchOrganizationCourses();
-                  }}
-                  className={`px-4 py-2 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
-                    viewMode === 'schedule'
-                      ? 'bg-brand-accent/10 text-brand-accent'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-                  }`}
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  Schedule
-                </button>
-                {selectedProgram?.type === 'group' && (
-                  <button
-                    onClick={() => setViewMode('cohorts')}
-                    className={`px-4 py-2 rounded-lg text-sm font-albert ${
-                      viewMode === 'cohorts'
-                        ? 'bg-brand-accent/10 text-brand-accent'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-                    }`}
-                  >
-                    Cohorts
-                  </button>
-                )}
-                <button
-                  onClick={() => setViewMode('enrollments')}
-                  className={`px-4 py-2 rounded-lg text-sm font-albert ${
-                    viewMode === 'enrollments'
-                      ? 'bg-brand-accent/10 text-brand-accent'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-                  }`}
-                >
-                  Enrollments
-                </button>
-                <button
-                  onClick={() => setViewMode('landing')}
-                  className={`px-4 py-2 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
-                    viewMode === 'landing'
-                      ? 'bg-brand-accent/10 text-brand-accent'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  Landing Page
-                </button>
-                <button
-                  onClick={() => setViewMode('referrals')}
-                  className={`px-4 py-2 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
-                    viewMode === 'referrals'
-                      ? 'bg-brand-accent/10 text-brand-accent'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-                  }`}
-                >
-                  <Gift className="w-3.5 h-3.5" />
-                  Referrals
-                </button>
-              </div>
-            </>
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -2284,6 +2296,38 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   console.error('Error reordering weeks:', err);
                 }
               }}
+              onCreateMissingWeeks={async (weeksToCreate) => {
+                if (!selectedProgram) return new Map();
+                const newWeekIds = new Map<number, string>();
+                
+                // Create each missing week
+                for (const weekData of weeksToCreate) {
+                  try {
+                    const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        weekNumber: weekData.weekNumber,
+                        moduleId: weekData.moduleId,
+                        startDayIndex: weekData.startDayIndex,
+                        endDayIndex: weekData.endDayIndex,
+                      }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      if (data.week?.id) {
+                        newWeekIds.set(weekData.weekNumber, data.week.id);
+                        // Add to local state
+                        setProgramWeeks(prev => [...prev, data.week]);
+                      }
+                    }
+                  } catch (err) {
+                    console.error('Error creating week:', err);
+                  }
+                }
+                
+                return newWeekIds;
+              }}
               onWeekMoveToModule={async (weekId, targetModuleId) => {
                 if (!selectedProgram) return;
                 // Optimistic update
@@ -2505,7 +2549,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       onSave={async (updates) => {
                         try {
                           if (isClientMode && clientWeek) {
-                            // Update client-specific week
+                            // Update existing client-specific week
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/client-weeks/${clientWeek.id}`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json' },
@@ -2514,6 +2558,33 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             if (res.ok) {
                               const data = await res.json();
                               setClientWeeks(prev => prev.map(w => w.id === clientWeek.id ? data.clientWeek : w));
+                            }
+                          } else if (isClientMode && !clientWeek && clientViewContext.enrollmentId) {
+                            // Create new client-specific week (client mode but week doesn't exist yet)
+                            const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/client-weeks`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                enrollmentId: clientViewContext.enrollmentId,
+                                weekNumber,
+                                startDayIndex: startDay,
+                                endDayIndex: endDay,
+                                moduleId: templateWeek?.moduleId || programModules[0]?.id,
+                                ...updates,
+                              }),
+                            });
+                            if (res.ok) {
+                              const data = await res.json();
+                              if (data.clientWeek) {
+                                setClientWeeks(prev => {
+                                  // Check if we need to add or update
+                                  const existing = prev.find(w => w.weekNumber === weekNumber);
+                                  if (existing) {
+                                    return prev.map(w => w.weekNumber === weekNumber ? data.clientWeek : w);
+                                  }
+                                  return [...prev, data.clientWeek];
+                                });
+                              }
                             }
                           } else if (templateWeek) {
                             // Update template week

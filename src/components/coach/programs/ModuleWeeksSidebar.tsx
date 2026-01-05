@@ -46,6 +46,8 @@ interface ModuleWeeksSidebarProps {
   isLoading?: boolean;
   /** Client view context - when in client mode, reordering is disabled */
   viewContext?: ClientViewContext;
+  /** Callback to create weeks that don't exist yet in database. Returns map of weekNumber to new weekId */
+  onCreateMissingWeeks?: (weeks: Array<{ weekNumber: number; moduleId: string; startDayIndex: number; endDayIndex: number }>) => Promise<Map<number, string>>;
 }
 
 interface CalculatedWeek {
@@ -181,6 +183,7 @@ export function ModuleWeeksSidebar({
   onAutoDistributeWeeks,
   isLoading = false,
   viewContext,
+  onCreateMissingWeeks,
 }: ModuleWeeksSidebarProps) {
   // In client view mode, disable reordering (structure comes from template)
   const isClientView = viewContext?.mode === 'client';
@@ -191,6 +194,7 @@ export function ModuleWeeksSidebar({
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1]));
   const [moduleToDelete, setModuleToDelete] = useState<ProgramModule | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCreatingWeeks, setIsCreatingWeeks] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   React.useEffect(() => {
@@ -318,22 +322,51 @@ export function ModuleWeeksSidebar({
   }, [onModulesReorder]);
 
   const handleWeeksReorder = useCallback(async (moduleId: string, reorderedWeeks: CalculatedWeek[]) => {
-    // Only allow reordering when all weeks have real database IDs
-    const validWeeks = reorderedWeeks.filter(w => w.storedWeekId);
+    // Find weeks without stored IDs
+    const missingWeeks = reorderedWeeks.filter(w => !w.storedWeekId);
     
-    if (validWeeks.length !== reorderedWeeks.length) {
-      console.warn('[ModuleWeeksSidebar] Some weeks have not been saved yet - cannot reorder');
-      return;
+    // If there are weeks without IDs, try to create them first
+    if (missingWeeks.length > 0) {
+      if (!onCreateMissingWeeks) {
+        console.warn('[ModuleWeeksSidebar] Some weeks have not been saved yet and no create callback provided - cannot reorder');
+        return;
+      }
+      
+      setIsCreatingWeeks(true);
+      try {
+        // Create the missing weeks
+        const weeksToCreate = missingWeeks.map(w => ({
+          weekNumber: w.weekNum,
+          moduleId: moduleId,
+          startDayIndex: w.startDay,
+          endDayIndex: w.endDay,
+        }));
+        
+        const newWeekIds = await onCreateMissingWeeks(weeksToCreate);
+        
+        // Update the reorderedWeeks with the new IDs
+        reorderedWeeks = reorderedWeeks.map(w => {
+          if (!w.storedWeekId && newWeekIds.has(w.weekNum)) {
+            return { ...w, storedWeekId: newWeekIds.get(w.weekNum), moduleId };
+          }
+          return w;
+        });
+      } catch (err) {
+        console.error('[ModuleWeeksSidebar] Failed to create missing weeks:', err);
+        setIsCreatingWeeks(false);
+        return;
+      }
+      setIsCreatingWeeks(false);
     }
     
     // Convert CalculatedWeek[] to ProgramWeek[] format for the API
-    const weekData = validWeeks.map(w => ({
+    const weekData = reorderedWeeks.map(w => ({
       id: w.storedWeekId!,
       weekNumber: w.weekNum,
-      moduleId: w.moduleId,
+      moduleId: w.moduleId || moduleId,
     })) as ProgramWeek[];
     await onWeeksReorder(moduleId, weekData);
-  }, [onWeeksReorder]);
+  }, [onWeeksReorder, onCreateMissingWeeks]);
 
   const handleDeleteModuleClick = useCallback((module: ProgramModule, e: React.MouseEvent) => {
     e.stopPropagation();

@@ -92,7 +92,7 @@ export async function POST(
     const { organizationId } = await requireCoachWithOrg();
     const { programId } = await params;
     const body = await request.json();
-    const { enrollmentId } = body;
+    const { enrollmentId, weekNumber, startDayIndex, endDayIndex, moduleId, ...weekContent } = body;
 
     if (!enrollmentId) {
       return NextResponse.json({ error: 'enrollmentId is required' }, { status: 400 });
@@ -121,6 +121,114 @@ export async function POST(
       return NextResponse.json({ error: 'Enrollment does not belong to this program' }, { status: 400 });
     }
 
+    const now = FieldValue.serverTimestamp();
+
+    // SINGLE WEEK MODE: If weekNumber is provided, create just that one week
+    if (typeof weekNumber === 'number') {
+      // Check if this specific week already exists
+      const existingWeekSnapshot = await adminDb
+        .collection('client_program_weeks')
+        .where('enrollmentId', '==', enrollmentId)
+        .where('weekNumber', '==', weekNumber)
+        .limit(1)
+        .get();
+
+      if (!existingWeekSnapshot.empty) {
+        // Week exists - update it instead
+        const existingDoc = existingWeekSnapshot.docs[0];
+        const updateData = {
+          ...weekContent,
+          hasLocalChanges: true,
+          updatedAt: now,
+        };
+        await existingDoc.ref.update(updateData);
+        
+        const updatedDoc = await existingDoc.ref.get();
+        const updatedWeek = {
+          id: updatedDoc.id,
+          ...updatedDoc.data(),
+          createdAt: updatedDoc.data()?.createdAt?.toDate?.()?.toISOString?.() || updatedDoc.data()?.createdAt,
+          updatedAt: updatedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || updatedDoc.data()?.updatedAt,
+          lastSyncedAt: updatedDoc.data()?.lastSyncedAt?.toDate?.()?.toISOString?.() || updatedDoc.data()?.lastSyncedAt,
+        } as ClientProgramWeek;
+
+        return NextResponse.json({
+          success: true,
+          clientWeek: updatedWeek,
+          created: false,
+        });
+      }
+
+      // Find template week for this week number (if exists)
+      const templateWeekSnapshot = await adminDb
+        .collection('program_weeks')
+        .where('programId', '==', programId)
+        .where('weekNumber', '==', weekNumber)
+        .limit(1)
+        .get();
+
+      const template = templateWeekSnapshot.empty ? null : templateWeekSnapshot.docs[0].data() as ProgramWeek;
+
+      // Create the client week
+      const clientWeekRef = adminDb.collection('client_program_weeks').doc();
+      const clientWeekData = {
+        enrollmentId,
+        programWeekId: templateWeekSnapshot.empty ? null : templateWeekSnapshot.docs[0].id,
+        programId,
+        organizationId,
+        userId: enrollment.userId,
+
+        // Positional info
+        weekNumber,
+        moduleId: moduleId || template?.moduleId || null,
+        order: template?.order || weekNumber,
+        startDayIndex: startDayIndex ?? template?.startDayIndex ?? ((weekNumber - 1) * 7 + 1),
+        endDayIndex: endDayIndex ?? template?.endDayIndex ?? (weekNumber * 7),
+
+        // Content from request or template
+        name: weekContent.name ?? template?.name ?? undefined,
+        theme: weekContent.theme ?? template?.theme ?? undefined,
+        description: weekContent.description ?? template?.description ?? undefined,
+        weeklyPrompt: weekContent.weeklyPrompt ?? template?.weeklyPrompt ?? undefined,
+        weeklyTasks: weekContent.weeklyTasks ?? template?.weeklyTasks ?? undefined,
+        weeklyHabits: weekContent.weeklyHabits ?? template?.weeklyHabits ?? undefined,
+        currentFocus: weekContent.currentFocus ?? template?.currentFocus ?? undefined,
+        notes: weekContent.notes ?? template?.notes ?? undefined,
+        distribution: weekContent.distribution ?? template?.distribution ?? 'repeat-daily',
+        manualNotes: weekContent.manualNotes ?? undefined,
+        coachRecordingUrl: weekContent.coachRecordingUrl ?? undefined,
+        coachRecordingNotes: weekContent.coachRecordingNotes ?? undefined,
+        linkedSummaryIds: weekContent.linkedSummaryIds ?? [],
+        linkedCallEventIds: weekContent.linkedCallEventIds ?? [],
+        fillSource: weekContent.fillSource ?? undefined,
+
+        // Sync tracking
+        hasLocalChanges: true,
+        createdAt: now,
+        updatedAt: now,
+        lastSyncedAt: now,
+      };
+
+      await clientWeekRef.set(clientWeekData);
+      console.log(`[COACH_CLIENT_WEEKS_POST] Created single client week ${weekNumber} for enrollment ${enrollmentId}`);
+
+      const savedDoc = await clientWeekRef.get();
+      const savedWeek = {
+        id: savedDoc.id,
+        ...savedDoc.data(),
+        createdAt: savedDoc.data()?.createdAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.createdAt,
+        updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
+        lastSyncedAt: savedDoc.data()?.lastSyncedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.lastSyncedAt,
+      } as ClientProgramWeek;
+
+      return NextResponse.json({
+        success: true,
+        clientWeek: savedWeek,
+        created: true,
+      });
+    }
+
+    // BATCH INITIALIZATION MODE: Initialize all weeks from template
     // Check if client weeks already exist for this enrollment
     const existingWeeks = await adminDb
       .collection('client_program_weeks')
@@ -153,7 +261,6 @@ export async function POST(
     // Create client weeks by copying template weeks
     const batch = adminDb.batch();
     const createdWeekIds: string[] = [];
-    const now = FieldValue.serverTimestamp();
 
     for (const templateDoc of templateWeeksSnapshot.docs) {
       const template = templateDoc.data() as ProgramWeek;
