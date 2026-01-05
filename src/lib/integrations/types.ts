@@ -63,7 +63,7 @@ export interface IntegrationProviderMeta {
 export const INTEGRATION_PROVIDERS: Record<IntegrationProvider, IntegrationProviderMeta> = {
   google_calendar: {
     id: 'google_calendar',
-    name: 'Google',
+    name: 'Google Calendar',
     description: 'Sync events to Google Calendar and create Google Meet links',
     category: 'calendar',
     icon: 'Calendar',

@@ -25,14 +25,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import type {
-  CoachIntegration,
-  IntegrationProviderMeta,
-  IntegrationProvider,
-  IntegrationCategory,
-  WebhookEventType,
-  WEBHOOK_EVENTS,
-  GoogleCalendarSettings,
+import {
+  INTEGRATION_PROVIDERS,
+  type CoachIntegration,
+  type IntegrationProviderMeta,
+  type IntegrationProvider,
+  type IntegrationCategory,
+  type WebhookEventType,
+  type WEBHOOK_EVENTS,
+  type GoogleCalendarSettings,
 } from '@/lib/integrations/types';
 
 interface IntegrationsTabProps {
@@ -367,17 +368,16 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
       )}
 
       {/* Connected Integrations */}
-      {integrations.length > 0 && (
+      {integrations.filter(i => i.status === 'connected').length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-text-secondary mb-3 uppercase tracking-wide">
             Connected
           </h3>
           <div className="grid gap-3">
-            {integrations.map((integration) => {
+            {integrations.filter(i => i.status === 'connected').map((integration) => {
               const Icon = PROVIDER_ICONS[integration.provider];
-              const providerMeta = [...available, ...Object.values(available)].find(
-                (p) => p.id === integration.provider
-              ) || {
+              // Use INTEGRATION_PROVIDERS for consistent, user-friendly names
+              const providerMeta = INTEGRATION_PROVIDERS[integration.provider] || {
                 name: integration.provider,
                 description: '',
               };
