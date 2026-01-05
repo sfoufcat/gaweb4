@@ -164,6 +164,19 @@ export {
   isCalcomConfigured,
 } from './calcom';
 
+// Zoom
+export {
+  createZoomMeeting,
+  deleteZoomMeeting,
+  getZoomMeeting,
+} from './zoom';
+
+// Google Meet
+export {
+  createGoogleMeetMeeting,
+  deleteGoogleMeetEvent,
+} from './google-meet';
+
 // Integration configuration check - server-side only
 // This function checks which integrations have their OAuth credentials configured
 export { getConfiguredIntegrations } from './config';

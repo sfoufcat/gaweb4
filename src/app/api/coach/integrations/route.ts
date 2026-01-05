@@ -140,6 +140,12 @@ export async function POST(req: NextRequest) {
         case 'slack':
           authUrl = getSlackOAuthUrl(state, providerMeta.scopes || []);
           break;
+        case 'zoom':
+          authUrl = getZoomOAuthUrl(state);
+          break;
+        case 'google_meet':
+          authUrl = getGoogleOAuthUrl(state, providerMeta.scopes || [], 'google_meet');
+          break;
         default:
           return NextResponse.json(
             { error: 'OAuth not supported for this provider' },
@@ -347,9 +353,9 @@ export async function DELETE(req: NextRequest) {
 // OAuth URL Generators
 // =============================================================================
 
-function getGoogleOAuthUrl(state: string, scopes: string[], provider: 'google_calendar' | 'google_sheets'): string {
+function getGoogleOAuthUrl(state: string, scopes: string[], provider: 'google_calendar' | 'google_sheets' | 'google_meet'): string {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
-  const callbackPath = provider === 'google_sheets' ? 'google_sheets' : 'google_calendar';
+  const callbackPath = provider;
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/coach/integrations/${callbackPath}/callback`;
 
   if (!clientId) {
@@ -478,4 +484,22 @@ function getAirtableOAuthUrl(state: string, scopes: string[]): string {
   });
 
   return `https://airtable.com/oauth2/v1/authorize?${params.toString()}`;
+}
+
+function getZoomOAuthUrl(state: string): string {
+  const clientId = process.env.ZOOM_OAUTH_CLIENT_ID;
+  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/coach/integrations/zoom/callback`;
+
+  if (!clientId) {
+    throw new Error('ZOOM_OAUTH_CLIENT_ID not configured');
+  }
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    state,
+  });
+
+  return `https://zoom.us/oauth/authorize?${params.toString()}`;
 }

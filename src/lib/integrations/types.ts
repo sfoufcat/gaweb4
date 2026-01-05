@@ -29,7 +29,9 @@ export type IntegrationProvider =
   | 'make'              // Make (Integromat) webhook automation
   | 'calcom'            // Cal.com external scheduling
   | 'deepgram'          // Deepgram transcription service
-  | 'assemblyai';       // AssemblyAI transcription service
+  | 'assemblyai'        // AssemblyAI transcription service
+  | 'zoom'              // Zoom video meetings
+  | 'google_meet';      // Google Meet video meetings       // AssemblyAI transcription service
 
 /**
  * Integration category for UI grouping
@@ -42,7 +44,8 @@ export type IntegrationCategory =
   | 'automation'    // Webhook/automation integrations
   | 'scheduling'    // External scheduling links
   | 'transcription' // Meeting transcription
-  | 'knowledge';    // Knowledge base export
+  | 'knowledge'     // Knowledge base export
+  | 'meetings';     // Video meeting providers    // Knowledge base export
 
 /**
  * Provider metadata for display and configuration
@@ -215,6 +218,28 @@ export const INTEGRATION_PROVIDERS: Record<IntegrationProvider, IntegrationProvi
     requiredTier: 'scale',
     docsUrl: 'https://www.assemblyai.com/docs',
   },
+  zoom: {
+    id: 'zoom',
+    name: 'Zoom',
+    description: 'Auto-create Zoom meetings for coaching calls and squad sessions',
+    category: 'meetings',
+    icon: 'Video',
+    authType: 'oauth2',
+    scopes: ['meeting:write:admin', 'meeting:read:admin', 'user:read'],
+    requiredTier: 'starter',
+    docsUrl: 'https://developers.zoom.us/docs',
+  },
+  google_meet: {
+    id: 'google_meet',
+    name: 'Google Meet',
+    description: 'Auto-create Google Meet links for video sessions',
+    category: 'meetings',
+    icon: 'Video',
+    authType: 'oauth2',
+    scopes: ['https://www.googleapis.com/auth/calendar.events'],
+    requiredTier: 'starter',
+    docsUrl: 'https://developers.google.com/meet',
+  },
 };
 
 // =============================================================================
@@ -276,7 +301,7 @@ export interface CoachIntegration {
 /**
  * Provider-specific settings union type
  */
-export type IntegrationSettings = 
+export type IntegrationSettings =
   | GoogleCalendarSettings
   | GoogleSheetsSettings
   | OutlookCalendarSettings
@@ -288,7 +313,9 @@ export type IntegrationSettings =
   | DiscordSettings
   | WebhookSettings
   | CalcomSettings
-  | TranscriptionSettings;
+  | TranscriptionSettings
+  | ZoomSettings
+  | GoogleMeetSettings;
 
 /**
  * Google Calendar specific settings
@@ -430,6 +457,26 @@ export interface TranscriptionSettings {
   punctuation: boolean;
   autoTranscribe: boolean;      // Auto-transcribe new recordings
   summarize: boolean;           // Generate AI summary
+}
+
+/**
+ * Zoom meeting settings
+ */
+export interface ZoomSettings {
+  provider: 'zoom';
+  autoCreateMeetings: boolean;  // Auto-create meetings when scheduling calls
+  defaultDurationMinutes: number;
+  enableWaitingRoom: boolean;
+  enableRecording: boolean;
+}
+
+/**
+ * Google Meet settings
+ */
+export interface GoogleMeetSettings {
+  provider: 'google_meet';
+  calendarId: string;           // Calendar to create events on (usually 'primary')
+  autoCreateMeetings: boolean;  // Auto-create meetings when scheduling calls
 }
 
 // =============================================================================

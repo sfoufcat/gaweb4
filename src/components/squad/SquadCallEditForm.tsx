@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, X, Trash2, Repeat, Users, ChevronDown, ChevronUp, Image as ImageIcon, FileText, Plus } from 'lucide-react';
+import { Calendar, Clock, MapPin, X, Trash2, Repeat, Users, ChevronDown, ChevronUp, Image as ImageIcon, FileText, Plus, Video, Link2, Loader2, Settings } from 'lucide-react';
 import type { Squad, RecurrenceFrequency, EventVisibility } from '@/types';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import {
@@ -144,13 +144,42 @@ export function SquadCallEditForm({
   
   // Cancel confirmation dialog for recurring events
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  
+
   // Track if the event is recurring (for showing cancel options)
   const [isRecurringEvent, setIsRecurringEvent] = useState(false);
+
+  // Meeting provider integration state
+  const [meetingProvider, setMeetingProvider] = useState<'zoom' | 'google_meet' | 'manual'>('manual');
+  const [autoCreateMeeting, setAutoCreateMeeting] = useState(false);
+  const [isCreatingMeeting, setIsCreatingMeeting] = useState(false);
+  const [connectedIntegrations, setConnectedIntegrations] = useState<{
+    zoom: boolean;
+    google_meet: boolean;
+  }>({ zoom: false, google_meet: false });
   
   // Whether we're editing an existing call (legacy or unified)
   const isEditing = !!existingEventId || !!squad.nextCallDateTime;
-  
+
+  // Fetch connected meeting integrations on mount
+  useEffect(() => {
+    const fetchIntegrations = async () => {
+      try {
+        const response = await fetch('/api/coach/integrations');
+        if (response.ok) {
+          const data = await response.json();
+          const integrations = data.integrations || [];
+          setConnectedIntegrations({
+            zoom: integrations.some((i: { provider: string; status: string }) => i.provider === 'zoom' && i.status === 'connected'),
+            google_meet: integrations.some((i: { provider: string; status: string }) => i.provider === 'google_meet' && i.status === 'connected'),
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching integrations:', err);
+      }
+    };
+    fetchIntegrations();
+  }, []);
+
   // Auto-sync recurrence day of week when date changes
   useEffect(() => {
     if (date && (recurrence === 'weekly' || recurrence === 'biweekly')) {
@@ -338,18 +367,80 @@ export function SquadCallEditForm({
     
     try {
       setIsSubmitting(true);
-      
+
       // Construct the datetime in the selected timezone
       const [year, month, day] = date.split('-').map(Number);
       const [hours, minutes] = time.split(':').map(Number);
-      
+
       // Create a date string that includes timezone context
       const localDate = new Date(year, month - 1, day, hours, minutes);
-      
+
       // Convert to UTC for storage
       const dateInTz = new Date(localDate.toLocaleString('en-US', { timeZone: timezone }));
       const utcDate = new Date(localDate.getTime() - (dateInTz.getTime() - localDate.getTime()));
-      
+
+      // Auto-create meeting if enabled
+      let autoCreatedMeetingUrl: string | undefined;
+      let autoCreatedMeetingId: string | undefined;
+      let autoCreatedMeetingProvider: 'zoom' | 'google_meet' | undefined;
+
+      if (autoCreateMeeting && meetingProvider !== 'manual') {
+        setIsCreatingMeeting(true);
+        try {
+          const meetingTitle = title.trim() || `${squad.name} Call`;
+
+          if (meetingProvider === 'zoom') {
+            const response = await fetch('/api/coach/integrations/zoom/meetings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                topic: meetingTitle,
+                startTime: utcDate.toISOString(),
+                duration: 60,
+                timezone,
+              }),
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              autoCreatedMeetingUrl = data.meetingUrl;
+              autoCreatedMeetingId = data.meetingId;
+              autoCreatedMeetingProvider = 'zoom';
+            } else {
+              console.error('Failed to create Zoom meeting');
+            }
+          } else if (meetingProvider === 'google_meet') {
+            // Calculate end time (1 hour after start)
+            const endDate = new Date(utcDate.getTime() + 60 * 60 * 1000);
+
+            const response = await fetch('/api/coach/integrations/google_meet/meetings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                summary: meetingTitle,
+                startTime: utcDate.toISOString(),
+                endTime: endDate.toISOString(),
+                timezone,
+                description: `Squad call for ${squad.name}`,
+              }),
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              autoCreatedMeetingUrl = data.meetingUrl;
+              autoCreatedMeetingId = data.eventId;
+              autoCreatedMeetingProvider = 'google_meet';
+            } else {
+              console.error('Failed to create Google Meet');
+            }
+          }
+        } catch (err) {
+          console.error('Error creating meeting:', err);
+        } finally {
+          setIsCreatingMeeting(false);
+        }
+      }
+
       // Build recurrence pattern if needed
       const recurrencePattern = recurrence !== 'none' ? {
         frequency: recurrence,
@@ -371,9 +462,11 @@ export function SquadCallEditForm({
         timezone,
         durationMinutes: 60,
         
-        locationType: finalLocation.startsWith('http') ? 'online' : 'chat',
-        locationLabel: finalLocation,
-        meetingLink: finalLocation.startsWith('http') ? finalLocation : undefined,
+        locationType: autoCreatedMeetingUrl || finalLocation.startsWith('http') ? 'online' : 'chat',
+        locationLabel: autoCreatedMeetingProvider === 'zoom' ? 'Zoom' : autoCreatedMeetingProvider === 'google_meet' ? 'Google Meet' : finalLocation,
+        meetingLink: autoCreatedMeetingUrl || (finalLocation.startsWith('http') ? finalLocation : undefined),
+        meetingProvider: autoCreatedMeetingProvider,
+        externalMeetingId: autoCreatedMeetingId,
         
         eventType: 'squad_call',
         scope: 'squad',
@@ -704,7 +797,111 @@ export function SquadCallEditForm({
               </div>
             )}
           </div>
-          
+
+          {/* Video Meeting Provider */}
+          {(connectedIntegrations.zoom || connectedIntegrations.google_meet) && (
+            <div className="p-4 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+              <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-3">
+                <Video className="inline w-4 h-4 mr-1.5 -mt-0.5 text-brand-accent" />
+                Video Meeting
+              </label>
+
+              {/* Provider Selection */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMeetingProvider('manual');
+                    setAutoCreateMeeting(false);
+                  }}
+                  className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all flex items-center gap-1.5 ${
+                    meetingProvider === 'manual'
+                      ? 'bg-brand-accent text-white'
+                      : 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d] border border-[#e1ddd8] dark:border-[#3a3f4a]'
+                  }`}
+                >
+                  <Link2 className="w-3.5 h-3.5" />
+                  Manual Link
+                </button>
+                {connectedIntegrations.zoom && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMeetingProvider('zoom');
+                      setAutoCreateMeeting(true);
+                    }}
+                    className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all flex items-center gap-1.5 ${
+                      meetingProvider === 'zoom'
+                        ? 'bg-[#2D8CFF] text-white'
+                        : 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d] border border-[#e1ddd8] dark:border-[#3a3f4a]'
+                    }`}
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    Zoom
+                  </button>
+                )}
+                {connectedIntegrations.google_meet && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMeetingProvider('google_meet');
+                      setAutoCreateMeeting(true);
+                    }}
+                    className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all flex items-center gap-1.5 ${
+                      meetingProvider === 'google_meet'
+                        ? 'bg-[#00897B] text-white'
+                        : 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d] border border-[#e1ddd8] dark:border-[#3a3f4a]'
+                    }`}
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    Google Meet
+                  </button>
+                )}
+              </div>
+
+              {/* Auto-create toggle */}
+              {meetingProvider !== 'manual' && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoCreateMeeting}
+                    onChange={(e) => setAutoCreateMeeting(e.target.checked)}
+                    className="w-4 h-4 rounded border-2 border-[#d4cfc9] dark:border-[#3a3f4a] text-brand-accent focus:ring-brand-accent focus:ring-offset-0 cursor-pointer"
+                  />
+                  <span className="font-albert text-[13px] text-text-primary dark:text-[#f5f5f8]">
+                    Auto-create {meetingProvider === 'zoom' ? 'Zoom' : 'Google Meet'} link
+                  </span>
+                </label>
+              )}
+            </div>
+          )}
+
+          {/* Connect prompt if no integrations */}
+          {!connectedIntegrations.zoom && !connectedIntegrations.google_meet && (
+            <div className="p-4 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl border border-dashed border-[#d4cfc9] dark:border-[#3a3f4a]">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#e9e5e0] dark:bg-[#262b35] flex items-center justify-center flex-shrink-0">
+                  <Video className="w-4 h-4 text-text-secondary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-albert text-[13px] text-text-primary dark:text-[#f5f5f8] font-medium">
+                    Auto-create video meeting links
+                  </p>
+                  <p className="font-albert text-[12px] text-text-secondary dark:text-[#7d8190] mt-0.5">
+                    Connect Zoom or Google Meet to automatically generate meeting links when scheduling calls.
+                  </p>
+                  <a
+                    href="/coach/settings?tab=integrations"
+                    className="inline-flex items-center gap-1.5 mt-2 font-albert text-[12px] text-brand-accent hover:text-brand-accent/90 font-medium"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                    Connect in Settings
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Title (Optional) */}
           <div>
             <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
@@ -900,10 +1097,11 @@ export function SquadCallEditForm({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting || isDeleting}
-              className="inline-flex h-10 items-center justify-center px-4 py-2 font-albert rounded-full bg-brand-accent hover:bg-brand-accent/90 text-white text-sm font-semibold flex-1 sm:flex-none disabled:opacity-50 disabled:pointer-events-none transition-colors"
+              disabled={isSubmitting || isDeleting || isCreatingMeeting}
+              className="inline-flex h-10 items-center justify-center gap-2 px-4 py-2 font-albert rounded-full bg-brand-accent hover:bg-brand-accent/90 text-white text-sm font-semibold flex-1 sm:flex-none disabled:opacity-50 disabled:pointer-events-none transition-colors"
             >
-              {isSubmitting ? 'Saving...' : isEditing ? 'Update call' : 'Schedule call'}
+              {(isSubmitting || isCreatingMeeting) && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isCreatingMeeting ? 'Creating meeting...' : isSubmitting ? 'Saving...' : isEditing ? 'Update call' : 'Schedule call'}
             </button>
           </div>
         </DialogFooter>

@@ -32,6 +32,10 @@ export function getConfiguredIntegrations(): Record<string, boolean> {
     // Transcription services - can be platform or coach-provided
     deepgram: true, // Coaches can provide their own API key
     assemblyai: true, // Coaches can provide their own API key
+
+    // Video meeting integrations
+    zoom: !!(process.env.ZOOM_OAUTH_CLIENT_ID && process.env.ZOOM_OAUTH_CLIENT_SECRET),
+    google_meet: !!(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET),
   };
 }
 

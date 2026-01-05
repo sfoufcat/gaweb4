@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  Calendar, 
+import {
+  Calendar,
   CalendarPlus,
-  FileText, 
-  CheckSquare, 
-  Zap, 
-  Mic, 
+  FileText,
+  CheckSquare,
+  Zap,
+  Mic,
   Workflow,
   ExternalLink,
   Check,
@@ -21,6 +21,7 @@ import {
   MessageCircle,
   Database,
   Clock,
+  Video,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
@@ -54,6 +55,8 @@ const PROVIDER_ICONS: Record<IntegrationProvider, React.ElementType> = {
   calcom: CalendarPlus,
   deepgram: Mic,
   assemblyai: Mic,
+  zoom: Video,
+  google_meet: Video,
 };
 
 // Category labels
@@ -66,6 +69,7 @@ const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
   scheduling: 'Scheduling',
   transcription: 'Transcription',
   knowledge: 'Knowledge Base',
+  meetings: 'Video Meetings',
 };
 
 export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps) {

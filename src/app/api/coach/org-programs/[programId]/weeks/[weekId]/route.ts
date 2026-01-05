@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
+import { recalculateWeekDayIndices } from '@/lib/program-utils';
 import type { ProgramWeek } from '@/types';
 
 export async function GET(
@@ -100,8 +101,30 @@ export async function PATCH(
     if (body.coachRecordingUrl !== undefined) updateData.coachRecordingUrl = body.coachRecordingUrl?.trim() || null;
     if (body.coachRecordingNotes !== undefined) updateData.coachRecordingNotes = body.coachRecordingNotes?.trim() || null;
 
+    // Handle moduleId updates (for moving weeks between modules)
+    let moduleIdChanged = false;
+    if (body.moduleId !== undefined) {
+      // Verify target module exists and belongs to this program
+      if (body.moduleId) {
+        const targetModuleDoc = await adminDb.collection('program_modules').doc(body.moduleId).get();
+        if (!targetModuleDoc.exists || targetModuleDoc.data()?.programId !== programId) {
+          return NextResponse.json({ error: 'Target module not found' }, { status: 404 });
+        }
+      }
+      const currentModuleId = weekDoc.data()?.moduleId;
+      if (body.moduleId !== currentModuleId) {
+        moduleIdChanged = true;
+        updateData.moduleId = body.moduleId || null;
+      }
+    }
+
     await adminDb.collection('program_weeks').doc(weekId).update(updateData);
     console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Updated week ${weekId}`);
+
+    // Recalculate day indices if moduleId changed
+    if (moduleIdChanged) {
+      await recalculateWeekDayIndices(programId);
+    }
 
     // Fetch the updated week
     const savedDoc = await adminDb.collection('program_weeks').doc(weekId).get();

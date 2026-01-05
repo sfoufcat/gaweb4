@@ -501,7 +501,7 @@ export function WeekEditor({
             />
           </div>
         ) : (
-          <div className="border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-6 text-center">
+          <div className="relative border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-6 text-center">
             <Upload className="w-8 h-8 text-[#a7a39e] dark:text-[#7d8190] mx-auto mb-2" />
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
               Drag & drop or click to upload
