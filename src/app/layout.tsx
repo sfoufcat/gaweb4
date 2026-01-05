@@ -57,10 +57,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#faf8f6' },
-    { media: '(prefers-color-scheme: dark)', color: '#05070b' },
-  ],
+  // themeColor removed to prevent Safari bar from turning opaque on scroll
+  // This ensures content remains visible behind the bar
 };
 
 /**
