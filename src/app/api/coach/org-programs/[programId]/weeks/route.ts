@@ -87,9 +87,6 @@ export async function POST(
     }
 
     // Validate required fields
-    if (!body.moduleId) {
-      return NextResponse.json({ error: 'moduleId is required' }, { status: 400 });
-    }
     if (typeof body.startDayIndex !== 'number' || typeof body.endDayIndex !== 'number') {
       return NextResponse.json({ error: 'startDayIndex and endDayIndex are required' }, { status: 400 });
     }
@@ -97,10 +94,12 @@ export async function POST(
       return NextResponse.json({ error: 'startDayIndex must be <= endDayIndex' }, { status: 400 });
     }
 
-    // Verify module exists
-    const moduleDoc = await adminDb.collection('program_modules').doc(body.moduleId).get();
-    if (!moduleDoc.exists || moduleDoc.data()?.programId !== programId) {
-      return NextResponse.json({ error: 'Module not found' }, { status: 404 });
+    // Verify module exists (if provided - moduleId is now optional)
+    if (body.moduleId) {
+      const moduleDoc = await adminDb.collection('program_modules').doc(body.moduleId).get();
+      if (!moduleDoc.exists || moduleDoc.data()?.programId !== programId) {
+        return NextResponse.json({ error: 'Module not found' }, { status: 404 });
+      }
     }
 
     // Get next week number (global in program)
@@ -113,19 +112,24 @@ export async function POST(
 
     const nextWeekNumber = existingWeeks.empty ? 1 : (existingWeeks.docs[0].data().weekNumber || 0) + 1;
 
-    // Get next order number within module
-    const moduleWeeks = await adminDb
-      .collection('program_weeks')
-      .where('moduleId', '==', body.moduleId)
-      .orderBy('order', 'desc')
-      .limit(1)
-      .get();
-
-    const nextOrder = moduleWeeks.empty ? 1 : (moduleWeeks.docs[0].data().order || 0) + 1;
+    // Get next order number (within module if provided, otherwise global)
+    let nextOrder = 1;
+    if (body.moduleId) {
+      const moduleWeeks = await adminDb
+        .collection('program_weeks')
+        .where('moduleId', '==', body.moduleId)
+        .orderBy('order', 'desc')
+        .limit(1)
+        .get();
+      nextOrder = moduleWeeks.empty ? 1 : (moduleWeeks.docs[0].data().order || 0) + 1;
+    } else {
+      // Use weekNumber as order if no module
+      nextOrder = body.weekNumber ?? nextWeekNumber;
+    }
 
     const weekData = {
       programId,
-      moduleId: body.moduleId,
+      moduleId: body.moduleId || null, // moduleId is now optional
       organizationId,
       order: body.order ?? nextOrder,
       weekNumber: body.weekNumber ?? nextWeekNumber,

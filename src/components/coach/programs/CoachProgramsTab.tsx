@@ -1884,101 +1884,66 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   alert('Failed to create module. Check console for details.');
                 }
               }}
-              onAddWeek={async (moduleId: string) => {
+              onFillWithAI={() => setIsAIProgramContentModalOpen(true)}
+              onFillWeek={(weekNumber) => {
+                // Find or create a week object for this week number
+                const existingWeek = programWeeks.find(w => w.weekNumber === weekNumber);
+                if (existingWeek) {
+                  setWeekToFill(existingWeek);
+                } else {
+                  // Create a temporary week object for the fill modal
+                  const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
+                  const startDay = (weekNumber - 1) * daysPerWeek + 1;
+                  const endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
+                  setWeekToFill({
+                    id: `temp-week-${weekNumber}`,
+                    programId: selectedProgram?.id || '',
+                    weekNumber,
+                    order: weekNumber,
+                    startDayIndex: startDay,
+                    endDayIndex: endDay,
+                    distribution: 'repeat-daily',
+                  } as ProgramWeek);
+                }
+                setIsWeekFillModalOpen(true);
+              }}
+              onWeekDistributionChange={async (weekNumber, distribution) => {
                 if (!selectedProgram) return;
-                const module = programModules.find(m => m.id === moduleId);
-                if (!module) return;
-
-                // Calculate the next week number across all weeks in program
-                const nextWeekNumber = programWeeks.length + 1;
-                
-                // Calculate day range for this week (7 days per week)
-                const moduleWeeks = programWeeks.filter(w => w.moduleId === moduleId).sort((a, b) => a.order - b.order);
-                const lastWeekInModule = moduleWeeks[moduleWeeks.length - 1];
-                
-                // Defensive check: fallback to 1 if module.startDayIndex is undefined
-                const moduleStartDay = module.startDayIndex ?? 1;
-                const moduleEndDay = module.endDayIndex ?? moduleStartDay + 6;
-                
-                const startDay = lastWeekInModule 
-                  ? (lastWeekInModule.endDayIndex ?? moduleEndDay) + 1 
-                  : moduleStartDay;
-                const endDay = startDay + 6; // Always 7 days per week
-                
-                // Auto-expand module bounds if needed
-                const needsModuleExpansion = endDay > moduleEndDay;
-                
                 try {
-                  // If module needs expansion, update it first
-                  if (needsModuleExpansion) {
-                    const moduleRes = await fetch(`${apiBasePath}/${selectedProgram.id}/modules/${moduleId}`, {
+                  // Find existing week record or create one
+                  const existingWeek = programWeeks.find(w => w.weekNumber === weekNumber);
+                  
+                  if (existingWeek) {
+                    // Update existing week
+                    const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${existingWeek.id}`, {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ endDayIndex: endDay }),
+                      body: JSON.stringify({ distribution }),
                     });
-                    if (moduleRes.ok) {
-                      const moduleData = await moduleRes.json();
-                      setProgramModules(prev => prev.map(m => m.id === moduleId ? moduleData.module : m));
-                    }
-                  }
-                  
-                  // Create the new week
-                  const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      moduleId,
-                      weekNumber: nextWeekNumber,
-                      startDayIndex: startDay,
-                      endDayIndex: endDay,
-                      distribution: 'repeat-daily', // Default distribution
-                    }),
-                  });
-                  if (res.ok) {
-                    const data = await res.json();
-                    setProgramWeeks([...programWeeks, data.week]);
-                    
-                    // Update program lengthDays if needed
-                    if (endDay > selectedProgram.lengthDays) {
-                      await fetch(`${apiBasePath}/${selectedProgram.id}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                          lengthDays: endDay,
-                          lengthWeeks: Math.ceil(endDay / 7),
-                        }),
-                      });
-                      setSelectedProgram({ ...selectedProgram, lengthDays: endDay });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setProgramWeeks(prev => prev.map(w => w.id === existingWeek.id ? data.week : w));
                     }
                   } else {
-                    const errorData = await res.json().catch(() => ({}));
-                    console.error('[onAddWeek] Failed:', res.status, errorData);
-                    alert(`Failed to create week: ${errorData.error || res.statusText}`);
-                  }
-                } catch (err) {
-                  console.error('Error creating week:', err);
-                  alert('Failed to create week. Check console for details.');
-                }
-              }}
-              onFillWithAI={() => setIsAIProgramContentModalOpen(true)}
-              onFillWeek={(weekId) => {
-                const week = programWeeks.find(w => w.id === weekId);
-                if (week) {
-                  setWeekToFill(week);
-                  setIsWeekFillModalOpen(true);
-                }
-              }}
-              onWeekDistributionChange={async (weekId, distribution) => {
-                if (!selectedProgram) return;
-                try {
-                  const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${weekId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ distribution }),
-                  });
-                  if (res.ok) {
-                    const data = await res.json();
-                    setProgramWeeks(prev => prev.map(w => w.id === weekId ? data.week : w));
+                    // Create new week record with this distribution
+                    const daysPerWeek = selectedProgram.includeWeekends !== false ? 7 : 5;
+                    const startDay = (weekNumber - 1) * daysPerWeek + 1;
+                    const endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram.lengthDays || 30);
+                    
+                    const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        weekNumber,
+                        startDayIndex: startDay,
+                        endDayIndex: endDay,
+                        distribution,
+                      }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setProgramWeeks(prev => [...prev, data.week]);
+                    }
                   }
                 } catch (err) {
                   console.error('Error updating week distribution:', err);
@@ -2043,47 +2008,74 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   );
                 })()
               ) : sidebarSelection?.type === 'week' ? (
-                // Week Editor
+                // Week Editor (for weekly mode)
                 (() => {
-                  const selectedWeek = programWeeks.find(w => w.id === sidebarSelection.id)
-                    || programWeeks.find(w => w.weekNumber === sidebarSelection.weekNumber);
-                  if (!selectedWeek) {
-                    // For legacy programs without programWeeks, show a placeholder
-                    return (
-                      <div className="text-center py-8">
-                        <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                          Week editing is available for programs with modules enabled.
-                        </p>
-                        <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] mt-2">
-                          Click on a day to edit its content.
-                        </p>
-                      </div>
-                    );
-                  }
+                  const weekNumber = sidebarSelection.weekNumber;
+                  const existingWeek = programWeeks.find(w => w.weekNumber === weekNumber);
+                  
+                  // Calculate week bounds from program settings
+                  const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
+                  const startDay = (weekNumber - 1) * daysPerWeek + 1;
+                  const endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
+                  
+                  // Use existing week data or create a default
+                  const selectedWeek: ProgramWeek = existingWeek ?? {
+                    id: `temp-week-${weekNumber}`,
+                    programId: selectedProgram?.id || '',
+                    moduleId: '', // Temporary - will be assigned when saved
+                    organizationId: selectedProgram?.organizationId || '',
+                    weekNumber,
+                    order: weekNumber,
+                    startDayIndex: startDay,
+                    endDayIndex: endDay,
+                    distribution: 'repeat-daily' as const,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  };
+                  
                   return (
                     <WeekEditor
                       week={selectedWeek}
                       days={programDays.filter(d =>
-                        d.dayIndex >= selectedWeek.startDayIndex && d.dayIndex <= selectedWeek.endDayIndex
+                        d.dayIndex >= startDay && d.dayIndex <= endDay
                       )}
                       orientation={selectedProgram?.orientation || 'weekly'}
                       onSave={async (updates) => {
                         try {
-                          const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks/${selectedWeek.id}`, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(updates),
-                          });
-                          if (res.ok) {
-                            const data = await res.json();
-                            setProgramWeeks(prev => prev.map(w => w.id === selectedWeek.id ? data.week : w));
+                          if (existingWeek) {
+                            // Update existing week
+                            const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks/${existingWeek.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify(updates),
+                            });
+                            if (res.ok) {
+                              const data = await res.json();
+                              setProgramWeeks(prev => prev.map(w => w.id === existingWeek.id ? data.week : w));
+                            }
+                          } else {
+                            // Create new week record
+                            const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                weekNumber,
+                                startDayIndex: startDay,
+                                endDayIndex: endDay,
+                                ...updates,
+                              }),
+                            });
+                            if (res.ok) {
+                              const data = await res.json();
+                              setProgramWeeks(prev => [...prev, data.week]);
+                            }
                           }
                         } catch (err) {
                           console.error('Error saving week:', err);
                         }
                       }}
                       onDaySelect={(dayIndex) => {
-                        setSidebarSelection({ type: 'day', dayIndex, weekId: selectedWeek.id });
+                        setSidebarSelection({ type: 'day', dayIndex });
                         setSelectedDayIndex(dayIndex);
                         const day = programDays.find(d => d.dayIndex === dayIndex);
                         if (day) {

@@ -21,10 +21,9 @@ interface ProgramSidebarNavProps {
   orientation: ProgramOrientation;
   onOrientationChange: (mode: ProgramOrientation) => void;
   onAddModule?: () => void;
-  onAddWeek?: (moduleId: string) => void;
   onFillWithAI?: () => void;
-  onFillWeek?: (weekId: string) => void;
-  onWeekDistributionChange?: (weekId: string, distribution: 'repeat-daily' | 'spread') => void;
+  onFillWeek?: (weekNumber: number) => void;
+  onWeekDistributionChange?: (weekNumber: number, distribution: 'repeat-daily' | 'spread') => void;
   isLoading?: boolean;
 }
 
@@ -42,7 +41,6 @@ export function ProgramSidebarNav({
   orientation,
   onOrientationChange,
   onAddModule,
-  onAddWeek,
   onFillWithAI,
   onFillWeek,
   onWeekDistributionChange,
@@ -51,14 +49,10 @@ export function ProgramSidebarNav({
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(modules[0]?.id ? [modules[0].id] : []));
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string | number>>(new Set([1]));
 
-  // Check if program is configured for modules (may have 0 modules initially)
-  const isModuleMode = program.hasModules === true;
   const hasExistingModules = modules.length > 0;
 
-  // Calculate week structure for legacy programs (no modules)
-  const legacyWeeks = useMemo(() => {
-    if (isModuleMode && hasExistingModules) return [];
-
+  // Auto-calculate weeks based on program length (always used)
+  const calculatedWeeks = useMemo(() => {
     const totalDays = program.lengthDays || 30;
     const includeWeekends = program.includeWeekends !== false;
     const daysPerWeek = includeWeekends ? 7 : 5;
@@ -69,11 +63,14 @@ export function ProgramSidebarNav({
       const startDay = weekIdx * daysPerWeek + 1;
       const endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
 
-      // Check content status
+      // Check content status from days
       const daysInWeek = Array.from({ length: endDay - startDay + 1 }, (_, i) => startDay + i);
       const daysWithContent = daysInWeek.filter(day =>
         days.some(d => d.dayIndex === day && (d.tasks?.length > 0 || d.title))
       );
+      
+      // Get stored week data if it exists (for theme, distribution, etc.)
+      const storedWeek = weeks.find(w => w.weekNumber === weekNum);
 
       return {
         weekNum,
@@ -82,9 +79,14 @@ export function ProgramSidebarNav({
         daysInWeek,
         contentCount: daysWithContent.length,
         totalDays: daysInWeek.length,
+        // Include stored week data
+        theme: storedWeek?.theme,
+        distribution: storedWeek?.distribution || 'repeat-daily',
+        weeklyTasks: storedWeek?.weeklyTasks || [],
+        storedWeekId: storedWeek?.id,
       };
     });
-  }, [isModuleMode, hasExistingModules, program.lengthDays, program.includeWeekends, days]);
+  }, [program.lengthDays, program.includeWeekends, days, weeks]);
 
   // Toggle module expansion
   const toggleModule = (moduleId: string) => {
@@ -126,16 +128,6 @@ export function ProgramSidebarNav({
       return selection.dayIndex === check.dayIndex;
     }
     return false;
-  };
-
-  // Get weeks for a module
-  const getModuleWeeks = (moduleId: string) => {
-    return weeks.filter(w => w.moduleId === moduleId).sort((a, b) => a.order - b.order);
-  };
-
-  // Get days for a week
-  const getWeekDays = (weekStartDay: number, weekEndDay: number) => {
-    return Array.from({ length: weekEndDay - weekStartDay + 1 }, (_, i) => weekStartDay + i);
   };
 
   // Check if a day has content
@@ -187,251 +179,158 @@ export function ProgramSidebarNav({
 
       {/* Navigation tree */}
       <div className="space-y-1 max-h-[calc(100vh-320px)] overflow-y-auto pr-1">
-        {hasExistingModules ? (
-          // Module-based structure (has modules)
-          <>
-            {modules.sort((a, b) => a.order - b.order).map((module) => {
-              const moduleWeeks = getModuleWeeks(module.id);
-              const isExpanded = expandedModules.has(module.id);
-
-              return (
-                <div key={module.id} className="mb-2">
-                  {/* Module Header */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => toggleModule(module.id)}
-                      className="p-1 hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded"
-                    >
-                      {isExpanded ? (
-                        <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => onSelect({ type: 'module', id: module.id, moduleIndex: module.order })}
-                      className={`flex-1 flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium font-albert transition-colors ${
-                        isSelected({ type: 'module', id: module.id, moduleIndex: module.order })
-                          ? 'bg-brand-accent/10 text-brand-accent'
-                          : 'text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-                      }`}
-                    >
-                      <Folder className="w-4 h-4" />
-                      <span className="truncate">{module.name}</span>
-                    </button>
-                  </div>
-
-                  {/* Module's Weeks */}
-                  {isExpanded && (
-                    <div className="ml-5 mt-1 space-y-1 border-l-2 border-[#e1ddd8] dark:border-[#262b35] pl-2">
-                      {moduleWeeks.map((week) => {
-                        const weekKey = week.id;
-                        const isWeekExpanded = expandedWeeks.has(weekKey);
-                        const weekDays = getWeekDays(week.startDayIndex, week.endDayIndex);
-                        const daysWithContent = weekDays.filter(d => dayHasContent(d)).length;
-
-                        return (
-                          <div key={week.id} className="group/week">
-                            {/* Week Header */}
-                            <div className="flex items-center gap-1">
-                              {orientation === 'daily' && (
-                                <button
-                                  onClick={() => toggleWeek(weekKey)}
-                                  className="p-0.5 hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded"
-                                >
-                                  {isWeekExpanded ? (
-                                    <ChevronDown className="w-3 h-3 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                                  ) : (
-                                    <ChevronRight className="w-3 h-3 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                                  )}
-                                </button>
-                              )}
-                              <button
-                                onClick={() => onSelect({
-                                  type: 'week',
-                                  id: week.id,
-                                  weekNumber: week.weekNumber,
-                                  moduleId: module.id
-                                })}
-                                className={`flex-1 flex items-center justify-between px-2 py-1 rounded text-sm font-albert transition-colors ${
-                                  isSelected({ type: 'week', id: week.id, weekNumber: week.weekNumber })
-                                    ? 'bg-brand-accent/10 text-brand-accent'
-                                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-                                }`}
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  <Calendar className="w-3 h-3" />
-                                  <span className="truncate">{week.name || `Week ${week.weekNumber}`}</span>
-                                </div>
-                                {orientation === 'weekly' ? (
-                                  /* Distribution badge in weekly mode */
-                                  <select
-                                    value={week.distribution || 'repeat-daily'}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onChange={(e) => {
-                                      e.stopPropagation();
-                                      onWeekDistributionChange?.(week.id, e.target.value as 'repeat-daily' | 'spread');
-                                    }}
-                                    className="text-[10px] px-1.5 py-0.5 rounded bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] border-none cursor-pointer hover:bg-[#e1ddd8] dark:hover:bg-[#363b45] transition-colors"
-                                  >
-                                    <option value="repeat-daily">Daily</option>
-                                    <option value="spread">Spread</option>
-                                  </select>
-                                ) : (
-                                  <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                                    {daysWithContent}/{weekDays.length}
-                                  </span>
-                                )}
-                              </button>
-                              {/* Fill week with AI button */}
-                              {onFillWeek && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onFillWeek(week.id);
-                                  }}
-                                  className="p-1 hover:bg-brand-accent/10 rounded opacity-0 group-hover/week:opacity-100 transition-opacity"
-                                  title="Fill week with AI"
-                                >
-                                  <Sparkles className="w-3 h-3 text-brand-accent" />
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Week's Days (only in daily orientation) */}
-                            {orientation === 'daily' && isWeekExpanded && (
-                              <div className="ml-4 mt-0.5 space-y-0.5 border-l border-[#e1ddd8] dark:border-[#262b35] pl-2">
-                                {weekDays.map((dayIndex) => {
-                                  const hasContent = dayHasContent(dayIndex);
-                                  return (
-                                    <button
-                                      key={dayIndex}
-                                      onClick={() => onSelect({
-                                        type: 'day',
-                                        dayIndex,
-                                        weekId: week.id,
-                                        moduleId: module.id
-                                      })}
-                                      className={`w-full text-left flex items-center gap-1.5 px-2 py-1 rounded text-sm font-albert transition-colors ${
-                                        isSelected({ type: 'day', dayIndex })
-                                          ? 'bg-brand-accent/10 text-brand-accent'
-                                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-                                      }`}
-                                    >
-                                      <FileText className="w-3 h-3" />
-                                      <span>Day {dayIndex}</span>
-                                      {hasContent && <span className="text-green-500 text-xs">✓</span>}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-
-                      {/* Add Week button */}
-                      {onAddWeek && (
-                        <button
-                          onClick={() => onAddWeek(module.id)}
-                          className="w-full flex items-center gap-1.5 px-2 py-1 text-sm text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent transition-colors"
-                        >
-                          <Plus className="w-3 h-3" />
-                          <span>Add Week</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Add Module button */}
+        {/* Optional Modules Section */}
+        {hasExistingModules && (
+          <div className="mb-3 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35]">
+            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-2 px-1">Modules (optional groupings)</p>
+            {modules.sort((a, b) => a.order - b.order).map((module) => (
+              <button
+                key={module.id}
+                onClick={() => onSelect({ type: 'module', id: module.id, moduleIndex: module.order })}
+                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium font-albert transition-colors mb-1 ${
+                  isSelected({ type: 'module', id: module.id, moduleIndex: module.order })
+                    ? 'bg-brand-accent/10 text-brand-accent'
+                    : 'text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#faf8f6] dark:hover:bg-white/5'
+                }`}
+              >
+                <Folder className="w-4 h-4" />
+                <span className="truncate">{module.name}</span>
+              </button>
+            ))}
             {onAddModule && (
               <button
                 onClick={onAddModule}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent transition-colors"
+                className="w-full flex items-center gap-2 px-2 py-1 text-sm text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent transition-colors"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3 h-3" />
                 <span>Add Module</span>
               </button>
             )}
-          </>
-        ) : isModuleMode || orientation === 'weekly' ? (
-          // Module mode but no modules yet - show prompt to create first module
-          <div className="text-center py-6 px-2">
-            <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center mx-auto mb-3">
-              <Folder className="w-6 h-6 text-[#a7a39e] dark:text-[#7d8190]" />
-            </div>
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-1 font-albert">
-              No modules yet
-            </p>
-            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mb-4 font-albert">
-              Create modules to organize your program content into sections
-            </p>
-            {onAddModule && (
-              <button
-                onClick={onAddModule}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg text-sm font-medium font-albert hover:bg-brand-accent/90 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add First Module</span>
-              </button>
-            )}
           </div>
-        ) : (
-          // Legacy week-based structure (daily mode, no modules)
-          legacyWeeks.map((week) => {
-            const weekKey = week.weekNum;
-            const isExpanded = expandedWeeks.has(weekKey);
+        )}
 
-            return (
-              <div key={week.weekNum} className="mb-1">
-                {/* Week Header - Legacy mode is always daily */}
+        {/* Auto-calculated Weeks */}
+        {calculatedWeeks.map((week) => {
+          const weekKey = week.weekNum;
+          const isExpanded = expandedWeeks.has(weekKey);
+          const weekSelection: SidebarSelection = { 
+            type: 'week', 
+            id: week.storedWeekId || `week-${week.weekNum}`, 
+            weekNumber: week.weekNum 
+          };
+
+          return (
+            <div key={week.weekNum} className="mb-1 group/week">
+              {/* Week Header */}
+              <div className="flex items-center gap-1">
+                {/* Expand/collapse button only in Daily mode */}
+                {orientation === 'daily' && (
+                  <button
+                    onClick={() => toggleWeek(weekKey)}
+                    className="p-1 hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded"
+                  >
+                    {isExpanded ? (
+                      <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                    )}
+                  </button>
+                )}
+                
+                {/* Week button - in Weekly mode this opens WeekEditor, in Daily mode it's just a grouping */}
                 <button
-                  onClick={() => toggleWeek(weekKey)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium font-albert transition-colors bg-[#faf8f6] dark:bg-[#1e222a] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]"
+                  onClick={() => {
+                    if (orientation === 'weekly') {
+                      onSelect(weekSelection);
+                    } else {
+                      toggleWeek(weekKey);
+                    }
+                  }}
+                  className={`flex-1 flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium font-albert transition-colors ${
+                    orientation === 'weekly' && isSelected(weekSelection)
+                      ? 'bg-brand-accent/10 text-brand-accent'
+                      : 'bg-[#faf8f6] dark:bg-[#1e222a] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
+                  }`}
                 >
                   <div className="flex items-center gap-2">
-                    {orientation === 'daily' && (
-                      isExpanded ? (
-                        <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                      )
-                    )}
-                    <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">Week {week.weekNum}</span>
+                    <Calendar className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                    <span>{week.theme || `Week ${week.weekNum}`}</span>
                   </div>
-                  <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                    {week.contentCount}/{week.totalDays}
-                    {week.contentCount > 0 && <span className="text-green-500 ml-1">✓</span>}
-                  </span>
+                  
+                  {orientation === 'weekly' ? (
+                    /* Distribution selector in weekly mode */
+                    <select
+                      value={week.distribution}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        onWeekDistributionChange?.(week.weekNum, e.target.value as 'repeat-daily' | 'spread');
+                      }}
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] border border-[#e1ddd8] dark:border-[#363b45] cursor-pointer hover:border-brand-accent transition-colors"
+                    >
+                      <option value="repeat-daily">Repeat Daily</option>
+                      <option value="spread">Spread</option>
+                    </select>
+                  ) : (
+                    /* Content count in daily mode */
+                    <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                      {week.contentCount}/{week.totalDays}
+                      {week.contentCount > 0 && <span className="text-green-500 ml-1">✓</span>}
+                    </span>
+                  )}
                 </button>
-
-                {/* Days in Week (only in daily orientation) */}
-                {orientation === 'daily' && isExpanded && (
-                  <div className="ml-3 mt-1 space-y-0.5 border-l-2 border-[#e1ddd8] dark:border-[#262b35] pl-2">
-                    {week.daysInWeek.map((dayIndex) => {
-                      const hasContent = dayHasContent(dayIndex);
-                      return (
-                        <button
-                          key={dayIndex}
-                          onClick={() => onSelect({ type: 'day', dayIndex })}
-                          className={`w-full text-left px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
-                            isSelected({ type: 'day', dayIndex })
-                              ? 'bg-brand-accent/10 text-brand-accent'
-                              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-                          }`}
-                        >
-                          Day {dayIndex} {hasContent && <span className="text-green-500">✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
+                
+                {/* Fill week with AI button */}
+                {onFillWeek && orientation === 'weekly' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFillWeek(week.weekNum);
+                    }}
+                    className="p-1 hover:bg-brand-accent/10 rounded opacity-0 group-hover/week:opacity-100 transition-opacity"
+                    title="Fill week with AI"
+                  >
+                    <Sparkles className="w-3 h-3 text-brand-accent" />
+                  </button>
                 )}
               </div>
-            );
-          })
+
+              {/* Days in Week (only in Daily mode when expanded) */}
+              {orientation === 'daily' && isExpanded && (
+                <div className="ml-6 mt-1 space-y-0.5 border-l-2 border-[#e1ddd8] dark:border-[#262b35] pl-2">
+                  {week.daysInWeek.map((dayIndex) => {
+                    const hasContent = dayHasContent(dayIndex);
+                    return (
+                      <button
+                        key={dayIndex}
+                        onClick={() => onSelect({ type: 'day', dayIndex })}
+                        className={`w-full text-left flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
+                          isSelected({ type: 'day', dayIndex })
+                            ? 'bg-brand-accent/10 text-brand-accent'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <FileText className="w-3 h-3" />
+                        <span>Day {dayIndex}</span>
+                        {hasContent && <span className="text-green-500 text-xs">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Add Module button (if no modules yet) */}
+        {!hasExistingModules && onAddModule && (
+          <button
+            onClick={onAddModule}
+            className="w-full flex items-center gap-2 px-3 py-2 mt-2 text-sm text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent transition-colors border-t border-[#e1ddd8] dark:border-[#262b35] pt-3"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Module (optional)</span>
+          </button>
         )}
       </div>
     </div>
