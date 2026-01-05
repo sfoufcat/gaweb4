@@ -299,18 +299,6 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
         throw new Error('Failed to schedule call');
       }
 
-      // Also update legacy coaching data for backward compatibility
-      await fetch(`/api/coaching/clients/${clientId}/call`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dateTime: utcDate.toISOString(),
-          timezone: callTimezone,
-          location: finalLocation,
-          title: 'Coaching Call',
-        }),
-      });
-
       setShowCallModal(false);
       await fetchClientData();
     } catch (err) {

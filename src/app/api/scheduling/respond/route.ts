@@ -316,11 +316,16 @@ async function syncEventToCalendar(eventId: string, event: UnifiedEvent) {
     return;
   }
 
-  // Try Google Calendar first
-  const googleIntegration = await getIntegration(event.organizationId, 'google_calendar');
-  const outlookIntegration = await getIntegration(event.organizationId, 'outlook_calendar');
+  // Get both calendar integrations in parallel
+  const [googleIntegration, outlookIntegration] = await Promise.all([
+    getIntegration(event.organizationId, 'google_calendar'),
+    getIntegration(event.organizationId, 'outlook_calendar'),
+  ]);
 
-  if (!googleIntegration?.status?.includes('connected') && !outlookIntegration?.status?.includes('connected')) {
+  const hasGoogle = googleIntegration?.status === 'connected';
+  const hasOutlook = outlookIntegration?.status === 'connected';
+
+  if (!hasGoogle && !hasOutlook) {
     console.log('[SCHEDULING_RESPOND] No calendar connected, skipping sync');
     return;
   }
@@ -360,33 +365,46 @@ async function syncEventToCalendar(eventId: string, event: UnifiedEvent) {
     attendees,
   };
 
-  // Sync to the connected calendar
-  let result: { success: boolean; externalEventId?: string; error?: string };
-  let provider: 'google' | 'outlook';
+  // Sync to ALL connected calendars in parallel
+  const externalCalendarEvents: Array<{ provider: string; eventId: string }> = [];
 
-  if (googleIntegration?.status === 'connected') {
-    provider = 'google';
-    result = await createGoogleCalendarEvent(event.organizationId, internalEvent);
-  } else if (outlookIntegration?.status === 'connected') {
-    provider = 'outlook';
-    result = await createOutlookCalendarEvent(event.organizationId, internalEvent);
-  } else {
-    console.log('[SCHEDULING_RESPOND] No active calendar integration found');
-    return;
+  const syncPromises: Promise<void>[] = [];
+
+  if (hasGoogle) {
+    syncPromises.push(
+      createGoogleCalendarEvent(event.organizationId, internalEvent).then(result => {
+        if (result.success && result.externalEventId) {
+          externalCalendarEvents.push({ provider: 'google_calendar', eventId: result.externalEventId });
+          console.log(`[SCHEDULING_RESPOND] Synced event ${eventId} to Google calendar: ${result.externalEventId}`);
+        } else {
+          console.error('[SCHEDULING_RESPOND] Failed to sync event to Google calendar:', result.error);
+        }
+      })
+    );
   }
 
-  if (result.success && result.externalEventId) {
-    // Update the event with calendar sync info
+  if (hasOutlook) {
+    syncPromises.push(
+      createOutlookCalendarEvent(event.organizationId, internalEvent).then(result => {
+        if (result.success && result.externalEventId) {
+          externalCalendarEvents.push({ provider: 'outlook_calendar', eventId: result.externalEventId });
+          console.log(`[SCHEDULING_RESPOND] Synced event ${eventId} to Outlook calendar: ${result.externalEventId}`);
+        } else {
+          console.error('[SCHEDULING_RESPOND] Failed to sync event to Outlook calendar:', result.error);
+        }
+      })
+    );
+  }
+
+  await Promise.all(syncPromises);
+
+  // Update the event with all synced calendar info
+  if (externalCalendarEvents.length > 0) {
     await adminDb.collection('events').doc(eventId).update({
-      externalCalendarEventId: result.externalEventId,
-      externalCalendarProvider: provider === 'google' ? 'google_calendar' : 'outlook_calendar',
+      externalCalendarEvents,
       syncedToExternalCalendar: true,
       updatedAt: new Date().toISOString(),
     });
-
-    console.log(`[SCHEDULING_RESPOND] Synced event ${eventId} to ${provider} calendar: ${result.externalEventId}`);
-  } else {
-    console.error(`[SCHEDULING_RESPOND] Failed to sync event to ${provider} calendar:`, result.error);
   }
 }
 

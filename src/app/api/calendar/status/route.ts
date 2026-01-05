@@ -5,19 +5,31 @@ import type { GoogleCalendarSettings, OutlookCalendarSettings } from '@/lib/inte
 
 /**
  * GET /api/calendar/status
- * Get the current calendar integration status
+ * Get the current calendar integration status for both Google and Microsoft
  */
 export async function GET() {
   try {
     const { organizationId } = await requireCoachWithOrg();
 
-    // Check Google Calendar
-    const googleIntegration = await getIntegration(organizationId, 'google_calendar');
+    // Check both integrations in parallel
+    const [googleIntegration, microsoftIntegration] = await Promise.all([
+      getIntegration(organizationId, 'google_calendar'),
+      getIntegration(organizationId, 'outlook_calendar'),
+    ]);
+
+    // Build Google status
+    let google: {
+      connected: boolean;
+      accountEmail?: string;
+      accountName?: string;
+      calendarName?: string;
+      settings?: { syncDirection: string; autoCreateEvents: boolean };
+    } = { connected: false };
+
     if (googleIntegration && googleIntegration.status === 'connected') {
       const settings = googleIntegration.settings as GoogleCalendarSettings;
-      return NextResponse.json({
+      google = {
         connected: true,
-        provider: 'google_calendar',
         accountEmail: googleIntegration.accountEmail,
         accountName: googleIntegration.accountName,
         calendarName: settings.calendarId === 'primary' ? 'Primary Calendar' : settings.calendarId,
@@ -25,16 +37,22 @@ export async function GET() {
           syncDirection: settings.syncDirection,
           autoCreateEvents: settings.autoCreateEvents,
         },
-      });
+      };
     }
 
-    // Check Microsoft/Outlook Calendar
-    const microsoftIntegration = await getIntegration(organizationId, 'outlook_calendar');
+    // Build Microsoft status
+    let microsoft: {
+      connected: boolean;
+      accountEmail?: string;
+      accountName?: string;
+      calendarName?: string;
+      settings?: { syncDirection: string; autoCreateEvents: boolean };
+    } = { connected: false };
+
     if (microsoftIntegration && microsoftIntegration.status === 'connected') {
       const settings = microsoftIntegration.settings as OutlookCalendarSettings;
-      return NextResponse.json({
+      microsoft = {
         connected: true,
-        provider: 'outlook_calendar',
         accountEmail: microsoftIntegration.accountEmail,
         accountName: microsoftIntegration.accountName,
         calendarName: 'Outlook Calendar',
@@ -42,13 +60,12 @@ export async function GET() {
           syncDirection: settings.syncDirection,
           autoCreateEvents: settings.autoCreateEvents,
         },
-      });
+      };
     }
 
-    // No calendar connected
     return NextResponse.json({
-      connected: false,
-      provider: null,
+      google,
+      microsoft,
     });
   } catch (error) {
     console.error('[CALENDAR_STATUS] Error:', error);

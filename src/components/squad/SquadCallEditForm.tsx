@@ -408,33 +408,13 @@ export function SquadCallEditForm({
       };
       
       let response;
-      
+
       if (existingEventId) {
         // Update existing unified event
         response = await fetch(`/api/events/${existingEventId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(eventData),
-        });
-      } else if (squad.nextCallDateTime) {
-        // Legacy: Also update squad fields for backward compatibility
-        // First create the unified event
-        response = await fetch('/api/events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(eventData),
-        });
-        
-        // Also update legacy squad fields (will be removed after migration)
-        await fetch(`/api/coach/squads/${squad.id}/call`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            dateTime: utcDate.toISOString(),
-            timezone,
-            location: finalLocation,
-            title: title.trim() || undefined,
-          }),
         });
       } else {
         // Create new event

@@ -16,12 +16,16 @@ interface BusyTime {
 
 interface BusyTimesResult {
   busyTimes: BusyTime[];
-  provider: 'google_calendar' | 'outlook_calendar' | null;
+  providers: {
+    google: boolean;
+    microsoft: boolean;
+  };
 }
 
 /**
- * Get busy times from the connected external calendar (Google or Microsoft)
+ * Get busy times from all connected external calendars (Google and/or Microsoft)
  * This is the core function that can be called directly from server-side code.
+ * Fetches from both calendars in parallel and merges the results.
  */
 export async function getCalendarBusyTimes(
   organizationId: string,
@@ -29,35 +33,38 @@ export async function getCalendarBusyTimes(
   endDate: string
 ): Promise<BusyTimesResult> {
   try {
-    // Try Google Calendar first
-    const googleIntegration = await getIntegration(organizationId, 'google_calendar', true);
-    if (googleIntegration && googleIntegration.status === 'connected') {
-      const busyTimes = await getGoogleBusyTimes(
-        organizationId,
-        googleIntegration,
-        startDate,
-        endDate
-      );
-      return { busyTimes, provider: 'google_calendar' };
-    }
+    // Fetch both integrations in parallel
+    const [googleIntegration, microsoftIntegration] = await Promise.all([
+      getIntegration(organizationId, 'google_calendar', true),
+      getIntegration(organizationId, 'outlook_calendar', true),
+    ]);
 
-    // Try Microsoft/Outlook Calendar
-    const microsoftIntegration = await getIntegration(organizationId, 'outlook_calendar', true);
-    if (microsoftIntegration && microsoftIntegration.status === 'connected') {
-      const busyTimes = await getMicrosoftBusyTimes(
-        organizationId,
-        microsoftIntegration,
-        startDate,
-        endDate
-      );
-      return { busyTimes, provider: 'outlook_calendar' };
-    }
+    const hasGoogle = !!(googleIntegration && googleIntegration.status === 'connected');
+    const hasMicrosoft = !!(microsoftIntegration && microsoftIntegration.status === 'connected');
 
-    // No calendar connected
-    return { busyTimes: [], provider: null };
+    // Fetch busy times from both calendars in parallel
+    const [googleBusy, microsoftBusy] = await Promise.all([
+      hasGoogle
+        ? getGoogleBusyTimes(organizationId, googleIntegration, startDate, endDate)
+        : Promise.resolve([]),
+      hasMicrosoft
+        ? getMicrosoftBusyTimes(organizationId, microsoftIntegration, startDate, endDate)
+        : Promise.resolve([]),
+    ]);
+
+    // Merge busy times from both calendars
+    const busyTimes = [...googleBusy, ...microsoftBusy];
+
+    return {
+      busyTimes,
+      providers: {
+        google: hasGoogle,
+        microsoft: hasMicrosoft,
+      },
+    };
   } catch (error) {
     console.error('[CALENDAR_BUSY_TIMES] Error:', error);
-    return { busyTimes: [], provider: null };
+    return { busyTimes: [], providers: { google: false, microsoft: false } };
   }
 }
 

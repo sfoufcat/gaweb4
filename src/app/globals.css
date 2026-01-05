@@ -531,7 +531,9 @@ html.dark {
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;
-  min-height: 100dvh; /* Override min-h-screen for iOS Safari dynamic viewport */
+  min-height: 100dvh;
+  position: relative;
+  z-index: 0;
 }
 
 /* Dark mode skeleton / loading state styles */

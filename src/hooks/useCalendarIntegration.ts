@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
-interface CalendarIntegration {
+interface CalendarIntegrationStatus {
   connected: boolean;
-  provider: 'google_calendar' | 'outlook_calendar' | null;
   accountEmail?: string;
   accountName?: string;
   calendarName?: string;
@@ -12,9 +11,18 @@ interface CalendarIntegration {
   };
 }
 
+interface CalendarIntegrations {
+  google: CalendarIntegrationStatus;
+  microsoft: CalendarIntegrationStatus;
+}
+
 interface UseCalendarIntegrationReturn {
-  /** Current integration status */
-  integration: CalendarIntegration | null;
+  /** Google Calendar integration status */
+  google: CalendarIntegrationStatus;
+  /** Microsoft Calendar integration status */
+  microsoft: CalendarIntegrationStatus;
+  /** Whether any calendar is connected */
+  hasAnyConnected: boolean;
   /** Whether the data is loading */
   isLoading: boolean;
   /** Error message if any */
@@ -27,19 +35,27 @@ interface UseCalendarIntegrationReturn {
   connectGoogle: () => Promise<void>;
   /** Connect Microsoft Calendar */
   connectMicrosoft: () => Promise<void>;
-  /** Disconnect the current calendar */
-  disconnect: () => Promise<void>;
+  /** Disconnect Google Calendar */
+  disconnectGoogle: () => Promise<void>;
+  /** Disconnect Microsoft Calendar */
+  disconnectMicrosoft: () => Promise<void>;
   /** Refresh the integration status */
   refetch: () => Promise<void>;
 }
 
+const defaultStatus: CalendarIntegrationStatus = { connected: false };
+
 /**
- * Hook for managing calendar integration (Google or Microsoft)
+ * Hook for managing calendar integrations (Google and Microsoft)
  *
- * Replaces useNylasGrant - uses direct OAuth instead of Nylas
+ * Supports connecting both calendars simultaneously.
+ * Replaces useNylasGrant - uses direct OAuth instead of Nylas.
  */
 export function useCalendarIntegration(): UseCalendarIntegrationReturn {
-  const [integration, setIntegration] = useState<CalendarIntegration | null>(null);
+  const [integrations, setIntegrations] = useState<CalendarIntegrations>({
+    google: defaultStatus,
+    microsoft: defaultStatus,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGoogleConfigured, setIsGoogleConfigured] = useState(true);
@@ -56,7 +72,7 @@ export function useCalendarIntegration(): UseCalendarIntegrationReturn {
       if (!response.ok) {
         if (response.status === 401) {
           // Not authenticated as coach
-          setIntegration({ connected: false, provider: null });
+          setIntegrations({ google: defaultStatus, microsoft: defaultStatus });
           return;
         }
         const data = await response.json();
@@ -64,11 +80,14 @@ export function useCalendarIntegration(): UseCalendarIntegrationReturn {
       }
 
       const data = await response.json();
-      setIntegration(data);
+      setIntegrations({
+        google: data.google || defaultStatus,
+        microsoft: data.microsoft || defaultStatus,
+      });
     } catch (err) {
       console.error('[useCalendarIntegration] Error fetching status:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch calendar status');
-      setIntegration({ connected: false, provider: null });
+      setIntegrations({ google: defaultStatus, microsoft: defaultStatus });
     } finally {
       setIsLoading(false);
     }
@@ -141,40 +160,68 @@ export function useCalendarIntegration(): UseCalendarIntegrationReturn {
     }
   }, []);
 
-  // Disconnect calendar
-  const disconnect = useCallback(async () => {
+  // Disconnect Google Calendar
+  const disconnectGoogle = useCallback(async () => {
     try {
       setError(null);
 
       const response = await fetch('/api/calendar/disconnect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ provider: 'google_calendar' }),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to disconnect calendar');
+        throw new Error(data.error || 'Failed to disconnect Google Calendar');
       }
 
-      // Clear local state
-      setIntegration({ connected: false, provider: null });
+      // Update local state
+      setIntegrations(prev => ({ ...prev, google: defaultStatus }));
     } catch (err) {
-      console.error('[useCalendarIntegration] Error disconnecting:', err);
-      setError(err instanceof Error ? err.message : 'Failed to disconnect calendar');
+      console.error('[useCalendarIntegration] Error disconnecting Google:', err);
+      setError(err instanceof Error ? err.message : 'Failed to disconnect Google Calendar');
+      throw err;
+    }
+  }, []);
+
+  // Disconnect Microsoft Calendar
+  const disconnectMicrosoft = useCallback(async () => {
+    try {
+      setError(null);
+
+      const response = await fetch('/api/calendar/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'outlook_calendar' }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to disconnect Microsoft Calendar');
+      }
+
+      // Update local state
+      setIntegrations(prev => ({ ...prev, microsoft: defaultStatus }));
+    } catch (err) {
+      console.error('[useCalendarIntegration] Error disconnecting Microsoft:', err);
+      setError(err instanceof Error ? err.message : 'Failed to disconnect Microsoft Calendar');
       throw err;
     }
   }, []);
 
   return {
-    integration,
+    google: integrations.google,
+    microsoft: integrations.microsoft,
+    hasAnyConnected: integrations.google.connected || integrations.microsoft.connected,
     isLoading,
     error,
     isGoogleConfigured,
     isMicrosoftConfigured,
     connectGoogle,
     connectMicrosoft,
-    disconnect,
+    disconnectGoogle,
+    disconnectMicrosoft,
     refetch: fetchStatus,
   };
 }
