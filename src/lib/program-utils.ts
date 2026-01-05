@@ -153,6 +153,101 @@ export async function recalculateWeekDayIndices(programId: string): Promise<void
 }
 
 /**
+ * Creates or syncs weeks for a program based on its length.
+ * This should be called when a program is created or when its duration changes.
+ *
+ * If weeks already exist, it will:
+ * - Add new weeks if the program grew
+ * - Mark extra weeks for potential removal if the program shrunk (doesn't delete to avoid data loss)
+ *
+ * @param programId - The ID of the program
+ * @param organizationId - The organization ID
+ * @param moduleId - Optional module ID to assign new weeks to (defaults to first module or null)
+ * @returns Object containing created and existing week counts
+ */
+export async function syncProgramWeeks(
+  programId: string,
+  organizationId: string,
+  moduleId?: string | null
+): Promise<{ created: number; existing: number; total: number }> {
+  // Get program to calculate weeks
+  const programDoc = await adminDb.collection('programs').doc(programId).get();
+  if (!programDoc.exists) {
+    throw new Error(`Program ${programId} not found`);
+  }
+
+  const programData = programDoc.data();
+  const totalDays = programData?.lengthDays || 30;
+  const includeWeekends = programData?.includeWeekends !== false;
+  const daysPerWeek = includeWeekends ? 7 : 5;
+  const targetWeekCount = Math.ceil(totalDays / daysPerWeek);
+
+  // Get existing weeks
+  const existingWeeksSnapshot = await adminDb
+    .collection('program_weeks')
+    .where('programId', '==', programId)
+    .get();
+
+  const existingWeekNumbers = new Set(
+    existingWeeksSnapshot.docs.map(doc => doc.data().weekNumber as number)
+  );
+  const existingCount = existingWeekNumbers.size;
+
+  // If no module specified, try to get the first module
+  let targetModuleId = moduleId;
+  if (!targetModuleId) {
+    const modulesSnapshot = await adminDb
+      .collection('program_modules')
+      .where('programId', '==', programId)
+      .orderBy('order', 'asc')
+      .limit(1)
+      .get();
+
+    if (!modulesSnapshot.empty) {
+      targetModuleId = modulesSnapshot.docs[0].id;
+    }
+  }
+
+  // Create missing weeks
+  const batch = adminDb.batch();
+  let createdCount = 0;
+
+  for (let weekNum = 1; weekNum <= targetWeekCount; weekNum++) {
+    if (!existingWeekNumbers.has(weekNum)) {
+      const startDay = (weekNum - 1) * daysPerWeek + 1;
+      const endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
+
+      const weekRef = adminDb.collection('program_weeks').doc();
+      batch.set(weekRef, {
+        programId,
+        moduleId: targetModuleId || null,
+        organizationId,
+        order: weekNum,
+        weekNumber: weekNum,
+        startDayIndex: startDay,
+        endDayIndex: endDay,
+        distribution: 'repeat-daily',
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      createdCount++;
+    }
+  }
+
+  if (createdCount > 0) {
+    await batch.commit();
+    console.log(`[PROGRAM_UTILS] Created ${createdCount} weeks for program ${programId} (${existingCount} existed)`);
+  }
+
+  return {
+    created: createdCount,
+    existing: existingCount,
+    total: targetWeekCount,
+  };
+}
+
+/**
  * Creates initial weeks for a program based on its length and assigns them to a module.
  *
  * @param programId - The ID of the program

@@ -14,6 +14,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { clerkClient } from '@clerk/nextjs/server';
 import { getStreamServerClient } from '@/lib/stream-server';
 import type { Program, ProgramDay, ProgramCohort, ProgramHabitTemplate, ProgramFeature, ProgramTestimonial, ProgramFAQ, Squad } from '@/types';
+import { syncProgramWeeks, recalculateWeekDayIndices } from '@/lib/program-utils';
 
 export async function GET(
   request: NextRequest,
@@ -542,6 +543,25 @@ export async function PUT(
     await adminDb.collection('programs').doc(programId).update(updateData);
 
     console.log(`[COACH_ORG_PROGRAM_PUT] Updated program: ${programId} in org ${organizationId}`);
+
+    // If lengthDays or includeWeekends changed, sync weeks
+    const durationChanged = body.lengthDays !== undefined && body.lengthDays !== currentData?.lengthDays;
+    const weekendSettingChanged = body.includeWeekends !== undefined && body.includeWeekends !== currentData?.includeWeekends;
+
+    if (durationChanged || weekendSettingChanged) {
+      try {
+        // Sync weeks to match new duration
+        const weekResult = await syncProgramWeeks(programId, organizationId);
+        console.log(`[COACH_ORG_PROGRAM_PUT] Synced weeks: ${weekResult.created} created, ${weekResult.existing} existed, ${weekResult.total} total`);
+
+        // Recalculate day indices for existing weeks
+        await recalculateWeekDayIndices(programId);
+        console.log(`[COACH_ORG_PROGRAM_PUT] Recalculated week day indices`);
+      } catch (weekError) {
+        console.error(`[COACH_ORG_PROGRAM_PUT] Failed to sync weeks:`, weekError);
+        // Don't fail the update, weeks can be synced later
+      }
+    }
 
     // If applyCoachesToExistingSquads is true, update all existing squads with new coach assignment
     if (body.applyCoachesToExistingSquads === true && currentData?.type === 'group') {

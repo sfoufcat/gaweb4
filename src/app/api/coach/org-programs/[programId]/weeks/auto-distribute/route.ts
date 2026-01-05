@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import { recalculateWeekDayIndices } from '@/lib/program-utils';
+import { recalculateWeekDayIndices, syncProgramWeeks } from '@/lib/program-utils';
 
 export async function POST(
   request: NextRequest,
@@ -45,14 +45,31 @@ export async function POST(
     }));
 
     // Get all weeks for this program, ordered by weekNumber
-    const weeksSnapshot = await adminDb
+    let weeksSnapshot = await adminDb
       .collection('program_weeks')
       .where('programId', '==', programId)
       .orderBy('weekNumber', 'asc')
       .get();
 
+    // If no weeks exist, create them first
     if (weeksSnapshot.empty) {
-      return NextResponse.json({ error: 'No weeks found in this program' }, { status: 400 });
+      console.log(`[COACH_ORG_PROGRAM_WEEKS_AUTO_DISTRIBUTE] No weeks found, creating them first`);
+      try {
+        await syncProgramWeeks(programId, organizationId);
+        // Re-fetch weeks after creation
+        weeksSnapshot = await adminDb
+          .collection('program_weeks')
+          .where('programId', '==', programId)
+          .orderBy('weekNumber', 'asc')
+          .get();
+      } catch (syncError) {
+        console.error('[COACH_ORG_PROGRAM_WEEKS_AUTO_DISTRIBUTE] Failed to create weeks:', syncError);
+        return NextResponse.json({ error: 'Failed to create weeks for distribution' }, { status: 500 });
+      }
+    }
+
+    if (weeksSnapshot.empty) {
+      return NextResponse.json({ error: 'No weeks could be created for this program' }, { status: 400 });
     }
 
     const weeks = weeksSnapshot.docs.map(doc => ({

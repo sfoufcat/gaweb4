@@ -12,6 +12,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { requireOrgAuthAndEntitlements, getOrgProgramCount, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
 import { withDemoMode, demoNotAvailable } from '@/lib/demo-api';
 import type { Program, ProgramType, ProgramHabitTemplate, ProgramWithStats, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
+import { syncProgramWeeks } from '@/lib/program-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -319,6 +320,15 @@ export async function POST(request: NextRequest) {
     const docRef = await adminDb.collection('programs').add(programData);
 
     console.log(`[COACH_ORG_PROGRAMS_POST] Created program: ${slug} (${docRef.id}) type=${body.type} in org ${organizationId}`);
+
+    // Auto-create weeks for the program based on its duration
+    try {
+      const weekResult = await syncProgramWeeks(docRef.id, organizationId);
+      console.log(`[COACH_ORG_PROGRAMS_POST] Auto-created ${weekResult.created} weeks for program ${docRef.id}`);
+    } catch (weekError) {
+      // Log but don't fail - weeks can be created later
+      console.error(`[COACH_ORG_PROGRAMS_POST] Failed to auto-create weeks:`, weekError);
+    }
 
     return NextResponse.json({ 
       success: true, 
