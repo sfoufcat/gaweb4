@@ -164,6 +164,8 @@ export default async function RootLayout({
           data-layout={layoutMode}
           suppressHydrationWarning
         >
+          {/* Fixed background - extends behind iOS Safari toolbar */}
+          <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] -z-50" aria-hidden="true" />
           <DemoModeProvider>
             <DemoSessionProvider>
               {/* Client-side sync for body data-layout attribute (safety net for hydration/navigation) */}
