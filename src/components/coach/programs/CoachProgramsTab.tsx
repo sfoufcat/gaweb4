@@ -1460,7 +1460,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 </p>
               </div>
               {!isDemoMode && (
-                <Button 
+                <Button
                   onClick={() => {
                     // Check program limit before opening modal
                     if (checkLimit('max_programs', displayPrograms.length)) {
@@ -1469,10 +1469,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     }
                     setIsNewProgramModalOpen(true);
                   }}
-                  className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
+                  className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center"
                 >
-                  <Plus className="w-4 h-4" />
-                  New Program
+                  <Plus className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">New Program</span>
                 </Button>
               )}
             </>

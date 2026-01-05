@@ -698,8 +698,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
               }}
               className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              New Squad
+              <Plus className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">New Squad</span>
             </Button>
           )}
         </div>

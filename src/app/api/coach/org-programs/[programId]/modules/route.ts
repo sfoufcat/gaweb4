@@ -31,7 +31,6 @@ export async function GET(
     const modulesSnapshot = await adminDb
       .collection('program_modules')
       .where('programId', '==', programId)
-      .orderBy('order', 'asc')
       .get();
 
     const modules = modulesSnapshot.docs.map(doc => ({
@@ -40,6 +39,9 @@ export async function GET(
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
     })) as ProgramModule[];
+
+    // Sort by order in memory (avoids composite index requirement)
+    modules.sort((a, b) => (a.order || 0) - (b.order || 0));
 
     return NextResponse.json({
       modules,
@@ -89,15 +91,19 @@ export async function POST(
       return NextResponse.json({ error: 'startDayIndex must be <= endDayIndex' }, { status: 400 });
     }
 
-    // Get next order number
+    // Get next order number (simple query without orderBy to avoid index requirement)
     const existingModules = await adminDb
       .collection('program_modules')
       .where('programId', '==', programId)
-      .orderBy('order', 'desc')
-      .limit(1)
       .get();
 
-    const nextOrder = existingModules.empty ? 1 : (existingModules.docs[0].data().order || 0) + 1;
+    // Calculate next order from existing modules
+    let maxOrder = 0;
+    existingModules.docs.forEach(doc => {
+      const order = doc.data().order || 0;
+      if (order > maxOrder) maxOrder = order;
+    });
+    const nextOrder = maxOrder + 1;
 
     const moduleData = {
       programId,
@@ -140,6 +146,10 @@ export async function POST(
   } catch (error) {
     console.error('[COACH_ORG_PROGRAM_MODULES_POST] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal Error';
+    const stack = error instanceof Error ? error.stack : '';
+
+    // Log full error for debugging
+    console.error('[COACH_ORG_PROGRAM_MODULES_POST] Full error:', { message, stack });
 
     if (message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -148,6 +158,10 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden: Coach access required' }, { status: 403 });
     }
 
-    return NextResponse.json({ error: 'Failed to create program module' }, { status: 500 });
+    // Return detailed error in development
+    return NextResponse.json({
+      error: 'Failed to create program module',
+      details: process.env.NODE_ENV === 'development' ? message : undefined,
+    }, { status: 500 });
   }
 }
