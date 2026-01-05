@@ -715,7 +715,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           upsellDescription: program.completionConfig?.upsellDescription || '',
         },
         callCreditsPerMonth: program.callCreditsPerMonth ?? 0,
-        orientation: program.orientation || 'daily',
+        orientation: program.orientation || 'weekly',
       });
     } else {
       setEditingProgram(null);
