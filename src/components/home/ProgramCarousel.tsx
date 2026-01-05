@@ -141,13 +141,13 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
             href={`/program?programId=${enrollment.programId}`}
             className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
           >
-            <div className="bg-white dark:bg-surface rounded-[20px] overflow-hidden hover:shadow-lg transition-all group">
+            <div className="bg-white dark:bg-surface rounded-[20px] overflow-hidden hover:shadow-lg transition-all group h-full flex flex-col">
               {/* Program Cover */}
-              <div className="relative w-full h-32 bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10">
+              <div className="relative w-full h-32 bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 flex-shrink-0">
                 {enrollment.program.coverImageUrl ? (
-                  <Image 
-                    src={enrollment.program.coverImageUrl} 
-                    alt={enrollment.program.name} 
+                  <Image
+                    src={enrollment.program.coverImageUrl}
+                    alt={enrollment.program.name}
                     fill
                     className="object-cover"
                   />
@@ -160,8 +160,8 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                     )}
                   </div>
                 )}
-                
-{/* Type Badge */}
+
+                {/* Type Badge */}
                 <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-[11px] font-medium ${
                   enrollment.program.type === 'group'
                     ? 'bg-blue-500 text-white'
@@ -170,46 +170,48 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                   {enrollment.program.type === 'group' ? 'Group' : '1:1'}
                 </div>
               </div>
-              
+
               {/* Content */}
-              <div className="p-4">
+              <div className="p-4 flex flex-col flex-1">
                 <h3 className="font-albert font-semibold text-[15px] text-text-primary tracking-[-0.5px] truncate mb-1">
                   {enrollment.program.name}
                 </h3>
-                
-                {enrollment.cohort && (
-                  <p className="font-sans text-[12px] text-text-secondary mb-3 truncate">
-                    {enrollment.cohort.name}
-                  </p>
-                )}
+
+                <p className="font-sans text-[12px] text-text-secondary mb-3 truncate">
+                  {enrollment.program.type === 'individual'
+                    ? 'One-on-one'
+                    : enrollment.cohort?.name || 'Group program'}
+                </p>
                 
                 {/* Progress or Status */}
-                {enrollment.status === 'active' ? (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-sans text-[11px] text-text-muted">
-                        Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays}
-                      </span>
-                      <span className="font-sans text-[11px] text-text-muted">
-                        {enrollment.progress.percentComplete}%
-                      </span>
+                <div className="mt-auto">
+                  {enrollment.status === 'active' ? (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-sans text-[11px] text-text-muted">
+                          Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays}
+                        </span>
+                        <span className="font-sans text-[11px] text-text-muted">
+                          {enrollment.progress.percentComplete}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-[#e1ddd8] dark:bg-[#272d38] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-brand-accent rounded-full transition-all"
+                          style={{ width: `${enrollment.progress.percentComplete}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-1.5 bg-[#e1ddd8] dark:bg-[#272d38] rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-brand-accent rounded-full transition-all"
-                        style={{ width: `${enrollment.progress.percentComplete}%` }}
-                      />
-                    </div>
-                  </div>
-                ) : hasStarted ? (
-                  <p className="font-sans text-[12px] text-green-600 dark:text-green-400">
-                    Active
-                  </p>
-                ) : (
-                  <p className="font-sans text-[12px] text-brand-accent">
-                    Starts {enrollment.cohort ? new Date(enrollment.cohort.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'soon'}
-                  </p>
-                )}
+                  ) : hasStarted ? (
+                    <p className="font-sans text-[12px] text-green-600 dark:text-green-400">
+                      Active
+                    </p>
+                  ) : (
+                    <p className="font-sans text-[12px] text-brand-accent">
+                      Starts {enrollment.cohort ? new Date(enrollment.cohort.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'soon'}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </Link>
