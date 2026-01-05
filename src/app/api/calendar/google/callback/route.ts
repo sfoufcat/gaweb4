@@ -117,6 +117,9 @@ export async function GET(request: NextRequest) {
       autoCreateEvents: true,
       eventPrefix: '',
       reminderMinutes: 15,
+      // Feature toggles - default to calendar sync enabled, meet links disabled
+      enableCalendarSync: true,
+      enableMeetLinks: false,
     };
 
     await storeIntegration(

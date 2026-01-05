@@ -6,7 +6,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getIntegration, updateTokens, type GoogleMeetSettings } from './';
+import { getIntegration, updateTokens, type GoogleCalendarSettings } from './';
 
 interface GoogleMeetMeetingDetails {
   summary: string;
@@ -116,11 +116,17 @@ export async function createGoogleMeetMeeting(
   details: GoogleMeetMeetingDetails
 ): Promise<GoogleMeetMeetingResponse> {
   try {
-    // Get integration with decrypted tokens
-    const integration = await getIntegration(orgId, 'google_meet', true);
+    // Get Google Calendar integration with decrypted tokens (Meet links are part of Google Calendar)
+    const integration = await getIntegration(orgId, 'google_calendar', true);
 
     if (!integration) {
-      return { success: false, error: 'Google Meet integration not connected' };
+      return { success: false, error: 'Google Calendar integration not connected' };
+    }
+
+    // Check if Meet links are enabled for this integration
+    const settings = integration.settings as GoogleCalendarSettings;
+    if (!settings?.enableMeetLinks) {
+      return { success: false, error: 'Google Meet links are not enabled for this integration' };
     }
 
     // Get valid access token
@@ -136,8 +142,7 @@ export async function createGoogleMeetMeeting(
       return { success: false, error: 'Failed to get valid Google access token' };
     }
 
-    // Get calendar ID from settings
-    const settings = integration.settings as GoogleMeetSettings;
+    // Get calendar ID from settings (settings already retrieved above)
     const calendarId = settings?.calendarId || 'primary';
 
     // Create calendar event with conference data
@@ -221,10 +226,11 @@ export async function deleteGoogleMeetEvent(
   eventId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const integration = await getIntegration(orgId, 'google_meet', true);
+    // Get Google Calendar integration with decrypted tokens (Meet links are part of Google Calendar)
+    const integration = await getIntegration(orgId, 'google_calendar', true);
 
     if (!integration) {
-      return { success: false, error: 'Google Meet integration not connected' };
+      return { success: false, error: 'Google Calendar integration not connected' };
     }
 
     const accessToken = await getValidGoogleAccessToken(
@@ -239,7 +245,7 @@ export async function deleteGoogleMeetEvent(
       return { success: false, error: 'Failed to get valid Google access token' };
     }
 
-    const settings = integration.settings as GoogleMeetSettings;
+    const settings = integration.settings as GoogleCalendarSettings;
     const calendarId = settings?.calendarId || 'primary';
 
     const response = await fetch(
