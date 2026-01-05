@@ -521,11 +521,11 @@
 html {
   overflow-x: hidden;
   scrollbar-gutter: stable;
-  background-color: #faf8f6;
+  /* background-color removed to prevent Safari from using it for browser bar theming */
 }
 
 html.dark {
-  background-color: #05070b;
+  /* background-color removed to prevent Safari from using it for browser bar theming */
 }
 
 body {

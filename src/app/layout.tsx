@@ -101,7 +101,7 @@ export default async function RootLayout({
       appTitle={ssrBranding.branding.appTitle}
       subdomain={ssrBranding.subdomain}
     >
-      <html lang="en" className="bg-[#faf8f6] dark:bg-[#05070b]" suppressHydrationWarning>
+      <html lang="en" suppressHydrationWarning>
         <head>
           {/* Critical CSS for layout - prevents layout shift by being in initial HTML */}
           <style dangerouslySetInnerHTML={{

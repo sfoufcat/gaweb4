@@ -10,7 +10,7 @@ import { ReactNode } from 'react';
  */
 export function ConditionalMain({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-dvh pb-24 lg:pb-0">
+    <main className="min-h-screen pb-24 lg:pb-0">
       {children}
     </main>
   );

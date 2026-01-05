@@ -269,6 +269,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/tenant/resolve',  // Tenant resolution API - no auth required
   '/api/org/branding',  // Branding API - needs to work for SSR before auth is established
   '/api/marketplace/listings',  // Public marketplace listings API
+  '/api/calendar/(.*)/callback',  // OAuth callbacks - auth via state parameter (no session on calendar.coachful.co)
   '/terms(.*)',
   '/privacy(.*)',
   '/refund-policy(.*)',
