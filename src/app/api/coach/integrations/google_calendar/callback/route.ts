@@ -45,7 +45,9 @@ export async function GET(req: NextRequest) {
     // Exchange code for tokens
     const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/coach/integrations/google_calendar/callback`;
+    // Use calendar subdomain for OAuth callbacks to avoid auth issues on subdomains
+    const baseUrl = process.env.GOOGLE_OAUTH_REDIRECT_BASE_URL || 'https://calendar.coachful.co';
+    const redirectUri = `${baseUrl}/api/coach/integrations/google_calendar/callback`;
 
     if (!clientId || !clientSecret) {
       console.error('[GOOGLE_CALENDAR_CALLBACK] Missing OAuth credentials');
