@@ -82,6 +82,8 @@ const NOTIFICATION_TYPE_TO_SYSTEM_KEY: Record<NotificationType, keyof OrgSystemN
   feed_repost: null,
   feed_mention: null,
   story_reaction: null,
+  // Coach AI fill prompts - always sent
+  call_summary_fill_week: null,
 };
 
 /**
@@ -133,6 +135,12 @@ export interface NotifyUserInput {
   body: string;
   actionRoute?: string;
   organizationId?: string;
+  metadata?: {
+    summaryId?: string;
+    programId?: string;
+    weekId?: string;
+    clientName?: string;
+  };
 }
 
 export interface SendNotificationEmailParams {
@@ -366,7 +374,7 @@ async function getUserById(userId: string): Promise<FirebaseUser | null> {
  * are enforced BEFORE calling this function, so email sending respects those rules.
  */
 export async function notifyUser(input: NotifyUserInput): Promise<string | null> {
-  const { userId, type, title, body, actionRoute, organizationId } = input;
+  const { userId, type, title, body, actionRoute, organizationId, metadata } = input;
 
   // Check if this notification type is enabled at org level
   const isEnabled = await isNotificationTypeEnabled(type, organizationId);
@@ -386,6 +394,7 @@ export async function notifyUser(input: NotifyUserInput): Promise<string | null>
     createdAt: new Date().toISOString(),
     read: false,
     ...(organizationId && { organizationId }),
+    ...(metadata && { metadata }),
   } as Omit<Notification, 'id'>;
 
   const notificationRef = await adminDb.collection('notifications').add(notificationData);

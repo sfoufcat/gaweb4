@@ -224,7 +224,7 @@ export default function PlanPage() {
 
   if (!isLoaded || !user || checkingSubscription) {
     return (
-      <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
+      <div className="min-h-dvh bg-app-bg flex items-center justify-center">
         <div className="relative">
           <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
           <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-brand-accent animate-spin" />
@@ -236,8 +236,8 @@ export default function PlanPage() {
   const selectedPlanData = PLANS.find(p => p.id === selectedPlan);
 
   return (
-    <div className="fixed inset-0 bg-app-bg overflow-y-auto">
-      <div className="min-h-full flex flex-col">
+    <div className="min-h-dvh bg-app-bg">
+      <div className="min-h-dvh flex flex-col">
         {/* Logo Header */}
         <motion.div 
           className="sticky top-0 z-50 bg-app-bg/95 backdrop-blur-sm border-b border-[#e1ddd8]/50"

@@ -170,15 +170,21 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
     fetchData();
   }, [fetchData]);
 
-  // Derive nextCall from coachingData
-  const nextCall: NextCallInfo | null = coachingData?.nextCall?.datetime
-    ? {
+  // Derive nextCall from coachingData - only include if the call hasn't started yet
+  let nextCall: NextCallInfo | null = null;
+  if (coachingData?.nextCall?.datetime) {
+    const callTime = new Date(coachingData.nextCall.datetime);
+    const now = new Date();
+    // Only show call if it's in the future
+    if (callTime > now) {
+      nextCall = {
         datetime: coachingData.nextCall.datetime,
         timezone: coachingData.nextCall.timezone || 'America/New_York',
         location: coachingData.nextCall.location || 'Chat',
         title: coachingData.nextCall.title,
-      }
-    : null;
+      };
+    }
+  }
 
   return {
     coachingData,

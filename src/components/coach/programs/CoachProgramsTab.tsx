@@ -87,7 +87,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [organizationCourses, setOrganizationCourses] = useState<DiscoverCourse[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(1);
   const [sidebarSelection, setSidebarSelection] = useState<SidebarSelection | null>(null);
-  const [programOrientation, setProgramOrientation] = useState<ProgramOrientation>('daily');
+  const [programOrientation, setProgramOrientation] = useState<ProgramOrientation>('weekly'); // Weekly is default
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1])); // Week 1 expanded by default
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -129,6 +129,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [isAIProgramContentModalOpen, setIsAIProgramContentModalOpen] = useState(false);
   const [isAILandingPageModalOpen, setIsAILandingPageModalOpen] = useState(false);
   const [isWeekFillModalOpen, setIsWeekFillModalOpen] = useState(false);
+  const [weekToFill, setWeekToFill] = useState<ProgramWeek | null>(null);
   
   // Plan tier for limit checking
   const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
@@ -458,8 +459,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         setProgramWeeks([]);
       }
 
-      // Set program orientation
-      setProgramOrientation(program?.orientation || 'daily');
+      // Set program orientation (weekly is default)
+      setProgramOrientation(program?.orientation || 'weekly');
 
       // Load first day data
       const day1 = data.days?.find((d: ProgramDay) => d.dayIndex === 1);
@@ -1773,18 +1774,79 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               }}
               orientation={programOrientation}
               onOrientationChange={async (newOrientation) => {
+                const oldOrientation = programOrientation;
                 setProgramOrientation(newOrientation);
-                // Save orientation to program
-                if (selectedProgram) {
-                  try {
-                    await fetch(`${apiBasePath}/${selectedProgram.id}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ orientation: newOrientation }),
-                    });
-                  } catch (err) {
-                    console.error('Error saving orientation:', err);
+                
+                if (!selectedProgram) return;
+                
+                try {
+                  // Save orientation to program
+                  await fetch(`${apiBasePath}/${selectedProgram.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orientation: newOrientation }),
+                  });
+                  
+                  // Auto-distribute tasks when switching from weekly to daily
+                  if (oldOrientation === 'weekly' && newOrientation === 'daily') {
+                    // Distribute week tasks to days
+                    for (const week of programWeeks) {
+                      if (week.weeklyTasks && week.weeklyTasks.length > 0) {
+                        const daysInWeek = week.endDayIndex - week.startDayIndex + 1;
+                        const distribution = week.distribution || 'repeat-daily';
+                        
+                        if (distribution === 'repeat-daily') {
+                          // Copy all tasks to each day
+                          for (let d = week.startDayIndex; d <= week.endDayIndex; d++) {
+                            const existingDay = programDays.find(day => day.dayIndex === d);
+                            if (!existingDay || !existingDay.tasks?.length) {
+                              await fetch(`${apiBasePath}/${selectedProgram.id}/days`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  dayIndex: d,
+                                  tasks: week.weeklyTasks,
+                                  weekId: week.id,
+                                }),
+                              });
+                            }
+                          }
+                        } else {
+                          // Spread tasks across days
+                          const tasksPerDay = Math.ceil(week.weeklyTasks.length / daysInWeek);
+                          let taskIndex = 0;
+                          for (let d = week.startDayIndex; d <= week.endDayIndex && taskIndex < week.weeklyTasks.length; d++) {
+                            const dayTasks = week.weeklyTasks.slice(taskIndex, taskIndex + tasksPerDay);
+                            taskIndex += tasksPerDay;
+                            
+                            if (dayTasks.length > 0) {
+                              const existingDay = programDays.find(day => day.dayIndex === d);
+                              if (!existingDay || !existingDay.tasks?.length) {
+                                await fetch(`${apiBasePath}/${selectedProgram.id}/days`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    dayIndex: d,
+                                    tasks: dayTasks,
+                                    weekId: week.id,
+                                  }),
+                                });
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    
+                    // Reload days data
+                    const daysRes = await fetch(`${apiBasePath}/${selectedProgram.id}/days`);
+                    if (daysRes.ok) {
+                      const daysData = await daysRes.json();
+                      setProgramDays(daysData.days || []);
+                    }
                   }
+                } catch (err) {
+                  console.error('Error changing orientation:', err);
                 }
               }}
               onAddModule={async () => {
@@ -1830,36 +1892,94 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 const module = programModules.find(m => m.id === moduleId);
                 if (!module) return;
 
-                const moduleWeeks = programWeeks.filter(w => w.moduleId === moduleId);
-                const lastWeek = moduleWeeks[moduleWeeks.length - 1];
-                const startDay = lastWeek ? lastWeek.endDayIndex + 1 : module.startDayIndex;
-                const endDay = Math.min(startDay + 6, module.endDayIndex);
-
-                if (startDay > module.endDayIndex) {
-                  console.error('No more days available in this module');
-                  return;
-                }
-
+                // Calculate the next week number across all weeks in program
+                const nextWeekNumber = programWeeks.length + 1;
+                
+                // Calculate day range for this week (7 days per week)
+                const moduleWeeks = programWeeks.filter(w => w.moduleId === moduleId).sort((a, b) => a.order - b.order);
+                const lastWeekInModule = moduleWeeks[moduleWeeks.length - 1];
+                const startDay = lastWeekInModule ? lastWeekInModule.endDayIndex + 1 : module.startDayIndex;
+                const endDay = startDay + 6; // Always 7 days per week
+                
+                // Auto-expand module bounds if needed
+                const needsModuleExpansion = endDay > module.endDayIndex;
+                
                 try {
+                  // If module needs expansion, update it first
+                  if (needsModuleExpansion) {
+                    const moduleRes = await fetch(`${apiBasePath}/${selectedProgram.id}/modules/${moduleId}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ endDayIndex: endDay }),
+                    });
+                    if (moduleRes.ok) {
+                      const moduleData = await moduleRes.json();
+                      setProgramModules(prev => prev.map(m => m.id === moduleId ? moduleData.module : m));
+                    }
+                  }
+                  
+                  // Create the new week
                   const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                       moduleId,
-                      weekNumber: programWeeks.length + 1,
+                      weekNumber: nextWeekNumber,
                       startDayIndex: startDay,
                       endDayIndex: endDay,
+                      distribution: 'repeat-daily', // Default distribution
                     }),
                   });
                   if (res.ok) {
                     const data = await res.json();
                     setProgramWeeks([...programWeeks, data.week]);
+                    
+                    // Update program lengthDays if needed
+                    if (endDay > selectedProgram.lengthDays) {
+                      await fetch(`${apiBasePath}/${selectedProgram.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                          lengthDays: endDay,
+                          lengthWeeks: Math.ceil(endDay / 7),
+                        }),
+                      });
+                      setSelectedProgram({ ...selectedProgram, lengthDays: endDay });
+                    }
+                  } else {
+                    const errorData = await res.json().catch(() => ({}));
+                    console.error('[onAddWeek] Failed:', res.status, errorData);
+                    alert(`Failed to create week: ${errorData.error || res.statusText}`);
                   }
                 } catch (err) {
                   console.error('Error creating week:', err);
+                  alert('Failed to create week. Check console for details.');
                 }
               }}
               onFillWithAI={() => setIsAIProgramContentModalOpen(true)}
+              onFillWeek={(weekId) => {
+                const week = programWeeks.find(w => w.id === weekId);
+                if (week) {
+                  setWeekToFill(week);
+                  setIsWeekFillModalOpen(true);
+                }
+              }}
+              onWeekDistributionChange={async (weekId, distribution) => {
+                if (!selectedProgram) return;
+                try {
+                  const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${weekId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ distribution }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setProgramWeeks(prev => prev.map(w => w.id === weekId ? data.week : w));
+                  }
+                } catch (err) {
+                  console.error('Error updating week distribution:', err);
+                }
+              }}
               isLoading={loadingDetails}
             />
 
@@ -1975,7 +2095,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
                         }
                       }}
-                      onFillWithAI={() => setIsWeekFillModalOpen(true)}
+                      onFillWithAI={() => {
+                        setWeekToFill(selectedWeek);
+                        setIsWeekFillModalOpen(true);
+                      }}
                       isSaving={saving}
                     />
                   );
@@ -3873,30 +3996,29 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       />
 
       {/* Week Fill Modal */}
-      {sidebarSelection?.type === 'week' && (() => {
-        const weekToFill = programWeeks.find(w => w.id === sidebarSelection.id);
-        if (!weekToFill || !selectedProgram) return null;
-        return (
-          <WeekFillModal
-            isOpen={isWeekFillModalOpen}
-            onClose={() => setIsWeekFillModalOpen(false)}
-            programId={selectedProgram.id}
-            week={weekToFill}
-            orientation={programOrientation}
-            onApply={async (updates) => {
-              const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${weekToFill.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updates),
-              });
-              if (res.ok) {
-                const data = await res.json();
-                setProgramWeeks(prev => prev.map(w => w.id === weekToFill.id ? data.week : w));
-              }
-            }}
-          />
-        );
-      })()}
+      {weekToFill && selectedProgram && (
+        <WeekFillModal
+          isOpen={isWeekFillModalOpen}
+          onClose={() => {
+            setIsWeekFillModalOpen(false);
+            setWeekToFill(null);
+          }}
+          programId={selectedProgram.id}
+          week={weekToFill}
+          orientation={programOrientation}
+          onApply={async (updates) => {
+            const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${weekToFill.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updates),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              setProgramWeeks(prev => prev.map(w => w.id === weekToFill.id ? data.week : w));
+            }
+          }}
+        />
+      )}
 
       {/* Limit Reached Modal */}
       <LimitReachedModal {...modalProps} />

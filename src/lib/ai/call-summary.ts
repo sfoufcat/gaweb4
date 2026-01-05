@@ -8,7 +8,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { CallSummary, CallSummaryActionItem, SuggestedTask } from '@/types';
+import { notifyUser } from '@/lib/notifications';
+import type { CallSummary, CallSummaryActionItem, SuggestedTask, ProgramEnrollment, ProgramWeek } from '@/types';
 
 // =============================================================================
 // CLIENT INITIALIZATION
@@ -273,9 +274,12 @@ async function generateAndStoreSummary(
   transcript: string,
   durationSeconds: number,
   context: {
+    hostUserId: string;
     hostName: string;
     clientUserId?: string;
     clientName?: string;
+    programId?: string;
+    programEnrollmentId?: string;
     programName?: string;
   }
 ): Promise<void> {
@@ -309,6 +313,9 @@ async function generateAndStoreSummary(
     if (context.clientUserId && result.actionItems.length > 0) {
       await createSuggestedTasks(orgId, summaryId, context.clientUserId, result.actionItems);
     }
+
+    // Notify coach to fill week with this summary (if client has active enrollment)
+    await notifyCoachToFillWeek(orgId, summaryId, context);
 
     console.log(`[AI Call Summary] Completed summary ${summaryId}`);
   } catch (error) {
@@ -362,6 +369,134 @@ async function createSuggestedTasks(
 
   await batch.commit();
   console.log(`[AI Call Summary] Created ${clientTasks.length} suggested tasks for summary ${summaryId}`);
+}
+
+/**
+ * Notify coach to fill a program week with the call summary
+ * Called after a call summary is generated for a client with an active enrollment
+ */
+async function notifyCoachToFillWeek(
+  orgId: string,
+  summaryId: string,
+  context: {
+    hostUserId: string;
+    clientUserId?: string;
+    clientName?: string;
+    programId?: string;
+    programEnrollmentId?: string;
+  }
+): Promise<void> {
+  try {
+    // Need a client to check for enrollments
+    if (!context.clientUserId) {
+      return;
+    }
+
+    // Find active enrollment (either from context or query)
+    let enrollment: ProgramEnrollment | null = null;
+    let programId = context.programId;
+
+    if (context.programEnrollmentId) {
+      // Use the provided enrollment
+      const enrollmentDoc = await adminDb
+        .collection('program_enrollments')
+        .doc(context.programEnrollmentId)
+        .get();
+      if (enrollmentDoc.exists) {
+        enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
+        programId = enrollment.programId;
+      }
+    } else {
+      // Find any active enrollment for this client in this org
+      const enrollmentsSnapshot = await adminDb
+        .collection('program_enrollments')
+        .where('userId', '==', context.clientUserId)
+        .where('organizationId', '==', orgId)
+        .where('status', '==', 'active')
+        .limit(1)
+        .get();
+
+      if (!enrollmentsSnapshot.empty) {
+        const doc = enrollmentsSnapshot.docs[0];
+        enrollment = { id: doc.id, ...doc.data() } as ProgramEnrollment;
+        programId = enrollment.programId;
+      }
+    }
+
+    // No active enrollment found
+    if (!enrollment || !programId) {
+      console.log(`[AI Call Summary] No active enrollment for client ${context.clientUserId}, skipping notification`);
+      return;
+    }
+
+    // Calculate current day index in the program
+    const startDate = new Date(enrollment.startedAt);
+    const today = new Date();
+    const daysSinceStart = Math.floor(
+      (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    const currentDayIndex = Math.max(0, daysSinceStart);
+
+    // Find the week that contains the current day index
+    const weeksSnapshot = await adminDb
+      .collection('program_weeks')
+      .where('programId', '==', programId)
+      .where('startDayIndex', '<=', currentDayIndex)
+      .orderBy('startDayIndex', 'desc')
+      .limit(1)
+      .get();
+
+    if (weeksSnapshot.empty) {
+      console.log(`[AI Call Summary] No matching week found for day ${currentDayIndex}`);
+      return;
+    }
+
+    const weekDoc = weeksSnapshot.docs[0];
+    const week = { id: weekDoc.id, ...weekDoc.data() } as ProgramWeek;
+
+    // Verify the day index is within this week's range
+    if (currentDayIndex > week.endDayIndex) {
+      console.log(`[AI Call Summary] Current day ${currentDayIndex} is past week ${week.id}`);
+      return;
+    }
+
+    // Auto-link the summary to the week
+    const existingLinkedIds = week.linkedSummaryIds || [];
+    if (!existingLinkedIds.includes(summaryId)) {
+      await adminDb
+        .collection('program_weeks')
+        .doc(week.id)
+        .update({
+          linkedSummaryIds: FieldValue.arrayUnion(summaryId),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      console.log(`[AI Call Summary] Auto-linked summary ${summaryId} to week ${week.id}`);
+    }
+
+    // Create notification for the coach
+    const clientName = context.clientName || 'Client';
+    const weekName = week.name || `Week ${week.weekNumber}`;
+
+    await notifyUser({
+      userId: context.hostUserId,
+      type: 'call_summary_fill_week',
+      title: `Call summary ready for ${clientName}`,
+      body: `Fill ${weekName} with insights from your call with ${clientName}`,
+      actionRoute: `/coach/programs/${programId}?weekId=${week.id}&summaryId=${summaryId}`,
+      organizationId: orgId,
+      metadata: {
+        summaryId,
+        programId,
+        weekId: week.id,
+        clientName,
+      },
+    });
+
+    console.log(`[AI Call Summary] Notified coach ${context.hostUserId} to fill week ${week.id}`);
+  } catch (error) {
+    // Don't fail the summary generation if notification fails
+    console.error('[AI Call Summary] Error notifying coach:', error);
+  }
 }
 
 /**

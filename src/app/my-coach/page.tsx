@@ -279,10 +279,17 @@ export default function MyCoachPage() {
     }
   };
 
-  // Calculate call time info
+  // Calculate call time info - only show if call hasn't started yet
   const callTimeInfo = coachingData?.nextCall?.datetime
     ? (() => {
         const callDate = new Date(coachingData.nextCall.datetime);
+        const now = new Date();
+
+        // Don't show if call has already started
+        if (callDate <= now) {
+          return null;
+        }
+
         const callTimezone = coachingData.nextCall.timezone || 'UTC';
         const userTimezone = getUserTimezone();
         const sameTimezone = callTimezone === userTimezone;

@@ -716,7 +716,8 @@ export interface Program {
   
   // Type and settings
   type: ProgramType; // 'group' | 'individual'
-  lengthDays: number; // Duration in days
+  lengthDays: number; // Duration in days (calculated from lengthWeeks * 7 if weekly mode)
+  lengthWeeks?: number; // Duration in weeks (primary unit for weekly mode)
   
   // Pricing
   priceInCents: number; // 0 = free
@@ -749,9 +750,9 @@ export interface Program {
   // Weekend settings
   includeWeekends?: boolean; // Default true. If false, tasks only feed on weekdays (Mon-Fri)
 
-  // Program orientation settings
-  orientation?: ProgramOrientation; // 'daily' (default) or 'weekly'
-  weeklyTaskDistribution?: WeeklyTaskDistribution; // How weekly tasks are distributed
+  // Program content mode settings
+  orientation?: ProgramOrientation; // 'weekly' (default) or 'daily' - weekly is simpler, daily is granular
+  weeklyTaskDistribution?: WeeklyTaskDistribution; // Default distribution for weeks ('repeat-daily' | 'spread')
   scheduleMode?: ProgramScheduleMode; // What content types are in the schedule
   primaryCourseIds?: string[]; // Main courses that form the schedule backbone
   hasModules?: boolean; // True if using program_modules collection for hierarchy
@@ -922,11 +923,11 @@ export interface ProgramWithStats extends Program {
 export type ProgramOrientation = 'daily' | 'weekly';
 
 /**
- * How weekly tasks are distributed
- * - spread: All tasks available from week start, user decides when
- * - daily: Tasks still synced daily but grouped by week theme
+ * How weekly tasks are distributed to days
+ * - repeat-daily: All week tasks appear every day
+ * - spread: Tasks distributed across the week (1-2 per day)
  */
-export type WeeklyTaskDistribution = 'spread' | 'daily';
+export type WeeklyTaskDistribution = 'repeat-daily' | 'spread';
 
 /**
  * Program schedule mode - what content types are in the schedule
@@ -989,10 +990,11 @@ export interface ProgramWeek {
   startDayIndex: number;
   endDayIndex: number;
 
-  // Weekly orientation fields (when program.orientation = 'weekly')
+  // Weekly mode content fields
   weeklyTasks?: ProgramTaskTemplate[]; // Tasks for the entire week
   weeklyHabits?: ProgramHabitTemplate[]; // Habits for the week
   weeklyPrompt?: string; // Prompt/theme for the week
+  distribution?: WeeklyTaskDistribution; // How tasks are distributed to days ('repeat-daily' | 'spread')
 
   // Client-facing summary fields
   currentFocus?: string[]; // Max 3 key priorities for the week
@@ -1001,6 +1003,14 @@ export interface ProgramWeek {
   // Schedule references
   scheduledCallEventId?: string; // UnifiedEvent ID for weekly call
   linkedCourseModuleIds?: string[]; // Course module IDs to complete this week
+
+  // Call summaries and notes
+  linkedSummaryIds?: string[]; // CallSummary IDs linked to this week
+  manualNotes?: string; // Coach's manual notes for this week
+
+  // Coach recordings (uploaded by coach)
+  coachRecordingUrl?: string; // URL to uploaded recording file
+  coachRecordingNotes?: string; // Notes/transcript from the recording
 
   // AI fill tracking
   fillSource?: WeekFillSource;
@@ -1644,7 +1654,9 @@ export type NotificationType =
   | 'feed_comment'
   | 'feed_repost'
   | 'feed_mention'
-  | 'story_reaction';
+  | 'story_reaction'
+  // Coach AI fill prompts
+  | 'call_summary_fill_week';
 
 export interface Notification {
   id: string;
@@ -1656,6 +1668,13 @@ export interface Notification {
   createdAt: string; // ISO timestamp
   read: boolean;
   actionRoute?: string; // e.g. "/checkin/morning/start"
+  // Optional metadata for specific notification types
+  metadata?: {
+    summaryId?: string;      // For call_summary_fill_week
+    programId?: string;      // For call_summary_fill_week
+    weekId?: string;         // For call_summary_fill_week
+    clientName?: string;     // For call_summary_fill_week
+  };
 }
 
 export interface EmailNotificationPreferences {

@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Program, ProgramDay, ProgramModule, ProgramWeek, ProgramOrientation } from '@/types';
 import { ChevronDown, ChevronRight, Plus, Folder, Calendar, FileText, Sparkles } from 'lucide-react';
+import { OrientationToggle } from './OrientationToggle';
 
 // Selection types
 export type SidebarSelection =
@@ -22,6 +23,8 @@ interface ProgramSidebarNavProps {
   onAddModule?: () => void;
   onAddWeek?: (moduleId: string) => void;
   onFillWithAI?: () => void;
+  onFillWeek?: (weekId: string) => void;
+  onWeekDistributionChange?: (weekId: string, distribution: 'repeat-daily' | 'spread') => void;
   isLoading?: boolean;
 }
 
@@ -41,6 +44,8 @@ export function ProgramSidebarNav({
   onAddModule,
   onAddWeek,
   onFillWithAI,
+  onFillWeek,
+  onWeekDistributionChange,
   isLoading = false,
 }: ProgramSidebarNavProps) {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(modules[0]?.id ? [modules[0].id] : []));
@@ -149,13 +154,24 @@ export function ProgramSidebarNav({
     );
   }
 
+  // Check if program has content (for mode switch confirmation)
+  const hasExistingContent = days.some(d => d.tasks?.length > 0 || d.title) || 
+    weeks.some(w => w.weeklyTasks?.length || w.theme);
+
   return (
-    <div className="w-56 flex-shrink-0">
+    <div className="w-64 flex-shrink-0">
       {/* Header */}
       <div className="mb-4">
-        <h3 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+        <h3 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
           Program Content
         </h3>
+        {/* Mode Toggle */}
+        <OrientationToggle
+          value={orientation}
+          onChange={onOrientationChange}
+          showConfirmation={true}
+          hasExistingContent={hasExistingContent}
+        />
       </div>
 
       {/* Fill with AI button */}
@@ -215,7 +231,7 @@ export function ProgramSidebarNav({
                         const daysWithContent = weekDays.filter(d => dayHasContent(d)).length;
 
                         return (
-                          <div key={week.id}>
+                          <div key={week.id} className="group/week">
                             {/* Week Header */}
                             <div className="flex items-center gap-1">
                               {orientation === 'daily' && (
@@ -245,12 +261,41 @@ export function ProgramSidebarNav({
                               >
                                 <div className="flex items-center gap-1.5">
                                   <Calendar className="w-3 h-3" />
-                                  <span>{week.name || `Week ${week.weekNumber}`}</span>
+                                  <span className="truncate">{week.name || `Week ${week.weekNumber}`}</span>
                                 </div>
-                                <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                                  {daysWithContent}/{weekDays.length}
-                                </span>
+                                {orientation === 'weekly' ? (
+                                  /* Distribution badge in weekly mode */
+                                  <select
+                                    value={week.distribution || 'repeat-daily'}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      onWeekDistributionChange?.(week.id, e.target.value as 'repeat-daily' | 'spread');
+                                    }}
+                                    className="text-[10px] px-1.5 py-0.5 rounded bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] border-none cursor-pointer hover:bg-[#e1ddd8] dark:hover:bg-[#363b45] transition-colors"
+                                  >
+                                    <option value="repeat-daily">Daily</option>
+                                    <option value="spread">Spread</option>
+                                  </select>
+                                ) : (
+                                  <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                                    {daysWithContent}/{weekDays.length}
+                                  </span>
+                                )}
                               </button>
+                              {/* Fill week with AI button */}
+                              {onFillWeek && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onFillWeek(week.id);
+                                  }}
+                                  className="p-1 hover:bg-brand-accent/10 rounded opacity-0 group-hover/week:opacity-100 transition-opacity"
+                                  title="Fill week with AI"
+                                >
+                                  <Sparkles className="w-3 h-3 text-brand-accent" />
+                                </button>
+                              )}
                             </div>
 
                             {/* Week's Days (only in daily orientation) */}

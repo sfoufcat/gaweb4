@@ -27,8 +27,8 @@ export function OnboardingLayout({
   const { logoUrl, appTitle } = useBrandingValues();
   
   return (
-    <div className="fixed inset-0 bg-app-bg overflow-y-auto">
-      <div className="min-h-full flex flex-col">
+    <div className="min-h-dvh bg-app-bg">
+      <div className="min-h-dvh flex flex-col">
         {/* Logo Header - centered */}
         <motion.div 
           className="pt-6 pb-2 px-6 flex justify-center"

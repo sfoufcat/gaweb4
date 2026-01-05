@@ -88,15 +88,21 @@ async function fetchCoachingDataForUser(
 
     const data = coachingDoc.data() as ClientCoachingData;
 
-    // Extract nextCall
-    const nextCall: NextCallInfo | null = data.nextCall?.datetime
-      ? {
+    // Extract nextCall - only include if the call hasn't started yet
+    let nextCall: NextCallInfo | null = null;
+    if (data.nextCall?.datetime) {
+      const callTime = new Date(data.nextCall.datetime);
+      const now = new Date();
+      // Only show call if it's in the future
+      if (callTime > now) {
+        nextCall = {
           datetime: data.nextCall.datetime,
           timezone: data.nextCall.timezone || 'America/New_York',
           location: data.nextCall.location || 'Chat',
           title: data.nextCall.title,
-        }
-      : null;
+        };
+      }
+    }
 
     // Extract coaching data preview (excluding private notes)
     const coachingData: CoachingDataPreview = {

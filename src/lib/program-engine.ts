@@ -1174,6 +1174,62 @@ export async function getProgramDayV2(
 }
 
 /**
+ * Get program week that contains a specific day index
+ */
+export async function getProgramWeekForDay(
+  programId: string,
+  dayIndex: number
+): Promise<ProgramWeek | null> {
+  // Find the week that contains this day
+  const snapshot = await adminDb
+    .collection('program_weeks')
+    .where('programId', '==', programId)
+    .where('startDayIndex', '<=', dayIndex)
+    .get();
+  
+  if (snapshot.empty) return null;
+  
+  // Find the week where endDayIndex >= dayIndex
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    if (data.endDayIndex >= dayIndex) {
+      return { id: doc.id, ...data } as ProgramWeek;
+    }
+  }
+  return null;
+}
+
+/**
+ * Get tasks for a specific day from weekly mode
+ * Applies distribution logic (repeat-daily or spread)
+ */
+export function getWeeklyTasksForDay(
+  week: ProgramWeek,
+  dayIndex: number
+): ProgramTaskTemplate[] {
+  const weeklyTasks = week.weeklyTasks || [];
+  if (weeklyTasks.length === 0) return [];
+  
+  const distribution = week.distribution || 'repeat-daily';
+  
+  if (distribution === 'repeat-daily') {
+    // All tasks appear every day
+    return weeklyTasks;
+  }
+  
+  // Spread distribution: distribute tasks across the week
+  const daysInWeek = week.endDayIndex - week.startDayIndex + 1;
+  const dayInWeek = dayIndex - week.startDayIndex; // 0-indexed position in week
+  
+  // Calculate which tasks belong to this day
+  const tasksPerDay = Math.ceil(weeklyTasks.length / daysInWeek);
+  const startIndex = dayInWeek * tasksPerDay;
+  const endIndex = Math.min(startIndex + tasksPerDay, weeklyTasks.length);
+  
+  return weeklyTasks.slice(startIndex, endIndex);
+}
+
+/**
  * Get program from Programs v2 (programs collection)
  */
 export async function getProgramV2(programId: string): Promise<Program | null> {
@@ -1416,10 +1472,28 @@ export async function syncProgramV2TasksForToday(
     };
   }
   
-  // 6. Get the program day template from program_days
-  const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
+  // 6. Get tasks for this day - check program orientation
+  // In weekly mode, get tasks from the week; in daily mode, get from the day
+  let tasksForToday: ProgramTaskTemplate[] = [];
   
-  if (!programDay || !programDay.tasks || programDay.tasks.length === 0) {
+  if (program.orientation === 'weekly') {
+    // Weekly mode: Get tasks from the week
+    const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
+    if (week) {
+      tasksForToday = getWeeklyTasksForDay(week, dayIndex);
+      console.log(`[PROGRAM_ENGINE_V2] Weekly mode: Got ${tasksForToday.length} tasks from week ${week.weekNumber} for day ${dayIndex}`);
+    }
+  }
+  
+  // If no weekly tasks or not in weekly mode, try to get from program_days
+  if (tasksForToday.length === 0) {
+    const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
+    if (programDay && programDay.tasks && programDay.tasks.length > 0) {
+      tasksForToday = programDay.tasks;
+    }
+  }
+  
+  if (tasksForToday.length === 0) {
     console.log(`[PROGRAM_ENGINE_V2] No tasks defined for day ${dayIndex} of program ${program.name}`);
     // Still update the lastAssignedDayIndex to prevent repeated checks
     await updateEnrollmentDayIndexV2(enrollment.id, dayIndex);
@@ -1467,8 +1541,8 @@ export async function syncProgramV2TasksForToday(
   
   // 8. Create tasks from templates
   // First, handle primary tasks (try to put in Focus)
-  const primaryTasks = programDay.tasks.filter(t => t.isPrimary);
-  const nonPrimaryTasks = programDay.tasks.filter(t => !t.isPrimary);
+  const primaryTasks = tasksForToday.filter(t => t.isPrimary);
+  const nonPrimaryTasks = tasksForToday.filter(t => !t.isPrimary);
   
   for (const template of primaryTasks) {
     // Check if task already exists (avoid duplicates)

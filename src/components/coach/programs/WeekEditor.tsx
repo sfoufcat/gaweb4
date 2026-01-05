@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, ProgramOrientation } from '@/types';
-import { Trash2, Save, Plus, X, Sparkles, GripVertical, Target, FileText } from 'lucide-react';
+import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, ProgramOrientation, CallSummary, WeeklyTaskDistribution } from '@/types';
+import { Trash2, Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Repeat, ArrowRight, Upload, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { MediaUpload } from '@/components/admin/MediaUpload';
 
 interface WeekEditorProps {
   week: ProgramWeek;
@@ -36,6 +37,10 @@ export function WeekEditor({
     weeklyTasks: week.weeklyTasks || [],
     currentFocus: week.currentFocus || [],
     notes: week.notes || [],
+    manualNotes: week.manualNotes || '',
+    distribution: (week.distribution || 'repeat-daily') as WeeklyTaskDistribution,
+    coachRecordingUrl: week.coachRecordingUrl || '',
+    coachRecordingNotes: week.coachRecordingNotes || '',
   });
   const [hasChanges, setHasChanges] = useState(false);
   const [newTask, setNewTask] = useState('');
@@ -57,9 +62,13 @@ export function WeekEditor({
       weeklyTasks: week.weeklyTasks || [],
       currentFocus: week.currentFocus || [],
       notes: week.notes || [],
+      manualNotes: week.manualNotes || '',
+      distribution: (week.distribution || 'repeat-daily') as WeeklyTaskDistribution,
+      coachRecordingUrl: week.coachRecordingUrl || '',
+      coachRecordingNotes: week.coachRecordingNotes || '',
     });
     setHasChanges(false);
-  }, [week.id, week.name, week.theme, week.description, week.weeklyPrompt, week.weeklyTasks, week.currentFocus, week.notes]);
+  }, [week.id, week.name, week.theme, week.description, week.weeklyPrompt, week.weeklyTasks, week.currentFocus, week.notes, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes]);
 
   // Check for changes
   useEffect(() => {
@@ -68,6 +77,10 @@ export function WeekEditor({
       formData.theme !== (week.theme || '') ||
       formData.description !== (week.description || '') ||
       formData.weeklyPrompt !== (week.weeklyPrompt || '') ||
+      formData.manualNotes !== (week.manualNotes || '') ||
+      formData.distribution !== (week.distribution || 'repeat-daily') ||
+      formData.coachRecordingUrl !== (week.coachRecordingUrl || '') ||
+      formData.coachRecordingNotes !== (week.coachRecordingNotes || '') ||
       JSON.stringify(formData.weeklyTasks) !== JSON.stringify(week.weeklyTasks || []) ||
       JSON.stringify(formData.currentFocus) !== JSON.stringify(week.currentFocus || []) ||
       JSON.stringify(formData.notes) !== JSON.stringify(week.notes || []);
@@ -83,6 +96,10 @@ export function WeekEditor({
       weeklyTasks: formData.weeklyTasks.length > 0 ? formData.weeklyTasks : undefined,
       currentFocus: formData.currentFocus.length > 0 ? formData.currentFocus : undefined,
       notes: formData.notes.length > 0 ? formData.notes : undefined,
+      manualNotes: formData.manualNotes || undefined,
+      distribution: formData.distribution,
+      coachRecordingUrl: formData.coachRecordingUrl || undefined,
+      coachRecordingNotes: formData.coachRecordingNotes || undefined,
     });
     setHasChanges(false);
   };
@@ -209,6 +226,51 @@ export function WeekEditor({
           className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
         />
       </div>
+
+      {/* Task Distribution Mode (Weekly mode only) */}
+      {orientation === 'weekly' && (
+        <div>
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <Repeat className="w-4 h-4 inline mr-1.5" />
+            Task Distribution
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            How should this week&apos;s tasks be distributed to days?
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, distribution: 'repeat-daily' })}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
+                formData.distribution === 'repeat-daily'
+                  ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
+                  : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
+              }`}
+            >
+              <Repeat className="w-4 h-4" />
+              <div className="text-left">
+                <p className="font-medium font-albert">Repeat Daily</p>
+                <p className="text-xs opacity-70">All tasks every day</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, distribution: 'spread' })}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
+                formData.distribution === 'spread'
+                  ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
+                  : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
+              }`}
+            >
+              <ArrowRight className="w-4 h-4" />
+              <div className="text-left">
+                <p className="font-medium font-albert">Spread</p>
+                <p className="text-xs opacity-70">Distribute across week</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Week Description */}
       <div>
@@ -382,6 +444,114 @@ export function WeekEditor({
           </div>
         )}
       </div>
+
+      {/* Coach's Manual Notes */}
+      <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+        <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          <StickyNote className="w-4 h-4 inline mr-1.5" />
+          Coach Notes
+        </label>
+        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+          Private notes for this week (not visible to clients)
+        </p>
+        <textarea
+          value={formData.manualNotes}
+          onChange={(e) => setFormData({ ...formData, manualNotes: e.target.value })}
+          placeholder="Add your notes from calls, observations, or planning..."
+          rows={4}
+          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+        />
+      </div>
+
+      {/* Coach Recording Upload */}
+      <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+        <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          <Mic className="w-4 h-4 inline mr-1.5" />
+          Coach Recording
+        </label>
+        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+          Upload a recording or audio note for this week
+        </p>
+        
+        {formData.coachRecordingUrl ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg">
+              <Mic className="w-4 h-4 text-brand-accent" />
+              <a 
+                href={formData.coachRecordingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-brand-accent hover:underline truncate flex-1"
+              >
+                {formData.coachRecordingUrl.split('/').pop() || 'Recording'}
+              </a>
+              <button
+                onClick={() => setFormData({ ...formData, coachRecordingUrl: '' })}
+                className="p-1 text-[#a7a39e] hover:text-red-500 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <textarea
+              value={formData.coachRecordingNotes}
+              onChange={(e) => setFormData({ ...formData, coachRecordingNotes: e.target.value })}
+              placeholder="Add notes or transcript from this recording..."
+              rows={3}
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none text-sm"
+            />
+          </div>
+        ) : (
+          <div className="border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-6 text-center">
+            <Upload className="w-8 h-8 text-[#a7a39e] dark:text-[#7d8190] mx-auto mb-2" />
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+              Drag & drop or click to upload
+            </p>
+            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+              MP3, MP4, WAV, or M4A up to 50MB
+            </p>
+            <input
+              type="file"
+              accept="audio/*,video/*"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  // For now, just use a placeholder - actual upload would go through an API
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    // In a real implementation, upload to storage and get URL
+                    setFormData({ ...formData, coachRecordingUrl: URL.createObjectURL(file) });
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Linked Call Summaries */}
+      {week.linkedSummaryIds && week.linkedSummaryIds.length > 0 && (
+        <div>
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <MessageSquare className="w-4 h-4 inline mr-1.5" />
+            Linked Call Summaries
+          </label>
+          <div className="space-y-2">
+            {week.linkedSummaryIds.map((summaryId) => (
+              <div
+                key={summaryId}
+                className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg"
+              >
+                <MessageSquare className="w-4 h-4 text-brand-accent" />
+                <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  Summary {summaryId.slice(0, 8)}...
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Days in Week (daily orientation or as reference) */}
       <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">

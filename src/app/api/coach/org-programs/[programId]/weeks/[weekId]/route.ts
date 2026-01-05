@@ -93,7 +93,12 @@ export async function PATCH(
     if (body.notes !== undefined) updateData.notes = body.notes || null;
     if (body.scheduledCallEventId !== undefined) updateData.scheduledCallEventId = body.scheduledCallEventId || null;
     if (body.linkedCourseModuleIds !== undefined) updateData.linkedCourseModuleIds = body.linkedCourseModuleIds || null;
+    if (body.linkedSummaryIds !== undefined) updateData.linkedSummaryIds = body.linkedSummaryIds || null;
+    if (body.manualNotes !== undefined) updateData.manualNotes = body.manualNotes?.trim() || null;
     if (body.fillSource !== undefined) updateData.fillSource = body.fillSource || null;
+    if (body.distribution !== undefined) updateData.distribution = body.distribution || 'repeat-daily';
+    if (body.coachRecordingUrl !== undefined) updateData.coachRecordingUrl = body.coachRecordingUrl?.trim() || null;
+    if (body.coachRecordingNotes !== undefined) updateData.coachRecordingNotes = body.coachRecordingNotes?.trim() || null;
 
     await adminDb.collection('program_weeks').doc(weekId).update(updateData);
     console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Updated week ${weekId}`);

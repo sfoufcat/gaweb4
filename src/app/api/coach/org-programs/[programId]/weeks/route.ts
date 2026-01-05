@@ -137,10 +137,13 @@ export async function POST(
       weeklyTasks: body.weeklyTasks || undefined,
       weeklyHabits: body.weeklyHabits || undefined,
       weeklyPrompt: body.weeklyPrompt?.trim() || undefined,
+      distribution: body.distribution || 'repeat-daily', // Default: repeat tasks daily
       currentFocus: body.currentFocus || undefined,
       notes: body.notes || undefined,
       scheduledCallEventId: body.scheduledCallEventId || undefined,
       linkedCourseModuleIds: body.linkedCourseModuleIds || undefined,
+      coachRecordingUrl: body.coachRecordingUrl?.trim() || undefined,
+      coachRecordingNotes: body.coachRecordingNotes?.trim() || undefined,
       fillSource: body.fillSource || undefined,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),

@@ -715,11 +715,13 @@ export default function CallPage() {
   }
 
   return (
-    <div className="bg-[#1a1a1a]" style={fullScreenStyle}>
+    <div className="bg-[#1a1a1a] h-screen w-screen" style={fullScreenStyle}>
       <StreamVideo client={videoClient}>
-        <StreamTheme>
+        <StreamTheme className="h-full w-full">
           <StreamCall call={call}>
-            <CallUI onLeave={handleLeave} />
+            <div className="h-full w-full">
+              <CallUI onLeave={handleLeave} />
+            </div>
           </StreamCall>
         </StreamTheme>
       </StreamVideo>
