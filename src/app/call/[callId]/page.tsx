@@ -14,9 +14,10 @@ import {
   CallingState,
   useCallStateHooks,
   Call,
+  hasVideo,
 } from '@stream-io/video-react-sdk';
 import '@stream-io/video-react-sdk/dist/css/styles.css';
-import { ArrowLeft, Loader2, Users } from 'lucide-react';
+import { ArrowLeft, Loader2, Users, Phone, Mic } from 'lucide-react';
 
 // Module-level storage for active media streams
 let activeMediaStreams: MediaStream[] = [];
@@ -181,12 +182,154 @@ function trackMediaStream(stream: MediaStream | null | undefined) {
 }
 
 /**
+ * Format duration in seconds to MM:SS or HH:MM:SS
+ */
+function formatDuration(seconds: number): string {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  if (hrs > 0) {
+    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Audio Call Layout Component - Phone call style UI when no video is active
+ */
+function AudioCallLayout({ onLeave }: { onLeave: () => void }) {
+  const { useParticipants, useLocalParticipant, useDominantSpeaker } = useCallStateHooks();
+  const participants = useParticipants();
+  const localParticipant = useLocalParticipant();
+  const dominantSpeaker = useDominantSpeaker();
+  const [duration, setDuration] = useState(0);
+
+  // Call duration timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDuration(d => d + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Get the remote participant (the other person on the call)
+  const remoteParticipant = participants.find(p => p.userId !== localParticipant?.userId);
+  const displayParticipant = remoteParticipant || localParticipant;
+
+  // Check if someone is speaking
+  const isSpeaking = dominantSpeaker?.isSpeaking || false;
+  const speakingUserId = dominantSpeaker?.userId;
+
+  // Get display name and avatar
+  const displayName = displayParticipant?.name || displayParticipant?.userId || 'Participant';
+  const avatarUrl = displayParticipant?.image;
+  const initials = displayName
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <div className="h-full flex flex-col bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d]">
+      {/* Top bar with call info */}
+      <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center gap-2 text-white/60">
+          <Phone className="w-4 h-4" />
+          <span className="font-albert text-sm">Voice Call</span>
+        </div>
+        <div className="px-3 py-1 bg-white/10 rounded-full">
+          <span className="font-albert text-white text-sm font-medium">
+            {formatDuration(duration)}
+          </span>
+        </div>
+      </div>
+
+      {/* Main content - centered avatar and name */}
+      <div className="flex-1 flex flex-col items-center justify-center">
+        {/* Avatar with speaking indicator */}
+        <div className="relative mb-6">
+          {/* Speaking ring animation */}
+          <div className={`absolute inset-0 rounded-full transition-all duration-300 ${
+            isSpeaking && speakingUserId === displayParticipant?.userId
+              ? 'ring-4 ring-green-500/50 animate-pulse'
+              : ''
+          }`} style={{ margin: '-8px' }} />
+
+          {/* Avatar */}
+          <div className="w-32 h-32 rounded-full bg-gradient-to-br from-brand-accent to-[#c9a07a] flex items-center justify-center overflow-hidden shadow-2xl">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="font-albert text-4xl font-bold text-white">
+                {initials}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Name */}
+        <h2 className="font-albert text-2xl font-semibold text-white mb-2">
+          {displayName}
+        </h2>
+
+        {/* Status/speaking indicator */}
+        <div className="flex items-center gap-2 text-white/60">
+          {isSpeaking && speakingUserId === displayParticipant?.userId ? (
+            <>
+              <div className="flex items-center gap-1">
+                <span className="w-1 h-3 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                <span className="w-1 h-4 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                <span className="w-1 h-2 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                <span className="w-1 h-5 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
+                <span className="w-1 h-3 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '600ms' }} />
+              </div>
+              <span className="font-albert text-sm text-green-400">Speaking</span>
+            </>
+          ) : (
+            <>
+              <Mic className="w-4 h-4" />
+              <span className="font-albert text-sm">Connected</span>
+            </>
+          )}
+        </div>
+
+        {/* Participant count if more than 2 */}
+        {participants.length > 2 && (
+          <div className="mt-4 px-3 py-1 bg-white/10 rounded-full">
+            <span className="font-albert text-white/80 text-sm flex items-center gap-1.5">
+              <Users className="w-4 h-4" />
+              {participants.length} participants
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Call controls at bottom */}
+      <div className="flex-shrink-0 p-6 flex justify-center">
+        <CallControls onLeave={onLeave} />
+      </div>
+    </div>
+  );
+}
+
+/**
  * Call UI Component - Rendered inside StreamCall
  */
 function CallUI({ onLeave }: { onLeave: () => void }) {
-  const { useCallCallingState, useParticipantCount } = useCallStateHooks();
+  const { useCallCallingState, useParticipantCount, useParticipants } = useCallStateHooks();
   const callingState = useCallCallingState();
   const participantCount = useParticipantCount();
+  const participants = useParticipants();
+
+  // Check if anyone has video enabled - if so, show video layout
+  const anyoneHasVideo = participants.some(p => hasVideo(p));
 
   // Handle different calling states
   if (callingState === CallingState.LEFT) {
@@ -218,6 +361,12 @@ function CallUI({ onLeave }: { onLeave: () => void }) {
     );
   }
 
+  // If no one has video, show audio-style layout
+  if (!anyoneHasVideo) {
+    return <AudioCallLayout onLeave={onLeave} />;
+  }
+
+  // Video layout when at least one participant has video enabled
   return (
     <div className="h-full flex flex-col bg-[#1a1a1a]">
       {/* Top bar with participant count */}

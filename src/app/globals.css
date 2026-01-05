@@ -531,14 +531,6 @@ html.dark {
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;
-  min-height: 100dvh;
-  position: relative;
-  z-index: 0;
-  background-color: #faf8f6;
-}
-
-html.dark body {
-  background-color: #05070b;
 }
 
 /* Dark mode skeleton / loading state styles */

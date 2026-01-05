@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Program, ProgramDay, ProgramModule, ProgramWeek, ProgramOrientation } from '@/types';
 import { ChevronDown, ChevronRight, Plus, Folder, Calendar, FileText, Sparkles } from 'lucide-react';
-import { OrientationToggle } from './OrientationToggle';
 
 // Selection types
 export type SidebarSelection =
@@ -150,15 +149,11 @@ export function ProgramSidebarNav({
 
   return (
     <div className="w-56 flex-shrink-0">
-      {/* Header with orientation toggle */}
-      <div className="mb-4 space-y-3">
+      {/* Header */}
+      <div className="mb-4">
         <h3 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-          Program Days
+          Program Content
         </h3>
-        <OrientationToggle
-          value={orientation}
-          onChange={onOrientationChange}
-        />
       </div>
 
       {/* Fill with AI button */}

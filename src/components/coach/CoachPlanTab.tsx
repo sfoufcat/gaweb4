@@ -26,6 +26,7 @@ import {
   formatLimitValue,
 } from '@/lib/coach-permissions';
 import { CoachReferralCard } from './CoachReferralCard';
+import { CallSummarySettingsCard } from './CallSummarySettingsCard';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 
 // =============================================================================
@@ -510,6 +511,9 @@ export function CoachPlanTab() {
           </div>
         </div>
       )}
+
+      {/* AI Call Summary Settings */}
+      <CallSummarySettingsCard />
 
       {/* Coach Referral Program */}
       <CoachReferralCard />

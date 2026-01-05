@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate } from '@/types';
+import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment } from '@/types';
 
 export async function GET(
   request: NextRequest,
@@ -125,6 +125,19 @@ export async function POST(
       }
     }
 
+    // Validate and process course assignments
+    const courseAssignments: DayCourseAssignment[] = [];
+    if (body.courseAssignments && Array.isArray(body.courseAssignments)) {
+      for (const assignment of body.courseAssignments) {
+        if (!assignment.courseId) continue;
+        courseAssignments.push({
+          courseId: assignment.courseId,
+          moduleIds: assignment.moduleIds?.length > 0 ? assignment.moduleIds : undefined,
+          lessonIds: assignment.lessonIds?.length > 0 ? assignment.lessonIds : undefined,
+        });
+      }
+    }
+
     // Check if day already exists
     const existingDay = await adminDb
       .collection('program_days')
@@ -141,6 +154,7 @@ export async function POST(
       dailyPrompt: body.dailyPrompt?.trim() || '',
       tasks,
       habits: habits.length > 0 ? habits : undefined,
+      courseAssignments: courseAssignments.length > 0 ? courseAssignments : undefined,
       updatedAt: FieldValue.serverTimestamp(),
     };
 

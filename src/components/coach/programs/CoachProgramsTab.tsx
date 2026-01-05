@@ -2,13 +2,16 @@
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Image from 'next/image';
-import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier, ProgramCompletionConfig, ProgramModule, ProgramWeek, ProgramOrientation } from '@/types';
+import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier, ProgramCompletionConfig, ProgramModule, ProgramWeek, ProgramOrientation, DayCourseAssignment } from '@/types';
 import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { ProgramSidebarNav, type SidebarSelection } from './ProgramSidebarNav';
 import { ModuleEditor } from './ModuleEditor';
 import { WeekEditor } from './WeekEditor';
 import { OrientationToggle } from './OrientationToggle';
 import { WeekFillModal } from './WeekFillModal';
+import { DayCourseSelector } from './DayCourseSelector';
+import { ProgramScheduleEditor } from './ProgramScheduleEditor';
+import type { DiscoverCourse } from '@/types/discover';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -81,6 +84,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [programCohorts, setProgramCohorts] = useState<ProgramCohort[]>([]);
   const [programModules, setProgramModules] = useState<ProgramModule[]>([]);
   const [programWeeks, setProgramWeeks] = useState<ProgramWeek[]>([]);
+  const [organizationCourses, setOrganizationCourses] = useState<DiscoverCourse[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(1);
   const [sidebarSelection, setSidebarSelection] = useState<SidebarSelection | null>(null);
   const [programOrientation, setProgramOrientation] = useState<ProgramOrientation>('daily');
@@ -98,8 +102,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     subdomain: string | null;
   } | null>(null);
   
-  // View mode: 'list' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'
-  const [viewMode, setViewMode] = useState<'list' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'>('list');
+  // View mode: 'list' | 'days' | 'schedule' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'
+  const [viewMode, setViewMode] = useState<'list' | 'days' | 'schedule' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'>('list');
   
   // Enrollments state
   const [programEnrollments, setProgramEnrollments] = useState<EnrollmentWithUser[]>([]);
@@ -220,12 +224,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     dailyPrompt: string;
     tasks: ProgramTaskTemplate[];
     habits: ProgramHabitTemplate[];
+    courseAssignments: DayCourseAssignment[];
   }>({
     title: '',
     summary: '',
     dailyPrompt: '',
     tasks: [],
     habits: [],
+    courseAssignments: [],
   });
   
   // Landing page form
@@ -406,9 +412,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           dailyPrompt: day1.dailyPrompt || '',
           tasks: day1.tasks || [],
           habits: day1.habits || [],
+          courseAssignments: day1.courseAssignments || [],
         });
       } else {
-        setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [] });
+        setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
       }
       
       setLoadingDetails(false);
@@ -463,9 +470,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           dailyPrompt: day1.dailyPrompt || '',
           tasks: day1.tasks || [],
           habits: day1.habits || [],
+          courseAssignments: day1.courseAssignments || [],
         });
       } else {
-        setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [] });
+        setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
       }
       
       // Load landing page data from program (program already declared above)
@@ -516,6 +524,18 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       setLoadingEnrollments(false);
     }
   }, [apiBasePath]);
+
+  const fetchOrganizationCourses = useCallback(async () => {
+    try {
+      const response = await fetch('/api/coach/org-discover/courses');
+      if (response.ok) {
+        const data = await response.json();
+        setOrganizationCourses(data.courses || []);
+      }
+    } catch (err) {
+      console.error('Error fetching courses:', err);
+    }
+  }, []);
 
   const handleRemoveEnrollment = async () => {
     if (!removeConfirmEnrollment || !selectedProgram) return;
@@ -634,9 +654,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         dailyPrompt: day.dailyPrompt || '',
         tasks: day.tasks || [],
         habits: day.habits || [],
+        courseAssignments: day.courseAssignments || [],
       });
     } else {
-      setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [] });
+      setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
     }
   }, [selectedDayIndex, programDays, selectedProgram]);
 
@@ -1487,6 +1508,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 >
                   Content
                 </button>
+                <button
+                  onClick={() => {
+                    setViewMode('schedule');
+                    fetchOrganizationCourses();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
+                    viewMode === 'schedule'
+                      ? 'bg-brand-accent/10 text-brand-accent'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  Schedule
+                </button>
                 {selectedProgram?.type === 'group' && (
                   <button
                     onClick={() => setViewMode('cohorts')}
@@ -1729,9 +1764,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       dailyPrompt: day.dailyPrompt || '',
                       tasks: day.tasks || [],
                       habits: day.habits || [],
+                      courseAssignments: day.courseAssignments || [],
                     });
                   } else {
-                    setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [] });
+                    setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
                   }
                 }
               }}
@@ -1749,6 +1785,74 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   } catch (err) {
                     console.error('Error saving orientation:', err);
                   }
+                }
+              }}
+              onAddModule={async () => {
+                if (!selectedProgram) return;
+                const lastModule = programModules[programModules.length - 1];
+                const startDay = lastModule ? lastModule.endDayIndex + 1 : 1;
+                const endDay = Math.min(startDay + 6, selectedProgram.lengthDays);
+
+                try {
+                  const res = await fetch(`${apiBasePath}/${selectedProgram.id}/modules`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      name: `Module ${programModules.length + 1}`,
+                      startDayIndex: startDay,
+                      endDayIndex: endDay,
+                    }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setProgramModules([...programModules, data.module]);
+                    // Update hasModules if first module
+                    if (programModules.length === 0) {
+                      await fetch(`${apiBasePath}/${selectedProgram.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ hasModules: true }),
+                      });
+                      // Update local state
+                      setSelectedProgram({ ...selectedProgram, hasModules: true });
+                    }
+                  }
+                } catch (err) {
+                  console.error('Error creating module:', err);
+                }
+              }}
+              onAddWeek={async (moduleId: string) => {
+                if (!selectedProgram) return;
+                const module = programModules.find(m => m.id === moduleId);
+                if (!module) return;
+
+                const moduleWeeks = programWeeks.filter(w => w.moduleId === moduleId);
+                const lastWeek = moduleWeeks[moduleWeeks.length - 1];
+                const startDay = lastWeek ? lastWeek.endDayIndex + 1 : module.startDayIndex;
+                const endDay = Math.min(startDay + 6, module.endDayIndex);
+
+                if (startDay > module.endDayIndex) {
+                  console.error('No more days available in this module');
+                  return;
+                }
+
+                try {
+                  const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      moduleId,
+                      weekNumber: programWeeks.length + 1,
+                      startDayIndex: startDay,
+                      endDayIndex: endDay,
+                    }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setProgramWeeks([...programWeeks, data.week]);
+                  }
+                } catch (err) {
+                  console.error('Error creating week:', err);
                 }
               }}
               onFillWithAI={() => setIsAIProgramContentModalOpen(true)}
@@ -1861,9 +1965,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             dailyPrompt: day.dailyPrompt || '',
                             tasks: day.tasks || [],
                             habits: day.habits || [],
+                            courseAssignments: day.courseAssignments || [],
                           });
                         } else {
-                          setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [] });
+                          setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
                         }
                       }}
                       onFillWithAI={() => setIsWeekFillModalOpen(true)}
@@ -2085,6 +2190,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     </div>
                   )}
 
+                  {/* Course Assignments */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                        Assigned Courses
+                      </label>
+                    </div>
+                    <DayCourseSelector
+                      currentAssignments={dayFormData.courseAssignments}
+                      onChange={(assignments) => setDayFormData({ ...dayFormData, courseAssignments: assignments })}
+                    />
+                  </div>
+
                   {saveError && (
                     <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                       <p className="text-sm text-red-600 dark:text-red-400 font-albert">{saveError}</p>
@@ -2104,6 +2222,26 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               )}
             </div>
           </div>
+        ) : viewMode === 'schedule' ? (
+          // Schedule View
+          <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6">
+            <ProgramScheduleEditor
+              program={selectedProgram!}
+              days={programDays}
+              courses={organizationCourses}
+              onDayClick={(dayIndex) => {
+                setSelectedDayIndex(dayIndex);
+                setSidebarSelection({ type: 'day', dayIndex });
+                setViewMode('days');
+              }}
+              onAddCall={(dayIndex) => {
+                // Navigate to day editor (call scheduling can be done from content view)
+                setSelectedDayIndex(dayIndex);
+                setSidebarSelection({ type: 'day', dayIndex });
+                setViewMode('days');
+              }}
+            />
+          </div>
         ) : viewMode === 'cohorts' ? (
           // Cohorts View (Group programs only)
           <div>
@@ -2111,7 +2249,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                 Manage time-based cohorts for this program
               </p>
-              <Button 
+              <Button
                 onClick={() => handleOpenCohortModal()}
                 className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
               >
@@ -2834,6 +2972,46 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       />
                       <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
                         How many focus tasks this program contributes per day (1-4). Extra tasks go to users&apos; backlog.
+                      </p>
+                    </div>
+
+                    {/* Program Mode */}
+                    <div>
+                      <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                        Program Mode
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProgramFormData({ ...programFormData, orientation: 'daily' });
+                            setProgramOrientation('daily');
+                          }}
+                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-albert transition-colors ${
+                            (programFormData.orientation || programOrientation) === 'daily'
+                              ? 'bg-brand-accent text-white'
+                              : 'bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:border-brand-accent dark:hover:border-brand-accent'
+                          }`}
+                        >
+                          Daily
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProgramFormData({ ...programFormData, orientation: 'weekly' });
+                            setProgramOrientation('weekly');
+                          }}
+                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-albert transition-colors ${
+                            (programFormData.orientation || programOrientation) === 'weekly'
+                              ? 'bg-brand-accent text-white'
+                              : 'bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:border-brand-accent dark:hover:border-brand-accent'
+                          }`}
+                        >
+                          Weekly
+                        </button>
+                      </div>
+                      <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
+                        Daily: Tasks assigned each day. Weekly: Tasks assigned per week.
                       </p>
                     </div>
 
