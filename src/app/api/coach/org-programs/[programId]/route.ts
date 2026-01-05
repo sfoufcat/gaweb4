@@ -1,8 +1,9 @@
 /**
  * Coach API: Single Program Management (org-scoped)
- * 
+ *
  * GET /api/coach/org-programs/[programId] - Get program details with days
- * PUT /api/coach/org-programs/[programId] - Update program
+ * PUT /api/coach/org-programs/[programId] - Full program update
+ * PATCH /api/coach/org-programs/[programId] - Partial update (orientation, etc.)
  * DELETE /api/coach/org-programs/[programId] - Delete program
  */
 
@@ -615,6 +616,90 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden: Coach access required' }, { status: 403 });
     }
     
+    return NextResponse.json({ error: 'Failed to update program' }, { status: 500 });
+  }
+}
+
+/**
+ * PATCH - Partial update for quick field changes (like orientation toggle)
+ * Supports: orientation, isActive, isPublished, name
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ programId: string }> }
+) {
+  try {
+    const { organizationId } = await requireCoachWithOrg();
+    const { programId } = await params;
+    const body = await request.json();
+
+    const programDoc = await adminDb.collection('programs').doc(programId).get();
+    if (!programDoc.exists) {
+      return NextResponse.json({ error: 'Program not found' }, { status: 404 });
+    }
+
+    const currentData = programDoc.data();
+
+    // Verify program belongs to this organization
+    if (currentData?.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
+    }
+
+    // Build update object - only include provided fields
+    const updateData: Record<string, unknown> = {
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    // Handle orientation toggle
+    if (body.orientation !== undefined) {
+      const validOrientations = ['daily', 'weekly'];
+      if (validOrientations.includes(body.orientation)) {
+        updateData.orientation = body.orientation;
+      } else {
+        return NextResponse.json({ error: 'Invalid orientation value' }, { status: 400 });
+      }
+    }
+
+    // Handle other quick toggle fields
+    if (body.isActive !== undefined) updateData.isActive = body.isActive;
+    if (body.isPublished !== undefined) updateData.isPublished = body.isPublished;
+    if (body.name !== undefined) updateData.name = body.name.trim();
+
+    // Only update if there's something to update beyond timestamp
+    if (Object.keys(updateData).length <= 1) {
+      return NextResponse.json({ error: 'No valid fields provided' }, { status: 400 });
+    }
+
+    await adminDb.collection('programs').doc(programId).update(updateData);
+
+    console.log(`[COACH_ORG_PROGRAM_PATCH] Updated program: ${programId}, fields: ${Object.keys(updateData).join(', ')}`);
+
+    // Fetch updated program
+    const updatedDoc = await adminDb.collection('programs').doc(programId).get();
+    const updatedData = updatedDoc.data();
+    const updatedProgram = {
+      id: updatedDoc.id,
+      ...updatedData,
+      createdAt: updatedData?.createdAt?.toDate?.()?.toISOString?.() || updatedData?.createdAt,
+      updatedAt: updatedData?.updatedAt?.toDate?.()?.toISOString?.() || updatedData?.updatedAt,
+    } as Program;
+
+    return NextResponse.json({
+      success: true,
+      program: updatedProgram,
+      message: 'Program updated successfully'
+    });
+  } catch (error) {
+    console.error('[COACH_ORG_PROGRAM_PATCH] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal Error';
+
+    if (message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (message.includes('Forbidden') || message.includes('Coach access')) {
+      return NextResponse.json({ error: 'Forbidden: Coach access required' }, { status: 403 });
+    }
+
     return NextResponse.json({ error: 'Failed to update program' }, { status: 500 });
   }
 }

@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import type { Program, ProgramEnrollment, ProgramWeek, ClientProgramWeek } from '@/types';
+import type { Program, ProgramEnrollment, ProgramWeek, ProgramDay, ClientProgramWeek, ClientProgramDay } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       programsProcessed: 0,
       enrollmentsProcessed: 0,
       clientWeeksCreated: 0,
+      clientDaysCreated: 0,
       callSummariesRelinked: 0,
       errors: [] as Array<{ programId: string; enrollmentId?: string; error: string }>,
     };
@@ -122,7 +123,16 @@ export async function POST(request: NextRequest) {
             if (dryRun) {
               // In dry run mode, just count what would be created
               results.clientWeeksCreated += templateWeeks.length;
-              console.log(`[MIGRATION DRY RUN] Would create ${templateWeeks.length} client weeks for enrollment ${enrollment.id}`);
+
+              // Count template days too
+              const templateDaysCount = await adminDb
+                .collection('program_days')
+                .where('programId', '==', program.id)
+                .count()
+                .get();
+              results.clientDaysCreated += templateDaysCount.data().count;
+
+              console.log(`[MIGRATION DRY RUN] Would create ${templateWeeks.length} client weeks and ${templateDaysCount.data().count} client days for enrollment ${enrollment.id}`);
               continue;
             }
 
@@ -179,6 +189,56 @@ export async function POST(request: NextRequest) {
 
             await batch.commit();
             console.log(`[MIGRATION] Created ${templateWeeks.length} client weeks for enrollment ${enrollment.id}`);
+
+            // Copy template days to client days (for programs with daily orientation)
+            const templateDaysSnapshot = await adminDb
+              .collection('program_days')
+              .where('programId', '==', program.id)
+              .orderBy('dayIndex', 'asc')
+              .get();
+
+            if (!templateDaysSnapshot.empty) {
+              const daysBatch = adminDb.batch();
+              const templateDays = templateDaysSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+              })) as (ProgramDay & { id: string })[];
+
+              for (const templateDay of templateDays) {
+                const clientDayRef = adminDb.collection('client_program_days').doc();
+
+                const clientDayData: Omit<ClientProgramDay, 'id'> = {
+                  enrollmentId: enrollment.id,
+                  programDayId: templateDay.id,
+                  programId: program.id,
+                  organizationId: program.organizationId,
+                  userId: enrollment.userId,
+                  dayIndex: templateDay.dayIndex,
+                  weekId: templateDay.weekId,
+
+                  // Content (copied from template)
+                  title: templateDay.title,
+                  summary: templateDay.summary,
+                  dailyPrompt: templateDay.dailyPrompt,
+                  tasks: templateDay.tasks || [],
+                  habits: templateDay.habits,
+                  courseAssignments: templateDay.courseAssignments,
+                  fillSource: templateDay.fillSource,
+
+                  // Sync tracking
+                  hasLocalChanges: false,
+                  lastSyncedAt: now,
+                  createdAt: now,
+                  updatedAt: now,
+                };
+
+                daysBatch.set(clientDayRef, clientDayData);
+                results.clientDaysCreated++;
+              }
+
+              await daysBatch.commit();
+              console.log(`[MIGRATION] Created ${templateDays.length} client days for enrollment ${enrollment.id}`);
+            }
 
             // Re-link any existing call summaries for this client/program to their client weeks
             const summariesSnapshot = await adminDb
@@ -246,8 +306,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: results.errors.length === 0,
       message: dryRun
-        ? `Dry run complete. Would create ${results.clientWeeksCreated} client weeks for ${results.enrollmentsProcessed} enrollments.`
-        : `Migration complete. Created ${results.clientWeeksCreated} client weeks for ${results.enrollmentsProcessed} enrollments.`,
+        ? `Dry run complete. Would create ${results.clientWeeksCreated} client weeks and ${results.clientDaysCreated} client days for ${results.enrollmentsProcessed} enrollments.`
+        : `Migration complete. Created ${results.clientWeeksCreated} client weeks and ${results.clientDaysCreated} client days for ${results.enrollmentsProcessed} enrollments.`,
       results,
       dryRun,
     });

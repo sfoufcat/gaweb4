@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Image from 'next/image';
-import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier, ProgramCompletionConfig, ProgramModule, ProgramWeek, ProgramOrientation, DayCourseAssignment, CallSummary, UnifiedEvent, ClientViewContext, ClientProgramWeek } from '@/types';
+import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier, ProgramCompletionConfig, ProgramModule, ProgramWeek, ProgramOrientation, DayCourseAssignment, CallSummary, UnifiedEvent, ClientViewContext, ClientProgramWeek, ClientProgramDay } from '@/types';
 import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { ModuleWeeksSidebar, type SidebarSelection } from './ModuleWeeksSidebar';
 import { ModuleEditor } from './ModuleEditor';
@@ -123,11 +123,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   // Client view context state (for 1:1/individual programs)
   const [clientViewContext, setClientViewContext] = useState<ClientViewContext>({ mode: 'template' });
   const [clientWeeks, setClientWeeks] = useState<ClientProgramWeek[]>([]);
+  const [clientDays, setClientDays] = useState<ClientProgramDay[]>([]);
   const [loadingClientWeeks, setLoadingClientWeeks] = useState(false);
+  const [loadingClientDays, setLoadingClientDays] = useState(false);
 
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
   const [isNewProgramModalOpen, setIsNewProgramModalOpen] = useState(false);
+  const pendingNumModulesRef = useRef<number>(1); // For new program creation
   const [isCohortModalOpen, setIsCohortModalOpen] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
   const [editingCohort, setEditingCohort] = useState<ProgramCohort | null>(null);
@@ -369,7 +372,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   }, []);
 
-  const fetchProgramDetails = useCallback(async (programId: string) => {
+  const fetchProgramDetails = useCallback(async (programId: string, options?: { numModulesToCreate?: number }) => {
     // Use demo data in demo mode (from session context for interactivity)
     if (isDemoMode) {
       const sessionDays = demoSession.getProgramDays(programId);
@@ -462,44 +465,57 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           weeks = weeksData.weeks || [];
         }
 
-        // Auto-initialize default module if no modules exist
+        // Auto-initialize modules if no modules exist
         if (modules.length === 0 && program) {
           try {
-            // Create default module
-            const createModuleRes = await fetch(`${apiBasePath}/${programId}/modules`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                name: 'Module 1',
-                startDayIndex: 1,
-                endDayIndex: program.lengthDays || 30,
-              }),
-            });
+            const numModulesToCreate = options?.numModulesToCreate || 1;
+            const includeWeekends = program.includeWeekends !== false;
+            const daysPerWeek = includeWeekends ? 7 : 5;
+            const totalDays = program.lengthDays || 30;
+            const numWeeks = Math.ceil(totalDays / daysPerWeek);
+            const weeksPerModule = Math.ceil(numWeeks / numModulesToCreate);
 
-            if (createModuleRes.ok) {
-              const moduleData = await createModuleRes.json();
-              modules = [moduleData.module];
+            // Create all modules
+            const modulePromises = [];
+            for (let m = 0; m < numModulesToCreate; m++) {
+              modulePromises.push(
+                fetch(`${apiBasePath}/${programId}/modules`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name: `Module ${m + 1}`,
+                    order: m + 1,
+                    startDayIndex: 1, // Will be recalculated by week assignment
+                    endDayIndex: totalDays,
+                  }),
+                }).then(res => res.ok ? res.json() : null)
+              );
+            }
 
-              // Create weeks for this module
-              const includeWeekends = program.includeWeekends !== false;
-              const daysPerWeek = includeWeekends ? 7 : 5;
-              const totalDays = program.lengthDays || 30;
-              const numWeeks = Math.ceil(totalDays / daysPerWeek);
+            const moduleResults = await Promise.all(modulePromises);
+            modules = moduleResults.filter(r => r?.module).map(r => r.module);
 
+            if (modules.length > 0) {
+              // Create weeks and distribute across modules
               const weekPromises = [];
               for (let weekIdx = 0; weekIdx < numWeeks; weekIdx++) {
                 const weekNum = weekIdx + 1;
                 const startDay = weekIdx * daysPerWeek + 1;
                 const endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
+                
+                // Determine which module this week belongs to
+                const moduleIndex = Math.min(Math.floor(weekIdx / weeksPerModule), modules.length - 1);
+                const targetModule = modules[moduleIndex];
+                const orderInModule = (weekIdx % weeksPerModule) + 1;
 
                 weekPromises.push(
                   fetch(`${apiBasePath}/${programId}/weeks`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                      moduleId: moduleData.module.id,
+                      moduleId: targetModule.id,
                       weekNumber: weekNum,
-                      order: weekNum,
+                      order: orderInModule,
                       startDayIndex: startDay,
                       endDayIndex: endDay,
                       distribution: 'repeat-daily',
@@ -511,10 +527,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               const weekResults = await Promise.all(weekPromises);
               weeks = weekResults.filter(r => r?.week).map(r => r.week);
 
-              console.log(`[fetchProgramDetails] Auto-initialized Module 1 with ${weeks.length} weeks for program ${programId}`);
+              console.log(`[fetchProgramDetails] Auto-initialized ${modules.length} module(s) with ${weeks.length} weeks for program ${programId}`);
             }
           } catch (initErr) {
-            console.error('Error auto-initializing default module:', initErr);
+            console.error('Error auto-initializing modules:', initErr);
           }
         }
 
@@ -672,6 +688,26 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   }, [apiBasePath, fetchClientWeeks]);
 
+  // Fetch client-specific days for 1:1 programs
+  const fetchClientDays = useCallback(async (programId: string, enrollmentId: string) => {
+    try {
+      setLoadingClientDays(true);
+      const response = await fetch(`${apiBasePath}/${programId}/client-days?enrollmentId=${enrollmentId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setClientDays(data.clientDays || []);
+      } else if (response.status === 404) {
+        // Client days don't exist yet
+        setClientDays([]);
+      }
+    } catch (err) {
+      console.error('Error fetching client days:', err);
+      setClientDays([]);
+    } finally {
+      setLoadingClientDays(false);
+    }
+  }, [apiBasePath]);
+
   const handleRemoveEnrollment = async () => {
     if (!removeConfirmEnrollment || !selectedProgram) return;
     
@@ -762,8 +798,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       const isNewSelection = prevProgramId.current !== selectedProgram.id;
       
       if (isNewSelection) {
-        fetchProgramDetails(selectedProgram.id);
+        // Pass numModulesToCreate for new programs (ref > 1 means user configured in modal)
+        const numModules = pendingNumModulesRef.current;
+        fetchProgramDetails(selectedProgram.id, numModules > 1 ? { numModulesToCreate: numModules } : undefined);
         setSelectedDayIndex(1);
+        // Reset after use
+        pendingNumModulesRef.current = 1;
       }
       
       prevProgramId.current = selectedProgram.id;
@@ -784,27 +824,39 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   }, [viewMode, selectedProgram, fetchProgramEnrollments]);
 
-  // Fetch client weeks when client is selected (for 1:1 programs)
+  // Fetch client weeks and days when client is selected (for 1:1 programs)
   useEffect(() => {
     if (clientViewContext.mode === 'client' && selectedProgram?.type === 'individual') {
       fetchClientWeeks(selectedProgram.id, clientViewContext.enrollmentId);
+      fetchClientDays(selectedProgram.id, clientViewContext.enrollmentId);
     } else {
-      // Reset client weeks when switching to template mode
+      // Reset client content when switching to template mode
       setClientWeeks([]);
+      setClientDays([]);
     }
-  }, [clientViewContext, selectedProgram, fetchClientWeeks]);
+  }, [clientViewContext, selectedProgram, fetchClientWeeks, fetchClientDays]);
 
   // Reset client view context when switching programs
   useEffect(() => {
     setClientViewContext({ mode: 'template' });
     setClientWeeks([]);
+    setClientDays([]);
   }, [selectedProgram?.id]);
 
-  // Load day data when day index changes
+  // Load day data when day index changes (use client days when in client mode)
   useEffect(() => {
-    if (!selectedProgram || !programDays.length) return;
-    
-    const day = programDays.find(d => d.dayIndex === selectedDayIndex);
+    if (!selectedProgram) return;
+
+    const isClientMode = clientViewContext.mode === 'client' && selectedProgram.type === 'individual';
+    const daysToUse = isClientMode ? clientDays : programDays;
+
+    // In client mode, we might not have days yet (they're created on first save)
+    // In that case, fall back to template days for initial display
+    let day = daysToUse.find(d => d.dayIndex === selectedDayIndex);
+    if (!day && isClientMode && programDays.length > 0) {
+      day = programDays.find(d => d.dayIndex === selectedDayIndex);
+    }
+
     if (day) {
       setDayFormData({
         title: day.title || '',
@@ -817,7 +869,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     } else {
       setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
     }
-  }, [selectedDayIndex, programDays, selectedProgram]);
+  }, [selectedDayIndex, programDays, clientDays, clientViewContext, selectedProgram]);
 
   // Auto-expand the week containing the selected day
   useEffect(() => {
@@ -1116,27 +1168,62 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
   const handleSaveDay = async () => {
     if (!selectedProgram) return;
-    
+
+    const isClientMode = clientViewContext.mode === 'client' && selectedProgram.type === 'individual';
+
     try {
       setSaving(true);
       setSaveError(null);
 
-      const response = await fetch(`${apiBasePath}/${selectedProgram.id}/days`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dayIndex: selectedDayIndex,
-          ...dayFormData,
-        }),
-      });
+      if (isClientMode) {
+        // Save to client-specific day
+        const response = await fetch(`${apiBasePath}/${selectedProgram.id}/client-days`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            enrollmentId: clientViewContext.enrollmentId,
+            dayIndex: selectedDayIndex,
+            ...dayFormData,
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to save day');
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to save day');
+        }
+
+        // Update local client days state
+        if (data.clientDay) {
+          setClientDays(prev => {
+            const existing = prev.findIndex(d => d.dayIndex === selectedDayIndex);
+            if (existing >= 0) {
+              const updated = [...prev];
+              updated[existing] = data.clientDay;
+              return updated;
+            }
+            return [...prev, data.clientDay];
+          });
+        }
+      } else {
+        // Save to template day
+        const response = await fetch(`${apiBasePath}/${selectedProgram.id}/days`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dayIndex: selectedDayIndex,
+            ...dayFormData,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to save day');
+        }
+
+        await fetchProgramDetails(selectedProgram.id);
       }
-
-      await fetchProgramDetails(selectedProgram.id);
     } catch (err) {
       console.error('Error saving day:', err);
       setSaveError(err instanceof Error ? err.message : 'Failed to save day');
@@ -1678,10 +1765,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   />
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1">
                 <button
                   onClick={() => setViewMode('days')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-albert ${
+                  className={`px-4 py-2 rounded-lg text-sm font-albert ${
                     viewMode === 'days'
                       ? 'bg-brand-accent/10 text-brand-accent'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
@@ -1694,7 +1781,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     setViewMode('schedule');
                     fetchOrganizationCourses();
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
+                  className={`px-4 py-2 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
                     viewMode === 'schedule'
                       ? 'bg-brand-accent/10 text-brand-accent'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
@@ -1706,7 +1793,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 {selectedProgram?.type === 'group' && (
                   <button
                     onClick={() => setViewMode('cohorts')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-albert ${
+                    className={`px-4 py-2 rounded-lg text-sm font-albert ${
                       viewMode === 'cohorts'
                         ? 'bg-brand-accent/10 text-brand-accent'
                         : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
@@ -1717,7 +1804,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 )}
                 <button
                   onClick={() => setViewMode('enrollments')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-albert ${
+                  className={`px-4 py-2 rounded-lg text-sm font-albert ${
                     viewMode === 'enrollments'
                       ? 'bg-brand-accent/10 text-brand-accent'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
@@ -1727,7 +1814,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 </button>
                 <button
                   onClick={() => setViewMode('landing')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
+                  className={`px-4 py-2 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
                     viewMode === 'landing'
                       ? 'bg-brand-accent/10 text-brand-accent'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
@@ -1738,7 +1825,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 </button>
                 <button
                   onClick={() => setViewMode('referrals')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
+                  className={`px-4 py-2 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
                     viewMode === 'referrals'
                       ? 'bg-brand-accent/10 text-brand-accent'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
@@ -2263,6 +2350,30 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 // Clear selection if deleted module was selected
                 if (sidebarSelection?.type === 'module' && sidebarSelection.id === moduleId) {
                   setSidebarSelection(null);
+                }
+              }}
+              onAutoDistributeWeeks={async () => {
+                if (!selectedProgram) return;
+                try {
+                  const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/auto-distribute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                  });
+                  if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    console.error('Failed to auto-distribute weeks:', errorData);
+                    alert(`Failed to auto-distribute weeks: ${errorData.error || res.statusText}`);
+                    return;
+                  }
+                  // Refetch weeks to get updated module assignments
+                  const weeksRes = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`);
+                  if (weeksRes.ok) {
+                    const weeksData = await weeksRes.json();
+                    setProgramWeeks(weeksData.weeks || []);
+                  }
+                } catch (err) {
+                  console.error('Error auto-distributing weeks:', err);
+                  alert('Failed to auto-distribute weeks. Check console for details.');
                 }
               }}
             />
@@ -4162,9 +4273,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       <NewProgramModal
         isOpen={isNewProgramModalOpen}
         onClose={() => setIsNewProgramModalOpen(false)}
-        onCreateFromScratch={() => {
+        onCreateFromScratch={(options) => {
           setIsNewProgramModalOpen(false);
           setEditingProgram(null);
+          pendingNumModulesRef.current = options?.numModules || 1;
           if (!isDemoMode) fetchCoaches();
           setProgramFormData({
             name: '',

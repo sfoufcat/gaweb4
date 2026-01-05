@@ -14,7 +14,8 @@ import {
   Sparkles,
   GripVertical,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Shuffle
 } from 'lucide-react';
 import { OrientationToggle } from './OrientationToggle';
 
@@ -41,6 +42,7 @@ interface ModuleWeeksSidebarProps {
   onFillWithAI?: () => void;
   onFillWeek?: (weekNumber: number) => void;
   onWeekDistributionChange?: (weekNumber: number, distribution: 'repeat-daily' | 'spread') => void;
+  onAutoDistributeWeeks?: () => Promise<void>;
   isLoading?: boolean;
   /** Client view context - when in client mode, reordering is disabled */
   viewContext?: ClientViewContext;
@@ -176,6 +178,7 @@ export function ModuleWeeksSidebar({
   onAddModule,
   onDeleteModule,
   onFillWeek,
+  onAutoDistributeWeeks,
   isLoading = false,
   viewContext,
 }: ModuleWeeksSidebarProps) {
@@ -315,9 +318,17 @@ export function ModuleWeeksSidebar({
   }, [onModulesReorder]);
 
   const handleWeeksReorder = useCallback(async (moduleId: string, reorderedWeeks: CalculatedWeek[]) => {
+    // Only allow reordering when all weeks have real database IDs
+    const validWeeks = reorderedWeeks.filter(w => w.storedWeekId);
+    
+    if (validWeeks.length !== reorderedWeeks.length) {
+      console.warn('[ModuleWeeksSidebar] Some weeks have not been saved yet - cannot reorder');
+      return;
+    }
+    
     // Convert CalculatedWeek[] to ProgramWeek[] format for the API
-    const weekData = reorderedWeeks.map(w => ({
-      id: w.storedWeekId || `week-${w.weekNum}`,
+    const weekData = validWeeks.map(w => ({
+      id: w.storedWeekId!,
       weekNumber: w.weekNum,
       moduleId: w.moduleId,
     })) as ProgramWeek[];
@@ -639,7 +650,7 @@ export function ModuleWeeksSidebar({
   };
 
   return (
-    <div className="w-80 flex-shrink-0">
+    <div className="w-96 flex-shrink-0">
       {/* Orientation Toggle - moved up, no header */}
       <div className="mb-4">
         <OrientationToggle
@@ -702,6 +713,17 @@ export function ModuleWeeksSidebar({
           >
             <Plus className="w-4 h-4" />
             Add Module
+          </button>
+        )}
+
+        {/* Auto-distribute weeks button - only show when there are multiple modules and weeks */}
+        {canReorder && sortedModules.length > 1 && onAutoDistributeWeeks && (
+          <button
+            onClick={onAutoDistributeWeeks}
+            className="w-full flex items-center justify-center gap-2 py-3 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors text-sm font-albert"
+          >
+            <Shuffle className="w-4 h-4" />
+            Auto-Distribute Weeks
           </button>
         )}
       </div>

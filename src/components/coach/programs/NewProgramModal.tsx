@@ -3,18 +3,18 @@
 import React, { useState, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LayoutTemplate, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { X, LayoutTemplate, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Folder } from 'lucide-react';
 import { TemplateGallery } from './TemplateGallery';
 import { TemplatePreviewModal } from './TemplatePreviewModal';
 import { TemplateCustomizeForm } from './TemplateCustomizeForm';
 import type { ProgramTemplate, TemplateDay } from '@/types';
 
-export type NewProgramView = 'choice' | 'gallery' | 'preview' | 'customize' | 'scratch';
+export type NewProgramView = 'choice' | 'gallery' | 'preview' | 'customize' | 'scratch-config';
 
 interface NewProgramModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateFromScratch: () => void;
+  onCreateFromScratch: (options?: { numModules?: number }) => void;
   onProgramCreated: (programId: string) => void;
   demoMode?: boolean;
   onDemoCreate?: (program: { name: string; type: 'group' | 'individual'; duration: number }) => void;
@@ -36,6 +36,7 @@ export function NewProgramModal({
     totalTasks: number;
     totalHabits: number;
   } | null>(null);
+  const [numModules, setNumModules] = useState(1);
 
   const handleClose = () => {
     // Reset state on close
@@ -43,6 +44,7 @@ export function NewProgramModal({
     setSelectedTemplate(null);
     setTemplateDays([]);
     setTemplateStats(null);
+    setNumModules(1);
     onClose();
   };
 
@@ -74,7 +76,7 @@ export function NewProgramModal({
 
   const handleFromScratch = () => {
     handleClose();
-    onCreateFromScratch();
+    onCreateFromScratch({ numModules });
   };
 
   return (
@@ -138,7 +140,7 @@ export function NewProgramModal({
                     >
                       <StartingPointSelector 
                         onSelectTemplate={() => setView('gallery')}
-                        onSelectScratch={handleFromScratch}
+                        onSelectScratch={() => setView('scratch-config')}
                       />
                     </motion.div>
                   )}
@@ -192,6 +194,93 @@ export function NewProgramModal({
                         onClose={handleClose}
                         onSuccess={handleProgramCreated}
                       />
+                    </motion.div>
+                  )}
+
+                  {view === 'scratch-config' && (
+                    <motion.div
+                      key="scratch-config"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.2 }}
+                      className="p-8"
+                    >
+                      {/* Header */}
+                      <div className="flex items-center gap-4 mb-6">
+                        <button
+                          onClick={() => setView('choice')}
+                          className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                        >
+                          <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <div>
+                          <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                            Program Structure
+                          </h2>
+                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                            Configure how your program is organized
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleClose}
+                          className="ml-auto p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      {/* Module count selector */}
+                      <div className="bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl p-6 mb-6">
+                        <div className="flex items-start gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+                            <Folder className="w-6 h-6 text-brand-accent" />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+                              Number of Modules
+                            </label>
+                            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
+                              Modules help organize your program into logical sections. Weeks will be distributed evenly across modules.
+                            </p>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => setNumModules(prev => Math.max(1, prev - 1))}
+                                disabled={numModules <= 1}
+                                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand-accent transition-colors"
+                              >
+                                −
+                              </button>
+                              <div className="w-16 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] flex items-center justify-center">
+                                <span className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{numModules}</span>
+                              </div>
+                              <button
+                                onClick={() => setNumModules(prev => Math.min(12, prev + 1))}
+                                disabled={numModules >= 12}
+                                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand-accent transition-colors"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Info note */}
+                      <div className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-6">
+                        <p>💡 You can always add, remove, or reorganize modules later in the program editor.</p>
+                      </div>
+
+                      {/* Continue button */}
+                      <div className="flex justify-end">
+                        <button
+                          onClick={handleFromScratch}
+                          className="flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors"
+                        >
+                          Continue
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
