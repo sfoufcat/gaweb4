@@ -10,6 +10,7 @@ import { LayoutModeSync } from "@/components/layout/LayoutModeSync";
 import { StreamChatProvider } from "@/contexts/StreamChatContext";
 import { StreamVideoProvider } from "@/contexts/StreamVideoContext";
 import { SquadProvider } from "@/contexts/SquadContext";
+import { CoachingProvider } from "@/contexts/CoachingContext";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
@@ -182,6 +183,7 @@ export default async function RootLayout({
                 initialSquadEmptyStateBehavior={ssrBranding.squadEmptyStateBehavior}
               >
               <SquadProvider>
+              <CoachingProvider>
               <OrganizationProvider>
                 <StreamChatProvider>
                   <StreamVideoProvider>
@@ -213,6 +215,7 @@ export default async function RootLayout({
                   </StreamVideoProvider>
                 </StreamChatProvider>
               </OrganizationProvider>
+              </CoachingProvider>
               </SquadProvider>
               </BrandingProvider>
               </SWRProvider>

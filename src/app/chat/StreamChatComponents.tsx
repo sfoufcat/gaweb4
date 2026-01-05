@@ -34,6 +34,7 @@ import type { UserRole } from '@/types';
 import type { OrgChannel } from '@/lib/org-channels';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useMenuTitles, useCoachingPromo } from '@/contexts/BrandingContext';
+import { useCoachingContext } from '@/contexts/CoachingContext';
 import { CoachingPromoNotEnabledModal } from '@/components/coach/CoachingPromoNotEnabledModal';
 
 // Import Stream Chat default CSS
@@ -281,7 +282,7 @@ interface CoachPromoItemProps {
   onDisabledClick?: () => void;
 }
 
-function CoachPromoItem({ 
+function CoachPromoItem({
   title = 'Work with me 1:1',
   subtitle = 'Let me help you unleash your potential',
   imageUrl,
@@ -290,26 +291,9 @@ function CoachPromoItem({
   isCoach = false,
   onDisabledClick,
 }: CoachPromoItemProps) {
-  // If no imageUrl is provided, fetch the resolved promo data which includes coach's profile picture
-  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(imageUrl || null);
-  
-  useEffect(() => {
-    if (!imageUrl) {
-      // Fetch resolved promo data to get coach's profile picture
-      fetch('/api/user/org-coaching-promo')
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data?.promo?.imageUrl) {
-            setResolvedImageUrl(data.promo.imageUrl);
-          }
-        })
-        .catch(() => {
-          // Silently fail - will show placeholder
-        });
-    } else {
-      setResolvedImageUrl(imageUrl);
-    }
-  }, [imageUrl]);
+  // Get promo image from context if not provided (instant - no fetch needed)
+  const coachingCtx = useCoachingContext();
+  const resolvedImageUrl = imageUrl || coachingCtx.promoImageUrl || null;
   
   // If not enabled and not a coach, don't render
   if (!isEnabled && !isCoach) {
@@ -432,6 +416,10 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
     if (channelId === ANNOUNCEMENTS_CHANNEL_ID) return 'Announcements';
     if (channelId === SOCIAL_CORNER_CHANNEL_ID) return 'Social Corner';
     if (channelId === SHARE_WINS_CHANNEL_ID) return 'Share your wins';
+    // For coaching channels, always show the other member's name (coach for clients, client for coaches)
+    if (isCoachingChannel) {
+      return otherMember?.user?.name || 'Coach';
+    }
     const explicitName = channelData?.name as string | undefined;
     if (explicitName) return explicitName;
     return otherMember?.user?.name || 'Chat';
@@ -829,16 +817,17 @@ function ChatContent({
   
   // Get coaching promo from SSR context (prevents flash)
   const coachingPromo = useCoachingPromo();
-  
-  // Coaching promo enabled status and destination (fetched separately for dynamic data)
-  const [promoIsEnabled, setPromoIsEnabled] = useState(false);
-  const [promoDestinationUrl, setPromoDestinationUrl] = useState<string | null>(null);
+
+  // Coaching data from context (loaded at app startup - instant!)
+  const coachingCtxData = useCoachingContext();
+  const promoIsEnabled = coachingCtxData.promoIsEnabled;
+  const promoDestinationUrl = coachingCtxData.promoDestinationUrl;
   const [showPromoNotEnabledModal, setShowPromoNotEnabledModal] = useState(false);
-  
-  // Program-based coaching (independent of legacy hasCoaching flag)
-  const [hasActiveIndividualEnrollment, setHasActiveIndividualEnrollment] = useState(false);
-  const [programCoachingChannelId, setProgramCoachingChannelId] = useState<string | null>(null);
-  const [programCoachInfo, setProgramCoachInfo] = useState<{ name: string; imageUrl: string } | null>(null);
+
+  // Program-based coaching from context (instant access)
+  const hasActiveIndividualEnrollment = coachingCtxData.hasActiveIndividualEnrollment;
+  const programCoachingChannelId = coachingCtxData.coachingChatChannelId;
+  const programCoachInfo = coachingCtxData.coachInfo;
   const [programCoachingUnread, setProgramCoachingUnread] = useState(0);
   const [programCoachingLastMessage, setProgramCoachingLastMessage] = useState<Date | null>(null);
   
@@ -873,27 +862,7 @@ function ChatContent({
     fetchOrgChannels();
   }, []);
 
-  // Fetch coaching promo enabled status, destination URL, and program-based coaching data
-  useEffect(() => {
-    const fetchPromoData = async () => {
-      try {
-        const response = await fetch('/api/user/org-coaching-promo');
-        if (response.ok) {
-          const data = await response.json();
-          setPromoIsEnabled(data.isEnabled || false);
-          setPromoDestinationUrl(data.destinationUrl || null);
-          // Program-based coaching fields
-          setHasActiveIndividualEnrollment(data.hasActiveIndividualEnrollment || false);
-          setProgramCoachingChannelId(data.coachingChatChannelId || null);
-          setProgramCoachInfo(data.coachInfo || null);
-        }
-      } catch (error) {
-        console.warn('Failed to fetch coaching promo data:', error);
-      }
-    };
-
-    fetchPromoData();
-  }, []);
+  // Coaching promo data is now loaded from CoachingContext at app startup - no fetch needed!
 
   // Calculate unread counts and last message times from active channels
   const calculateUnreadCounts = useCallback(() => {
@@ -1339,6 +1308,52 @@ function ChatContent({
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
           {/* Main Tab Content */}
           <div className={`absolute inset-0 overflow-y-auto ${activeTab === 'main' ? 'block' : 'hidden'}`}>
+            {/* Coaching Chat - PINNED TO TOP */}
+            {/* Show if user has coaching channel (program-based or legacy) */}
+            {/* Priority: Program coaching (from individual program enrollment) takes precedence */}
+            {/* Don't show on platform domain - coaching is tenant-specific */}
+            {!isPlatformMode && programCoachingChannelId && (
+              <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                <SpecialChannelItem
+                  avatarUrl={programCoachInfo?.imageUrl || coach?.imageUrl}
+                  icon={
+                    <svg className="w-6 h-6 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  }
+                  name={programCoachInfo?.name || coach?.name || 'My Coach'}
+                  description="1:1 coaching chat"
+                  onClick={() => handleChannelSelect(programCoachingChannelId)}
+                  isActive={activeChannel?.id === programCoachingChannelId}
+                  isPinned={true}
+                  unreadCount={programCoachingUnread}
+                  lastMessageTime={programCoachingLastMessage}
+                />
+              </div>
+            )}
+
+            {/* Legacy Coaching Chat - Only show if there's NO program coaching and user has legacy coaching */}
+            {/* This handles users with manual coaching assignment that predates program enrollment */}
+            {!isPlatformMode && !programCoachingChannelId && hasCoaching && coachingChannelId && (
+              <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                <SpecialChannelItem
+                  avatarUrl={coach?.imageUrl}
+                  icon={
+                    <svg className="w-6 h-6 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  }
+                  name={coach?.name || 'My Coach'}
+                  description="1:1 coaching chat"
+                  onClick={() => handleChannelSelect(coachingChannelId)}
+                  isActive={activeChannel?.id === coachingChannelId}
+                  isPinned={true}
+                  unreadCount={coachingUnread}
+                  lastMessageTime={coachingLastMessage}
+                />
+              </div>
+            )}
+
             {/* Coach: Multiple Squad Chats - Show all squads the coach manages */}
             {/* Don't show on platform domain - coach squads are tenant-specific */}
             {isCoach && !isPlatformMode && isCoachSquadsLoading && (
@@ -1573,51 +1588,6 @@ function ChatContent({
                   />
                 </div>
               </>
-            )}
-
-            {/* Coaching Chat - Show if user has coaching channel (legacy or program-based) */}
-            {/* Priority: Program coaching (from individual program enrollment) takes precedence */}
-            {/* Don't show on platform domain - coaching is tenant-specific */}
-            {!isPlatformMode && programCoachingChannelId && (
-              <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-                <SpecialChannelItem
-                  avatarUrl={programCoachInfo?.imageUrl || coach?.imageUrl}
-                  icon={
-                    <svg className="w-6 h-6 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  }
-                  name={programCoachInfo?.name || coach?.name || 'My Coach'}
-                  description="1:1 coaching chat"
-                  onClick={() => handleChannelSelect(programCoachingChannelId)}
-                  isActive={activeChannel?.id === programCoachingChannelId}
-                  isPinned={true}
-                  unreadCount={programCoachingUnread}
-                  lastMessageTime={programCoachingLastMessage}
-                />
-              </div>
-            )}
-
-            {/* Legacy Coaching Chat - Only show if there's NO program coaching and user has legacy coaching */}
-            {/* This handles users with manual coaching assignment that predates program enrollment */}
-            {!isPlatformMode && !programCoachingChannelId && hasCoaching && coachingChannelId && (
-              <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-                <SpecialChannelItem
-                  avatarUrl={coach?.imageUrl}
-                  icon={
-                    <svg className="w-6 h-6 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  }
-                  name={coach?.name || 'My Coach'}
-                  description="1:1 coaching chat"
-                  onClick={() => handleChannelSelect(coachingChannelId)}
-                  isActive={activeChannel?.id === coachingChannelId}
-                  isPinned={true}
-                  unreadCount={coachingUnread}
-                  lastMessageTime={coachingLastMessage}
-                />
-              </div>
             )}
 
             {/* Orphan Coaching Channels - Previous coaching chats with unread messages */}

@@ -8,12 +8,12 @@ import type { GoogleCalendarSettings } from '@/lib/integrations/types';
  */
 export async function GET(request: NextRequest) {
   // Default redirect for errors
-  let errorRedirectBase = 'https://app.coachful.co';
+  let errorRedirectBase = 'https://calendar.coachful.co';
 
   try {
     const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
-    const redirectUri = process.env.GOOGLE_CALENDAR_REDIRECT_URI || 'https://app.coachful.co/api/calendar/google/callback';
+    const redirectUri = process.env.GOOGLE_CALENDAR_REDIRECT_URI || 'https://calendar.coachful.co/api/calendar/google/callback';
 
     if (!clientId || !clientSecret) {
       console.error('[GOOGLE_CALENDAR_CALLBACK] Missing OAuth credentials');

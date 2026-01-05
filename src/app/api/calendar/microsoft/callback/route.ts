@@ -8,12 +8,12 @@ import type { OutlookCalendarSettings } from '@/lib/integrations/types';
  */
 export async function GET(request: NextRequest) {
   // Default redirect for errors
-  let errorRedirectBase = 'https://app.coachful.co';
+  let errorRedirectBase = 'https://calendar.coachful.co';
 
   try {
     const clientId = process.env.MICROSOFT_CLIENT_ID;
     const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
-    const redirectUri = process.env.MICROSOFT_CALENDAR_REDIRECT_URI || 'https://app.coachful.co/api/calendar/microsoft/callback';
+    const redirectUri = process.env.MICROSOFT_CALENDAR_REDIRECT_URI || 'https://calendar.coachful.co/api/calendar/microsoft/callback';
 
     if (!clientId || !clientSecret) {
       console.error('[MICROSOFT_CALENDAR_CALLBACK] Missing OAuth credentials');

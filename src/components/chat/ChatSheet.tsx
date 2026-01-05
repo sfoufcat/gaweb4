@@ -21,6 +21,7 @@ import { useCoachingPromo } from '@/contexts/BrandingContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useSquad } from '@/hooks/useSquad';
+import { useCoachingContext } from '@/contexts/CoachingContext';
 import { generateAvatarUrl } from '@/lib/demo-data';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
@@ -65,17 +66,20 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   // Track if we've already auto-selected for the current initialChannelId
   const [autoSelectedChannelId, setAutoSelectedChannelId] = useState<string | null>(null);
   
-  // Coaching promo data
+  // Coaching promo data - from context (loaded at app startup - instant!)
   const coachingPromo = useCoachingPromo();
-  const [promoData, setPromoData] = useState<{
-    isEnabled: boolean;
-    destinationUrl: string | null;
-    hasActiveIndividualEnrollment: boolean;
-    coachingChatChannelId: string | null;
-    coachInfo: { name: string; imageUrl: string } | null;
-    imageUrl: string | null;
-  } | null>(null);
-  
+  const coachingData = useCoachingContext();
+
+  // Build promoData from context for backward compatibility with existing code
+  const promoData = useMemo(() => ({
+    isEnabled: coachingData.promoIsEnabled,
+    destinationUrl: coachingData.promoDestinationUrl,
+    hasActiveIndividualEnrollment: coachingData.hasActiveIndividualEnrollment,
+    coachingChatChannelId: coachingData.coachingChatChannelId,
+    coachInfo: coachingData.coachInfo,
+    imageUrl: coachingData.promoImageUrl,
+  }), [coachingData]);
+
   // Org-specific channels (for filtering out cross-org channels)
   const [orgChannelIds, setOrgChannelIds] = useState<Set<string>>(new Set());
   const [isPlatformMode, setIsPlatformMode] = useState(false);
@@ -97,28 +101,9 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   // Squad channels are "loaded" when context is done loading
   const squadChannelsLoaded = !isSquadLoading;
 
-  // Fetch coaching promo data and org channels for filtering
+  // Fetch org channels for filtering (coaching data now from context)
   useEffect(() => {
     if (isOpen) {
-      // Fetch coaching promo
-      fetch('/api/user/org-coaching-promo')
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data) {
-            setPromoData({
-              isEnabled: data.isEnabled || false,
-              destinationUrl: data.destinationUrl || null,
-              hasActiveIndividualEnrollment: data.hasActiveIndividualEnrollment || false,
-              coachingChatChannelId: data.coachingChatChannelId || null,
-              coachInfo: data.coachInfo || null,
-              imageUrl: data.promo?.imageUrl || null,
-            });
-          }
-        })
-        .catch(() => {
-          // Silently fail
-        });
-      
       // Fetch org channels for filtering
       fetch('/api/user/org-channels')
         .then(res => res.ok ? res.json() : null)
@@ -140,8 +125,6 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         .catch(() => {
           // Silently fail - will show all channels
         });
-
-      // Squad data is now loaded from context (useSquad) - no fetch needed!
     }
   }, [isOpen]);
 
@@ -223,7 +206,15 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
             name = name || 'Squad Chat';
           } else if (channelId.startsWith('coaching-') || (name && name.toLowerCase().includes('coaching'))) {
             type = 'coaching';
-            name = name || 'Coaching';
+            // For coaching channels, show the OTHER member's name (coach for clients, client for coaches)
+            const members = Object.values(channel.state.members).filter(m => m.user);
+            const otherMember = members.find(m => m.user?.id !== client.userID);
+            if (otherMember?.user) {
+              name = otherMember.user.name || 'Coach';
+              image = otherMember.user.image;
+            } else {
+              name = name || 'Coaching';
+            }
           } else {
             // DM - get other member's info
             const members = Object.values(channel.state.members).filter(m => m.user);
@@ -365,10 +356,13 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     return <MessageCircle className="w-5 h-5 text-text-secondary" />;
   };
 
-  // Sort channels: unread first, then by last message time
+  // Sort channels: coaching first (pinned), then unread, then by last message time
   const sortedChannels = useMemo(() => {
     return [...channels].sort((a, b) => {
-      // Unread channels first
+      // Coaching channels always first (pinned to top)
+      if (a.type === 'coaching' && b.type !== 'coaching') return -1;
+      if (a.type !== 'coaching' && b.type === 'coaching') return 1;
+      // Then unread channels
       if (a.unread > 0 && b.unread === 0) return -1;
       if (a.unread === 0 && b.unread > 0) return 1;
       // Then by last message time

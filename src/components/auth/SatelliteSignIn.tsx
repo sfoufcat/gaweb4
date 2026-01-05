@@ -124,19 +124,15 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
   // Show loading while Clerk loads
   if (!isLoaded) {
     return (
-      <>
-        {/* Fixed background - extends behind iOS Safari toolbar */}
-        <div className="fixed inset-0 bg-app-bg -z-10" />
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="relative mb-4 mx-auto w-fit">
-              <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-              <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
-            </div>
-            <p className="text-text-secondary">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative mb-4 mx-auto w-fit">
+            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
+            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
           </div>
+          <p className="text-text-secondary">Loading...</p>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -147,99 +143,13 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
     const displayImage = user.imageUrl;
 
     return (
-      <>
-        {/* Fixed background - extends behind iOS Safari toolbar */}
-        <div className="fixed inset-0 bg-app-bg -z-10" />
-        <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 lg:py-16">
-          <div className="w-full max-w-xl mx-auto">
-            {/* Header with Coach Branding */}
-            <div className="text-center mb-10 lg:mb-12">
-              <Image
-                src={logoUrl}
-                alt={appTitle}
-                width={80}
-                height={80}
-                className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
-                unoptimized={logoUrl.startsWith('http')}
-              />
-              <h1 className="font-albert text-[38px] sm:text-[46px] lg:text-[56px] text-text-primary tracking-[-2px] leading-[1.1] mb-5 lg:mb-6">
-                Welcome back
-              </h1>
-              <p className="font-sans text-[16px] lg:text-[18px] text-text-secondary leading-[1.6] max-w-md mx-auto">
-                Continue with your existing account or use a different one.
-              </p>
-            </div>
-
-            {/* Auth Container */}
-            <div className="w-full max-w-lg mx-auto">
-              <div className="bg-white/80 dark:bg-surface/80 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-border-subtle/60 rounded-3xl p-8 shadow-lg">
-                {/* Current user card */}
-                <div className="bg-[#f5f3f0] dark:bg-surface-elevated rounded-2xl p-4 mb-6">
-                  <div className="flex items-center gap-4">
-                    {displayImage ? (
-                      <Image
-                        src={displayImage}
-                        alt={displayName}
-                        width={48}
-                        height={48}
-                        className="w-12 h-12 rounded-full"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-brand-accent/10 flex items-center justify-center">
-                        <span className="text-lg font-medium text-brand-accent">
-                          {displayName?.[0] || displayEmail?.[0] || '?'}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      {user.firstName && (
-                        <p className="font-medium text-text-primary truncate">{user.firstName} {user.lastName || ''}</p>
-                      )}
-                      {displayEmail && (
-                        <p className="text-sm text-text-secondary truncate">{displayEmail}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="space-y-4">
-                  <button
-                    onClick={handleContinue}
-                    className="w-full bg-[#2c2520] hover:bg-[#1a1512] text-white font-sans font-bold text-base rounded-full py-4 px-6 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
-                  >
-                    Continue as {displayName}
-                  </button>
-
-                  <button
-                    onClick={handleSignOut}
-                    disabled={signingOut}
-                    className="w-full py-3 px-6 rounded-full font-sans font-medium text-text-secondary hover:text-text-primary transition-colors border border-[#e1ddd8] dark:border-border-subtle disabled:opacity-50"
-                  >
-                    {signingOut ? 'Signing out...' : 'Use a different account'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // Default: Show sign-in form
-  return (
-    <>
-      {/* Fixed background - extends behind iOS Safari toolbar */}
-      <div className="fixed inset-0 bg-app-bg -z-10" />
       <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 lg:py-16">
         <div className="w-full max-w-xl mx-auto">
           {/* Header with Coach Branding */}
           <div className="text-center mb-10 lg:mb-12">
-            <Image 
-              src={logoUrl} 
-              alt={appTitle} 
+            <Image
+              src={logoUrl}
+              alt={appTitle}
               width={80}
               height={80}
               className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
@@ -249,53 +159,131 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
               Welcome back
             </h1>
             <p className="font-sans text-[16px] lg:text-[18px] text-text-secondary leading-[1.6] max-w-md mx-auto">
-              Sign in to continue your growth journey.
+              Continue with your existing account or use a different one.
             </p>
           </div>
 
           {/* Auth Container */}
           <div className="w-full max-w-lg mx-auto">
             <div className="bg-white/80 dark:bg-surface/80 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-border-subtle/60 rounded-3xl p-8 shadow-lg">
-              {/* OAuth Button - on parent page, uses redirect flow */}
-              <div className="space-y-3">
-                <OAuthButton
-                  provider="google"
-                  onClick={() => handleOAuth('oauth_google')}
-                  disabled={false}
-                  loading={oauthLoading}
-                />
+              {/* Current user card */}
+              <div className="bg-[#f5f3f0] dark:bg-surface-elevated rounded-2xl p-4 mb-6">
+                <div className="flex items-center gap-4">
+                  {displayImage ? (
+                    <Image
+                      src={displayImage}
+                      alt={displayName}
+                      width={48}
+                      height={48}
+                      className="w-12 h-12 rounded-full"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-brand-accent/10 flex items-center justify-center">
+                      <span className="text-lg font-medium text-brand-accent">
+                        {displayName?.[0] || displayEmail?.[0] || '?'}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    {user.firstName && (
+                      <p className="font-medium text-text-primary truncate">{user.firstName} {user.lastName || ''}</p>
+                    )}
+                    {displayEmail && (
+                      <p className="text-sm text-text-secondary truncate">{displayEmail}</p>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Divider */}
-              <div className="flex items-center gap-4 my-8">
-                <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-border-subtle" />
-                <span className="font-sans text-sm text-text-secondary">or</span>
-                <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-border-subtle" />
-              </div>
+              {/* Actions */}
+              <div className="space-y-4">
+                <button
+                  onClick={handleContinue}
+                  className="w-full bg-[#2c2520] hover:bg-[#1a1512] text-white font-sans font-bold text-base rounded-full py-4 px-6 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                >
+                  Continue as {displayName}
+                </button>
 
-              {/* Email/Password Form in iframe */}
-              {mounted && (
-                <iframe
-                  src={iframeSrc}
-                  className="w-full border-0 outline-none"
-                  style={{ height: '340px' }}
-                  scrolling="no"
-                  allow="clipboard-write"
-                  title="Sign In"
-                />
-              )}
+                <button
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  className="w-full py-3 px-6 rounded-full font-sans font-medium text-text-secondary hover:text-text-primary transition-colors border border-[#e1ddd8] dark:border-border-subtle disabled:opacity-50"
+                >
+                  {signingOut ? 'Signing out...' : 'Use a different account'}
+                </button>
+              </div>
             </div>
           </div>
-
-          {/* Sign Up Link */}
-          <p className="text-center mt-8 lg:mt-10 font-sans text-[15px] text-text-secondary">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="text-brand-accent hover:text-[#8a6649] font-medium">
-              Start your journey
-            </Link>
-          </p>
         </div>
       </div>
-    </>
+    );
+  }
+
+  // Default: Show sign-in form
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 lg:py-16">
+      <div className="w-full max-w-xl mx-auto">
+        {/* Header with Coach Branding */}
+        <div className="text-center mb-10 lg:mb-12">
+          <Image
+            src={logoUrl}
+            alt={appTitle}
+            width={80}
+            height={80}
+            className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
+            unoptimized={logoUrl.startsWith('http')}
+          />
+          <h1 className="font-albert text-[38px] sm:text-[46px] lg:text-[56px] text-text-primary tracking-[-2px] leading-[1.1] mb-5 lg:mb-6">
+            Welcome back
+          </h1>
+          <p className="font-sans text-[16px] lg:text-[18px] text-text-secondary leading-[1.6] max-w-md mx-auto">
+            Sign in to continue your growth journey.
+          </p>
+        </div>
+
+        {/* Auth Container */}
+        <div className="w-full max-w-lg mx-auto">
+          <div className="bg-white/80 dark:bg-surface/80 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-border-subtle/60 rounded-3xl p-8 shadow-lg">
+            {/* OAuth Button - on parent page, uses redirect flow */}
+            <div className="space-y-3">
+              <OAuthButton
+                provider="google"
+                onClick={() => handleOAuth('oauth_google')}
+                disabled={false}
+                loading={oauthLoading}
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-4 my-8">
+              <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-border-subtle" />
+              <span className="font-sans text-sm text-text-secondary">or</span>
+              <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-border-subtle" />
+            </div>
+
+            {/* Email/Password Form in iframe */}
+            {mounted && (
+              <iframe
+                src={iframeSrc}
+                className="w-full border-0 outline-none"
+                style={{ height: '340px' }}
+                scrolling="no"
+                allow="clipboard-write"
+                title="Sign In"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Sign Up Link */}
+        <p className="text-center mt-8 lg:mt-10 font-sans text-[15px] text-text-secondary">
+          Don&apos;t have an account?{' '}
+          <Link href="/signup" className="text-brand-accent hover:text-[#8a6649] font-medium">
+            Start your journey
+          </Link>
+        </p>
+      </div>
+    </div>
   );
 }

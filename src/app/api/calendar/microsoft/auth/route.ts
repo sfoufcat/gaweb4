@@ -8,7 +8,7 @@ import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 export async function POST(request: NextRequest) {
   try {
     const clientId = process.env.MICROSOFT_CLIENT_ID;
-    const redirectUri = process.env.MICROSOFT_CALENDAR_REDIRECT_URI || 'https://app.coachful.co/api/calendar/microsoft/callback';
+    const redirectUri = process.env.MICROSOFT_CALENDAR_REDIRECT_URI || 'https://calendar.coachful.co/api/calendar/microsoft/callback';
 
     if (!clientId) {
       return NextResponse.json(
