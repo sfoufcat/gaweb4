@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, ProgramOrientation, CallSummary, WeeklyTaskDistribution } from '@/types';
-import { Trash2, Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Repeat, ArrowRight, Upload, Mic } from 'lucide-react';
+import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, ProgramOrientation, CallSummary, WeeklyTaskDistribution, UnifiedEvent } from '@/types';
+import { Trash2, Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Repeat, ArrowRight, Upload, Mic, Phone, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 
@@ -14,6 +14,12 @@ interface WeekEditorProps {
   onDaySelect?: (dayIndex: number) => void;
   onFillWithAI?: () => void;
   isSaving?: boolean;
+  // Available items for manual linking
+  availableCallSummaries?: CallSummary[];
+  availableEvents?: UnifiedEvent[];
+  // Client view mode (for 1:1 programs)
+  isClientView?: boolean;
+  clientName?: string;
 }
 
 /**
@@ -28,6 +34,10 @@ export function WeekEditor({
   onDaySelect,
   onFillWithAI,
   isSaving = false,
+  availableCallSummaries = [],
+  availableEvents = [],
+  isClientView = false,
+  clientName,
 }: WeekEditorProps) {
   const [formData, setFormData] = useState({
     name: week.name || '',
@@ -41,6 +51,8 @@ export function WeekEditor({
     distribution: (week.distribution || 'repeat-daily') as WeeklyTaskDistribution,
     coachRecordingUrl: week.coachRecordingUrl || '',
     coachRecordingNotes: week.coachRecordingNotes || '',
+    linkedSummaryIds: week.linkedSummaryIds || [] as string[],
+    linkedCallEventIds: week.linkedCallEventIds || [] as string[],
   });
   const [hasChanges, setHasChanges] = useState(false);
   const [newTask, setNewTask] = useState('');
@@ -66,9 +78,11 @@ export function WeekEditor({
       distribution: (week.distribution || 'repeat-daily') as WeeklyTaskDistribution,
       coachRecordingUrl: week.coachRecordingUrl || '',
       coachRecordingNotes: week.coachRecordingNotes || '',
+      linkedSummaryIds: week.linkedSummaryIds || [],
+      linkedCallEventIds: week.linkedCallEventIds || [],
     });
     setHasChanges(false);
-  }, [week.id, week.name, week.theme, week.description, week.weeklyPrompt, week.weeklyTasks, week.currentFocus, week.notes, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes]);
+  }, [week.id, week.name, week.theme, week.description, week.weeklyPrompt, week.weeklyTasks, week.currentFocus, week.notes, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.linkedSummaryIds, week.linkedCallEventIds]);
 
   // Check for changes
   useEffect(() => {
@@ -83,7 +97,9 @@ export function WeekEditor({
       formData.coachRecordingNotes !== (week.coachRecordingNotes || '') ||
       JSON.stringify(formData.weeklyTasks) !== JSON.stringify(week.weeklyTasks || []) ||
       JSON.stringify(formData.currentFocus) !== JSON.stringify(week.currentFocus || []) ||
-      JSON.stringify(formData.notes) !== JSON.stringify(week.notes || []);
+      JSON.stringify(formData.notes) !== JSON.stringify(week.notes || []) ||
+      JSON.stringify(formData.linkedSummaryIds) !== JSON.stringify(week.linkedSummaryIds || []) ||
+      JSON.stringify(formData.linkedCallEventIds) !== JSON.stringify(week.linkedCallEventIds || []);
     setHasChanges(changed);
   }, [formData, week]);
 
@@ -100,9 +116,53 @@ export function WeekEditor({
       distribution: formData.distribution,
       coachRecordingUrl: formData.coachRecordingUrl || undefined,
       coachRecordingNotes: formData.coachRecordingNotes || undefined,
+      linkedSummaryIds: formData.linkedSummaryIds.length > 0 ? formData.linkedSummaryIds : undefined,
+      linkedCallEventIds: formData.linkedCallEventIds.length > 0 ? formData.linkedCallEventIds : undefined,
     });
     setHasChanges(false);
   };
+
+  // Link management for call summaries
+  const addSummaryLink = (summaryId: string) => {
+    if (!formData.linkedSummaryIds.includes(summaryId)) {
+      setFormData({
+        ...formData,
+        linkedSummaryIds: [...formData.linkedSummaryIds, summaryId],
+      });
+    }
+  };
+
+  const removeSummaryLink = (summaryId: string) => {
+    setFormData({
+      ...formData,
+      linkedSummaryIds: formData.linkedSummaryIds.filter(id => id !== summaryId),
+    });
+  };
+
+  // Link management for call events
+  const addEventLink = (eventId: string) => {
+    if (!formData.linkedCallEventIds.includes(eventId)) {
+      setFormData({
+        ...formData,
+        linkedCallEventIds: [...formData.linkedCallEventIds, eventId],
+      });
+    }
+  };
+
+  const removeEventLink = (eventId: string) => {
+    setFormData({
+      ...formData,
+      linkedCallEventIds: formData.linkedCallEventIds.filter(id => id !== eventId),
+    });
+  };
+
+  // Filter available items to exclude already linked ones
+  const availableSummariesToLink = availableCallSummaries.filter(
+    s => !formData.linkedSummaryIds.includes(s.id)
+  );
+  const availableEventsToLink = availableEvents.filter(
+    e => !formData.linkedCallEventIds.includes(e.id)
+  );
 
   // Task management
   const addTask = () => {
@@ -161,9 +221,23 @@ export function WeekEditor({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-          Week {week.weekNumber}
-        </h3>
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            Week {week.weekNumber}
+          </h3>
+          {/* Client/Template mode badge */}
+          {isClientView ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+              {clientName || 'Client'}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+              <FileText className="w-3 h-3" />
+              Template
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {onFillWithAI && (
             <Button
@@ -531,27 +605,148 @@ export function WeekEditor({
       </div>
 
       {/* Linked Call Summaries */}
-      {week.linkedSummaryIds && week.linkedSummaryIds.length > 0 && (
-        <div>
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <MessageSquare className="w-4 h-4 inline mr-1.5" />
-            Linked Call Summaries
-          </label>
-          <div className="space-y-2">
-            {week.linkedSummaryIds.map((summaryId) => (
-              <div
-                key={summaryId}
-                className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg"
-              >
-                <MessageSquare className="w-4 h-4 text-brand-accent" />
-                <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  Summary {summaryId.slice(0, 8)}...
-                </span>
-              </div>
-            ))}
+      <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+        <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          <MessageSquare className="w-4 h-4 inline mr-1.5" />
+          Linked Call Summaries
+        </label>
+        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+          Call summaries linked to this week for context and action items
+        </p>
+
+        {/* Currently linked summaries */}
+        {formData.linkedSummaryIds.length > 0 && (
+          <div className="space-y-2 mb-3">
+            {formData.linkedSummaryIds.map((summaryId) => {
+              const summary = availableCallSummaries.find(s => s.id === summaryId);
+              const summaryLabel = summary?.summary?.executive
+                ? summary.summary.executive.slice(0, 50) + (summary.summary.executive.length > 50 ? '...' : '')
+                : `Summary ${summaryId.slice(0, 8)}...`;
+              return (
+                <div
+                  key={summaryId}
+                  className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                >
+                  <MessageSquare className="w-4 h-4 text-brand-accent" />
+                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                    {summaryLabel}
+                  </span>
+                  {summary?.createdAt && (
+                    <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                      {new Date(summary.createdAt).toLocaleDateString()}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => removeSummaryLink(summaryId)}
+                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Add summary dropdown */}
+        {availableSummariesToLink.length > 0 && (
+          <select
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+            value=""
+            onChange={(e) => {
+              if (e.target.value) {
+                addSummaryLink(e.target.value);
+              }
+            }}
+          >
+            <option value="">Add a call summary...</option>
+            {availableSummariesToLink.map((summary) => {
+              const label = summary.summary?.executive
+                ? summary.summary.executive.slice(0, 40) + (summary.summary.executive.length > 40 ? '...' : '')
+                : `Summary from ${new Date(summary.createdAt).toLocaleDateString()}`;
+              return (
+                <option key={summary.id} value={summary.id}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+        )}
+
+        {formData.linkedSummaryIds.length === 0 && availableSummariesToLink.length === 0 && (
+          <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
+            No call summaries available to link
+          </p>
+        )}
+      </div>
+
+      {/* Linked Call Events */}
+      <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+        <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          <Phone className="w-4 h-4 inline mr-1.5" />
+          Linked Calls
+        </label>
+        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+          Scheduled or completed calls associated with this week
+        </p>
+
+        {/* Currently linked events */}
+        {formData.linkedCallEventIds.length > 0 && (
+          <div className="space-y-2 mb-3">
+            {formData.linkedCallEventIds.map((eventId) => {
+              const event = availableEvents.find(e => e.id === eventId);
+              return (
+                <div
+                  key={eventId}
+                  className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                >
+                  <Calendar className="w-4 h-4 text-brand-accent" />
+                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                    {event?.title || `Event ${eventId.slice(0, 8)}...`}
+                  </span>
+                  {event?.startDateTime && (
+                    <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                      {new Date(event.startDateTime).toLocaleDateString()}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => removeEventLink(eventId)}
+                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Add event dropdown */}
+        {availableEventsToLink.length > 0 && (
+          <select
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+            value=""
+            onChange={(e) => {
+              if (e.target.value) {
+                addEventLink(e.target.value);
+              }
+            }}
+          >
+            <option value="">Add a call event...</option>
+            {availableEventsToLink.map((event) => (
+              <option key={event.id} value={event.id}>
+                {event.title || 'Call'} - {event.startDateTime ? new Date(event.startDateTime).toLocaleDateString() : 'No date'}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {formData.linkedCallEventIds.length === 0 && availableEventsToLink.length === 0 && (
+          <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
+            No call events available to link
+          </p>
+        )}
+      </div>
 
       {/* Days in Week (daily orientation or as reference) */}
       <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">

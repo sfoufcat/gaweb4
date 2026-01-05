@@ -1,0 +1,289 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import Image from 'next/image';
+import { Check, ChevronDown, FileText, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import type { ClientViewContext, ProgramEnrollment } from '@/types';
+
+/**
+ * ClientSelector Component
+ *
+ * Dropdown for selecting between template view and individual client views
+ * for 1:1 (individual) program editing. Shows "Template" option first,
+ * followed by all enrolled clients.
+ */
+
+interface EnrollmentWithUser extends ProgramEnrollment {
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    imageUrl?: string;
+  };
+}
+
+interface ClientSelectorProps {
+  enrollments: EnrollmentWithUser[];
+  value: ClientViewContext;
+  onChange: (context: ClientViewContext) => void;
+  loading?: boolean;
+  className?: string;
+}
+
+export function ClientSelector({
+  enrollments,
+  value,
+  onChange,
+  loading = false,
+  className = '',
+}: ClientSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Get display name for a client
+  const getClientName = (enrollment: EnrollmentWithUser) => {
+    if (enrollment.user?.firstName || enrollment.user?.lastName) {
+      return `${enrollment.user.firstName || ''} ${enrollment.user.lastName || ''}`.trim();
+    }
+    return enrollment.user?.email || 'Unknown Client';
+  };
+
+  // Get display info for current selection
+  const currentDisplay = useMemo(() => {
+    if (value.mode === 'template') {
+      return { name: 'Template', subtitle: 'Master content', imageUrl: null, isTemplate: true };
+    }
+    const enrollment = enrollments.find(e => e.id === value.enrollmentId);
+    if (enrollment) {
+      return {
+        name: getClientName(enrollment),
+        subtitle: enrollment.user?.email || enrollment.status,
+        imageUrl: enrollment.user?.imageUrl,
+        isTemplate: false,
+      };
+    }
+    return { name: 'Select view...', subtitle: '', imageUrl: null, isTemplate: false };
+  }, [value, enrollments]);
+
+  // Filter enrollments by search term
+  const filteredEnrollments = useMemo(() =>
+    enrollments.filter(e => {
+      const name = getClientName(e).toLowerCase();
+      const email = (e.user?.email || '').toLowerCase();
+      const term = searchTerm.toLowerCase();
+      return name.includes(term) || email.includes(term);
+    }),
+    [enrollments, searchTerm]
+  );
+
+  // Active/upcoming enrollments first, then completed
+  const sortedEnrollments = useMemo(() =>
+    [...filteredEnrollments].sort((a, b) => {
+      const statusOrder = { active: 0, upcoming: 1, completed: 2, stopped: 3 };
+      return (statusOrder[a.status] || 4) - (statusOrder[b.status] || 4);
+    }),
+    [filteredEnrollments]
+  );
+
+  const selectTemplate = () => {
+    onChange({ mode: 'template' });
+    setOpen(false);
+    setSearchTerm('');
+  };
+
+  const selectClient = (enrollment: EnrollmentWithUser) => {
+    onChange({
+      mode: 'client',
+      enrollmentId: enrollment.id,
+      userId: enrollment.userId,
+      userName: getClientName(enrollment),
+    });
+    setOpen(false);
+    setSearchTerm('');
+  };
+
+  return (
+    <div className={className}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between h-auto min-h-[40px] font-normal text-left border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]"
+          >
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {currentDisplay.isTemplate ? (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-accent/10 flex-shrink-0">
+                  <FileText className="h-4 w-4 text-brand-accent" />
+                </div>
+              ) : currentDisplay.imageUrl ? (
+                <Image
+                  src={currentDisplay.imageUrl}
+                  alt={currentDisplay.name}
+                  width={28}
+                  height={28}
+                  className="rounded-full flex-shrink-0"
+                />
+              ) : (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
+                  <User className="h-4 w-4 text-text-secondary dark:text-[#7d8190]" />
+                </div>
+              )}
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                  {loading ? 'Loading...' : currentDisplay.name}
+                </span>
+                {currentDisplay.subtitle && (
+                  <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                    {currentDisplay.subtitle}
+                  </span>
+                )}
+              </div>
+            </div>
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[320px] p-0" align="start">
+          {/* Search input */}
+          <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+            <input
+              type="text"
+              placeholder="Search clients..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8]"
+            />
+          </div>
+
+          <div className="max-h-[300px] overflow-y-auto p-1">
+            {/* Template option - always first */}
+            <button
+              type="button"
+              onClick={selectTemplate}
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] cursor-pointer text-left"
+            >
+              <div
+                className={`flex h-5 w-5 items-center justify-center rounded-md border-2 flex-shrink-0 transition-all ${
+                  value.mode === 'template'
+                    ? 'bg-brand-accent border-brand-accent'
+                    : 'border-[#d1cdc8] dark:border-[#3a4150] bg-white dark:bg-[#171b22]'
+                }`}
+              >
+                {value.mode === 'template' && (
+                  <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+                )}
+              </div>
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-accent/10 flex-shrink-0">
+                <FileText className="h-4 w-4 text-brand-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  Template
+                </div>
+                <div className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                  Edit master content for all clients
+                </div>
+              </div>
+            </button>
+
+            {/* Separator */}
+            {sortedEnrollments.length > 0 && (
+              <div className="my-1 mx-2 h-px bg-[#e1ddd8] dark:bg-[#262b35]" />
+            )}
+
+            {/* Enrolled clients */}
+            {loading ? (
+              <div className="p-4 text-center text-sm text-text-secondary dark:text-[#7d8190]">
+                Loading clients...
+              </div>
+            ) : sortedEnrollments.length === 0 && searchTerm ? (
+              <div className="p-4 text-center text-sm text-text-secondary dark:text-[#7d8190]">
+                No clients found.
+              </div>
+            ) : sortedEnrollments.length === 0 ? (
+              <div className="p-4 text-center text-sm text-text-secondary dark:text-[#7d8190]">
+                No enrolled clients yet.
+              </div>
+            ) : (
+              sortedEnrollments.map(enrollment => {
+                const isSelected = value.mode === 'client' && value.enrollmentId === enrollment.id;
+                const clientName = getClientName(enrollment);
+
+                return (
+                  <button
+                    key={enrollment.id}
+                    type="button"
+                    onClick={() => selectClient(enrollment)}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] cursor-pointer text-left"
+                  >
+                    <div
+                      className={`flex h-5 w-5 items-center justify-center rounded-md border-2 flex-shrink-0 transition-all ${
+                        isSelected
+                          ? 'bg-brand-accent border-brand-accent'
+                          : 'border-[#d1cdc8] dark:border-[#3a4150] bg-white dark:bg-[#171b22]'
+                      }`}
+                    >
+                      {isSelected && (
+                        <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+                      )}
+                    </div>
+                    {enrollment.user?.imageUrl ? (
+                      <Image
+                        src={enrollment.user.imageUrl}
+                        alt={clientName}
+                        width={28}
+                        height={28}
+                        className="rounded-full flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
+                        <User className="h-4 w-4 text-text-secondary dark:text-[#7d8190]" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                        {clientName}
+                      </div>
+                      <div className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                        {enrollment.user?.email}
+                      </div>
+                    </div>
+                    {/* Status badge */}
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        enrollment.status === 'active'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : enrollment.status === 'upcoming'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                          : enrollment.status === 'completed'
+                          ? 'bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-400'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      }`}
+                    >
+                      {enrollment.status}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {/* Footer with count */}
+          <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#11141b]">
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+              {enrollments.length} enrolled client{enrollments.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}

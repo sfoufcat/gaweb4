@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import type { Program, ProgramDay, ProgramModule, ProgramWeek, ProgramOrientation } from '@/types';
+import type { Program, ProgramDay, ProgramModule, ProgramWeek, ProgramOrientation, ClientViewContext } from '@/types';
 import {
   ChevronDown,
   ChevronRight,
@@ -42,6 +42,8 @@ interface ModuleWeeksSidebarProps {
   onFillWeek?: (weekNumber: number) => void;
   onWeekDistributionChange?: (weekNumber: number, distribution: 'repeat-daily' | 'spread') => void;
   isLoading?: boolean;
+  /** Client view context - when in client mode, reordering is disabled */
+  viewContext?: ClientViewContext;
 }
 
 interface CalculatedWeek {
@@ -175,7 +177,11 @@ export function ModuleWeeksSidebar({
   onDeleteModule,
   onFillWeek,
   isLoading = false,
+  viewContext,
 }: ModuleWeeksSidebarProps) {
+  // In client view mode, disable reordering (structure comes from template)
+  const isClientView = viewContext?.mode === 'client';
+  const canReorder = !isClientView;
   const [expandedModules, setExpandedModules] = useState<Set<string>>(
     new Set(modules.map(m => m.id))
   );
@@ -392,15 +398,19 @@ export function ModuleWeeksSidebar({
       <div className="group/week">
         {/* Week row - FunnelStepsEditor style */}
         <div
-          className={`p-4 bg-white dark:bg-[#171b22] hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors cursor-grab active:cursor-grabbing ${
-            isWeekSelected ? 'bg-brand-accent/5 dark:bg-brand-accent/10' : ''
-          }`}
+          className={`p-4 bg-white dark:bg-[#171b22] hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors ${
+            canReorder ? 'cursor-grab active:cursor-grabbing' : ''
+          } ${isWeekSelected ? 'bg-brand-accent/5 dark:bg-brand-accent/10' : ''}`}
         >
           <div className="flex items-center gap-4">
-            {/* Drag handle */}
-            <div className="touch-none">
-              <GripVertical className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
-            </div>
+            {/* Drag handle - only show in template mode */}
+            {canReorder ? (
+              <div className="touch-none">
+                <GripVertical className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
+              </div>
+            ) : (
+              <div className="w-5" /> /* Spacer to maintain alignment */
+            )}
 
             {/* Week icon */}
             <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
@@ -523,15 +533,19 @@ export function ModuleWeeksSidebar({
       >
         {/* Module Header */}
         <div
-          className={`p-4 bg-[#faf8f6] dark:bg-[#1a1e25] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors cursor-grab active:cursor-grabbing group ${
-            isModuleSelected ? 'bg-brand-accent/5 dark:bg-brand-accent/10' : ''
-          }`}
+          className={`p-4 bg-[#faf8f6] dark:bg-[#1a1e25] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors ${
+            canReorder ? 'cursor-grab active:cursor-grabbing' : ''
+          } group ${isModuleSelected ? 'bg-brand-accent/5 dark:bg-brand-accent/10' : ''}`}
         >
           <div className="flex items-center gap-4">
-            {/* Drag handle for module */}
-            <div className="touch-none">
-              <GripVertical className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
-            </div>
+            {/* Drag handle for module - only show in template mode */}
+            {canReorder ? (
+              <div className="touch-none">
+                <GripVertical className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
+              </div>
+            ) : (
+              <div className="w-5" /> /* Spacer to maintain alignment */
+            )}
 
             {/* Module icon */}
             <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
@@ -558,8 +572,8 @@ export function ModuleWeeksSidebar({
               </p>
             </button>
 
-            {/* Delete button */}
-            {modules.length > 1 && onDeleteModule && (
+            {/* Delete button - only show in template mode */}
+            {canReorder && modules.length > 1 && onDeleteModule && (
               <button
                 onClick={(e) => handleDeleteModuleClick(module, e)}
                 className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
@@ -586,20 +600,30 @@ export function ModuleWeeksSidebar({
           </div>
         </div>
 
-        {/* Weeks inside module - draggable */}
+        {/* Weeks inside module - draggable in template mode, static in client mode */}
         {isModuleExpanded && moduleWeeks.length > 0 && (
-          <Reorder.Group
-            axis="y"
-            values={moduleWeeks}
-            onReorder={(newWeeks) => handleWeeksReorder(module.id, newWeeks)}
-            className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]"
-          >
-            {moduleWeeks.map(week => (
-              <Reorder.Item key={week.weekNum} value={week}>
-                {renderWeekRow(week, module.id)}
-              </Reorder.Item>
-            ))}
-          </Reorder.Group>
+          canReorder ? (
+            <Reorder.Group
+              axis="y"
+              values={moduleWeeks}
+              onReorder={(newWeeks) => handleWeeksReorder(module.id, newWeeks)}
+              className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]"
+            >
+              {moduleWeeks.map(week => (
+                <Reorder.Item key={week.weekNum} value={week}>
+                  {renderWeekRow(week, module.id)}
+                </Reorder.Item>
+              ))}
+            </Reorder.Group>
+          ) : (
+            <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
+              {moduleWeeks.map(week => (
+                <div key={week.weekNum}>
+                  {renderWeekRow(week, module.id)}
+                </div>
+              ))}
+            </div>
+          )
         )}
 
         {/* Empty state for module with no weeks */}
@@ -629,24 +653,28 @@ export function ModuleWeeksSidebar({
       {/* Modules & Weeks Tree */}
       <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
         {sortedModules.length === 0 ? (
-          // No modules yet - prompt to add one
+          // No modules yet - prompt to add one (only in template mode)
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6 text-center">
             <div className="w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center mx-auto mb-3">
               <Folder className="w-6 h-6 text-brand-accent" />
             </div>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
-              No modules yet. Create your first module to organize weeks.
+              {canReorder
+                ? 'No modules yet. Create your first module to organize weeks.'
+                : 'No modules in this program. Add modules from the template view.'}
             </p>
-            <button
-              onClick={onAddModule}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg text-sm font-medium font-albert hover:bg-brand-accent/90 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add First Module
-            </button>
+            {canReorder && (
+              <button
+                onClick={onAddModule}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg text-sm font-medium font-albert hover:bg-brand-accent/90 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add First Module
+              </button>
+            )}
           </div>
-        ) : (
-          // Modules list with drag-and-drop
+        ) : canReorder ? (
+          // Modules list with drag-and-drop (template mode)
           <Reorder.Group
             axis="y"
             values={sortedModules}
@@ -659,10 +687,15 @@ export function ModuleWeeksSidebar({
               </Reorder.Item>
             ))}
           </Reorder.Group>
+        ) : (
+          // Static modules list (client view mode - no reordering)
+          <div className="space-y-4">
+            {sortedModules.map((module) => renderModuleWithWeeks(module))}
+          </div>
         )}
 
-        {/* Add Module button */}
-        {sortedModules.length > 0 && (
+        {/* Add Module button - only show in template mode */}
+        {canReorder && sortedModules.length > 0 && (
           <button
             onClick={onAddModule}
             className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent hover:text-brand-accent transition-colors text-sm font-albert"

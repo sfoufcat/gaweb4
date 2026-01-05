@@ -1001,7 +1001,8 @@ export interface ProgramWeek {
   notes?: string[]; // Max 3 reminder/context items
 
   // Schedule references
-  scheduledCallEventId?: string; // UnifiedEvent ID for weekly call
+  scheduledCallEventId?: string; // UnifiedEvent ID for weekly call (legacy single call)
+  linkedCallEventIds?: string[]; // UnifiedEvent IDs linked to this week
   linkedCourseModuleIds?: string[]; // Course module IDs to complete this week
 
   // Call summaries and notes
@@ -1029,6 +1030,121 @@ export interface WeekFillSource {
   sourceName?: string; // "Call with John - Dec 15" or "client_goals.pdf"
   generatedAt: string;
   creditsUsed?: number; // Minutes used for transcription/summary
+}
+
+
+// ============================================================================
+// Client-Specific Program Content (for 1:1/Individual Programs)
+// ============================================================================
+
+/**
+ * Client-specific program week content.
+ * For 1:1 programs where each client gets personalized content.
+ * Mirrors ProgramWeek structure but scoped to a specific enrollment.
+ */
+export interface ClientProgramWeek {
+  id: string;
+  enrollmentId: string;         // FK to program_enrollments (required)
+  programWeekId: string;        // FK to program_weeks (template reference)
+  programId: string;            // Denormalized for queries
+  organizationId: string;       // Denormalized for queries
+  userId: string;               // Denormalized for queries
+
+  // Positional info (copied from template)
+  weekNumber: number;           // Global week number in program
+  moduleId?: string;            // FK to program_modules
+  order?: number;               // Order within module
+  startDayIndex?: number;
+  endDayIndex?: number;
+
+  // Editable content (same structure as ProgramWeek)
+  name?: string;
+  theme?: string;
+  description?: string;
+  weeklyPrompt?: string;
+  weeklyTasks?: ProgramTaskTemplate[];
+  weeklyHabits?: ProgramHabitTemplate[];
+  currentFocus?: string[];      // Max 3 key priorities
+  notes?: string[];             // Max 3 reminder items
+  distribution?: WeeklyTaskDistribution;
+  coachRecordingUrl?: string;
+  coachRecordingNotes?: string;
+  manualNotes?: string;
+
+  // Client-specific references
+  linkedSummaryIds?: string[];  // CallSummary IDs linked to this client's week
+  linkedCallEventIds?: string[];
+  fillSource?: WeekFillSource;
+
+  // Sync tracking
+  lastSyncedAt?: string;        // When last synced from template
+  hasLocalChanges?: boolean;    // True if edited after sync
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Client-specific program day content.
+ * For 1:1 programs with daily orientation.
+ */
+export interface ClientProgramDay {
+  id: string;
+  enrollmentId: string;         // FK to program_enrollments
+  programDayId: string;         // FK to program_days (template)
+  programId: string;            // Denormalized for queries
+  organizationId: string;       // Denormalized for queries
+  userId: string;               // Denormalized for queries
+  dayIndex: number;
+  weekId?: string;              // FK to client_program_weeks
+
+  // Content (same as ProgramDay)
+  title?: string;
+  summary?: string;
+  dailyPrompt?: string;
+  tasks: ProgramTaskTemplate[];
+  habits?: ProgramHabitTemplate[];
+  courseAssignments?: DayCourseAssignment[];
+  fillSource?: WeekFillSource;
+
+  // Sync tracking
+  lastSyncedAt?: string;
+  hasLocalChanges?: boolean;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Context for viewing/editing program content.
+ * Either template mode (shared) or client-specific mode.
+ */
+export type ClientViewContext =
+  | { mode: 'template' }
+  | { mode: 'client'; enrollmentId: string; userId: string; userName: string };
+
+/**
+ * Options for syncing template content to client(s).
+ */
+export interface TemplateSyncOptions {
+  syncTasks?: boolean;          // Sync weeklyTasks
+  syncFocus?: boolean;          // Sync currentFocus
+  syncNotes?: boolean;          // Sync notes array
+  syncHabits?: boolean;         // Sync weeklyHabits
+  syncPrompt?: boolean;         // Sync weeklyPrompt
+  preserveClientLinks?: boolean;  // Keep client's linkedSummaryIds/linkedCallEventIds
+  preserveManualNotes?: boolean;  // Keep client's manualNotes
+  preserveRecordings?: boolean;   // Keep client's coachRecordingUrl/Notes
+}
+
+/**
+ * Result of a template sync operation.
+ */
+export interface TemplateSyncResult {
+  success: boolean;
+  clientsUpdated: number;
+  weeksUpdated: number;
+  errors?: Array<{ enrollmentId: string; userId: string; error: string }>;
 }
 
 /**
@@ -4280,6 +4396,7 @@ export interface UnifiedEvent {
   recurrence?: RecurrencePattern;
   parentEventId?: string;     // For generated instances, points to the recurring parent
   instanceDate?: string;      // For generated instances, the specific date (YYYY-MM-DD)
+  programWeekId?: string;     // For instances: the ProgramWeek this call is linked to
   
   // ═══════════════════════════════════════════════════════════════════════════
   // SCHEDULING (for 1-on-1 coaching calls with propose/accept flow)

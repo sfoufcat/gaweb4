@@ -9,7 +9,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { notifyUser } from '@/lib/notifications';
-import type { CallSummary, CallSummaryActionItem, SuggestedTask, ProgramEnrollment, ProgramWeek } from '@/types';
+import type { CallSummary, CallSummaryActionItem, SuggestedTask, ProgramEnrollment, ProgramWeek, ClientProgramWeek, Program } from '@/types';
 
 // =============================================================================
 // CLIENT INITIALIZATION
@@ -460,39 +460,144 @@ async function notifyCoachToFillWeek(
       return;
     }
 
-    // Auto-link the summary to the week
-    const existingLinkedIds = week.linkedSummaryIds || [];
-    if (!existingLinkedIds.includes(summaryId)) {
+    // Smart week assignment: If call is in last 3 days of week (day 5+),
+    // assign to NEXT week so action items are for upcoming days
+    const dayWithinWeek = currentDayIndex - week.startDayIndex + 1; // 1-7
+    const daysInWeek = week.endDayIndex - week.startDayIndex + 1;
+
+    let targetWeekId = week.id;
+    let targetWeekName = week.name || `Week ${week.weekNumber}`;
+
+    // If call is on days 5-7 of a 7-day week, assign to next week
+    if (dayWithinWeek >= 5 && daysInWeek === 7) {
+      const nextWeekSnapshot = await adminDb
+        .collection('program_weeks')
+        .where('programId', '==', programId)
+        .where('weekNumber', '==', week.weekNumber + 1)
+        .limit(1)
+        .get();
+
+      if (!nextWeekSnapshot.empty) {
+        const nextWeekDoc = nextWeekSnapshot.docs[0];
+        const nextWeek = nextWeekDoc.data() as ProgramWeek;
+        targetWeekId = nextWeekDoc.id;
+        targetWeekName = nextWeek.name || `Week ${nextWeek.weekNumber}`;
+        console.log(`[AI Call Summary] Call on day ${dayWithinWeek} of week - assigning to next week ${targetWeekId}`);
+      } else {
+        console.log(`[AI Call Summary] No next week found, keeping current week ${week.id}`);
+      }
+    }
+
+    // Check if this is an individual (1:1) program
+    const programDoc = await adminDb.collection('programs').doc(programId).get();
+    const program = programDoc.exists ? (programDoc.data() as Program) : null;
+    const isIndividualProgram = program?.type === 'individual';
+
+    if (isIndividualProgram && enrollment) {
+      // For individual programs, link to client-specific week
+      // First, find the client week for this enrollment and week number
+      const targetWeekData = weeksSnapshot.docs.find(d => d.id === targetWeekId)?.data() as ProgramWeek | undefined;
+      const targetWeekNumber = targetWeekData?.weekNumber || week.weekNumber;
+
+      let clientWeekSnapshot = await adminDb
+        .collection('client_program_weeks')
+        .where('enrollmentId', '==', enrollment.id)
+        .where('programWeekId', '==', targetWeekId)
+        .limit(1)
+        .get();
+
+      if (clientWeekSnapshot.empty) {
+        // Try finding by week number if not found by programWeekId
+        clientWeekSnapshot = await adminDb
+          .collection('client_program_weeks')
+          .where('enrollmentId', '==', enrollment.id)
+          .where('weekNumber', '==', targetWeekNumber)
+          .limit(1)
+          .get();
+      }
+
+      if (!clientWeekSnapshot.empty) {
+        // Link to existing client week
+        const clientWeekDoc = clientWeekSnapshot.docs[0];
+        await adminDb
+          .collection('client_program_weeks')
+          .doc(clientWeekDoc.id)
+          .update({
+            linkedSummaryIds: FieldValue.arrayUnion(summaryId),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        console.log(`[AI Call Summary] Auto-linked summary ${summaryId} to client week ${clientWeekDoc.id}`);
+      } else {
+        // No client week exists yet - create one from template
+        const templateWeekDoc = await adminDb.collection('program_weeks').doc(targetWeekId).get();
+        if (templateWeekDoc.exists) {
+          const templateWeek = templateWeekDoc.data() as ProgramWeek;
+          const newClientWeekRef = adminDb.collection('client_program_weeks').doc();
+
+          const clientWeekData: Omit<ClientProgramWeek, 'id'> = {
+            enrollmentId: enrollment.id,
+            programWeekId: targetWeekId,
+            programId,
+            organizationId: orgId,
+            userId: enrollment.userId,
+            weekNumber: templateWeek.weekNumber,
+            moduleId: templateWeek.moduleId,
+            order: templateWeek.order,
+            startDayIndex: templateWeek.startDayIndex,
+            endDayIndex: templateWeek.endDayIndex,
+            name: templateWeek.name,
+            theme: templateWeek.theme,
+            description: templateWeek.description,
+            weeklyPrompt: templateWeek.weeklyPrompt,
+            weeklyTasks: templateWeek.weeklyTasks,
+            weeklyHabits: templateWeek.weeklyHabits,
+            currentFocus: templateWeek.currentFocus,
+            notes: templateWeek.notes,
+            distribution: templateWeek.distribution || 'repeat-daily',
+            linkedSummaryIds: [summaryId], // Link the summary
+            linkedCallEventIds: [],
+            hasLocalChanges: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            lastSyncedAt: new Date().toISOString(),
+          };
+
+          await newClientWeekRef.set(clientWeekData);
+          console.log(`[AI Call Summary] Created client week ${newClientWeekRef.id} and linked summary ${summaryId}`);
+        }
+      }
+    } else {
+      // For group programs, link to template week (original behavior)
       await adminDb
         .collection('program_weeks')
-        .doc(week.id)
+        .doc(targetWeekId)
         .update({
           linkedSummaryIds: FieldValue.arrayUnion(summaryId),
           updatedAt: FieldValue.serverTimestamp(),
         });
-      console.log(`[AI Call Summary] Auto-linked summary ${summaryId} to week ${week.id}`);
+      console.log(`[AI Call Summary] Auto-linked summary ${summaryId} to template week ${targetWeekId}`);
     }
 
     // Create notification for the coach
     const clientName = context.clientName || 'Client';
-    const weekName = week.name || `Week ${week.weekNumber}`;
+    const weekName = targetWeekName;
 
     await notifyUser({
       userId: context.hostUserId,
       type: 'call_summary_fill_week',
       title: `Call summary ready for ${clientName}`,
       body: `Fill ${weekName} with insights from your call with ${clientName}`,
-      actionRoute: `/coach/programs/${programId}?weekId=${week.id}&summaryId=${summaryId}`,
+      actionRoute: `/coach/programs/${programId}?weekId=${targetWeekId}&summaryId=${summaryId}`,
       organizationId: orgId,
       metadata: {
         summaryId,
         programId,
-        weekId: week.id,
+        weekId: targetWeekId,
         clientName,
       },
     });
 
-    console.log(`[AI Call Summary] Notified coach ${context.hostUserId} to fill week ${week.id}`);
+    console.log(`[AI Call Summary] Notified coach ${context.hostUserId} to fill week ${targetWeekId}`);
   } catch (error) {
     // Don't fail the summary generation if notification fails
     console.error('[AI Call Summary] Error notifying coach:', error);

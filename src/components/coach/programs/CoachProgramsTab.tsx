@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Image from 'next/image';
-import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier, ProgramCompletionConfig, ProgramModule, ProgramWeek, ProgramOrientation, DayCourseAssignment } from '@/types';
+import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier, ProgramCompletionConfig, ProgramModule, ProgramWeek, ProgramOrientation, DayCourseAssignment, CallSummary, UnifiedEvent, ClientViewContext, ClientProgramWeek } from '@/types';
 import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { ModuleWeeksSidebar, type SidebarSelection } from './ModuleWeeksSidebar';
 import { ModuleEditor } from './ModuleEditor';
@@ -25,6 +25,7 @@ import { MediaUpload } from '@/components/admin/MediaUpload';
 import { NewProgramModal } from './NewProgramModal';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { CoachSelector } from '@/components/coach/CoachSelector';
+import { ClientSelector } from './ClientSelector';
 import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
@@ -84,6 +85,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [programCohorts, setProgramCohorts] = useState<ProgramCohort[]>([]);
   const [programModules, setProgramModules] = useState<ProgramModule[]>([]);
   const [programWeeks, setProgramWeeks] = useState<ProgramWeek[]>([]);
+  const [availableCallSummaries, setAvailableCallSummaries] = useState<CallSummary[]>([]);
+  const [availableEvents, setAvailableEvents] = useState<UnifiedEvent[]>([]);
   const [organizationCourses, setOrganizationCourses] = useState<DiscoverCourse[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(1);
   const [sidebarSelection, setSidebarSelection] = useState<SidebarSelection | null>(null);
@@ -116,7 +119,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
   // Client detail slide-over state
   const [selectedClient, setSelectedClient] = useState<EnrollmentWithUser | null>(null);
-  
+
+  // Client view context state (for 1:1/individual programs)
+  const [clientViewContext, setClientViewContext] = useState<ClientViewContext>({ mode: 'template' });
+  const [clientWeeks, setClientWeeks] = useState<ClientProgramWeek[]>([]);
+  const [loadingClientWeeks, setLoadingClientWeeks] = useState(false);
+
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
   const [isNewProgramModalOpen, setIsNewProgramModalOpen] = useState(false);
@@ -512,6 +520,36 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
         setProgramModules(modules);
         setProgramWeeks(weeks);
+
+        // Fetch available call summaries and events for manual linking
+        try {
+          const [summariesRes, eventsRes] = await Promise.all([
+            fetch(`/api/coach/call-summaries?programId=${programId}`),
+            fetch(`/api/programs/${programId}/events`),
+          ]);
+
+          if (summariesRes.ok) {
+            const summariesData = await summariesRes.json();
+            setAvailableCallSummaries(summariesData.summaries || []);
+          } else {
+            setAvailableCallSummaries([]);
+          }
+
+          if (eventsRes.ok) {
+            const eventsData = await eventsRes.json();
+            // Filter to only include call events (coaching_1on1, squad_call, etc.)
+            const callEvents = (eventsData.events || []).filter((e: UnifiedEvent) =>
+              e.eventType === 'coaching_1on1' || e.eventType === 'squad_call'
+            );
+            setAvailableEvents(callEvents);
+          } else {
+            setAvailableEvents([]);
+          }
+        } catch (linkDataErr) {
+          console.error('Error fetching call summaries/events:', linkDataErr);
+          setAvailableCallSummaries([]);
+          setAvailableEvents([]);
+        }
       } catch (err) {
         console.error('Error fetching modules/weeks:', err);
         setProgramModules([]);
@@ -593,6 +631,46 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       console.error('Error fetching courses:', err);
     }
   }, []);
+
+  // Fetch client-specific weeks for 1:1 programs
+  const fetchClientWeeks = useCallback(async (programId: string, enrollmentId: string) => {
+    try {
+      setLoadingClientWeeks(true);
+      const response = await fetch(`${apiBasePath}/${programId}/client-weeks?enrollmentId=${enrollmentId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setClientWeeks(data.clientWeeks || []);
+      } else if (response.status === 404) {
+        // Client weeks don't exist yet - need to initialize
+        setClientWeeks([]);
+      }
+    } catch (err) {
+      console.error('Error fetching client weeks:', err);
+      setClientWeeks([]);
+    } finally {
+      setLoadingClientWeeks(false);
+    }
+  }, [apiBasePath]);
+
+  // Initialize client weeks for an enrollment (copy from template)
+  const initializeClientWeeks = useCallback(async (programId: string, enrollmentId: string) => {
+    try {
+      setLoadingClientWeeks(true);
+      const response = await fetch(`${apiBasePath}/${programId}/client-weeks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enrollmentId }),
+      });
+      if (response.ok) {
+        // Fetch the newly created client weeks
+        await fetchClientWeeks(programId, enrollmentId);
+      }
+    } catch (err) {
+      console.error('Error initializing client weeks:', err);
+    } finally {
+      setLoadingClientWeeks(false);
+    }
+  }, [apiBasePath, fetchClientWeeks]);
 
   const handleRemoveEnrollment = async () => {
     if (!removeConfirmEnrollment || !selectedProgram) return;
@@ -698,6 +776,29 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       fetchProgramEnrollments(selectedProgram.id);
     }
   }, [viewMode, selectedProgram, fetchProgramEnrollments]);
+
+  // Fetch enrollments for individual programs when viewing content (needed for client selector)
+  useEffect(() => {
+    if (viewMode === 'days' && selectedProgram?.type === 'individual') {
+      fetchProgramEnrollments(selectedProgram.id);
+    }
+  }, [viewMode, selectedProgram, fetchProgramEnrollments]);
+
+  // Fetch client weeks when client is selected (for 1:1 programs)
+  useEffect(() => {
+    if (clientViewContext.mode === 'client' && selectedProgram?.type === 'individual') {
+      fetchClientWeeks(selectedProgram.id, clientViewContext.enrollmentId);
+    } else {
+      // Reset client weeks when switching to template mode
+      setClientWeeks([]);
+    }
+  }, [clientViewContext, selectedProgram, fetchClientWeeks]);
+
+  // Reset client view context when switching programs
+  useEffect(() => {
+    setClientViewContext({ mode: 'template' });
+    setClientWeeks([]);
+  }, [selectedProgram?.id]);
 
   // Load day data when day index changes
   useEffect(() => {
@@ -1547,12 +1648,35 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   {selectedProgram?.name}
                 </h2>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  selectedProgram?.type === 'group' 
+                  selectedProgram?.type === 'group'
                     ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
                     : 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
                 }`}>
                   {selectedProgram?.type === 'group' ? 'Group' : '1:1'}
                 </span>
+                {/* Client Selector for 1:1 programs - shown in content view */}
+                {selectedProgram?.type === 'individual' && viewMode === 'days' && (
+                  <ClientSelector
+                    enrollments={programEnrollments}
+                    value={clientViewContext}
+                    onChange={async (context) => {
+                      setClientViewContext(context);
+                      // If selecting a client for the first time, check if we need to initialize their weeks
+                      if (context.mode === 'client' && selectedProgram) {
+                        const existingWeeks = await fetch(
+                          `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
+                        ).then(r => r.ok ? r.json() : { clientWeeks: [] });
+
+                        if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
+                          // Auto-initialize client weeks from template
+                          await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
+                        }
+                      }
+                    }}
+                    loading={loadingEnrollments}
+                    className="w-48"
+                  />
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1805,9 +1929,29 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             <ModuleWeeksSidebar
               program={selectedProgram as Program}
               modules={programModules}
-              weeks={programWeeks}
+              weeks={clientViewContext.mode === 'client' ? clientWeeks.map(cw => ({
+                id: cw.id,
+                programId: cw.programId,
+                weekNumber: cw.weekNumber,
+                moduleId: cw.moduleId,
+                order: cw.order,
+                startDayIndex: cw.startDayIndex,
+                endDayIndex: cw.endDayIndex,
+                name: cw.name,
+                theme: cw.theme,
+                description: cw.description,
+                weeklyPrompt: cw.weeklyPrompt,
+                weeklyTasks: cw.weeklyTasks,
+                weeklyHabits: cw.weeklyHabits,
+                currentFocus: cw.currentFocus,
+                notes: cw.notes,
+                distribution: cw.distribution,
+                createdAt: cw.createdAt,
+                updatedAt: cw.updatedAt,
+              } as ProgramWeek)) : programWeeks}
               days={programDays}
               selection={sidebarSelection || (selectedDayIndex ? { type: 'day', dayIndex: selectedDayIndex } : null)}
+              viewContext={clientViewContext}
               onSelect={(selection) => {
                 setSidebarSelection(selection);
                 if (selection.type === 'day') {
@@ -2182,15 +2326,51 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 // Week Editor (for weekly mode)
                 (() => {
                   const weekNumber = sidebarSelection.weekNumber;
-                  const existingWeek = programWeeks.find(w => w.weekNumber === weekNumber);
-                  
+                  const templateWeek = programWeeks.find(w => w.weekNumber === weekNumber);
+
+                  // For individual programs in client mode, use client week
+                  const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
+                  const clientWeek = isClientMode
+                    ? clientWeeks.find(cw => cw.weekNumber === weekNumber)
+                    : null;
+
                   // Calculate week bounds from program settings
                   const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
                   const startDay = (weekNumber - 1) * daysPerWeek + 1;
                   const endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
-                  
+
+                  // Determine which week data to use
+                  const existingWeek = isClientMode ? clientWeek : templateWeek;
+
                   // Use existing week data or create a default
-                  const selectedWeek: ProgramWeek = existingWeek ?? {
+                  const selectedWeek: ProgramWeek = existingWeek ? {
+                    // For client weeks, map to ProgramWeek structure
+                    id: existingWeek.id,
+                    programId: existingWeek.programId,
+                    moduleId: existingWeek.moduleId || '',
+                    organizationId: existingWeek.organizationId,
+                    weekNumber: existingWeek.weekNumber,
+                    order: existingWeek.order || existingWeek.weekNumber,
+                    startDayIndex: existingWeek.startDayIndex || startDay,
+                    endDayIndex: existingWeek.endDayIndex || endDay,
+                    name: existingWeek.name,
+                    description: existingWeek.description,
+                    theme: existingWeek.theme,
+                    weeklyPrompt: existingWeek.weeklyPrompt,
+                    weeklyTasks: existingWeek.weeklyTasks,
+                    weeklyHabits: existingWeek.weeklyHabits,
+                    currentFocus: existingWeek.currentFocus,
+                    notes: existingWeek.notes,
+                    distribution: existingWeek.distribution || 'repeat-daily',
+                    linkedSummaryIds: existingWeek.linkedSummaryIds,
+                    linkedCallEventIds: existingWeek.linkedCallEventIds,
+                    manualNotes: existingWeek.manualNotes,
+                    coachRecordingUrl: existingWeek.coachRecordingUrl,
+                    coachRecordingNotes: existingWeek.coachRecordingNotes,
+                    fillSource: existingWeek.fillSource,
+                    createdAt: existingWeek.createdAt,
+                    updatedAt: existingWeek.updatedAt,
+                  } : {
                     id: `temp-week-${weekNumber}`,
                     programId: selectedProgram?.id || '',
                     moduleId: '', // Temporary - will be assigned when saved
@@ -2203,7 +2383,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                   };
-                  
+
                   return (
                     <WeekEditor
                       week={selectedWeek}
@@ -2213,19 +2393,30 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       orientation={selectedProgram?.orientation || 'weekly'}
                       onSave={async (updates) => {
                         try {
-                          if (existingWeek) {
-                            // Update existing week
-                            const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks/${existingWeek.id}`, {
+                          if (isClientMode && clientWeek) {
+                            // Update client-specific week
+                            const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/client-weeks/${clientWeek.id}`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify(updates),
                             });
                             if (res.ok) {
                               const data = await res.json();
-                              setProgramWeeks(prev => prev.map(w => w.id === existingWeek.id ? data.week : w));
+                              setClientWeeks(prev => prev.map(w => w.id === clientWeek.id ? data.clientWeek : w));
+                            }
+                          } else if (templateWeek) {
+                            // Update template week
+                            const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks/${templateWeek.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify(updates),
+                            });
+                            if (res.ok) {
+                              const data = await res.json();
+                              setProgramWeeks(prev => prev.map(w => w.id === templateWeek.id ? data.week : w));
                             }
                           } else {
-                            // Create new week record
+                            // Create new template week record
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
@@ -2267,6 +2458,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         setIsWeekFillModalOpen(true);
                       }}
                       isSaving={saving}
+                      availableCallSummaries={availableCallSummaries}
+                      availableEvents={availableEvents}
+                      isClientView={isClientMode}
+                      clientName={isClientMode ? clientViewContext.userName : undefined}
                     />
                   );
                 })()

@@ -19,10 +19,58 @@
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { scheduleEventJobs } from './event-notifications';
-import type { UnifiedEvent, RecurrencePattern } from '@/types';
+import type { UnifiedEvent, RecurrencePattern, ProgramEnrollment, ProgramWeek } from '@/types';
 
 // Default look-ahead for generating instances (in days)
 const DEFAULT_LOOK_AHEAD_DAYS = 14;
+
+// ============================================================================
+// Week Linking Helper Functions
+// ============================================================================
+
+/**
+ * Find the program week that contains a specific date for an enrollment.
+ * Used to auto-link recurring call instances to their corresponding program weeks.
+ *
+ * @param programId - The program ID
+ * @param enrollmentStartDate - The enrollment start date
+ * @param targetDate - The date to find the week for
+ * @returns The week ID if found, null otherwise
+ */
+async function findWeekForDate(
+  programId: string,
+  enrollmentStartDate: Date,
+  targetDate: Date
+): Promise<string | null> {
+  // Calculate days since enrollment start
+  const daysSinceStart = Math.floor(
+    (targetDate.getTime() - enrollmentStartDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const dayIndex = Math.max(0, daysSinceStart);
+
+  // Find the week containing this day index
+  const weeksSnapshot = await adminDb
+    .collection('program_weeks')
+    .where('programId', '==', programId)
+    .where('startDayIndex', '<=', dayIndex)
+    .orderBy('startDayIndex', 'desc')
+    .limit(1)
+    .get();
+
+  if (weeksSnapshot.empty) {
+    return null;
+  }
+
+  const weekDoc = weeksSnapshot.docs[0];
+  const weekData = weekDoc.data();
+
+  // Verify day is within this week's range
+  if (dayIndex > weekData.endDayIndex) {
+    return null;
+  }
+
+  return weekDoc.id;
+}
 
 // ============================================================================
 // Recurrence Calculation Functions
@@ -300,6 +348,40 @@ export async function generateRecurringInstances(
       continue;
     }
     
+    // Try to find the program week for this instance if it's a program-related call
+    let programWeekId: string | undefined;
+
+    if (parentEvent.programId && parentEvent.clientUserId) {
+      try {
+        // Find active enrollment for this client in this program
+        const enrollmentSnapshot = await adminDb
+          .collection('program_enrollments')
+          .where('programId', '==', parentEvent.programId)
+          .where('userId', '==', parentEvent.clientUserId)
+          .where('status', '==', 'active')
+          .limit(1)
+          .get();
+
+        if (!enrollmentSnapshot.empty) {
+          const enrollment = enrollmentSnapshot.docs[0].data() as ProgramEnrollment;
+          const enrollmentStart = new Date(enrollment.startedAt);
+
+          const weekId = await findWeekForDate(
+            parentEvent.programId,
+            enrollmentStart,
+            occurrence
+          );
+
+          if (weekId) {
+            programWeekId = weekId;
+            console.log(`[EVENT_RECURRENCE] Auto-linking instance to week ${weekId}`);
+          }
+        }
+      } catch (error) {
+        console.error('[EVENT_RECURRENCE] Error finding week for instance:', error);
+      }
+    }
+
     // Create instance document
     const instanceData: Omit<UnifiedEvent, 'id'> = {
       ...parentEvent,
@@ -308,6 +390,7 @@ export async function generateRecurringInstances(
       recurrence: undefined,
       parentEventId: parentEvent.id,
       instanceDate,
+      programWeekId, // Link to program week if found
       startDateTime: occurrence.toISOString(),
       // Calculate end time if duration is set
       endDateTime: parentEvent.durationMinutes
@@ -322,16 +405,32 @@ export async function generateRecurringInstances(
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    
+
     // Remove the id field from parent before spreading
     delete (instanceData as Record<string, unknown>).id;
-    
+
     const docRef = await adminDb.collection('events').add(instanceData);
     createdIds.push(docRef.id);
-    
+
+    // Also update the week's linkedCallEventIds if we found a week
+    if (programWeekId) {
+      try {
+        await adminDb
+          .collection('program_weeks')
+          .doc(programWeekId)
+          .update({
+            linkedCallEventIds: FieldValue.arrayUnion(docRef.id),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        console.log(`[EVENT_RECURRENCE] Updated week ${programWeekId} with call ${docRef.id}`);
+      } catch (error) {
+        console.error('[EVENT_RECURRENCE] Error updating week with call:', error);
+      }
+    }
+
     // Schedule notification jobs for the instance
     await scheduleEventJobs({ id: docRef.id, ...instanceData } as UnifiedEvent);
-    
+
     console.log(`[EVENT_RECURRENCE] Created instance ${docRef.id} for ${instanceDate}`);
   }
   

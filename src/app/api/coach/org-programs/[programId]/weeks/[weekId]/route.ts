@@ -95,6 +95,7 @@ export async function PATCH(
     if (body.scheduledCallEventId !== undefined) updateData.scheduledCallEventId = body.scheduledCallEventId || null;
     if (body.linkedCourseModuleIds !== undefined) updateData.linkedCourseModuleIds = body.linkedCourseModuleIds || null;
     if (body.linkedSummaryIds !== undefined) updateData.linkedSummaryIds = body.linkedSummaryIds || null;
+    if (body.linkedCallEventIds !== undefined) updateData.linkedCallEventIds = body.linkedCallEventIds || null;
     if (body.manualNotes !== undefined) updateData.manualNotes = body.manualNotes?.trim() || null;
     if (body.fillSource !== undefined) updateData.fillSource = body.fillSource || null;
     if (body.distribution !== undefined) updateData.distribution = body.distribution || 'repeat-daily';

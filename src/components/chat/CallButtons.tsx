@@ -146,19 +146,25 @@ export function CallButtons({ channel, className = '', onSquadCallClick }: CallB
       const call = videoClient.call('default', callId);
 
       // Get ring members (all members except current user)
-      const memberIds = Object.values(channel.state?.members || {})
-        .filter(m => m.user?.id && m.user.id !== clerkUser.id)
-        .map(m => m.user!.id);
+      const members = Object.values(channel.state?.members || {});
+      const otherMembers = members.filter(m => m.user?.id && m.user.id !== clerkUser.id);
+      const memberIds = otherMembers.map(m => m.user!.id);
+      
+      // Get the client user ID (the other participant in 1:1 calls)
+      const clientUserId = memberIds.length === 1 ? memberIds[0] : undefined;
 
       // Get channel metadata
       const channelData = channel.data as Record<string, unknown> | undefined;
       const channelName = (channelData?.name as string) || 'Chat';
       const channelImage = (channelData?.image as string) || undefined;
+      
+      // Get organization ID from user's public metadata for webhook processing
+      const organizationId = (clerkUser.publicMetadata as { primaryOrganizationId?: string })?.primaryOrganizationId;
 
       // IMPORTANT: Audio-first - disable camera BEFORE joining
       await call.camera.disable();
 
-      // Join the call with audio-only recording enabled
+      // Join the call with auto-recording enabled for transcription & summary
       await call.join({
         create: true,
         ring: memberIds.length > 0,
@@ -170,11 +176,15 @@ export function CallButtons({ channel, className = '', onSquadCallClick }: CallB
             isSquadChannel: false,
             isVideoCall: false,
             callType: 'coaching_1on1',
+            // Required for webhook processing - transcription & summarization
+            organizationId,
+            clientUserId,
           },
           members: memberIds.map(id => ({ user_id: id })),
           settings_override: {
             recording: {
-              mode: 'available',
+              // auto-on: automatically start recording when call begins
+              mode: 'auto-on',
               audio_only: true,
             },
           },
