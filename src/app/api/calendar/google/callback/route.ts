@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { storeIntegration } from '@/lib/integrations/token-manager';
+import { getOrgDomain } from '@/lib/tenant/resolveTenant';
 import type { GoogleCalendarSettings } from '@/lib/integrations/types';
 
 /**
@@ -139,10 +140,23 @@ export async function GET(request: NextRequest) {
 
     console.log(`[GOOGLE_CALENDAR_CALLBACK] Successfully connected calendar for org ${organizationId} (${accountEmail})`);
 
-    // Redirect back to origin domain with success
-    const successUrl = new URL('/coach', `https://${originDomain}`);
+    // Two-step redirect: subdomain first, then custom domain
+    // This ensures Clerk session is established on *.coachful.co before redirecting to custom domain
+    const orgDomain = await getOrgDomain(organizationId);
+    const subdomain = orgDomain?.subdomain || 'app';
+    const subdomainHost = `${subdomain}.coachful.co`;
+
+    const successUrl = new URL('/coach', `https://${subdomainHost}`);
     successUrl.searchParams.set('tab', 'scheduling');
     successUrl.searchParams.set('calendar_connected', 'google');
+
+    // If origin is different from subdomain, include redirect param for second hop
+    if (originDomain !== subdomainHost) {
+      const finalUrl = new URL('/coach', `https://${originDomain}`);
+      finalUrl.searchParams.set('tab', 'scheduling');
+      finalUrl.searchParams.set('calendar_connected', 'google');
+      successUrl.searchParams.set('redirect', finalUrl.toString());
+    }
 
     return NextResponse.redirect(successUrl);
   } catch (error) {

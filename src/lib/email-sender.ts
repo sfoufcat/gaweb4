@@ -35,14 +35,21 @@ export const APP_BASE_URL = process.env.APP_BASE_URL || 'https://pro.coachful.co
 /**
  * Email notification types that can be enabled/disabled by coaches
  */
-export type EmailNotificationType = 
+export type EmailNotificationType =
   | 'verification'      // Always enabled
   | 'welcome'           // After successful payment
   | 'abandoned_cart'    // Quiz started but not completed
   | 'morning_reminder'  // Daily morning check-in
   | 'evening_reminder'  // Daily evening reflection
   | 'weekly_reminder'   // Weekend weekly reflection
-  | 'payment_failed';   // Always enabled
+  | 'payment_failed'    // Always enabled
+  // Call Scheduling
+  | 'call_request_received'   // New call request/proposal
+  | 'call_confirmed'          // Call scheduled/confirmed
+  | 'call_declined'           // Call declined
+  | 'call_counter_proposed'   // Counter-proposal sent
+  | 'call_rescheduled'        // Reschedule request
+  | 'call_cancelled';         // Call cancelled
 
 /**
  * Map from EmailNotificationType to CoachEmailPreferences key
@@ -55,6 +62,13 @@ const EMAIL_TYPE_TO_PREFERENCE_KEY: Record<EmailNotificationType, keyof CoachEma
   evening_reminder: 'eveningReminderEnabled',
   weekly_reminder: 'weeklyReminderEnabled',
   payment_failed: 'paymentFailedEnabled',
+  // Call Scheduling
+  call_request_received: 'callRequestReceivedEnabled',
+  call_confirmed: 'callConfirmedEnabled',
+  call_declined: 'callDeclinedEnabled',
+  call_counter_proposed: 'callCounterProposedEnabled',
+  call_rescheduled: 'callRescheduledEnabled',
+  call_cancelled: 'callCancelledEnabled',
 };
 
 export interface SendTenantEmailOptions {

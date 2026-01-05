@@ -1271,13 +1271,14 @@ function ChatContent({
       if (channelId?.startsWith('squad-')) {
         return false;
       }
-      // Exclude coaching channels (shown in main section when user has coaching)
-      if (channelId?.startsWith('coaching-')) {
+      // Exclude coaching channels from Direct tab for CLIENTS (shown in Main section)
+      // For COACHES: allow coaching channels in Direct tab (that's where they see client chats)
+      if (channelId?.startsWith('coaching-') && !isCoach) {
         return false;
       }
       return true;
     });
-  }, [orgChannels]);
+  }, [orgChannels, isCoach]);
 
   // Determine whether to show message input
   const showMessageInput = !isAnnouncementsChannel || canPostInAnnouncements;
@@ -1308,11 +1309,11 @@ function ChatContent({
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
           {/* Main Tab Content */}
           <div className={`absolute inset-0 overflow-y-auto ${activeTab === 'main' ? 'block' : 'hidden'}`}>
-            {/* Coaching Chat - PINNED TO TOP */}
-            {/* Show if user has coaching channel (program-based or legacy) */}
+            {/* Coaching Chat - PINNED TO TOP (for clients only) */}
+            {/* For coaches: coaching channels appear in Direct tab instead */}
             {/* Priority: Program coaching (from individual program enrollment) takes precedence */}
             {/* Don't show on platform domain - coaching is tenant-specific */}
-            {!isPlatformMode && programCoachingChannelId && (
+            {!isPlatformMode && programCoachingChannelId && !isCoach && (
               <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                 <SpecialChannelItem
                   avatarUrl={programCoachInfo?.imageUrl || coach?.imageUrl}
@@ -1334,7 +1335,8 @@ function ChatContent({
 
             {/* Legacy Coaching Chat - Only show if there's NO program coaching and user has legacy coaching */}
             {/* This handles users with manual coaching assignment that predates program enrollment */}
-            {!isPlatformMode && !programCoachingChannelId && hasCoaching && coachingChannelId && (
+            {/* For coaches: coaching channels appear in Direct tab instead */}
+            {!isPlatformMode && !programCoachingChannelId && hasCoaching && coachingChannelId && !isCoach && (
               <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                 <SpecialChannelItem
                   avatarUrl={coach?.imageUrl}

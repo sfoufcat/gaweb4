@@ -21,6 +21,7 @@ import { useCoachingPromo } from '@/contexts/BrandingContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useSquad } from '@/hooks/useSquad';
+import { useCoachSquads } from '@/hooks/useCoachSquads';
 import { useCoachingContext } from '@/contexts/CoachingContext';
 import { generateAvatarUrl } from '@/lib/demo-data';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
@@ -86,6 +87,9 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
 
   // Use squad data from context (already loaded at app startup - instant!)
   const { squads, isLoading: isSquadLoading } = useSquad();
+
+  // Check if user is a coach (affects where coaching channels appear)
+  const { isCoach } = useCoachSquads();
 
   // Build userSquadChannelIds from context data (memoized)
   const userSquadChannelIds = useMemo(() => {
@@ -356,12 +360,14 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     return <MessageCircle className="w-5 h-5 text-text-secondary" />;
   };
 
-  // Sort channels: coaching first (pinned), then unread, then by last message time
+  // Sort channels: coaching first (pinned) for CLIENTS only, then unread, then by last message time
   const sortedChannels = useMemo(() => {
     return [...channels].sort((a, b) => {
-      // Coaching channels always first (pinned to top)
-      if (a.type === 'coaching' && b.type !== 'coaching') return -1;
-      if (a.type !== 'coaching' && b.type === 'coaching') return 1;
+      // Coaching channels pinned to top ONLY for clients (not coaches)
+      if (!isCoach) {
+        if (a.type === 'coaching' && b.type !== 'coaching') return -1;
+        if (a.type !== 'coaching' && b.type === 'coaching') return 1;
+      }
       // Then unread channels
       if (a.unread > 0 && b.unread === 0) return -1;
       if (a.unread === 0 && b.unread > 0) return 1;
@@ -371,16 +377,28 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       }
       return 0;
     });
-  }, [channels]);
+  }, [channels, isCoach]);
 
-  // Filter channels into main (squad, global, coaching) vs direct (DMs)
+  // Filter channels into main vs direct
+  // For coaches: coaching channels go in Direct tab (like DMs with clients)
+  // For clients: coaching channels go in Main tab (pinned at top)
   const mainChannels = useMemo(() => {
-    return sortedChannels.filter(c => c.type !== 'dm');
-  }, [sortedChannels]);
+    return sortedChannels.filter(c => {
+      if (c.type === 'coaching') {
+        return !isCoach; // Only in Main for clients
+      }
+      return c.type !== 'dm';
+    });
+  }, [sortedChannels, isCoach]);
 
   const directChannels = useMemo(() => {
-    return sortedChannels.filter(c => c.type === 'dm');
-  }, [sortedChannels]);
+    return sortedChannels.filter(c => {
+      if (c.type === 'coaching') {
+        return isCoach; // Only in Direct for coaches
+      }
+      return c.type === 'dm';
+    });
+  }, [sortedChannels, isCoach]);
 
   // Calculate unread counts per tab
   const mainUnread = useMemo(() => {

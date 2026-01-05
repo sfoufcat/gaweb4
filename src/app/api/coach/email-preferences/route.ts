@@ -59,6 +59,13 @@ export async function POST(request: NextRequest) {
       'morningReminderEnabled',
       'eveningReminderEnabled',
       'weeklyReminderEnabled',
+      // Call Scheduling
+      'callRequestReceivedEnabled',
+      'callConfirmedEnabled',
+      'callDeclinedEnabled',
+      'callCounterProposedEnabled',
+      'callRescheduledEnabled',
+      'callCancelledEnabled',
     ];
     
     const updates: Partial<Record<string, boolean>> = {};

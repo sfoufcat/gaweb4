@@ -304,6 +304,15 @@ export default function CoachPage() {
     }
   }, [hasAccess, isLoaded, router, mounted, isDemoSite]);
 
+  // Handle redirect param (for OAuth callback two-step redirect from subdomain to custom domain)
+  useEffect(() => {
+    const redirectUrl = searchParams.get('redirect');
+    if (redirectUrl && mounted) {
+      // Clerk handles session sync to custom domain automatically
+      window.location.href = redirectUrl;
+    }
+  }, [searchParams, mounted]);
+
   // Fetch ending cohorts for banner
   const fetchEndingCohorts = useCallback(async () => {
     try {

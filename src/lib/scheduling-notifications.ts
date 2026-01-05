@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/firebase-admin';
-import { sendTenantEmail, getAppTitleForEmail, getLogoUrlForEmail, APP_BASE_URL } from '@/lib/email-sender';
-import type { UnifiedEvent, SchedulingNotificationType, FirebaseUser } from '@/types';
+import { sendTenantEmail, getAppTitleForEmail, getLogoUrlForEmail, APP_BASE_URL, isEmailTypeEnabled } from '@/lib/email-sender';
+import type { UnifiedEvent, SchedulingNotificationType, FirebaseUser, CoachEmailPreferences } from '@/types';
+import type { EmailNotificationType } from '@/lib/email-sender';
 
 interface NotificationPayload {
   userId: string;
@@ -58,6 +59,17 @@ async function getUserInfo(userId: string): Promise<{ name: string; firstName: s
 async function getUserName(userId: string): Promise<string> {
   const { name } = await getUserInfo(userId);
   return name;
+}
+
+/**
+ * Check if a scheduling email type is enabled for an organization
+ */
+async function isSchedulingEmailEnabled(
+  organizationId: string | null,
+  emailType: EmailNotificationType
+): Promise<boolean> {
+  if (!organizationId) return true; // Platform emails always enabled
+  return isEmailTypeEnabled(organizationId, emailType);
 }
 
 /**
@@ -194,16 +206,25 @@ function formatEventDate(dateString: string, timezone?: string): string {
 
 /**
  * Send notification when a coach proposes a call
- * Sends email only (no notification panel) - event appears in My Calendar
+ * Sends email to client AND confirmation to coach
  */
 export async function notifyCallProposed(
   event: UnifiedEvent,
   clientId: string
 ) {
   const coachName = event.hostName || await getUserName(event.hostUserId);
+  const clientName = await getUserName(clientId);
   const eventDate = formatEventDate(event.startDateTime, event.timezone);
 
-  // Send email notification
+  // Check if email is enabled for this org
+  const emailEnabled = await isSchedulingEmailEnabled(
+    event.organizationId || null,
+    'call_request_received'
+  );
+
+  if (!emailEnabled) return;
+
+  // Send email notification to client
   await sendSchedulingEmail({
     recipientId: clientId,
     subject: `New Call Proposal from ${coachName}`,
@@ -216,11 +237,25 @@ export async function notifyCallProposed(
       date: eventDate,
     },
   });
+
+  // Send confirmation email to coach
+  await sendSchedulingEmail({
+    recipientId: event.hostUserId,
+    subject: `Call Proposal Sent to ${clientName}`,
+    headline: 'Your Call Proposal Was Sent',
+    body: `Your call proposal has been sent to ${clientName}. You'll be notified when they respond.`,
+    ctaUrl: `${APP_BASE_URL}/coach/calendar`,
+    ctaLabel: 'View Calendar',
+    eventDetails: {
+      title: event.title,
+      date: eventDate,
+    },
+  });
 }
 
 /**
  * Send notification when a client requests a call
- * Sends email only (no notification panel) - event appears in My Calendar
+ * Sends email to coach AND confirmation to client
  */
 export async function notifyCallRequested(
   event: UnifiedEvent,
@@ -228,7 +263,16 @@ export async function notifyCallRequested(
 ) {
   const clientId = event.attendeeIds.find(id => id !== coachId);
   const clientName = clientId ? await getUserName(clientId) : 'A client';
+  const coachName = await getUserName(coachId);
   const eventDate = formatEventDate(event.startDateTime, event.timezone);
+
+  // Check if email is enabled for this org
+  const emailEnabled = await isSchedulingEmailEnabled(
+    event.organizationId || null,
+    'call_request_received'
+  );
+
+  if (!emailEnabled) return;
 
   // Send email notification to coach
   await sendSchedulingEmail({
@@ -243,10 +287,27 @@ export async function notifyCallRequested(
       date: eventDate,
     },
   });
+
+  // Send confirmation email to client
+  if (clientId) {
+    await sendSchedulingEmail({
+      recipientId: clientId,
+      subject: `Call Request Sent to ${coachName}`,
+      headline: 'Your Call Request Was Sent',
+      body: `Your call request has been sent to ${coachName}. You'll be notified when they respond.`,
+      ctaUrl: `${APP_BASE_URL}/my-coach`,
+      ctaLabel: 'View My Calendar',
+      eventDetails: {
+        title: event.title,
+        date: eventDate,
+      },
+    });
+  }
 }
 
 /**
  * Send notification when a call proposal is accepted
+ * Sends in-app notification AND email to both parties
  */
 export async function notifyCallAccepted(
   event: UnifiedEvent,
@@ -255,14 +316,14 @@ export async function notifyCallAccepted(
   const accepterName = await getUserName(acceptedBy);
   const eventDate = formatEventDate(event.startDateTime, event.timezone);
 
-  // Notify the other party (the one who proposed)
-  const recipientId = event.proposedBy === acceptedBy 
-    ? event.attendeeIds.find(id => id !== acceptedBy)
-    : event.proposedBy;
+  // Find the other party
+  const otherPartyId = event.attendeeIds.find(id => id !== acceptedBy);
+  const otherPartyName = otherPartyId ? await getUserName(otherPartyId) : 'the other party';
 
-  if (recipientId) {
+  // Create in-app notification for the other party (the one who proposed)
+  if (otherPartyId) {
     await createNotification({
-      userId: recipientId,
+      userId: otherPartyId,
       type: 'call_accepted',
       title: 'Call Confirmed!',
       body: `${accepterName} accepted the call for ${eventDate}`,
@@ -273,10 +334,51 @@ export async function notifyCallAccepted(
       actionUrl: '/my-coach',
     });
   }
+
+  // Check if email is enabled for this org
+  const emailEnabled = await isSchedulingEmailEnabled(
+    event.organizationId || null,
+    'call_confirmed'
+  );
+
+  if (!emailEnabled) return;
+
+  // Send email to the other party (proposer)
+  if (otherPartyId) {
+    await sendSchedulingEmail({
+      recipientId: otherPartyId,
+      subject: 'Call Confirmed!',
+      headline: 'Your Call is Confirmed',
+      body: `${accepterName} has accepted your call proposal. Your call is now scheduled.`,
+      ctaUrl: `${APP_BASE_URL}/my-coach`,
+      ctaLabel: 'View Details',
+      eventDetails: {
+        title: event.title,
+        date: eventDate,
+        meetingLink: event.meetingLink,
+      },
+    });
+  }
+
+  // Send confirmation email to the accepter
+  await sendSchedulingEmail({
+    recipientId: acceptedBy,
+    subject: 'Call Confirmed!',
+    headline: 'Your Call is Confirmed',
+    body: `You have confirmed your call with ${otherPartyName}. The call is now scheduled.`,
+    ctaUrl: `${APP_BASE_URL}/my-coach`,
+    ctaLabel: 'View Details',
+    eventDetails: {
+      title: event.title,
+      date: eventDate,
+      meetingLink: event.meetingLink,
+    },
+  });
 }
 
 /**
  * Send notification when a call proposal is declined
+ * Sends in-app notification AND email to both parties
  */
 export async function notifyCallDeclined(
   event: UnifiedEvent,
@@ -284,14 +386,14 @@ export async function notifyCallDeclined(
 ) {
   const declinerName = await getUserName(declinedBy);
 
-  // Notify the other party (the one who proposed)
-  const recipientId = event.proposedBy === declinedBy 
-    ? event.attendeeIds.find(id => id !== declinedBy)
-    : event.proposedBy;
+  // Find the other party
+  const otherPartyId = event.attendeeIds.find(id => id !== declinedBy);
+  const otherPartyName = otherPartyId ? await getUserName(otherPartyId) : 'the other party';
 
-  if (recipientId) {
+  // Create in-app notification for the other party
+  if (otherPartyId) {
     await createNotification({
-      userId: recipientId,
+      userId: otherPartyId,
       type: 'call_declined',
       title: 'Call Declined',
       body: `${declinerName} declined the proposed call`,
@@ -302,27 +404,60 @@ export async function notifyCallDeclined(
       actionUrl: '/my-coach',
     });
   }
+
+  // Check if email is enabled for this org
+  const emailEnabled = await isSchedulingEmailEnabled(
+    event.organizationId || null,
+    'call_declined'
+  );
+
+  if (!emailEnabled) return;
+
+  // Send email to the other party (proposer)
+  if (otherPartyId) {
+    await sendSchedulingEmail({
+      recipientId: otherPartyId,
+      subject: 'Call Declined',
+      headline: 'Call Proposal Declined',
+      body: `${declinerName} has declined your call proposal. You can propose new times if you'd like to reschedule.`,
+      ctaUrl: `${APP_BASE_URL}/my-coach`,
+      ctaLabel: 'View Calendar',
+    });
+  }
+
+  // Send confirmation email to the decliner
+  await sendSchedulingEmail({
+    recipientId: declinedBy,
+    subject: 'Call Declined',
+    headline: 'You Declined the Call',
+    body: `You have declined the call with ${otherPartyName}. They have been notified.`,
+    ctaUrl: `${APP_BASE_URL}/my-coach`,
+    ctaLabel: 'View Calendar',
+  });
 }
 
 /**
  * Send notification when a counter-proposal is made
+ * Sends in-app notification AND email to both parties
  */
 export async function notifyCallCounterProposed(
   event: UnifiedEvent,
   counterProposedBy: string
 ) {
-  const proposerName = await getUserName(counterProposedBy);
+  const counterProposerName = await getUserName(counterProposedBy);
   const eventDate = formatEventDate(event.startDateTime, event.timezone);
 
-  // Notify the other party
-  const recipientId = event.attendeeIds.find(id => id !== counterProposedBy);
+  // Find the other party
+  const otherPartyId = event.attendeeIds.find(id => id !== counterProposedBy);
+  const otherPartyName = otherPartyId ? await getUserName(otherPartyId) : 'the other party';
 
-  if (recipientId) {
+  // Create in-app notification for the other party
+  if (otherPartyId) {
     await createNotification({
-      userId: recipientId,
+      userId: otherPartyId,
       type: 'call_counter_proposed',
       title: 'New Time Proposed',
-      body: `${proposerName} suggested a different time: ${eventDate}`,
+      body: `${counterProposerName} suggested a different time: ${eventDate}`,
       data: {
         eventId: event.id,
         eventType: event.eventType,
@@ -330,11 +465,49 @@ export async function notifyCallCounterProposed(
       actionUrl: '/my-coach',
     });
   }
+
+  // Check if email is enabled for this org
+  const emailEnabled = await isSchedulingEmailEnabled(
+    event.organizationId || null,
+    'call_counter_proposed'
+  );
+
+  if (!emailEnabled) return;
+
+  // Send email to the other party
+  if (otherPartyId) {
+    await sendSchedulingEmail({
+      recipientId: otherPartyId,
+      subject: `New Time Suggested by ${counterProposerName}`,
+      headline: 'Counter-Proposal Received',
+      body: `${counterProposerName} has suggested different times for your call. Please review and respond.`,
+      ctaUrl: `${APP_BASE_URL}/my-coach`,
+      ctaLabel: 'View Proposal',
+      eventDetails: {
+        title: event.title,
+        date: eventDate,
+      },
+    });
+  }
+
+  // Send confirmation email to the counter-proposer
+  await sendSchedulingEmail({
+    recipientId: counterProposedBy,
+    subject: 'Counter-Proposal Sent',
+    headline: 'Your Counter-Proposal Was Sent',
+    body: `Your suggested times have been sent to ${otherPartyName}. You'll be notified when they respond.`,
+    ctaUrl: `${APP_BASE_URL}/my-coach`,
+    ctaLabel: 'View Calendar',
+    eventDetails: {
+      title: event.title,
+      date: eventDate,
+    },
+  });
 }
 
 /**
  * Send notification when a call is cancelled
- * Sends both notification panel entry AND email
+ * Sends in-app notification AND email to all parties including canceller
  */
 export async function notifyCallCancelled(
   event: UnifiedEvent,
@@ -344,10 +517,20 @@ export async function notifyCallCancelled(
   const cancellerName = await getUserName(cancelledBy);
   const eventDate = formatEventDate(event.startDateTime, event.timezone);
 
+  // Check if email is enabled for this org
+  const emailEnabled = await isSchedulingEmailEnabled(
+    event.organizationId || null,
+    'call_cancelled'
+  );
+
+  // Get other party name for canceller confirmation
+  const otherPartyId = event.attendeeIds.find(id => id !== cancelledBy);
+  const otherPartyName = otherPartyId ? await getUserName(otherPartyId) : 'the other party';
+
   // Notify all other participants
   for (const attendeeId of event.attendeeIds) {
     if (attendeeId !== cancelledBy) {
-      // Create notification in panel
+      // Create notification in panel (always)
       await createNotification({
         userId: attendeeId,
         type: 'call_cancelled',
@@ -360,20 +543,38 @@ export async function notifyCallCancelled(
         actionUrl: '/my-coach',
       });
 
-      // Send email notification
-      await sendSchedulingEmail({
-        recipientId: attendeeId,
-        subject: 'Call Cancelled',
-        headline: 'Your Call Has Been Cancelled',
-        body: `${cancellerName} has cancelled your scheduled call.${reason ? ` Reason: ${reason}` : ''}`,
-        ctaUrl: `${APP_BASE_URL}/my-coach`,
-        ctaLabel: 'View Calendar',
-        eventDetails: {
-          title: event.title,
-          date: eventDate,
-        },
-      });
+      // Send email notification (if enabled)
+      if (emailEnabled) {
+        await sendSchedulingEmail({
+          recipientId: attendeeId,
+          subject: 'Call Cancelled',
+          headline: 'Your Call Has Been Cancelled',
+          body: `${cancellerName} has cancelled your scheduled call.${reason ? ` Reason: ${reason}` : ''}`,
+          ctaUrl: `${APP_BASE_URL}/my-coach`,
+          ctaLabel: 'View Calendar',
+          eventDetails: {
+            title: event.title,
+            date: eventDate,
+          },
+        });
+      }
     }
+  }
+
+  // Send confirmation email to the canceller (if enabled)
+  if (emailEnabled) {
+    await sendSchedulingEmail({
+      recipientId: cancelledBy,
+      subject: 'Call Cancelled',
+      headline: 'You Cancelled the Call',
+      body: `You have cancelled your call${reason ? ` (Reason: ${reason})` : ''}. ${otherPartyName} has been notified.`,
+      ctaUrl: `${APP_BASE_URL}/my-coach`,
+      ctaLabel: 'View Calendar',
+      eventDetails: {
+        title: event.title,
+        date: eventDate,
+      },
+    });
   }
 }
 
@@ -427,7 +628,7 @@ export async function notifyResponseDeadlineApproaching(
 
 /**
  * Send notification when a call is rescheduled
- * Sends email only (no notification panel) - event appears in My Calendar as pending proposal
+ * Sends email to all parties including the rescheduler
  */
 export async function notifyCallRescheduled(
   event: UnifiedEvent,
@@ -437,7 +638,19 @@ export async function notifyCallRescheduled(
   const reschedulerName = await getUserName(rescheduledBy);
   const eventDate = formatEventDate(event.startDateTime, event.timezone);
 
-  // Send email to all other participants (no notification panel - shows in calendar)
+  // Check if email is enabled for this org
+  const emailEnabled = await isSchedulingEmailEnabled(
+    event.organizationId || null,
+    'call_rescheduled'
+  );
+
+  if (!emailEnabled) return;
+
+  // Get other party name for rescheduler confirmation
+  const otherPartyId = event.attendeeIds.find(id => id !== rescheduledBy);
+  const otherPartyName = otherPartyId ? await getUserName(otherPartyId) : 'the other party';
+
+  // Send email to all other participants
   for (const attendeeId of event.attendeeIds) {
     if (attendeeId !== rescheduledBy) {
       await sendSchedulingEmail({
@@ -454,5 +667,19 @@ export async function notifyCallRescheduled(
       });
     }
   }
+
+  // Send confirmation email to the rescheduler
+  await sendSchedulingEmail({
+    recipientId: rescheduledBy,
+    subject: 'Reschedule Request Sent',
+    headline: 'Your Reschedule Request Was Sent',
+    body: `Your reschedule request has been sent to ${otherPartyName}. You'll be notified when they respond.`,
+    ctaUrl: `${APP_BASE_URL}/my-coach`,
+    ctaLabel: 'View Calendar',
+    eventDetails: {
+      title: event.title,
+      date: eventDate,
+    },
+  });
 }
 

@@ -65,6 +65,13 @@ const DEFAULT_PREFERENCES: CoachEmailPreferences = {
   eveningReminderEnabled: true,
   weeklyReminderEnabled: true,
   paymentFailedEnabled: true,
+  // Call Scheduling
+  callRequestReceivedEnabled: true,
+  callConfirmedEnabled: true,
+  callDeclinedEnabled: true,
+  callCounterProposedEnabled: true,
+  callRescheduledEnabled: true,
+  callCancelledEnabled: true,
 };
 
 /**

@@ -2817,6 +2817,169 @@ export function CustomizeBrandingTab() {
               </div>
             </div>
 
+            {/* ===== CALL SCHEDULING EMAILS ===== */}
+            <div className="pt-4 mt-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <p className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-4 uppercase tracking-wide">
+                Call Scheduling
+              </p>
+            </div>
+
+            {/* New Call Requests */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">New Call Requests</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Notification when someone requests or proposes a call</p>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-7" />
+                <button
+                  onClick={() => handleCoachEmailPrefToggle('callRequestReceivedEnabled', !coachEmailPrefs.callRequestReceivedEnabled)}
+                  disabled={coachEmailPrefsSaving === 'callRequestReceivedEnabled'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!coachEmailPrefs.callRequestReceivedEnabled ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
+                    ${coachEmailPrefsSaving === 'callRequestReceivedEnabled' ? 'opacity-50' : ''}
+                  `}
+                  style={coachEmailPrefs.callRequestReceivedEnabled ? { backgroundColor: colors.accentLight } : undefined}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${coachEmailPrefs.callRequestReceivedEnabled ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
+            </div>
+
+            {/* Call Confirmed */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Call Confirmed</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Confirmation when a call is scheduled</p>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-7" />
+                <button
+                  onClick={() => handleCoachEmailPrefToggle('callConfirmedEnabled', !coachEmailPrefs.callConfirmedEnabled)}
+                  disabled={coachEmailPrefsSaving === 'callConfirmedEnabled'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!coachEmailPrefs.callConfirmedEnabled ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
+                    ${coachEmailPrefsSaving === 'callConfirmedEnabled' ? 'opacity-50' : ''}
+                  `}
+                  style={coachEmailPrefs.callConfirmedEnabled ? { backgroundColor: colors.accentLight } : undefined}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${coachEmailPrefs.callConfirmedEnabled ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
+            </div>
+
+            {/* Call Declined */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Call Declined</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Notification when a call proposal is declined</p>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-7" />
+                <button
+                  onClick={() => handleCoachEmailPrefToggle('callDeclinedEnabled', !coachEmailPrefs.callDeclinedEnabled)}
+                  disabled={coachEmailPrefsSaving === 'callDeclinedEnabled'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!coachEmailPrefs.callDeclinedEnabled ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
+                    ${coachEmailPrefsSaving === 'callDeclinedEnabled' ? 'opacity-50' : ''}
+                  `}
+                  style={coachEmailPrefs.callDeclinedEnabled ? { backgroundColor: colors.accentLight } : undefined}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${coachEmailPrefs.callDeclinedEnabled ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
+            </div>
+
+            {/* Counter-Proposals */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Counter-Proposals</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Notification when new times are suggested</p>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-7" />
+                <button
+                  onClick={() => handleCoachEmailPrefToggle('callCounterProposedEnabled', !coachEmailPrefs.callCounterProposedEnabled)}
+                  disabled={coachEmailPrefsSaving === 'callCounterProposedEnabled'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!coachEmailPrefs.callCounterProposedEnabled ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
+                    ${coachEmailPrefsSaving === 'callCounterProposedEnabled' ? 'opacity-50' : ''}
+                  `}
+                  style={coachEmailPrefs.callCounterProposedEnabled ? { backgroundColor: colors.accentLight } : undefined}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${coachEmailPrefs.callCounterProposedEnabled ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
+            </div>
+
+            {/* Reschedule Requests */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Reschedule Requests</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Notification when someone requests to reschedule</p>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-7" />
+                <button
+                  onClick={() => handleCoachEmailPrefToggle('callRescheduledEnabled', !coachEmailPrefs.callRescheduledEnabled)}
+                  disabled={coachEmailPrefsSaving === 'callRescheduledEnabled'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!coachEmailPrefs.callRescheduledEnabled ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
+                    ${coachEmailPrefsSaving === 'callRescheduledEnabled' ? 'opacity-50' : ''}
+                  `}
+                  style={coachEmailPrefs.callRescheduledEnabled ? { backgroundColor: colors.accentLight } : undefined}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${coachEmailPrefs.callRescheduledEnabled ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
+            </div>
+
+            {/* Cancellations */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Cancellations</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Notification when a call is cancelled</p>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-7" />
+                <button
+                  onClick={() => handleCoachEmailPrefToggle('callCancelledEnabled', !coachEmailPrefs.callCancelledEnabled)}
+                  disabled={coachEmailPrefsSaving === 'callCancelledEnabled'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!coachEmailPrefs.callCancelledEnabled ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
+                    ${coachEmailPrefsSaving === 'callCancelledEnabled' ? 'opacity-50' : ''}
+                  `}
+                  style={coachEmailPrefs.callCancelledEnabled ? { backgroundColor: colors.accentLight } : undefined}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${coachEmailPrefs.callCancelledEnabled ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
+            </div>
+
             {/* ===== SYSTEM + EMAIL NOTIFICATIONS ===== */}
 
             {/* Morning Check-in */}

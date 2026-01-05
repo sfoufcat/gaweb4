@@ -2207,6 +2207,25 @@ export interface CoachEmailPreferences {
   
   // Payment failed notification (for coaches) - always enabled
   paymentFailedEnabled: boolean;
+
+  // Call Scheduling Email Preferences
+  // Notification when someone requests or proposes a call
+  callRequestReceivedEnabled: boolean;
+
+  // Confirmation when a call is scheduled/confirmed
+  callConfirmedEnabled: boolean;
+
+  // Notification when a call proposal is declined
+  callDeclinedEnabled: boolean;
+
+  // Notification when new times are suggested (counter-proposal)
+  callCounterProposedEnabled: boolean;
+
+  // Notification when someone requests to reschedule
+  callRescheduledEnabled: boolean;
+
+  // Notification when a call is cancelled
+  callCancelledEnabled: boolean;
 }
 
 /**
@@ -2220,6 +2239,13 @@ export const DEFAULT_COACH_EMAIL_PREFERENCES: CoachEmailPreferences = {
   eveningReminderEnabled: true,
   weeklyReminderEnabled: true,
   paymentFailedEnabled: true,
+  // Call Scheduling (all enabled by default)
+  callRequestReceivedEnabled: true,
+  callConfirmedEnabled: true,
+  callDeclinedEnabled: true,
+  callCounterProposedEnabled: true,
+  callRescheduledEnabled: true,
+  callCancelledEnabled: true,
 };
 
 /**
