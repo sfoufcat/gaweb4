@@ -126,6 +126,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [clientDays, setClientDays] = useState<ClientProgramDay[]>([]);
   const [loadingClientWeeks, setLoadingClientWeeks] = useState(false);
   const [loadingClientDays, setLoadingClientDays] = useState(false);
+  const [loadedEnrollmentId, setLoadedEnrollmentId] = useState<string | null>(null);
 
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
@@ -656,9 +657,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       if (response.ok) {
         const data = await response.json();
         setClientWeeks(data.clientWeeks || []);
+        setLoadedEnrollmentId(enrollmentId); // Track which enrollment this data is for
       } else if (response.status === 404) {
         // Client weeks don't exist yet - need to initialize
         setClientWeeks([]);
+        setLoadedEnrollmentId(enrollmentId);
       }
     } catch (err) {
       console.error('Error fetching client weeks:', err);
@@ -827,12 +830,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   // Fetch client weeks and days when client is selected (for 1:1 programs)
   useEffect(() => {
     if (clientViewContext.mode === 'client' && selectedProgram?.type === 'individual') {
+      // Clear tracking immediately to prevent showing stale data during fetch
+      setLoadedEnrollmentId(null);
       fetchClientWeeks(selectedProgram.id, clientViewContext.enrollmentId);
       fetchClientDays(selectedProgram.id, clientViewContext.enrollmentId);
     } else {
       // Reset client content when switching to template mode
       setClientWeeks([]);
       setClientDays([]);
+      setLoadedEnrollmentId(null);
     }
   }, [clientViewContext, selectedProgram, fetchClientWeeks, fetchClientDays]);
 
@@ -841,6 +847,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     setClientViewContext({ mode: 'template' });
     setClientWeeks([]);
     setClientDays([]);
+    setLoadedEnrollmentId(null);
   }, [selectedProgram?.id]);
 
   // Load day data when day index changes (use client days when in client mode)
@@ -848,7 +855,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     if (!selectedProgram) return;
 
     const isClientMode = clientViewContext.mode === 'client' && selectedProgram.type === 'individual';
-    const daysToUse = isClientMode ? clientDays : programDays;
+    // Only use client data if it matches the current context (prevents stale data)
+    const dataMatchesContext = loadedEnrollmentId === clientViewContext.enrollmentId;
+    const daysToUse = (isClientMode && dataMatchesContext) ? clientDays : programDays;
 
     // In client mode, we might not have days yet (they're created on first save)
     // In that case, fall back to template days for initial display
@@ -869,7 +878,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     } else {
       setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
     }
-  }, [selectedDayIndex, programDays, clientDays, clientViewContext, selectedProgram]);
+  }, [selectedDayIndex, programDays, clientDays, clientViewContext, selectedProgram, loadedEnrollmentId]);
 
   // Auto-expand the week containing the selected day
   useEffect(() => {
@@ -2485,7 +2494,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
                   // For individual programs in client mode, use client week
                   const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
-                  const clientWeek = isClientMode
+                  // Only use client data if it matches the current context (prevents stale data)
+                  const dataMatchesContext = loadedEnrollmentId === clientViewContext.enrollmentId;
+                  const clientWeek = isClientMode && dataMatchesContext
                     ? clientWeeks.find(cw => cw.weekNumber === weekNumber)
                     : null;
 
@@ -2538,6 +2549,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                   };
+
+                  // Show loading indicator when switching between clients
+                  if (isClientMode && !dataMatchesContext) {
+                    return (
+                      <div className="flex-1 p-8 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-accent mx-auto mb-4" />
+                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                            Loading client content...
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
 
                   return (
                     <WeekEditor
@@ -2649,6 +2674,26 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 })()
               ) : (
                 // Day Editor (default)
+                (() => {
+                  // Check if we're in client mode and data is loading
+                  const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
+                  const dataMatchesContext = loadedEnrollmentId === clientViewContext.enrollmentId;
+
+                  // Show loading indicator when switching between clients
+                  if (isClientMode && !dataMatchesContext) {
+                    return (
+                      <div className="flex-1 p-8 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-accent mx-auto mb-4" />
+                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                            Loading client content...
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -2890,6 +2935,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     </Button>
                   </div>
                 </div>
+                  );
+                })()
               )}
             </div>
           </div>
