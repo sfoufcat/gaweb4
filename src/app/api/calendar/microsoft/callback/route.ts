@@ -144,10 +144,21 @@ export async function GET(request: NextRequest) {
 
     console.log(`[MICROSOFT_CALENDAR_CALLBACK] Successfully connected calendar for org ${organizationId} (${accountEmail})`);
 
+    // Look up subdomain for two-step redirect
+    const orgDomain = await getOrgDomain(organizationId);
+
+    // If no subdomain found, redirect directly to origin domain (skip two-step)
+    if (!orgDomain?.subdomain) {
+      console.log(`[MICROSOFT_CALENDAR_CALLBACK] No subdomain found for org ${organizationId}, redirecting directly to origin`);
+      const successUrl = new URL('/coach', `https://${originDomain}`);
+      successUrl.searchParams.set('tab', 'scheduling');
+      successUrl.searchParams.set('calendar_connected', 'microsoft');
+      return NextResponse.redirect(successUrl);
+    }
+
     // Two-step redirect: subdomain first, then custom domain
     // This ensures Clerk session is established on *.coachful.co before redirecting to custom domain
-    const orgDomain = await getOrgDomain(organizationId);
-    const subdomain = orgDomain?.subdomain || 'app';
+    const subdomain = orgDomain.subdomain;
     const subdomainHost = `${subdomain}.coachful.co`;
 
     const successUrl = new URL('/coach', `https://${subdomainHost}`);

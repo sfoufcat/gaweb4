@@ -79,12 +79,18 @@ function ChannelPreviewWithMobile(props: ChannelPreviewUIComponentProps) {
 
   // Get channel data - cast to Record to access custom properties
   const channelData = channel.data as Record<string, unknown> | undefined;
-  const channelName = displayTitle || (channelData?.name as string) || 'Chat';
   const channelImage = channelData?.image as string | undefined;
-  
+
   // Get first member's avatar for DMs if no channel image
   const members = Object.values(channel.state.members).filter(m => m.user);
   const otherMember = members.find(m => m.user?.id !== channel._client.userID);
+
+  // Detect coaching channels and show other member's name instead of "FirstName - Coaching"
+  const channelId = channel.id;
+  const isCoachingChannel = channelId?.startsWith('coaching-');
+  const channelName = displayTitle ||
+    (isCoachingChannel ? (otherMember?.user?.name || 'Coaching Chat') : (channelData?.name as string)) ||
+    'Chat';
   const avatarUrl = channelImage || otherMember?.user?.image;
   const avatarInitial = channelName.charAt(0).toUpperCase();
   
@@ -427,10 +433,12 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
   
   const channelName = getChannelName();
   const isDMChat = !isSpecialChannel && !(channelData?.name as string | undefined) && otherMember?.user?.id;
-  
-  // Handle profile click for DM chats
+  // Show member avatar for DM chats AND coaching channels (they also show other member's avatar)
+  const showMemberAvatar = isDMChat || (isCoachingChannel && otherMember?.user);
+
+  // Handle profile click for DM chats and coaching channels
   const handleProfileClick = () => {
-    if (isDMChat && otherMember?.user?.id) {
+    if ((isDMChat || isCoachingChannel) && otherMember?.user?.id) {
       router.push(`/profile/${otherMember.user.id}`);
     }
   };
@@ -457,8 +465,8 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
           
           {/* Avatar + Name container */}
           <div className="flex items-center gap-2.5 min-w-0">
-            {/* Avatar - Use SquadMemberStoryAvatar for DM chats to enable story/profile */}
-            {isDMChat && otherMember?.user ? (
+            {/* Avatar - Use SquadMemberStoryAvatar for DM chats and coaching channels */}
+            {showMemberAvatar && otherMember?.user ? (
               <SquadMemberStoryAvatar
                 userId={otherMember.user.id}
                 streamUser={{
@@ -499,8 +507,8 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
               )}
             
             <div className="min-w-0">
-              {/* Name - Clickable to profile for DM chats */}
-              {isDMChat ? (
+              {/* Name - Clickable to profile for DM chats and coaching channels */}
+              {showMemberAvatar ? (
                 <button
                   type="button"
                   onClick={handleProfileClick}
