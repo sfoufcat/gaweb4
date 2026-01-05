@@ -45,8 +45,8 @@ import { IntegrationsTab } from '@/components/coach/settings';
  */
 
 // Valid tab values
-type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'customize' | 'plan' | 'support';
-const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'checkins', 'onboarding', 'channels', 'scheduling', 'customize', 'plan', 'support'];
+type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'integrations' | 'customize' | 'plan' | 'support';
+const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'checkins', 'onboarding', 'channels', 'scheduling', 'integrations', 'customize', 'plan', 'support'];
 
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
 // Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
@@ -57,7 +57,7 @@ const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email
  * Contains Calendar View, Availability Settings, and Call Pricing with sub-navigation
  */
 function SchedulingTab() {
-  const [activeSubTab, setActiveSubTab] = useState<'calendar' | 'availability' | 'pricing' | 'integrations'>('calendar');
+  const [activeSubTab, setActiveSubTab] = useState<'calendar' | 'availability' | 'pricing'>('calendar');
 
   return (
     <div className="space-y-6">
@@ -93,16 +93,6 @@ function SchedulingTab() {
         >
           Call Pricing
         </button>
-        <button
-          onClick={() => setActiveSubTab('integrations')}
-          className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
-            activeSubTab === 'integrations'
-              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-          }`}
-        >
-          Integrations
-        </button>
       </div>
 
       {/* Content */}
@@ -111,10 +101,8 @@ function SchedulingTab() {
           <CalendarView mode="coach" />
         ) : activeSubTab === 'availability' ? (
           <AvailabilityEditor />
-        ) : activeSubTab === 'pricing' ? (
-          <CallPricingSettings />
         ) : (
-          <IntegrationsTab />
+          <CallPricingSettings />
         )}
       </div>
     </div>
@@ -647,6 +635,12 @@ export default function CoachPage() {
                   Scheduling
                 </TabsTrigger>
                 <TabsTrigger 
+                  value="integrations"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Integrations
+                </TabsTrigger>
+                <TabsTrigger 
                   value="customize"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                 >
@@ -791,6 +785,13 @@ export default function CoachPage() {
           {/* Scheduling Tab */}
           <TabsContent value="scheduling">
             <SchedulingTab />
+          </TabsContent>
+
+          {/* Integrations Tab */}
+          <TabsContent value="integrations">
+            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+              <IntegrationsTab />
+            </div>
           </TabsContent>
 
           {/* Customize Branding Tab */}

@@ -9,7 +9,9 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
+  ExternalLink,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 
 // Google Calendar icon as inline SVG
@@ -196,7 +198,7 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
               </h3>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
                 {hasAnyConnected
-                  ? 'Manage your connected calendars'
+                  ? 'Sync availability & add events'
                   : 'Connect your external calendars'}
               </p>
             </div>
@@ -220,9 +222,119 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
           </div>
         )}
 
+        {/* Google Calendar Row - Compact with pill toggle */}
+        {isGoogleConfigured && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl">
+            <div className="flex items-center gap-3">
+              <GoogleCalendarIcon className="w-8 h-8 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  Google Calendar
+                </p>
+                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                  {google.connected ? google.accountEmail : 'Sync availability & add events'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 sm:flex-shrink-0">
+              {google.connected ? (
+                <>
+                  {/* Pill toggle showing connected status */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 rounded-full">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-xs font-medium text-green-700 dark:text-green-400">Connected</span>
+                  </div>
+                  <button
+                    onClick={handleDisconnectGoogle}
+                    disabled={isDisconnecting === 'google'}
+                    className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors disabled:opacity-50"
+                    title="Disconnect"
+                  >
+                    {isDisconnecting === 'google' ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Unlink className="w-4 h-4" />
+                    )}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleConnectGoogle}
+                  disabled={isConnecting !== null}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] dark:bg-brand-accent text-white rounded-lg font-albert font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {isConnecting === 'google' ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Link2 className="w-4 h-4" />
+                      Connect
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Microsoft Calendar Row - Compact with pill toggle */}
+        {isMicrosoftConfigured && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl">
+            <div className="flex items-center gap-3">
+              <OutlookIcon className="w-8 h-8 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  Outlook Calendar
+                </p>
+                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                  {microsoft.connected ? microsoft.accountEmail : 'Sync availability & add events'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 sm:flex-shrink-0">
+              {microsoft.connected ? (
+                <>
+                  {/* Pill toggle showing connected status */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 rounded-full">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-xs font-medium text-green-700 dark:text-green-400">Connected</span>
+                  </div>
+                  <button
+                    onClick={handleDisconnectMicrosoft}
+                    disabled={isDisconnecting === 'microsoft'}
+                    className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors disabled:opacity-50"
+                    title="Disconnect"
+                  >
+                    {isDisconnecting === 'microsoft' ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Unlink className="w-4 h-4" />
+                    )}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleConnectMicrosoft}
+                  disabled={isConnecting !== null}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] dark:bg-brand-accent text-white rounded-lg font-albert font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {isConnecting === 'microsoft' ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Link2 className="w-4 h-4" />
+                      Connect
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Benefits (show when neither connected) */}
         {!hasAnyConnected && (
-          <div className="mb-4 space-y-2">
+          <div className="space-y-2 pt-2">
             <div className="flex items-start gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
               <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
               <span>Automatically block times when you&apos;re busy</span>
@@ -231,134 +343,22 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
               <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
               <span>Add confirmed calls to your calendar automatically</span>
             </div>
-            <div className="flex items-start gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-              <span>Connect multiple calendars to sync all your availability</span>
-            </div>
           </div>
         )}
 
-        {/* Google Calendar Section */}
-        {isGoogleConfigured && (
-          <div className="p-4 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <GoogleCalendarIcon className="w-8 h-8" />
-                <div>
-                  <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Google Calendar
-                  </p>
-                  {google.connected ? (
-                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                      {google.accountEmail}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                      Not connected
-                    </p>
-                  )}
-                </div>
-              </div>
-              {google.connected ? (
-                <button
-                  onClick={handleDisconnectGoogle}
-                  disabled={isDisconnecting === 'google'}
-                  className="flex items-center gap-2 px-3 py-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg font-albert font-medium text-sm transition-colors disabled:opacity-50"
-                >
-                  {isDisconnecting === 'google' ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Unlink className="w-4 h-4" />
-                  )}
-                  Disconnect
-                </button>
-              ) : (
-                <button
-                  onClick={handleConnectGoogle}
-                  disabled={isConnecting !== null}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#3a3f4b] hover:bg-[#f3f1ef] dark:hover:bg-[#2d323d] rounded-lg font-albert font-medium text-sm text-[#1a1a1a] dark:text-[#f5f5f8] transition-colors disabled:opacity-50"
-                >
-                  {isConnecting === 'google' ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Link2 className="w-4 h-4" />
-                  )}
-                  Connect
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Microsoft Calendar Section */}
-        {isMicrosoftConfigured && (
-          <div className="p-4 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <OutlookIcon className="w-8 h-8" />
-                <div>
-                  <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Outlook Calendar
-                  </p>
-                  {microsoft.connected ? (
-                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                      {microsoft.accountEmail}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                      Not connected
-                    </p>
-                  )}
-                </div>
-              </div>
-              {microsoft.connected ? (
-                <button
-                  onClick={handleDisconnectMicrosoft}
-                  disabled={isDisconnecting === 'microsoft'}
-                  className="flex items-center gap-2 px-3 py-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg font-albert font-medium text-sm transition-colors disabled:opacity-50"
-                >
-                  {isDisconnecting === 'microsoft' ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Unlink className="w-4 h-4" />
-                  )}
-                  Disconnect
-                </button>
-              ) : (
-                <button
-                  onClick={handleConnectMicrosoft}
-                  disabled={isConnecting !== null}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#3a3f4b] hover:bg-[#f3f1ef] dark:hover:bg-[#2d323d] rounded-lg font-albert font-medium text-sm text-[#1a1a1a] dark:text-[#f5f5f8] transition-colors disabled:opacity-50"
-                >
-                  {isConnecting === 'microsoft' ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Link2 className="w-4 h-4" />
-                  )}
-                  Connect
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Features Info (show when at least one connected) */}
-        {hasAnyConnected && (
-          <div className="pt-2 border-t border-[#e1ddd8] dark:border-[#262b35] space-y-2">
-            <div className="flex items-start gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-              <span>Your busy times are synced to block scheduling slots</span>
-            </div>
-            <div className="flex items-start gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-              <span>Coaching calls are added to your calendar automatically</span>
-            </div>
-          </div>
-        )}
+        {/* Manage Integrations Link */}
+        <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+          <Link
+            href="/coach?tab=integrations"
+            className="flex items-center justify-center gap-2 w-full py-2.5 text-brand-accent hover:text-brand-accent/80 font-albert font-medium text-sm transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Manage Integrations
+          </Link>
+        </div>
 
         <p className="text-xs text-center text-[#a7a39e] dark:text-[#7d8190]">
           We only access your calendar to check availability and add events.
-          Your data is never shared.
         </p>
       </div>
     </div>

@@ -169,12 +169,11 @@ export function ModuleWeeksSidebar({
   onSelect,
   orientation,
   onOrientationChange,
+  onModulesReorder,
   onWeeksReorder,
   onAddModule,
   onDeleteModule,
-  onFillWithAI,
   onFillWeek,
-  onWeekDistributionChange,
   isLoading = false,
 }: ModuleWeeksSidebarProps) {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(
@@ -305,6 +304,10 @@ export function ModuleWeeksSidebar({
     return days.some(d => d.dayIndex === dayIndex && (d.tasks?.length > 0 || d.title));
   }, [days]);
 
+  const handleModuleReorder = useCallback(async (reorderedModules: ProgramModule[]) => {
+    await onModulesReorder(reorderedModules);
+  }, [onModulesReorder]);
+
   const handleWeeksReorder = useCallback(async (moduleId: string, reorderedWeeks: CalculatedWeek[]) => {
     // Convert CalculatedWeek[] to ProgramWeek[] format for the API
     const weekData = reorderedWeeks.map(w => ({
@@ -428,22 +431,6 @@ export function ModuleWeeksSidebar({
               </p>
             </button>
 
-            {/* Distribution selector (weekly mode) */}
-            {orientation === 'weekly' && (
-              <select
-                value={week.distribution}
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  onWeekDistributionChange?.(week.weekNum, e.target.value as 'repeat-daily' | 'spread');
-                }}
-                className="text-xs px-2 py-1 rounded-lg bg-[#f5f3f0] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] border-0 cursor-pointer hover:bg-[#e1ddd8] dark:hover:bg-[#363b45] transition-colors"
-              >
-                <option value="repeat-daily">Repeat Daily</option>
-                <option value="spread">Spread</option>
-              </select>
-            )}
-
             {/* Content indicator badges */}
             {orientation === 'daily' && week.contentCount > 0 && (
               <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded flex-shrink-0">
@@ -457,14 +444,14 @@ export function ModuleWeeksSidebar({
               </span>
             )}
 
-            {/* Fill week with AI button */}
-            {onFillWeek && orientation === 'weekly' && (
+            {/* Fill week with AI button - show in both modes */}
+            {onFillWeek && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onFillWeek(week.weekNum);
                 }}
-                className="p-2 hover:bg-brand-accent/10 rounded-lg opacity-0 group-hover/week:opacity-100 transition-all"
+                className="p-2 hover:bg-brand-accent/10 rounded-lg opacity-0 group-hover/week:opacity-100 transition-all flex-shrink-0"
                 title="Fill week with AI"
               >
                 <Sparkles className="w-4 h-4 text-brand-accent" />
@@ -478,7 +465,7 @@ export function ModuleWeeksSidebar({
                   e.stopPropagation();
                   toggleWeek(week.weekNum);
                 }}
-                className="p-2 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                className="p-2 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded-lg transition-colors flex-shrink-0"
               >
                 {isWeekExpanded ? (
                   <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
@@ -522,13 +509,115 @@ export function ModuleWeeksSidebar({
     );
   };
 
+  // Render a module with its weeks
+  const renderModuleWithWeeks = (module: ProgramModule) => {
+    const isModuleExpanded = expandedModules.has(module.id);
+    const isModuleSelected = isSelected({ type: 'module', id: module.id, moduleIndex: module.order });
+    const moduleWeeks = weeksByModule.get(module.id) || [];
+    const weekCount = moduleWeeks.length;
+
+    return (
+      <div
+        key={module.id}
+        className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden"
+      >
+        {/* Module Header */}
+        <div
+          className={`p-4 bg-[#faf8f6] dark:bg-[#1a1e25] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors cursor-grab active:cursor-grabbing group ${
+            isModuleSelected ? 'bg-brand-accent/5 dark:bg-brand-accent/10' : ''
+          }`}
+        >
+          <div className="flex items-center gap-4">
+            {/* Drag handle for module */}
+            <div className="touch-none">
+              <GripVertical className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
+            </div>
+
+            {/* Module icon */}
+            <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+              <Folder className="w-5 h-5 text-brand-accent" />
+            </div>
+
+            {/* Module name - clickable to select */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect({ type: 'module', id: module.id, moduleIndex: module.order });
+              }}
+              className="flex-1 min-w-0 text-left"
+            >
+              <p className={`font-medium truncate ${
+                isModuleSelected
+                  ? 'text-brand-accent'
+                  : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+              }`}>
+                {module.name}
+              </p>
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                {weekCount} {weekCount === 1 ? 'week' : 'weeks'}
+              </p>
+            </button>
+
+            {/* Delete button */}
+            {modules.length > 1 && onDeleteModule && (
+              <button
+                onClick={(e) => handleDeleteModuleClick(module, e)}
+                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                title="Delete module"
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </button>
+            )}
+
+            {/* Expand/collapse button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleModule(module.id);
+              }}
+              className="p-2 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded-lg transition-colors flex-shrink-0"
+            >
+              {isModuleExpanded ? (
+                <ChevronDown className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              ) : (
+                <ChevronRight className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Weeks inside module - draggable */}
+        {isModuleExpanded && moduleWeeks.length > 0 && (
+          <Reorder.Group
+            axis="y"
+            values={moduleWeeks}
+            onReorder={(newWeeks) => handleWeeksReorder(module.id, newWeeks)}
+            className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]"
+          >
+            {moduleWeeks.map(week => (
+              <Reorder.Item key={week.weekNum} value={week}>
+                {renderWeekRow(week, module.id)}
+              </Reorder.Item>
+            ))}
+          </Reorder.Group>
+        )}
+
+        {/* Empty state for module with no weeks */}
+        {isModuleExpanded && moduleWeeks.length === 0 && (
+          <div className="p-6 text-center border-t border-[#e1ddd8] dark:border-[#262b35]">
+            <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
+              No weeks in this module
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="w-80 flex-shrink-0">
-      {/* Header */}
+      {/* Orientation Toggle - moved up, no header */}
       <div className="mb-4">
-        <h3 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
-          Program Content
-        </h3>
         <OrientationToggle
           value={orientation}
           onChange={onOrientationChange}
@@ -537,19 +626,8 @@ export function ModuleWeeksSidebar({
         />
       </div>
 
-      {/* Fill with AI button */}
-      {onFillWithAI && (
-        <button
-          onClick={onFillWithAI}
-          className="w-full mb-4 flex items-center justify-center gap-2 px-4 py-3 bg-brand-accent text-white rounded-xl text-sm font-medium font-albert hover:bg-brand-accent/90 transition-colors"
-        >
-          <Sparkles className="w-4 h-4" />
-          Fill with AI
-        </button>
-      )}
-
       {/* Modules & Weeks Tree */}
-      <div className="space-y-4 max-h-[calc(100vh-320px)] overflow-y-auto pr-1">
+      <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
         {sortedModules.length === 0 ? (
           // No modules yet - prompt to add one
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6 text-center">
@@ -568,102 +646,19 @@ export function ModuleWeeksSidebar({
             </button>
           </div>
         ) : (
-          // Modules list (no drag on modules, only on weeks inside)
-          <div className="space-y-4">
-            {sortedModules.map((module) => {
-              const isModuleExpanded = expandedModules.has(module.id);
-              const isModuleSelected = isSelected({ type: 'module', id: module.id, moduleIndex: module.order });
-              const moduleWeeks = weeksByModule.get(module.id) || [];
-              const weekCount = moduleWeeks.length;
-
-              return (
-                <div
-                  key={module.id}
-                  className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden"
-                >
-                  {/* Module Header - FunnelStepsEditor style */}
-                  <div
-                    className={`p-4 bg-[#faf8f6] dark:bg-[#1a1e25] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors cursor-pointer ${
-                      isModuleSelected ? 'bg-brand-accent/5 dark:bg-brand-accent/10' : ''
-                    }`}
-                    onClick={() => onSelect({ type: 'module', id: module.id, moduleIndex: module.order })}
-                  >
-                    <div className="flex items-center gap-4">
-                      {/* Module icon */}
-                      <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-                        <Folder className="w-5 h-5 text-brand-accent" />
-                      </div>
-
-                      {/* Module name */}
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-medium truncate ${
-                          isModuleSelected
-                            ? 'text-brand-accent'
-                            : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-                        }`}>
-                          {module.name}
-                        </p>
-                        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                          {weekCount} {weekCount === 1 ? 'week' : 'weeks'}
-                        </p>
-                      </div>
-
-                      {/* Delete button */}
-                      {modules.length > 1 && onDeleteModule && (
-                        <button
-                          onClick={(e) => handleDeleteModuleClick(module, e)}
-                          className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                          title="Delete module"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
-                      )}
-
-                      {/* Expand/collapse button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleModule(module.id);
-                        }}
-                        className="p-2 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                      >
-                        {isModuleExpanded ? (
-                          <ChevronDown className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                        ) : (
-                          <ChevronRight className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Weeks inside module - draggable */}
-                  {isModuleExpanded && moduleWeeks.length > 0 && (
-                    <Reorder.Group
-                      axis="y"
-                      values={moduleWeeks}
-                      onReorder={(newWeeks) => handleWeeksReorder(module.id, newWeeks)}
-                      className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]"
-                    >
-                      {moduleWeeks.map(week => (
-                        <Reorder.Item key={week.weekNum} value={week}>
-                          {renderWeekRow(week, module.id)}
-                        </Reorder.Item>
-                      ))}
-                    </Reorder.Group>
-                  )}
-
-                  {/* Empty state for module with no weeks */}
-                  {isModuleExpanded && moduleWeeks.length === 0 && (
-                    <div className="p-6 text-center border-t border-[#e1ddd8] dark:border-[#262b35]">
-                      <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
-                        No weeks in this module
-                      </p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          // Modules list with drag-and-drop
+          <Reorder.Group
+            axis="y"
+            values={sortedModules}
+            onReorder={handleModuleReorder}
+            className="space-y-4"
+          >
+            {sortedModules.map((module) => (
+              <Reorder.Item key={module.id} value={module}>
+                {renderModuleWithWeeks(module)}
+              </Reorder.Item>
+            ))}
+          </Reorder.Group>
         )}
 
         {/* Add Module button */}

@@ -387,13 +387,15 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
                   key={integration.id}
                   className="bg-white dark:bg-[#1d222b] border border-gray-200 dark:border-[#2a303b] rounded-xl p-4"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                  {/* Main content row */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    {/* Left: Icon and info */}
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                         <Icon className="w-5 h-5 text-green-600 dark:text-green-400" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-text-primary">
                             {(providerMeta as IntegrationProviderMeta).name || integration.provider}
                           </span>
@@ -403,7 +405,7 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
                           </span>
                         </div>
                         {integration.accountEmail && (
-                          <p className="text-sm text-text-secondary mt-0.5">
+                          <p className="text-sm text-text-secondary mt-0.5 truncate">
                             {integration.accountEmail}
                           </p>
                         )}
@@ -415,24 +417,25 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
                       </div>
                     </div>
 
-                    {/* Feature toggles for Google Calendar */}
-                    {integration.provider === 'google_calendar' && (
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
+                    {/* Right: Feature toggles and actions */}
+                    <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 ml-13 sm:ml-0">
+                      {/* Feature toggles for Google Calendar - pill switch style */}
+                      {integration.provider === 'google_calendar' && (
+                        <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-[#262b35] rounded-full">
                           <button
                             onClick={() => updateGoogleCalendarSettings(
                               integration.id,
                               'enableCalendarSync',
                               !(integration.settings as GoogleCalendarSettings)?.enableCalendarSync
                             )}
-                            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                               (integration.settings as GoogleCalendarSettings)?.enableCalendarSync !== false
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                                ? 'bg-white dark:bg-[#1d222b] text-green-600 dark:text-green-400 shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                             }`}
                           >
-                            <Calendar className="w-3 h-3 inline mr-1" />
-                            Calendar
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Calendar</span>
                           </button>
                           <button
                             onClick={() => updateGoogleCalendarSettings(
@@ -440,41 +443,42 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
                               'enableMeetLinks',
                               !(integration.settings as GoogleCalendarSettings)?.enableMeetLinks
                             )}
-                            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                               (integration.settings as GoogleCalendarSettings)?.enableMeetLinks
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                                ? 'bg-white dark:bg-[#1d222b] text-green-600 dark:text-green-400 shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                             }`}
                           >
-                            <Video className="w-3 h-3 inline mr-1" />
-                            Meet
+                            <Video className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Meet</span>
                           </button>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setEditingIntegration(integration);
-                          setIsSettingsModalOpen(true);
-                        }}
-                      >
-                        <Settings className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setDisconnectingIntegration(integration);
-                          setIsDisconnectModalOpen(true);
-                        }}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {/* Settings and delete buttons */}
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingIntegration(integration);
+                            setIsSettingsModalOpen(true);
+                          }}
+                        >
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setDisconnectingIntegration(integration);
+                            setIsDisconnectModalOpen(true);
+                          }}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -490,7 +494,7 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
           <h3 className="text-sm font-medium text-text-secondary mb-3 uppercase tracking-wide">
             {CATEGORY_LABELS[category as IntegrationCategory]}
           </h3>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {providers.map((provider) => {
               const Icon = PROVIDER_ICONS[provider.id];
               const isLocked = isTierLocked(provider);
