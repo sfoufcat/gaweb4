@@ -179,7 +179,7 @@ export default function GoalPage() {
 
   if (!isLoaded || isSaving) {
     return (
-      <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
+      <div className="min-h-dvh bg-app-bg flex items-center justify-center">
         <div className="flex flex-col items-center justify-center text-center">
           <div className="relative mb-4 w-12 h-12 mx-auto">
             <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8] dark:border-[#262b35]" />
@@ -209,8 +209,8 @@ export default function GoalPage() {
   const isButtonEnabled = goal.trim().length >= 5 && isDateValid();
 
   return (
-    <div className="fixed inset-0 bg-app-bg overflow-y-auto">
-      <div className="min-h-full flex flex-col">
+    <div className="min-h-dvh bg-app-bg">
+      <div className="min-h-dvh flex flex-col">
         {/* Logo Header - centered */}
         <motion.div 
           className="pt-6 pb-4 px-6 flex justify-center"

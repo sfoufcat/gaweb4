@@ -87,7 +87,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [organizationCourses, setOrganizationCourses] = useState<DiscoverCourse[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(1);
   const [sidebarSelection, setSidebarSelection] = useState<SidebarSelection | null>(null);
-  const [programOrientation, setProgramOrientation] = useState<ProgramOrientation>('weekly'); // Weekly is default
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1])); // Week 1 expanded by default
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -194,7 +193,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       upsellDescription: '',
     },
     callCreditsPerMonth: 0,
-    orientation: 'daily',
+    orientation: 'weekly',
   });
   
   // Available coaches for selection
@@ -458,9 +457,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         setProgramModules([]);
         setProgramWeeks([]);
       }
-
-      // Set program orientation (weekly is default)
-      setProgramOrientation(program?.orientation || 'weekly');
 
       // Load first day data
       const day1 = data.days?.find((d: ProgramDay) => d.dayIndex === 1);
@@ -752,7 +748,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           upsellDescription: '',
         },
         callCreditsPerMonth: 0,
-        orientation: 'daily',
+        orientation: 'weekly',
       });
     }
     setSaveError(null);
@@ -1772,12 +1768,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   }
                 }
               }}
-              orientation={programOrientation}
+              orientation={selectedProgram?.orientation || 'weekly'}
               onOrientationChange={async (newOrientation) => {
-                const oldOrientation = programOrientation;
-                setProgramOrientation(newOrientation);
-                
                 if (!selectedProgram) return;
+                const oldOrientation = selectedProgram.orientation || 'weekly';
                 
                 try {
                   // Save orientation to program
@@ -1786,6 +1780,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ orientation: newOrientation }),
                   });
+                  
+                  // Update local state
+                  setSelectedProgram({ ...selectedProgram, orientation: newOrientation });
                   
                   // Auto-distribute tasks when switching from weekly to daily
                   if (oldOrientation === 'weekly' && newOrientation === 'daily') {
@@ -1898,11 +1895,18 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 // Calculate day range for this week (7 days per week)
                 const moduleWeeks = programWeeks.filter(w => w.moduleId === moduleId).sort((a, b) => a.order - b.order);
                 const lastWeekInModule = moduleWeeks[moduleWeeks.length - 1];
-                const startDay = lastWeekInModule ? lastWeekInModule.endDayIndex + 1 : module.startDayIndex;
+                
+                // Defensive check: fallback to 1 if module.startDayIndex is undefined
+                const moduleStartDay = module.startDayIndex ?? 1;
+                const moduleEndDay = module.endDayIndex ?? moduleStartDay + 6;
+                
+                const startDay = lastWeekInModule 
+                  ? (lastWeekInModule.endDayIndex ?? moduleEndDay) + 1 
+                  : moduleStartDay;
                 const endDay = startDay + 6; // Always 7 days per week
                 
                 // Auto-expand module bounds if needed
-                const needsModuleExpansion = endDay > module.endDayIndex;
+                const needsModuleExpansion = endDay > moduleEndDay;
                 
                 try {
                   // If module needs expansion, update it first
@@ -2062,7 +2066,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       days={programDays.filter(d =>
                         d.dayIndex >= selectedWeek.startDayIndex && d.dayIndex <= selectedWeek.endDayIndex
                       )}
-                      orientation={programOrientation}
+                      orientation={selectedProgram?.orientation || 'weekly'}
                       onSave={async (updates) => {
                         try {
                           const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks/${selectedWeek.id}`, {
@@ -3102,46 +3106,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       </p>
                     </div>
 
-                    {/* Program Mode */}
-                    <div>
-                      <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-                        Program Mode
-                      </label>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProgramFormData({ ...programFormData, orientation: 'daily' });
-                            setProgramOrientation('daily');
-                          }}
-                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-albert transition-colors ${
-                            (programFormData.orientation || programOrientation) === 'daily'
-                              ? 'bg-brand-accent text-white'
-                              : 'bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:border-brand-accent dark:hover:border-brand-accent'
-                          }`}
-                        >
-                          Daily
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProgramFormData({ ...programFormData, orientation: 'weekly' });
-                            setProgramOrientation('weekly');
-                          }}
-                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-albert transition-colors ${
-                            (programFormData.orientation || programOrientation) === 'weekly'
-                              ? 'bg-brand-accent text-white'
-                              : 'bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:border-brand-accent dark:hover:border-brand-accent'
-                          }`}
-                        >
-                          Weekly
-                        </button>
-                      </div>
-                      <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
-                        Daily: Tasks assigned each day. Weekly: Tasks assigned per week.
-                      </p>
-                    </div>
-
                     {/* Weekend Settings */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
@@ -3873,7 +3837,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               upsellDescription: '',
             },
             callCreditsPerMonth: 0,
-            orientation: 'daily',
+            orientation: 'weekly',
           });
           setIsProgramModalOpen(true);
         }}
@@ -4005,7 +3969,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           }}
           programId={selectedProgram.id}
           week={weekToFill}
-          orientation={programOrientation}
+          orientation={selectedProgram?.orientation || 'weekly'}
           onApply={async (updates) => {
             const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${weekToFill.id}`, {
               method: 'PATCH',

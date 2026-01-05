@@ -87,7 +87,7 @@ export function AnalyzingLoader({ onComplete, duration = 4000 }: AnalyzingLoader
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <div className="fixed inset-0 bg-app-bg flex flex-col items-center justify-center px-6">
+    <div className="min-h-dvh bg-app-bg flex flex-col items-center justify-center px-6 relative">
       {/* Logo at top - centered */}
       <div className="absolute top-8 left-0 right-0 flex justify-center">
         <motion.div

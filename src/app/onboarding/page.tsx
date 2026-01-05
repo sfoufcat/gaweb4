@@ -130,7 +130,7 @@ export default function OnboardingPage() {
 
   if (!isLoaded || isSaving) {
     return (
-      <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
+      <div className="min-h-dvh bg-app-bg flex items-center justify-center">
         <div className="text-center">
           <div className="relative mb-4">
             <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
@@ -148,8 +148,8 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-app-bg overflow-y-auto">
-      <div className="min-h-full flex flex-col">
+    <div className="min-h-dvh bg-app-bg">
+      <div className="min-h-dvh flex flex-col">
         {/* Logo Header - centered */}
         <motion.div 
           className="pt-6 pb-4 px-6 flex justify-center"
