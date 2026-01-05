@@ -27,7 +27,9 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex flex-col min-h-screen">
         <FixedBackground />
-        {children}
+        <div className="relative flex-1">
+          {children}
+        </div>
       </div>
     );
   }
@@ -44,7 +46,9 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
       className={isFullWidthPage ? 'flex flex-col min-h-screen' : 'max-w-7xl mx-auto p-4 sm:p-6 lg:p-10'}
     >
       <FixedBackground />
-      {children}
+      <div className="relative flex-1">
+        {children}
+      </div>
     </motion.div>
   );
 }

@@ -155,8 +155,11 @@ export async function POST() {
       },
     ]);
 
-    // Create the channel
-    const chatChannelId = `coaching-${userId}-${coachId}`;
+    // Create the channel with a shorter ID (Stream Chat has 64 char limit)
+    // Use org suffix + user suffix to ensure uniqueness while staying under limit
+    const orgSuffix = organizationId.replace('org_', '').slice(0, 10);
+    const userSuffix = userId.replace('user_', '').slice(0, 10);
+    const chatChannelId = `coaching-${orgSuffix}-${userSuffix}`;
     const channel = streamClient.channel('messaging', chatChannelId, {
       members: [userId, coachId],
       created_by_id: userId,
