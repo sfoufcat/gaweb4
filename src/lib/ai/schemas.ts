@@ -176,11 +176,68 @@ export function validateLandingPageDraft(draft: unknown): {
   errors?: Array<{ path: string; message: string }>;
 } {
   const result = landingPageDraftSchema.safeParse(draft);
-  
+
   if (result.success) {
     return { success: true, data: result.data };
   }
-  
+
+  return {
+    success: false,
+    errors: result.error.issues.map((err) => ({
+      path: String(err.path.join('.')),
+      message: err.message,
+    })),
+  };
+}
+
+// =============================================================================
+// WEEK FILL SCHEMAS
+// =============================================================================
+
+export const weekFillTaskTypeSchema = z.enum(['task', 'reflection', 'habit']);
+
+export const weekFillTaskSchema = z.object({
+  label: nonEmptyString.max(200, 'Task label must be 200 characters or less'),
+  type: weekFillTaskTypeSchema.default('task'),
+  isPrimary: z.boolean().default(false),
+  estimatedMinutes: z.number().min(5).max(180).optional(),
+  notes: z.string().max(500, 'Task notes must be 500 characters or less').optional(),
+  tag: z.string().max(50, 'Tag must be 50 characters or less').optional(),
+});
+
+export const weekFillResultSchema = z.object({
+  tasks: z
+    .array(weekFillTaskSchema)
+    .min(1, 'Must have at least 1 task')
+    .max(10, 'Can have at most 10 tasks'),
+  currentFocus: z
+    .array(z.string().max(200, 'Focus item must be 200 characters or less'))
+    .min(1, 'Must have at least 1 focus area')
+    .max(3, 'Can have at most 3 focus areas'),
+  notes: z
+    .array(z.string().max(300, 'Note must be 300 characters or less'))
+    .max(3, 'Can have at most 3 notes')
+    .optional(),
+  weekTheme: z.string().max(100, 'Week theme must be 100 characters or less').optional(),
+  weekDescription: z.string().max(500, 'Week description must be 500 characters or less').optional(),
+});
+
+export type WeekFillResult = z.infer<typeof weekFillResultSchema>;
+
+/**
+ * Validate a week fill result
+ */
+export function validateWeekFillResult(draft: unknown): {
+  success: boolean;
+  data?: WeekFillResult;
+  errors?: Array<{ path: string; message: string }>;
+} {
+  const result = weekFillResultSchema.safeParse(draft);
+
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+
   return {
     success: false,
     errors: result.error.issues.map((err) => ({

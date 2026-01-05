@@ -212,11 +212,94 @@ IMPORTANT REMINDERS:
 - Match the tone to what the coach described
 
 Remember: Output ONLY the JSON object. No explanations, no markdown formatting.`;
-  
+
   return { system: LANDING_PAGE_SYSTEM_PROMPT, user };
 }
 
+// =============================================================================
+// WEEK FILL GENERATION (from call summary, prompt, or PDF)
+// =============================================================================
 
+const WEEK_FILL_SYSTEM_PROMPT = `You are an expert coaching assistant that extracts actionable content from call summaries and coaching materials.
+
+Your job is to analyze coaching call transcripts, PDFs, or prompts and generate structured weekly content for a coaching program.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON matching the exact schema provided. No markdown, no explanations.
+2. Extract 3-8 specific, actionable tasks from the content.
+3. Identify 1-3 key focus areas (what the client should prioritize).
+4. Extract 1-3 important notes or reminders from the discussion.
+5. Tasks should be concrete and achievable within a week.
+6. Focus areas should be high-level themes, not specific tasks.
+7. Notes can include context, warnings, or reminders discussed in the call.
+
+TASK TYPES:
+- "task": General action item (default)
+- "reflection": Journaling or thinking exercise
+- "habit": Behavior to practice regularly
+
+OUTPUT SCHEMA:
+{
+  "tasks": [
+    { "label": string, "type": "task"|"reflection"|"habit", "isPrimary": boolean, "estimatedMinutes": number?, "notes": string?, "tag": string? }
+  ],
+  "currentFocus": [string, string?, string?],  // 1-3 items max
+  "notes": [string, string?, string?],          // 1-3 items max
+  "weekTheme": string?,                          // Optional theme for the week
+  "weekDescription": string?                     // Optional description
+}`;
+
+export interface WeekFillContext {
+  programName: string;
+  programDescription?: string;
+  weekNumber: number;
+  clientName?: string;
+  orientation: 'daily' | 'weekly';
+}
+
+export function buildWeekFillPrompt(
+  source: { type: 'call_summary' | 'prompt' | 'pdf'; content: string },
+  context: WeekFillContext
+): { system: string; user: string } {
+  const contextParts: string[] = [
+    `Program: "${context.programName}"`,
+    `Week: ${context.weekNumber}`,
+    `Orientation: ${context.orientation}`,
+  ];
+
+  if (context.programDescription) {
+    contextParts.push(`Program Description: ${context.programDescription}`);
+  }
+  if (context.clientName) {
+    contextParts.push(`Client: ${context.clientName}`);
+  }
+
+  const sourceLabel =
+    source.type === 'call_summary'
+      ? 'CALL SUMMARY TRANSCRIPT'
+      : source.type === 'pdf'
+      ? 'PDF CONTENT'
+      : 'COACH INSTRUCTIONS';
+
+  const user = `Generate weekly program content from the following source.
+
+PROGRAM CONTEXT:
+${contextParts.join('\n')}
+
+${sourceLabel}:
+${source.content}
+
+INSTRUCTIONS:
+- Extract actionable tasks that the client should complete this week
+- Identify the key focus areas based on what was discussed
+- Note any important reminders or context from the conversation
+- Tasks marked as "isPrimary: true" will be shown in Daily Focus
+- Limit to 3-8 tasks, 1-3 focus areas, and 1-3 notes
+
+Remember: Output ONLY the JSON object. No explanations, no markdown formatting.`;
+
+  return { system: WEEK_FILL_SYSTEM_PROMPT, user };
+}
 
 
 

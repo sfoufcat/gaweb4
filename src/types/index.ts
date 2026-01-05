@@ -748,7 +748,14 @@ export interface Program {
   
   // Weekend settings
   includeWeekends?: boolean; // Default true. If false, tasks only feed on weekdays (Mon-Fri)
-  
+
+  // Program orientation settings
+  orientation?: ProgramOrientation; // 'daily' (default) or 'weekly'
+  weeklyTaskDistribution?: WeeklyTaskDistribution; // How weekly tasks are distributed
+  scheduleMode?: ProgramScheduleMode; // What content types are in the schedule
+  primaryCourseIds?: string[]; // Main courses that form the schedule backbone
+  hasModules?: boolean; // True if using program_modules collection for hierarchy
+
   // Status
   isActive: boolean; // Whether program can accept enrollments
   isPublished: boolean; // Whether visible in Discover
@@ -798,6 +805,18 @@ export interface ProgramDay {
   dailyPrompt?: string; // Encouragement/explanation for the day
   tasks: ProgramTaskTemplate[];
   habits?: ProgramHabitTemplate[]; // Optional habits (typically Day 1)
+
+  // Hierarchy references (for module/week structure)
+  moduleId?: string; // FK to program_modules
+  weekId?: string; // FK to program_weeks
+
+  // Schedule integration
+  scheduledItems?: ScheduledItem[]; // Calls, courses, assignments for this day
+  courseAssignments?: DayCourseAssignment[]; // Course content assigned to this day
+
+  // AI fill tracking
+  fillSource?: WeekFillSource; // How this day's content was generated
+
   createdAt: string;
   updatedAt: string;
 }
@@ -869,10 +888,16 @@ export interface ProgramEnrollment {
   stoppedAt?: string; // ISO timestamp if stopped early
   lastAssignedDayIndex: number; // Last program day with generated tasks
   currentDayIndex?: number; // Current day user is on (calculated)
-  
+
+  // Weekly tracking (for programs with orientation = 'weekly')
+  lastAssignedWeekIndex?: number; // Last week with synced tasks
+  currentWeekIndex?: number; // Current week user is on
+  lastWeeklySyncAt?: string; // ISO timestamp when weekly tasks were last synced
+  weeklyTasksSynced?: boolean; // Whether current week's tasks are synced
+
   // Community membership (for individual programs with client community)
   joinedCommunity?: boolean; // Whether user opted into client community squad
-  
+
   // Metadata
   createdAt: string;
   updatedAt: string;
@@ -885,6 +910,154 @@ export interface ProgramWithStats extends Program {
   totalEnrollments: number;
   activeEnrollments: number;
   cohortCount?: number; // For group programs
+}
+
+// =============================================================================
+// PROGRAM HIERARCHY TYPES (Modules > Weeks > Days)
+// =============================================================================
+
+/**
+ * Program orientation - daily or weekly task distribution
+ */
+export type ProgramOrientation = 'daily' | 'weekly';
+
+/**
+ * How weekly tasks are distributed
+ * - spread: All tasks available from week start, user decides when
+ * - daily: Tasks still synced daily but grouped by week theme
+ */
+export type WeeklyTaskDistribution = 'spread' | 'daily';
+
+/**
+ * Program schedule mode - what content types are in the schedule
+ */
+export type ProgramScheduleMode = 'calls_only' | 'courses_only' | 'hybrid';
+
+/**
+ * Program Module - Top-level container for organizing program content
+ * Stored in Firestore 'program_modules' collection
+ *
+ * Hierarchy: Program > ProgramModule > ProgramWeek > ProgramDay
+ * Client sees module/week previews but NOT individual day details until unlocked
+ */
+export interface ProgramModule {
+  id: string;
+  programId: string;
+  organizationId: string; // Denormalized for queries
+
+  // Position & Identification
+  order: number; // 1-based ordering within program
+  name: string; // e.g., "Foundation Phase", "Deep Work", "Integration"
+  description?: string; // Rich text description for coach admin view
+
+  // Client-facing preview (visible before unlocking)
+  previewTitle?: string; // What client sees before module unlocks
+  previewDescription?: string;
+
+  // Timing - which days this module spans
+  startDayIndex: number; // Day index where this module begins (1-based)
+  endDayIndex: number; // Day index where this module ends (inclusive)
+
+  // Course integration
+  linkedCourseIds?: string[]; // DiscoverCourse IDs included in this module
+
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Program Week - Sub-container within a module
+ * Stored in Firestore 'program_weeks' collection
+ */
+export interface ProgramWeek {
+  id: string;
+  programId: string;
+  moduleId: string; // FK to program_modules
+  organizationId: string; // Denormalized for queries
+
+  // Position
+  order: number; // 1-based within module (not global week number)
+  weekNumber: number; // Global week number in program (1, 2, 3...)
+
+  // Content
+  name?: string; // Optional name, e.g., "Week 1: Getting Started"
+  description?: string;
+  theme?: string; // Optional theme/focus for the week
+
+  // Day range
+  startDayIndex: number;
+  endDayIndex: number;
+
+  // Weekly orientation fields (when program.orientation = 'weekly')
+  weeklyTasks?: ProgramTaskTemplate[]; // Tasks for the entire week
+  weeklyHabits?: ProgramHabitTemplate[]; // Habits for the week
+  weeklyPrompt?: string; // Prompt/theme for the week
+
+  // Client-facing summary fields
+  currentFocus?: string[]; // Max 3 key priorities for the week
+  notes?: string[]; // Max 3 reminder/context items
+
+  // Schedule references
+  scheduledCallEventId?: string; // UnifiedEvent ID for weekly call
+  linkedCourseModuleIds?: string[]; // Course module IDs to complete this week
+
+  // AI fill tracking
+  fillSource?: WeekFillSource;
+
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Track how a week's content was generated
+ */
+export interface WeekFillSource {
+  type: 'manual' | 'ai_prompt' | 'call_summary' | 'pdf';
+  sourceId?: string; // CallSummary ID or upload ID
+  sourceName?: string; // "Call with John - Dec 15" or "client_goals.pdf"
+  generatedAt: string;
+  creditsUsed?: number; // Minutes used for transcription/summary
+}
+
+/**
+ * A scheduled item for a program day/week timeline
+ * Represents calls, course content, or assignments
+ */
+export interface ScheduledItem {
+  id: string;
+  type: 'call' | 'course_lesson' | 'course_module' | 'assignment';
+
+  // Reference ID based on type
+  eventId?: string; // UnifiedEvent ID for calls
+  courseId?: string; // DiscoverCourse ID
+  lessonId?: string; // CourseLesson ID
+  moduleId?: string; // CourseModule ID
+  assignmentId?: string; // Assignment ID
+
+  // Display
+  title: string;
+  description?: string;
+
+  // Timing (for timeline display)
+  scheduledTime?: string; // ISO time for calls
+  dueDate?: string; // For assignments
+  estimatedMinutes?: number;
+
+  // Status
+  isRequired?: boolean; // Must complete to progress
+  order: number; // Order within day/week
+}
+
+/**
+ * Course assignment for a specific program day
+ * Links course content to program days
+ */
+export interface DayCourseAssignment {
+  courseId: string;
+  moduleIds?: string[]; // Specific modules from the course
+  lessonIds?: string[]; // Specific lessons (if not whole modules)
 }
 
 // =============================================================================

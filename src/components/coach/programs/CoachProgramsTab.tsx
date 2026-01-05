@@ -2,8 +2,13 @@
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Image from 'next/image';
-import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier, ProgramCompletionConfig } from '@/types';
+import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier, ProgramCompletionConfig, ProgramModule, ProgramWeek, ProgramOrientation } from '@/types';
 import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
+import { ProgramSidebarNav, type SidebarSelection } from './ProgramSidebarNav';
+import { ModuleEditor } from './ModuleEditor';
+import { WeekEditor } from './WeekEditor';
+import { OrientationToggle } from './OrientationToggle';
+import { WeekFillModal } from './WeekFillModal';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -74,7 +79,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [selectedProgram, setSelectedProgram] = useState<ProgramWithStats | null>(null);
   const [programDays, setProgramDays] = useState<ProgramDay[]>([]);
   const [programCohorts, setProgramCohorts] = useState<ProgramCohort[]>([]);
+  const [programModules, setProgramModules] = useState<ProgramModule[]>([]);
+  const [programWeeks, setProgramWeeks] = useState<ProgramWeek[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(1);
+  const [sidebarSelection, setSidebarSelection] = useState<SidebarSelection | null>(null);
+  const [programOrientation, setProgramOrientation] = useState<ProgramOrientation>('daily');
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1])); // Week 1 expanded by default
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -115,6 +124,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   // AI Helper modals
   const [isAIProgramContentModalOpen, setIsAIProgramContentModalOpen] = useState(false);
   const [isAILandingPageModalOpen, setIsAILandingPageModalOpen] = useState(false);
+  const [isWeekFillModalOpen, setIsWeekFillModalOpen] = useState(false);
   
   // Plan tier for limit checking
   const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
@@ -149,6 +159,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     allowCustomStartDate: boolean;
     completionConfig: ProgramCompletionConfig;
     callCreditsPerMonth: number;
+    orientation: ProgramOrientation;
   }>({
     name: '',
     type: 'group',
@@ -178,6 +189,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       upsellDescription: '',
     },
     callCreditsPerMonth: 0,
+    orientation: 'daily',
   });
   
   // Available coaches for selection
@@ -414,7 +426,34 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       const data = await response.json();
       setProgramDays(data.days || []);
       setProgramCohorts(data.cohorts || []);
-      
+
+      // Fetch modules and weeks if program has modules
+      const program = data.program as Program;
+      if (program?.hasModules) {
+        try {
+          const [modulesRes, weeksRes] = await Promise.all([
+            fetch(`${apiBasePath}/${programId}/modules`),
+            fetch(`${apiBasePath}/${programId}/weeks`),
+          ]);
+          if (modulesRes.ok) {
+            const modulesData = await modulesRes.json();
+            setProgramModules(modulesData.modules || []);
+          }
+          if (weeksRes.ok) {
+            const weeksData = await weeksRes.json();
+            setProgramWeeks(weeksData.weeks || []);
+          }
+        } catch (err) {
+          console.error('Error fetching modules/weeks:', err);
+        }
+      } else {
+        setProgramModules([]);
+        setProgramWeeks([]);
+      }
+
+      // Set program orientation
+      setProgramOrientation(program?.orientation || 'daily');
+
       // Load first day data
       const day1 = data.days?.find((d: ProgramDay) => d.dayIndex === 1);
       if (day1) {
@@ -429,8 +468,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [] });
       }
       
-      // Load landing page data from program
-      const program = data.program as Program;
+      // Load landing page data from program (program already declared above)
       if (program) {
         setLandingPageFormData({
           // Hero section
@@ -659,6 +697,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           upsellDescription: program.completionConfig?.upsellDescription || '',
         },
         callCreditsPerMonth: program.callCreditsPerMonth ?? 0,
+        orientation: program.orientation || 'daily',
       });
     } else {
       setEditingProgram(null);
@@ -691,6 +730,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           upsellDescription: '',
         },
         callCreditsPerMonth: 0,
+        orientation: 'daily',
       });
     }
     setSaveError(null);
@@ -1667,108 +1707,55 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             )}
           </div>
         ) : viewMode === 'days' ? (
-          // Day Editor
+          // Day Editor with new ProgramSidebarNav
           <div className="flex gap-6">
-            {/* Day Selector */}
-            <div className="w-48 flex-shrink-0">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  Program Days
-                </h3>
-              </div>
-              
-              {/* Fill with AI Button */}
-              <button
-                onClick={() => setIsAIProgramContentModalOpen(true)}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-3 bg-gradient-to-r from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent text-white text-sm font-medium rounded-lg hover:from-[#8c6245] hover:to-[#7a5639] dark:hover:from-brand-accent dark:hover:to-[#8c6245] transition-all shadow-sm"
-              >
-                <Sparkles className="w-4 h-4" />
-                Fill with AI
-              </button>
-              
-              <div className="space-y-1 max-h-[500px] overflow-y-auto">
-                {(() => {
-                  const totalDays = selectedProgram?.lengthDays || 30;
-                  const includeWeekends = selectedProgram?.includeWeekends !== false;
-                  const daysPerWeek = includeWeekends ? 7 : 5;
-                  const numWeeks = Math.ceil(totalDays / daysPerWeek);
-                  
-                  return Array.from({ length: numWeeks }, (_, weekIdx) => {
-                    const weekNum = weekIdx + 1;
-                    const startDay = weekIdx * daysPerWeek + 1;
-                    const endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
-                    const isExpanded = expandedWeeks.has(weekNum);
-                    
-                    // Check if any day in this week has content
-                    const weekHasContent = programDays.some(d => 
-                      d.dayIndex >= startDay && d.dayIndex <= endDay && (d.tasks?.length > 0 || d.title)
-                    );
-                    // Count days with content in this week
-                    const daysWithContent = Array.from({ length: endDay - startDay + 1 }, (_, i) => startDay + i)
-                      .filter(day => programDays.some(d => d.dayIndex === day && (d.tasks?.length > 0 || d.title)))
-                      .length;
-                    const totalDaysInWeek = endDay - startDay + 1;
-                    
-                    return (
-                      <div key={weekNum} className="mb-1">
-                        {/* Week Header */}
-                        <button
-                          onClick={() => {
-                            setExpandedWeeks(prev => {
-                              const next = new Set(prev);
-                              if (next.has(weekNum)) {
-                                next.delete(weekNum);
-                              } else {
-                                next.add(weekNum);
-                              }
-                              return next;
-                            });
-                          }}
-                          className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium font-albert bg-[#faf8f6] dark:bg-[#1e222a] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            {isExpanded ? (
-                              <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                            )}
-                            <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">Week {weekNum}</span>
-                          </div>
-                          <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                            {daysWithContent}/{totalDaysInWeek}
-                            {weekHasContent && <span className="text-green-500 ml-1">✓</span>}
-                          </span>
-                        </button>
-                        
-                        {/* Days in Week */}
-                        {isExpanded && (
-                          <div className="ml-3 mt-1 space-y-0.5 border-l-2 border-[#e1ddd8] dark:border-[#262b35] pl-2">
-                            {Array.from({ length: endDay - startDay + 1 }, (_, i) => startDay + i).map((day) => {
-                              const hasContent = programDays.some(d => d.dayIndex === day && (d.tasks?.length > 0 || d.title));
-                              return (
-                                <button
-                                  key={day}
-                                  onClick={() => setSelectedDayIndex(day)}
-                                  className={`w-full text-left px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
-                                    selectedDayIndex === day
-                                      ? 'bg-brand-accent/10 text-brand-accent'
-                                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-                                  }`}
-                                >
-                                  Day {day} {hasContent && <span className="text-green-500">✓</span>}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
+            {/* Sidebar Navigation */}
+            <ProgramSidebarNav
+              program={selectedProgram as Program}
+              modules={programModules}
+              weeks={programWeeks}
+              days={programDays}
+              selection={sidebarSelection || (selectedDayIndex ? { type: 'day', dayIndex: selectedDayIndex } : null)}
+              onSelect={(selection) => {
+                setSidebarSelection(selection);
+                if (selection.type === 'day') {
+                  setSelectedDayIndex(selection.dayIndex);
+                  // Load day data into form
+                  const day = programDays.find(d => d.dayIndex === selection.dayIndex);
+                  if (day) {
+                    setDayFormData({
+                      title: day.title || '',
+                      summary: day.summary || '',
+                      dailyPrompt: day.dailyPrompt || '',
+                      tasks: day.tasks || [],
+                      habits: day.habits || [],
+                    });
+                  } else {
+                    setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [] });
+                  }
+                }
+              }}
+              orientation={programOrientation}
+              onOrientationChange={async (newOrientation) => {
+                setProgramOrientation(newOrientation);
+                // Save orientation to program
+                if (selectedProgram) {
+                  try {
+                    await fetch(`${apiBasePath}/${selectedProgram.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ orientation: newOrientation }),
+                    });
+                  } catch (err) {
+                    console.error('Error saving orientation:', err);
+                  }
+                }
+              }}
+              onFillWithAI={() => setIsAIProgramContentModalOpen(true)}
+              isLoading={loadingDetails}
+            />
 
-            {/* Day Content */}
+            {/* Content Editor - conditionally render based on selection */}
             <div className="flex-1 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
               {loadingDetails ? (
                 <div className="space-y-6 animate-pulse">
@@ -1782,7 +1769,110 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     <div className="h-24 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
                   </div>
                 </div>
+              ) : sidebarSelection?.type === 'module' ? (
+                // Module Editor
+                (() => {
+                  const selectedModule = programModules.find(m => m.id === sidebarSelection.id);
+                  if (!selectedModule) return <p>Module not found</p>;
+                  return (
+                    <ModuleEditor
+                      module={selectedModule}
+                      weeks={programWeeks.filter(w => w.moduleId === selectedModule.id)}
+                      onSave={async (updates) => {
+                        try {
+                          const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/modules/${selectedModule.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(updates),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setProgramModules(prev => prev.map(m => m.id === selectedModule.id ? data.module : m));
+                          }
+                        } catch (err) {
+                          console.error('Error saving module:', err);
+                        }
+                      }}
+                      onDelete={async () => {
+                        try {
+                          const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/modules/${selectedModule.id}`, {
+                            method: 'DELETE',
+                          });
+                          if (res.ok) {
+                            setProgramModules(prev => prev.filter(m => m.id !== selectedModule.id));
+                            setSidebarSelection(null);
+                          }
+                        } catch (err) {
+                          console.error('Error deleting module:', err);
+                        }
+                      }}
+                      isSaving={saving}
+                    />
+                  );
+                })()
+              ) : sidebarSelection?.type === 'week' ? (
+                // Week Editor
+                (() => {
+                  const selectedWeek = programWeeks.find(w => w.id === sidebarSelection.id)
+                    || programWeeks.find(w => w.weekNumber === sidebarSelection.weekNumber);
+                  if (!selectedWeek) {
+                    // For legacy programs without programWeeks, show a placeholder
+                    return (
+                      <div className="text-center py-8">
+                        <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                          Week editing is available for programs with modules enabled.
+                        </p>
+                        <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] mt-2">
+                          Click on a day to edit its content.
+                        </p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <WeekEditor
+                      week={selectedWeek}
+                      days={programDays.filter(d =>
+                        d.dayIndex >= selectedWeek.startDayIndex && d.dayIndex <= selectedWeek.endDayIndex
+                      )}
+                      orientation={programOrientation}
+                      onSave={async (updates) => {
+                        try {
+                          const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks/${selectedWeek.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(updates),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setProgramWeeks(prev => prev.map(w => w.id === selectedWeek.id ? data.week : w));
+                          }
+                        } catch (err) {
+                          console.error('Error saving week:', err);
+                        }
+                      }}
+                      onDaySelect={(dayIndex) => {
+                        setSidebarSelection({ type: 'day', dayIndex, weekId: selectedWeek.id });
+                        setSelectedDayIndex(dayIndex);
+                        const day = programDays.find(d => d.dayIndex === dayIndex);
+                        if (day) {
+                          setDayFormData({
+                            title: day.title || '',
+                            summary: day.summary || '',
+                            dailyPrompt: day.dailyPrompt || '',
+                            tasks: day.tasks || [],
+                            habits: day.habits || [],
+                          });
+                        } else {
+                          setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [] });
+                        }
+                      }}
+                      onFillWithAI={() => setIsWeekFillModalOpen(true)}
+                      isSaving={saving}
+                    />
+                  );
+                })()
               ) : (
+                // Day Editor (default)
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -3478,6 +3568,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               upsellDescription: '',
             },
             callCreditsPerMonth: 0,
+            orientation: 'daily',
           });
           setIsProgramModalOpen(true);
         }}
@@ -3598,6 +3689,32 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         hasExistingContent={!!(landingPageFormData.coachBio || landingPageFormData.keyOutcomes.length > 0)}
         overwriteWarning="This will replace your existing landing page content."
       />
+
+      {/* Week Fill Modal */}
+      {sidebarSelection?.type === 'week' && (() => {
+        const weekToFill = programWeeks.find(w => w.id === sidebarSelection.id);
+        if (!weekToFill || !selectedProgram) return null;
+        return (
+          <WeekFillModal
+            isOpen={isWeekFillModalOpen}
+            onClose={() => setIsWeekFillModalOpen(false)}
+            programId={selectedProgram.id}
+            week={weekToFill}
+            orientation={programOrientation}
+            onApply={async (updates) => {
+              const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${weekToFill.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                setProgramWeeks(prev => prev.map(w => w.id === weekToFill.id ? data.week : w));
+              }
+            }}
+          />
+        );
+      })()}
 
       {/* Limit Reached Modal */}
       <LimitReachedModal {...modalProps} />
