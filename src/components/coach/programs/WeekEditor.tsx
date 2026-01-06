@@ -33,10 +33,14 @@ interface WeekEditorProps {
   // Client view mode (for 1:1 programs)
   isClientView?: boolean;
   clientName?: string;
+  clientUserId?: string;
+  enrollmentId?: string;
   // For sync functionality (1:1 programs)
   programId?: string;
   programType?: 'individual' | 'group';
   enrollments?: EnrollmentWithUser[];
+  // Callback when a new summary is generated
+  onSummaryGenerated?: (summaryId: string) => void;
 }
 
 /**
@@ -55,9 +59,12 @@ export function WeekEditor({
   availableEvents = [],
   isClientView = false,
   clientName,
+  clientUserId,
+  enrollmentId,
   programId,
   programType,
   enrollments = [],
+  onSummaryGenerated,
 }: WeekEditorProps) {
   const [formData, setFormData] = useState({
     name: week.name || '',
@@ -86,7 +93,13 @@ export function WeekEditor({
   
   // Track which fields have been edited (for smart sync pre-selection)
   const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
-  
+
+  // Recording upload and summary generation state
+  const [recordingFile, setRecordingFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [recordingStatus, setRecordingStatus] = useState<'idle' | 'uploading' | 'processing' | 'generating' | 'completed' | 'error'>('idle');
+  const [recordingError, setRecordingError] = useState<string | null>(null);
+
   // Helper to track field edits
   const trackFieldEdit = useCallback((syncFieldKey: string) => {
     setEditedFields(prev => new Set(prev).add(syncFieldKey));
@@ -273,6 +286,175 @@ export function WeekEditor({
       notes: formData.notes.filter((_, i) => i !== index),
     });
     trackFieldEdit('syncNotes');
+  };
+
+  // Handle recording file selection
+  const handleRecordingSelect = (file: File) => {
+    // Validate file type
+    const validTypes = ['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/m4a', 'audio/wav', 'audio/webm', 'video/mp4', 'video/webm'];
+    if (!validTypes.some(t => file.type.includes(t.split('/')[1]))) {
+      setRecordingError('Invalid file type. Please upload an audio or video file.');
+      return;
+    }
+    // Validate file size (500MB max)
+    if (file.size > 500 * 1024 * 1024) {
+      setRecordingError('File too large. Maximum size is 500MB.');
+      return;
+    }
+    setRecordingFile(file);
+    setRecordingError(null);
+    setRecordingStatus('idle');
+  };
+
+  // Upload recording and optionally generate summary
+  const handleUploadAndGenerateSummary = async () => {
+    if (!recordingFile) return;
+
+    // For summary generation, we need a client context
+    if (!clientUserId) {
+      setRecordingError('Please select a client view to generate summaries');
+      return;
+    }
+
+    try {
+      setRecordingStatus('uploading');
+      setUploadProgress(0);
+      setRecordingError(null);
+
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', recordingFile);
+      formDataUpload.append('clientUserId', clientUserId);
+      if (enrollmentId) {
+        formDataUpload.append('programEnrollmentId', enrollmentId);
+      }
+
+      // Upload with progress tracking
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(percentComplete);
+        }
+      });
+
+      const uploadPromise = new Promise<{ success: boolean; recordingId?: string; error?: string }>((resolve, reject) => {
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              resolve(response);
+            } catch {
+              reject(new Error('Invalid response'));
+            }
+          } else {
+            try {
+              const error = JSON.parse(xhr.responseText);
+              reject(new Error(error.error || 'Upload failed'));
+            } catch {
+              reject(new Error('Upload failed'));
+            }
+          }
+        };
+        xhr.onerror = () => reject(new Error('Network error'));
+      });
+
+      xhr.open('POST', '/api/coach/recordings/upload');
+      xhr.send(formDataUpload);
+
+      setRecordingStatus('processing');
+      const result = await uploadPromise;
+
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      setRecordingStatus('generating');
+
+      // Poll for summary completion
+      if (result.recordingId) {
+        const summaryId = await pollForSummary(result.recordingId);
+        if (summaryId) {
+          // Auto-link the summary to this week
+          setFormData(prev => ({
+            ...prev,
+            linkedSummaryIds: [...prev.linkedSummaryIds, summaryId],
+          }));
+          onSummaryGenerated?.(summaryId);
+        }
+      }
+
+      setRecordingStatus('completed');
+      setRecordingFile(null);
+
+      // Reset after showing success
+      setTimeout(() => {
+        setRecordingStatus('idle');
+      }, 3000);
+    } catch (err) {
+      console.error('Error uploading recording:', err);
+      setRecordingError(err instanceof Error ? err.message : 'Upload failed');
+      setRecordingStatus('error');
+    }
+  };
+
+  // Poll for summary completion
+  const pollForSummary = async (recordingId: string): Promise<string | null> => {
+    const maxAttempts = 60; // 5 minutes max
+    const pollInterval = 5000; // 5 seconds
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const response = await fetch(`/api/coach/recordings/${recordingId}/status`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === 'completed' && data.callSummaryId) {
+            return data.callSummaryId;
+          }
+          if (data.status === 'failed') {
+            throw new Error(data.error || 'Processing failed');
+          }
+        }
+      } catch (err) {
+        console.error('Error polling for summary:', err);
+      }
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+    return null;
+  };
+
+  // Simple upload without summary (for template mode)
+  const handleSimpleUpload = async (file: File) => {
+    try {
+      setRecordingStatus('uploading');
+      setUploadProgress(0);
+
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('path', `coach-recordings/${Date.now()}_${file.name}`);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadFormData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const { url } = await response.json();
+      setFormData(prev => ({ ...prev, coachRecordingUrl: url }));
+      setRecordingStatus('completed');
+      setRecordingFile(null);
+
+      setTimeout(() => {
+        setRecordingStatus('idle');
+      }, 2000);
+    } catch (err) {
+      console.error('Error uploading:', err);
+      setRecordingError(err instanceof Error ? err.message : 'Upload failed');
+      setRecordingStatus('error');
+    }
   };
 
   return (
@@ -817,70 +999,187 @@ export function WeekEditor({
 
         {/* Coach Recording Upload */}
         <div>
-        <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-          <Mic className="w-4 h-4 inline mr-1.5" />
-          Coach Recording
-        </label>
-        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-          Upload a recording or audio note for this week
-        </p>
-        
-        {formData.coachRecordingUrl ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg">
-              <Mic className="w-4 h-4 text-brand-accent" />
-              <a 
-                href={formData.coachRecordingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-brand-accent hover:underline truncate flex-1"
-              >
-                {formData.coachRecordingUrl.split('/').pop() || 'Recording'}
-              </a>
-              <button
-                onClick={() => setFormData({ ...formData, coachRecordingUrl: '' })}
-                className="p-1 text-[#a7a39e] hover:text-red-500 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <Mic className="w-4 h-4 inline mr-1.5" />
+            Coach Recording
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Upload a recording to generate an AI summary
+            {isClientView && clientUserId && (
+              <span className="text-brand-accent ml-1">(Summary will be linked to this week)</span>
+            )}
+          </p>
+
+          {/* Already has a recording URL */}
+          {formData.coachRecordingUrl && !recordingFile && recordingStatus === 'idle' ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg">
+                <Mic className="w-4 h-4 text-brand-accent" />
+                <a
+                  href={formData.coachRecordingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-brand-accent hover:underline truncate flex-1"
+                >
+                  {formData.coachRecordingUrl.split('/').pop() || 'Recording'}
+                </a>
+                <button
+                  onClick={() => setFormData({ ...formData, coachRecordingUrl: '', coachRecordingNotes: '' })}
+                  className="p-1 text-[#a7a39e] hover:text-red-500 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <textarea
+                value={formData.coachRecordingNotes}
+                onChange={(e) => setFormData({ ...formData, coachRecordingNotes: e.target.value })}
+                placeholder="Add notes or transcript from this recording..."
+                rows={3}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none text-sm"
+              />
             </div>
-            <textarea
-              value={formData.coachRecordingNotes}
-              onChange={(e) => setFormData({ ...formData, coachRecordingNotes: e.target.value })}
-              placeholder="Add notes or transcript from this recording..."
-              rows={3}
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none text-sm"
-            />
-          </div>
-        ) : (
-          <div className="relative border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-6 text-center">
-            <Upload className="w-8 h-8 text-[#a7a39e] dark:text-[#7d8190] mx-auto mb-2" />
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Drag & drop or click to upload
-            </p>
-            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
-              MP3, MP4, WAV, or M4A up to 50MB
-            </p>
-            <input
-              type="file"
-              accept="audio/*,video/*"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  // For now, just use a placeholder - actual upload would go through an API
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    // In a real implementation, upload to storage and get URL
-                    setFormData({ ...formData, coachRecordingUrl: URL.createObjectURL(file) });
-                  };
-                  reader.readAsDataURL(file);
-                }
-              }}
-            />
-          </div>
-        )}
-      </div>
+          ) : recordingFile && recordingStatus === 'idle' ? (
+            /* File selected, ready to upload */
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg">
+                <Mic className="w-4 h-4 text-brand-accent" />
+                <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate flex-1">
+                  {recordingFile.name}
+                </span>
+                <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                  {(recordingFile.size / (1024 * 1024)).toFixed(1)} MB
+                </span>
+                <button
+                  onClick={() => { setRecordingFile(null); setRecordingError(null); }}
+                  className="p-1 text-[#a7a39e] hover:text-red-500 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                {isClientView && clientUserId ? (
+                  <Button
+                    onClick={handleUploadAndGenerateSummary}
+                    className="flex-1 flex items-center justify-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Generate Summary
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => handleSimpleUpload(recordingFile)}
+                    className="flex-1 flex items-center justify-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload Recording
+                  </Button>
+                )}
+              </div>
+              {!isClientView && (
+                <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] italic">
+                  Switch to a client view to generate AI summaries
+                </p>
+              )}
+            </div>
+          ) : recordingStatus === 'uploading' ? (
+            /* Uploading state */
+            <div className="p-4 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg">
+              <div className="flex items-center gap-3 mb-2">
+                <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
+                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  Uploading... {uploadProgress}%
+                </span>
+              </div>
+              <div className="w-full h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand-accent transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          ) : recordingStatus === 'processing' || recordingStatus === 'generating' ? (
+            /* Processing/Generating state */
+            <div className="p-4 border border-brand-accent/30 bg-brand-accent/5 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
+                <div>
+                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    {recordingStatus === 'processing' ? 'Transcribing audio...' : 'Generating AI summary...'}
+                  </p>
+                  <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                    This may take a few minutes
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : recordingStatus === 'completed' ? (
+            /* Completed state */
+            <div className="p-4 border border-green-500/30 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Check className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                    Summary generated successfully!
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    Linked to this week&apos;s call summaries
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : recordingStatus === 'error' ? (
+            /* Error state */
+            <div className="space-y-3">
+              <div className="p-4 border border-red-500/30 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <X className="w-5 h-5 text-red-600" />
+                  <div>
+                    <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                      Upload failed
+                    </p>
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      {recordingError || 'An error occurred'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => { setRecordingStatus('idle'); setRecordingError(null); }}
+                className="w-full"
+              >
+                Try Again
+              </Button>
+            </div>
+          ) : (
+            /* Default: File selector */
+            <div className="relative border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-6 text-center hover:border-brand-accent/50 transition-colors">
+              <Upload className="w-8 h-8 text-[#a7a39e] dark:text-[#7d8190] mx-auto mb-2" />
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                Drag & drop or click to upload
+              </p>
+              <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                MP3, MP4, WAV, M4A, or WebM up to 500MB
+              </p>
+              <input
+                type="file"
+                accept="audio/*,video/*"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleRecordingSelect(file);
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {/* Error message */}
+          {recordingError && recordingStatus === 'idle' && (
+            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{recordingError}</p>
+          )}
+        </div>
 
         {/* Linked Call Events */}
         <div>

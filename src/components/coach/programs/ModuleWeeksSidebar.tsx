@@ -10,6 +10,7 @@ import {
   Plus,
   Folder,
   Calendar,
+  CalendarDays,
   FileText,
   Sparkles,
   GripVertical,
@@ -48,6 +49,10 @@ interface ModuleWeeksSidebarProps {
   viewContext?: ClientViewContext;
   /** Callback to create weeks that don't exist yet in database. Returns map of weekNumber to new weekId */
   onCreateMissingWeeks?: (weeks: Array<{ weekNumber: number; moduleId: string; startDayIndex: number; endDayIndex: number }>) => Promise<Map<number, string>>;
+  /** Current day index for client (1-based) - enables "Jump to Today" button */
+  currentDayIndex?: number;
+  /** Callback when "Jump to Today" button is clicked */
+  onJumpToToday?: () => void;
 }
 
 interface CalculatedWeek {
@@ -185,6 +190,8 @@ export function ModuleWeeksSidebar({
   isLoading = false,
   viewContext,
   onCreateMissingWeeks,
+  currentDayIndex,
+  onJumpToToday,
 }: ModuleWeeksSidebarProps) {
   // In client view mode, disable reordering (structure comes from template)
   const isClientView = viewContext?.mode === 'client';
@@ -813,13 +820,24 @@ export function ModuleWeeksSidebar({
   return (
     <div className="w-96 flex-shrink-0">
       {/* Orientation Toggle - moved up, no header */}
-      <div className="mb-4">
+      <div className="mb-4 flex items-center gap-2">
         <OrientationToggle
           value={orientation}
           onChange={onOrientationChange}
           showConfirmation={true}
           hasExistingContent={hasExistingContent}
         />
+
+        {/* Jump to Today button - only in client view */}
+        {isClientView && currentDayIndex && onJumpToToday && (
+          <button
+            onClick={onJumpToToday}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-accent text-white rounded-full text-sm font-medium font-albert hover:bg-brand-accent/90 transition-colors shadow-sm"
+          >
+            <CalendarDays className="w-4 h-4" />
+            Day {currentDayIndex}
+          </button>
+        )}
       </div>
 
       {/* Modules & Weeks Tree */}

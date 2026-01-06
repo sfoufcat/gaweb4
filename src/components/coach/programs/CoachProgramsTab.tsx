@@ -323,6 +323,36 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     setViewMode(newMode);
   }, []);
 
+  // Get current enrollment's day index for "Jump to Today" feature
+  const currentEnrollment = useMemo(() => {
+    if (clientViewContext.mode !== 'client') return null;
+    return programEnrollments.find(e => e.id === clientViewContext.enrollmentId) || null;
+  }, [clientViewContext, programEnrollments]);
+
+  const handleJumpToToday = useCallback(() => {
+    const currentDayIndex = currentEnrollment?.currentDayIndex;
+    if (!currentDayIndex || !selectedProgram) return;
+
+    // Set sidebar selection and selected day
+    setSidebarSelection({ type: 'day', dayIndex: currentDayIndex });
+    setSelectedDayIndex(currentDayIndex);
+
+    // Load day data into form
+    const day = programDays.find(d => d.dayIndex === currentDayIndex);
+    if (day) {
+      setDayFormData({
+        title: day.title || '',
+        summary: day.summary || '',
+        dailyPrompt: day.dailyPrompt || '',
+        tasks: day.tasks || [],
+        habits: day.habits || [],
+        courseAssignments: day.courseAssignments || [],
+      });
+    } else {
+      setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
+    }
+  }, [currentEnrollment, selectedProgram, programDays]);
+
   const fetchPrograms = useCallback(async () => {
     // Skip API call in demo mode
     if (isDemoMode) {
@@ -1896,7 +1926,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             key={viewMode}
             custom={viewModeDirection}
             variants={viewSlideVariants}
-            initial="enter"
+            initial={false}
             animate="center"
             exit="exit"
             transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
@@ -2050,7 +2080,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               key="calendar-view"
               custom={contentDirection}
               variants={viewSlideVariants}
-              initial="enter"
+              initial={false}
               animate="center"
               exit="exit"
               transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
@@ -2163,7 +2193,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             key="row-view"
             custom={contentDirection}
             variants={viewSlideVariants}
-            initial="enter"
+            initial={false}
             animate="center"
             exit="exit"
             transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
@@ -2575,6 +2605,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   alert('Failed to auto-distribute weeks. Check console for details.');
                 }
               }}
+              currentDayIndex={currentEnrollment?.currentDayIndex}
+              onJumpToToday={handleJumpToToday}
             />
 
             {/* Content column - controls above, then details box */}
@@ -2898,6 +2930,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       availableEvents={availableEvents}
                       isClientView={isClientMode}
                       clientName={isClientMode ? clientViewContext.userName : undefined}
+                      clientUserId={isClientMode ? clientViewContext.userId : undefined}
+                      enrollmentId={isClientMode ? clientViewContext.enrollmentId : undefined}
                       programId={selectedProgram?.id}
                       programType={selectedProgram?.type}
                       enrollments={programEnrollments}

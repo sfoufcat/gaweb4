@@ -157,3 +157,117 @@ The app supports a demo mode (`demo.coachful.co`) that simulates data without au
 - `src/contexts/DemoModeContext.tsx`
 - `src/contexts/DemoSessionContext.tsx`
 - `src/lib/demo-*.ts` files
+
+## MCP Server Usage
+
+This project has several MCP (Model Context Protocol) servers configured. Use them appropriately for efficient development.
+
+### Serena (Semantic Code Tools)
+
+Use Serena for **intelligent code exploration and editing**. It provides symbol-aware operations that are more efficient than reading entire files.
+
+**When to use:**
+- Exploring unfamiliar code - use `get_symbols_overview` first
+- Finding specific functions/classes - use `find_symbol` with name patterns
+- Understanding code relationships - use `find_referencing_symbols`
+- Making precise edits - use `replace_symbol_body` or `insert_after_symbol`
+
+**Key principles:**
+- Avoid reading entire files; use symbolic tools to get only what you need
+- Use `find_symbol` with `include_body=True` only when you need implementation details
+- Use `depth=1` to get class methods without reading their bodies
+- For small edits within a symbol, use `replace_content` with regex
+
+**Example workflow:**
+```
+1. get_symbols_overview("src/hooks/useFirebaseUser.ts") → See all exports
+2. find_symbol("useFirebaseUser", depth=1) → Get hook structure
+3. find_symbol("useFirebaseUser/fetchUser", include_body=True) → Read specific function
+4. find_referencing_symbols("useFirebaseUser") → Find all usages
+```
+
+**Available memories** (read with `read_memory`):
+- `codebase_structure` - Project directory layout
+- `project_overview` - High-level architecture
+- `suggested_commands` - Common dev commands
+- `code_style_conventions` - Coding standards
+- `task_completion_checklist` - Pre-commit checklist
+
+### Context7 (Library Documentation)
+
+Use Context7 to fetch **up-to-date documentation** for any library or framework.
+
+**When to use:**
+- Looking up API usage for dependencies (Next.js, Clerk, Firebase, Stream, etc.)
+- Checking current best practices for a library
+- Finding code examples for specific features
+
+**Workflow:**
+```
+1. resolve-library-id("next.js", "How to use server actions") → Get library ID
+2. query-docs("/vercel/next.js", "server actions with forms") → Get documentation
+```
+
+**Common libraries in this project:**
+- Next.js: `/vercel/next.js`
+- Clerk: `/clerk/clerk`
+- Firebase: `/firebase/firebase-js-sdk`
+- Tailwind CSS: `/tailwindlabs/tailwindcss`
+- Stream Chat: `/getstream/stream-chat-js`
+
+### Chrome DevTools (Browser Automation)
+
+Use Chrome DevTools MCP for **testing and debugging** the running application.
+
+**When to use:**
+- Testing UI interactions and flows
+- Debugging frontend issues
+- Taking screenshots for verification
+- Inspecting network requests and console logs
+
+**Key tools:**
+- `navigate_page` - Go to a URL or navigate history
+- `take_snapshot` - Get page content as accessible text (preferred over screenshots)
+- `take_screenshot` - Capture visual state
+- `click`, `fill`, `hover` - Interact with elements
+- `list_console_messages` - Check for errors
+- `list_network_requests` - Debug API calls
+- `performance_start_trace` - Profile page performance
+
+**Example workflow:**
+```
+1. navigate_page(url="http://localhost:3000/coach")
+2. take_snapshot() → Get page structure with element UIDs
+3. click(uid="submit-button") → Interact with elements
+4. list_console_messages() → Check for errors
+```
+
+### Task Master AI (Task Management)
+
+Use Task Master for **project planning and task tracking** when working on larger features.
+
+**When to use:**
+- Breaking down PRD into actionable tasks
+- Tracking progress on multi-step implementations
+- Finding the next task to work on
+
+**Key tools:**
+- `parse_prd` - Generate tasks from a PRD document
+- `get_tasks` - List all tasks with optional status filter
+- `next_task` - Find the next task based on dependencies
+- `set_task_status` - Update task status (pending, in-progress, done, etc.)
+- `expand_task` - Break a task into subtasks
+
+**Task statuses:** `pending`, `in-progress`, `done`, `deferred`, `cancelled`, `blocked`, `review`
+
+**PRD location:** `.taskmaster/docs/prd.txt`
+**Tasks file:** `.taskmaster/tasks/tasks.json`
+
+### MCP Best Practices
+
+1. **Prefer Serena over raw file reads** for code exploration
+2. **Use Context7** before implementing unfamiliar library features
+3. **Use Chrome DevTools** to verify UI changes work correctly
+4. **Use Task Master** for complex, multi-step feature work
+5. **Read relevant Serena memories** at the start of a session
+6. **Use thinking tools** (`think_about_collected_information`, `think_about_task_adherence`) before making changes

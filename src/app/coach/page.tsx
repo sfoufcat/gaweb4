@@ -758,7 +758,7 @@ export default function CoachPage() {
               key={activeTab}
               custom={tabDirection}
               variants={tabSlideVariants}
-              initial="enter"
+              initial={false}
               animate="center"
               exit="exit"
               transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
