@@ -51,9 +51,9 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
         {[1, 2].map((i) => (
           <div 
             key={i}
-            className="flex-shrink-0 w-[260px] bg-white dark:bg-surface rounded-[20px] p-4 animate-pulse"
+            className="flex-shrink-0 w-[260px] glass-card p-4 animate-pulse"
           >
-            <div className="w-full h-32 rounded-xl bg-text-primary/10 mb-3" />
+            <div className="w-full h-[140px] rounded-xl bg-text-primary/10 mb-3" />
             <div className="h-5 bg-text-primary/10 rounded w-3/4 mb-2" />
             <div className="h-4 bg-text-primary/5 rounded w-1/2" />
           </div>
@@ -141,65 +141,97 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
             href={`/program?programId=${enrollment.programId}`}
             className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
           >
-            <div className="bg-white dark:bg-surface rounded-[20px] overflow-hidden hover:shadow-lg transition-all group h-full flex flex-col">
-              {/* Program Cover */}
-              <div className="relative w-full h-32 bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 flex-shrink-0">
+            <div className="glass-card overflow-hidden cursor-pointer group h-full flex flex-col">
+              {/* Cover Image */}
+              <div className="relative w-full h-[140px] overflow-hidden flex-shrink-0">
                 {enrollment.program.coverImageUrl ? (
-                  <Image
-                    src={enrollment.program.coverImageUrl}
-                    alt={enrollment.program.name}
-                    fill
-                    className="object-cover"
-                  />
+                  <>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10" />
+                    <Image
+                      src={enrollment.program.coverImageUrl}
+                      alt={enrollment.program.name}
+                      fill
+                      className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                      sizes="280px"
+                    />
+                  </>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    {enrollment.program.type === 'group' ? (
-                      <Users className="w-12 h-12 text-brand-accent/70 dark:text-brand-accent/40" />
-                    ) : (
-                      <User className="w-12 h-12 text-brand-accent/70 dark:text-brand-accent/40" />
-                    )}
+                  <div className="w-full h-full bg-gradient-to-br from-brand-accent/15 via-brand-accent/8 to-[#8c6245]/5 dark:from-brand-accent/10 dark:via-brand-accent/5 dark:to-[#8c6245]/3 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-2xl bg-white/50 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                      {enrollment.program.type === 'group' ? (
+                        <Users className="w-6 h-6 text-brand-accent/60" />
+                      ) : (
+                        <User className="w-6 h-6 text-brand-accent/60" />
+                      )}
+                    </div>
                   </div>
                 )}
 
-                {/* Type Badge */}
-                <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-[11px] font-medium ${
-                  enrollment.program.type === 'group'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-purple-500 text-white'
-                }`}>
-                  {enrollment.program.type === 'group' ? 'Group' : '1:1'}
+                {/* Type badge - top left */}
+                <div className="absolute top-3 left-3 z-20">
+                  <span className={`glass-badge px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
+                    enrollment.program.type === 'group'
+                      ? 'bg-blue-500/90 text-white'
+                      : 'bg-purple-500/90 text-white'
+                  }`}>
+                    {enrollment.program.type === 'group' ? (
+                      <>
+                        <Users className="w-3 h-3" />
+                        Group
+                      </>
+                    ) : (
+                      <>
+                        <User className="w-3 h-3" />
+                        1:1
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                {/* Status badge - top right */}
+                <div className="absolute top-3 right-3 z-20">
+                  <span className={`glass-badge px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
+                    enrollment.status === 'active'
+                      ? 'bg-emerald-500/85 text-white'
+                      : 'bg-brand-accent/85 text-white'
+                  }`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    {enrollment.status === 'active' ? 'Active' : 'Upcoming'}
+                  </span>
                 </div>
               </div>
 
               {/* Content */}
-              <div className="p-4 flex flex-col flex-1">
-                <h3 className="font-albert font-semibold text-[15px] text-text-primary tracking-[-0.5px] truncate mb-1">
+              <div className="flex flex-col gap-2 p-4 flex-1">
+                {/* Title */}
+                <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 h-[2.65em]">
                   {enrollment.program.name}
                 </h3>
 
-                <p className="font-sans text-[12px] text-text-secondary mb-3 truncate">
+                {/* Cohort name */}
+                <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] truncate">
                   {enrollment.program.type === 'individual'
                     ? 'One-on-one'
                     : enrollment.cohort?.name || 'Group program'}
                 </p>
                 
                 {/* Progress or Status */}
-                <div className="mt-auto">
+                <div className="mt-auto pt-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
                   {enrollment.status === 'active' ? (
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-sans text-[11px] text-text-muted">
+                        <span className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
                           {enrollment.progress.isEvergreen && enrollment.progress.cycleNumber ? (
                             <>Cycle {enrollment.progress.cycleNumber} • Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays}</>
                           ) : (
                             <>Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays}</>
                           )}
                         </span>
-                        <span className="font-sans text-[11px] text-text-muted">
+                        <span className="text-[12px] font-medium text-brand-accent">
                           {enrollment.progress.percentComplete}%
                         </span>
                       </div>
-                      <div className="h-1.5 bg-[#e1ddd8] dark:bg-[#272d38] rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-[#e1ddd8]/60 dark:bg-[#272d38] rounded-full overflow-hidden">
                         <div
                           className="h-full bg-brand-accent rounded-full transition-all"
                           style={{ width: `${enrollment.progress.percentComplete}%` }}
@@ -207,19 +239,20 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                       </div>
                     </div>
                   ) : hasStarted ? (
-                    <p className="font-sans text-[12px] text-green-600 dark:text-green-400">
-                      Active
-                    </p>
+                    <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
+                      Ready to start
+                    </span>
                   ) : (
-                    <p className="font-sans text-[12px] text-brand-accent">
+                    <span className="text-[12px] font-medium text-brand-accent">
                       Starts {enrollment.cohort ? new Date(enrollment.cohort.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'soon'}
-                    </p>
+                    </span>
                   )}
                 </div>
               </div>
             </div>
           </Link>
-        );})}
+        );
+        })}
         
         {/* Discover More Card - Only show if there are available programs */}
         {hasAvailablePrograms && (
@@ -227,7 +260,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
             href="/discover"
             className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
           >
-            <div className="bg-brand-accent-subtle border border-dashed border-brand-accent/30 rounded-[20px] h-full min-h-[200px] flex items-center justify-center hover:border-brand-accent/60 transition-all group">
+            <div className="glass-card border-dashed border-brand-accent/30 h-full min-h-[280px] flex items-center justify-center hover:border-brand-accent/60 transition-all group">
               <div className="text-center p-4">
                 <div className="w-12 h-12 mx-auto rounded-full bg-brand-accent/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                   <MenuIcon iconKey={menuIcons.program} className="w-6 h-6 text-brand-accent" />
@@ -281,4 +314,3 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
     </div>
   );
 }
-

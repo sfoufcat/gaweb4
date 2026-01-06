@@ -79,14 +79,10 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
   if (isLoading) {
     return (
       <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-        <div className="flex-shrink-0 w-[260px] bg-white dark:bg-surface rounded-[20px] p-4 animate-pulse">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
-            <div className="flex-1">
-              <div className="h-5 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded w-3/4 mb-2" />
-              <div className="h-4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded w-1/2" />
-            </div>
-          </div>
+        <div className="flex-shrink-0 w-[260px] glass-card p-4 animate-pulse">
+          <div className="w-full h-[140px] rounded-xl bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 mb-3" />
+          <div className="h-5 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded w-3/4 mb-2" />
+          <div className="h-4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded w-1/2" />
         </div>
       </div>
     );
@@ -146,17 +142,17 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
     );
   }
   
-  // Single squad - show simple card (no carousel needed)
+  // Single squad - show glass card design
   if (squads.length === 1) {
     const { squad, members, type } = squads[0];
     if (!squad) return null;
     
     return (
       <>
-      <div className="bg-white dark:bg-surface rounded-[20px] p-5">
-        <div className="flex items-center gap-4">
+      <div className="glass-card overflow-hidden">
+        <div className="flex items-center gap-4 p-5">
           {/* Squad Avatar */}
-          <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] flex items-center justify-center flex-shrink-0">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] flex items-center justify-center flex-shrink-0">
             {squad.avatarUrl ? (
               <Image src={squad.avatarUrl} alt={squad.name} width={56} height={56} className="w-full h-full object-cover" />
             ) : (
@@ -169,16 +165,16 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
           {/* Squad Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
-              <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] truncate">
+              <h3 className="font-albert font-semibold text-[18px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px] truncate">
                 {squad.name}
               </h3>
               {type === 'premium' && (
-                <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded text-[10px] font-medium">
+                <span className="glass-badge px-2 py-0.5 bg-amber-500/90 text-white rounded-full text-[10px] font-semibold">
                   Premium
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1.5 text-text-secondary">
+            <div className="flex items-center gap-1.5 text-[#5f5a55] dark:text-[#b2b6c2]">
               <Users className="w-4 h-4" />
               <span className="font-albert text-[14px]">
                 {members.length} {members.length === 1 ? 'member' : 'members'}
@@ -187,19 +183,19 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {squad.chatChannelId && (
               <button
                 onClick={() => handleChatClick(squad.chatChannelId!)}
-                className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#f3f1ef] dark:bg-[#181d28] flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#f3f1ef] dark:bg-[#181d28] flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors"
                 aria-label="Open squad chat"
               >
-                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-text-primary" />
+                <MessageCircle className="w-5 h-5 text-[#1a1a1a] dark:text-[#f5f5f8]" />
               </button>
             )}
             <Link
               href={`/squad?squadId=${squad.id}`}
-              className="flex items-center justify-center gap-1.5 w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-2.5 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 text-white rounded-full font-albert font-semibold text-[14px] transition-all hover:scale-[1.02]"
+              className="flex items-center justify-center gap-1.5 w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2.5 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-full font-albert font-semibold text-[14px] transition-all hover:scale-[1.02]"
             >
               <span className="hidden sm:inline">Go to {squadTermLower}</span>
               <ChevronRight className="w-4 h-4" />
@@ -218,7 +214,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
     );
   }
 
-  // Multiple squads - show carousel
+  // Multiple squads - show carousel with glass cards
   return (
     <>
     <div className="relative">
@@ -236,57 +232,76 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
               key={squad.id}
               className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
             >
-              <div className="bg-white dark:bg-surface rounded-[20px] p-4 h-full">
-                <div className="flex items-center gap-3 mb-3">
-                  {/* Squad Avatar */}
-                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] flex items-center justify-center flex-shrink-0">
-                    {squad.avatarUrl ? (
-                      <Image src={squad.avatarUrl} alt={squad.name} width={48} height={48} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="font-albert font-bold text-lg text-[#4A5D54]">
-                        {squad.name[0]}
-                      </span>
-                    )}
+              <div className="glass-card overflow-hidden h-full flex flex-col">
+                {/* Cover Image Area */}
+                <div className="relative w-full h-[100px] overflow-hidden flex-shrink-0">
+                  {squad.avatarUrl ? (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10" />
+                      <Image 
+                        src={squad.avatarUrl} 
+                        alt={squad.name} 
+                        fill 
+                        className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]" 
+                        sizes="280px"
+                      />
+                    </>
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-brand-accent/15 via-brand-accent/8 to-[#8c6245]/5 dark:from-brand-accent/10 dark:via-brand-accent/5 dark:to-[#8c6245]/3 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-2xl bg-white/50 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                        <Users className="w-6 h-6 text-brand-accent/60" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Badge - top left */}
+                  <div className="absolute top-3 left-3 z-20">
+                    <span className={`glass-badge px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
+                      type === 'premium'
+                        ? 'bg-amber-500/90 text-white'
+                        : 'bg-emerald-500/90 text-white'
+                    }`}>
+                      <Users className="w-3 h-3" />
+                      {type === 'premium' ? 'Premium' : squadTerm}
+                    </span>
                   </div>
                   
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <h3 className="font-albert font-semibold text-[15px] text-text-primary tracking-[-0.5px] truncate">
-                        {squad.name}
-                      </h3>
-                      {type === 'premium' && (
-                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded text-[9px] font-medium">
-                          Premium
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 text-text-secondary">
-                      <Users className="w-3.5 h-3.5" />
-                      <span className="font-sans text-[12px]">
-                        {members.length} members
-                      </span>
-                    </div>
+                  {/* Members badge - top right */}
+                  <div className="absolute top-3 right-3 z-20">
+                    <span className="glass-badge px-2.5 py-1 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] text-[11px] font-semibold rounded-full">
+                      {members.length} members
+                    </span>
                   </div>
                 </div>
                 
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  {squad.chatChannelId && (
-                    <button
-                      onClick={() => handleChatClick(squad.chatChannelId!)}
-                      className="flex-1 py-2 px-3 bg-[#f3f1ef] dark:bg-[#181d28] rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors"
+                {/* Content */}
+                <div className="flex flex-col gap-2 p-4 flex-1">
+                  <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2">
+                    {squad.name}
+                  </h3>
+                  
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 mt-auto pt-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+                    {squad.chatChannelId && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleChatClick(squad.chatChannelId!);
+                        }}
+                        className="flex-1 py-2 px-3 bg-[#f3f1ef] dark:bg-[#181d28] rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors"
+                      >
+                        <MessageCircle className="w-4 h-4 text-[#1a1a1a] dark:text-[#f5f5f8]" />
+                        <span className="font-sans text-[12px] text-[#1a1a1a] dark:text-[#f5f5f8]">Chat</span>
+                      </button>
+                    )}
+                    <Link
+                      href={`/squad?squadId=${squad.id}`}
+                      className="flex-1 py-2 px-3 bg-brand-accent hover:bg-brand-accent/90 rounded-xl flex items-center justify-center gap-1 text-white transition-all"
                     >
-                      <MessageCircle className="w-4 h-4 text-text-primary" />
-                      <span className="font-sans text-[12px] text-text-primary">Chat</span>
-                    </button>
-                  )}
-                  <Link
-                    href={`/squad?squadId=${squad.id}`}
-                    className="flex-1 py-2 px-3 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 rounded-xl flex items-center justify-center gap-1 text-white transition-all"
-                  >
-                    <span className="font-sans text-[12px] font-medium">View</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
+                      <span className="font-sans text-[12px] font-medium">View</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
@@ -298,9 +313,9 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
           href="/program"
           className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
         >
-          <div className="bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-dashed border-[#a07855] dark:border-brand-accent/30 rounded-[20px] h-full min-h-[140px] flex items-center justify-center hover:border-brand-accent dark:border-brand-accent/60 dark:hover:border-brand-accent/60 transition-all group">
+          <div className="glass-card border-dashed border-brand-accent/30 h-full min-h-[220px] flex items-center justify-center hover:border-brand-accent/60 transition-all group">
             <div className="text-center p-4">
-              <div className="w-10 h-10 mx-auto rounded-full bg-brand-accent/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 mx-auto rounded-full bg-brand-accent/20 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                 <Users className="w-5 h-5 text-brand-accent" />
               </div>
               <p className="font-albert font-semibold text-[13px] text-brand-accent">
@@ -356,5 +371,3 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
     </>
   );
 }
-
-
