@@ -2,7 +2,7 @@
 
 import React, { useState, Fragment, useCallback } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AlertTriangle } from 'lucide-react';
 import {
   X,
   ArrowRight,
@@ -83,14 +83,25 @@ export function NewProgramModal({
   const [wizardData, setWizardData] = useState<ProgramWizardData>(DEFAULT_WIZARD_DATA);
   const [isCreating, setIsCreating] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showCloseWarning, setShowCloseWarning] = useState(false);
 
   const isMobile = useMediaQuery('(max-width: 768px)');
+
+  const handleCloseAttempt = () => {
+    // If past step 1, show warning
+    if (step !== 'type') {
+      setShowCloseWarning(true);
+      return;
+    }
+    handleClose();
+  };
 
   const handleClose = () => {
     // Reset state on close
     setStep('type');
     setWizardData(DEFAULT_WIZARD_DATA);
     setIsCreating(false);
+    setShowCloseWarning(false);
     onClose();
   };
 
@@ -216,7 +227,10 @@ export function NewProgramModal({
         <div className="flex items-center gap-3">
           {step !== 'type' && (
             <button
-              onClick={goToPreviousStep}
+              onClick={() => {
+                setShowCloseWarning(false);
+                goToPreviousStep();
+              }}
               className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -238,81 +252,78 @@ export function NewProgramModal({
           </div>
         </div>
         <button
-          onClick={handleClose}
+          onClick={handleCloseAttempt}
           className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
+      {/* Close Warning */}
+      {showCloseWarning && (
+        <div className="mx-6 mt-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Discard progress?
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
+                Your progress will be lost if you close now.
+              </p>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={handleClose}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors"
+                >
+                  Discard
+                </button>
+                <button
+                  onClick={() => setShowCloseWarning(false)}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-100 dark:bg-amber-800/30 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
+                >
+                  Continue Editing
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        <AnimatePresence mode="wait">
-          {step === 'type' && (
-            <motion.div
-              key="type"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              <TypeStep
-                value={wizardData.type}
-                onChange={(type) => {
-                  updateWizardData({ type });
-                  goToNextStep();
-                }}
-              />
-            </motion.div>
-          )}
+        {step === 'type' && (
+          <TypeStep
+            value={wizardData.type}
+            onChange={(type) => {
+              updateWizardData({ type });
+              goToNextStep();
+            }}
+          />
+        )}
 
-          {step === 'structure' && (
-            <motion.div
-              key="structure"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              <StructureStep
-                data={wizardData}
-                onChange={updateWizardData}
-              />
-            </motion.div>
-          )}
+        {step === 'structure' && (
+          <StructureStep
+            data={wizardData}
+            onChange={updateWizardData}
+          />
+        )}
 
-          {step === 'details' && (
-            <motion.div
-              key="details"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              <DetailsStep
-                data={wizardData}
-                onChange={updateWizardData}
-                onImageUpload={handleImageUpload}
-                uploadingImage={uploadingImage}
-              />
-            </motion.div>
-          )}
+        {step === 'details' && (
+          <DetailsStep
+            data={wizardData}
+            onChange={updateWizardData}
+            onImageUpload={handleImageUpload}
+            uploadingImage={uploadingImage}
+          />
+        )}
 
-          {step === 'settings' && (
-            <motion.div
-              key="settings"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              <SettingsStep
-                data={wizardData}
-                onChange={updateWizardData}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {step === 'settings' && (
+          <SettingsStep
+            data={wizardData}
+            onChange={updateWizardData}
+          />
+        )}
       </div>
 
       {/* Footer */}
@@ -423,15 +434,13 @@ function TypeStep({ value, onChange }: TypeStepProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* 1:1 Card */}
-      <motion.button
+      <button
         onClick={() => onChange('individual')}
-        className={`group relative flex flex-col items-center text-center p-6 rounded-2xl border-2 transition-all duration-300 ${
+        className={`group relative flex flex-col items-center text-center p-6 rounded-2xl border-2 transition-colors ${
           value === 'individual'
             ? 'border-brand-accent bg-brand-accent/5'
             : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
         }`}
-        whileHover={{ y: -2 }}
-        whileTap={{ scale: 0.98 }}
       >
         {/* Icon */}
         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
@@ -460,18 +469,16 @@ function TypeStep({ value, onChange }: TypeStepProps) {
             </svg>
           </div>
         )}
-      </motion.button>
+      </button>
 
       {/* Group Card */}
-      <motion.button
+      <button
         onClick={() => onChange('group')}
-        className={`group relative flex flex-col items-center text-center p-6 rounded-2xl border-2 transition-all duration-300 ${
+        className={`group relative flex flex-col items-center text-center p-6 rounded-2xl border-2 transition-colors ${
           value === 'group'
             ? 'border-brand-accent bg-brand-accent/5'
             : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
         }`}
-        whileHover={{ y: -2 }}
-        whileTap={{ scale: 0.98 }}
       >
         {/* Icon */}
         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
@@ -500,7 +507,7 @@ function TypeStep({ value, onChange }: TypeStepProps) {
             </svg>
           </div>
         )}
-      </motion.button>
+      </button>
     </div>
   );
 }

@@ -74,6 +74,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
   const [editingTier, setEditingTier] = useState<CoachTier>('starter');
   const [editingManualBilling, setEditingManualBilling] = useState(true);
   const [editingManualExpiresAt, setEditingManualExpiresAt] = useState('');
+  const [editingCreditsToAdd, setEditingCreditsToAdd] = useState('');
   const [savingTier, setSavingTier] = useState(false);
   const [loadingTier, setLoadingTier] = useState(false);
 
@@ -134,6 +135,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
         setEditingTier(data.tier || 'starter');
         setEditingManualBilling(data.manualBilling ?? true);
         setEditingManualExpiresAt(data.manualExpiresAt ? data.manualExpiresAt.split('T')[0] : '');
+        setEditingCreditsToAdd(''); // Reset credits field on dialog open
         
         // Update the selected org with tier info
         if (selectedOrg && selectedOrg.id === orgId) {
@@ -172,6 +174,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
           tier: editingTier,
           manualBilling: editingManualBilling,
           manualExpiresAt: editingManualExpiresAt || null,
+          creditsToAdd: editingCreditsToAdd ? parseInt(editingCreditsToAdd, 10) : undefined,
         }),
       });
 
@@ -188,7 +191,9 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
       });
       
       setTierDialogOpen(false);
-      alert(`Successfully updated ${selectedOrg.name} to ${editingTier.charAt(0).toUpperCase() + editingTier.slice(1)} tier!`);
+      setEditingCreditsToAdd(''); // Reset credits field
+      const creditsMsg = editingCreditsToAdd ? ` (+${editingCreditsToAdd} credits added)` : '';
+      alert(`Successfully updated ${selectedOrg.name} to ${editingTier.charAt(0).toUpperCase() + editingTier.slice(1)} tier!${creditsMsg}`);
     } catch (err) {
       console.error('Error updating tier:', err);
       alert(err instanceof Error ? err.message : 'Failed to update tier');
@@ -425,6 +430,25 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                           </p>
                         </div>
                       )}
+
+                      {/* Add Credits */}
+                      <div className="space-y-2 pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                        <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                          Add Call Credits (optional)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={editingCreditsToAdd}
+                          onChange={(e) => setEditingCreditsToAdd(e.target.value)}
+                          placeholder="0"
+                          className="w-full h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 focus:border-brand-accent font-albert disabled:opacity-50"
+                          disabled={savingTier}
+                        />
+                        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                          Each credit = 1 AI call summary (60 min). Added to purchased credits.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>

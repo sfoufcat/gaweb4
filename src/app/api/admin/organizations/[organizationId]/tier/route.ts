@@ -7,6 +7,7 @@ interface TierUpdateBody {
   tier: CoachTier;
   manualBilling?: boolean;
   manualExpiresAt?: string | null;
+  creditsToAdd?: number; // Number of call credits to add (60 min each)
 }
 
 /**
@@ -30,7 +31,7 @@ export async function PATCH(
 
     const { organizationId } = await context.params;
     const body = await req.json() as TierUpdateBody;
-    const { tier, manualBilling = true, manualExpiresAt } = body;
+    const { tier, manualBilling = true, manualExpiresAt, creditsToAdd } = body;
 
     if (!organizationId) {
       return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 });
@@ -65,12 +66,34 @@ export async function PATCH(
 
     console.log(`[ADMIN_ORG_TIER] Updated org ${organizationId} to tier: ${tier}, manualBilling: ${manualBilling}, expires: ${manualExpiresAt || 'never'}`);
 
-    return NextResponse.json({ 
+    // Add credits if specified
+    let creditsAdded = 0;
+    if (creditsToAdd && creditsToAdd > 0) {
+      const { adminDb } = await import('@/lib/firebase-admin');
+      const minutesToAdd = creditsToAdd * 60; // 60 minutes per credit/call
+
+      const orgRef = adminDb.collection('organizations').doc(organizationId);
+      await adminDb.runTransaction(async (transaction) => {
+        const orgDoc = await transaction.get(orgRef);
+        const orgData = orgDoc.data() || {};
+        const currentPurchasedMinutes = orgData?.summaryCredits?.purchasedMinutes || 0;
+
+        transaction.set(orgRef, {
+          'summaryCredits.purchasedMinutes': currentPurchasedMinutes + minutesToAdd,
+        }, { merge: true });
+      });
+
+      creditsAdded = creditsToAdd;
+      console.log(`[ADMIN_ORG_TIER] Added ${creditsToAdd} credits (${minutesToAdd} minutes) to org ${organizationId}`);
+    }
+
+    return NextResponse.json({
       success: true,
       organizationId,
       tier,
       manualBilling,
       manualExpiresAt: manualExpiresAt || null,
+      creditsAdded,
     });
   } catch (error) {
     console.error('[ADMIN_ORG_TIER_UPDATE_ERROR]', error);

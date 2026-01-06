@@ -10,7 +10,6 @@ import {
   ShoppingCart,
   Check,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
   Select,
@@ -235,15 +234,22 @@ export function CallSummarySettingsCard({ onSettingsChange }: CallSummarySetting
             )}
 
             {/* Buy more button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full mt-3"
+            <button
               onClick={() => setShowPurchaseModal(true)}
+              className="w-full mt-3 py-2.5 px-4 rounded-xl font-medium text-sm
+                bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400
+                hover:from-amber-500 hover:via-yellow-500 hover:to-amber-500
+                dark:from-amber-500 dark:via-yellow-500 dark:to-amber-500
+                dark:hover:from-amber-400 dark:hover:via-yellow-400 dark:hover:to-amber-400
+                text-amber-950 dark:text-amber-950
+                shadow-sm hover:shadow-md
+                transition-all duration-200 ease-out
+                flex items-center justify-center gap-2
+                hover:scale-[1.01] active:scale-[0.99]"
             >
-              <ShoppingCart className="h-4 w-4 mr-2" />
+              <ShoppingCart className="h-4 w-4" />
               Buy More Credits
-            </Button>
+            </button>
           </div>
         )}
 

@@ -102,6 +102,7 @@ function SavedCardsSelection({
   onSelect,
   onAddNew,
   onPay,
+  onBack,
   isProcessing,
   priceInCents,
   accentColor,
@@ -111,6 +112,7 @@ function SavedCardsSelection({
   onSelect: (id: string) => void;
   onAddNew: () => void;
   onPay: () => void;
+  onBack?: () => void;
   isProcessing: boolean;
   priceInCents: number;
   accentColor: string;
@@ -118,13 +120,25 @@ function SavedCardsSelection({
   return (
     <div className="flex flex-col">
       {/* Header */}
-      <div className="pb-4">
-        <h3 className="font-semibold text-lg text-text-primary dark:text-[#f5f5f8]">
-          Choose payment method
-        </h3>
-        <p className="text-sm text-text-secondary dark:text-[#b2b6c2]">
-          Select a saved card or add a new one
-        </p>
+      <div className="pb-4 flex items-center gap-3">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+          </button>
+        )}
+        <div>
+          <h3 className="font-semibold text-lg text-text-primary dark:text-[#f5f5f8]">
+            Choose payment method
+          </h3>
+          <p className="text-sm text-text-secondary dark:text-[#b2b6c2]">
+            Select a saved card or add a new one
+          </p>
+        </div>
       </div>
 
       {/* Saved cards list */}
@@ -690,16 +704,6 @@ export function CreditPurchaseModal({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            {/* Back button */}
-            <button
-              type="button"
-              onClick={handleBackToPackSelection}
-              className="p-2 -ml-2 mb-2 rounded-full hover:bg-muted transition-colors"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-            </button>
-
             {/* Error message */}
             {error && (
               <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl">
@@ -713,6 +717,7 @@ export function CreditPurchaseModal({
               onSelect={setSelectedMethodId}
               onAddNew={handleAddNewCard}
               onPay={handlePayWithSavedMethod}
+              onBack={handleBackToPackSelection}
               isProcessing={isProcessingSavedPayment}
               priceInCents={selectedPack?.priceInCents || 0}
               accentColor={accentColor}

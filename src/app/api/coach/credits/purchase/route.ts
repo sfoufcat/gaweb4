@@ -238,13 +238,15 @@ export async function GET() {
     }
 
     const orgData = orgDoc.data();
-    const summaryCredits = orgData?.summaryCredits || {
-      allocatedMinutes: 0,
-      usedMinutes: 0,
-      purchasedMinutes: 0,
-      usedPurchasedMinutes: 0,
-      periodStart: null,
-      periodEnd: null,
+    // Destructure with defaults for each field to handle partial objects
+    const rawSummaryCredits = orgData?.summaryCredits || {};
+    const summaryCredits = {
+      allocatedMinutes: rawSummaryCredits.allocatedMinutes ?? 0,
+      usedMinutes: rawSummaryCredits.usedMinutes ?? 0,
+      purchasedMinutes: rawSummaryCredits.purchasedMinutes ?? 0,
+      usedPurchasedMinutes: rawSummaryCredits.usedPurchasedMinutes ?? 0,
+      periodStart: rawSummaryCredits.periodStart ?? null,
+      periodEnd: rawSummaryCredits.periodEnd ?? null,
     };
 
     // Calculate remaining credits (in calls, assuming 60 min per call)
