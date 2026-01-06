@@ -208,11 +208,11 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                   {enrollment.program.name}
                 </h3>
 
-                {/* Cohort name */}
-                <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] truncate">
-                  {enrollment.program.type === 'individual'
-                    ? 'One-on-one'
-                    : enrollment.cohort?.name || 'Group program'}
+                {/* Description - 2 lines max */}
+                <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 h-[2.6em] overflow-hidden">
+                  {enrollment.program.description || (enrollment.program.type === 'individual'
+                    ? 'One-on-one coaching program'
+                    : enrollment.cohort?.name || 'Group coaching program')}
                 </p>
                 
                 {/* Progress or Status */}

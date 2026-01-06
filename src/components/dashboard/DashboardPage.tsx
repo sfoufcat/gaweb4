@@ -255,9 +255,11 @@ export function DashboardPage() {
   // Unified loading state for card carousel - wait for all card data to prevent reordering
   // Only show skeleton on INITIAL load, not on background revalidation
   // When using unified data, all data comes from one API so loading is synchronized
+  // IMPORTANT: Also wait for user data (loading) and check-in flows (flowsLoading)
+  // because cardOrder depends on isFirstDay and hasActivePrompt which need this data
   const isInitialCarouselLoading = hasUnifiedCarouselData
-    ? dashboardLoading
-    : (checkInLoading || programPromptLoading || discoverLoading);
+    ? (dashboardLoading || loading || flowsLoading)
+    : (checkInLoading || programPromptLoading || discoverLoading || loading || flowsLoading);
 
   // Once data has loaded once, never show skeleton again
   if (!isInitialCarouselLoading && !hasCarouselLoadedRef.current) {
@@ -815,6 +817,10 @@ export function DashboardPage() {
 
   // Determine card order based on current state - memoized to prevent layout shifts
   // IMPORTANT: This must be called BEFORE any early returns to maintain consistent hook order
+  // NOTE: Use dashboardCheckIns?.program?.show directly instead of showProgramCheckIn state
+  // to avoid layout shift from useEffect delay
+  const hasProgramCheckIn = !dashboardLoading && !!dashboardCheckIns?.program?.show;
+  
   const cardOrder = useMemo((): CardType[] => {
     // DEMO MODE: Show prompt, goal, and quote cards
     if (isDemoMode) {
@@ -823,7 +829,7 @@ export function DashboardPage() {
     
     // PROGRAM CHECK-IN TAKES PRIORITY
     // If user has pending program check-in, show it first
-    if (showProgramCheckIn) {
+    if (hasProgramCheckIn) {
       return ['program_checkin', 'goal', 'track'];
     }
     
@@ -851,7 +857,7 @@ export function DashboardPage() {
     
     // No check-in active: Goal - Track Prompt - Discover
     return ['goal', 'track', 'discover'];
-  }, [isDemoMode, showProgramCheckIn, isFirstDay, isMorningWindow, isMorningCheckInCompleted, isMorningWindowClosed, hasActivePrompt]);
+  }, [isDemoMode, hasProgramCheckIn, isFirstDay, isMorningWindow, isMorningCheckInCompleted, isMorningWindowClosed, hasActivePrompt]);
 
   if (!isLoaded || !mounted) {
     return null;

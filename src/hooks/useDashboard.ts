@@ -16,6 +16,7 @@ export interface ProgramEnrollmentWithDetails {
   program: {
     id: string;
     name: string;
+    description?: string;
     type: 'group' | 'individual';
     lengthDays: number;
     coverImageUrl?: string;

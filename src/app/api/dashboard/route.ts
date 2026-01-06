@@ -105,6 +105,7 @@ interface EnrollmentWithDetails extends ProgramEnrollment {
   program: {
     id: string;
     name: string;
+    description?: string;
     type: 'group' | 'individual';
     lengthDays: number;
     coverImageUrl?: string;
@@ -546,6 +547,7 @@ export async function GET(request: Request) {
           program: {
             id: program.id,
             name: program.name,
+            description: program.description,
             type: program.type,
             lengthDays: program.lengthDays,
             coverImageUrl: program.coverImageUrl,

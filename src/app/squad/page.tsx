@@ -182,7 +182,10 @@ export default function StandaloneSquadPage() {
 
   // Show loading state while checking for squads
   // This prevents the "No squads available yet" flash
-  if (isLoading) {
+  // Also wait for Clerk to fully load to avoid brief empty state flash on navigation
+  // Without this, there's a timing issue where isLoading is false (cached data)
+  // but userLoaded is false (Clerk still initializing), causing empty state to flash
+  if (isLoading || (!isDemoMode && !userLoaded)) {
     return (
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pt-6">
         <div className="mb-8">

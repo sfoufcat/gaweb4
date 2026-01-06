@@ -717,7 +717,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                 setEditingSquad(null);
                 setIsSquadModalOpen(true);
               }}
-              className="bg-transparent hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] text-[#1a1a1a] dark:text-white font-semibold font-albert transition-colors"
+              className="text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-semibold font-albert transition-colors duration-200"
             >
               <Plus className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">New Squad</span>
