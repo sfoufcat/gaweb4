@@ -24,7 +24,7 @@ export async function GET() {
     console.log('[CALENDAR_STATUS] google:', googleIntegration ? { status: googleIntegration.status, email: googleIntegration.accountEmail, expiresAt: googleIntegration.expiresAt } : 'NOT FOUND');
     console.log('[CALENDAR_STATUS] microsoft:', microsoftIntegration ? { status: microsoftIntegration.status, email: microsoftIntegration.accountEmail, expiresAt: microsoftIntegration.expiresAt } : 'NOT FOUND');
 
-    // Auto-refresh tokens if needed (proactive refresh before expiry)
+    // Auto-refresh tokens if needed (proactive refresh before expiry or if expired)
     // This ensures tokens stay valid and status remains 'connected'
     if (googleIntegration && googleIntegration.id) {
       try {
@@ -32,7 +32,8 @@ export async function GET() {
           organizationId,
           googleIntegration.id,
           googleIntegration.refreshToken,
-          googleIntegration.expiresAt as string | Date | undefined
+          googleIntegration.expiresAt as string | Date | undefined,
+          googleIntegration.status // Pass status to trigger refresh for expired tokens
         );
         if (refreshed) {
           // Re-fetch to get updated data after refresh
@@ -50,7 +51,8 @@ export async function GET() {
           organizationId,
           microsoftIntegration.id,
           microsoftIntegration.refreshToken,
-          microsoftIntegration.expiresAt as string | Date | undefined
+          microsoftIntegration.expiresAt as string | Date | undefined,
+          microsoftIntegration.status // Pass status to trigger refresh for expired tokens
         );
         if (refreshed) {
           // Re-fetch to get updated data after refresh

@@ -30,7 +30,15 @@ import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
+
 import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
+
+// Animation variants for smooth directional transitions
+const viewSlideVariants = {
+  enter: (direction: number) => ({ x: direction > 0 ? 24 : -24, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({ x: direction < 0 ? 24 : -24, opacity: 0 }),
+};
 
 // Next call info structure
 interface NextCallInfo {
@@ -107,13 +115,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   
   // View mode: 'list' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'
   const [viewMode, setViewMode] = useState<'list' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'>('list');
+  const [viewModeDirection, setViewModeDirection] = useState<1 | -1>(1); // Animation direction for program tabs
+  const prevViewModeRef = useRef(viewMode);
   
   // Content display mode: 'row' (sidebar + editor) | 'calendar' (full-width calendar)
   const [contentDisplayMode, setContentDisplayMode] = useState<'row' | 'calendar'>('row');
+  const [contentDirection, setContentDirection] = useState<1 | -1>(1); // Animation direction for Row/Calendar
   // Derived values to avoid TypeScript narrowing issues in ternaries
   const isRowMode = contentDisplayMode === 'row';
   const isCalendarMode = contentDisplayMode === 'calendar';
-  
+
   // Enrollments state
   const [programEnrollments, setProgramEnrollments] = useState<EnrollmentWithUser[]>([]);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
@@ -297,6 +308,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const prevProgramId = useRef<string | null>(null);
   const [deleteConfirmCohort, setDeleteConfirmCohort] = useState<ProgramCohort | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // View mode order for directional animations
+  const VIEW_MODE_ORDER: Record<string, number> = {
+    'list': 0, 'days': 1, 'cohorts': 2, 'enrollments': 3, 'landing': 4, 'referrals': 5,
+  };
+
+  // Handler for view mode changes with direction tracking
+  const handleViewModeChange = useCallback((newMode: typeof viewMode) => {
+    const prevOrder = VIEW_MODE_ORDER[prevViewModeRef.current] ?? 0;
+    const newOrder = VIEW_MODE_ORDER[newMode] ?? 0;
+    setViewModeDirection(newOrder > prevOrder ? 1 : -1);
+    prevViewModeRef.current = newMode;
+    setViewMode(newMode);
+  }, []);
 
   const fetchPrograms = useCallback(async () => {
     // Skip API call in demo mode
@@ -1144,7 +1169,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         } else {
           // For new programs: Select it normally and navigate to days view
           setSelectedProgram(data.program);
-          setViewMode('days');
+          handleViewModeChange('days');
         }
       }
     } catch (err) {
@@ -1459,15 +1484,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       demoSession.deleteProgram(deleteConfirmProgram.id);
       if (selectedProgram?.id === deleteConfirmProgram.id) {
         setSelectedProgram(null);
-        setViewMode('list');
+        handleViewModeChange('list');
       }
       setDeleteConfirmProgram(null);
       return;
     }
-    
+
     try {
       setDeleting(true);
-      
+
       const response = await fetch(`${apiBasePath}/${deleteConfirmProgram.id}`, {
         method: 'DELETE',
       });
@@ -1478,10 +1503,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       }
 
       setPrograms(prev => prev.filter(p => p.id !== deleteConfirmProgram.id));
-      
+
       if (selectedProgram?.id === deleteConfirmProgram.id) {
         setSelectedProgram(null);
-        setViewMode('list');
+        handleViewModeChange('list');
       }
       
       setDeleteConfirmProgram(null);
@@ -1747,7 +1772,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             <div className="flex items-center gap-4 w-full overflow-x-auto scrollbar-hide">
               {/* Back button - arrow icon only */}
               <button
-                onClick={() => setViewMode('list')}
+                onClick={() => handleViewModeChange('list')}
                 className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
                 title="Back to Programs"
               >
@@ -1774,7 +1799,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               {/* Navigation tabs - pill style */}
               <nav className="flex items-center gap-1 flex-shrink-0">
                 <button
-                  onClick={() => setViewMode('days')}
+                  onClick={() => handleViewModeChange('days')}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert transition-all ${
                     viewMode === 'days'
                       ? 'bg-brand-accent text-white shadow-sm'
@@ -1786,7 +1811,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
                 {selectedProgram?.type === 'group' && (
                   <button
-                    onClick={() => setViewMode('cohorts')}
+                    onClick={() => handleViewModeChange('cohorts')}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert transition-all ${
                       viewMode === 'cohorts'
                         ? 'bg-brand-accent text-white shadow-sm'
@@ -1797,7 +1822,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   </button>
                 )}
                 <button
-                  onClick={() => setViewMode('enrollments')}
+                  onClick={() => handleViewModeChange('enrollments')}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert transition-all ${
                     viewMode === 'enrollments'
                       ? 'bg-brand-accent text-white shadow-sm'
@@ -1807,7 +1832,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   Enrollments
                 </button>
                 <button
-                  onClick={() => setViewMode('landing')}
+                  onClick={() => handleViewModeChange('landing')}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert flex items-center gap-1.5 transition-all ${
                     viewMode === 'landing'
                       ? 'bg-brand-accent text-white shadow-sm'
@@ -1818,7 +1843,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   Landing Page
                 </button>
                 <button
-                  onClick={() => setViewMode('referrals')}
+                  onClick={() => handleViewModeChange('referrals')}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert flex items-center gap-1.5 transition-all ${
                     viewMode === 'referrals'
                       ? 'bg-brand-accent text-white shadow-sm'
@@ -1864,6 +1889,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         )}
 
         {/* Content */}
+        <AnimatePresence mode="wait" custom={viewModeDirection}>
+          <motion.div
+            key={viewMode}
+            custom={viewModeDirection}
+            variants={viewSlideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+          >
         {viewMode === 'list' && !tenantRequired ? (
           // Programs List
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1873,7 +1908,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer"
                 onClick={() => {
                   setSelectedProgram(program);
-                  setViewMode('days');
+                  handleViewModeChange('days');
                 }}
               >
                 {/* Cover Image */}
@@ -2006,15 +2041,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           </div>
         ) : viewMode === 'days' ? (
           // Content View - Row (sidebar + editor) or Calendar (full-width)
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" custom={contentDirection}>
           {contentDisplayMode === 'calendar' ? (
             // Calendar View - Full width, no sidebar
             <motion.div
               key="calendar-view"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              custom={contentDirection}
+              variants={viewSlideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
               className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6"
             >
               {/* Controls row at top of calendar */}
@@ -2055,7 +2092,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-1">
                   <button
                     type="button"
-                    onClick={() => setContentDisplayMode('row')}
+                    onClick={() => { setContentDirection(-1); setContentDisplayMode('row'); }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
                       isRowMode
                         ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
@@ -2068,6 +2105,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   <button
                     type="button"
                     onClick={() => {
+                      setContentDirection(1);
                       setContentDisplayMode('calendar');
                       fetchOrganizationCourses();
                     }}
@@ -2106,11 +2144,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 onDayClick={(dayIndex) => {
                   setSelectedDayIndex(dayIndex);
                   setSidebarSelection({ type: 'day', dayIndex });
+                  setContentDirection(-1);
                   setContentDisplayMode('row');
                 }}
                 onAddCall={(dayIndex) => {
                   setSelectedDayIndex(dayIndex);
                   setSidebarSelection({ type: 'day', dayIndex });
+                  setContentDirection(-1);
                   setContentDisplayMode('row');
                 }}
               />
@@ -2119,10 +2159,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           // Row View - Sidebar + Editor
           <motion.div
             key="row-view"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            custom={contentDirection}
+            variants={viewSlideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
             className="flex flex-col lg:flex-row gap-4 lg:gap-6"
           >
             {/* Sidebar Navigation */}
@@ -2573,7 +2615,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-1">
                   <button
                     type="button"
-                    onClick={() => setContentDisplayMode('row')}
+                    onClick={() => { setContentDirection(-1); setContentDisplayMode('row'); }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
                       isRowMode
                         ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
@@ -2586,6 +2628,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   <button
                     type="button"
                     onClick={() => {
+                      setContentDirection(1);
                       setContentDisplayMode('calendar');
                       fetchOrganizationCourses();
                     }}
@@ -3546,6 +3589,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             )}
           </div>
         ) : null}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Remove Enrollment Confirmation Modal */}
@@ -4610,7 +4655,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               setSelectedProgram(data.program);
               setProgramDays(data.days || []);
               setProgramCohorts(data.cohorts || []);
-              setViewMode('days');
+              handleViewModeChange('days');
             }
           };
           selectProgram();
@@ -4672,7 +4717,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               updatedAt: nowIso,
             })));
             setProgramCohorts([]);
-            setViewMode('days');
+            handleViewModeChange('days');
           }
           setIsNewProgramModalOpen(false);
         }}

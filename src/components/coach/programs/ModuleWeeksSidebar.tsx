@@ -725,65 +725,78 @@ export function ModuleWeeksSidebar({
               </p>
             </button>
 
-            {/* Delete button - only show in template mode */}
-            {canReorder && modules.length > 1 && onDeleteModule && (
-              <button
-                onClick={(e) => handleDeleteModuleClick(module, e)}
-                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
-                title="Delete module"
-              >
-                <Trash2 className="w-4 h-4 text-red-500" />
-              </button>
-            )}
-
-            {/* Expand/collapse button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleModule(module.id);
-              }}
-              className="p-2 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded-lg transition-colors flex-shrink-0"
-            >
-              {isModuleExpanded ? (
-                <ChevronDown className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-              ) : (
-                <ChevronRight className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+            {/* Action buttons group */}
+            <div className="flex items-center gap-1">
+              {/* Delete button - only show in template mode */}
+              {canReorder && modules.length > 1 && onDeleteModule && (
+                <button
+                  onClick={(e) => handleDeleteModuleClick(module, e)}
+                  className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                  title="Delete module"
+                >
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                </button>
               )}
-            </button>
+
+              {/* Expand/collapse button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleModule(module.id);
+                }}
+                className="p-2 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded-lg transition-colors flex-shrink-0"
+              >
+                {isModuleExpanded ? (
+                  <ChevronDown className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Weeks inside module - draggable in template mode, static in client mode */}
-        {isModuleExpanded && moduleWeeks.length > 0 && (
-          canReorder ? (
-            <Reorder.Group
-              as="div"
-              axis="y"
-              values={moduleWeeks}
-              onReorder={(newWeeks) => handleWeeksReorder(module.id, newWeeks)}
-              className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]"
+        <AnimatePresence initial={false}>
+          {isModuleExpanded && moduleWeeks.length > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              style={{ overflow: "hidden" }}
             >
-              {moduleWeeks.map((week, idx) => (
-                <Reorder.Item
+              {canReorder ? (
+                <Reorder.Group
                   as="div"
-                  key={week.storedWeekId || `temp-${week.weekNum}`}
-                  value={week}
-                  className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}
+                  axis="y"
+                  values={moduleWeeks}
+                  onReorder={(newWeeks) => handleWeeksReorder(module.id, newWeeks)}
+                  className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]"
                 >
-                  {renderWeekRow(week, module.id)}
-                </Reorder.Item>
-              ))}
-            </Reorder.Group>
-          ) : (
-            <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
-              {moduleWeeks.map((week, idx) => (
-                <div key={week.storedWeekId || `temp-${week.weekNum}`} className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}>
-                  {renderWeekRow(week, module.id)}
+                  {moduleWeeks.map((week, idx) => (
+                    <Reorder.Item
+                      as="div"
+                      key={week.storedWeekId || `temp-${week.weekNum}`}
+                      value={week}
+                      className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}
+                    >
+                      {renderWeekRow(week, module.id)}
+                    </Reorder.Item>
+                  ))}
+                </Reorder.Group>
+              ) : (
+                <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
+                  {moduleWeeks.map((week, idx) => (
+                    <div key={week.storedWeekId || `temp-${week.weekNum}`} className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}>
+                      {renderWeekRow(week, module.id)}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )
-        )}
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Empty state for module with no weeks */}
         {isModuleExpanded && moduleWeeks.length === 0 && (

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useOrganization as useClerkOrganization, useOrganizationList } from '@clerk/nextjs';
+import { motion, AnimatePresence } from 'framer-motion';
 import { isOrgCoach } from '@/lib/admin-utils-shared';
 import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -51,6 +52,21 @@ const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'a
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
 // Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
 const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'squad', 'programs', 'invitedBy', 'invitedAt', 'created', 'actions'];
+
+// Tab order for directional animations
+const COACH_TAB_ORDER: Record<CoachTab, number> = {
+  'clients': 0, 'programs': 1, 'squads': 2, 'discover': 3, 'funnels': 4, 'analytics': 5,
+  'checkins': 6, 'onboarding': 7, 'channels': 8, 'referrals': 9, 'discounts': 10,
+  'scheduling': 11, 'integrations': 12, 'customize': 13, 'plan': 14, 'support': 15,
+  'upgrade-forms': 16, 'coaching-forms': 17,
+};
+
+// Animation variants for tab transitions
+const tabSlideVariants = {
+  enter: (direction: number) => ({ x: direction > 0 ? 24 : -24, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({ x: direction < 0 ? 24 : -24, opacity: 0 }),
+};
 
 /**
  * Scheduling Tab Component
@@ -141,7 +157,52 @@ export default function CoachPage() {
   const tabFromUrl = searchParams.get('tab') as CoachTab | null;
   const initialTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'clients';
   const [activeTab, setActiveTab] = useState<CoachTab>(initialTab);
-  
+  const [tabDirection, setTabDirection] = useState<1 | -1>(1);
+  const prevTabRef = useRef<CoachTab>(initialTab);
+
+  // Handler for tab changes with direction tracking
+  const handleTabChange = useCallback((newTab: CoachTab) => {
+    const prevOrder = COACH_TAB_ORDER[prevTabRef.current] ?? 0;
+    const newOrder = COACH_TAB_ORDER[newTab] ?? 0;
+    setTabDirection(newOrder > prevOrder ? 1 : -1);
+    prevTabRef.current = newTab;
+    setActiveTab(newTab);
+  }, []);
+
+  // Tabs horizontal scroll with mouse wheel
+  const tabsListRef = useRef<HTMLDivElement>(null);
+  const handleTabsWheel = useCallback((e: React.WheelEvent) => {
+    if (tabsListRef.current) {
+      e.preventDefault();
+      tabsListRef.current.scrollLeft += e.deltaY;
+    }
+  }, []);
+
+  // Sliding highlight state for Vercel-style hover effect
+  const [hoverStyle, setHoverStyle] = useState<{
+    left: number;
+    width: number;
+    opacity: number;
+  }>({ left: 0, width: 0, opacity: 0 });
+
+  const handleTabMouseEnter = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    const target = e.currentTarget;
+    const container = tabsListRef.current;
+    if (container) {
+      const containerRect = container.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      setHoverStyle({
+        left: targetRect.left - containerRect.left + container.scrollLeft,
+        width: targetRect.width,
+        opacity: 1,
+      });
+    }
+  }, []);
+
+  const handleTabsMouseLeave = useCallback(() => {
+    setHoverStyle(prev => ({ ...prev, opacity: 0 }));
+  }, []);
+
   // Feature tour state - triggered by ?tour=true from onboarding
   const shouldStartTour = searchParams.get('tour') === 'true';
   const [isTourActive, setIsTourActive] = useState(false);
@@ -541,12 +602,27 @@ export default function CoachPage() {
         )}
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
-          <TabsList className="mb-6 w-full flex-nowrap overflow-x-auto justify-start bg-white/60 dark:bg-[#11141b]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 p-1 scrollbar-hide">
+        <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as CoachTab)} className="w-full">
+          <TabsList
+            ref={tabsListRef}
+            onWheel={handleTabsWheel}
+            onMouseLeave={handleTabsMouseLeave}
+            className="relative mb-6 w-full flex-nowrap overflow-x-auto justify-start gap-1 p-1.5 scrollbar-hide bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl"
+          >
+            {/* Sliding highlight */}
+            <div
+              className="absolute h-[calc(100%-12px)] top-1.5 rounded-lg bg-[#ebe8e4] dark:bg-[#262b35] transition-all duration-200 ease-out pointer-events-none"
+              style={{
+                left: hoverStyle.left,
+                width: hoverStyle.width,
+                opacity: hoverStyle.opacity,
+              }}
+            />
             {/* 1. Clients - always visible */}
             <TabsTrigger 
               value="clients"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+              onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
             >
               Clients
             </TabsTrigger>
@@ -554,7 +630,8 @@ export default function CoachPage() {
             {!isLimitedOrgCoach && (
               <TabsTrigger 
                 value="programs"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
               >
                 Programs
               </TabsTrigger>
@@ -562,14 +639,16 @@ export default function CoachPage() {
             {/* 3. Squads - always visible */}
             <TabsTrigger 
               value="squads"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+              onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
             >
               Squads
             </TabsTrigger>
             {/* 4. Content - always visible */}
             <TabsTrigger 
               value="discover"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+              onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
             >
               Content
             </TabsTrigger>
@@ -578,13 +657,15 @@ export default function CoachPage() {
               <>
                 <TabsTrigger 
                   value="funnels"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                  onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Funnels
                 </TabsTrigger>
                 <TabsTrigger 
                   value="analytics"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                  onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Analytics
                 </TabsTrigger>
@@ -595,31 +676,36 @@ export default function CoachPage() {
               <>
                 <TabsTrigger 
                   value="checkins"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                  onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Check-ins
                 </TabsTrigger>
                 <TabsTrigger 
                   value="onboarding"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                  onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Onboarding
                 </TabsTrigger>
                 <TabsTrigger 
                   value="channels"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                  onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Chats
                 </TabsTrigger>
                 <TabsTrigger 
                   value="referrals"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                  onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Referrals
                 </TabsTrigger>
                 <TabsTrigger 
                   value="discounts"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                  onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Discounts
                 </TabsTrigger>
@@ -630,31 +716,36 @@ export default function CoachPage() {
               <>
                 <TabsTrigger 
                   value="scheduling"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                  onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Scheduling
                 </TabsTrigger>
                 <TabsTrigger 
                   value="integrations"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                  onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Integrations
                 </TabsTrigger>
                 <TabsTrigger 
                   value="customize"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                  onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Customize & Settings
                 </TabsTrigger>
                 <TabsTrigger 
                   value="plan"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                  onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Plan
                 </TabsTrigger>
                 <TabsTrigger 
                   value="support"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                  onMouseEnter={handleTabMouseEnter}
+              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Support
                 </TabsTrigger>

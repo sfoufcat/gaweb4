@@ -21,6 +21,8 @@ import {
   type DiscordSettings,
   type CalcomSettings,
 } from '@/lib/integrations';
+import { tryRefreshGoogleCalendarTokens } from '@/lib/integrations/google-calendar';
+import { tryRefreshOutlookCalendarTokens } from '@/lib/integrations/outlook-calendar';
 
 /**
  * GET /api/coach/integrations
@@ -31,7 +33,62 @@ export async function GET() {
   try {
     const { organizationId } = await requireCoachWithOrg();
 
-    const integrations = await listIntegrations(organizationId);
+    // Fetch integrations with decrypted tokens to enable refresh
+    let integrations = await listIntegrations(organizationId, true);
+
+    // Debug logging
+    console.log('[INTEGRATIONS] orgId:', organizationId);
+    console.log('[INTEGRATIONS] found:', integrations.map(i => ({ provider: i.provider, status: i.status })));
+
+    // Auto-refresh expired calendar integrations
+    let refreshed = false;
+    for (const integration of integrations) {
+      if (integration.status === 'expired') {
+        try {
+          if (integration.provider === 'google_calendar') {
+            console.log('[INTEGRATIONS] Attempting to refresh expired Google Calendar token');
+            const success = await tryRefreshGoogleCalendarTokens(
+              organizationId,
+              integration.id,
+              integration.refreshToken,
+              integration.expiresAt as string | Date | undefined,
+              integration.status
+            );
+            if (success) {
+              console.log('[INTEGRATIONS] Google Calendar token refreshed successfully');
+              refreshed = true;
+            }
+          } else if (integration.provider === 'outlook_calendar') {
+            console.log('[INTEGRATIONS] Attempting to refresh expired Outlook Calendar token');
+            const success = await tryRefreshOutlookCalendarTokens(
+              organizationId,
+              integration.id,
+              integration.refreshToken,
+              integration.expiresAt as string | Date | undefined,
+              integration.status
+            );
+            if (success) {
+              console.log('[INTEGRATIONS] Outlook Calendar token refreshed successfully');
+              refreshed = true;
+            }
+          }
+        } catch (err) {
+          console.error(`[INTEGRATIONS] Failed to refresh ${integration.provider}:`, err);
+        }
+      }
+    }
+
+    // Re-fetch integrations after refresh (without decrypted tokens for response)
+    if (refreshed) {
+      integrations = await listIntegrations(organizationId);
+    } else {
+      // Mask tokens for response
+      integrations = integrations.map(i => ({
+        ...i,
+        accessToken: '[ENCRYPTED]',
+        refreshToken: i.refreshToken ? '[ENCRYPTED]' : undefined,
+      }));
+    }
 
     // Get connected providers (status === 'connected')
     const connectedProviders = new Set(
@@ -39,7 +96,7 @@ export async function GET() {
         .filter((i) => i.status === 'connected')
         .map((i) => i.provider)
     );
-    
+
     // Available = providers that are either not in Firestore OR have status !== 'connected'
     const available = Object.values(INTEGRATION_PROVIDERS).filter(
       (provider) => !connectedProviders.has(provider.id)
@@ -48,10 +105,8 @@ export async function GET() {
     // Get which providers are configured (have OAuth credentials)
     const configured = getConfiguredIntegrations();
 
-    // Debug logging
-    console.log('[INTEGRATIONS] orgId:', organizationId);
-    console.log('[INTEGRATIONS] found:', integrations.map(i => ({ provider: i.provider, status: i.status })));
     console.log('[INTEGRATIONS] configured:', configured);
+    console.log('[INTEGRATIONS] after refresh:', integrations.map(i => ({ provider: i.provider, status: i.status })));
 
     return NextResponse.json({
       integrations,

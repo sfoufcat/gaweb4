@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, ProgramOrientation, CallSummary, WeeklyTaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
-import { Trash2, Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Repeat, ArrowRight, Upload, Mic, Phone, Calendar, Check, Loader2, Users } from 'lucide-react';
+import { Trash2, Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Repeat, ArrowRight, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { SyncToClientsDialog } from './SyncToClientsDialog';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -430,13 +432,22 @@ export function WeekEditor({
         />
       </div>
 
-      {/* Task Distribution Mode (Weekly mode only) */}
-      {orientation === 'weekly' && (
-        <div>
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <Repeat className="w-4 h-4 inline mr-1.5" />
-            Task Distribution
-          </label>
+      {/* Client-Visible Content Card */}
+      <Card className="border-[#e1ddd8] dark:border-[#262b35] bg-transparent shadow-none">
+        <CardHeader className="pb-2 px-0 pt-0">
+          <CardTitle className="text-sm font-semibold text-[#5f5a55] dark:text-[#b2b6c2] font-albert flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            What Clients See
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-0 space-y-6">
+          {/* Task Distribution Mode (Weekly mode only) */}
+          {orientation === 'weekly' && (
+            <div>
+              <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                <Repeat className="w-4 h-4 inline mr-1.5" />
+                Task Distribution
+              </label>
           <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
             How should this week&apos;s tasks be distributed to days?
           </p>
@@ -647,27 +658,33 @@ export function WeekEditor({
           </div>
         )}
       </div>
+        </CardContent>
+      </Card>
 
-      {/* Coach's Manual Notes */}
-      <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-        <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-          <StickyNote className="w-4 h-4 inline mr-1.5" />
-          Coach Notes
-        </label>
-        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-          Private notes for this week (not visible to clients)
-        </p>
-        <textarea
-          value={formData.manualNotes}
-          onChange={(e) => setFormData({ ...formData, manualNotes: e.target.value })}
-          placeholder="Add your notes from calls, observations, or planning..."
-          rows={4}
-          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-        />
-      </div>
+      {/* Coach Private Section */}
+      <CollapsibleSection
+        title="Coach Private"
+        icon={EyeOff}
+        description="Not visible to clients"
+        defaultOpen={true}
+      >
+        {/* Coach's Manual Notes */}
+        <div>
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <StickyNote className="w-4 h-4 inline mr-1.5" />
+            Coach Notes
+          </label>
+          <textarea
+            value={formData.manualNotes}
+            onChange={(e) => setFormData({ ...formData, manualNotes: e.target.value })}
+            placeholder="Add your notes from calls, observations, or planning..."
+            rows={4}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+          />
+        </div>
 
-      {/* Coach Recording Upload */}
-      <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+        {/* Coach Recording Upload */}
+        <div>
         <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
           <Mic className="w-4 h-4 inline mr-1.5" />
           Coach Recording
@@ -733,12 +750,12 @@ export function WeekEditor({
         )}
       </div>
 
-      {/* Linked Call Summaries */}
-      <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-        <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-          <MessageSquare className="w-4 h-4 inline mr-1.5" />
-          Linked Call Summaries
-        </label>
+        {/* Linked Call Summaries */}
+        <div>
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <MessageSquare className="w-4 h-4 inline mr-1.5" />
+            Linked Call Summaries
+          </label>
         <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
           Call summaries linked to this week for context and action items
         </p>
@@ -809,12 +826,12 @@ export function WeekEditor({
         )}
       </div>
 
-      {/* Linked Call Events */}
-      <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-        <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-          <Phone className="w-4 h-4 inline mr-1.5" />
-          Linked Calls
-        </label>
+        {/* Linked Call Events */}
+        <div>
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <Phone className="w-4 h-4 inline mr-1.5" />
+            Linked Calls
+          </label>
         <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
           Scheduled or completed calls associated with this week
         </p>
@@ -875,13 +892,15 @@ export function WeekEditor({
             No call events available to link
           </p>
         )}
-      </div>
+        </div>
+      </CollapsibleSection>
 
-      {/* Days in Week (daily orientation or as reference) */}
-      <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-        <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
-          Days in this Week
-        </h4>
+      {/* Days in Week (Reference Section) */}
+      <CollapsibleSection
+        title="Days in this Week"
+        icon={Calendar}
+        defaultOpen={false}
+      >
         <div className="grid grid-cols-2 gap-2">
           {Array.from({ length: week.endDayIndex - week.startDayIndex + 1 }, (_, i) => {
             const dayIndex = week.startDayIndex + i;
@@ -907,14 +926,14 @@ export function WeekEditor({
             );
           })}
         </div>
-      </div>
 
-      {/* Day Range Info */}
-      <div className="p-3 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg">
-        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-          <span className="font-medium">Day range:</span> {week.startDayIndex} - {week.endDayIndex}
-        </p>
-      </div>
+        {/* Day Range Info */}
+        <div className="p-3 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg">
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+            <span className="font-medium">Day range:</span> {week.startDayIndex} - {week.endDayIndex}
+          </p>
+        </div>
+      </CollapsibleSection>
 
       {/* Sync to Clients Dialog */}
       {programId && (

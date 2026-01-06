@@ -156,9 +156,20 @@ export async function tryRefreshOutlookCalendarTokens(
   orgId: string,
   integrationId: string,
   refreshToken: string | undefined,
-  expiresAt: Date | string | undefined
+  expiresAt: Date | string | undefined,
+  status?: string
 ): Promise<boolean> {
-  // Check if refresh is needed
+  // Always try refresh if status is 'expired'
+  if (status === 'expired') {
+    if (refreshToken) {
+      console.log('[OUTLOOK_CALENDAR] Attempting to refresh expired token');
+      const newToken = await refreshMicrosoftTokens(orgId, integrationId, refreshToken);
+      return newToken !== null;
+    }
+    return false;
+  }
+
+  // Check if refresh is needed based on expiry time
   if (expiresAt) {
     const expiry = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
     const now = new Date();

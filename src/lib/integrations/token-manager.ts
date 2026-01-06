@@ -243,12 +243,25 @@ export async function getIntegrationById(
 /**
  * List all integrations for an organization
  */
-export async function listIntegrations(orgId: string): Promise<CoachIntegration[]> {
+export async function listIntegrations(
+  orgId: string,
+  decryptTokens = false
+): Promise<CoachIntegration[]> {
   const ref = getIntegrationsRef(orgId);
   const snapshot = await ref.get();
   
   return snapshot.docs.map((doc) => {
     const data = doc.data() as CoachIntegration;
+    
+    if (decryptTokens) {
+      return {
+        ...data,
+        id: doc.id,
+        accessToken: decryptToken(data.accessToken),
+        refreshToken: data.refreshToken ? decryptToken(data.refreshToken) : undefined,
+      };
+    }
+    
     return {
       ...data,
       id: doc.id,
