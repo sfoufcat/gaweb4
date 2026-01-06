@@ -4571,15 +4571,30 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           programId={selectedProgram.id}
           week={weekToFill}
           orientation={selectedProgram?.orientation || 'weekly'}
+          // Pass client context when in client mode for 1:1 programs
+          enrollmentId={clientViewContext.mode === 'client' ? clientViewContext.enrollmentId : undefined}
+          clientUserId={clientViewContext.mode === 'client' ? clientViewContext.clientUserId : undefined}
           onApply={async (updates) => {
-            const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${weekToFill.id}`, {
+            // Determine if we're updating a client week or template week
+            const isClientMode = clientViewContext.mode === 'client' && selectedProgram.type === 'individual';
+            const endpoint = isClientMode
+              ? `${apiBasePath}/${selectedProgram.id}/client-weeks/${weekToFill.id}`
+              : `${apiBasePath}/${selectedProgram.id}/weeks/${weekToFill.id}`;
+            
+            const res = await fetch(endpoint, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(updates),
             });
             if (res.ok) {
               const data = await res.json();
-              setProgramWeeks(prev => prev.map(w => w.id === weekToFill.id ? data.week : w));
+              if (isClientMode) {
+                // Update client weeks state
+                setClientWeeks(prev => prev.map(w => w.id === weekToFill.id ? data.clientWeek || data.week : w));
+              } else {
+                // Update template weeks state
+                setProgramWeeks(prev => prev.map(w => w.id === weekToFill.id ? data.week : w));
+              }
             }
           }}
         />

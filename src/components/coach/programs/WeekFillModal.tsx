@@ -56,6 +56,9 @@ interface WeekFillModalProps {
   week: ProgramWeek;
   orientation: ProgramOrientation;
   onApply: (updates: Partial<ProgramWeek>) => Promise<void>;
+  // Client context for 1:1 programs - when provided, filters call summaries by client
+  enrollmentId?: string;
+  clientUserId?: string;
 }
 
 type FillSourceType = 'call_summary' | 'pdf' | 'prompt';
@@ -67,6 +70,8 @@ export function WeekFillModal({
   week,
   orientation,
   onApply,
+  enrollmentId,
+  clientUserId,
 }: WeekFillModalProps) {
   // Source selection
   const [sourceType, setSourceType] = useState<FillSourceType>('call_summary');
@@ -86,13 +91,20 @@ export function WeekFillModal({
   // Apply state
   const [isApplying, setIsApplying] = useState(false);
 
-  // Fetch call summaries for this program
+  // Fetch call summaries for this program (filtered by enrollment if in client mode)
   const fetchSummaries = useCallback(async () => {
     setLoadingSummaries(true);
     try {
-      const res = await fetch(
-        `/api/coach/call-summaries?programId=${programId}&status=completed&limit=20`
-      );
+      const params = new URLSearchParams({
+        programId,
+        status: 'completed',
+        limit: '20',
+      });
+      // Filter by enrollment when in client mode for 1:1 programs
+      if (enrollmentId) {
+        params.set('programEnrollmentId', enrollmentId);
+      }
+      const res = await fetch(`/api/coach/call-summaries?${params}`);
       if (res.ok) {
         const data = await res.json();
         setSummaries(data.summaries || []);
@@ -102,7 +114,7 @@ export function WeekFillModal({
     } finally {
       setLoadingSummaries(false);
     }
-  }, [programId]);
+  }, [programId, enrollmentId]);
 
   // Load summaries when modal opens
   useEffect(() => {
