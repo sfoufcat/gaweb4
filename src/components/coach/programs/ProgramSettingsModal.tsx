@@ -198,15 +198,14 @@ interface ProgramSettingsButtonProps {
 
 export function ProgramSettingsButton({ onClick, isSaving = false }: ProgramSettingsButtonProps) {
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      className="gap-1.5"
+    <button
+      type="button"
       onClick={onClick}
       disabled={isSaving}
+      className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] rounded-lg transition-colors disabled:opacity-50"
+      title="Program Settings"
     >
-      <Settings className="w-4 h-4" />
-      <span className="hidden sm:inline">Settings</span>
-    </Button>
+      <Settings className="w-5 h-5" />
+    </button>
   );
 }

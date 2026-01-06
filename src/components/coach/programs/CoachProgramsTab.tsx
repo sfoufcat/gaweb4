@@ -15,7 +15,12 @@ import type { DiscoverCourse } from '@/types/discover';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, List, CalendarDays } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, List, CalendarDays, Check } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { ScheduleCallModal } from '@/components/scheduling';
 import { ClientDetailSlideOver } from '@/components/coach';
 import { AIHelperModal } from '@/components/ai';
@@ -169,6 +174,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [isWeekFillModalOpen, setIsWeekFillModalOpen] = useState(false);
   const [weekToFill, setWeekToFill] = useState<ProgramWeek | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isPageDropdownOpen, setIsPageDropdownOpen] = useState(false);
 
   // Plan tier for limit checking
   const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
@@ -1872,100 +1878,208 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               )}
             </>
           ) : (
-            <div className="flex items-center gap-4 w-full overflow-x-auto scrollbar-hide">
-              {/* Back button - arrow icon only */}
-              <button
-                onClick={() => handleViewModeChange('list')}
-                className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
-                title="Back to Programs"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
+            <div className="flex flex-col gap-3 w-full">
+              {/* Row 1: Client/Cohort Selector */}
+              {viewMode === 'days' && (
+                <div className="flex items-center">
+                  {selectedProgram?.type === 'individual' ? (
+                    <ClientSelector
+                      enrollments={programEnrollments}
+                      value={clientViewContext}
+                      onChange={async (context) => {
+                        setClientViewContext(context);
+                        if (context.mode === 'client' && selectedProgram) {
+                          const existingWeeks = await fetch(
+                            `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
+                          ).then(r => r.ok ? r.json() : { clientWeeks: [] });
 
-              {/* Program name and badge */}
-              <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
-                <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate max-w-[200px]">
-                  {selectedProgram?.name}
-                </h2>
-                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                  selectedProgram?.type === 'group'
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                    : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
-                }`}>
-                  {selectedProgram?.type === 'group' ? 'Group' : '1:1'}
-                </span>
-              </div>
+                          if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
+                            await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
+                          }
+                          await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
+                          await fetchClientDays(selectedProgram.id, context.enrollmentId!);
+                        } else {
+                          setClientWeeks([]);
+                          setClientDays([]);
+                        }
+                      }}
+                      loading={loadingEnrollments}
+                      className="w-full max-w-xs"
+                    />
+                  ) : selectedProgram?.type === 'group' ? (
+                    <CohortSelector
+                      cohorts={programCohorts}
+                      value={cohortViewContext}
+                      onChange={(context) => {
+                        setCohortViewContext(context);
+                        if (context.mode === 'template') {
+                          setCohortWeekContent(null);
+                        }
+                      }}
+                      onCreateCohort={() => handleOpenCohortModal()}
+                      loading={loadingDetails}
+                      className="w-full max-w-xs"
+                    />
+                  ) : null}
+                </div>
+              )}
 
-              {/* Divider */}
-              <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
-
-              {/* Navigation tabs - pill style */}
-              <nav className="flex items-center gap-1 flex-shrink-0">
+              {/* Row 2: Back | Program name | Page dropdown | Row/Calendar | Settings */}
+              <div className="flex items-center gap-3 w-full overflow-x-auto scrollbar-hide">
+                {/* Back button */}
                 <button
-                  onClick={() => handleViewModeChange('days')}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert flex items-center gap-1.5 transition-all ${
-                    viewMode === 'days'
-                      ? 'bg-brand-accent text-white shadow-sm'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
-                  }`}
+                  onClick={() => handleViewModeChange('list')}
+                  className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
+                  title="Back to Programs"
                 >
-                  <LayoutTemplate className="w-3.5 h-3.5" />
-                  Content
+                  <ArrowLeft className="w-5 h-5" />
                 </button>
 
-                {selectedProgram?.type === 'group' && (
-                  <button
-                    onClick={() => handleViewModeChange('cohorts')}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert transition-all ${
-                      viewMode === 'cohorts'
-                        ? 'bg-brand-accent text-white shadow-sm'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
-                    }`}
-                  >
-                    Cohorts
-                  </button>
-                )}
-                <button
-                  onClick={() => handleViewModeChange('enrollments')}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert flex items-center gap-1.5 transition-all ${
-                    viewMode === 'enrollments'
-                      ? 'bg-brand-accent text-white shadow-sm'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  Enrollments
-                </button>
-                <button
-                  onClick={() => handleViewModeChange('landing')}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert flex items-center gap-1.5 transition-all ${
-                    viewMode === 'landing'
-                      ? 'bg-brand-accent text-white shadow-sm'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  Landing Page
-                </button>
-                <button
-                  onClick={() => handleViewModeChange('referrals')}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert flex items-center gap-1.5 transition-all ${
-                    viewMode === 'referrals'
-                      ? 'bg-brand-accent text-white shadow-sm'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
-                  }`}
-                >
-                  <Gift className="w-3.5 h-3.5" />
-                  Referrals
-                </button>
-              </nav>
+                {/* Program name and badge */}
+                <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
+                  <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate max-w-[200px]">
+                    {selectedProgram?.name}
+                  </h2>
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                    selectedProgram?.type === 'group'
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                      : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                  }`}>
+                    {selectedProgram?.type === 'group' ? 'Group' : '1:1'}
+                  </span>
+                </div>
 
-              {/* Program Settings */}
-              <div className="flex-shrink-0 ml-auto pl-4 border-l border-[#e1ddd8] dark:border-[#262b35]">
-                <ProgramSettingsButton
-                  onClick={() => setIsSettingsModalOpen(true)}
-                  isSaving={saving}
-                />
+                {/* Divider */}
+                <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
+
+                {/* Page Dropdown */}
+                <Popover open={isPageDropdownOpen} onOpenChange={setIsPageDropdownOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] rounded-lg transition-colors"
+                    >
+                      {viewMode === 'days' && <><LayoutTemplate className="w-4 h-4" />Content</>}
+                      {viewMode === 'cohorts' && <><Users className="w-4 h-4" />Cohorts</>}
+                      {viewMode === 'enrollments' && <><Users className="w-4 h-4" />Enrollments</>}
+                      {viewMode === 'landing' && <><FileText className="w-4 h-4" />Landing Page</>}
+                      {viewMode === 'referrals' && <><Gift className="w-4 h-4" />Referrals</>}
+                      <ChevronDown className="w-4 h-4 ml-1" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48 p-1" align="start">
+                    <button
+                      type="button"
+                      onClick={() => { handleViewModeChange('days'); setIsPageDropdownOpen(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                        viewMode === 'days'
+                          ? 'bg-brand-accent/10 text-brand-accent'
+                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                      }`}
+                    >
+                      <LayoutTemplate className="w-4 h-4" />
+                      Content
+                      {viewMode === 'days' && <Check className="w-4 h-4 ml-auto" />}
+                    </button>
+                    {selectedProgram?.type === 'group' && (
+                      <button
+                        type="button"
+                        onClick={() => { handleViewModeChange('cohorts'); setIsPageDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                          viewMode === 'cohorts'
+                            ? 'bg-brand-accent/10 text-brand-accent'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                        }`}
+                      >
+                        <Users className="w-4 h-4" />
+                        Cohorts
+                        {viewMode === 'cohorts' && <Check className="w-4 h-4 ml-auto" />}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { handleViewModeChange('enrollments'); setIsPageDropdownOpen(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                        viewMode === 'enrollments'
+                          ? 'bg-brand-accent/10 text-brand-accent'
+                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                      }`}
+                    >
+                      <Users className="w-4 h-4" />
+                      Enrollments
+                      {viewMode === 'enrollments' && <Check className="w-4 h-4 ml-auto" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { handleViewModeChange('landing'); setIsPageDropdownOpen(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                        viewMode === 'landing'
+                          ? 'bg-brand-accent/10 text-brand-accent'
+                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      Landing Page
+                      {viewMode === 'landing' && <Check className="w-4 h-4 ml-auto" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { handleViewModeChange('referrals'); setIsPageDropdownOpen(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                        viewMode === 'referrals'
+                          ? 'bg-brand-accent/10 text-brand-accent'
+                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                      }`}
+                    >
+                      <Gift className="w-4 h-4" />
+                      Referrals
+                      {viewMode === 'referrals' && <Check className="w-4 h-4 ml-auto" />}
+                    </button>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Right side controls */}
+                <div className="flex-shrink-0 ml-auto flex items-center gap-1">
+                  {/* Row/Calendar Toggle - only show on Content view */}
+                  {viewMode === 'days' && (
+                    <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => { setContentDirection(-1); setContentDisplayMode('row'); }}
+                        className={`p-1.5 rounded-md transition-colors ${
+                          isRowMode
+                            ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                        }`}
+                        title="Row view"
+                      >
+                        <List className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setContentDirection(1);
+                          setContentDisplayMode('calendar');
+                          fetchOrganizationCourses();
+                        }}
+                        className={`p-1.5 rounded-md transition-colors ${
+                          isCalendarMode
+                            ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                        }`}
+                        title="Calendar view"
+                      >
+                        <CalendarDays className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Settings */}
+                  <ProgramSettingsButton
+                    onClick={() => setIsSettingsModalOpen(true)}
+                    isSaving={saving}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -2193,90 +2307,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               transition={{ duration: 0.15, ease: 'easeOut' }}
               className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-3 sm:p-6"
             >
-              {/* Controls row at top of calendar */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-4 sm:mb-6">
-                {/* Left side: Title and Client Selector */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                  <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert whitespace-nowrap shrink-0">
-                    Program Schedule
-                  </h3>
-                  {/* Client Selector for 1:1 programs */}
-                  {selectedProgram?.type === 'individual' && (
-                    <ClientSelector
-                      enrollments={programEnrollments}
-                      value={clientViewContext}
-                      onChange={async (context) => {
-                        setClientViewContext(context);
-                        if (context.mode === 'client' && selectedProgram) {
-                          const existingWeeks = await fetch(
-                            `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
-                          ).then(r => r.ok ? r.json() : { clientWeeks: [] });
-                          if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
-                            await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
-                          }
-                          await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
-                          await fetchClientDays(selectedProgram.id, context.enrollmentId!);
-                        } else {
-                          setClientWeeks([]);
-                          setClientDays([]);
-                        }
-                      }}
-                      loading={loadingEnrollments}
-                      className="w-full sm:max-w-sm"
-                    />
-                  )}
-                  {/* Cohort Selector for group programs */}
-                  {selectedProgram?.type === 'group' && (
-                    <CohortSelector
-                      cohorts={programCohorts}
-                      value={cohortViewContext}
-                      onChange={(context) => {
-                        setCohortViewContext(context);
-                        if (context.mode === 'template') {
-                          setCohortWeekContent(null);
-                        }
-                        // Cohort content will be fetched when a week is selected
-                      }}
-                      onCreateCohort={() => handleOpenCohortModal()}
-                      loading={loadingDetails}
-                      className="w-full sm:max-w-sm"
-                    />
-                  )}
-                </div>
-
-                {/* Row/Calendar Toggle */}
-                <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-0.5 sm:p-1 self-start sm:self-auto flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => { setContentDirection(-1); setContentDisplayMode('row'); }}
-                    className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium font-albert rounded-md transition-colors ${
-                      isRowMode
-                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                    }`}
-                  >
-                    <List className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    Row
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setContentDirection(1);
-                      setContentDisplayMode('calendar');
-                      fetchOrganizationCourses();
-                    }}
-                    className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium font-albert rounded-md transition-colors ${
-                      isCalendarMode
-                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                    }`}
-                  >
-                    <CalendarDays className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    Calendar
-                  </button>
-                </div>
-              </div>
-
               <ProgramScheduleEditor
                 program={selectedProgram!}
                 days={programDays}
@@ -2306,8 +2336,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             animate="animate"
             exit="exit"
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="flex flex-col lg:flex-row gap-4 lg:gap-6"
+            className="flex flex-col gap-4"
           >
+            {/* Jump to Today - only show when viewing a client (1:1) or cohort (group), not template */}
+            {((selectedProgram?.type === 'individual' && clientViewContext.mode === 'client' && currentEnrollment?.currentDayIndex) ||
+              (selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort')) && (
+              <button
+                type="button"
+                onClick={handleJumpToToday}
+                className="self-start flex items-center gap-1.5 text-sm font-medium font-albert text-brand-accent hover:text-brand-accent/80 transition-colors"
+              >
+                <CalendarDays className="w-4 h-4" />
+                Jump to Today {currentEnrollment?.currentDayIndex ? `(Day ${currentEnrollment.currentDayIndex})` : ''}
+              </button>
+            )}
+
+            {/* Content area - Sidebar + Editor */}
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
             {/* Sidebar Navigation */}
             <ModuleWeeksSidebar
               program={selectedProgram as Program}
@@ -2640,90 +2685,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               onJumpToToday={handleJumpToToday}
             />
 
-            {/* Content column - controls above, then details box */}
+            {/* Content column */}
             <div className="flex-1 flex flex-col gap-3 sm:gap-4">
-              {/* Controls row: Client Selector + Row/Calendar toggle */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-                {/* Client Selector for 1:1 programs */}
-                {selectedProgram?.type === 'individual' ? (
-                  <ClientSelector
-                    enrollments={programEnrollments}
-                    value={clientViewContext}
-                    onChange={async (context) => {
-                      setClientViewContext(context);
-                      // If selecting a client for the first time, check if we need to initialize their weeks
-                      if (context.mode === 'client' && selectedProgram) {
-                        const existingWeeks = await fetch(
-                          `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
-                        ).then(r => r.ok ? r.json() : { clientWeeks: [] });
-
-                        if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
-                          // Auto-initialize client weeks from template
-                          await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
-                        }
-                        // Fetch client-specific data
-                        await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
-                        await fetchClientDays(selectedProgram.id, context.enrollmentId!);
-                      } else {
-                        setClientWeeks([]);
-                        setClientDays([]);
-                      }
-                    }}
-                    loading={loadingEnrollments}
-                    className="w-full sm:max-w-sm"
-                  />
-                ) : selectedProgram?.type === 'group' ? (
-                  <CohortSelector
-                    cohorts={programCohorts}
-                    value={cohortViewContext}
-                    onChange={(context) => {
-                      setCohortViewContext(context);
-                      if (context.mode === 'template') {
-                        setCohortWeekContent(null);
-                      }
-                      // Cohort content will be fetched when a week is selected
-                    }}
-                    onCreateCohort={() => handleOpenCohortModal()}
-                    loading={loadingDetails}
-                    className="w-full sm:max-w-sm"
-                  />
-                ) : (
-                  <div className="hidden sm:block" /> /* Spacer */
-                )}
-
-                {/* Row/Calendar Toggle */}
-                <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-0.5 sm:p-1 self-start sm:self-auto flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => { setContentDirection(-1); setContentDisplayMode('row'); }}
-                    className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium font-albert rounded-md transition-colors ${
-                      isRowMode
-                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                    }`}
-                  >
-                    <List className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    Row
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setContentDirection(1);
-                      setContentDisplayMode('calendar');
-                      fetchOrganizationCourses();
-                    }}
-                    className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium font-albert rounded-md transition-colors ${
-                      isCalendarMode
-                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                    }`}
-                  >
-                    <CalendarDays className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    Calendar
-                  </button>
-                </div>
-              </div>
-
               {/* Content Editor - conditionally render based on selection */}
               <div className="flex-1 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-3 sm:p-6">
                 {loadingDetails ? (
@@ -3252,6 +3215,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 })()
               )}
             </div>
+          </div>
           </div>
           </motion.div>
           )}
