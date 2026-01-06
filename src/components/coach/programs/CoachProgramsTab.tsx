@@ -990,7 +990,43 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     setLoadedEnrollmentId(null);
     setCohortViewContext({ mode: 'template' });
     setCohortWeekContent(null);
+    // Also reset sidebar selection to null - it will be set by the next useEffect once weeks load
+    setSidebarSelection(null);
   }, [selectedProgram?.id]);
+
+  // Set default sidebar selection when program weeks are loaded
+  // In template mode: select first week
+  // This runs after fetchProgramDetails populates programWeeks
+  useEffect(() => {
+    // Only set default if sidebar selection is null (fresh program load)
+    // And only for template mode
+    if (!sidebarSelection && programWeeks.length > 0 && clientViewContext.mode === 'template') {
+      // Find the first week (smallest weekNumber)
+      const firstWeek = [...programWeeks].sort((a, b) => a.weekNumber - b.weekNumber)[0];
+      if (firstWeek) {
+        setSidebarSelection({ type: 'week', id: firstWeek.id });
+        // Ensure week 1 is expanded
+        setExpandedWeeks(new Set([firstWeek.weekNumber]));
+      }
+    }
+  }, [programWeeks, sidebarSelection, clientViewContext.mode]);
+
+  // Jump to today when a client is selected (for 1:1 programs)
+  // Also jump to first week for cohorts in group programs
+  useEffect(() => {
+    if (selectedProgram?.type === 'individual' && clientViewContext.mode === 'client' && currentEnrollment?.currentDayIndex && currentEnrollment.currentDayIndex > 0) {
+      // Set sidebar selection to today's day
+      setSidebarSelection({ type: 'day', dayIndex: currentEnrollment.currentDayIndex });
+      setSelectedDayIndex(currentEnrollment.currentDayIndex);
+    } else if (selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort' && programWeeks.length > 0) {
+      // For cohorts, select first week
+      const firstWeek = [...programWeeks].sort((a, b) => a.weekNumber - b.weekNumber)[0];
+      if (firstWeek) {
+        setSidebarSelection({ type: 'week', id: firstWeek.id });
+        setExpandedWeeks(new Set([firstWeek.weekNumber]));
+      }
+    }
+  }, [clientViewContext.mode, cohortViewContext.mode, currentEnrollment?.currentDayIndex, selectedProgram?.type, programWeeks]);
 
   // Load day data when day index changes (use client days when in client mode)
   useEffect(() => {
