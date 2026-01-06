@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, ProgramOrientation, CallSummary, WeeklyTaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
-import { Trash2, Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Repeat, ArrowRight, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff } from 'lucide-react';
+import { Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Repeat, ArrowRight, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { SyncToClientsDialog } from './SyncToClientsDialog';
@@ -404,117 +403,105 @@ export function WeekEditor({
         </div>
       )}
 
-      {/* Week Name */}
-      <div>
-        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-          Week Name
-        </label>
-        <input
-          type="text"
-          value={formData.name}
-          onChange={(e) => { setFormData({ ...formData, name: e.target.value }); trackFieldEdit('syncName'); }}
-          placeholder={`Week ${week.weekNumber}`}
-          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-        />
-      </div>
-
-      {/* Week Theme */}
-      <div>
-        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-          Theme
-        </label>
-        <input
-          type="text"
-          value={formData.theme}
-          onChange={(e) => { setFormData({ ...formData, theme: e.target.value }); trackFieldEdit('syncTheme'); }}
-          placeholder="e.g., Building Foundations"
-          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-        />
-      </div>
-
-      {/* Client-Visible Content Card */}
-      <Card className="border-[#e1ddd8] dark:border-[#262b35] bg-transparent shadow-none">
-        <CardHeader className="pb-2 px-0 pt-0">
-          <CardTitle className="text-sm font-semibold text-[#5f5a55] dark:text-[#b2b6c2] font-albert flex items-center gap-2">
-            <Target className="w-4 h-4" />
-            What Clients See
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-0 space-y-6">
-          {/* Task Distribution Mode (Weekly mode only) */}
-          {orientation === 'weekly' && (
-            <div>
-              <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                <Repeat className="w-4 h-4 inline mr-1.5" />
-                Task Distribution
-              </label>
-          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-            How should this week&apos;s tasks be distributed to days?
-          </p>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, distribution: 'repeat-daily' })}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
-                formData.distribution === 'repeat-daily'
-                  ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
-                  : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
-              }`}
-            >
-              <Repeat className="w-4 h-4" />
-              <div className="text-left">
-                <p className="font-medium font-albert">Repeat Daily</p>
-                <p className="text-xs opacity-70">All tasks every day</p>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, distribution: 'spread' })}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
-                formData.distribution === 'spread'
-                  ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
-                  : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
-              }`}
-            >
-              <ArrowRight className="w-4 h-4" />
-              <div className="text-left">
-                <p className="font-medium font-albert">Spread</p>
-                <p className="text-xs opacity-70">Distribute across week</p>
-              </div>
-            </button>
-          </div>
+      {/* Basic Info Section */}
+      <CollapsibleSection
+        title="Basic Info"
+        icon={Info}
+        defaultOpen={true}
+        accentBorder
+      >
+        {/* Week Name */}
+        <div>
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Week Name
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => { setFormData({ ...formData, name: e.target.value }); trackFieldEdit('syncName'); }}
+            placeholder={`Week ${week.weekNumber}`}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+          />
         </div>
-      )}
 
-      {/* Week Description */}
-      <div>
-        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-          Description
-        </label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => { setFormData({ ...formData, description: e.target.value }); trackFieldEdit('syncName'); }}
-          placeholder="What clients will accomplish this week..."
-          rows={2}
-          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-        />
-      </div>
+        {/* Week Theme */}
+        <div>
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Theme
+          </label>
+          <input
+            type="text"
+            value={formData.theme}
+            onChange={(e) => { setFormData({ ...formData, theme: e.target.value }); trackFieldEdit('syncTheme'); }}
+            placeholder="e.g., Building Foundations"
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+          />
+        </div>
 
-      {/* Weekly Content (only in weekly orientation) */}
+        {/* Week Description */}
+        <div>
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => { setFormData({ ...formData, description: e.target.value }); trackFieldEdit('syncName'); }}
+            placeholder="What clients will accomplish this week..."
+            rows={2}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* Tasks & Focus Section (Weekly mode only) */}
       {orientation === 'weekly' && (
-        <>
-          {/* Weekly Prompt */}
+        <CollapsibleSection
+          title="Tasks & Focus"
+          icon={ListTodo}
+          defaultOpen={true}
+          accentBorder
+        >
+          {/* Task Distribution Mode */}
           <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-              Weekly Prompt
+            <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+              <Repeat className="w-4 h-4 inline mr-1.5" />
+              Task Distribution
             </label>
-            <textarea
-              value={formData.weeklyPrompt}
-              onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); trackFieldEdit('syncPrompt'); }}
-              placeholder="Motivational message or guidance for this week..."
-              rows={2}
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-            />
+            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+              How should this week&apos;s tasks be distributed to days?
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, distribution: 'repeat-daily' })}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
+                  formData.distribution === 'repeat-daily'
+                    ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
+                }`}
+              >
+                <Repeat className="w-4 h-4" />
+                <div className="text-left">
+                  <p className="font-medium font-albert">Repeat Daily</p>
+                  <p className="text-xs opacity-70">All tasks every day</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, distribution: 'spread' })}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
+                  formData.distribution === 'spread'
+                    ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
+                }`}
+              >
+                <ArrowRight className="w-4 h-4" />
+                <div className="text-left">
+                  <p className="font-medium font-albert">Spread</p>
+                  <p className="text-xs opacity-70">Distribute across week</p>
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* Weekly Tasks */}
@@ -566,107 +553,177 @@ export function WeekEditor({
               </Button>
             </div>
           </div>
-        </>
+
+          {/* Current Focus (max 3) */}
+          <div>
+            <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+              <Target className="w-4 h-4 inline mr-1.5" />
+              Current Focus <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
+            </label>
+            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+              Key priorities shown to the client for this week
+            </p>
+            <div className="space-y-2 mb-3">
+              {formData.currentFocus.map((focus, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                >
+                  <span className="w-2 h-2 rounded-full bg-brand-accent" />
+                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    {focus}
+                  </span>
+                  <button
+                    onClick={() => removeFocus(index)}
+                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            {formData.currentFocus.length < 3 && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newFocus}
+                  onChange={(e) => setNewFocus(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addFocus()}
+                  placeholder="Add focus area..."
+                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+                />
+                <Button onClick={addFocus} variant="outline" size="sm">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </CollapsibleSection>
       )}
 
-      {/* Current Focus (max 3) */}
-      <div>
-        <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-          <Target className="w-4 h-4 inline mr-1.5" />
-          Current Focus <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
-        </label>
-        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-          Key priorities shown to the client for this week
-        </p>
-        <div className="space-y-2 mb-3">
-          {formData.currentFocus.map((focus, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-            >
-              <span className="w-2 h-2 rounded-full bg-brand-accent" />
-              <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                {focus}
-              </span>
-              <button
-                onClick={() => removeFocus(index)}
-                className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-        {formData.currentFocus.length < 3 && (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newFocus}
-              onChange={(e) => setNewFocus(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addFocus()}
-              placeholder="Add focus area..."
-              className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+      {/* Client Notes Section */}
+      <CollapsibleSection
+        title="Client Notes"
+        icon={ClipboardList}
+        defaultOpen={true}
+        accentBorder
+      >
+        {/* Weekly Prompt (only in weekly orientation) */}
+        {orientation === 'weekly' && (
+          <div>
+            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+              Weekly Prompt
+            </label>
+            <textarea
+              value={formData.weeklyPrompt}
+              onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); trackFieldEdit('syncPrompt'); }}
+              placeholder="Motivational message or guidance for this week..."
+              rows={2}
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
             />
-            <Button onClick={addFocus} variant="outline" size="sm">
-              <Plus className="w-4 h-4" />
-            </Button>
           </div>
         )}
-      </div>
 
-      {/* Notes (max 3) */}
-      <div>
-        <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-          <FileText className="w-4 h-4 inline mr-1.5" />
-          Notes <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
-        </label>
-        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-          Reminders or context for the client
-        </p>
-        <div className="space-y-2 mb-3">
-          {formData.notes.map((note, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-            >
-              <span className="w-2 h-2 rounded-full bg-[#a7a39e]" />
-              <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                {note}
-              </span>
-              <button
-                onClick={() => removeNote(index)}
-                className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        {/* Current Focus (max 3) - for daily orientation */}
+        {orientation !== 'weekly' && (
+          <div>
+            <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+              <Target className="w-4 h-4 inline mr-1.5" />
+              Current Focus <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
+            </label>
+            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+              Key priorities shown to the client for this week
+            </p>
+            <div className="space-y-2 mb-3">
+              {formData.currentFocus.map((focus, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                >
+                  <span className="w-2 h-2 rounded-full bg-brand-accent" />
+                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    {focus}
+                  </span>
+                  <button
+                    onClick={() => removeFocus(index)}
+                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        {formData.notes.length < 3 && (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newNote}
-              onChange={(e) => setNewNote(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addNote()}
-              placeholder="Add note..."
-              className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-            />
-            <Button onClick={addNote} variant="outline" size="sm">
-              <Plus className="w-4 h-4" />
-            </Button>
+            {formData.currentFocus.length < 3 && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newFocus}
+                  onChange={(e) => setNewFocus(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addFocus()}
+                  placeholder="Add focus area..."
+                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+                />
+                <Button onClick={addFocus} variant="outline" size="sm">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
         )}
-      </div>
-        </CardContent>
-      </Card>
+
+        {/* Notes (max 3) */}
+        <div>
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <FileText className="w-4 h-4 inline mr-1.5" />
+            Notes <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Reminders or context for the client
+          </p>
+          <div className="space-y-2 mb-3">
+            {formData.notes.map((note, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+              >
+                <span className="w-2 h-2 rounded-full bg-[#a7a39e]" />
+                <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  {note}
+                </span>
+                <button
+                  onClick={() => removeNote(index)}
+                  className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          {formData.notes.length < 3 && (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addNote()}
+                placeholder="Add note..."
+                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+              />
+              <Button onClick={addNote} variant="outline" size="sm">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </CollapsibleSection>
 
       {/* Coach Private Section */}
       <CollapsibleSection
         title="Coach Private"
         icon={EyeOff}
         description="Not visible to clients"
-        defaultOpen={true}
+        defaultOpen={false}
+        accentBorder
       >
         {/* Coach's Manual Notes */}
         <div>
@@ -900,6 +957,7 @@ export function WeekEditor({
         title="Days in this Week"
         icon={Calendar}
         defaultOpen={false}
+        accentBorder
       >
         <div className="grid grid-cols-2 gap-2">
           {Array.from({ length: week.endDayIndex - week.startDayIndex + 1 }, (_, i) => {

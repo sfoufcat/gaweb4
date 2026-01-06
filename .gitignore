@@ -48,3 +48,4 @@ next-env.d.ts
 /.clerk/
 public/manifesting-audio.webm
 firebase-debug.log
+.taskmaster/docs/prd.txt
