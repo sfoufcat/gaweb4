@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { ProgramModule, ProgramWeek } from '@/types';
-import { Trash2, Save, X, Calendar, AlertTriangle } from 'lucide-react';
+import { Trash2, Save, X, Calendar, AlertTriangle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ModuleEditorProps {
@@ -11,6 +11,7 @@ interface ModuleEditorProps {
   onSave: (updates: Partial<ProgramModule>) => Promise<void>;
   onDelete?: () => Promise<void>;
   isSaving?: boolean;
+  readOnly?: boolean;
 }
 
 /**
@@ -23,6 +24,7 @@ export function ModuleEditor({
   onSave,
   onDelete,
   isSaving = false,
+  readOnly = false,
 }: ModuleEditorProps) {
   const [formData, setFormData] = useState({
     name: module.name,
@@ -81,32 +83,44 @@ export function ModuleEditor({
 
   return (
     <div className="space-y-6">
+      {/* Read-only info banner */}
+      {readOnly && (
+        <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-700 dark:text-blue-300 font-albert">
+            Module settings are managed at the template level. Switch to template view to edit.
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
           Module {module.order}
         </h3>
-        <div className="flex items-center gap-2">
-          {hasChanges && (
-            <Button
-              onClick={handleSave}
-              disabled={isSaving || !formData.name.trim()}
-              className="flex items-center gap-1.5"
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Saving...' : 'Save'}
-            </Button>
-          )}
-          {onDelete && (
-            <Button
-              variant="ghost"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
+        {!readOnly && (
+          <div className="flex items-center gap-2">
+            {hasChanges && (
+              <Button
+                onClick={handleSave}
+                disabled={isSaving || !formData.name.trim()}
+                className="flex items-center gap-1.5"
+              >
+                <Save className="w-4 h-4" />
+                {isSaving ? 'Saving...' : 'Save'}
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="ghost"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Module Name */}
@@ -119,7 +133,8 @@ export function ModuleEditor({
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           placeholder="e.g., Foundation Phase"
-          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+          disabled={readOnly}
+          className={`w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
         />
       </div>
 
@@ -133,7 +148,8 @@ export function ModuleEditor({
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder="Internal notes about this module..."
           rows={3}
-          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+          disabled={readOnly}
+          className={`w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
         />
       </div>
 
@@ -156,7 +172,8 @@ export function ModuleEditor({
             value={formData.previewTitle}
             onChange={(e) => setFormData({ ...formData, previewTitle: e.target.value })}
             placeholder={formData.name || 'Module title...'}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+            disabled={readOnly}
+            className={`w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
           />
         </div>
 
@@ -170,7 +187,8 @@ export function ModuleEditor({
             onChange={(e) => setFormData({ ...formData, previewDescription: e.target.value })}
             placeholder="What clients will learn in this module..."
             rows={2}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+            disabled={readOnly}
+            className={`w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
           />
         </div>
       </div>

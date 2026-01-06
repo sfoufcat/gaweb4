@@ -197,6 +197,10 @@ export function ModuleWeeksSidebar({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreatingWeeks, setIsCreatingWeeks] = useState(false);
   const [mounted, setMounted] = useState(false);
+  
+  // Local state to track week order during drag operations
+  // This prevents visual "snap back" during async reorder operations
+  const [localWeekOrder, setLocalWeekOrder] = useState<Map<string, CalculatedWeek[]>>(new Map());
 
   React.useEffect(() => {
     setMounted(true);
@@ -334,6 +338,13 @@ export function ModuleWeeksSidebar({
   }, [onModulesReorder]);
 
   const handleWeeksReorder = useCallback(async (moduleId: string, reorderedWeeks: CalculatedWeek[]) => {
+    // IMMEDIATELY update local state to prevent visual "snap back" during async operations
+    setLocalWeekOrder(prev => {
+      const next = new Map(prev);
+      next.set(moduleId, reorderedWeeks);
+      return next;
+    });
+
     // Find weeks without stored IDs
     const missingWeeks = reorderedWeeks.filter(w => !w.storedWeekId);
 
@@ -344,6 +355,12 @@ export function ModuleWeeksSidebar({
     if (missingWeeks.length > 0) {
       if (!onCreateMissingWeeks) {
         console.warn('[ModuleWeeksSidebar] Some weeks have not been saved yet and no create callback provided - cannot reorder');
+        // Clear local state since we can't proceed
+        setLocalWeekOrder(prev => {
+          const next = new Map(prev);
+          next.delete(moduleId);
+          return next;
+        });
         return;
       }
 
@@ -369,6 +386,12 @@ export function ModuleWeeksSidebar({
       } catch (err) {
         console.error('[ModuleWeeksSidebar] Failed to create missing weeks:', err);
         setIsCreatingWeeks(false);
+        // Clear local state on error
+        setLocalWeekOrder(prev => {
+          const next = new Map(prev);
+          next.delete(moduleId);
+          return next;
+        });
         return;
       }
       setIsCreatingWeeks(false);
@@ -378,6 +401,12 @@ export function ModuleWeeksSidebar({
     const validWeeks = weeksWithIds.filter(w => w.storedWeekId);
     if (validWeeks.length === 0) {
       console.warn('[ModuleWeeksSidebar] No valid weeks with IDs to reorder');
+      // Clear local state since we can't proceed
+      setLocalWeekOrder(prev => {
+        const next = new Map(prev);
+        next.delete(moduleId);
+        return next;
+      });
       return;
     }
 
@@ -387,7 +416,17 @@ export function ModuleWeeksSidebar({
       weekNumber: w.weekNum,
       moduleId: w.moduleId || moduleId,
     })) as ProgramWeek[];
-    await onWeeksReorder(moduleId, weekData);
+    
+    try {
+      await onWeeksReorder(moduleId, weekData);
+    } finally {
+      // Clear local state after sync completes - let props take over
+      setLocalWeekOrder(prev => {
+        const next = new Map(prev);
+        next.delete(moduleId);
+        return next;
+      });
+    }
   }, [onWeeksReorder, onCreateMissingWeeks]);
 
   const handleDeleteModuleClick = useCallback((module: ProgramModule, e: React.MouseEvent) => {
@@ -495,13 +534,22 @@ export function ModuleWeeksSidebar({
               }}
               className="flex-1 min-w-0 text-left"
             >
-              <p className={`font-medium truncate ${
-                isWeekSelected
-                  ? 'text-brand-accent'
-                  : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-              }`}>
-                {week.theme || `Week ${week.weekNum}`}
-              </p>
+              <AnimatePresence mode="wait">
+                <motion.p
+                  key={week.theme || week.weekNum}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className={`font-medium truncate ${
+                    isWeekSelected
+                      ? 'text-brand-accent'
+                      : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                  }`}
+                >
+                  {week.theme || `Week ${week.weekNum}`}
+                </motion.p>
+              </AnimatePresence>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
                 Days {week.startDay}–{week.endDay}
               </p>
@@ -589,7 +637,8 @@ export function ModuleWeeksSidebar({
   const renderModuleWithWeeks = (module: ProgramModule) => {
     const isModuleExpanded = expandedModules.has(module.id);
     const isModuleSelected = isSelected({ type: 'module', id: module.id, moduleIndex: module.order });
-    const moduleWeeks = weeksByModule.get(module.id) || [];
+    // Use local order if available (during drag), otherwise use computed order from props
+    const moduleWeeks = localWeekOrder.get(module.id) || weeksByModule.get(module.id) || [];
     const weekCount = moduleWeeks.length;
 
     return (
@@ -723,7 +772,8 @@ export function ModuleWeeksSidebar({
       </div>
 
       {/* Modules & Weeks Tree */}
-      <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1 pb-4">
+      <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+        <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto p-4">
         {sortedModules.length === 0 ? (
           // No modules yet - prompt to add one (only in template mode)
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6 text-center">

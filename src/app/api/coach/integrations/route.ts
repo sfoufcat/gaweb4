@@ -48,6 +48,11 @@ export async function GET() {
     // Get which providers are configured (have OAuth credentials)
     const configured = getConfiguredIntegrations();
 
+    // Debug logging
+    console.log('[INTEGRATIONS] orgId:', organizationId);
+    console.log('[INTEGRATIONS] found:', integrations.map(i => ({ provider: i.provider, status: i.status })));
+    console.log('[INTEGRATIONS] configured:', configured);
+
     return NextResponse.json({
       integrations,
       available,

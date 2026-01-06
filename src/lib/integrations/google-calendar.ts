@@ -142,6 +142,37 @@ async function getValidAccessToken(
   return null;
 }
 
+/**
+ * Attempt to refresh tokens for a Google Calendar integration
+ * Returns true if refresh was successful or not needed, false if refresh failed
+ */
+export async function tryRefreshGoogleCalendarTokens(
+  orgId: string,
+  integrationId: string,
+  refreshToken: string | undefined,
+  expiresAt: Date | string | undefined
+): Promise<boolean> {
+  // Check if refresh is needed
+  if (expiresAt) {
+    const expiry = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
+    const now = new Date();
+    const fiveMinutes = 5 * 60 * 1000;
+
+    if (expiry.getTime() - now.getTime() > fiveMinutes) {
+      // Token is still valid
+      return true;
+    }
+  }
+
+  // Token needs refresh
+  if (refreshToken) {
+    const newToken = await refreshGoogleTokens(orgId, integrationId, refreshToken);
+    return newToken !== null;
+  }
+
+  return false;
+}
+
 // =============================================================================
 // CALENDAR API OPERATIONS
 // =============================================================================

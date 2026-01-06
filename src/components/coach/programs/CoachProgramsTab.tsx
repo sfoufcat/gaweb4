@@ -15,7 +15,7 @@ import type { DiscoverCourse } from '@/types/discover';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, List, CalendarDays } from 'lucide-react';
 import { ScheduleCallModal } from '@/components/scheduling';
 import { ClientDetailSlideOver } from '@/components/coach';
 import { AIHelperModal } from '@/components/ai';
@@ -104,8 +104,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     subdomain: string | null;
   } | null>(null);
   
-  // View mode: 'list' | 'days' | 'schedule' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'
-  const [viewMode, setViewMode] = useState<'list' | 'days' | 'schedule' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'>('list');
+  // View mode: 'list' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'
+  const [viewMode, setViewMode] = useState<'list' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'>('list');
+  
+  // Content display mode: 'row' (sidebar + editor) | 'calendar' (full-width calendar)
+  const [contentDisplayMode, setContentDisplayMode] = useState<'row' | 'calendar'>('row');
   
   // Enrollments state
   const [programEnrollments, setProgramEnrollments] = useState<EnrollmentWithUser[]>([]);
@@ -1776,20 +1779,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 >
                   Content
                 </button>
-                <button
-                  onClick={() => {
-                    setViewMode('schedule');
-                    fetchOrganizationCourses();
-                  }}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert flex items-center gap-1.5 transition-all ${
-                    viewMode === 'schedule'
-                      ? 'bg-brand-accent text-white shadow-sm'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
-                  }`}
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  Schedule
-                </button>
+
                 {selectedProgram?.type === 'group' && (
                   <button
                     onClick={() => setViewMode('cohorts')}
@@ -2011,7 +2001,106 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             )}
           </div>
         ) : viewMode === 'days' ? (
-          // Day Editor with ModuleWeeksSidebar
+          // Content View - Row (sidebar + editor) or Calendar (full-width)
+          contentDisplayMode === 'calendar' ? (
+            // Calendar View - Full width, no sidebar
+            <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6">
+              {/* Controls row at top of calendar */}
+              <div className="flex items-center justify-between gap-4 mb-6">
+                {/* Client Selector for 1:1 programs */}
+                {selectedProgram?.type === 'individual' ? (
+                  <ClientSelector
+                    enrollments={programEnrollments}
+                    value={clientViewContext}
+                    onChange={async (context) => {
+                      setClientViewContext(context);
+                      if (context.mode === 'client' && selectedProgram) {
+                        const existingWeeks = await fetch(
+                          `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
+                        ).then(r => r.ok ? r.json() : { clientWeeks: [] });
+                        if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
+                          await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
+                        }
+                        await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
+                        await fetchClientDays(selectedProgram.id, context.enrollmentId!);
+                      } else {
+                        setClientWeeks([]);
+                        setClientDays([]);
+                      }
+                    }}
+                    loading={loadingEnrollments}
+                    className="w-full max-w-sm"
+                  />
+                ) : (
+                  <div /> 
+                )}
+
+                {/* Row/Calendar Toggle */}
+                <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-1">
+                  <button
+                    type="button"
+                    onClick={() => setContentDisplayMode('row')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                      contentDisplayMode === 'row'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                    }`}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    Row
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setContentDisplayMode('calendar');
+                      fetchOrganizationCourses();
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                      contentDisplayMode === 'calendar'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                    }`}
+                  >
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    Calendar
+                  </button>
+                </div>
+              </div>
+
+              <ProgramScheduleEditor
+                program={selectedProgram!}
+                days={programDays}
+                courses={organizationCourses}
+                modules={programModules}
+                weeks={programWeeks}
+                orientation={selectedProgram?.orientation || 'weekly'}
+                onOrientationChange={async (newOrientation) => {
+                  if (!selectedProgram) return;
+                  try {
+                    await fetch(`${apiBasePath}/${selectedProgram.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ orientation: newOrientation }),
+                    });
+                    setSelectedProgram({ ...selectedProgram, orientation: newOrientation });
+                  } catch (err) {
+                    console.error('Error updating orientation:', err);
+                  }
+                }}
+                onDayClick={(dayIndex) => {
+                  setSelectedDayIndex(dayIndex);
+                  setSidebarSelection({ type: 'day', dayIndex });
+                  setContentDisplayMode('row');
+                }}
+                onAddCall={(dayIndex) => {
+                  setSelectedDayIndex(dayIndex);
+                  setSidebarSelection({ type: 'day', dayIndex });
+                  setContentDisplayMode('row');
+                }}
+              />
+            </div>
+          ) : (
+          // Row View - Sidebar + Editor
           <div className="flex gap-6">
             {/* Sidebar Navigation */}
             <ModuleWeeksSidebar
@@ -2411,37 +2500,73 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               }}
             />
 
-            {/* Content column - ClientSelector above, then details box */}
+            {/* Content column - controls above, then details box */}
             <div className="flex-1 flex flex-col gap-4">
-              {/* Client Selector for 1:1 programs - above details section */}
-              {selectedProgram?.type === 'individual' && (
-                <ClientSelector
-                  enrollments={programEnrollments}
-                  value={clientViewContext}
-                  onChange={async (context) => {
-                    setClientViewContext(context);
-                    // If selecting a client for the first time, check if we need to initialize their weeks
-                    if (context.mode === 'client' && selectedProgram) {
-                      const existingWeeks = await fetch(
-                        `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
-                      ).then(r => r.ok ? r.json() : { clientWeeks: [] });
+              {/* Controls row: Client Selector + Row/Calendar toggle */}
+              <div className="flex items-center justify-between gap-4">
+                {/* Client Selector for 1:1 programs */}
+                {selectedProgram?.type === 'individual' ? (
+                  <ClientSelector
+                    enrollments={programEnrollments}
+                    value={clientViewContext}
+                    onChange={async (context) => {
+                      setClientViewContext(context);
+                      // If selecting a client for the first time, check if we need to initialize their weeks
+                      if (context.mode === 'client' && selectedProgram) {
+                        const existingWeeks = await fetch(
+                          `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
+                        ).then(r => r.ok ? r.json() : { clientWeeks: [] });
 
-                      if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
-                        // Auto-initialize client weeks from template
-                        await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
+                        if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
+                          // Auto-initialize client weeks from template
+                          await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
+                        }
+                        // Fetch client-specific data
+                        await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
+                        await fetchClientDays(selectedProgram.id, context.enrollmentId!);
+                      } else {
+                        setClientWeeks([]);
+                        setClientDays([]);
                       }
-                      // Fetch client-specific data
-                      await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
-                      await fetchClientDays(selectedProgram.id, context.enrollmentId!);
-                    } else {
-                      setClientWeeks([]);
-                      setClientDays([]);
-                    }
-                  }}
-                  loading={loadingEnrollments}
-                  className="w-full max-w-sm"
-                />
-              )}
+                    }}
+                    loading={loadingEnrollments}
+                    className="w-full max-w-sm"
+                  />
+                ) : (
+                  <div /> /* Spacer for group programs */
+                )}
+
+                {/* Row/Calendar Toggle */}
+                <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-1">
+                  <button
+                    type="button"
+                    onClick={() => setContentDisplayMode('row')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                      contentDisplayMode === 'row'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                    }`}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    Row
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setContentDisplayMode('calendar');
+                      fetchOrganizationCourses();
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                      contentDisplayMode === 'calendar'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                    }`}
+                  >
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    Calendar
+                  </button>
+                </div>
+              </div>
 
               {/* Content Editor - conditionally render based on selection */}
               <div className="flex-1 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
@@ -2462,10 +2587,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 (() => {
                   const selectedModule = programModules.find(m => m.id === sidebarSelection.id);
                   if (!selectedModule) return <p>Module not found</p>;
+                  const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
                   return (
                     <ModuleEditor
                       module={selectedModule}
                       weeks={programWeeks.filter(w => w.moduleId === selectedModule.id)}
+                      readOnly={isClientMode}
                       onSave={async (updates) => {
                         try {
                           const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/modules/${selectedModule.id}`, {
@@ -2953,26 +3080,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             </div>
           </div>
           </div>
-        ) : viewMode === 'schedule' ? (
-          // Schedule View
-          <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6">
-            <ProgramScheduleEditor
-              program={selectedProgram!}
-              days={programDays}
-              courses={organizationCourses}
-              onDayClick={(dayIndex) => {
-                setSelectedDayIndex(dayIndex);
-                setSidebarSelection({ type: 'day', dayIndex });
-                setViewMode('days');
-              }}
-              onAddCall={(dayIndex) => {
-                // Navigate to day editor (call scheduling can be done from content view)
-                setSelectedDayIndex(dayIndex);
-                setSidebarSelection({ type: 'day', dayIndex });
-                setViewMode('days');
-              }}
-            />
-          </div>
+          )
         ) : viewMode === 'cohorts' ? (
           // Cohorts View (Group programs only)
           <div>

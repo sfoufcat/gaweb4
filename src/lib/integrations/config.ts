@@ -14,7 +14,13 @@ export function getConfiguredIntegrations(): Record<string, boolean> {
     // OAuth-based integrations - require platform credentials
     google_calendar: !!(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET),
     google_sheets: !!(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET),
-    outlook_calendar: !!(process.env.MICROSOFT_OAUTH_CLIENT_ID && process.env.MICROSOFT_OAUTH_CLIENT_SECRET),
+    // Support multiple possible env var names for Microsoft OAuth
+    outlook_calendar: !!(
+      (process.env.MICROSOFT_OAUTH_CLIENT_ID && process.env.MICROSOFT_OAUTH_CLIENT_SECRET) ||
+      (process.env.MS_OAUTH_CLIENT_ID && process.env.MS_OAUTH_CLIENT_SECRET) ||
+      (process.env.AZURE_AD_CLIENT_ID && process.env.AZURE_AD_CLIENT_SECRET) ||
+      (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET)
+    ),
     notion: !!(process.env.NOTION_CLIENT_ID && process.env.NOTION_CLIENT_SECRET),
     airtable: !!(process.env.AIRTABLE_CLIENT_ID && process.env.AIRTABLE_CLIENT_SECRET),
     todoist: !!(process.env.TODOIST_CLIENT_ID && process.env.TODOIST_CLIENT_SECRET),
