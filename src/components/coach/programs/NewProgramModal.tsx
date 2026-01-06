@@ -1,15 +1,66 @@
 'use client';
 
-import React, { useState, Fragment } from 'react';
+import React, { useState, Fragment, useCallback } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LayoutTemplate, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Folder } from 'lucide-react';
-import { TemplateGallery } from './TemplateGallery';
-import { TemplatePreviewModal } from './TemplatePreviewModal';
-import { TemplateCustomizeForm } from './TemplateCustomizeForm';
-import type { ProgramTemplate, TemplateDay } from '@/types';
+import {
+  X,
+  ArrowRight,
+  ArrowLeft,
+  User,
+  Users,
+  Calendar,
+  Layers,
+  Globe,
+  Lock,
+  DollarSign,
+  FileEdit,
+  Rocket,
+  Upload,
+  Loader2
+} from 'lucide-react';
+import {
+  Drawer,
+  DrawerContent,
+} from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { Switch } from '@/components/ui/switch';
 
-export type NewProgramView = 'choice' | 'gallery' | 'preview' | 'customize' | 'scratch-config';
+// Wizard step types
+type WizardStep = 'type' | 'structure' | 'details' | 'settings';
+
+// Wizard data collected across steps
+interface ProgramWizardData {
+  // Step 1
+  type: 'individual' | 'group';
+  // Step 2
+  durationWeeks: number;
+  numModules: number;
+  includeWeekends: boolean;
+  // Step 3
+  name: string;
+  description: string;
+  coverImage?: string;
+  // Step 4
+  visibility: 'public' | 'private';
+  pricing: 'free' | 'paid';
+  price: number;
+  status: 'active' | 'draft';
+}
+
+const DEFAULT_WIZARD_DATA: ProgramWizardData = {
+  type: 'individual',
+  durationWeeks: 12,
+  numModules: 4,
+  includeWeekends: false,
+  name: '',
+  description: '',
+  coverImage: undefined,
+  visibility: 'private',
+  pricing: 'free',
+  price: 297,
+  status: 'draft',
+};
 
 interface NewProgramModalProps {
   isOpen: boolean;
@@ -20,64 +71,307 @@ interface NewProgramModalProps {
   onDemoCreate?: (program: { name: string; type: 'group' | 'individual'; duration: number }) => void;
 }
 
-export function NewProgramModal({ 
-  isOpen, 
-  onClose, 
+export function NewProgramModal({
+  isOpen,
+  onClose,
   onCreateFromScratch,
   onProgramCreated,
   demoMode = false,
   onDemoCreate,
 }: NewProgramModalProps) {
-  const [view, setView] = useState<NewProgramView>('choice');
-  const [selectedTemplate, setSelectedTemplate] = useState<ProgramTemplate | null>(null);
-  const [templateDays, setTemplateDays] = useState<TemplateDay[]>([]);
-  const [templateStats, setTemplateStats] = useState<{
-    totalDays: number;
-    totalTasks: number;
-    totalHabits: number;
-  } | null>(null);
-  const [numModules, setNumModules] = useState(1);
+  const [step, setStep] = useState<WizardStep>('type');
+  const [wizardData, setWizardData] = useState<ProgramWizardData>(DEFAULT_WIZARD_DATA);
+  const [isCreating, setIsCreating] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const handleClose = () => {
     // Reset state on close
-    setView('choice');
-    setSelectedTemplate(null);
-    setTemplateDays([]);
-    setTemplateStats(null);
-    setNumModules(1);
+    setStep('type');
+    setWizardData(DEFAULT_WIZARD_DATA);
+    setIsCreating(false);
     onClose();
   };
 
-  const handleSelectTemplate = (template: ProgramTemplate) => {
-    setSelectedTemplate(template);
-    setView('preview');
+  const updateWizardData = useCallback((updates: Partial<ProgramWizardData>) => {
+    setWizardData(prev => ({ ...prev, ...updates }));
+  }, []);
+
+  const goToNextStep = () => {
+    const steps: WizardStep[] = ['type', 'structure', 'details', 'settings'];
+    const currentIndex = steps.indexOf(step);
+    if (currentIndex < steps.length - 1) {
+      setStep(steps[currentIndex + 1]);
+    }
   };
 
-  const handlePreviewLoaded = (days: TemplateDay[], stats: { totalDays: number; totalTasks: number; totalHabits: number }) => {
-    setTemplateDays(days);
-    setTemplateStats(stats);
+  const goToPreviousStep = () => {
+    const steps: WizardStep[] = ['type', 'structure', 'details', 'settings'];
+    const currentIndex = steps.indexOf(step);
+    if (currentIndex > 0) {
+      setStep(steps[currentIndex - 1]);
+    }
   };
 
-  const handleUseTemplate = () => {
-    setView('customize');
+  const handleCreateProgram = async () => {
+    if (demoMode && onDemoCreate) {
+      onDemoCreate({
+        name: wizardData.name,
+        type: wizardData.type,
+        duration: wizardData.durationWeeks,
+      });
+      handleClose();
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      // Create the program via API
+      const response = await fetch('/api/coach/programs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: wizardData.name,
+          description: wizardData.description,
+          type: wizardData.type,
+          durationWeeks: wizardData.durationWeeks,
+          numModules: wizardData.numModules,
+          includeWeekends: wizardData.includeWeekends,
+          coverImage: wizardData.coverImage,
+          visibility: wizardData.visibility,
+          price: wizardData.pricing === 'paid' ? wizardData.price : 0,
+          status: wizardData.status,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create program');
+      }
+
+      const data = await response.json();
+      handleClose();
+      onProgramCreated(data.id);
+    } catch (error) {
+      console.error('Error creating program:', error);
+      // Could show error toast here
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const handleBackToGallery = () => {
-    setSelectedTemplate(null);
-    setTemplateDays([]);
-    setTemplateStats(null);
-    setView('gallery');
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'program-cover');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      const data = await response.json();
+      updateWizardData({ coverImage: data.url });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
-  const handleProgramCreated = (programId: string) => {
-    handleClose();
-    onProgramCreated(programId);
+  // Get step index for progress indicator
+  const getStepIndex = () => {
+    const steps: WizardStep[] = ['type', 'structure', 'details', 'settings'];
+    return steps.indexOf(step);
   };
 
-  const handleFromScratch = () => {
-    handleClose();
-    onCreateFromScratch({ numModules });
+  // Validation for each step
+  const canProceed = () => {
+    switch (step) {
+      case 'type':
+        return true; // Type is always selected (has default)
+      case 'structure':
+        return wizardData.durationWeeks >= 1 && wizardData.numModules >= 1;
+      case 'details':
+        return wizardData.name.trim().length > 0;
+      case 'settings':
+        return wizardData.pricing === 'free' || wizardData.price > 0;
+      default:
+        return false;
+    }
   };
+
+  // Wizard content (shared between Dialog and Drawer)
+  const WizardContent = () => (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+        <div className="flex items-center gap-3">
+          {step !== 'type' && (
+            <button
+              onClick={goToPreviousStep}
+              className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          )}
+          <div>
+            <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
+              {step === 'type' && 'Create New Program'}
+              {step === 'structure' && 'Program Structure'}
+              {step === 'details' && 'Program Details'}
+              {step === 'settings' && 'Final Settings'}
+            </h2>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              {step === 'type' && 'Choose your program type'}
+              {step === 'structure' && 'Configure how your program is organized'}
+              {step === 'details' && 'Give your program a name and description'}
+              {step === 'settings' && 'Set visibility, pricing, and status'}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleClose}
+          className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <AnimatePresence mode="wait">
+          {step === 'type' && (
+            <motion.div
+              key="type"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <TypeStep
+                value={wizardData.type}
+                onChange={(type) => {
+                  updateWizardData({ type });
+                  goToNextStep();
+                }}
+              />
+            </motion.div>
+          )}
+
+          {step === 'structure' && (
+            <motion.div
+              key="structure"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <StructureStep
+                data={wizardData}
+                onChange={updateWizardData}
+              />
+            </motion.div>
+          )}
+
+          {step === 'details' && (
+            <motion.div
+              key="details"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <DetailsStep
+                data={wizardData}
+                onChange={updateWizardData}
+                onImageUpload={handleImageUpload}
+                uploadingImage={uploadingImage}
+              />
+            </motion.div>
+          )}
+
+          {step === 'settings' && (
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <SettingsStep
+                data={wizardData}
+                onChange={updateWizardData}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Footer */}
+      <div className="px-6 py-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+        <div className="flex items-center justify-between">
+          {/* Progress Indicator */}
+          <div className="flex items-center gap-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  i <= getStepIndex()
+                    ? 'bg-brand-accent'
+                    : 'bg-[#e1ddd8] dark:bg-[#262b35]'
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Action Button */}
+          {step !== 'type' && (
+            <button
+              onClick={step === 'settings' ? handleCreateProgram : goToNextStep}
+              disabled={!canProceed() || isCreating}
+              className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating...
+                </>
+              ) : step === 'settings' ? (
+                <>
+                  Create Program
+                  <Rocket className="w-4 h-4" />
+                </>
+              ) : (
+                <>
+                  Continue
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render mobile drawer or desktop dialog
+  if (isMobile) {
+    return (
+      <Drawer open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+        <DrawerContent className="h-[90vh] max-h-[90vh]">
+          <WizardContent />
+        </DrawerContent>
+      </Drawer>
+    );
+  }
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -106,184 +400,8 @@ export function NewProgramModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={`w-full transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all ${
-                view === 'choice' ? 'max-w-2xl' : 'max-w-5xl'
-              }`}>
-                {/* Header - Only show for choice view */}
-                {view === 'choice' && (
-                  <div className="relative px-8 pt-8 pb-2">
-                    <button
-                      onClick={handleClose}
-                      className="absolute right-4 top-4 p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                    <Dialog.Title className="text-2xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
-                      Create New Program
-                    </Dialog.Title>
-                    <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-                      Choose how you want to start
-                    </p>
-                  </div>
-                )}
-
-                {/* Content */}
-                <AnimatePresence mode="wait">
-                  {view === 'choice' && (
-                    <motion.div
-                      key="choice"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="p-8"
-                    >
-                      <StartingPointSelector 
-                        onSelectTemplate={() => setView('gallery')}
-                        onSelectScratch={() => setView('scratch-config')}
-                      />
-                    </motion.div>
-                  )}
-
-                  {view === 'gallery' && (
-                    <motion.div
-                      key="gallery"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <TemplateGallery 
-                        onSelectTemplate={handleSelectTemplate}
-                        onBack={() => setView('choice')}
-                        onClose={handleClose}
-                      />
-                    </motion.div>
-                  )}
-
-                  {view === 'preview' && selectedTemplate && (
-                    <motion.div
-                      key="preview"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <TemplatePreviewModal 
-                        template={selectedTemplate}
-                        onUseTemplate={handleUseTemplate}
-                        onBack={handleBackToGallery}
-                        onClose={handleClose}
-                        onLoaded={handlePreviewLoaded}
-                      />
-                    </motion.div>
-                  )}
-
-                  {view === 'customize' && selectedTemplate && (
-                    <motion.div
-                      key="customize"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <TemplateCustomizeForm 
-                        template={selectedTemplate}
-                        templateStats={templateStats}
-                        onBack={() => setView('preview')}
-                        onClose={handleClose}
-                        onSuccess={handleProgramCreated}
-                      />
-                    </motion.div>
-                  )}
-
-                  {view === 'scratch-config' && (
-                    <motion.div
-                      key="scratch-config"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.2 }}
-                      className="p-8"
-                    >
-                      {/* Header */}
-                      <div className="flex items-center gap-4 mb-6">
-                        <button
-                          onClick={() => setView('choice')}
-                          className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-                        >
-                          <ArrowLeft className="w-5 h-5" />
-                        </button>
-                        <div>
-                          <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                            Program Structure
-                          </h2>
-                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                            Configure how your program is organized
-                          </p>
-                        </div>
-                        <button
-                          onClick={handleClose}
-                          className="ml-auto p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-
-                      {/* Module count selector */}
-                      <div className="bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl p-6 mb-6">
-                        <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-                            <Folder className="w-6 h-6 text-brand-accent" />
-                          </div>
-                          <div className="flex-1">
-                            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
-                              Number of Modules
-                            </label>
-                            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
-                              Modules help organize your program into logical sections. Weeks will be distributed evenly across modules.
-                            </p>
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => setNumModules(prev => Math.max(1, prev - 1))}
-                                disabled={numModules <= 1}
-                                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand-accent transition-colors"
-                              >
-                                −
-                              </button>
-                              <div className="w-16 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] flex items-center justify-center">
-                                <span className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{numModules}</span>
-                              </div>
-                              <button
-                                onClick={() => setNumModules(prev => Math.min(12, prev + 1))}
-                                disabled={numModules >= 12}
-                                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand-accent transition-colors"
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Info note */}
-                      <div className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-6">
-                        <p>💡 You can always add, remove, or reorganize modules later in the program editor.</p>
-                      </div>
-
-                      {/* Continue button */}
-                      <div className="flex justify-end">
-                        <button
-                          onClick={handleFromScratch}
-                          className="flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors"
-                        >
-                          Continue
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
+                <WizardContent />
               </Dialog.Panel>
             </Transition.Child>
           </div>
@@ -293,107 +411,415 @@ export function NewProgramModal({
   );
 }
 
-// Starting Point Selector - Two large cards
-interface StartingPointSelectorProps {
-  onSelectTemplate: () => void;
-  onSelectScratch: () => void;
+// ============================================================================
+// STEP 1: Type Selection
+// ============================================================================
+interface TypeStepProps {
+  value: 'individual' | 'group';
+  onChange: (type: 'individual' | 'group') => void;
 }
 
-function StartingPointSelector({ onSelectTemplate, onSelectScratch }: StartingPointSelectorProps) {
+function TypeStep({ value, onChange }: TypeStepProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* From Template Card */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* 1:1 Card */}
       <motion.button
-        onClick={onSelectTemplate}
-        className="group relative flex flex-col items-center text-center p-8 rounded-2xl border-2 border-[#e1ddd8] dark:border-[#262b35] bg-gradient-to-b from-white to-[#faf8f6] dark:from-[#1d222b] dark:to-[#171b22] hover:border-brand-accent dark:hover:border-brand-accent transition-all duration-300"
-        whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(160, 120, 85, 0.2)' }}
+        onClick={() => onChange('individual')}
+        className={`group relative flex flex-col items-center text-center p-6 rounded-2xl border-2 transition-all duration-300 ${
+          value === 'individual'
+            ? 'border-brand-accent bg-brand-accent/5'
+            : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+        }`}
+        whileHover={{ y: -2 }}
         whileTap={{ scale: 0.98 }}
       >
-        {/* Recommended Badge */}
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-brand-accent text-white text-xs font-medium">
-            <Sparkles className="w-3 h-3" />
-            Recommended
-          </span>
-        </div>
-
         {/* Icon */}
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 dark:from-[#b8896a]/20 dark:to-[#b8896a]/5 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
-          <LayoutTemplate className="w-8 h-8 text-brand-accent" />
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
+          value === 'individual'
+            ? 'bg-brand-accent/20'
+            : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+        }`}>
+          <User className={`w-7 h-7 ${value === 'individual' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
         </div>
 
         {/* Title */}
         <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-          Start from Template
+          1:1 Program
         </h3>
 
         {/* Description */}
-        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-5">
-          Choose from proven programs with pre-built content
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+          One-on-one coaching with individual clients
         </p>
 
-        {/* Benefits */}
-        <ul className="space-y-2 text-left w-full">
-          {[
-            'Full curriculum ready to customize',
-            'Tasks, habits, and daily prompts included',
-            'Landing page content pre-written',
-          ].map((benefit, i) => (
-            <li key={i} className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <span>{benefit}</span>
-            </li>
-          ))}
-        </ul>
-
-        {/* Arrow */}
-        <div className="absolute bottom-4 right-4 w-8 h-8 rounded-full bg-brand-accent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <ArrowRight className="w-4 h-4 text-white" />
-        </div>
+        {/* Selection indicator */}
+        {value === 'individual' && (
+          <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        )}
       </motion.button>
 
-      {/* From Scratch Card */}
+      {/* Group Card */}
       <motion.button
-        onClick={onSelectScratch}
-        className="group relative flex flex-col items-center text-center p-8 rounded-2xl border-2 border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-[#5f5a55] dark:hover:border-[#b2b6c2] transition-all duration-300"
-        whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(0, 0, 0, 0.1)' }}
+        onClick={() => onChange('group')}
+        className={`group relative flex flex-col items-center text-center p-6 rounded-2xl border-2 transition-all duration-300 ${
+          value === 'group'
+            ? 'border-brand-accent bg-brand-accent/5'
+            : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+        }`}
+        whileHover={{ y: -2 }}
         whileTap={{ scale: 0.98 }}
       >
         {/* Icon */}
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#5f5a55]/10 to-transparent dark:from-[#b2b6c2]/10 flex items-center justify-center mb-5 mt-5 group-hover:scale-110 transition-transform duration-300">
-          <Sparkles className="w-8 h-8 text-[#5f5a55] dark:text-[#b2b6c2]" />
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
+          value === 'group'
+            ? 'bg-brand-accent/20'
+            : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+        }`}>
+          <Users className={`w-7 h-7 ${value === 'group' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
         </div>
 
         {/* Title */}
         <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-          Build from Scratch
+          Group Program
         </h3>
 
         {/* Description */}
-        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-5">
-          Create your own custom program from the ground up
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+          Lead a cohort of clients together
         </p>
 
-        {/* Benefits */}
-        <ul className="space-y-2 text-left w-full">
-          {[
-            'Complete creative control',
-            'Build your unique methodology',
-            'Start with a blank canvas',
-          ].map((benefit, i) => (
-            <li key={i} className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-              <CheckCircle2 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] flex-shrink-0" />
-              <span>{benefit}</span>
-            </li>
-          ))}
-        </ul>
-
-        {/* Arrow */}
-        <div className="absolute bottom-4 right-4 w-8 h-8 rounded-full bg-[#5f5a55] dark:bg-[#b2b6c2] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <ArrowRight className="w-4 h-4 text-white dark:text-[#1a1a1a]" />
-        </div>
+        {/* Selection indicator */}
+        {value === 'group' && (
+          <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        )}
       </motion.button>
     </div>
   );
 }
 
+// ============================================================================
+// STEP 2: Structure
+// ============================================================================
+interface StructureStepProps {
+  data: ProgramWizardData;
+  onChange: (updates: Partial<ProgramWizardData>) => void;
+}
+
+function StructureStep({ data, onChange }: StructureStepProps) {
+  return (
+    <div className="space-y-6">
+      {/* Duration */}
+      <div className="bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl p-5">
+        <div className="flex items-start gap-4">
+          <div className="w-11 h-11 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+            <Calendar className="w-5 h-5 text-brand-accent" />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+              Duration (weeks)
+            </label>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
+              How long will your program run?
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => onChange({ durationWeeks: Math.max(1, data.durationWeeks - 1) })}
+                disabled={data.durationWeeks <= 1}
+                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand-accent transition-colors"
+              >
+                −
+              </button>
+              <div className="w-16 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] flex items-center justify-center">
+                <span className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{data.durationWeeks}</span>
+              </div>
+              <button
+                onClick={() => onChange({ durationWeeks: Math.min(52, data.durationWeeks + 1) })}
+                disabled={data.durationWeeks >= 52}
+                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand-accent transition-colors"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modules */}
+      <div className="bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl p-5">
+        <div className="flex items-start gap-4">
+          <div className="w-11 h-11 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+            <Layers className="w-5 h-5 text-brand-accent" />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+              Number of Modules
+            </label>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
+              Modules help organize your program into logical sections
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => onChange({ numModules: Math.max(1, data.numModules - 1) })}
+                disabled={data.numModules <= 1}
+                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand-accent transition-colors"
+              >
+                −
+              </button>
+              <div className="w-16 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] flex items-center justify-center">
+                <span className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{data.numModules}</span>
+              </div>
+              <button
+                onClick={() => onChange({ numModules: Math.min(12, data.numModules + 1) })}
+                disabled={data.numModules >= 12}
+                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand-accent transition-colors"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-3 ml-15">
+          💡 Weeks will be distributed evenly across modules
+        </p>
+      </div>
+
+      {/* Include Weekends */}
+      <div className="bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+              <Calendar className="w-5 h-5 text-brand-accent" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Include Weekends
+              </label>
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                {data.includeWeekends ? '7 days per week' : '5 days per week (Mon-Fri)'}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={data.includeWeekends}
+            onCheckedChange={(checked) => onChange({ includeWeekends: checked })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STEP 3: Details
+// ============================================================================
+interface DetailsStepProps {
+  data: ProgramWizardData;
+  onChange: (updates: Partial<ProgramWizardData>) => void;
+  onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  uploadingImage: boolean;
+}
+
+function DetailsStep({ data, onChange, onImageUpload, uploadingImage }: DetailsStepProps) {
+  return (
+    <div className="space-y-5">
+      {/* Program Name */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          Program Name <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={data.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder='e.g., "90-Day Transformation"'
+          className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
+        />
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          Description
+        </label>
+        <textarea
+          value={data.description}
+          onChange={(e) => onChange({ description: e.target.value })}
+          placeholder="Describe what clients will achieve in this program..."
+          rows={4}
+          className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors resize-none"
+        />
+      </div>
+
+      {/* Cover Image */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          Cover Image <span className="text-[#5f5a55] dark:text-[#b2b6c2] font-normal">(optional)</span>
+        </label>
+
+        {data.coverImage ? (
+          <div className="relative rounded-xl overflow-hidden border border-[#e1ddd8] dark:border-[#262b35]">
+            <img
+              src={data.coverImage}
+              alt="Cover preview"
+              className="w-full h-40 object-cover"
+            />
+            <button
+              onClick={() => onChange({ coverImage: undefined })}
+              className="absolute top-2 right-2 p-2 rounded-lg bg-black/50 text-white hover:bg-black/70 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <label className="flex flex-col items-center justify-center w-full h-40 rounded-xl border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#1d222b] cursor-pointer hover:border-brand-accent/50 transition-colors">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={onImageUpload}
+              className="hidden"
+            />
+            {uploadingImage ? (
+              <Loader2 className="w-8 h-8 text-brand-accent animate-spin" />
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center mb-3">
+                  <Upload className="w-6 h-6 text-brand-accent" />
+                </div>
+                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  Drop image here or click to upload
+                </p>
+              </>
+            )}
+          </label>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STEP 4: Settings
+// ============================================================================
+interface SettingsStepProps {
+  data: ProgramWizardData;
+  onChange: (updates: Partial<ProgramWizardData>) => void;
+}
+
+function SettingsStep({ data, onChange }: SettingsStepProps) {
+  return (
+    <div className="space-y-6">
+      {/* Visibility */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+          Visibility
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => onChange({ visibility: 'public' })}
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+              data.visibility === 'public'
+                ? 'border-brand-accent bg-brand-accent/5'
+                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+            }`}
+          >
+            <Globe className={`w-5 h-5 ${data.visibility === 'public' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+            <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">Public</span>
+          </button>
+          <button
+            onClick={() => onChange({ visibility: 'private' })}
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+              data.visibility === 'private'
+                ? 'border-brand-accent bg-brand-accent/5'
+                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+            }`}
+          >
+            <Lock className={`w-5 h-5 ${data.visibility === 'private' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+            <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">Private</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Pricing */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+          Pricing
+        </label>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <button
+            onClick={() => onChange({ pricing: 'free' })}
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+              data.pricing === 'free'
+                ? 'border-brand-accent bg-brand-accent/5'
+                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+            }`}
+          >
+            <span className={`text-lg font-semibold ${data.pricing === 'free' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`}>Free</span>
+          </button>
+          <button
+            onClick={() => onChange({ pricing: 'paid' })}
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+              data.pricing === 'paid'
+                ? 'border-brand-accent bg-brand-accent/5'
+                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+            }`}
+          >
+            <DollarSign className={`w-5 h-5 ${data.pricing === 'paid' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+            <span className={`font-semibold ${data.pricing === 'paid' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`}>Paid</span>
+          </button>
+        </div>
+
+        {/* Price Input */}
+        {data.pricing === 'paid' && (
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5f5a55] dark:text-[#b2b6c2] font-albert">$</span>
+            <input
+              type="number"
+              value={data.price}
+              onChange={(e) => onChange({ price: Math.max(0, parseInt(e.target.value) || 0) })}
+              className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Status */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+          Status
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => onChange({ status: 'active' })}
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+              data.status === 'active'
+                ? 'border-brand-accent bg-brand-accent/5'
+                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+            }`}
+          >
+            <Rocket className={`w-5 h-5 ${data.status === 'active' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+            <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">Active</span>
+          </button>
+          <button
+            onClick={() => onChange({ status: 'draft' })}
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+              data.status === 'draft'
+                ? 'border-brand-accent bg-brand-accent/5'
+                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+            }`}
+          >
+            <FileEdit className={`w-5 h-5 ${data.status === 'draft' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+            <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">Draft</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
