@@ -455,20 +455,8 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
                         </div>
                       )}
 
-                      {/* Settings button only for Google Calendar, delete for all */}
+                      {/* Delete button */}
                       <div className="flex items-center gap-1">
-                        {integration.provider === 'google_calendar' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingIntegration(integration);
-                              setIsSettingsModalOpen(true);
-                            }}
-                          >
-                            <Settings className="w-4 h-4" />
-                          </Button>
-                        )}
                         <Button
                           variant="ghost"
                           size="sm"
