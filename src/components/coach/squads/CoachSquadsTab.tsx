@@ -84,8 +84,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Squad filter
-  const [squadFilter, setSquadFilter] = useState<SquadFilterType>('all');
+  // Squad filter - default to standalone
+  const [squadFilter, setSquadFilter] = useState<SquadFilterType>('standalone');
   
   // View mode: 'list' | 'members' | 'squad-view' | 'landing' | 'referrals'
   const [viewMode, setViewMode] = useState<'list' | 'members' | 'squad-view' | 'landing' | 'referrals'>('list');
@@ -734,18 +734,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
         {/* Filter Tabs - Redesigned for clarity */}
         {displaySquads.length > 0 && (
           <div className="flex flex-col gap-3 mb-6">
-            {/* Primary Filter: Segmented Control */}
+            {/* Primary Filter: Segmented Control - Standalone first, All at end */}
             <div className="flex items-center gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
-              <button
-                onClick={() => setSquadFilter('all')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
-                  squadFilter === 'all'
-                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                }`}
-              >
-                All ({displaySquads.length})
-              </button>
               <button
                 onClick={() => setSquadFilter('standalone')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 ${
@@ -770,6 +760,16 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                   Program Communities ({programCount})
                 </button>
               )}
+              <button
+                onClick={() => setSquadFilter('all')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
+                  squadFilter === 'all'
+                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                }`}
+              >
+                All ({displaySquads.length})
+              </button>
             </div>
 
             {/* Secondary Filter: Program Type (shown when Program Communities is active) */}

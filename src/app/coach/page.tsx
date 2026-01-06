@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useOrganization as useClerkOrganization, useOrganizationList } from '@clerk/nextjs';
-import { motion, AnimatePresence } from 'framer-motion';
 import { isOrgCoach } from '@/lib/admin-utils-shared';
 import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -52,21 +51,6 @@ const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'a
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
 // Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
 const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'squad', 'programs', 'invitedBy', 'invitedAt', 'created', 'actions'];
-
-// Tab order for directional animations
-const COACH_TAB_ORDER: Record<CoachTab, number> = {
-  'clients': 0, 'programs': 1, 'squads': 2, 'discover': 3, 'funnels': 4, 'analytics': 5,
-  'checkins': 6, 'onboarding': 7, 'channels': 8, 'referrals': 9, 'discounts': 10,
-  'scheduling': 11, 'integrations': 12, 'customize': 13, 'plan': 14, 'support': 15,
-  'upgrade-forms': 16, 'coaching-forms': 17,
-};
-
-// Animation variants for tab transitions
-const tabSlideVariants = {
-  enter: (direction: number) => ({ x: direction > 0 ? 24 : -24, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (direction: number) => ({ x: direction < 0 ? 24 : -24, opacity: 0 }),
-};
 
 /**
  * Scheduling Tab Component
@@ -157,37 +141,33 @@ export default function CoachPage() {
   const tabFromUrl = searchParams.get('tab') as CoachTab | null;
   const initialTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'clients';
   const [activeTab, setActiveTab] = useState<CoachTab>(initialTab);
-  const [tabDirection, setTabDirection] = useState<1 | -1>(1);
-  const prevTabRef = useRef<CoachTab>(initialTab);
-  // Track if this is the first render - use ref to avoid re-renders
-  const isFirstRender = useRef(true);
 
-  // Handler for tab changes with direction tracking
+  // Handler for tab changes
   const handleTabChange = useCallback((newTab: CoachTab) => {
-    // Mark that user has interacted - enables animations
-    isFirstRender.current = false;
-    const prevOrder = COACH_TAB_ORDER[prevTabRef.current] ?? 0;
-    const newOrder = COACH_TAB_ORDER[newTab] ?? 0;
-    setTabDirection(newOrder > prevOrder ? 1 : -1);
-    prevTabRef.current = newTab;
     setActiveTab(newTab);
   }, []);
 
-  // Tabs horizontal scroll with mouse wheel
-  const tabsListRef = useRef<HTMLDivElement>(null);
+  // Tabs horizontal scroll with mouse wheel - use callback ref for guaranteed attachment
+  const tabsListRef = useRef<HTMLDivElement | null>(null);
+  const wheelListenerRef = useRef<((e: WheelEvent) => void) | null>(null);
 
-  // Use native event listener with { passive: false } to allow preventDefault
-  useEffect(() => {
-    const tabsList = tabsListRef.current;
-    if (!tabsList) return;
+  const setTabsListRef = useCallback((node: HTMLDivElement | null) => {
+    // Cleanup previous listener
+    if (tabsListRef.current && wheelListenerRef.current) {
+      tabsListRef.current.removeEventListener('wheel', wheelListenerRef.current);
+    }
 
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      tabsList.scrollLeft += e.deltaY;
-    };
+    tabsListRef.current = node;
 
-    tabsList.addEventListener('wheel', handleWheel, { passive: false });
-    return () => tabsList.removeEventListener('wheel', handleWheel);
+    // Attach new listener with { passive: false } to allow preventDefault
+    if (node) {
+      const handleWheel = (e: WheelEvent) => {
+        e.preventDefault();
+        node.scrollLeft += e.deltaY;
+      };
+      wheelListenerRef.current = handleWheel;
+      node.addEventListener('wheel', handleWheel, { passive: false });
+    }
   }, []);
 
   // Sliding highlight state for Vercel-style hover effect
@@ -617,7 +597,7 @@ export default function CoachPage() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as CoachTab)} className="w-full">
           <TabsList
-            ref={tabsListRef}
+            ref={setTabsListRef}
             onMouseLeave={handleTabsMouseLeave}
             className="relative mb-6 w-full flex-nowrap overflow-x-auto overflow-y-hidden justify-start gap-1 p-1.5 scrollbar-hide bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl"
           >
@@ -765,16 +745,6 @@ export default function CoachPage() {
             )}
           </TabsList>
 
-          <AnimatePresence mode="wait" custom={tabDirection} initial={false}>
-            <motion.div
-              key={activeTab}
-              custom={tabDirection}
-              variants={!isFirstRender.current ? tabSlideVariants : undefined}
-              initial={false}
-              animate={!isFirstRender.current ? "center" : undefined}
-              exit={!isFirstRender.current ? "exit" : undefined}
-              transition={!isFirstRender.current ? { duration: 0.18, ease: [0.25, 0.1, 0.25, 1] } : { duration: 0 }}
-            >
           {/* Clients Tab - Consolidated Users + Coaching Clients */}
           <TabsContent value="clients">
             {selectedClientId ? (
@@ -921,8 +891,6 @@ export default function CoachPage() {
           <TabsContent value="support">
             <CoachSupportTab />
           </TabsContent>
-            </motion.div>
-          </AnimatePresence>
         </Tabs>
       </div>
     </div>

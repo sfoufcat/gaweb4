@@ -300,6 +300,7 @@ export async function POST(request: NextRequest) {
         ? body.dailyFocusSlots
         : undefined,
       includeWeekends: body.includeWeekends !== false, // Default true
+      taskDistribution: body.taskDistribution === 'repeat-daily' ? 'repeat-daily' : 'spread', // Default spread
       isActive: body.isActive !== false,
       isPublished: body.isPublished === true,
       // Subscription settings

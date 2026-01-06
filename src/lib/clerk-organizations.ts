@@ -702,6 +702,15 @@ export async function createManualCoachSubscription(
     console.log(`[CLERK_ORGS] Created manual subscription for org ${organizationId}`);
   }
   
+  // Update org_settings to point to this subscription and sync tier
+  // This ensures the subscription API can find the subscription
+  await adminDb.collection('org_settings').doc(organizationId).set({
+    coachSubscriptionId: organizationId,
+    coachTier: tier,
+    updatedAt: now,
+  }, { merge: true });
+  console.log(`[CLERK_ORGS] Updated org_settings.coachSubscriptionId for org ${organizationId}`);
+  
   // Sync to Clerk Organization publicMetadata
   await syncBillingToClerkOrg(organizationId, {
     plan: tier,
