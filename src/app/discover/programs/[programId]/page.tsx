@@ -16,11 +16,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Users, User, Calendar, Clock, Check, 
+import {
+  Users, User, Calendar, Clock, Check,
   ChevronRight, AlertCircle, Loader2, CheckCircle, XCircle,
   Star, Video, MessageCircle, Book, Target, Zap, Heart,
-  ChevronDown, Shield
+  ChevronDown, Shield, RefreshCw
 } from 'lucide-react';
 import type { Program, ProgramCohort, ProgramDay, ProgramFeature, ProgramTestimonial, ProgramFAQ, OrderBumpConfig } from '@/types';
 import { ProgramLandingSkeleton } from '@/components/program/ProgramLandingSkeleton';
@@ -453,7 +453,7 @@ export default function ProgramDetailPage() {
               <div className="flex flex-wrap items-center gap-4 mb-5">
                 <div className="flex items-center gap-1.5 text-text-secondary">
                   <Clock className="w-4 h-4" />
-                  <span className="font-albert text-[14px]">{program.lengthDays} days</span>
+                  <span className="font-albert text-[14px]">{program.lengthDays} {program.durationType === 'evergreen' ? 'day cycles' : 'days'}</span>
                 </div>
                 {program.showEnrollmentCount && totalEnrollments && totalEnrollments > 0 && (
                   <EnrolledMembersDisplay 
@@ -610,7 +610,7 @@ export default function ProgramDetailPage() {
               <div className="bg-white dark:bg-[#171b22] rounded-3xl p-6 sm:p-8 shadow-lg border border-[#e1ddd8] dark:border-[#262b35]">
                 {/* Program badge */}
                 <div className="flex items-center justify-center gap-2 mb-6">
-                  <div 
+                  <div
                     className="flex items-center gap-2 rounded-full px-4 py-2"
                     style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.1)}, ${hexToRgba(accentDark, 0.1)})` }}
                   >
@@ -619,13 +619,21 @@ export default function ProgramDetailPage() {
                     ) : (
                       <User className="w-4 h-4" style={{ color: accentLight }} />
                     )}
-                    <span 
+                    <span
                       className="font-albert text-[13px] font-semibold"
                       style={{ color: accentLight }}
                     >
                       {program.type === 'group' ? 'Group Program' : '1:1 Coaching'}
                     </span>
                   </div>
+                  {program.durationType === 'evergreen' && (
+                    <div className="flex items-center gap-2 rounded-full px-4 py-2 bg-green-500/10">
+                      <RefreshCw className="w-4 h-4 text-green-600" />
+                      <span className="font-albert text-[13px] font-semibold text-green-600">
+                        Evergreen
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Price */}
@@ -643,12 +651,12 @@ export default function ProgramDetailPage() {
                 </div>
 
                 {/* Duration callout */}
-                <div 
+                <div
                   className="rounded-xl p-3 mb-6 text-center"
                   style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.08)}, ${hexToRgba(accentDark, 0.08)})` }}
                 >
                   <p className="font-albert text-[14px] text-text-primary">
-                    <span className="font-semibold">{program.lengthDays}-day</span> transformation program
+                    <span className="font-semibold">{program.lengthDays}-day</span> {program.durationType === 'evergreen' ? 'continuous program' : 'transformation program'}
                   </p>
                 </div>
 

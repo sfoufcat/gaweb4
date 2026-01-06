@@ -631,134 +631,151 @@ export default function CoachPage() {
                 opacity: hoverStyle.opacity,
               }}
             />
-            {/* 1. Clients - always visible */}
-            <TabsTrigger 
+
+            {/* === CORE SECTION === */}
+            <span className="relative z-10 flex-shrink-0 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280]">Core</span>
+            <TabsTrigger
               value="clients"
               onMouseEnter={handleTabMouseEnter}
               className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
             >
               Clients
             </TabsTrigger>
-            {/* 2. Programs - full access only */}
             {!isLimitedOrgCoach && (
-              <TabsTrigger 
+              <TabsTrigger
                 value="programs"
                 onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
               >
                 Programs
               </TabsTrigger>
             )}
-            {/* 3. Squads - always visible */}
-            <TabsTrigger 
+            <TabsTrigger
               value="squads"
               onMouseEnter={handleTabMouseEnter}
               className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
             >
               Squads
             </TabsTrigger>
-            {/* 4. Content - always visible */}
-            <TabsTrigger 
+
+            {/* === CONTENT SECTION === */}
+            <span className="relative z-10 flex-shrink-0 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] ml-2">Content</span>
+            <TabsTrigger
               value="discover"
               onMouseEnter={handleTabMouseEnter}
               className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
             >
               Content
             </TabsTrigger>
-            {/* 5-6. Funnels, Analytics - full access only */}
             {!isLimitedOrgCoach && (
-              <>
-                <TabsTrigger 
-                  value="funnels"
-                  onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
-                >
-                  Funnels
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="analytics"
-                  onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
-                >
-                  Analytics
-                </TabsTrigger>
-              </>
+              <TabsTrigger
+                value="onboarding"
+                onMouseEnter={handleTabMouseEnter}
+                className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+              >
+                Onboarding
+              </TabsTrigger>
             )}
-            {/* 7-10. Check-ins, Chats, Referrals, Discounts - full access only */}
+
+            {/* === ENGAGEMENT SECTION === */}
             {!isLimitedOrgCoach && (
               <>
-                <TabsTrigger 
-                  value="checkins"
-                  onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
-                >
-                  Check-ins
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="onboarding"
-                  onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
-                >
-                  Onboarding
-                </TabsTrigger>
-                <TabsTrigger 
+                <span className="relative z-10 flex-shrink-0 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] ml-2">Engagement</span>
+                <TabsTrigger
                   value="channels"
                   onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                  className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Chats
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
+                  value="checkins"
+                  onMouseEnter={handleTabMouseEnter}
+                  className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                >
+                  Check-ins
+                </TabsTrigger>
+                <TabsTrigger
                   value="referrals"
                   onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                  className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Referrals
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="discounts"
+              </>
+            )}
+
+            {/* === MARKETING SECTION === */}
+            {!isLimitedOrgCoach && (
+              <>
+                <span className="relative z-10 flex-shrink-0 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] ml-2">Marketing</span>
+                <TabsTrigger
+                  value="analytics"
                   onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                  className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
-                  Discounts
+                  Analytics
+                </TabsTrigger>
+                <TabsTrigger
+                  value="funnels"
+                  onMouseEnter={handleTabMouseEnter}
+                  className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                >
+                  Funnels
                 </TabsTrigger>
               </>
             )}
-            {/* 10-12. Scheduling, Customize, Plan - full access only */}
+
+            {/* === BUSINESS SECTION === */}
             {!isLimitedOrgCoach && (
               <>
-                <TabsTrigger 
+                <span className="relative z-10 flex-shrink-0 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] ml-2">Business</span>
+                <TabsTrigger
                   value="scheduling"
                   onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                  className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Scheduling
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
+                  value="discounts"
+                  onMouseEnter={handleTabMouseEnter}
+                  className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                >
+                  Discounts
+                </TabsTrigger>
+                <TabsTrigger
                   value="integrations"
                   onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                  className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Integrations
                 </TabsTrigger>
-                <TabsTrigger 
+              </>
+            )}
+
+            {/* === SETTINGS SECTION === */}
+            {!isLimitedOrgCoach && (
+              <>
+                <span className="relative z-10 flex-shrink-0 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] ml-2">Settings</span>
+                <TabsTrigger
                   value="customize"
                   onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                  className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
-                  Customize & Settings
+                  Customize
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="plan"
                   onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                  className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Plan
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="support"
                   onMouseEnter={handleTabMouseEnter}
-              className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                  className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                 >
                   Support
                 </TabsTrigger>

@@ -15,7 +15,7 @@ import type { DiscoverCourse } from '@/types/discover';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, List, CalendarDays, Check } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, List, CalendarDays, Check, RefreshCw } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -2276,15 +2276,21 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       </span>
                     )}
                   </div>
-                  <div className="absolute top-2 left-2">
+                  <div className="absolute top-2 left-2 flex items-center gap-1">
                     <span className={`px-2 py-0.5 rounded-full text-xs ${
-                      program.type === 'group' 
+                      program.type === 'group'
                         ? 'bg-blue-500 text-white'
                         : 'bg-purple-500 text-white'
                     }`}>
                       {program.type === 'group' ? <Users className="w-3 h-3 inline mr-1" /> : <User className="w-3 h-3 inline mr-1" />}
                       {program.type === 'group' ? 'Group' : '1:1'}
                     </span>
+                    {program.durationType === 'evergreen' && (
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-green-500 text-white flex items-center gap-1">
+                        <RefreshCw className="w-3 h-3" />
+                        Evergreen
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -2300,7 +2306,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   <div className="flex items-center gap-3 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {program.lengthDays} days
+                      {program.lengthDays} {program.durationType === 'evergreen' ? 'day cycles' : 'days'}
                     </span>
                     <span className="flex items-center gap-1">
                       <DollarSign className="w-3 h-3" />
