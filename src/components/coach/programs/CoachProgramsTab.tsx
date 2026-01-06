@@ -8,7 +8,7 @@ import { ModuleWeeksSidebar, type SidebarSelection } from './ModuleWeeksSidebar'
 import { ModuleEditor } from './ModuleEditor';
 import { WeekEditor } from './WeekEditor';
 import { WeekFillModal } from './WeekFillModal';
-import { ProgramSettingsPopover } from './ProgramSettingsPopover';
+import { ProgramSettingsModal, ProgramSettingsButton } from './ProgramSettingsModal';
 import { DayCourseSelector } from './DayCourseSelector';
 import { ProgramScheduleEditor } from './ProgramScheduleEditor';
 import type { DiscoverCourse } from '@/types/discover';
@@ -168,7 +168,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [isAILandingPageModalOpen, setIsAILandingPageModalOpen] = useState(false);
   const [isWeekFillModalOpen, setIsWeekFillModalOpen] = useState(false);
   const [weekToFill, setWeekToFill] = useState<ProgramWeek | null>(null);
-  
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
   // Plan tier for limit checking
   const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
   const { checkLimit, showLimitModal, modalProps } = useLimitCheck(currentTier);
@@ -1961,9 +1962,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
               {/* Program Settings */}
               <div className="flex-shrink-0 ml-auto pl-4 border-l border-[#e1ddd8] dark:border-[#262b35]">
-                <ProgramSettingsPopover
-                  taskDistribution={selectedProgram?.taskDistribution || 'spread'}
-                  onTaskDistributionChange={handleTaskDistributionChange}
+                <ProgramSettingsButton
+                  onClick={() => setIsSettingsModalOpen(true)}
                   isSaving={saving}
                 />
               </div>
@@ -4933,6 +4933,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           }
         />
       )}
+
+      {/* Program Settings Modal */}
+      <ProgramSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        taskDistribution={selectedProgram?.taskDistribution || 'spread'}
+        onTaskDistributionChange={handleTaskDistributionChange}
+        isSaving={saving}
+      />
 
     </>
   );
