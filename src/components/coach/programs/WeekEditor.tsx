@@ -276,11 +276,11 @@ export function WeekEditor({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+          <h3 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             Week {week.weekNumber}
           </h3>
           {/* Client/Template mode badge */}
@@ -290,18 +290,18 @@ export function WeekEditor({
               {clientName || 'Client'}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#f3f1ef] text-[#5f5a55] dark:bg-[#262b35] dark:text-[#b2b6c2]">
               <FileText className="w-3 h-3" />
               Template
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {onFillWithAI && (
             <Button
               variant="outline"
               onClick={onFillWithAI}
-              className="flex items-center gap-1.5"
+              className="flex items-center gap-2 text-sm"
             >
               <Sparkles className="w-4 h-4" />
               Fill with AI
@@ -408,7 +408,6 @@ export function WeekEditor({
         title="Basic Info"
         icon={Info}
         defaultOpen={true}
-        accentBorder
       >
         {/* Week Name */}
         <div>
@@ -459,7 +458,6 @@ export function WeekEditor({
           title="Tasks & Focus"
           icon={ListTodo}
           defaultOpen={true}
-          accentBorder
         >
           {/* Task Distribution Mode */}
           <div>
@@ -606,7 +604,6 @@ export function WeekEditor({
         title="Client Notes"
         icon={ClipboardList}
         defaultOpen={true}
-        accentBorder
       >
         {/* Weekly Prompt (only in weekly orientation) */}
         {orientation === 'weekly' && (
@@ -723,7 +720,6 @@ export function WeekEditor({
         icon={EyeOff}
         description="Not visible to clients"
         defaultOpen={false}
-        accentBorder
       >
         {/* Coach's Manual Notes */}
         <div>
@@ -957,7 +953,6 @@ export function WeekEditor({
         title="Days in this Week"
         icon={Calendar}
         defaultOpen={false}
-        accentBorder
       >
         <div className="grid grid-cols-2 gap-2">
           {Array.from({ length: week.endDayIndex - week.startDayIndex + 1 }, (_, i) => {

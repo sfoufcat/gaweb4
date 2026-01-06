@@ -753,7 +753,7 @@ export default function CoachPage() {
             )}
           </TabsList>
 
-          <AnimatePresence mode="wait" custom={tabDirection}>
+          <AnimatePresence mode="wait" custom={tabDirection} initial={false}>
             <motion.div
               key={activeTab}
               custom={tabDirection}
