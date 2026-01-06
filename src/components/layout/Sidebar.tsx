@@ -392,7 +392,7 @@ export function Sidebar() {
             {horizontalLogoUrl ? (
               <div
                 className={`h-10 max-w-[200px] relative overflow-hidden transition-all duration-300 ease-in-out ${
-                  isCollapsed ? 'opacity-0 w-0 -ml-2.5' : 'opacity-100 w-auto ml-0'
+                  isCollapsed ? 'opacity-0 max-w-0 scale-x-0 origin-left' : 'opacity-100 max-w-[200px] scale-x-100 origin-left'
                 }`}
               >
                 <Image
@@ -408,7 +408,7 @@ export function Sidebar() {
             ) : (
               <span
                 className={`font-albert font-semibold text-xl text-[#1a1a1a] dark:text-[#faf8f6] whitespace-nowrap transition-all duration-300 ease-in-out ${
-                  isCollapsed ? 'opacity-0 w-0 -ml-2.5' : 'opacity-100 w-auto ml-0'
+                  isCollapsed ? 'opacity-0 max-w-0 scale-x-0 origin-left' : 'opacity-100 max-w-[200px] scale-x-100 origin-left'
                 }`}
               >
                 {appTitle}
@@ -466,8 +466,8 @@ export function Sidebar() {
               <span
                 className={`font-albert text-[15px] whitespace-nowrap transition-all duration-300 ease-in-out ${
                   isCollapsed
-                    ? 'opacity-0 w-0 -ml-3'
-                    : 'opacity-100 w-auto ml-0'
+                    ? 'opacity-0 max-w-0 scale-x-0 origin-left'
+                    : 'opacity-100 max-w-[200px] scale-x-100 origin-left'
                 }`}
               >
                 {item.name}
@@ -476,7 +476,7 @@ export function Sidebar() {
               {item.path === '/chat' && totalUnread > 0 && (
                 <span
                   className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-albert font-semibold transition-all duration-300 ease-in-out ${
-                    isCollapsed ? 'opacity-0 w-0' : 'opacity-100 ml-auto'
+                    isCollapsed ? 'opacity-0 max-w-0 scale-x-0 origin-left' : 'opacity-100 ml-auto scale-x-100 origin-left'
                   }`}
                   style={{
                     backgroundColor: !isDefault ? currentAccentColor : (theme === 'dark' ? '#b8896a' : '#a07855'),
@@ -523,8 +523,8 @@ export function Sidebar() {
             <span
               className={`font-albert text-[15px] text-[#5f5a55] dark:text-[#b5b0ab] whitespace-nowrap transition-all duration-300 ease-in-out ${
                 isCollapsed
-                  ? 'opacity-0 w-0 -ml-3'
-                  : 'opacity-100 w-auto ml-0'
+                    ? 'opacity-0 max-w-0 scale-x-0 origin-left'
+                    : 'opacity-100 max-w-[200px] scale-x-100 origin-left'
               }`}
             >
               My Account
