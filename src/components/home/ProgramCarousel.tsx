@@ -189,7 +189,11 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="font-sans text-[11px] text-text-muted">
-                          Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays}
+                          {enrollment.progress.isEvergreen && enrollment.progress.cycleNumber ? (
+                            <>Cycle {enrollment.progress.cycleNumber} • Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays}</>
+                          ) : (
+                            <>Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays}</>
+                          )}
                         </span>
                         <span className="font-sans text-[11px] text-text-muted">
                           {enrollment.progress.percentComplete}%

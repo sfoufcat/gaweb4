@@ -89,6 +89,91 @@ export function calculateWorkingDays(totalDays: number): number {
 }
 
 // ============================================================================
+// EVERGREEN CYCLE HELPERS
+// ============================================================================
+
+/**
+ * Get the active cycle number for an enrollment
+ * Returns 1 for fixed programs or enrollments without cycle tracking
+ */
+export function getActiveCycleNumber(enrollment: ProgramEnrollment | StarterProgramEnrollment): number {
+  return (enrollment as ProgramEnrollment).currentCycleNumber || 1;
+}
+
+/**
+ * Calculate the current day index within a cycle for evergreen programs
+ * For fixed programs, this is the same as calculateCurrentDayIndex
+ * For evergreen programs, day index is relative to the current cycle start
+ */
+export function calculateCycleAwareDayIndex(
+  enrollmentStartedAt: string,
+  programLengthDays: number,
+  includeWeekends: boolean,
+  cycleNumber: number,
+  cycleStartedAt?: string,
+  todayDate?: string
+): { dayIndex: number; shouldRollover: boolean } {
+  const today = todayDate || new Date().toISOString().split('T')[0];
+
+  // Use cycle start date if available (for cycles > 1), otherwise use enrollment start
+  const effectiveStartDate = cycleNumber > 1 && cycleStartedAt
+    ? cycleStartedAt.split('T')[0]
+    : enrollmentStartedAt;
+
+  const startDate = new Date(effectiveStartDate + 'T00:00:00');
+  const todayDateObj = new Date(today + 'T00:00:00');
+
+  let dayIndex: number;
+
+  if (includeWeekends) {
+    // Simple day count
+    const elapsedMs = todayDateObj.getTime() - startDate.getTime();
+    const elapsedDays = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
+    dayIndex = elapsedDays + 1;
+  } else {
+    // Count only weekdays
+    dayIndex = countWeekdaysBetween(startDate, todayDateObj);
+  }
+
+  // Check if we need to roll over to next cycle
+  const shouldRollover = dayIndex > programLengthDays;
+
+  // Cap at program length (will trigger rollover for evergreen)
+  return {
+    dayIndex: Math.min(dayIndex, programLengthDays),
+    shouldRollover,
+  };
+}
+
+/**
+ * Roll over to the next cycle for an evergreen program
+ * Returns the updated cycle number and resets day tracking
+ */
+export async function rolloverToNextCycle(
+  enrollmentId: string,
+  currentCycleNumber: number
+): Promise<{ newCycleNumber: number; cycleStartedAt: string }> {
+  const now = new Date().toISOString();
+  const newCycleNumber = currentCycleNumber + 1;
+
+  await adminDb.collection('program_enrollments').doc(enrollmentId).update({
+    currentCycleNumber: newCycleNumber,
+    cycleStartedAt: now,
+    cycleCompletedAt: null, // Reset for new cycle
+    lastAssignedDayIndex: 0, // Reset day index for new cycle
+    lastAssignedWeekIndex: 0, // Reset week index for new cycle
+    updatedAt: now,
+  });
+
+  console.log(`[PROGRAM_ENGINE] Rolled over enrollment ${enrollmentId} to cycle ${newCycleNumber}`);
+
+  return {
+    newCycleNumber,
+    cycleStartedAt: now,
+  };
+}
+
+// ============================================================================
 // PROGRAM QUERIES
 // ============================================================================
 
@@ -1620,21 +1705,33 @@ export async function syncProgramV2TasksForToday(
   
   // 9. Update enrollment lastAssignedDayIndex
   await updateEnrollmentDayIndexV2(enrollment.id, dayIndex);
-  
+
   // 10. Check if program is completed (today is the last day)
   let programCompleted = false;
+  let cycleRolledOver = false;
+  const currentCycleNumber = getActiveCycleNumber(enrollment);
+
   if (dayIndex >= program.lengthDays) {
-    // Mark enrollment as completed
-    const now = new Date().toISOString();
-    await adminDb.collection('program_enrollments').doc(enrollment.id).update({
-      status: 'completed',
-      completedAt: now,
-      updatedAt: now,
-    });
-    programCompleted = true;
-    console.log(`[PROGRAM_ENGINE_V2] User ${userId} completed program ${program.name}!`);
+    const isEvergreen = program.durationType === 'evergreen';
+
+    if (isEvergreen) {
+      // Evergreen program: roll over to next cycle instead of completing
+      const { newCycleNumber } = await rolloverToNextCycle(enrollment.id, currentCycleNumber);
+      cycleRolledOver = true;
+      console.log(`[PROGRAM_ENGINE_V2] User ${userId} completed cycle ${currentCycleNumber} of evergreen program ${program.name}, rolling to cycle ${newCycleNumber}`);
+    } else {
+      // Fixed program: mark as completed
+      const now = new Date().toISOString();
+      await adminDb.collection('program_enrollments').doc(enrollment.id).update({
+        status: 'completed',
+        completedAt: now,
+        updatedAt: now,
+      });
+      programCompleted = true;
+      console.log(`[PROGRAM_ENGINE_V2] User ${userId} completed program ${program.name}!`);
+    }
   }
-  
+
   console.log(`[PROGRAM_ENGINE_V2] Synced day ${dayIndex} for user ${userId}: ${tasksCreated} tasks created (${focusTasksCreated} focus, ${backlogTasksCreated} backlog)`);
 
   return {
@@ -1647,9 +1744,11 @@ export async function syncProgramV2TasksForToday(
     programId: program.id,
     programName: program.name,
     programCompleted,
-    message: programCompleted
-      ? `Program completed! Created ${tasksCreated} tasks for final day ${dayIndex}`
-      : `Created ${tasksCreated} tasks for day ${dayIndex}`,
+    message: cycleRolledOver
+      ? `Cycle ${currentCycleNumber} completed! Rolling to cycle ${currentCycleNumber + 1}. Created ${tasksCreated} tasks for day ${dayIndex}`
+      : programCompleted
+        ? `Program completed! Created ${tasksCreated} tasks for final day ${dayIndex}`
+        : `Created ${tasksCreated} tasks for day ${dayIndex}`,
   };
 }
 

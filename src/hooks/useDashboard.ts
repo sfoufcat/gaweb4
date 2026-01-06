@@ -19,6 +19,7 @@ export interface ProgramEnrollmentWithDetails {
     type: 'group' | 'individual';
     lengthDays: number;
     coverImageUrl?: string;
+    durationType?: 'fixed' | 'evergreen';
   };
   cohort?: {
     id: string;
@@ -31,6 +32,9 @@ export interface ProgramEnrollmentWithDetails {
     totalDays: number;
     percentComplete: number;
     daysRemaining: number;
+    // Evergreen program support
+    cycleNumber?: number;
+    isEvergreen?: boolean;
   };
   status: string;
 }

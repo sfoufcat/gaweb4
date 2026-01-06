@@ -17,7 +17,9 @@ import {
   FileEdit,
   Rocket,
   Upload,
-  Loader2
+  Loader2,
+  RefreshCw,
+  Clock
 } from 'lucide-react';
 import {
   Drawer,
@@ -34,6 +36,7 @@ interface ProgramWizardData {
   // Step 1
   type: 'individual' | 'group';
   // Step 2
+  durationType: 'fixed' | 'evergreen';
   durationWeeks: number;
   numModules: number;
   includeWeekends: boolean;
@@ -50,6 +53,7 @@ interface ProgramWizardData {
 
 const DEFAULT_WIZARD_DATA: ProgramWizardData = {
   type: 'individual',
+  durationType: 'fixed',
   durationWeeks: 12,
   numModules: 4,
   includeWeekends: false,
@@ -146,6 +150,7 @@ export function NewProgramModal({
           name: wizardData.name,
           description: wizardData.description,
           type: wizardData.type,
+          durationType: wizardData.durationType,
           durationWeeks: wizardData.durationWeeks,
           numModules: wizardData.numModules,
           includeWeekends: wizardData.includeWeekends,
@@ -220,7 +225,7 @@ export function NewProgramModal({
   };
 
   // Wizard content (shared between Dialog and Drawer)
-  const WizardContent = () => (
+  const wizardContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
@@ -378,7 +383,7 @@ export function NewProgramModal({
     return (
       <Drawer open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DrawerContent className="h-[90vh] max-h-[90vh]">
-          <WizardContent />
+          {wizardContent}
         </DrawerContent>
       </Drawer>
     );
@@ -412,7 +417,7 @@ export function NewProgramModal({
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
-                <WizardContent />
+                {wizardContent}
               </Dialog.Panel>
             </Transition.Child>
           </div>
@@ -523,18 +528,50 @@ interface StructureStepProps {
 function StructureStep({ data, onChange }: StructureStepProps) {
   return (
     <div className="space-y-6">
-      {/* Duration */}
+      {/* Duration Type + Weeks */}
       <div className="bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl p-5">
         <div className="flex items-start gap-4">
           <div className="w-11 h-11 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
             <Calendar className="w-5 h-5 text-brand-accent" />
           </div>
           <div className="flex-1">
+            {/* Duration Type Selector */}
             <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
-              Duration (weeks)
+              Program Type
+            </label>
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => onChange({ durationType: 'fixed' })}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                  data.durationType === 'fixed'
+                    ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
+                }`}
+              >
+                <Clock className="w-4 h-4" />
+                Fixed
+              </button>
+              <button
+                onClick={() => onChange({ durationType: 'evergreen' })}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                  data.durationType === 'evergreen'
+                    ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
+                }`}
+              >
+                <RefreshCw className="w-4 h-4" />
+                Evergreen
+              </button>
+            </div>
+
+            {/* Duration Weeks Control */}
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+              {data.durationType === 'evergreen' ? 'Cycle length (weeks)' : 'Duration (weeks)'}
             </label>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
-              How long will your program run?
+              {data.durationType === 'evergreen'
+                ? 'This program repeats after the final week.'
+                : 'How long will your program run?'}
             </p>
             <div className="flex items-center gap-3">
               <button

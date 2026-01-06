@@ -339,11 +339,38 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     setViewMode(newMode);
   }, []);
 
+  // Helper to calculate current day index from enrollment start date
+  const calculateDayIndex = useCallback((startedAt: string, lengthDays: number): number => {
+    const start = new Date(startedAt);
+    start.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const diffTime = today.getTime() - start.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Day 1 is the first day (0 days elapsed)
+    const dayIndex = diffDays + 1;
+    
+    // Clamp to valid range
+    if (dayIndex < 1) return 0; // Program hasn't started yet
+    if (dayIndex > lengthDays) return lengthDays; // Program is completed
+    return dayIndex;
+  }, []);
+
   // Get current enrollment's day index for "Jump to Today" feature
   const currentEnrollment = useMemo(() => {
     if (clientViewContext.mode !== 'client') return null;
-    return programEnrollments.find(e => e.id === clientViewContext.enrollmentId) || null;
-  }, [clientViewContext, programEnrollments]);
+    const enrollment = programEnrollments.find(e => e.id === clientViewContext.enrollmentId);
+    if (!enrollment || !selectedProgram) return null;
+    
+    // Calculate the current day index based on startedAt and program length
+    const currentDayIndex = enrollment.startedAt && enrollment.status === 'active'
+      ? calculateDayIndex(enrollment.startedAt, selectedProgram.lengthDays)
+      : 0;
+    
+    return { ...enrollment, currentDayIndex };
+  }, [clientViewContext, programEnrollments, selectedProgram, calculateDayIndex]);
 
   const handleJumpToToday = useCallback(() => {
     const currentDayIndex = currentEnrollment?.currentDayIndex;
@@ -1878,80 +1905,78 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               )}
             </>
           ) : (
-            <div className="flex flex-col gap-3 w-full">
-              {/* Row 1: Client/Cohort Selector */}
-              {viewMode === 'days' && (
-                <div className="flex items-center">
-                  {selectedProgram?.type === 'individual' ? (
-                    <ClientSelector
-                      enrollments={programEnrollments}
-                      value={clientViewContext}
-                      onChange={async (context) => {
-                        setClientViewContext(context);
-                        if (context.mode === 'client' && selectedProgram) {
-                          const existingWeeks = await fetch(
-                            `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
-                          ).then(r => r.ok ? r.json() : { clientWeeks: [] });
+            <div className="flex items-center gap-3 w-full overflow-x-auto scrollbar-hide">
+              {/* Back button */}
+              <button
+                onClick={() => handleViewModeChange('list')}
+                className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
+                title="Back to Programs"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
 
-                          if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
-                            await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
-                          }
-                          await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
-                          await fetchClientDays(selectedProgram.id, context.enrollmentId!);
-                        } else {
-                          setClientWeeks([]);
-                          setClientDays([]);
+              {/* Program name and badge */}
+              <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
+                <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate max-w-[200px]">
+                  {selectedProgram?.name}
+                </h2>
+                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                  selectedProgram?.type === 'group'
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                    : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                }`}>
+                  {selectedProgram?.type === 'group' ? 'Group' : '1:1'}
+                </span>
+              </div>
+
+              {/* Divider */}
+              <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
+
+              {/* Client/Cohort Selector - right after divider */}
+              {viewMode === 'days' && (
+                selectedProgram?.type === 'individual' ? (
+                  <ClientSelector
+                    enrollments={programEnrollments}
+                    value={clientViewContext}
+                    onChange={async (context) => {
+                      setClientViewContext(context);
+                      if (context.mode === 'client' && selectedProgram) {
+                        const existingWeeks = await fetch(
+                          `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
+                        ).then(r => r.ok ? r.json() : { clientWeeks: [] });
+
+                        if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
+                          await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
                         }
-                      }}
-                      loading={loadingEnrollments}
-                      className="w-full max-w-xs"
-                    />
-                  ) : selectedProgram?.type === 'group' ? (
-                    <CohortSelector
-                      cohorts={programCohorts}
-                      value={cohortViewContext}
-                      onChange={(context) => {
-                        setCohortViewContext(context);
-                        if (context.mode === 'template') {
-                          setCohortWeekContent(null);
-                        }
-                      }}
-                      onCreateCohort={() => handleOpenCohortModal()}
-                      loading={loadingDetails}
-                      className="w-full max-w-xs"
-                    />
-                  ) : null}
-                </div>
+                        await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
+                        await fetchClientDays(selectedProgram.id, context.enrollmentId!);
+                      } else {
+                        setClientWeeks([]);
+                        setClientDays([]);
+                      }
+                    }}
+                    loading={loadingEnrollments}
+                    className="max-w-[200px] flex-shrink-0"
+                  />
+                ) : selectedProgram?.type === 'group' ? (
+                  <CohortSelector
+                    cohorts={programCohorts}
+                    value={cohortViewContext}
+                    onChange={(context) => {
+                      setCohortViewContext(context);
+                      if (context.mode === 'template') {
+                        setCohortWeekContent(null);
+                      }
+                    }}
+                    onCreateCohort={() => handleOpenCohortModal()}
+                    loading={loadingDetails}
+                    className="max-w-[200px] flex-shrink-0"
+                  />
+                ) : null
               )}
 
-              {/* Row 2: Back | Program name | Page dropdown | Row/Calendar | Settings */}
-              <div className="flex items-center gap-3 w-full overflow-x-auto scrollbar-hide">
-                {/* Back button */}
-                <button
-                  onClick={() => handleViewModeChange('list')}
-                  className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
-                  title="Back to Programs"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-
-                {/* Program name and badge */}
-                <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
-                  <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate max-w-[200px]">
-                    {selectedProgram?.name}
-                  </h2>
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                    selectedProgram?.type === 'group'
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                      : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
-                  }`}>
-                    {selectedProgram?.type === 'group' ? 'Group' : '1:1'}
-                  </span>
-                </div>
-
-                {/* Divider */}
-                <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
-
+              {/* Right side controls */}
+              <div className="flex-shrink-0 ml-auto flex items-center gap-2">
                 {/* Page Dropdown */}
                 <Popover open={isPageDropdownOpen} onOpenChange={setIsPageDropdownOpen}>
                   <PopoverTrigger asChild>
@@ -1967,7 +1992,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       <ChevronDown className="w-4 h-4 ml-1" />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-48 p-1" align="start">
+                  <PopoverContent className="w-48 p-1" align="end">
                     <button
                       type="button"
                       onClick={() => { handleViewModeChange('days'); setIsPageDropdownOpen(false); }}
@@ -2038,48 +2063,45 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   </PopoverContent>
                 </Popover>
 
-                {/* Right side controls */}
-                <div className="flex-shrink-0 ml-auto flex items-center gap-1">
-                  {/* Row/Calendar Toggle - only show on Content view */}
-                  {viewMode === 'days' && (
-                    <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => { setContentDirection(-1); setContentDisplayMode('row'); }}
-                        className={`p-1.5 rounded-md transition-colors ${
-                          isRowMode
-                            ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                        }`}
-                        title="Row view"
-                      >
-                        <List className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setContentDirection(1);
-                          setContentDisplayMode('calendar');
-                          fetchOrganizationCourses();
-                        }}
-                        className={`p-1.5 rounded-md transition-colors ${
-                          isCalendarMode
-                            ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                        }`}
-                        title="Calendar view"
-                      >
-                        <CalendarDays className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
+                {/* Row/Calendar Toggle - only show on Content view */}
+                {viewMode === 'days' && (
+                  <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => { setContentDirection(-1); setContentDisplayMode('row'); }}
+                      className={`p-1.5 rounded-md transition-colors ${
+                        isRowMode
+                          ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                      }`}
+                      title="Row view"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setContentDirection(1);
+                        setContentDisplayMode('calendar');
+                        fetchOrganizationCourses();
+                      }}
+                      className={`p-1.5 rounded-md transition-colors ${
+                        isCalendarMode
+                          ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                      }`}
+                      title="Calendar view"
+                    >
+                      <CalendarDays className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
 
-                  {/* Settings */}
-                  <ProgramSettingsButton
-                    onClick={() => setIsSettingsModalOpen(true)}
-                    isSaving={saving}
-                  />
-                </div>
+                {/* Settings */}
+                <ProgramSettingsButton
+                  onClick={() => setIsSettingsModalOpen(true)}
+                  isSaving={saving}
+                />
               </div>
             </div>
           )}
@@ -2339,15 +2361,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             className="flex flex-col gap-4"
           >
             {/* Jump to Today - only show when viewing a client (1:1) or cohort (group), not template */}
-            {((selectedProgram?.type === 'individual' && clientViewContext.mode === 'client' && currentEnrollment?.currentDayIndex) ||
+            {((selectedProgram?.type === 'individual' && clientViewContext.mode === 'client' && currentEnrollment?.currentDayIndex && currentEnrollment.currentDayIndex > 0) ||
               (selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort')) && (
               <button
                 type="button"
                 onClick={handleJumpToToday}
-                className="self-start flex items-center gap-1.5 text-sm font-medium font-albert text-brand-accent hover:text-brand-accent/80 transition-colors"
+                className="self-start flex items-center gap-1.5 text-sm font-medium font-albert text-brand-accent hover:text-brand-accent/80 transition-colors mb-2"
               >
                 <CalendarDays className="w-4 h-4" />
-                Jump to Today {currentEnrollment?.currentDayIndex ? `(Day ${currentEnrollment.currentDayIndex})` : ''}
+                Jump to Today (Day {currentEnrollment?.currentDayIndex || ''})
               </button>
             )}
 

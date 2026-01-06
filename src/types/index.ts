@@ -718,6 +718,9 @@ export interface Program {
   type: ProgramType; // 'group' | 'individual'
   lengthDays: number; // Duration in days (calculated from lengthWeeks * 7 if weekly mode)
   lengthWeeks?: number; // Duration in weeks (primary unit for weekly mode)
+
+  // Duration type (default: 'fixed' for backward compatibility)
+  durationType?: 'fixed' | 'evergreen'; // 'fixed' = ends after lengthDays, 'evergreen' = cycles repeat forever
   
   // Pricing
   priceInCents: number; // 0 = free
@@ -923,6 +926,11 @@ export interface ProgramEnrollment {
   stoppedAt?: string; // ISO timestamp if stopped early
   lastAssignedDayIndex: number; // Last program day with generated tasks
   currentDayIndex?: number; // Current day user is on (calculated)
+
+  // Cycle tracking (for evergreen programs)
+  currentCycleNumber?: number; // Current cycle (default 1), increments when evergreen program repeats
+  cycleStartedAt?: string; // ISO timestamp when current cycle started
+  cycleCompletedAt?: string; // ISO timestamp when current cycle completed (for analytics)
 
   // Weekly tracking (for programs with orientation = 'weekly')
   lastAssignedWeekIndex?: number; // Last week with synced tasks

@@ -16,6 +16,7 @@ interface CreateProgramRequest {
   type: 'individual' | 'group';
 
   // Step 2: Structure
+  durationType?: 'fixed' | 'evergreen'; // default 'fixed' for backward compatibility
   durationWeeks: number;
   numModules: number;
   includeWeekends: boolean;
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
 
     const {
       type,
+      durationType,
       durationWeeks,
       numModules,
       includeWeekends,
@@ -107,6 +109,7 @@ export async function POST(request: NextRequest) {
       type: type === 'group' ? 'group' : 'individual',
       lengthDays,
       lengthWeeks: durationWeeks,
+      durationType: durationType || 'fixed', // Default to 'fixed' for backward compatibility
       priceInCents: pricing === 'paid' && price ? Math.round(price * 100) : 0,
       currency: 'usd',
       defaultHabits: [],

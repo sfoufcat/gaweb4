@@ -10,6 +10,9 @@ interface ProgramProgress {
   totalDays: number;
   percentage: number;
   lastAssignedDay: number;
+  // Evergreen program support
+  cycleNumber?: number; // Current cycle number (for evergreen programs, default 1)
+  isEvergreen?: boolean; // Whether this is an evergreen program
 }
 
 interface EnrollmentResponse {

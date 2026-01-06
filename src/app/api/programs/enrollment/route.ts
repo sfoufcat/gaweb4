@@ -1,11 +1,12 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { 
-  getActiveEnrollment, 
+import {
+  getActiveEnrollment,
   getProgramById,
   enrollUserInDefaultProgram,
   stopAllEnrollmentsForUser,
   calculateCurrentDayIndex,
+  getActiveCycleNumber,
 } from '@/lib/program-engine';
 import type { UserTrack, ProgramEnrollment } from '@/types';
 
@@ -69,9 +70,15 @@ export async function GET() {
     const currentDayIndex = calculateCurrentDayIndex(enrollment.startedAt, program.lengthDays, today);
     const progressPercentage = Math.round((currentDayIndex / program.lengthDays) * 100);
 
+    // Get cycle info for evergreen programs
+    const cycleNumber = getActiveCycleNumber(enrollment);
+    // Check for durationType (only exists on new Program type, not StarterProgram)
+    const programWithDurationType = program as unknown as { durationType?: 'fixed' | 'evergreen' };
+    const isEvergreen = programWithDurationType.durationType === 'evergreen';
+
     // Cast to ProgramEnrollment to access subscription fields if they exist
     const enrollmentWithSubscription = enrollment as unknown as Partial<ProgramEnrollment>;
-    
+
     return NextResponse.json({
       success: true,
       hasEnrollment: true,
@@ -90,12 +97,16 @@ export async function GET() {
         slug: program.slug,
         description: program.description,
         lengthDays: program.lengthDays,
+        durationType: programWithDurationType.durationType || 'fixed',
       },
       progress: {
         currentDay: currentDayIndex,
         totalDays: program.lengthDays,
         percentage: progressPercentage,
         lastAssignedDay: enrollment.lastAssignedDayIndex,
+        // Evergreen program support
+        cycleNumber,
+        isEvergreen,
       },
     });
   } catch (error) {
