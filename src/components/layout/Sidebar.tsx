@@ -419,7 +419,7 @@ export function Sidebar() {
 
         {/* Nav - More rounded, glass-like with accent color */}
         {/* In collapsed mode, show only icons centered */}
-        <nav className={`flex-1 ${isCollapsed ? 'space-y-1' : 'space-y-1.5'}`}>
+        <nav className="flex-1 space-y-1">
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -429,9 +429,10 @@ export function Sidebar() {
               title={isCollapsed ? item.name : undefined}
               className={`
                 flex items-center transition-all duration-300 ease-in-out relative overflow-hidden
+                h-12 rounded-2xl
                 ${isCollapsed
-                  ? 'justify-center w-12 h-12 mx-auto rounded-xl'
-                  : 'gap-3 px-4 py-3 rounded-2xl'
+                  ? 'w-12 justify-center'
+                  : 'w-full gap-3 px-4'
                 }
                 ${isActive(item.path)
                   ? 'sidebar-active-item backdrop-blur-sm font-semibold shadow-sm'
@@ -491,7 +492,7 @@ export function Sidebar() {
         </nav>
 
         {/* Account with Clerk UserButton - Rounded glass style */}
-        <div className={`mt-auto pt-6 border-t border-[#e1ddd8]/50 dark:border-[#272d38]/50 ${isCollapsed ? 'space-y-1' : 'space-y-2'}`}>
+        <div className="mt-auto pt-6 border-t border-[#e1ddd8]/50 dark:border-[#272d38]/50 space-y-1">
           {/* Organization Switcher - only shows when user has multiple orgs and not collapsed */}
           {!isCollapsed && (
             <div className="px-2">
@@ -508,7 +509,7 @@ export function Sidebar() {
               }
             }}
             title={isCollapsed ? 'My Account' : undefined}
-            className={`flex items-center rounded-2xl hover:bg-[#faf8f6]/60 dark:hover:bg-[#181d28]/60 hover:backdrop-blur-sm transition-all duration-300 ease-in-out cursor-pointer overflow-hidden ${isCollapsed ? 'justify-center p-2' : 'gap-3 px-4 py-3'}`}
+            className={`flex items-center h-12 rounded-2xl hover:bg-[#faf8f6]/60 dark:hover:bg-[#181d28]/60 hover:backdrop-blur-sm transition-all duration-300 ease-in-out cursor-pointer overflow-hidden ${isCollapsed ? 'w-12 justify-center' : 'w-full gap-3 px-4'}`}
           >
             <div className="flex-shrink-0">
               <UserButton
