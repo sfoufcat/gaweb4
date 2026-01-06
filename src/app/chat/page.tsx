@@ -89,23 +89,27 @@ export default function ChatPage() {
   // Get channel ID from URL params (for direct navigation to a specific channel)
   const initialChannelId = searchParams.get('channel');
 
-  // Demo mode: show mock chat interface
+  // Demo mode: show mock chat interface with fade-in
   if (isDemoMode) {
-    return <DemoChatComponents />;
+    return (
+      <div className="animate-page-fade-in">
+        <DemoChatComponents />
+      </div>
+    );
   }
 
-  // Show skeleton while:
+  // Return null for smooth page fade-in while:
   // 1. Clerk is loading user
   // 2. Stream client is connecting (should be rare since it starts at app load)
   // 3. User is not authenticated
-  if (!isLoaded || !user || !client || (!isConnected && isConnecting)) {
-    return <ChatLoadingSkeleton />;
+  // 4. Client exists but isn't connected yet (edge case)
+  if (!isLoaded || !user || !client || !isConnected) {
+    return null;
   }
 
-  // If client exists but isn't connected yet (edge case), show skeleton
-  if (!isConnected) {
-    return <ChatLoadingSkeleton />;
-  }
-
-  return <StreamChatComponents client={client} user={user} initialChannelId={initialChannelId} />;
+  return (
+    <div className="animate-page-fade-in">
+      <StreamChatComponents client={client} user={user} initialChannelId={initialChannelId} />
+    </div>
+  );
 }

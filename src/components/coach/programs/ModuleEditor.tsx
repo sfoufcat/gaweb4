@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import type { ProgramModule, ProgramWeek } from '@/types';
-import { Trash2, Save, X, Calendar, AlertTriangle, Info } from 'lucide-react';
+import { Trash2, Save, Calendar, AlertTriangle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CollapsibleSection } from '@/components/ui/collapsible-section';
 
 interface ModuleEditorProps {
   module: ProgramModule;
@@ -193,11 +194,12 @@ export function ModuleEditor({
         </div>
       </div>
 
-      {/* Weeks Overview */}
-      <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-        <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
-          Weeks in this Module
-        </h4>
+      {/* Weeks Overview - Collapsible */}
+      <CollapsibleSection
+        title={`Weeks in this Module (${moduleWeeks.length})`}
+        icon={Calendar}
+        defaultOpen={false}
+      >
         {moduleWeeks.length > 0 ? (
           <div className="space-y-2">
             {moduleWeeks.map((week) => (
@@ -222,7 +224,7 @@ export function ModuleEditor({
             No weeks in this module yet
           </p>
         )}
-      </div>
+      </CollapsibleSection>
 
       {/* Day Range Info */}
       <div className="p-3 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg">

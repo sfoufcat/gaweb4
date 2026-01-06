@@ -363,8 +363,9 @@ export function Sidebar() {
   // Debug logging
   console.log('[Sidebar] Rendering for:', { pathname, userId, isSignedIn, isLoaded, navItemsCount: navItems.length });
 
-  // Instagram-style collapsed sidebar when on /chat page
-  const isCollapsed = pathname === '/chat' || pathname.startsWith('/chat/');
+  // Collapsed sidebar for chat and coach pages (same layout pattern)
+  const isCollapsed = pathname === '/chat' || pathname.startsWith('/chat/') ||
+                      pathname === '/coach' || pathname.startsWith('/coach?');
 
   return (
     <>

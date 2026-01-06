@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useOrganization as useClerkOrganization, useOrganizationList } from '@clerk/nextjs';
 import { isOrgCoach } from '@/lib/admin-utils-shared';
-import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner } from '@/components/coach';
+import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner, CoachSidebar } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, AlertCircle, Users } from 'lucide-react';
 import type { ClerkPublicMetadata, OrgRole, ProgramCohort, CoachSubscription } from '@/types';
@@ -511,45 +511,65 @@ export default function CoachPage() {
     new Date(subscription.graceEndsAt) > new Date();
 
   return (
-    <div className="min-h-screen">
-      {/* Feature Tour Overlay */}
-      <FeatureTour
-        isActive={isTourActive}
-        onComplete={handleTourComplete}
-        onSkip={handleTourComplete}
-      />
-      
-      {/* Payment Failed Banner - shown when in grace period */}
-      {isInGracePeriod && subscription?.graceEndsAt && (
-        <PaymentFailedBanner
-          graceEndsAt={subscription.graceEndsAt}
-          onUpdatePayment={handleUpdatePayment}
-          onRetryPayment={handleRetryPayment}
-        />
-      )}
-
-      <div className="px-4 sm:px-8 lg:px-16 py-6 pb-32">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert tracking-[-1px]">
-                Coach Dashboard
-              </h1>
-              <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                {isLimitedOrgCoach
-                  ? 'View your assigned squads and coaching clients'
-                  : role === 'coach' || orgRole === 'super_coach'
-                    ? 'Manage your squads and 1:1 coaching clients'
-                    : 'View and manage all squads and coaching clients'}
-              </p>
-            </div>
-            
-            {/* Demo Mode Toggle - removed as requested */}
-          </div>
+    <>
+      {/* Desktop: Fixed sidebar - matches chat's channel list position */}
+      <div
+        className="hidden lg:flex fixed top-0 left-[72px] bottom-0 w-[220px] border-r border-[#e1ddd8] dark:border-[#262b35] z-30 flex-col bg-[#faf8f6] dark:bg-[#05070b]"
+      >
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+          <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+            Coach Dashboard
+          </h2>
         </div>
+        {/* Navigation */}
+        <CoachSidebar
+          activeTab={activeTab}
+          onTabChange={(tab) => handleTabChange(tab)}
+          isLimitedOrgCoach={isLimitedOrgCoach}
+        />
+      </div>
 
-        {/* Ending Cohorts Banner */}
+      {/* Main content wrapper - fixed on desktop to match chat pattern */}
+      <div
+        className="min-h-screen lg:fixed lg:top-0 lg:left-[calc(72px+220px)] lg:right-0 lg:bottom-0 lg:overflow-y-auto bg-[#faf8f6] dark:bg-[#05070b]"
+      >
+        {/* Feature Tour Overlay */}
+        <FeatureTour
+          isActive={isTourActive}
+          onComplete={handleTourComplete}
+          onSkip={handleTourComplete}
+        />
+
+        {/* Payment Failed Banner - shown when in grace period */}
+        {isInGracePeriod && subscription?.graceEndsAt && (
+          <PaymentFailedBanner
+            graceEndsAt={subscription.graceEndsAt}
+            onUpdatePayment={handleUpdatePayment}
+            onRetryPayment={handleRetryPayment}
+          />
+        )}
+
+        <div className="px-4 sm:px-8 lg:px-8 py-6 pb-32 lg:pb-8">
+          {/* Header - mobile only (desktop has it in sidebar) */}
+          <div className="mb-8 lg:hidden">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert tracking-[-1px]">
+                  Coach Dashboard
+                </h1>
+                <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  {isLimitedOrgCoach
+                    ? 'View your assigned squads and coaching clients'
+                    : role === 'coach' || orgRole === 'super_coach'
+                      ? 'Manage your squads and 1:1 coaching clients'
+                      : 'View and manage all squads and coaching clients'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Ending Cohorts Banner */}
         {endingCohorts.length > 0 && (
           <div className="mb-6 space-y-3">
             {endingCohorts.map((item) => (
@@ -596,10 +616,11 @@ export default function CoachPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as CoachTab)} className="w-full">
+          {/* TabsList - mobile only (desktop uses CoachSidebar) */}
           <TabsList
             ref={setTabsListRef}
             onMouseLeave={handleTabsMouseLeave}
-            className="relative mb-6 w-full flex-nowrap overflow-x-auto overflow-y-hidden justify-start gap-1 p-1.5 scrollbar-hide bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl"
+            className="relative mb-6 w-full flex-nowrap overflow-x-auto overflow-y-hidden justify-start gap-1 p-1.5 scrollbar-hide bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl lg:hidden"
           >
             {/* Sliding highlight */}
             <div
@@ -894,5 +915,6 @@ export default function CoachPage() {
         </Tabs>
       </div>
     </div>
+  </>
   );
 }

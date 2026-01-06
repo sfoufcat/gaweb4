@@ -170,13 +170,10 @@ export default function StandaloneSquadPage() {
     fetchReferralConfig();
   }, [squad?.programId]);
 
-  // Loading state - in demo mode, skip waiting for Clerk user to load
+  // Loading state - return null for smooth page fade-in
+  // In demo mode, skip waiting for Clerk user to load
   if (!mounted || (!isDemoMode && !userLoaded) || isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
-      </div>
-    );
+    return null;
   }
 
   if (!user) {

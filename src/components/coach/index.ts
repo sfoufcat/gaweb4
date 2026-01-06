@@ -1,4 +1,5 @@
 export { AlignmentActivitiesSettings } from './AlignmentActivitiesSettings';
+export { CoachSidebar } from './CoachSidebar';
 export { CallSummaryCard } from './CallSummaryCard';
 export { CallSummarySettingsCard } from './CallSummarySettingsCard';
 export { ClientDetailSlideOver } from './ClientDetailSlideOver';

@@ -1004,7 +1004,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       // Find the first week (smallest weekNumber)
       const firstWeek = [...programWeeks].sort((a, b) => a.weekNumber - b.weekNumber)[0];
       if (firstWeek) {
-        setSidebarSelection({ type: 'week', id: firstWeek.id });
+        setSidebarSelection({ type: 'week', id: firstWeek.id, weekNumber: firstWeek.weekNumber, moduleId: firstWeek.moduleId });
         // Ensure week 1 is expanded
         setExpandedWeeks(new Set([firstWeek.weekNumber]));
       }
@@ -1022,7 +1022,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       // For cohorts, select first week
       const firstWeek = [...programWeeks].sort((a, b) => a.weekNumber - b.weekNumber)[0];
       if (firstWeek) {
-        setSidebarSelection({ type: 'week', id: firstWeek.id });
+        setSidebarSelection({ type: 'week', id: firstWeek.id, weekNumber: firstWeek.weekNumber, moduleId: firstWeek.moduleId });
         setExpandedWeeks(new Set([firstWeek.weekNumber]));
       }
     }
@@ -2013,6 +2013,30 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
               {/* Right side controls */}
               <div className="flex-shrink-0 ml-auto flex items-center gap-2">
+                {/* Today / Enrollment Status - only for individual programs with client selected */}
+                {viewMode === 'days' && selectedProgram?.type === 'individual' && clientViewContext.mode === 'client' && currentEnrollment && (
+                  currentEnrollment.status === 'active' && currentEnrollment.currentDayIndex && currentEnrollment.currentDayIndex > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handleJumpToToday}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
+                    >
+                      <CalendarDays className="w-4 h-4" />
+                      Today
+                    </button>
+                  ) : (
+                    <span className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-lg ${
+                      currentEnrollment.status === 'stopped' || currentEnrollment.status === 'completed'
+                        ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20'
+                        : currentEnrollment.status === 'upcoming'
+                        ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                    }`}>
+                      Enrollment: {currentEnrollment.status.charAt(0).toUpperCase() + currentEnrollment.status.slice(1)}
+                    </span>
+                  )
+                )}
+
                 {/* Page Dropdown */}
                 <Popover open={isPageDropdownOpen} onOpenChange={setIsPageDropdownOpen}>
                   <PopoverTrigger asChild>
@@ -2396,23 +2420,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             transition={{ duration: 0.15, ease: 'easeOut' }}
             className="flex flex-col gap-4"
           >
-            {/* Jump to Today - only show when viewing a client (1:1) or cohort (group), not template */}
-            {((selectedProgram?.type === 'individual' && clientViewContext.mode === 'client' && currentEnrollment?.currentDayIndex && currentEnrollment.currentDayIndex > 0) ||
-              (selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort')) && (
-              <button
-                type="button"
-                onClick={handleJumpToToday}
-                className="self-start flex items-center gap-1.5 text-sm font-medium font-albert text-brand-accent hover:text-brand-accent/80 transition-colors mb-2"
-              >
-                <CalendarDays className="w-4 h-4" />
-                Jump to Today (Day {currentEnrollment?.currentDayIndex || ''})
-              </button>
-            )}
-
-            {/* Content area - Sidebar + Editor */}
-            <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-            {/* Sidebar Navigation */}
-            <ModuleWeeksSidebar
+            {/* Content area - Unified Sidebar + Editor Card */}
+            <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+              <div className="flex flex-col lg:flex-row">
+                {/* Sidebar Navigation */}
+                <div className="lg:w-80 lg:flex-shrink-0 lg:border-r border-b lg:border-b-0 border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#11141b]">
+                  <ModuleWeeksSidebar
               program={selectedProgram as Program}
               modules={programModules}
               weeks={clientViewContext.mode === 'client' ? clientWeeks.map(cw => ({
@@ -2742,6 +2755,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               currentDayIndex={currentEnrollment?.currentDayIndex}
               onJumpToToday={handleJumpToToday}
             />
+                </div>
 
             {/* Content column */}
             <div className="flex-1 flex flex-col gap-3 sm:gap-4">
@@ -3272,6 +3286,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   );
                 })()
               )}
+              </div>
             </div>
           </div>
           </div>

@@ -156,16 +156,12 @@ export default function ProgramHubPage() {
     return enrollments.find(e => e.program.id === selectedProgramId) || null;
   }, [selectedProgramId, enrollments]);
   
-  // Loading state - show skeleton while loading
+  // Loading state - return null for smooth page fade-in
   // In demo mode, skip waiting for Clerk user to load
   const isLoading = (!isDemoMode && !userLoaded) || !mounted || programsLoading;
   
   if (isLoading) {
-    return (
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
-        <ProgramSkeleton />
-      </div>
-    );
+    return null;
   }
   
   if (!user) {

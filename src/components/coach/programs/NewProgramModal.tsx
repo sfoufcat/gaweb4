@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Fragment, useCallback } from 'react';
+import React, { useState, Fragment, useCallback, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { AlertTriangle } from 'lucide-react';
 import {
@@ -91,6 +91,16 @@ export function NewProgramModal({
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
+  // Reset state when modal opens (not on close, to preserve state during exit animation)
+  useEffect(() => {
+    if (isOpen) {
+      setStep('type');
+      setWizardData(DEFAULT_WIZARD_DATA);
+      setIsCreating(false);
+      setShowCloseWarning(false);
+    }
+  }, [isOpen]);
+
   const handleCloseAttempt = () => {
     // If past step 1, show warning
     if (step !== 'type') {
@@ -101,11 +111,8 @@ export function NewProgramModal({
   };
 
   const handleClose = () => {
-    // Reset state on close
-    setStep('type');
-    setWizardData(DEFAULT_WIZARD_DATA);
-    setIsCreating(false);
-    setShowCloseWarning(false);
+    // Just close - state reset happens via useEffect when modal reopens
+    // This preserves the current step during the exit animation
     onClose();
   };
 
@@ -462,8 +469,13 @@ function TypeStep({ value, onChange }: TypeStepProps) {
         </h3>
 
         {/* Description */}
-        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
           One-on-one coaching with individual clients
+        </p>
+
+        {/* Explainer */}
+        <p className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert leading-relaxed">
+          Best for personalized coaching, high-touch relationships, and premium offerings
         </p>
 
         {/* Selection indicator */}
@@ -500,8 +512,13 @@ function TypeStep({ value, onChange }: TypeStepProps) {
         </h3>
 
         {/* Description */}
-        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
           Lead a cohort of clients together
+        </p>
+
+        {/* Explainer */}
+        <p className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert leading-relaxed">
+          Best for community-based programs, scalable offerings, and peer accountability
         </p>
 
         {/* Selection indicator */}
@@ -527,135 +544,117 @@ interface StructureStepProps {
 
 function StructureStep({ data, onChange }: StructureStepProps) {
   return (
-    <div className="space-y-6">
-      {/* Duration Type + Weeks */}
-      <div className="bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl p-5">
-        <div className="flex items-start gap-4">
-          <div className="w-11 h-11 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-            <Calendar className="w-5 h-5 text-brand-accent" />
-          </div>
-          <div className="flex-1">
-            {/* Duration Type Selector */}
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
-              Program Type
-            </label>
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => onChange({ durationType: 'fixed' })}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-                  data.durationType === 'fixed'
-                    ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
-                }`}
-              >
-                <Clock className="w-4 h-4" />
-                Fixed
-              </button>
-              <button
-                onClick={() => onChange({ durationType: 'evergreen' })}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-                  data.durationType === 'evergreen'
-                    ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
-                }`}
-              >
-                <RefreshCw className="w-4 h-4" />
-                Evergreen
-              </button>
-            </div>
-
-            {/* Duration Weeks Control */}
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
-              {data.durationType === 'evergreen' ? 'Cycle length (weeks)' : 'Duration (weeks)'}
-            </label>
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
-              {data.durationType === 'evergreen'
-                ? 'This program repeats after the final week.'
-                : 'How long will your program run?'}
-            </p>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => onChange({ durationWeeks: Math.max(1, data.durationWeeks - 1) })}
-                disabled={data.durationWeeks <= 1}
-                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand-accent transition-colors"
-              >
-                −
-              </button>
-              <div className="w-16 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] flex items-center justify-center">
-                <span className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{data.durationWeeks}</span>
-              </div>
-              <button
-                onClick={() => onChange({ durationWeeks: Math.min(52, data.durationWeeks + 1) })}
-                disabled={data.durationWeeks >= 52}
-                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand-accent transition-colors"
-              >
-                +
-              </button>
-            </div>
-          </div>
+    <div className="max-w-md mx-auto space-y-8">
+      {/* Duration Type - Prominent Toggle */}
+      <div className="text-center">
+        <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-[#f3f1ef] dark:bg-[#1d222b] border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+          <button
+            onClick={() => onChange({ durationType: 'fixed' })}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              data.durationType === 'fixed'
+                ? 'bg-white dark:bg-[#262b35] text-brand-accent shadow-sm'
+                : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            Fixed
+          </button>
+          <button
+            onClick={() => onChange({ durationType: 'evergreen' })}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              data.durationType === 'evergreen'
+                ? 'bg-white dark:bg-[#262b35] text-brand-accent shadow-sm'
+                : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+            }`}
+          >
+            <RefreshCw className="w-4 h-4" />
+            Evergreen
+          </button>
         </div>
-      </div>
-
-      {/* Modules */}
-      <div className="bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl p-5">
-        <div className="flex items-start gap-4">
-          <div className="w-11 h-11 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-            <Layers className="w-5 h-5 text-brand-accent" />
-          </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
-              Number of Modules
-            </label>
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
-              Modules help organize your program into logical sections
-            </p>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => onChange({ numModules: Math.max(1, data.numModules - 1) })}
-                disabled={data.numModules <= 1}
-                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand-accent transition-colors"
-              >
-                −
-              </button>
-              <div className="w-16 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] flex items-center justify-center">
-                <span className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{data.numModules}</span>
-              </div>
-              <button
-                onClick={() => onChange({ numModules: Math.min(12, data.numModules + 1) })}
-                disabled={data.numModules >= 12}
-                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand-accent transition-colors"
-              >
-                +
-              </button>
-            </div>
-          </div>
-        </div>
-        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-3 ml-15">
-          💡 Weeks will be distributed evenly across modules
+        <p className="mt-3 text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
+          {data.durationType === 'evergreen'
+            ? 'Program repeats continuously after completion'
+            : 'Program ends after the set duration'}
         </p>
       </div>
 
-      {/* Include Weekends */}
-      <div className="bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-              <Calendar className="w-5 h-5 text-brand-accent" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                Include Weekends
-              </label>
-              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                {data.includeWeekends ? '7 days per week' : '5 days per week (Mon-Fri)'}
-              </p>
-            </div>
+      {/* Duration Control */}
+      <div className="text-center">
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          {data.durationType === 'evergreen' ? 'Cycle Length' : 'Duration'}
+        </label>
+        <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => onChange({ durationWeeks: Math.max(1, data.durationWeeks - 1) })}
+            disabled={data.durationWeeks <= 1}
+            className="w-12 h-12 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
+          >
+            −
+          </button>
+          <div className="flex flex-col items-center">
+            <span className="text-4xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums">{data.durationWeeks}</span>
+            <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">weeks</span>
           </div>
-          <Switch
-            checked={data.includeWeekends}
-            onCheckedChange={(checked) => onChange({ includeWeekends: checked })}
-          />
+          <button
+            onClick={() => onChange({ durationWeeks: Math.min(52, data.durationWeeks + 1) })}
+            disabled={data.durationWeeks >= 52}
+            className="w-12 h-12 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
+          >
+            +
+          </button>
         </div>
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-gradient-to-r from-transparent via-[#e1ddd8] dark:via-[#262b35] to-transparent" />
+
+      {/* Modules Control */}
+      <div className="text-center">
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          Modules
+        </label>
+        <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => onChange({ numModules: Math.max(1, data.numModules - 1) })}
+            disabled={data.numModules <= 1}
+            className="w-12 h-12 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
+          >
+            −
+          </button>
+          <div className="flex flex-col items-center">
+            <span className="text-4xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums">{data.numModules}</span>
+            <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">modules</span>
+          </div>
+          <button
+            onClick={() => onChange({ numModules: Math.min(12, data.numModules + 1) })}
+            disabled={data.numModules >= 12}
+            className="w-12 h-12 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
+          >
+            +
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
+          {Math.round(data.durationWeeks / data.numModules * 10) / 10} weeks per module
+        </p>
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-gradient-to-r from-transparent via-[#e1ddd8] dark:via-[#262b35] to-transparent" />
+
+      {/* Weekends Toggle */}
+      <div className="flex items-center justify-between p-4 rounded-2xl bg-[#faf8f6] dark:bg-[#1d222b]/50">
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            Include Weekends
+          </label>
+          <p className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert mt-0.5">
+            {data.includeWeekends ? '7 days per week' : '5 days per week (Mon-Fri)'}
+          </p>
+        </div>
+        <Switch
+          checked={data.includeWeekends}
+          onCheckedChange={(checked) => onChange({ includeWeekends: checked })}
+        />
       </div>
     </div>
   );
