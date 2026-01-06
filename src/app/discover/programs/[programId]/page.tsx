@@ -20,7 +20,7 @@ import {
   Users, User, Calendar, Clock, Check,
   ChevronRight, AlertCircle, Loader2, CheckCircle, XCircle,
   Star, Video, MessageCircle, Book, Target, Zap, Heart,
-  ChevronDown, Shield, RefreshCw
+  ChevronDown, Shield
 } from 'lucide-react';
 import type { Program, ProgramCohort, ProgramDay, ProgramFeature, ProgramTestimonial, ProgramFAQ, OrderBumpConfig } from '@/types';
 import { ProgramLandingSkeleton } from '@/components/program/ProgramLandingSkeleton';
@@ -453,7 +453,7 @@ export default function ProgramDetailPage() {
               <div className="flex flex-wrap items-center gap-4 mb-5">
                 <div className="flex items-center gap-1.5 text-text-secondary">
                   <Clock className="w-4 h-4" />
-                  <span className="font-albert text-[14px]">{program.lengthDays} {program.durationType === 'evergreen' ? 'day cycles' : 'days'}</span>
+                  <span className="font-albert text-[14px]">{program.durationType === 'evergreen' ? 'Continuous' : `${program.lengthDays} days`}</span>
                 </div>
                 {program.showEnrollmentCount && totalEnrollments && totalEnrollments > 0 && (
                   <EnrolledMembersDisplay 
@@ -626,14 +626,6 @@ export default function ProgramDetailPage() {
                       {program.type === 'group' ? 'Group Program' : '1:1 Coaching'}
                     </span>
                   </div>
-                  {program.durationType === 'evergreen' && (
-                    <div className="flex items-center gap-2 rounded-full px-4 py-2 bg-green-500/10">
-                      <RefreshCw className="w-4 h-4 text-green-600" />
-                      <span className="font-albert text-[13px] font-semibold text-green-600">
-                        Evergreen
-                      </span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Price */}
@@ -656,7 +648,11 @@ export default function ProgramDetailPage() {
                   style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.08)}, ${hexToRgba(accentDark, 0.08)})` }}
                 >
                   <p className="font-albert text-[14px] text-text-primary">
-                    <span className="font-semibold">{program.lengthDays}-day</span> {program.durationType === 'evergreen' ? 'continuous program' : 'transformation program'}
+                    {program.durationType === 'evergreen' ? (
+                      <span className="font-semibold">Continuous program</span>
+                    ) : (
+                      <><span className="font-semibold">{program.lengthDays}-day</span> transformation program</>
+                    )}
                   </p>
                 </div>
 

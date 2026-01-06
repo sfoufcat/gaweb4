@@ -18,7 +18,6 @@ import { PlatformEmptyState } from '@/components/program/PlatformEmptyState';
 import { ProgramListView } from '@/components/program/ProgramListView';
 import { ProgramDetailView } from '@/components/program/ProgramDetailView';
 import { SquadTabContent } from '@/components/program/SquadTabContent';
-import { ProgramSkeleton } from '@/components/program/ProgramSkeleton';
 
 /**
  * Program Hub Page

@@ -21,8 +21,8 @@ const FULL_NAV_GROUPS: NavGroup[] = [
     name: 'Core',
     items: [
       { value: 'clients', label: 'Clients' },
-      { value: 'squads', label: 'Squads' },
       { value: 'programs', label: 'Programs' },
+      { value: 'squads', label: 'Squads' },
     ],
   },
   {
@@ -63,7 +63,7 @@ const FULL_NAV_GROUPS: NavGroup[] = [
       { value: 'support', label: 'Support' },
     ],
   },
-];
+];;
 
 // Limited navigation groups (for org coaches with limited access)
 const LIMITED_NAV_GROUPS: NavGroup[] = [

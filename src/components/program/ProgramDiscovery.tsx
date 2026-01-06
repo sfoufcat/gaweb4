@@ -82,34 +82,9 @@ export function ProgramDiscovery() {
     fetchPrograms();
   }, []);
 
-  // Loading skeleton
+  // Return null for smooth page fade-in
   if (loading) {
-    return (
-      <div className="pt-6 pb-32">
-        {/* Header Skeleton */}
-        <div className="mb-8">
-          <div className="h-10 w-48 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse mb-2" />
-          <div className="h-5 w-72 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
-        </div>
-
-        {/* Programs Grid Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <div 
-              key={i}
-              className="bg-white/60 dark:bg-[#171b22] border border-[#e1ddd8]/50 dark:border-[#262b35] rounded-[20px] overflow-hidden animate-pulse"
-            >
-              <div className="h-[140px] bg-[#e1ddd8]/40 dark:bg-[#222631]" />
-              <div className="p-4 space-y-3">
-                <div className="h-5 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded w-3/4" />
-                <div className="h-4 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded w-full" />
-                <div className="h-4 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded w-1/2" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // No programs available - show empty state with "Discover more content" CTA

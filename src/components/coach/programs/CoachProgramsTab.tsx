@@ -15,7 +15,7 @@ import type { DiscoverCourse } from '@/types/discover';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, List, CalendarDays, Check, RefreshCw } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, List, CalendarDays, Check } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -2276,7 +2276,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       </span>
                     )}
                   </div>
-                  <div className="absolute top-2 left-2 flex items-center gap-1">
+                  <div className="absolute top-2 left-2">
                     <span className={`px-2 py-0.5 rounded-full text-xs ${
                       program.type === 'group'
                         ? 'bg-blue-500 text-white'
@@ -2285,12 +2285,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       {program.type === 'group' ? <Users className="w-3 h-3 inline mr-1" /> : <User className="w-3 h-3 inline mr-1" />}
                       {program.type === 'group' ? 'Group' : '1:1'}
                     </span>
-                    {program.durationType === 'evergreen' && (
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-green-500 text-white flex items-center gap-1">
-                        <RefreshCw className="w-3 h-3" />
-                        Evergreen
-                      </span>
-                    )}
                   </div>
                 </div>
 
@@ -2306,7 +2300,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   <div className="flex items-center gap-3 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {program.lengthDays} {program.durationType === 'evergreen' ? 'day cycles' : 'days'}
+                      {program.durationType === 'evergreen' ? 'Continuous' : `${program.lengthDays} days`}
                     </span>
                     <span className="flex items-center gap-1">
                       <DollarSign className="w-3 h-3" />
@@ -2772,10 +2766,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             />
                 </div>
 
-            {/* Content column */}
-            <div className="flex-1 flex flex-col gap-3 sm:gap-4">
-              {/* Content Editor - conditionally render based on selection */}
-              <div className="flex-1 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-3 sm:p-6">
+                {/* Content column */}
+                <div className="flex-1 flex flex-col min-w-0">
+                  {/* Content Editor - conditionally render based on selection */}
+                  <div className="flex-1 p-4 sm:p-6">
                 {loadingDetails ? (
                 <div className="space-y-6 animate-pulse">
                   <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />

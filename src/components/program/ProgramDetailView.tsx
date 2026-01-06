@@ -11,7 +11,6 @@ import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import { useProgramContent } from '@/hooks/useProgramContent';
 import { useProgramCoachingData } from '@/hooks/useProgramCoachingData';
 import { ArticleCard } from '@/components/discover/ArticleCard';
-import { ProgramSkeleton } from '@/components/program/ProgramSkeleton';
 import { RequestCallModal } from '@/components/scheduling';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 
@@ -260,10 +259,9 @@ export function ProgramDetailView({
     downloads.length > 0 ||
     (program.defaultHabits && program.defaultHabits.length > 0);
 
-  // Show full-page skeleton while content is loading
-  // Hide pill menu in skeleton since parent already renders it
+  // Return null for smooth page fade-in while content is loading
   if (contentLoading) {
-    return <ProgramSkeleton showPillMenu={false} />;
+    return null;
   }
 
   return (

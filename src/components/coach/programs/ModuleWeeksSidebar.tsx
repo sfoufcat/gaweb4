@@ -816,22 +816,9 @@ export function ModuleWeeksSidebar({
   };
 
   return (
-    <div className="w-96 flex-shrink-0">
-      {/* Jump to Today button - only in client view */}
-      <div className="mb-4 flex items-center gap-2">
-        {isClientView && currentDayIndex && onJumpToToday && (
-          <button
-            onClick={onJumpToToday}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-accent text-white rounded-full text-sm font-medium font-albert hover:bg-brand-accent/90 transition-colors shadow-sm"
-          >
-            <CalendarDays className="w-4 h-4" />
-            Day {currentDayIndex}
-          </button>
-        )}
-      </div>
-
+    <div className="w-full">
       {/* Modules & Weeks Tree */}
-      <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+      <div className="overflow-hidden">
         <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto p-4">
         {sortedModules.length === 0 ? (
           // No modules yet - prompt to add one (only in template mode)

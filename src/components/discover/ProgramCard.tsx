@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Users, User, Calendar, Clock, DollarSign, RefreshCw } from 'lucide-react';
+import { Users, User, Calendar, Clock, DollarSign } from 'lucide-react';
 
 interface ProgramCardProgram {
   id: string;
@@ -86,7 +86,7 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
           )}
           
           {/* Type badge */}
-          <div className="absolute top-2 left-2 flex items-center gap-1">
+          <div className="absolute top-2 left-2">
             <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 backdrop-blur-sm ${
               program.type === 'group'
                 ? 'bg-blue-500/90 text-white'
@@ -104,12 +104,6 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
                 </>
               )}
             </span>
-            {program.durationType === 'evergreen' && (
-              <span className="px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 backdrop-blur-sm bg-green-500/90 text-white">
-                <RefreshCw className="w-3 h-3" />
-                Evergreen
-              </span>
-            )}
           </div>
 
           {/* Enrolled badge */}
@@ -171,7 +165,7 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
           <div className="flex items-center gap-3 text-xs text-[#5f5a55] dark:text-[#7d8190]">
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              {program.lengthDays} {program.durationType === 'evergreen' ? 'day cycles' : 'days'}
+              {program.durationType === 'evergreen' ? 'Continuous' : `${program.lengthDays} days`}
             </span>
 
             {/* Next cohort for group programs */}
