@@ -1,14 +1,15 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, X, Zap, ArrowUpRight } from 'lucide-react';
 import type { CoachTier } from '@/types';
-import { 
-  TIER_PRICING, 
-  PERMISSION_LABELS, 
-  getLimit, 
+import {
+  TIER_PRICING,
+  PERMISSION_LABELS,
+  getLimit,
   getNextTier,
-  type PermissionKey 
+  type PermissionKey
 } from '@/lib/coach-permissions';
 
 // =============================================================================
@@ -82,10 +83,13 @@ export function LimitReachedModal({
     router.push('/coach/plan');
   };
 
-  return (
+  // Use portal to render modal at document.body level (avoids parent overflow clipping)
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -192,7 +196,8 @@ export function LimitReachedModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
