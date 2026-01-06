@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, ProgramOrientation, CallSummary, WeeklyTaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
 import { Trash2, Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Repeat, ArrowRight, Upload, Mic, Phone, Calendar, Check, Loader2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { SyncToClientsDialog } from './SyncToClientsDialog';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface EnrollmentWithUser extends ProgramEnrollment {
   user?: {
@@ -81,6 +82,14 @@ export function WeekEditor({
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [showSyncButton, setShowSyncButton] = useState(false);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  
+  // Track which fields have been edited (for smart sync pre-selection)
+  const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
+  
+  // Helper to track field edits
+  const trackFieldEdit = useCallback((syncFieldKey: string) => {
+    setEditedFields(prev => new Set(prev).add(syncFieldKey));
+  }, []);
 
   // Get days in this week
   const weekDays = days.filter(
@@ -107,6 +116,7 @@ export function WeekEditor({
     setHasChanges(false);
     setShowSyncButton(false);
     setSaveStatus('idle');
+    setEditedFields(new Set());
   }, [week.id, week.name, week.theme, week.description, week.weeklyPrompt, week.weeklyTasks, week.currentFocus, week.notes, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.linkedSummaryIds, week.linkedCallEventIds]);
 
   // Check for changes

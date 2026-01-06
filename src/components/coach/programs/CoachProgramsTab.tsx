@@ -2012,7 +2012,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               <div className="flex items-center justify-between gap-4 mb-6">
                 {/* Left side: Title and Client Selector */}
                 <div className="flex items-center gap-4">
-                  <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert whitespace-nowrap shrink-0">
                     Program Schedule
                   </h3>
                   {/* Client Selector for 1:1 programs */}

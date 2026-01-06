@@ -199,8 +199,9 @@ export function ModuleWeeksSidebar({
   const [mounted, setMounted] = useState(false);
   
   // Local state to track week order during drag operations
+  // Stores just the weekNums in the desired order (not full objects)
   // This prevents visual "snap back" during async reorder operations
-  const [localWeekOrder, setLocalWeekOrder] = useState<Map<string, CalculatedWeek[]>>(new Map());
+  const [localWeekOrder, setLocalWeekOrder] = useState<Map<string, number[]>>(new Map());
 
   React.useEffect(() => {
     setMounted(true);
@@ -291,18 +292,17 @@ export function ModuleWeeksSidebar({
 
     // Check each module in localWeekOrder
     let allSynced = true;
-    localWeekOrder.forEach((localWeeks, moduleId) => {
+    localWeekOrder.forEach((localWeekNums, moduleId) => {
       const propsWeeks = weeksByModule.get(moduleId);
       if (!propsWeeks) {
         allSynced = false;
         return;
       }
 
-      // Compare order - check if props match local ordering
-      const localIds = localWeeks.map(w => w.storedWeekId || `week-${w.weekNum}`);
-      const propsIds = propsWeeks.map(w => w.storedWeekId || `week-${w.weekNum}`);
+      // Compare order - check if props weekNums match local ordering
+      const propsWeekNums = propsWeeks.map(w => w.weekNum);
 
-      if (JSON.stringify(localIds) !== JSON.stringify(propsIds)) {
+      if (JSON.stringify(localWeekNums) !== JSON.stringify(propsWeekNums)) {
         allSynced = false;
       }
     });
@@ -367,9 +367,10 @@ export function ModuleWeeksSidebar({
 
   const handleWeeksReorder = useCallback(async (moduleId: string, reorderedWeeks: CalculatedWeek[]) => {
     // IMMEDIATELY update local state to prevent visual "snap back" during async operations
+    // Store just the weekNums in the desired order (not full objects)
     setLocalWeekOrder(prev => {
       const next = new Map(prev);
-      next.set(moduleId, reorderedWeeks);
+      next.set(moduleId, reorderedWeeks.map(w => w.weekNum));
       return next;
     });
 
@@ -669,7 +670,13 @@ export function ModuleWeeksSidebar({
     const isModuleExpanded = expandedModules.has(module.id);
     const isModuleSelected = isSelected({ type: 'module', id: module.id, moduleIndex: module.order });
     // Use local order if available (during drag), otherwise use computed order from props
-    const moduleWeeks = localWeekOrder.get(module.id) || weeksByModule.get(module.id) || [];
+    const propsWeeks = weeksByModule.get(module.id) || [];
+    const localOrder = localWeekOrder.get(module.id);
+    
+    // If we have a local order, reorder the current weeks to match
+    const moduleWeeks = localOrder
+      ? localOrder.map(weekNum => propsWeeks.find(w => w.weekNum === weekNum)).filter((w): w is CalculatedWeek => w !== undefined)
+      : propsWeeks;
     const weekCount = moduleWeeks.length;
 
     return (
