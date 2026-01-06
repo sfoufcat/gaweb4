@@ -721,6 +721,17 @@ export async function PATCH(
         return NextResponse.json({ error: 'Client not found' }, { status: 404 });
       }
 
+      // Fetch user data for denormalization
+      const client = await clerkClient();
+      let clientUser;
+      try {
+        clientUser = await client.users.getUser(clientId);
+      } catch {
+        // User might not exist in Clerk, continue without cached data
+      }
+
+      const nowStr = new Date().toISOString();
+
       // Create new coaching data document
       const newCoachingData: ClientCoachingData = {
         id: orgScopedDocId,
@@ -728,7 +739,7 @@ export async function PATCH(
         organizationId,
         coachId: userId,
         coachingPlan: 'monthly',
-        startDate: new Date().toISOString().split('T')[0],
+        startDate: nowStr.split('T')[0],
         focusAreas: [],
         actionItems: [],
         nextCall: {
@@ -739,8 +750,16 @@ export async function PATCH(
         sessionHistory: [],
         resources: [],
         privateNotes: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        // Denormalized user data for fast list queries
+        ...(clientUser && {
+          cachedUserFirstName: clientUser.firstName || '',
+          cachedUserLastName: clientUser.lastName || '',
+          cachedUserEmail: clientUser.emailAddresses?.[0]?.emailAddress || '',
+          cachedUserImageUrl: clientUser.imageUrl || '',
+          cachedDataUpdatedAt: nowStr,
+        }),
+        createdAt: nowStr,
+        updatedAt: nowStr,
       };
 
       await adminDb.collection('clientCoachingData').doc(orgScopedDocId).set(newCoachingData);

@@ -560,7 +560,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
             }
             setShowCreateDialog(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-transparent text-[#1a1a1a] dark:text-white font-semibold rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors"
         >
           <Plus className="w-4 h-4" />
           <span className="hidden sm:inline">New Funnel</span>

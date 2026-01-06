@@ -3,7 +3,25 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getSquadStatsWithCache } from '@/lib/squad-alignment';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { MAX_SQUAD_MEMBERS } from '@/lib/squad-constants';
 import type { Squad, SquadMember, SquadStats } from '@/types';
+
+// Discovery squad type (matches SquadDiscoveryCard expectations)
+interface DiscoverySquad {
+  id: string;
+  name: string;
+  description?: string;
+  avatarUrl?: string;
+  coachId?: string;
+  coachName?: string;
+  coachImageUrl?: string;
+  memberCount: number;
+  memberAvatars: string[];
+  priceInCents?: number;
+  subscriptionEnabled?: boolean;
+  billingInterval?: string;
+  visibility?: string;
+}
 
 /**
  * GET /api/squad/me
@@ -48,6 +66,89 @@ interface SquadData {
   squad: Squad | null;
   members: SquadMember[];
   stats: SquadStats | null;
+}
+
+/**
+ * Helper function to fetch discoverable squads (for users with no squads)
+ * This is a simplified version of /api/squad/discover that returns essential data
+ */
+async function fetchDiscoverySquads(organizationId: string): Promise<DiscoverySquad[]> {
+  try {
+    const squadsSnapshot = await adminDb.collection('squads')
+      .where('visibility', '==', 'public')
+      .where('organizationId', '==', organizationId)
+      .get();
+
+    const discoverySquads: DiscoverySquad[] = [];
+
+    for (const doc of squadsSnapshot.docs) {
+      const data = doc.data() as Squad;
+
+      // Get member count
+      const membersSnapshot = await adminDb.collection('squadMembers')
+        .where('squadId', '==', doc.id)
+        .get();
+
+      // Filter out coach from count
+      const nonCoachMembers = membersSnapshot.docs.filter(
+        memberDoc => memberDoc.data().userId !== data.coachId
+      );
+      const memberCount = nonCoachMembers.length;
+
+      // Skip full squads
+      if (memberCount >= MAX_SQUAD_MEMBERS) continue;
+
+      // Get first 3 member avatars
+      const memberAvatars: string[] = [];
+      const memberDocs = nonCoachMembers.slice(0, 3);
+      for (const memberDoc of memberDocs) {
+        const memberData = memberDoc.data();
+        if (memberData.imageUrl) {
+          memberAvatars.push(memberData.imageUrl);
+        } else if (memberData.userId) {
+          const userDoc = await adminDb.collection('users').doc(memberData.userId).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            memberAvatars.push(userData?.avatarUrl || userData?.imageUrl || '');
+          }
+        }
+      }
+
+      // Get coach info if has coach
+      let coachName: string | undefined;
+      let coachImageUrl: string | undefined;
+      if (data.coachId) {
+        const coachDoc = await adminDb.collection('users').doc(data.coachId).get();
+        if (coachDoc.exists) {
+          const coachData = coachDoc.data();
+          coachName = `${coachData?.firstName || ''} ${coachData?.lastName || ''}`.trim() || 'Coach';
+          coachImageUrl = coachData?.avatarUrl || coachData?.imageUrl || '';
+        }
+      }
+
+      discoverySquads.push({
+        id: doc.id,
+        name: data.name || '',
+        description: data.description,
+        avatarUrl: data.avatarUrl,
+        coachId: data.coachId || undefined,
+        coachName,
+        coachImageUrl,
+        memberCount,
+        memberAvatars: memberAvatars.filter(Boolean),
+        priceInCents: data.priceInCents,
+        subscriptionEnabled: data.subscriptionEnabled,
+        billingInterval: data.billingInterval,
+        visibility: data.visibility,
+      });
+    }
+
+    // Sort by member count (most popular first)
+    return discoverySquads.sort((a, b) => b.memberCount - a.memberCount);
+  } catch (error) {
+    console.error('[SQUAD_ME] Error fetching discovery squads:', error);
+    return [];
+  }
 }
 
 /**
@@ -319,10 +420,14 @@ export async function GET(request: Request) {
       }
     }
 
-    // If no squad memberships found at all, return empty state
+    // If no squad memberships found at all, return empty state WITH discovery squads
     if (squadIds.length === 0) {
+      // Fetch available squads user can join
+      const discoverySquads = await fetchDiscoverySquads(userOrgId);
+
       return NextResponse.json({
         squads: [],
+        discoverySquads, // Available squads to join
         // Legacy format for backward compatibility
         premiumSquad: null,
         premiumMembers: [],

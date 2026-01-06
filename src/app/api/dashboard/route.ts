@@ -3,12 +3,17 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isDemoRequest, withDemoMode, demoResponse } from '@/lib/demo-api';
-import { generateDemoUserProfile, generateDemoSquadMembers } from '@/lib/demo-data';
+import { generateDemoUserProfile, generateDemoSquadMembers, generateDemoDiscoverContent } from '@/lib/demo-data';
+import {
+  getActiveEnrollment,
+  getProgramById,
+  calculateCurrentDayIndex,
+} from '@/lib/program-engine';
 import type { Task, Habit, Program, ProgramCohort, ProgramEnrollment, Squad, SquadMember } from '@/types';
 
 /**
  * GET /api/dashboard
- * 
+ *
  * Unified API endpoint that returns ALL homepage data in ONE request:
  * - User data (identity, goal)
  * - Today's tasks
@@ -19,9 +24,61 @@ import type { Task, Habit, Program, ProgramCohort, ProgramEnrollment, Squad, Squ
  * - Program check-in status
  * - Program enrollments
  * - Squad data
- * 
+ * - Carousel cards data (program prompt + discover recommendation)
+ *
  * This reduces 10+ API calls to 1, dramatically improving performance
  */
+
+// ============================================================================
+// CAROUSEL CARDS - Types and Constants
+// ============================================================================
+interface ProgramPrompt {
+  title: string;
+  description: string;
+}
+
+interface DiscoverRecommendation {
+  id: string;
+  type: 'article' | 'course';
+  title: string;
+  description: string;
+  coverImageUrl?: string;
+  category?: string;
+}
+
+// Generic fallback prompts when user has no active program
+const GENERIC_PROMPTS: ProgramPrompt[] = [
+  {
+    title: "Start Your Day with Purpose",
+    description: "Take a moment to reflect on what you want to accomplish today. What's the one thing that will make today a success?",
+  },
+  {
+    title: "Focus on Progress",
+    description: "Small steps lead to big changes. What's one small action you can take today toward your goals?",
+  },
+  {
+    title: "Embrace the Journey",
+    description: "Every day is an opportunity to learn and grow. What will you explore today?",
+  },
+  {
+    title: "Make It Count",
+    description: "Time is your most valuable asset. How will you invest it wisely today?",
+  },
+  {
+    title: "Build Momentum",
+    description: "Consistency beats intensity. What daily habit are you strengthening today?",
+  },
+];
+
+/**
+ * Get a prompt index that cycles daily
+ */
+function getDailyPromptIndex(): number {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const diff = now.getTime() - start.getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
 
 // Helper functions for document IDs
 function getMorningCheckInDocId(organizationId: string, userId: string, date: string): string {
@@ -178,12 +235,34 @@ export async function GET(request: Request) {
             })),
           } : { squad: null, members: [] },
         },
+        // Carousel cards data
+        carouselCards: {
+          programPrompt: {
+            hasEnrollment: true,
+            prompt: GENERIC_PROMPTS[getDailyPromptIndex() % GENERIC_PROMPTS.length],
+            programName: profile.programs[0]?.name || null,
+            currentDay: profile.programs[0]?.currentDay || null,
+            totalDays: profile.programs[0]?.totalDays || null,
+          },
+          discoverRecommendation: (() => {
+            const demoContent = generateDemoDiscoverContent();
+            const randomItem = demoContent[getDailyPromptIndex() % demoContent.length];
+            return randomItem ? {
+              id: randomItem.id,
+              type: randomItem.type as 'article' | 'course',
+              title: randomItem.title,
+              description: randomItem.description,
+              coverImageUrl: randomItem.imageUrl,
+              category: randomItem.category,
+            } : null;
+          })(),
+        },
         date: today,
         weekId,
         organizationId: 'demo-org',
       });
     }
-    
+
     const { userId } = await auth();
 
     if (!userId) {
@@ -558,6 +637,151 @@ export async function GET(request: Request) {
     }
 
     // =========================================================================
+    // PROCESS CAROUSEL CARDS DATA
+    // =========================================================================
+    // Fetch program prompt and discover recommendation in parallel
+    const carouselCardsPromise = (async () => {
+      // Program Prompt
+      let programPromptData: {
+        hasEnrollment: boolean;
+        prompt: ProgramPrompt;
+        programName: string | null;
+        currentDay: number | null;
+        totalDays: number | null;
+      } = {
+        hasEnrollment: false,
+        prompt: GENERIC_PROMPTS[getDailyPromptIndex() % GENERIC_PROMPTS.length],
+        programName: null,
+        currentDay: null,
+        totalDays: null,
+      };
+
+      // Discover Recommendation
+      let discoverRecommendationData: DiscoverRecommendation | null = null;
+
+      // Fetch in parallel
+      const [enrollment, articlesSnapshot, coursesSnapshot] = await Promise.all([
+        getActiveEnrollment(userId),
+        organizationId
+          ? adminDb.collection('articles').where('organizationId', '==', organizationId).get()
+          : adminDb.collection('articles').get(),
+        organizationId
+          ? adminDb.collection('courses').where('organizationId', '==', organizationId).get()
+          : adminDb.collection('courses').get(),
+      ]);
+
+      // Process program prompt
+      if (enrollment) {
+        const program = await getProgramById(enrollment.programId);
+        if (program) {
+          const today = new Date().toISOString().split('T')[0];
+          const currentDayIndex = calculateCurrentDayIndex(enrollment.startedAt, program.lengthDays, today);
+
+          // Fetch the program day for current day
+          const daySnapshot = await adminDb
+            .collection('program_days')
+            .where('programId', '==', program.id)
+            .where('dayIndex', '==', currentDayIndex)
+            .limit(1)
+            .get();
+
+          let prompt: ProgramPrompt = GENERIC_PROMPTS[getDailyPromptIndex() % GENERIC_PROMPTS.length];
+
+          if (!daySnapshot.empty) {
+            const dayData = daySnapshot.docs[0].data();
+            if (dayData.dailyPrompt) {
+              prompt = {
+                title: dayData.title || `Day ${currentDayIndex}`,
+                description: dayData.dailyPrompt,
+              };
+            }
+          }
+
+          programPromptData = {
+            hasEnrollment: true,
+            prompt,
+            programName: program.name,
+            currentDay: currentDayIndex,
+            totalDays: program.lengthDays,
+          };
+        }
+      }
+
+      // Process discover recommendation
+      interface ArticleData {
+        id: string;
+        title: string;
+        content?: string;
+        coverImageUrl?: string;
+        category?: string;
+        articleType?: string;
+        featured?: boolean;
+      }
+
+      interface CourseData {
+        id: string;
+        title: string;
+        shortDescription?: string;
+        coverImageUrl?: string;
+        category?: string;
+        featured?: boolean;
+      }
+
+      const articles: ArticleData[] = articlesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      } as ArticleData));
+
+      const courses: CourseData[] = coursesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      } as CourseData));
+
+      // Combine featured content, prioritize featured items
+      const featuredArticles = articles.filter(a => a.featured);
+      const featuredCourses = courses.filter(c => c.featured);
+
+      // If no featured content, use any content
+      const availableArticles = featuredArticles.length > 0 ? featuredArticles : articles;
+      const availableCourses = featuredCourses.length > 0 ? featuredCourses : courses;
+
+      // Combine all available content
+      const allContent: DiscoverRecommendation[] = [
+        ...availableArticles.map(a => ({
+          id: a.id,
+          type: 'article' as const,
+          title: a.title,
+          description: a.content?.slice(0, 120)?.replace(/<[^>]*>/g, '') + '...' || 'Read this article',
+          coverImageUrl: a.coverImageUrl,
+          category: a.category || a.articleType,
+        })),
+        ...availableCourses.map(c => ({
+          id: c.id,
+          type: 'course' as const,
+          title: c.title,
+          description: c.shortDescription || 'Start learning',
+          coverImageUrl: c.coverImageUrl,
+          category: c.category,
+        })),
+      ];
+
+      if (allContent.length > 0) {
+        // Return a random item (seeded by day for consistency throughout the day)
+        const now = new Date();
+        const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+        const index = dayOfYear % allContent.length;
+        discoverRecommendationData = allContent[index];
+      }
+
+      return {
+        programPrompt: programPromptData,
+        discoverRecommendation: discoverRecommendationData,
+      };
+    })();
+
+    const carouselCards = await carouselCardsPromise;
+
+    // =========================================================================
     // RETURN UNIFIED RESPONSE
     // =========================================================================
     return NextResponse.json({
@@ -585,7 +809,10 @@ export async function GET(request: Request) {
       
       // Squad data
       squads,
-      
+
+      // Carousel cards data (program prompt + discover recommendation)
+      carouselCards,
+
       // Metadata
       date,
       weekId,

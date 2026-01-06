@@ -1,75 +1,40 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { Users, Star, ArrowRight, Sparkles } from 'lucide-react';
 import { SquadDiscoveryCard } from './SquadDiscoveryCard';
 import { useMenuTitles } from '@/contexts/BrandingContext';
+import type { DiscoverySquad } from '@/contexts/SquadContext';
 
 /**
  * SquadDiscovery Component
- * 
+ *
  * Displays available squads when user has no squad.
  * Styled like ProgramDiscovery - shows squads in a grid,
  * separated by Coached and Community types, with a "Discover more content" link.
- * 
+ *
  * If no squads are available, shows an empty state with link to programs.
+ *
+ * OPTIMIZED: Receives discovery squads from parent (fetched via SquadContext)
+ * to prevent flash of empty state while loading.
  */
 
-interface DiscoverSquad {
-  id: string;
-  name: string;
-  description?: string;
-  avatarUrl?: string;
-  coachId?: string;
-  coachName?: string;
-  coachImageUrl?: string;
-  memberCount?: number;
-  priceInCents?: number;
-  subscriptionEnabled?: boolean;
-  billingInterval?: string;
-  visibility?: string;
+interface SquadDiscoveryProps {
+  discoverySquads: DiscoverySquad[];
 }
 
-export function SquadDiscovery() {
+export function SquadDiscovery({ discoverySquads }: SquadDiscoveryProps) {
   const { squadLower } = useMenuTitles();
-  
-  const [coachedSquads, setCoachedSquads] = useState<DiscoverSquad[]>([]);
-  const [communitySquads, setCommunitySquads] = useState<DiscoverSquad[]>([]);
 
-  // Fetch available squads
-  useEffect(() => {
-    const fetchSquads = async () => {
-      try {
-        const response = await fetch('/api/squad/discover');
-        if (!response.ok) throw new Error('Failed to fetch squads');
+  // Separate squads into coached and community
+  const { coachedSquads, communitySquads } = useMemo(() => {
+    const coached = discoverySquads.filter(s => !!s.coachId);
+    const community = discoverySquads.filter(s => !s.coachId);
+    return { coachedSquads: coached, communitySquads: community };
+  }, [discoverySquads]);
 
-        const data = await response.json();
-
-        // Combine all squads from the API response
-        const allSquads: DiscoverSquad[] = [
-          ...(data.trackSquads || []),
-          ...(data.generalSquads || []),
-          ...(data.otherTrackSquads || []),
-          ...(data.premiumSquads || []),
-          ...(data.standardSquads || []),
-        ];
-
-        // Separate into coached and community squads
-        const coached = allSquads.filter((s: DiscoverSquad) => !!s.coachId);
-        const community = allSquads.filter((s: DiscoverSquad) => !s.coachId);
-
-        setCoachedSquads(coached);
-        setCommunitySquads(community);
-      } catch (err) {
-        console.error('Error fetching squads:', err);
-      }
-    };
-
-    fetchSquads();
-  }, []);
-
-  // Derive hasSquads from array lengths (no separate state needed)
+  // Derive hasSquads from array lengths
   const hasSquads = coachedSquads.length > 0 || communitySquads.length > 0;
 
   // No squads available - show empty state with programs CTA

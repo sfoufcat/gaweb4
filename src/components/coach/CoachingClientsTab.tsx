@@ -204,7 +204,7 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
           </p>
           <button
             onClick={handleAddNewClients}
-            className="px-6 py-3 bg-brand-accent text-brand-accent-foreground rounded-xl hover:bg-brand-accent/90 font-albert font-medium transition-colors inline-flex items-center gap-2"
+            className="px-6 py-3 bg-transparent text-[#1a1a1a] dark:text-white rounded-xl hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] font-albert font-semibold transition-colors inline-flex items-center gap-2"
           >
             <UserPlus className="w-5 h-5" />
             Add New Clients
@@ -240,7 +240,7 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
           </button>
           <button
             onClick={handleAddNewClients}
-            className="p-2.5 sm:px-4 sm:py-2 bg-brand-accent text-brand-accent-foreground text-sm rounded-lg hover:bg-brand-accent/90 font-albert font-medium transition-colors flex items-center gap-0 sm:gap-2"
+            className="p-2.5 sm:px-4 sm:py-2 bg-transparent text-[#1a1a1a] dark:text-white text-sm rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] font-albert font-semibold transition-colors flex items-center gap-0 sm:gap-2"
             title="Add New Clients"
           >
             <UserPlus className="w-4 h-4" />

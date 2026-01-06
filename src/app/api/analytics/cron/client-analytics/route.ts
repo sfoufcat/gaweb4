@@ -174,6 +174,33 @@ async function handleCronRequest(request: NextRequest) {
       }
     }
 
+    // Sync denormalized data to clientCoachingData collection
+    // This runs after all org_memberships are updated so cached data is fresh
+    try {
+      const syncStartTime = Date.now();
+      const baseUrl = process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+      const syncResponse = await fetch(`${baseUrl}/api/coaching/clients/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+        },
+      });
+
+      if (syncResponse.ok) {
+        const syncResult = await syncResponse.json();
+        console.log(`[CLIENT_ANALYTICS] Coaching data sync completed in ${Date.now() - syncStartTime}ms:`, syncResult.stats);
+      } else {
+        console.warn(`[CLIENT_ANALYTICS] Coaching data sync failed:`, await syncResponse.text());
+      }
+    } catch (syncError) {
+      console.warn('[CLIENT_ANALYTICS] Failed to sync coaching data:', syncError);
+      // Don't fail the whole cron job if sync fails
+    }
+
     const duration = Date.now() - startTime;
     console.log(`[CLIENT_ANALYTICS] Completed in ${duration}ms:`, stats);
 

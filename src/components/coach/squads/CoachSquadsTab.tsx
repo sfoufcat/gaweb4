@@ -717,7 +717,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                 setEditingSquad(null);
                 setIsSquadModalOpen(true);
               }}
-              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
+              className="bg-transparent hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] text-[#1a1a1a] dark:text-white font-semibold font-albert transition-colors"
             >
               <Plus className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">New Squad</span>
@@ -879,14 +879,12 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
 
                 {/* Content */}
                 <div className="p-5">
-                  <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-1 mb-2">
+                  <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 h-[2.65em] mb-2">
                     {squad.name}
                   </h3>
-                  {squad.description && (
-                    <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 mb-3">
-                      {squad.description}
-                    </p>
-                  )}
+                  <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 h-[2.6em] overflow-hidden mb-3">
+                    {squad.description || 'No description'}
+                  </p>
 
                   {/* Meta pills */}
                   <div className="flex flex-wrap items-center gap-2 mb-3">

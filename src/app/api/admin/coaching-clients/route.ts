@@ -214,6 +214,12 @@ export async function POST(request: Request) {
         resources: [],
         privateNotes: [],
         chatChannelId,
+        // Denormalized user data for fast list queries
+        cachedUserFirstName: user.firstName || '',
+        cachedUserLastName: user.lastName || '',
+        cachedUserEmail: user.emailAddresses?.[0]?.emailAddress || '',
+        cachedUserImageUrl: user.imageUrl || '',
+        cachedDataUpdatedAt: now,
         createdAt: now,
         updatedAt: now,
       };

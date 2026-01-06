@@ -73,6 +73,7 @@ export default function StandaloneSquadPage() {
     hasStandaloneSquad,
     membersBySquad,
     statsBySquad,
+    discoverySquads,
     isLoading,
     refetch,
     fetchStatsTabData,
@@ -179,11 +180,28 @@ export default function StandaloneSquadPage() {
     );
   }
 
+  // Show loading state while checking for squads
+  // This prevents the "No squads available yet" flash
+  if (isLoading) {
+    return (
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pt-6">
+        <div className="mb-8">
+          <div className="h-10 w-48 bg-surface animate-pulse rounded-lg mb-2" />
+          <div className="h-5 w-96 bg-surface animate-pulse rounded-lg" />
+        </div>
+        <div className="space-y-4">
+          <div className="h-48 bg-surface animate-pulse rounded-[20px]" />
+          <div className="h-48 bg-surface animate-pulse rounded-[20px]" />
+        </div>
+      </div>
+    );
+  }
+
   // No standalone squad - show squad discovery page
   if (!hasStandaloneSquad || !squad) {
     return (
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16">
-        <SquadDiscovery />
+        <SquadDiscovery discoverySquads={discoverySquads} />
       </div>
     );
   }

@@ -6,6 +6,24 @@ import { useDemoMode } from '@/contexts/DemoModeContext';
 import { generateDemoSquadsWithStats, generateDemoSquadMembers } from '@/lib/demo-data';
 import type { Squad, SquadMember, SquadStats, ContributionDay } from '@/types';
 
+// Discovery squad type (from /api/squad/me when user has no squads)
+// Uses optional fields to match SquadDiscoveryCard expectations
+export interface DiscoverySquad {
+  id: string;
+  name: string;
+  description?: string;
+  avatarUrl?: string;
+  coachId?: string;
+  coachName?: string;
+  coachImageUrl?: string;
+  memberCount: number;
+  memberAvatars: string[];
+  priceInCents?: number;
+  subscriptionEnabled?: boolean;
+  billingInterval?: string;
+  visibility?: string;
+}
+
 const SQUAD_CACHE_KEY = 'ga-squad-cache-v2';
 const CACHE_VERSION = 2;
 const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
@@ -105,6 +123,9 @@ interface SquadContextValue {
   setActiveStandaloneSquadId: (squadId: string) => void;
   hasStandaloneSquad: boolean;
   hasMultipleStandaloneSquads: boolean;
+
+  // Discovery squads (available to join when user has no squads)
+  discoverySquads: DiscoverySquad[];
   
   // Legacy compatibility: first coached squad and first non-coached squad
   premiumSquad: Squad | null;
@@ -147,6 +168,7 @@ let globalSquadData: {
   squads: Squad[];
   membersBySquad: Record<string, SquadMember[]>;
   statsBySquad: Record<string, SquadStats | null>;
+  discoverySquads: DiscoverySquad[];
   activeSquadId: string | null;
   activeStandaloneSquadId: string | null;
   fetchedForUserId: string | null;
@@ -157,6 +179,7 @@ let globalSquadData: {
   squads: [],
   membersBySquad: {},
   statsBySquad: {},
+  discoverySquads: [],
   activeSquadId: null,
   activeStandaloneSquadId: null,
   fetchedForUserId: null,
@@ -192,6 +215,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
   const [squads, setSquads] = useState<Squad[]>(globalSquadData.squads);
   const [membersBySquad, setMembersBySquad] = useState<Record<string, SquadMember[]>>(globalSquadData.membersBySquad);
   const [statsBySquad, setStatsBySquad] = useState<Record<string, SquadStats | null>>(globalSquadData.statsBySquad);
+  const [discoverySquads, setDiscoverySquads] = useState<DiscoverySquad[]>(globalSquadData.discoverySquads);
   
   // Active squad
   const [activeSquadId, setActiveSquadIdState] = useState<string | null>(globalSquadData.activeSquadId);
@@ -358,6 +382,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
           squads: demoSquads,
           membersBySquad: demoMembersBySquad,
           statsBySquad: demoStatsBySquad,
+          discoverySquads: [], // Demo mode has squads, so no discovery needed
           activeSquadId: defaultActiveId,
           activeStandaloneSquadId: defaultStandaloneId,
           fetchedForUserId: userId,
@@ -365,10 +390,11 @@ export function SquadProvider({ children }: SquadProviderProps) {
           contributionDaysLoadedBySquad: Object.fromEntries(demoSquads.map(s => [s.id, 30])),
           hasMoreContributionsBySquad: Object.fromEntries(demoSquads.map(s => [s.id, false])),
         };
-        
+
         setSquads(demoSquads);
         setMembersBySquad(demoMembersBySquad);
         setStatsBySquad(demoStatsBySquad);
+        setDiscoverySquads([]);
         setActiveSquadIdState(defaultActiveId);
         setActiveStandaloneSquadIdState(defaultStandaloneId);
         setIsLoading(false);
@@ -387,6 +413,9 @@ export function SquadProvider({ children }: SquadProviderProps) {
       // Extract squads array from response (use new format or legacy)
       const fetchedSquads: Squad[] = fastData.squads?.map((s: { squad: Squad }) => s.squad).filter(Boolean) || [];
       const fetchedMembersBySquad: Record<string, SquadMember[]> = {};
+
+      // Extract discovery squads (available when user has no squads)
+      const fetchedDiscoverySquads: DiscoverySquad[] = fastData.discoverySquads || [];
       
       // Build members map from response
       if (fastData.squads) {
@@ -427,6 +456,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
         squads: fetchedSquads,
         membersBySquad: fetchedMembersBySquad,
         statsBySquad: {},
+        discoverySquads: fetchedDiscoverySquads,
         activeSquadId: defaultActiveId,
         activeStandaloneSquadId: defaultStandaloneId,
         fetchedForUserId: userId,
@@ -437,6 +467,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
 
       setSquads(fetchedSquads);
       setMembersBySquad(fetchedMembersBySquad);
+      setDiscoverySquads(fetchedDiscoverySquads);
       setActiveSquadIdState(defaultActiveId);
       setActiveStandaloneSquadIdState(defaultStandaloneId);
       setIsLoading(false); // Page can render now!
@@ -501,12 +532,13 @@ export function SquadProvider({ children }: SquadProviderProps) {
     } catch (err) {
       console.error('Error fetching squad:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch squad');
-      
+
       // Clear cache on error
       globalSquadData = {
         squads: [],
         membersBySquad: {},
         statsBySquad: {},
+        discoverySquads: [],
         activeSquadId: null,
         activeStandaloneSquadId: null,
         fetchedForUserId: userId,
@@ -518,6 +550,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
       setSquads([]);
       setMembersBySquad({});
       setStatsBySquad({});
+      setDiscoverySquads([]);
       setActiveSquadIdState(null);
       setActiveStandaloneSquadIdState(null);
       setIsLoading(false);
@@ -649,6 +682,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
         squads: [],
         membersBySquad: {},
         statsBySquad: {},
+        discoverySquads: [],
         activeSquadId: null,
         activeStandaloneSquadId: null,
         fetchedForUserId: null,
@@ -659,6 +693,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
       setSquads([]);
       setMembersBySquad({});
       setStatsBySquad({});
+      setDiscoverySquads([]);
       setActiveSquadIdState(null);
       setActiveStandaloneSquadIdState(null);
       setIsLoading(false);
@@ -674,10 +709,11 @@ export function SquadProvider({ children }: SquadProviderProps) {
       setSquads(globalSquadData.squads);
       setMembersBySquad(globalSquadData.membersBySquad);
       setStatsBySquad(globalSquadData.statsBySquad);
+      setDiscoverySquads(globalSquadData.discoverySquads);
       setActiveSquadIdState(globalSquadData.activeSquadId);
       setActiveStandaloneSquadIdState(globalSquadData.activeStandaloneSquadId);
       setIsLoading(false);
-      
+
       // Set hasMoreContributions based on active squad
       if (globalSquadData.activeSquadId) {
         setHasMoreContributions(globalSquadData.hasMoreContributionsBySquad[globalSquadData.activeSquadId] ?? true);
@@ -708,7 +744,10 @@ export function SquadProvider({ children }: SquadProviderProps) {
       setActiveStandaloneSquadId,
       hasStandaloneSquad,
       hasMultipleStandaloneSquads,
-      
+
+      // Discovery squads (available to join when user has no squads)
+      discoverySquads,
+
       // Legacy compatibility (first coached and first non-coached)
       premiumSquad: coachedSquad,
       premiumMembers: coachedSquad ? (membersBySquad[coachedSquad.id] || []) : [],

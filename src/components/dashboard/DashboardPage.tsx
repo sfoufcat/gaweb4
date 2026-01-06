@@ -111,6 +111,7 @@ export function DashboardPage() {
     tasks: dashboardTasks,
     programEnrollments,
     squads: dashboardSquads,
+    carouselCards: dashboardCarouselCards,
     isLoading: dashboardLoading,
     refetch: refetchDashboard,
   } = useDashboard();
@@ -228,23 +229,41 @@ export function DashboardPage() {
   }, [weeklyReflection]);
   
   // Get program-specific prompt for Dynamic Section
-  const { prompt: programPrompt, programName, isLoading: programPromptLoading, hasEnrollment: hasPromptEnrollment } = useProgramPrompt();
-  
+  // UNIFIED: Use data from dashboardCarouselCards if available (all data loads together)
+  // Fallback to separate hooks for backwards compatibility
+  const { prompt: fallbackProgramPrompt, programName: fallbackProgramName, isLoading: fallbackProgramPromptLoading, hasEnrollment: fallbackHasPromptEnrollment } = useProgramPrompt();
+
   // Get discover recommendation for the discover card
-  const { recommendation: discoverRecommendation, isLoading: discoverLoading } = useDiscoverRecommendation();
-  
+  // UNIFIED: Use data from dashboardCarouselCards if available
+  const { recommendation: fallbackDiscoverRecommendation, isLoading: fallbackDiscoverLoading } = useDiscoverRecommendation();
+
+  // Use unified carousel data from dashboard API if available, otherwise fall back to separate hooks
+  const programPrompt = dashboardCarouselCards?.programPrompt?.prompt ?? fallbackProgramPrompt;
+  const programName = dashboardCarouselCards?.programPrompt?.programName ?? fallbackProgramName;
+  const hasPromptEnrollment = dashboardCarouselCards?.programPrompt?.hasEnrollment ?? fallbackHasPromptEnrollment;
+  const discoverRecommendation = dashboardCarouselCards?.discoverRecommendation ?? fallbackDiscoverRecommendation;
+
+  // When unified data is available, carousel loading is tied to dashboard loading only
+  // This ensures all 3 cards appear together since they come from the same API call
+  const hasUnifiedCarouselData = !!dashboardCarouselCards;
+  const programPromptLoading = hasUnifiedCarouselData ? dashboardLoading : fallbackProgramPromptLoading;
+  const discoverLoading = hasUnifiedCarouselData ? dashboardLoading : fallbackDiscoverLoading;
+
   // Track if carousel has ever loaded (to prevent skeleton flash on revalidation)
   const hasCarouselLoadedRef = useRef(false);
-  
+
   // Unified loading state for card carousel - wait for all card data to prevent reordering
   // Only show skeleton on INITIAL load, not on background revalidation
-  const isInitialCarouselLoading = checkInLoading || programPromptLoading || discoverLoading;
-  
+  // When using unified data, all data comes from one API so loading is synchronized
+  const isInitialCarouselLoading = hasUnifiedCarouselData
+    ? dashboardLoading
+    : (checkInLoading || programPromptLoading || discoverLoading);
+
   // Once data has loaded once, never show skeleton again
   if (!isInitialCarouselLoading && !hasCarouselLoadedRef.current) {
     hasCarouselLoadedRef.current = true;
   }
-  
+
   const carouselDataLoading = isInitialCarouselLoading && !hasCarouselLoadedRef.current;
   
   // Starter Program state for task sync and completion

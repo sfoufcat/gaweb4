@@ -1017,7 +1017,7 @@ export function ChannelManagementTab() {
               }
               setIsAddingNew(true);
             }}
-            className="p-2.5 sm:px-4 sm:py-2 rounded-xl bg-brand-accent font-albert font-medium text-brand-accent-foreground hover:bg-brand-accent/90 transition-colors inline-flex items-center gap-0 sm:gap-2"
+            className="p-2.5 sm:px-4 sm:py-2 rounded-xl bg-transparent font-albert font-semibold text-[#1a1a1a] dark:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors inline-flex items-center gap-0 sm:gap-2"
             title="Add Channel"
           >
             <Plus className="w-4 h-4" />

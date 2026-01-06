@@ -39,6 +39,32 @@ export interface ProgramEnrollmentWithDetails {
   status: string;
 }
 
+// Carousel cards types
+export interface ProgramPrompt {
+  title: string;
+  description: string;
+}
+
+export interface DiscoverRecommendation {
+  id: string;
+  type: 'article' | 'course';
+  title: string;
+  description: string;
+  coverImageUrl?: string;
+  category?: string;
+}
+
+export interface CarouselCardsData {
+  programPrompt: {
+    hasEnrollment: boolean;
+    prompt: ProgramPrompt;
+    programName: string | null;
+    currentDay: number | null;
+    totalDays: number | null;
+  };
+  discoverRecommendation: DiscoverRecommendation | null;
+}
+
 export interface DashboardData {
   user: Record<string, unknown> | null;
   habits: Habit[];
@@ -80,6 +106,8 @@ export interface DashboardData {
     premium: { squad: Squad | null; members: SquadMember[] };
     standard: { squad: Squad | null; members: SquadMember[] };
   };
+  // Carousel cards data (program prompt + discover recommendation)
+  carouselCards?: CarouselCardsData;
   date: string;
   weekId: string;
   organizationId: string | null;
@@ -100,6 +128,7 @@ const initialData: DashboardData = {
     premium: { squad: null, members: [] },
     standard: { squad: null, members: [] },
   },
+  carouselCards: undefined,
   date: '',
   weekId: '',
   organizationId: null,

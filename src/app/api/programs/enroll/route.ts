@@ -335,6 +335,12 @@ async function createCoachingRelationship(
     resources: [],
     privateNotes: [],
     chatChannelId: chatChannelId || undefined,
+    // Denormalized user data for fast list queries
+    cachedUserFirstName: clerkUser.firstName || '',
+    cachedUserLastName: clerkUser.lastName || '',
+    cachedUserEmail: clerkUser.email || '',
+    cachedUserImageUrl: clerkUser.imageUrl || '',
+    cachedDataUpdatedAt: now,
     createdAt: now,
     updatedAt: now,
   };

@@ -438,7 +438,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
         </div>
         <Button
           onClick={() => handleOpenModal()}
-          className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
+          className="bg-transparent hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] text-[#1a1a1a] dark:text-white font-semibold flex items-center gap-2 transition-colors"
         >
           <Plus className="w-4 h-4" />
           <span className="hidden sm:inline">New Code</span>
