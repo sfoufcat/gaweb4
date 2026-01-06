@@ -143,7 +143,7 @@ export default function DiscoverPage() {
         <section className="px-4 py-5 overflow-hidden">
           <div className="flex flex-col gap-4">
             <div className="h-6 w-40 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse" />
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+            <div className="flex gap-2 overflow-x-auto pb-6 -mx-4 px-4">
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
@@ -181,7 +181,7 @@ export default function DiscoverPage() {
         <section className="px-4 py-5 overflow-hidden">
           <div className="flex flex-col gap-4">
             <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse" />
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+            <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4">
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
@@ -200,7 +200,7 @@ export default function DiscoverPage() {
         <section className="px-4 py-5 overflow-hidden">
           <div className="flex flex-col gap-4">
             <div className="h-6 w-28 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse" />
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+            <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4">
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
@@ -426,7 +426,7 @@ export default function DiscoverPage() {
             />
             
             {/* Horizontal scrollable list based on selected type */}
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+            <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
               {selectedProgramType === 'all' ? (
                 (availableGroupPrograms.length > 0 || availableIndividualPrograms.length > 0) ? (
                   [...availableGroupPrograms, ...availableIndividualPrograms].map((program) => (
@@ -470,7 +470,7 @@ export default function DiscoverPage() {
             <SectionHeader title={`Public ${squadTitle}s`} />
             
             {/* Horizontal scrollable list */}
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+            <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
               {publicSquads.map((squad) => (
                 <SquadCard key={squad.id} squad={squad} fullWidth={false} />
               ))}
@@ -509,7 +509,7 @@ export default function DiscoverPage() {
             </div>
             
             {/* Horizontal scrollable list */}
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
               {filteredEvents.length > 0 ? (
                 filteredEvents.map((event) => (
                   <EventCard key={event.id} event={event} isPast={showPastEvents} />
@@ -538,7 +538,7 @@ export default function DiscoverPage() {
                 ))}
               </div>
             ) : (
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+              <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
                 {filteredCourses.map((course) => (
                   <CourseCard key={course.id} course={course} />
                 ))}
@@ -627,7 +627,7 @@ export default function DiscoverPage() {
 
             {/* Articles List */}
             {articlesDisplay.length > 0 && (
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+              <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
                 {articlesDisplay.map((article) => (
                   <ArticleCard key={article.id} article={article} variant="horizontal" />
                 ))}
@@ -642,7 +642,7 @@ export default function DiscoverPage() {
                 </h3>
                 
                 {/* Horizontal scrollable list */}
-                <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+                <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
                   {trending.map((item, index) => (
                     <TrendingItem key={item.id} item={item} index={index} />
                   ))}

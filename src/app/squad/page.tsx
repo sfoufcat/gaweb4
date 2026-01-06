@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useSquad } from '@/hooks/useSquad';
 import { SquadHeader } from '@/components/squad/SquadHeader';
@@ -40,6 +41,12 @@ import type { ReferralConfig } from '@/types';
  */
 
 type TabType = 'squad' | 'stats';
+
+const fadeUpVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 },
+};
 
 export default function StandaloneSquadPage() {
   const { user: clerkUser, isLoaded: userLoaded } = useUser();
@@ -187,20 +194,39 @@ export default function StandaloneSquadPage() {
   // No standalone squad - show squad discovery page
   if (!hasStandaloneSquad || !squad) {
     return (
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16">
-        <SquadDiscovery />
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="squad-discovery"
+          variants={fadeUpVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+          className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16"
+        >
+          <SquadDiscovery />
+        </motion.div>
+      </AnimatePresence>
     );
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
-      {/* Page Title */}
-      <div className="mb-6">
-        <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">
-          {squadTitle}
-        </h1>
-      </div>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={`squad-${squad.id}`}
+        variants={fadeUpVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+        className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4"
+      >
+        {/* Page Title */}
+        <div className="mb-6">
+          <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">
+            {squadTitle}
+          </h1>
+        </div>
 
       {/* Squad Header with switcher dropdown (when multiple squads) */}
       <div className="mb-6">
@@ -358,11 +384,12 @@ export default function StandaloneSquadPage() {
         </div>
       )}
 
-      {/* Squad Streak Bottom Sheet */}
-      <SquadStreakSheet 
-        isOpen={showStreakSheet}
-        onClose={() => setShowStreakSheet(false)}
-      />
-    </div>
+        {/* Squad Streak Bottom Sheet */}
+        <SquadStreakSheet
+          isOpen={showStreakSheet}
+          onClose={() => setShowStreakSheet(false)}
+        />
+      </motion.div>
+    </AnimatePresence>
   );
 }

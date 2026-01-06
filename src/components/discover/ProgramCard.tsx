@@ -183,28 +183,37 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
             )}
           </div>
 
-          {/* Next cohort info */}
-          {program.type === 'group' && program.nextCohort && !isCompact && (
+          {/* Footer section - always show something for non-compact */}
+          {!isCompact && (
             <div className="mt-1 pt-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
-              <div className="flex items-center justify-between">
-                <span className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                  Next: {program.nextCohort.name}
-                </span>
-                {program.nextCohort.spotsRemaining > 0 && program.nextCohort.spotsRemaining !== -1 && (
-                  <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
-                    {program.nextCohort.spotsRemaining} spots left
+              {program.type === 'group' && program.nextCohort ? (
+                // Group program with upcoming cohort
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                    Next: {program.nextCohort.name}
                   </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Individual program - Start anytime */}
-          {program.type === 'individual' && !isCompact && (
-            <div className="mt-1 pt-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
-              <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
-                Start anytime
-              </span>
+                  {program.nextCohort.spotsRemaining > 0 && program.nextCohort.spotsRemaining !== -1 && (
+                    <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
+                      {program.nextCohort.spotsRemaining} spots left
+                    </span>
+                  )}
+                </div>
+              ) : program.type === 'group' && program.durationType === 'evergreen' ? (
+                // Evergreen group program - join anytime
+                <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
+                  Join anytime
+                </span>
+              ) : program.type === 'group' ? (
+                // Group program without cohort - coming soon
+                <span className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                  Cohort dates coming soon
+                </span>
+              ) : (
+                // Individual program - start anytime
+                <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
+                  Start anytime
+                </span>
+              )}
             </div>
           )}
         </div>
