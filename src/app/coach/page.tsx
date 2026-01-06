@@ -607,7 +607,7 @@ export default function CoachPage() {
             ref={tabsListRef}
             onWheel={handleTabsWheel}
             onMouseLeave={handleTabsMouseLeave}
-            className="relative mb-6 w-full flex-nowrap overflow-x-auto justify-start gap-1 p-1.5 scrollbar-hide bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl"
+            className="relative mb-6 w-full flex-nowrap overflow-x-auto overflow-y-hidden justify-start gap-1 p-1.5 scrollbar-hide bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl"
           >
             {/* Sliding highlight */}
             <div
