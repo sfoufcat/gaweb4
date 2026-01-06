@@ -641,33 +641,42 @@ export function ModuleWeeksSidebar({
         </div>
 
         {/* Days in Week (only in Daily mode when expanded) */}
-        {orientation === 'daily' && isWeekExpanded && (
-          <div className="bg-[#faf8f6] dark:bg-[#1a1e25] border-t border-[#e1ddd8] dark:border-[#262b35]">
-            {week.daysInWeek.map((dayIndex) => {
-              const hasContent = dayHasContent(dayIndex);
-              const isDaySelected = isSelected({ type: 'day', dayIndex });
-              return (
-                <button
-                  key={dayIndex}
-                  onClick={() => onSelect({ type: 'day', dayIndex, moduleId })}
-                  className={`w-full text-left flex items-center gap-3 px-4 py-3 pl-[72px] transition-colors ${
-                    isDaySelected
-                      ? 'bg-brand-accent/10 text-brand-accent'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
-                  }`}
-                >
-                  <FileText className="w-4 h-4" />
-                  <span className="font-medium">Day {dayIndex}</span>
-                  {hasContent && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
-                      ✓
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <AnimatePresence initial={false}>
+          {orientation === 'daily' && isWeekExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              style={{ overflow: "hidden" }}
+              className="bg-[#faf8f6] dark:bg-[#1a1e25] border-t border-[#e1ddd8] dark:border-[#262b35]"
+            >
+              {week.daysInWeek.map((dayIndex) => {
+                const hasContent = dayHasContent(dayIndex);
+                const isDaySelected = isSelected({ type: 'day', dayIndex });
+                return (
+                  <button
+                    key={dayIndex}
+                    onClick={() => onSelect({ type: 'day', dayIndex, moduleId })}
+                    className={`w-full text-left flex items-center gap-3 px-4 py-3 pl-[72px] transition-colors ${
+                      isDaySelected
+                        ? 'bg-brand-accent/10 text-brand-accent'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span className="font-medium">Day {dayIndex}</span>
+                    {hasContent && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };

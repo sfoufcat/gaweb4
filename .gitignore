@@ -49,3 +49,6 @@ next-env.d.ts
 public/manifesting-audio.webm
 firebase-debug.log
 .taskmaster/docs/prd.txt
+
+# Claude session todos
+TODOS.md
