@@ -62,6 +62,7 @@ interface CalculatedWeek {
   weeklyTasks: unknown[];
   storedWeekId?: string;
   moduleId?: string;
+  order?: number; // Order within module for drag-drop persistence
 }
 
 interface DeleteModuleModalProps {
@@ -238,6 +239,7 @@ export function ModuleWeeksSidebar({
         weeklyTasks: storedWeek?.weeklyTasks || [],
         storedWeekId: storedWeek?.id,
         moduleId: storedWeek?.moduleId,
+        order: storedWeek?.order, // Preserve order for drag-drop
       };
     });
   }, [program.lengthDays, program.includeWeekends, days, weeks]);
@@ -260,9 +262,19 @@ export function ModuleWeeksSidebar({
       }
     });
 
-    // Sort weeks within each module by week number
+    // Sort weeks within each module by order (or weekNum as fallback)
     map.forEach((moduleWeeks) => {
-      moduleWeeks.sort((a, b) => a.weekNum - b.weekNum);
+      moduleWeeks.sort((a, b) => {
+        // If both have order, sort by order
+        if (a.order !== undefined && b.order !== undefined) {
+          return a.order - b.order;
+        }
+        // If only one has order, prioritize the one with order
+        if (a.order !== undefined) return -1;
+        if (b.order !== undefined) return 1;
+        // Fallback to weekNum for weeks without stored order
+        return a.weekNum - b.weekNum;
+      });
     });
 
     return map;
@@ -658,21 +670,27 @@ export function ModuleWeeksSidebar({
         {isModuleExpanded && moduleWeeks.length > 0 && (
           canReorder ? (
             <Reorder.Group
+              as="div"
               axis="y"
               values={moduleWeeks}
               onReorder={(newWeeks) => handleWeeksReorder(module.id, newWeeks)}
               className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]"
             >
-              {moduleWeeks.map(week => (
-                <Reorder.Item key={week.weekNum} value={week}>
+              {moduleWeeks.map((week, idx) => (
+                <Reorder.Item
+                  as="div"
+                  key={week.weekNum}
+                  value={week}
+                  className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}
+                >
                   {renderWeekRow(week, module.id)}
                 </Reorder.Item>
               ))}
             </Reorder.Group>
           ) : (
             <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
-              {moduleWeeks.map(week => (
-                <div key={week.weekNum}>
+              {moduleWeeks.map((week, idx) => (
+                <div key={week.weekNum} className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}>
                   {renderWeekRow(week, module.id)}
                 </div>
               ))}
@@ -705,7 +723,7 @@ export function ModuleWeeksSidebar({
       </div>
 
       {/* Modules & Weeks Tree */}
-      <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+      <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1 pb-4">
         {sortedModules.length === 0 ? (
           // No modules yet - prompt to add one (only in template mode)
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6 text-center">
@@ -730,13 +748,14 @@ export function ModuleWeeksSidebar({
         ) : canReorder ? (
           // Modules list with drag-and-drop (template mode)
           <Reorder.Group
+            as="div"
             axis="y"
             values={sortedModules}
             onReorder={handleModuleReorder}
             className="space-y-4"
           >
             {sortedModules.map((module) => (
-              <Reorder.Item key={module.id} value={module}>
+              <Reorder.Item as="div" key={module.id} value={module}>
                 {renderModuleWithWeeks(module)}
               </Reorder.Item>
             ))}

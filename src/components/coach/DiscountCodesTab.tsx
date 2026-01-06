@@ -441,7 +441,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
           className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          New Code
+          <span className="hidden sm:inline">New Code</span>
         </Button>
       </div>
 

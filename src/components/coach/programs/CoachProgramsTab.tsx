@@ -2952,6 +2952,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               )}
             </div>
           </div>
+          </div>
         ) : viewMode === 'schedule' ? (
           // Schedule View
           <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6">
@@ -2971,7 +2972,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 setViewMode('days');
               }}
             />
-          </div>
           </div>
         ) : viewMode === 'cohorts' ? (
           // Cohorts View (Group programs only)
@@ -4573,7 +4573,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           orientation={selectedProgram?.orientation || 'weekly'}
           // Pass client context when in client mode for 1:1 programs
           enrollmentId={clientViewContext.mode === 'client' ? clientViewContext.enrollmentId : undefined}
-          clientUserId={clientViewContext.mode === 'client' ? clientViewContext.clientUserId : undefined}
+          clientUserId={clientViewContext.mode === 'client' ? clientViewContext.userId : undefined}
           onApply={async (updates) => {
             // Determine if we're updating a client week or template week
             const isClientMode = clientViewContext.mode === 'client' && selectedProgram.type === 'individual';

@@ -328,9 +328,9 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
     return acc;
   }, {} as Record<IntegrationCategory, IntegrationProviderMeta[]>);
 
-  // Get connected integration by provider
+  // Get connected integration by provider (only if status === 'connected')
   const getConnectedIntegration = (provider: IntegrationProvider): CoachIntegration | undefined => {
-    return integrations.find((i) => i.provider === provider);
+    return integrations.find((i) => i.provider === provider && i.status === 'connected');
   };
 
   if (loading) {
@@ -455,18 +455,20 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
                         </div>
                       )}
 
-                      {/* Settings and delete buttons */}
+                      {/* Settings button only for Google Calendar, delete for all */}
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setEditingIntegration(integration);
-                            setIsSettingsModalOpen(true);
-                          }}
-                        >
-                          <Settings className="w-4 h-4" />
-                        </Button>
+                        {integration.provider === 'google_calendar' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingIntegration(integration);
+                              setIsSettingsModalOpen(true);
+                            }}
+                          >
+                            <Settings className="w-4 h-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"

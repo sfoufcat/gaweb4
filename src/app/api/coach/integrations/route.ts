@@ -33,8 +33,14 @@ export async function GET() {
 
     const integrations = await listIntegrations(organizationId);
 
-    // Get available integrations (not yet connected)
-    const connectedProviders = new Set(integrations.map((i) => i.provider));
+    // Get connected providers (status === 'connected')
+    const connectedProviders = new Set(
+      integrations
+        .filter((i) => i.status === 'connected')
+        .map((i) => i.provider)
+    );
+    
+    // Available = providers that are either not in Firestore OR have status !== 'connected'
     const available = Object.values(INTEGRATION_PROVIDERS).filter(
       (provider) => !connectedProviders.has(provider.id)
     );
