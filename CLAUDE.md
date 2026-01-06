@@ -271,3 +271,40 @@ Use Task Master for **project planning and task tracking** when working on large
 4. **Use Task Master** for complex, multi-step feature work
 5. **Read relevant Serena memories** at the start of a session
 6. **Use thinking tools** (`think_about_collected_information`, `think_about_task_adherence`) before making changes
+
+## Session Todos Workflow
+
+**IMPORTANT**: For every prompt/session, maintain todos in `TODOS.md`.
+
+### Workflow
+
+1. **Start of session**: Read `TODOS.md` to see previous work and any pending items
+2. **Create section**: Add a new dated section for the current session
+3. **Track progress**: Update todos as you work (`[ ]` → `[x]`)
+4. **Complete session**: Mark all finished items as `[x]` and add notes
+5. **Reference**: Use completed sections as context for future related work
+
+### Format
+
+```markdown
+## YYYY-MM-DD: Brief Session Title
+
+### In Progress
+- [ ] Current task being worked on
+
+### Completed
+- [x] Finished task with brief description
+
+### Blocked
+- [ ] Task that can't proceed (reason)
+
+### Notes
+- Decisions made, context, or follow-up items
+```
+
+### Benefits
+
+- **Continuity**: Pick up where you left off across sessions
+- **History**: See what was done and why
+- **Patterns**: Identify recurring tasks or issues
+- **Context**: Provide future sessions with relevant background
