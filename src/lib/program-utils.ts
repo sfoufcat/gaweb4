@@ -302,3 +302,139 @@ export async function createInitialWeeksForModule(
 
   return createdWeeks;
 }
+
+
+/**
+ * Distributes weekly tasks to program days based on the week's distribution setting.
+ *
+ * @param programId - The program ID
+ * @param weekId - The week to distribute tasks for
+ * @param options - Configuration options
+ * @returns Object with counts of created/updated days
+ */
+export async function distributeWeeklyTasksToDays(
+  programId: string,
+  weekId: string,
+  options: {
+    overwriteExisting?: boolean; // If true, replaces existing day tasks. Default: false (skip)
+  } = {}
+): Promise<{ created: number; updated: number; skipped: number }> {
+  const { overwriteExisting = false } = options;
+
+  // Fetch week data
+  const weekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
+  if (!weekDoc.exists) {
+    throw new Error('Week not found');
+  }
+
+  const weekData = weekDoc.data();
+  if (!weekData || weekData.programId !== programId) {
+    throw new Error('Week does not belong to this program');
+  }
+
+  const weeklyTasks = weekData.weeklyTasks || [];
+  if (weeklyTasks.length === 0) {
+    return { created: 0, updated: 0, skipped: 0 };
+  }
+
+  const distribution = weekData.distribution || 'repeat-daily';
+  const startDay = weekData.startDayIndex;
+  const endDay = weekData.endDayIndex;
+  const daysInWeek = endDay - startDay + 1;
+
+  // Get existing days in this range
+  const existingDaysSnapshot = await adminDb
+    .collection('program_days')
+    .where('programId', '==', programId)
+    .where('dayIndex', '>=', startDay)
+    .where('dayIndex', '<=', endDay)
+    .get();
+
+  const existingDays = new Map(
+    existingDaysSnapshot.docs.map(doc => [doc.data().dayIndex as number, { id: doc.id, ...doc.data() }])
+  );
+
+  const batch = adminDb.batch();
+  let created = 0,
+    updated = 0,
+    skipped = 0;
+
+  if (distribution === 'repeat-daily') {
+    // Copy all tasks to each day
+    for (let d = startDay; d <= endDay; d++) {
+      const existing = existingDays.get(d);
+
+      if (existing && !overwriteExisting && (existing as { tasks?: unknown[] }).tasks?.length) {
+        skipped++;
+        continue;
+      }
+
+      const dayRef = existing
+        ? adminDb.collection('program_days').doc((existing as { id: string }).id)
+        : adminDb.collection('program_days').doc();
+
+      const dayData = {
+        programId,
+        dayIndex: d,
+        tasks: weeklyTasks,
+        weekId,
+        updatedAt: FieldValue.serverTimestamp(),
+        ...(existing ? {} : { createdAt: FieldValue.serverTimestamp() }),
+      };
+
+      if (existing) {
+        batch.update(dayRef, dayData);
+        updated++;
+      } else {
+        batch.set(dayRef, dayData);
+        created++;
+      }
+    }
+  } else {
+    // Spread: distribute tasks across days
+    const tasksPerDay = Math.ceil(weeklyTasks.length / daysInWeek);
+    let taskIndex = 0;
+
+    for (let d = startDay; d <= endDay && taskIndex < weeklyTasks.length; d++) {
+      const dayTasks = weeklyTasks.slice(taskIndex, taskIndex + tasksPerDay);
+      taskIndex += tasksPerDay;
+
+      if (dayTasks.length === 0) continue;
+
+      const existing = existingDays.get(d);
+
+      if (existing && !overwriteExisting && (existing as { tasks?: unknown[] }).tasks?.length) {
+        skipped++;
+        continue;
+      }
+
+      const dayRef = existing
+        ? adminDb.collection('program_days').doc((existing as { id: string }).id)
+        : adminDb.collection('program_days').doc();
+
+      const dayData = {
+        programId,
+        dayIndex: d,
+        tasks: dayTasks,
+        weekId,
+        updatedAt: FieldValue.serverTimestamp(),
+        ...(existing ? {} : { createdAt: FieldValue.serverTimestamp() }),
+      };
+
+      if (existing) {
+        batch.update(dayRef, dayData);
+        updated++;
+      } else {
+        batch.set(dayRef, dayData);
+        created++;
+      }
+    }
+  }
+
+  await batch.commit();
+  console.log(
+    `[PROGRAM_UTILS] Distributed tasks for week ${weekId}: ${created} created, ${updated} updated, ${skipped} skipped`
+  );
+
+  return { created, updated, skipped };
+}

@@ -109,6 +109,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   
   // Content display mode: 'row' (sidebar + editor) | 'calendar' (full-width calendar)
   const [contentDisplayMode, setContentDisplayMode] = useState<'row' | 'calendar'>('row');
+  // Derived values to avoid TypeScript narrowing issues in ternaries
+  const isRowMode = contentDisplayMode === 'row';
+  const isCalendarMode = contentDisplayMode === 'calendar';
   
   // Enrollments state
   const [programEnrollments, setProgramEnrollments] = useState<EnrollmentWithUser[]>([]);
@@ -2041,7 +2044,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     type="button"
                     onClick={() => setContentDisplayMode('row')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
-                      contentDisplayMode === 'row'
+                      isRowMode
                         ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
                         : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                     }`}
@@ -2056,7 +2059,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       fetchOrganizationCourses();
                     }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
-                      contentDisplayMode === 'calendar'
+                      isCalendarMode
                         ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
                         : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                     }`}
@@ -2074,7 +2077,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 modules={programModules}
                 weeks={programWeeks}
                 orientation={selectedProgram?.orientation || 'weekly'}
-                onOrientationChange={async (newOrientation) => {
+                onOrientationChange={async (newOrientation: ProgramOrientation) => {
                   if (!selectedProgram) return;
                   try {
                     await fetch(`${apiBasePath}/${selectedProgram.id}`, {
@@ -2150,7 +2153,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 }
               }}
               orientation={selectedProgram?.orientation || 'weekly'}
-              onOrientationChange={async (newOrientation) => {
+              onOrientationChange={async (newOrientation: ProgramOrientation) => {
                 if (!selectedProgram) return;
                 const oldOrientation = selectedProgram.orientation || 'weekly';
                 
@@ -2295,15 +2298,25 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   const existingWeek = programWeeks.find(w => w.weekNumber === weekNumber);
                   
                   if (existingWeek) {
-                    // Update existing week
+                    // Update existing week and redistribute tasks
                     const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${existingWeek.id}`, {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ distribution }),
+                      body: JSON.stringify({ 
+                        distribution,
+                        distributeTasksNow: true,
+                        overwriteExisting: true,
+                      }),
                     });
                     if (res.ok) {
                       const data = await res.json();
                       setProgramWeeks(prev => prev.map(w => w.id === existingWeek.id ? data.week : w));
+                      // Refresh days after distribution
+                      const daysRes = await fetch(`${apiBasePath}/${selectedProgram.id}/days`);
+                      if (daysRes.ok) {
+                        const daysData = await daysRes.json();
+                        setProgramDays(daysData.days || []);
+                      }
                     }
                   } else {
                     // Create new week record with this distribution
@@ -2542,7 +2555,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     type="button"
                     onClick={() => setContentDisplayMode('row')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
-                      contentDisplayMode === 'row'
+                      isRowMode
                         ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
                         : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                     }`}
@@ -2557,7 +2570,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       fetchOrganizationCourses();
                     }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
-                      contentDisplayMode === 'calendar'
+                      isCalendarMode
                         ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
                         : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                     }`}
@@ -2751,15 +2764,27 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                               }
                             }
                           } else if (templateWeek) {
-                            // Update template week
+                            // Update template week and distribute tasks to days
+                            const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks/${templateWeek.id}`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify(updates),
+                              body: JSON.stringify({
+                                ...updates,
+                                ...(hasWeeklyTasks && { distributeTasksNow: true }),
+                              }),
                             });
                             if (res.ok) {
                               const data = await res.json();
                               setProgramWeeks(prev => prev.map(w => w.id === templateWeek.id ? data.week : w));
+                              // Refresh days if distribution happened
+                              if (hasWeeklyTasks) {
+                                const daysRes = await fetch(`${apiBasePath}/${selectedProgram?.id}/days`);
+                                if (daysRes.ok) {
+                                  const daysData = await daysRes.json();
+                                  setProgramDays(daysData.days || []);
+                                }
+                              }
                             }
                           } else {
                             // Create new template week record

@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import { recalculateWeekDayIndices } from '@/lib/program-utils';
+import { recalculateWeekDayIndices, distributeWeeklyTasksToDays } from '@/lib/program-utils';
 import type { ProgramWeek } from '@/types';
 
 export async function GET(
@@ -127,6 +127,20 @@ export async function PATCH(
       await recalculateWeekDayIndices(programId);
     }
 
+    // Distribute tasks to days if requested
+    let distributionResult = null;
+    if (body.distributeTasksNow === true) {
+      try {
+        distributionResult = await distributeWeeklyTasksToDays(programId, weekId, {
+          overwriteExisting: body.overwriteExisting || false,
+        });
+        console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Distributed tasks: ${JSON.stringify(distributionResult)}`);
+      } catch (distErr) {
+        console.error('[COACH_ORG_PROGRAM_WEEK_PATCH] Failed to distribute tasks:', distErr);
+        // Don't fail the whole request, just log the error
+      }
+    }
+
     // Fetch the updated week
     const savedDoc = await adminDb.collection('program_weeks').doc(weekId).get();
     const savedWeek = {
@@ -140,6 +154,7 @@ export async function PATCH(
       success: true,
       week: savedWeek,
       message: 'Week updated successfully',
+      ...(distributionResult && { distribution: distributionResult }),
     });
   } catch (error) {
     console.error('[COACH_ORG_PROGRAM_WEEK_PATCH] Error:', error);

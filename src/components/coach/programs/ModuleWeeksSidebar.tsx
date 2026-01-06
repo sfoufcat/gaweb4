@@ -838,6 +838,7 @@ export function ModuleWeeksSidebar({
             Auto-Distribute Weeks
           </button>
         )}
+        </div>
       </div>
 
       {/* Delete Module Modal */}
