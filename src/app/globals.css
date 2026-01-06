@@ -535,6 +535,131 @@
       -webkit-backdrop-filter: blur(24px);
     }
   }
+
+  /* ===========================================
+     Soft Glassmorphism Card System
+     Premium 2026 card styling
+     =========================================== */
+
+  /* Glass card container - Light mode */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 24px;
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.04),
+      0 2px 8px rgba(0, 0, 0, 0.02);
+    transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.75);
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.06),
+      0 4px 12px rgba(0, 0, 0, 0.03);
+    transform: translateY(-4px);
+  }
+
+  /* Glass card container - Dark mode */
+  .dark .glass-card {
+    background: rgba(23, 27, 34, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.25),
+      0 2px 8px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .dark .glass-card:hover {
+    background: rgba(23, 27, 34, 0.7);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 16px 48px rgba(0, 0, 0, 0.35),
+      0 6px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Glassmorphic badge base */
+  .glass-badge {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .dark .glass-badge {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Meta pill styling for card info */
+  .meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    background: rgba(247, 245, 243, 0.8);
+  }
+
+  .dark .meta-pill {
+    background: rgba(30, 34, 42, 0.8);
+  }
+
+  /* Glass action button */
+  .glass-action-btn {
+    padding: 8px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    background: rgba(247, 245, 243, 0.8);
+  }
+
+  .glass-action-btn:hover {
+    background: rgba(240, 238, 235, 1);
+  }
+
+  .dark .glass-action-btn {
+    background: rgba(30, 34, 42, 0.8);
+  }
+
+  .dark .glass-action-btn:hover {
+    background: rgba(38, 43, 53, 1);
+  }
+
+  /* Subtle glow effect for premium cards */
+  .glass-glow {
+    position: relative;
+  }
+
+  .glass-glow::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 25px;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      rgba(160, 120, 85, 0.15) 0%,
+      transparent 50%,
+      rgba(160, 120, 85, 0.1) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .glass-glow:hover::before {
+    opacity: 1;
+  }
 }
 
 /* Prevent layout shift from scrollbars */

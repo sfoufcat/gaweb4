@@ -6,7 +6,7 @@ import { Users, User, Star, Repeat } from 'lucide-react';
 
 /**
  * SquadCard Component
- * 
+ *
  * Card for displaying squads in horizontal scroll layout.
  * Styled similarly to ProgramCard for visual consistency.
  */
@@ -42,35 +42,40 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
   const isCompact = variant === 'compact';
 
   // Width classes: fullWidth for grids, fixed width for carousels
-  const widthClass = fullWidth 
-    ? 'w-full' 
+  const widthClass = fullWidth
+    ? 'w-full'
     : isCompact ? 'w-[200px]' : 'w-[280px]';
 
   return (
     <Link href={`/discover/squads/${squad.id}`}>
-      <div className={`bg-white/70 dark:bg-[#171b22] rounded-[20px] flex-shrink-0 hover:shadow-lg dark:hover:shadow-black/30 transition-all cursor-pointer overflow-hidden group border border-[#e1ddd8]/50 dark:border-[#262b35] ${widthClass}`}>
+      <div className={`glass-card flex-shrink-0 overflow-hidden cursor-pointer group ${widthClass}`}>
         {/* Cover Image */}
-        <div className={`relative w-full bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 dark:from-brand-accent/10 dark:to-[#8c6245]/5 ${
+        <div className={`relative w-full overflow-hidden ${
           isCompact ? 'h-[100px]' : 'h-[140px]'
         }`}>
           {squad.avatarUrl ? (
-            <Image
-              src={squad.avatarUrl}
-              alt={squad.name}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
-              sizes={fullWidth ? "(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" : isCompact ? "200px" : "280px"}
-            />
+            <>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10" />
+              <Image
+                src={squad.avatarUrl}
+                alt={squad.name}
+                fill
+                className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                sizes={fullWidth ? "(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" : isCompact ? "200px" : "280px"}
+              />
+            </>
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Users className="w-10 h-10 text-brand-accent/40" />
+            <div className="w-full h-full bg-gradient-to-br from-brand-accent/15 via-brand-accent/8 to-[#8c6245]/5 dark:from-brand-accent/10 dark:via-brand-accent/5 dark:to-[#8c6245]/3 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-white/50 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                <Users className="w-6 h-6 text-brand-accent/60" />
+              </div>
             </div>
           )}
-          
-          {/* Type badge */}
-          <div className="absolute top-2 left-2">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 backdrop-blur-sm ${
-              isCoached 
+
+          {/* Type badge - top left */}
+          <div className="absolute top-3 left-3 z-20">
+            <span className={`glass-badge px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
+              isCoached
                 ? 'bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] text-white'
                 : 'bg-emerald-500/90 text-white'
             }`}>
@@ -88,26 +93,26 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
             </span>
           </div>
 
-          {/* Price badge */}
-          <div className="absolute bottom-2 right-2">
-            <span className="px-2 py-1 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-semibold rounded-full backdrop-blur-sm">
+          {/* Price badge - bottom right */}
+          <div className="absolute bottom-3 right-3 z-20">
+            <span className="glass-badge px-3 py-1.5 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-bold rounded-full border border-white/50 dark:border-[#ffffff]/[0.08]">
               {formatPrice(squad.priceInCents || 0)}
             </span>
           </div>
         </div>
-        
+
         {/* Content */}
-        <div className={`flex flex-col gap-2 ${isCompact ? 'p-3' : 'p-4'}`}>
+        <div className={`flex flex-col gap-2 ${isCompact ? 'p-3' : 'p-5'}`}>
           {/* Title */}
-          <h3 className={`font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px] leading-tight line-clamp-2 ${
-            isCompact ? 'text-sm' : 'text-base'
+          <h3 className={`font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 ${
+            isCompact ? 'text-sm' : 'text-[17px]'
           }`}>
             {squad.name}
           </h3>
-          
+
           {/* Description - only on default variant */}
           {!isCompact && squad.description && (
-            <p className="font-sans text-sm text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2">
+            <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2">
               {squad.description}
             </p>
           )}
@@ -128,24 +133,24 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
                   <User className="w-3 h-3 text-brand-accent" />
                 </div>
               )}
-              <span className="font-sans text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+              <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
                 {squad.coachName}
               </span>
             </div>
           )}
-          
-          {/* Meta info */}
-          <div className="flex items-center gap-3 text-xs text-[#5f5a55] dark:text-[#7d8190]">
+
+          {/* Meta info pills */}
+          <div className="flex flex-wrap items-center gap-2">
             {squad.memberCount !== undefined && squad.memberCount > 0 && (
-              <span className="flex items-center gap-1">
-                <Users className="w-3 h-3" />
+              <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
+                <Users className="w-3 h-3 text-brand-accent" />
                 {squad.memberCount} members
               </span>
             )}
-            
+
             {squad.subscriptionEnabled && squad.billingInterval && (
-              <span className="flex items-center gap-1">
-                <Repeat className="w-3 h-3" />
+              <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
+                <Repeat className="w-3 h-3 text-brand-accent" />
                 {squad.billingInterval}
               </span>
             )}
@@ -153,8 +158,8 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
 
           {/* Join info */}
           {!isCompact && (
-            <div className="mt-1 pt-2 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-              <span className="text-xs text-green-600 dark:text-green-400">
+            <div className="mt-1 pt-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+              <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
                 Join anytime
               </span>
             </div>
@@ -164,7 +169,3 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
     </Link>
   );
 }
-
-
-
-

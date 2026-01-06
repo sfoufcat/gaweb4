@@ -843,125 +843,126 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredSquads.map((squad) => (
               <div
                 key={squad.id}
-                className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden hover:border-brand-accent/50 transition-colors cursor-pointer group"
+                className="glass-card overflow-hidden cursor-pointer group"
                 onClick={() => handleSelectSquad(squad)}
               >
                 {/* Cover Image */}
-                <div className="h-32 bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 relative">
-                  {squad.coverImageUrl ? (
-                    <img 
-                      src={squad.coverImageUrl} 
-                      alt={squad.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : squad.avatarUrl ? (
-                    <img 
-                      src={squad.avatarUrl} 
-                      alt={squad.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : null}
-                  <div className="absolute top-2 right-2 flex gap-1">
+                <div className="h-36 relative overflow-hidden">
+                  {squad.coverImageUrl || squad.avatarUrl ? (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10" />
+                      <img
+                        src={squad.coverImageUrl || squad.avatarUrl}
+                        alt={squad.name}
+                        className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                      />
+                    </>
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-brand-accent/15 via-brand-accent/8 to-[#8c6245]/5 dark:from-brand-accent/10 dark:via-brand-accent/5 dark:to-[#8c6245]/3 flex items-center justify-center">
+                      <div className="w-14 h-14 rounded-2xl bg-white/50 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                        <Users className="w-7 h-7 text-brand-accent/60" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Visibility badge - top right */}
+                  <div className="absolute top-3 right-3 z-20">
                     {squad.visibility === 'private' ? (
-                      <span className="px-2 py-0.5 bg-gray-500/80 text-white text-xs rounded-full flex items-center gap-1">
+                      <span className="glass-badge px-2.5 py-1 bg-white/80 dark:bg-[#171b22]/80 text-[#5f5a55] dark:text-[#b2b6c2] text-[11px] font-medium rounded-full flex items-center gap-1.5 border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
                         <Lock className="w-3 h-3" /> Private
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 bg-green-500/80 text-white text-xs rounded-full flex items-center gap-1">
+                      <span className="glass-badge px-2.5 py-1 bg-white/80 dark:bg-[#171b22]/80 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium rounded-full flex items-center gap-1.5 border border-emerald-200/50 dark:border-emerald-500/20">
                         <Globe className="w-3 h-3" /> Public
                       </span>
                     )}
                   </div>
                 </div>
-                
-                {/* Info */}
-                <div className="p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                      {squad.name}
-                    </h3>
-                  </div>
+
+                {/* Content */}
+                <div className="p-5">
+                  <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-1 mb-2">
+                    {squad.name}
+                  </h3>
                   {squad.description && (
-                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert line-clamp-2 mb-2">
+                    <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 mb-3">
                       {squad.description}
                     </p>
                   )}
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5" />
+
+                  {/* Meta pills */}
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
+                      <Users className="w-3 h-3 text-brand-accent" />
                       {squad.memberCount || 0} members
                     </span>
                     {squad.priceInCents && squad.priceInCents > 0 && (
-                      <span className="text-brand-accent font-medium">
+                      <span className="meta-pill text-brand-accent font-medium">
                         ${(squad.priceInCents / 100).toFixed(0)}
                         {squad.subscriptionEnabled && `/${squad.billingInterval?.slice(0, 2)}`}
                       </span>
                     )}
                   </div>
+
                   {/* Program Badge */}
                   {squad.programId && squad.programName && (
-                    <div className="mt-2">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${
+                    <div className="mb-4">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium ${
                         squad.programType === 'individual'
-                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                          ? 'bg-purple-100/80 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                          : 'bg-blue-100/80 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                       }`}>
                         {squad.programType === 'individual' ? '1:1' : 'Group'}: {squad.programName}
                       </span>
                     </div>
                   )}
-                </div>
-                
-                {/* Action buttons (show on hover) */}
-                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#e1ddd8] dark:border-[#262b35] opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => handleEditSquad(e, squad)}
-                    className="text-xs"
-                  >
-                    <Edit2 className="w-3.5 h-3.5 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      copySquadLink(squad);
-                    }}
-                    className="text-xs"
-                  >
-                    <Copy className="w-3.5 h-3.5 mr-1" />
-                    Link
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      window.open(`/discover/squads/${squad.id}`, '_blank');
-                    }}
-                    className="text-xs"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 mr-1" />
-                    Preview
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteConfirmSquad(squad);
-                    }}
-                    className="text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+
+                  {/* Footer with action buttons */}
+                  <div className="flex items-center justify-end pt-4 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => handleEditSquad(e, squad)}
+                        className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent"
+                        title="Edit squad"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          copySquadLink(squad);
+                        }}
+                        className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent"
+                        title="Copy link"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`/discover/squads/${squad.id}`, '_blank');
+                        }}
+                        className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent"
+                        title="Preview"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmSquad(squad);
+                        }}
+                        className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        title="Delete squad"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

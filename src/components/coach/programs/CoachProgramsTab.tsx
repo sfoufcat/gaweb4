@@ -2237,88 +2237,108 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         {/* Content */}
         {viewMode === 'list' && !tenantRequired ? (
           // Programs List
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {displayPrograms.map((program) => (
               <div
                 key={program.id}
-                className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer"
+                className="glass-card overflow-hidden cursor-pointer group"
                 onClick={() => {
                   setSelectedProgram(program);
                   handleViewModeChange('days');
                 }}
               >
                 {/* Cover Image */}
-                <div className="h-32 bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 relative">
-                  {program.coverImageUrl && (
-                    <img 
-                      src={program.coverImageUrl} 
-                      alt={program.name}
-                      className="w-full h-full object-cover"
-                    />
+                <div className="h-36 relative overflow-hidden">
+                  {program.coverImageUrl ? (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10" />
+                      <img
+                        src={program.coverImageUrl}
+                        alt={program.name}
+                        className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                      />
+                    </>
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-brand-accent/15 via-brand-accent/8 to-[#8c6245]/5 dark:from-brand-accent/10 dark:via-brand-accent/5 dark:to-[#8c6245]/3 flex items-center justify-center">
+                      <div className="w-14 h-14 rounded-2xl bg-white/50 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                        {program.type === 'group' ? (
+                          <Users className="w-7 h-7 text-brand-accent/60" />
+                        ) : (
+                          <User className="w-7 h-7 text-brand-accent/60" />
+                        )}
+                      </div>
+                    </div>
                   )}
-                  <div className="absolute top-2 right-2 flex gap-1">
+
+                  {/* Status badges - top right */}
+                  <div className="absolute top-3 right-3 flex gap-1.5 z-20">
                     {program.isActive ? (
-                      <span className="px-2 py-0.5 bg-brand-accent text-white text-xs rounded-full flex items-center gap-1">
+                      <span className="glass-badge px-2.5 py-1 bg-emerald-500/85 text-white text-[11px] font-semibold rounded-full flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                         Active
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 bg-amber-500 text-white text-xs rounded-full flex items-center gap-1">
+                      <span className="glass-badge px-2.5 py-1 bg-amber-500/85 text-white text-[11px] font-semibold rounded-full flex items-center gap-1.5">
                         Draft
                       </span>
                     )}
                     {program.isPublished ? (
-                      <span className="px-2 py-0.5 bg-green-500 text-white text-xs rounded-full flex items-center gap-1">
+                      <span className="glass-badge px-2.5 py-1 bg-white/80 dark:bg-[#171b22]/80 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium rounded-full flex items-center gap-1.5 border border-emerald-200/50 dark:border-emerald-500/20">
                         <Eye className="w-3 h-3" /> Public
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 bg-gray-500 text-white text-xs rounded-full flex items-center gap-1">
+                      <span className="glass-badge px-2.5 py-1 bg-white/80 dark:bg-[#171b22]/80 text-[#5f5a55] dark:text-[#b2b6c2] text-[11px] font-medium rounded-full flex items-center gap-1.5 border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
                         <EyeOff className="w-3 h-3" /> Private
                       </span>
                     )}
                   </div>
-                  <div className="absolute top-2 left-2">
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${
+
+                  {/* Type badge - top left */}
+                  <div className="absolute top-3 left-3 z-20">
+                    <span className={`glass-badge px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
                       program.type === 'group'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-purple-500 text-white'
+                        ? 'bg-blue-500/90 text-white'
+                        : 'bg-purple-500/90 text-white'
                     }`}>
-                      {program.type === 'group' ? <Users className="w-3 h-3 inline mr-1" /> : <User className="w-3 h-3 inline mr-1" />}
+                      {program.type === 'group' ? <Users className="w-3 h-3" /> : <User className="w-3 h-3" />}
                       {program.type === 'group' ? 'Group' : '1:1'}
                     </span>
                   </div>
                 </div>
 
-                {/* Info */}
-                <div className="p-4">
-                  <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+                {/* Content */}
+                <div className="p-5">
+                  <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 mb-2">
                     {program.name}
                   </h3>
-                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert line-clamp-2 mb-3">
+                  <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 mb-4">
                     {program.description || 'No description'}
                   </p>
-                  
-                  <div className="flex items-center gap-3 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
+
+                  {/* Meta pills */}
+                  <div className="flex flex-wrap items-center gap-2 mb-4">
+                    <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
+                      <Clock className="w-3 h-3 text-brand-accent" />
                       {program.durationType === 'evergreen' ? 'Continuous' : `${program.lengthDays} days`}
                     </span>
-                    <span className="flex items-center gap-1">
-                      <DollarSign className="w-3 h-3" />
+                    <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
+                      <DollarSign className="w-3 h-3 text-brand-accent" />
                       {formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)}
                     </span>
                     {program.type === 'group' && (
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3 h-3" />
+                      <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
+                        <Users className="w-3 h-3 text-brand-accent" />
                         {program.squadCapacity}/squad
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                    <div className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                      <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{program.activeEnrollments}</span> active
+                  {/* Footer with stats and actions */}
+                  <div className="flex items-center justify-between pt-4 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+                    <div className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                      <span className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{program.activeEnrollments}</span> active
                       {program.cohortCount !== undefined && (
-                        <> · <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{program.cohortCount}</span> cohorts</>
+                        <> · <span className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{program.cohortCount}</span> cohorts</>
                       )}
                     </div>
                     <div className="flex items-center gap-1">
@@ -2327,7 +2347,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           e.stopPropagation();
                           handleOpenProgramModal(program);
                         }}
-                        className="p-1.5 text-[#5f5a55] hover:text-brand-accent rounded"
+                        className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent"
                         title="Program settings"
                       >
                         <Settings className="w-4 h-4" />
@@ -2338,7 +2358,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           handleDuplicateProgram(program);
                         }}
                         disabled={duplicatingProgram === program.id}
-                        className="p-1.5 text-[#5f5a55] hover:text-brand-accent rounded disabled:opacity-50"
+                        className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent disabled:opacity-50"
                         title="Duplicate program"
                       >
                         {duplicatingProgram === program.id ? (
@@ -2352,12 +2372,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           e.stopPropagation();
                           setDeleteConfirmProgram(program);
                         }}
-                        className="p-1.5 text-[#5f5a55] hover:text-red-500 rounded"
+                        className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
                         title="Delete program"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
-                      <ChevronRight className="w-4 h-4 text-[#5f5a55]" />
+                      <ChevronRight className="w-4 h-4 text-[#5f5a55]/50 dark:text-[#b2b6c2]/50 ml-1" />
                     </div>
                   </div>
                 </div>

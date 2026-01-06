@@ -372,11 +372,11 @@ export function Sidebar() {
       {/* Desktop Sidebar - Apple Liquid Glass Style */}
       {/* Uses CSS variables for branding colors when preview mode or custom branding is active */}
       {/* Collapses to icons only when on /chat (Instagram DM style) */}
-      <aside className={`hidden lg:flex flex-col fixed left-0 top-0 bottom-0 z-40 sidebar-branded backdrop-blur-xl border-r border-[#e1ddd8]/50 dark:border-[#272d38]/50 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-[72px] px-3 py-6' : 'w-64 px-6 py-8'}`}>
+      <aside className={`hidden lg:flex flex-col fixed left-0 top-0 bottom-0 z-40 sidebar-branded backdrop-blur-xl border-r border-[#e1ddd8]/50 dark:border-[#272d38]/50 transition-all duration-300 ease-in-out py-6 ${isCollapsed ? 'w-[72px] px-3' : 'w-64 px-6'}`}>
         {/* Logo - Shows horizontal logo if available, otherwise square logo + title */}
         {/* In collapsed mode, only show square logo centered with smooth transition */}
         <Link href="/">
-          <div className={`flex items-center cursor-pointer group overflow-hidden transition-all duration-300 ease-in-out ${isCollapsed ? 'justify-center mb-6' : 'gap-2.5 mb-12'}`}>
+          <div className={`flex items-center cursor-pointer group overflow-hidden transition-all duration-300 ease-in-out mb-8 ${isCollapsed ? '' : 'gap-2.5'}`}>
             {/* Square logo - always visible */}
             <div className="w-10 h-10 rounded-2xl flex-shrink-0 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all overflow-hidden relative bg-white dark:bg-white/10">
               <Image
@@ -429,10 +429,10 @@ export function Sidebar() {
               title={isCollapsed ? item.name : undefined}
               className={`
                 flex items-center transition-all duration-300 ease-in-out relative overflow-hidden
-                h-12 rounded-2xl
+                h-12 rounded-2xl px-3
                 ${isCollapsed
-                  ? 'w-12 justify-center'
-                  : 'w-full gap-3 px-4'
+                  ? 'w-12'
+                  : 'w-full gap-3'
                 }
                 ${isActive(item.path)
                   ? 'sidebar-active-item backdrop-blur-sm font-semibold shadow-sm'
@@ -509,7 +509,7 @@ export function Sidebar() {
               }
             }}
             title={isCollapsed ? 'My Account' : undefined}
-            className={`flex items-center h-12 rounded-2xl hover:bg-[#faf8f6]/60 dark:hover:bg-[#181d28]/60 hover:backdrop-blur-sm transition-all duration-300 ease-in-out cursor-pointer overflow-hidden ${isCollapsed ? 'w-12 justify-center' : 'w-full gap-3 px-4'}`}
+            className={`flex items-center h-12 rounded-2xl px-2 hover:bg-[#faf8f6]/60 dark:hover:bg-[#181d28]/60 hover:backdrop-blur-sm transition-all duration-300 ease-in-out cursor-pointer overflow-hidden ${isCollapsed ? 'w-12' : 'w-full gap-3'}`}
           >
             <div className="flex-shrink-0">
               <UserButton
