@@ -64,7 +64,7 @@ const TAB_ORDER: Record<CoachTab, number> = {
 // Smooth slide animation variants
 const tabVariants = {
   enter: (direction: number) => ({
-    x: direction > 0 ? 40 : -40,
+    x: direction > 0 ? 20 : -20,
     opacity: 0,
   }),
   center: {
@@ -72,7 +72,7 @@ const tabVariants = {
     opacity: 1,
   },
   exit: (direction: number) => ({
-    x: direction < 0 ? 40 : -40,
+    x: direction < 0 ? 20 : -20,
     opacity: 0,
   }),
 };
@@ -778,7 +778,7 @@ export default function CoachPage() {
             )}
           </TabsList>
 
-          <AnimatePresence mode="wait" initial={false}>
+          <AnimatePresence mode="wait" initial={false} custom={directionRef.current}>
             <motion.div
               key={activeTab}
               custom={directionRef.current}
@@ -786,7 +786,7 @@ export default function CoachPage() {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
             >
           {/* Clients Tab - Consolidated Users + Coaching Clients */}
           <TabsContent value="clients">

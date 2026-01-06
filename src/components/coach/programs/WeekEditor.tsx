@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
-import { Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Repeat, ArrowRight, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList } from 'lucide-react';
+import { Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { MediaUpload } from '@/components/admin/MediaUpload';
@@ -667,49 +667,6 @@ export function WeekEditor({
           icon={ListTodo}
           defaultOpen={true}
         >
-          {/* Task Distribution Mode */}
-          <div>
-            <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-              <Repeat className="w-4 h-4 inline mr-1.5" />
-              Task Distribution
-            </label>
-            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-              How should this week&apos;s tasks be distributed to days?
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, distribution: 'repeat-daily' })}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
-                  formData.distribution === 'repeat-daily'
-                    ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
-                }`}
-              >
-                <Repeat className="w-4 h-4" />
-                <div className="text-left">
-                  <p className="font-medium font-albert">Repeat Daily</p>
-                  <p className="text-xs opacity-70">All tasks every day</p>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, distribution: 'spread' })}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
-                  formData.distribution === 'spread'
-                    ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
-                }`}
-              >
-                <ArrowRight className="w-4 h-4" />
-                <div className="text-left">
-                  <p className="font-medium font-albert">Spread</p>
-                  <p className="text-xs opacity-70">Distribute across week</p>
-                </div>
-              </button>
-            </div>
-          </div>
-
           {/* Weekly Tasks */}
           <div>
             <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
