@@ -284,11 +284,19 @@ export async function checkCreditsAvailable(
   }
 
   const data = orgDoc.data();
-  const credits = data?.summaryCredits;
+  const rawCredits = data?.summaryCredits;
 
-  if (!credits) {
+  if (!rawCredits) {
     return { available: false, remainingMinutes: 0 };
   }
+
+  // Handle partial objects with defaults for each field
+  const credits = {
+    allocatedMinutes: rawCredits.allocatedMinutes ?? 0,
+    usedMinutes: rawCredits.usedMinutes ?? 0,
+    purchasedMinutes: rawCredits.purchasedMinutes ?? 0,
+    usedPurchasedMinutes: rawCredits.usedPurchasedMinutes ?? 0,
+  };
 
   // Calculate remaining from plan allocation
   const planRemaining = credits.allocatedMinutes - credits.usedMinutes;
@@ -321,14 +329,22 @@ export async function deductCredits(
       }
 
       const data = orgDoc.data();
-      const credits = data?.summaryCredits;
+      const rawCredits = data?.summaryCredits;
 
-      if (!credits) {
+      if (!rawCredits) {
         throw new Error('No credits configured');
       }
 
+      // Handle partial objects with defaults
+      const credits = {
+        allocatedMinutes: rawCredits.allocatedMinutes ?? 0,
+        usedMinutes: rawCredits.usedMinutes ?? 0,
+        purchasedMinutes: rawCredits.purchasedMinutes ?? 0,
+        usedPurchasedMinutes: rawCredits.usedPurchasedMinutes ?? 0,
+      };
+
       // Calculate how much plan credit is remaining
-      const planRemaining = credits.allocatedMinutes - credits.usedMinutes;
+      const planRemaining = Math.max(0, credits.allocatedMinutes - credits.usedMinutes);
 
       if (planRemaining >= minutes) {
         // Use plan credits only

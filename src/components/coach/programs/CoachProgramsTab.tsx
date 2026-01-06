@@ -34,11 +34,11 @@ import { useDemoSession } from '@/contexts/DemoSessionContext';
 
 import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
 
-// Animation variants for smooth directional transitions
-const viewSlideVariants = {
-  enter: (direction: number) => ({ x: direction > 0 ? 24 : -24, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (direction: number) => ({ x: direction < 0 ? 24 : -24, opacity: 0 }),
+// Animation variants for subtle fade transitions (calendar/row switching)
+const fadeVariants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
 };
 
 // Next call info structure
@@ -2039,16 +2039,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         )}
 
         {/* Content */}
-        <AnimatePresence mode="wait" custom={viewModeDirection} initial={false}>
-          <motion.div
-            key={viewMode}
-            custom={viewModeDirection}
-            variants={viewSlideVariants}
-            initial={false}
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
-          >
         {viewMode === 'list' && !tenantRequired ? (
           // Programs List
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -2191,17 +2181,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           </div>
         ) : viewMode === 'days' ? (
           // Content View - Row (sidebar + editor) or Calendar (full-width)
-          <AnimatePresence mode="wait" custom={contentDirection} initial={false}>
+          <AnimatePresence mode="wait">
           {contentDisplayMode === 'calendar' ? (
             // Calendar View - Full width, no sidebar
             <motion.div
               key="calendar-view"
-              custom={contentDirection}
-              variants={viewSlideVariants}
-              initial={false}
-              animate="center"
+              variants={fadeVariants}
+              initial="initial"
+              animate="animate"
               exit="exit"
-              transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
               className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-3 sm:p-6"
             >
               {/* Controls row at top of calendar */}
@@ -2312,12 +2301,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           // Row View - Sidebar + Editor
           <motion.div
             key="row-view"
-            custom={contentDirection}
-            variants={viewSlideVariants}
-            initial={false}
-            animate="center"
+            variants={fadeVariants}
+            initial="initial"
+            animate="animate"
             exit="exit"
-            transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
             className="flex flex-col lg:flex-row gap-4 lg:gap-6"
           >
             {/* Sidebar Navigation */}
@@ -3684,8 +3672,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             )}
           </div>
         ) : null}
-          </motion.div>
-        </AnimatePresence>
       </div>
 
       {/* Remove Enrollment Confirmation Modal */}
