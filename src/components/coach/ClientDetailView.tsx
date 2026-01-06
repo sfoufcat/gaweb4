@@ -864,6 +864,14 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
     }
   };
 
+  // Check if the next call is in the future (not already passed)
+  const hasUpcomingCall = (() => {
+    if (!coachingData?.nextCall?.datetime) return false;
+    const callTime = new Date(coachingData.nextCall.datetime);
+    const now = new Date();
+    return callTime > now;
+  })();
+
   // Get user's squad names
   const getUserSquadNames = () => {
     const squadNames: string[] = [];
@@ -1731,14 +1739,14 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-accent hover:bg-white dark:hover:bg-[#171b22] rounded-full transition-colors"
                 >
                   <Pencil className="w-3.5 h-3.5" />
-                  {coachingData?.nextCall?.datetime ? 'Edit' : 'Schedule'}
+                  {hasUpcomingCall ? 'Edit' : 'Schedule'}
                 </button>
               </div>
 
-              {coachingData?.nextCall?.datetime ? (
+              {hasUpcomingCall && coachingData?.nextCall ? (
                 <div className="space-y-1">
                   <p className="font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    {formatCallTime(coachingData.nextCall.datetime, coachingData.nextCall.timezone)}
+                    {formatCallTime(coachingData.nextCall.datetime!, coachingData.nextCall.timezone)}
                   </p>
                   <p className="font-albert text-[13px] text-[#5f5a55] dark:text-[#b2b6c2]">
                     Location: {coachingData.nextCall.location}

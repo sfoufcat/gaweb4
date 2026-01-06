@@ -535,6 +535,14 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
     }
   };
 
+  // Check if the next call is in the future (not already passed)
+  const hasUpcomingCall = (() => {
+    if (!coachingData?.nextCall?.datetime) return false;
+    const callTime = new Date(coachingData.nextCall.datetime);
+    const now = new Date();
+    return callTime > now;
+  })();
+
   const minDate = new Date().toISOString().split('T')[0];
 
   if (loading) {
@@ -707,14 +715,14 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
           >
             <Pencil className="w-3.5 h-3.5" />
-            {coachingData?.nextCall?.datetime ? 'Edit' : 'Schedule'}
+            {hasUpcomingCall ? 'Edit' : 'Schedule'}
           </button>
         </div>
 
-        {coachingData?.nextCall?.datetime ? (
+        {hasUpcomingCall && coachingData?.nextCall ? (
           <div className="space-y-2">
             <p className="font-albert text-[15px] text-[#1a1a1a]">
-              {formatCallTime(coachingData.nextCall.datetime, coachingData.nextCall.timezone)}
+              {formatCallTime(coachingData.nextCall.datetime!, coachingData.nextCall.timezone)}
             </p>
             <p className="font-albert text-[14px] text-[#5f5a55]">
               Location: {coachingData.nextCall.location}
@@ -953,7 +961,7 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
             <div className="flex items-center justify-between">
               <AlertDialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-brand-accent" />
-                {coachingData?.nextCall?.datetime ? 'Edit Call' : 'Schedule Call'}
+                {hasUpcomingCall ? 'Edit Call' : 'Schedule Call'}
               </AlertDialogTitle>
               <button
                 onClick={() => setShowCallModal(false)}
@@ -1062,7 +1070,7 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
           </div>
 
           <AlertDialogFooter className="gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
-            {coachingData?.nextCall?.datetime && (
+            {hasUpcomingCall && (
               <button
                 onClick={handleDeleteCall}
                 disabled={schedulingCall}

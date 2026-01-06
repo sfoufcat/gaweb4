@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useOrganization as useClerkOrganization, useOrganizationList } from '@clerk/nextjs';
-import { motion, AnimatePresence } from 'framer-motion';
 import { isOrgCoach } from '@/lib/admin-utils-shared';
 import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -52,30 +51,6 @@ const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'a
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
 // Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
 const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'squad', 'programs', 'invitedBy', 'invitedAt', 'created', 'actions'];
-
-// Tab order for directional animations (left-to-right order in UI)
-const TAB_ORDER: Record<CoachTab, number> = {
-  'clients': 0, 'programs': 1, 'squads': 2, 'discover': 3, 'funnels': 4, 'analytics': 5,
-  'checkins': 6, 'onboarding': 7, 'channels': 8, 'referrals': 9, 'discounts': 10,
-  'scheduling': 11, 'integrations': 12, 'customize': 13, 'plan': 14, 'support': 15,
-  'upgrade-forms': 16, 'coaching-forms': 17,
-};
-
-// Smooth slide animation variants
-const tabVariants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 20 : -20,
-    opacity: 0,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction < 0 ? 20 : -20,
-    opacity: 0,
-  }),
-};
 
 /**
  * Scheduling Tab Component
@@ -167,16 +142,8 @@ export default function CoachPage() {
   const initialTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'clients';
   const [activeTab, setActiveTab] = useState<CoachTab>(initialTab);
 
-  // Direction tracking for animations (use ref to avoid re-renders)
-  const directionRef = useRef(0);
-  const prevTabRef = useRef<CoachTab>(initialTab);
-
-  // Handler for tab changes with direction tracking
+  // Handler for tab changes
   const handleTabChange = useCallback((newTab: CoachTab) => {
-    const prevOrder = TAB_ORDER[prevTabRef.current] ?? 0;
-    const newOrder = TAB_ORDER[newTab] ?? 0;
-    directionRef.current = newOrder > prevOrder ? 1 : -1;
-    prevTabRef.current = newTab;
     setActiveTab(newTab);
   }, []);
 
@@ -778,16 +745,6 @@ export default function CoachPage() {
             )}
           </TabsList>
 
-          <AnimatePresence mode="wait" initial={false} custom={directionRef.current}>
-            <motion.div
-              key={activeTab}
-              custom={directionRef.current}
-              variants={tabVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.15, ease: "easeOut" }}
-            >
           {/* Clients Tab - Consolidated Users + Coaching Clients */}
           <TabsContent value="clients">
             {selectedClientId ? (
@@ -934,8 +891,6 @@ export default function CoachPage() {
           <TabsContent value="support">
             <CoachSupportTab />
           </TabsContent>
-            </motion.div>
-          </AnimatePresence>
         </Tabs>
       </div>
     </div>

@@ -1113,10 +1113,16 @@ export function WeekEditor({
                   <X className="w-5 h-5 text-red-600" />
                   <div>
                     <p className="text-sm font-medium text-red-800 dark:text-red-300">
-                      Upload failed
+                      {recordingError?.includes('Insufficient credits') ? 'Insufficient credits' : 'Upload failed'}
                     </p>
                     <p className="text-xs text-red-600 dark:text-red-400">
-                      {recordingError || 'An error occurred'}
+                      {recordingError?.includes('Insufficient credits') ? (
+                        <a href="/coach/plan" className="underline hover:text-red-700 dark:hover:text-red-300">
+                          Upgrade your plan or buy extra credits
+                        </a>
+                      ) : (
+                        recordingError || 'An error occurred'
+                      )}
                     </p>
                   </div>
                 </div>
@@ -1128,6 +1134,19 @@ export function WeekEditor({
               >
                 Try Again
               </Button>
+            </div>
+          ) : !isClientView && !isCohortMode ? (
+            /* Template mode: Show disabled overlay */
+            <div className="relative border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-6 text-center bg-[#faf8f6] dark:bg-[#1e222a]/50">
+              <Upload className="w-8 h-8 text-[#c9c5c0] dark:text-[#4a4f5c] mx-auto mb-2" />
+              <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">
+                Recording uploads are not available for templates
+              </p>
+              <p className="text-xs text-[#a7a39e] dark:text-[#5f6470] font-albert">
+                {programType === 'group'
+                  ? 'Select a cohort above to upload recordings and generate AI summaries'
+                  : 'Select a client above to upload recordings and generate AI summaries'}
+              </p>
             </div>
           ) : (
             /* Default: File selector */
