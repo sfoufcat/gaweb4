@@ -1127,6 +1127,8 @@ export type ClientViewContext =
  * Options for syncing template content to client(s).
  */
 export interface TemplateSyncOptions {
+  syncName?: boolean;           // Sync week name
+  syncTheme?: boolean;          // Sync week theme
   syncTasks?: boolean;          // Sync weeklyTasks
   syncFocus?: boolean;          // Sync currentFocus
   syncNotes?: boolean;          // Sync notes array

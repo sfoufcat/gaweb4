@@ -1,10 +1,21 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, ProgramOrientation, CallSummary, WeeklyTaskDistribution, UnifiedEvent } from '@/types';
-import { Trash2, Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Repeat, ArrowRight, Upload, Mic, Phone, Calendar } from 'lucide-react';
+import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, ProgramOrientation, CallSummary, WeeklyTaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
+import { Trash2, Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Repeat, ArrowRight, Upload, Mic, Phone, Calendar, Check, Loader2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MediaUpload } from '@/components/admin/MediaUpload';
+import { SyncToClientsDialog } from './SyncToClientsDialog';
+
+interface EnrollmentWithUser extends ProgramEnrollment {
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    imageUrl?: string;
+  };
+}
 
 interface WeekEditorProps {
   week: ProgramWeek;
@@ -20,6 +31,10 @@ interface WeekEditorProps {
   // Client view mode (for 1:1 programs)
   isClientView?: boolean;
   clientName?: string;
+  // For sync functionality (1:1 programs)
+  programId?: string;
+  programType?: 'individual' | 'group';
+  enrollments?: EnrollmentWithUser[];
 }
 
 /**
@@ -38,6 +53,9 @@ export function WeekEditor({
   availableEvents = [],
   isClientView = false,
   clientName,
+  programId,
+  programType,
+  enrollments = [],
 }: WeekEditorProps) {
   const [formData, setFormData] = useState({
     name: week.name || '',
@@ -58,6 +76,11 @@ export function WeekEditor({
   const [newTask, setNewTask] = useState('');
   const [newFocus, setNewFocus] = useState('');
   const [newNote, setNewNote] = useState('');
+
+  // Save animation and sync state
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [showSyncButton, setShowSyncButton] = useState(false);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
 
   // Get days in this week
   const weekDays = days.filter(
@@ -82,6 +105,8 @@ export function WeekEditor({
       linkedCallEventIds: week.linkedCallEventIds || [],
     });
     setHasChanges(false);
+    setShowSyncButton(false);
+    setSaveStatus('idle');
   }, [week.id, week.name, week.theme, week.description, week.weeklyPrompt, week.weeklyTasks, week.currentFocus, week.notes, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.linkedSummaryIds, week.linkedCallEventIds]);
 
   // Check for changes
@@ -104,22 +129,37 @@ export function WeekEditor({
   }, [formData, week]);
 
   const handleSave = async () => {
-    await onSave({
-      name: formData.name || undefined,
-      theme: formData.theme || undefined,
-      description: formData.description || undefined,
-      weeklyPrompt: formData.weeklyPrompt || undefined,
-      weeklyTasks: formData.weeklyTasks.length > 0 ? formData.weeklyTasks : undefined,
-      currentFocus: formData.currentFocus.length > 0 ? formData.currentFocus : undefined,
-      notes: formData.notes.length > 0 ? formData.notes : undefined,
-      manualNotes: formData.manualNotes || undefined,
-      distribution: formData.distribution,
-      coachRecordingUrl: formData.coachRecordingUrl || undefined,
-      coachRecordingNotes: formData.coachRecordingNotes || undefined,
-      linkedSummaryIds: formData.linkedSummaryIds.length > 0 ? formData.linkedSummaryIds : undefined,
-      linkedCallEventIds: formData.linkedCallEventIds.length > 0 ? formData.linkedCallEventIds : undefined,
-    });
-    setHasChanges(false);
+    setSaveStatus('saving');
+    try {
+      await onSave({
+        name: formData.name || undefined,
+        theme: formData.theme || undefined,
+        description: formData.description || undefined,
+        weeklyPrompt: formData.weeklyPrompt || undefined,
+        weeklyTasks: formData.weeklyTasks.length > 0 ? formData.weeklyTasks : undefined,
+        currentFocus: formData.currentFocus.length > 0 ? formData.currentFocus : undefined,
+        notes: formData.notes.length > 0 ? formData.notes : undefined,
+        manualNotes: formData.manualNotes || undefined,
+        distribution: formData.distribution,
+        coachRecordingUrl: formData.coachRecordingUrl || undefined,
+        coachRecordingNotes: formData.coachRecordingNotes || undefined,
+        linkedSummaryIds: formData.linkedSummaryIds.length > 0 ? formData.linkedSummaryIds : undefined,
+        linkedCallEventIds: formData.linkedCallEventIds.length > 0 ? formData.linkedCallEventIds : undefined,
+      });
+      setHasChanges(false);
+      setSaveStatus('saved');
+
+      // After animation, show sync button for individual programs in template mode
+      setTimeout(() => {
+        setSaveStatus('idle');
+        if (programType === 'individual' && !isClientView) {
+          setShowSyncButton(true);
+        }
+      }, 1500);
+    } catch (error) {
+      console.error('Save error:', error);
+      setSaveStatus('idle');
+    }
   };
 
   // Link management for call summaries
@@ -249,14 +289,44 @@ export function WeekEditor({
               Fill with AI
             </Button>
           )}
-          {hasChanges && (
+
+          {/* Save Button States */}
+          {saveStatus === 'saving' && (
+            <Button disabled className="flex items-center gap-1.5 min-w-[100px]">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </Button>
+          )}
+
+          {saveStatus === 'saved' && (
+            <Button
+              className="flex items-center gap-1.5 min-w-[100px] bg-green-600 hover:bg-green-600 text-white"
+              disabled
+            >
+              <Check className="w-4 h-4 animate-[scale-in_0.2s_ease-out]" />
+              Saved!
+            </Button>
+          )}
+
+          {saveStatus === 'idle' && hasChanges && !showSyncButton && (
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              className="flex items-center gap-1.5"
+              className="flex items-center gap-1.5 min-w-[100px]"
             >
               <Save className="w-4 h-4" />
-              {isSaving ? 'Saving...' : 'Save'}
+              Save
+            </Button>
+          )}
+
+          {saveStatus === 'idle' && showSyncButton && (
+            <Button
+              variant="outline"
+              onClick={() => setSyncDialogOpen(true)}
+              className="flex items-center gap-1.5 border-brand-accent text-brand-accent hover:bg-brand-accent/10"
+            >
+              <Users className="w-4 h-4" />
+              Sync to Clients
             </Button>
           )}
         </div>
@@ -786,6 +856,18 @@ export function WeekEditor({
           <span className="font-medium">Day range:</span> {week.startDayIndex} - {week.endDayIndex}
         </p>
       </div>
+
+      {/* Sync to Clients Dialog */}
+      {programId && (
+        <SyncToClientsDialog
+          open={syncDialogOpen}
+          onOpenChange={setSyncDialogOpen}
+          programId={programId}
+          weekNumber={week.weekNumber}
+          enrollments={enrollments}
+          onSyncComplete={() => setShowSyncButton(false)}
+        />
+      )}
     </div>
   );
 }

@@ -30,8 +30,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Decode state to get orgId and userId
-    let stateData: { orgId: string; userId: string; provider: string };
+    // Decode state to get orgId, userId, and originDomain
+    let stateData: { orgId: string; userId: string; provider: string; originDomain?: string; timestamp?: number };
     try {
       stateData = JSON.parse(Buffer.from(state, 'base64').toString());
     } catch {
@@ -40,7 +40,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { orgId, userId } = stateData;
+    const { orgId, userId, originDomain } = stateData;
+
+    // Determine redirect base URL - use originDomain if available, otherwise fallback
+    const redirectBase = originDomain ? `https://${originDomain}` : req.url;
 
     // Exchange code for tokens
     const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
@@ -159,11 +162,11 @@ export async function GET(req: NextRequest) {
       userId
     );
 
-    console.log(`[GOOGLE_CALENDAR_CALLBACK] Successfully connected for org ${orgId}`);
+    console.log(`[GOOGLE_CALENDAR_CALLBACK] Successfully connected for org ${orgId}, redirecting to ${redirectBase}`);
 
-    // Redirect back to settings with success
+    // Redirect back to settings with success (use originDomain to go back to user's org)
     return NextResponse.redirect(
-      new URL('/coach/settings?tab=integrations&connected=google_calendar', req.url)
+      new URL('/coach/settings?tab=integrations&connected=google_calendar', redirectBase)
     );
   } catch (error) {
     console.error('[GOOGLE_CALENDAR_CALLBACK] Error:', error);

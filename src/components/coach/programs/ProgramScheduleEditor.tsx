@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Video, BookOpen, ChevronRight, CalendarDays, Clock, Edit2 } from 'lucide-react';
+import { Plus, Video, BookOpen, ChevronRight, CalendarDays, Edit2 } from 'lucide-react';
 import type { Program, ProgramDay, ProgramModule, ProgramWeek, ProgramOrientation } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';
 
@@ -110,39 +110,6 @@ export function ProgramScheduleEditor({
 
   return (
     <div className="space-y-4">
-      {/* Header with Weekly/Daily Toggle */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-          Program Schedule
-        </h3>
-        <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-1">
-          <button
-            type="button"
-            onClick={() => onOrientationChange('weekly')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
-              orientation === 'weekly'
-                ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-            }`}
-          >
-            <CalendarDays className="w-3.5 h-3.5" />
-            Weekly
-          </button>
-          <button
-            type="button"
-            onClick={() => onOrientationChange('daily')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
-              orientation === 'daily'
-                ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5" />
-            Daily
-          </button>
-        </div>
-      </div>
-
       {/* Modules and Weeks Structure */}
       <div className="space-y-4">
         {sortedModules.map((module, moduleIndex) => {

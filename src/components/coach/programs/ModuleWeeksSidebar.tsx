@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import type { Program, ProgramDay, ProgramModule, ProgramWeek, ProgramOrientation, ClientViewContext } from '@/types';
@@ -284,6 +284,34 @@ export function ModuleWeeksSidebar({
     return map;
   }, [modules, calculatedWeeks]);
 
+  // Clear localWeekOrder when props catch up to local state
+  // This prevents visual snap-back during async operations
+  useEffect(() => {
+    if (localWeekOrder.size === 0) return;
+
+    // Check each module in localWeekOrder
+    let allSynced = true;
+    localWeekOrder.forEach((localWeeks, moduleId) => {
+      const propsWeeks = weeksByModule.get(moduleId);
+      if (!propsWeeks) {
+        allSynced = false;
+        return;
+      }
+
+      // Compare order - check if props match local ordering
+      const localIds = localWeeks.map(w => w.storedWeekId || `week-${w.weekNum}`);
+      const propsIds = propsWeeks.map(w => w.storedWeekId || `week-${w.weekNum}`);
+
+      if (JSON.stringify(localIds) !== JSON.stringify(propsIds)) {
+        allSynced = false;
+      }
+    });
+
+    if (allSynced) {
+      setLocalWeekOrder(new Map());
+    }
+  }, [weeksByModule, localWeekOrder]);
+
   // Sorted modules for rendering
   const sortedModules = useMemo(() =>
     [...modules].sort((a, b) => a.order - b.order),
@@ -417,10 +445,13 @@ export function ModuleWeeksSidebar({
       moduleId: w.moduleId || moduleId,
     })) as ProgramWeek[];
     
+    // Call parent handler - don't clear localWeekOrder here!
+    // Let the useEffect below detect when props have caught up
     try {
       await onWeeksReorder(moduleId, weekData);
-    } finally {
-      // Clear local state after sync completes - let props take over
+    } catch (err) {
+      console.error('[ModuleWeeksSidebar] Failed to reorder weeks:', err);
+      // Clear local state on error so it falls back to props
       setLocalWeekOrder(prev => {
         const next = new Map(prev);
         next.delete(moduleId);

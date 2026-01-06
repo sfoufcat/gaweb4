@@ -183,10 +183,15 @@ export async function POST(
               updateData.weeklyPrompt = templateWeek.weeklyPrompt || null;
             }
 
-            // Always sync name, description, theme, distribution
-            updateData.name = templateWeek.name || null;
-            updateData.description = templateWeek.description || null;
-            updateData.theme = templateWeek.theme || null;
+            // Sync name/theme based on options (default to true for backward compatibility)
+            if (syncOptions.syncName !== false) {
+              updateData.name = templateWeek.name || null;
+              updateData.description = templateWeek.description || null;
+            }
+            if (syncOptions.syncTheme !== false) {
+              updateData.theme = templateWeek.theme || null;
+            }
+            // Always sync distribution
             updateData.distribution = templateWeek.distribution || 'repeat-daily';
 
             // Preserve client-specific content if requested

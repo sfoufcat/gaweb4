@@ -2010,33 +2010,37 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6">
               {/* Controls row at top of calendar */}
               <div className="flex items-center justify-between gap-4 mb-6">
-                {/* Client Selector for 1:1 programs */}
-                {selectedProgram?.type === 'individual' ? (
-                  <ClientSelector
-                    enrollments={programEnrollments}
-                    value={clientViewContext}
-                    onChange={async (context) => {
-                      setClientViewContext(context);
-                      if (context.mode === 'client' && selectedProgram) {
-                        const existingWeeks = await fetch(
-                          `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
-                        ).then(r => r.ok ? r.json() : { clientWeeks: [] });
-                        if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
-                          await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
+                {/* Left side: Title and Client Selector */}
+                <div className="flex items-center gap-4">
+                  <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    Program Schedule
+                  </h3>
+                  {/* Client Selector for 1:1 programs */}
+                  {selectedProgram?.type === 'individual' && (
+                    <ClientSelector
+                      enrollments={programEnrollments}
+                      value={clientViewContext}
+                      onChange={async (context) => {
+                        setClientViewContext(context);
+                        if (context.mode === 'client' && selectedProgram) {
+                          const existingWeeks = await fetch(
+                            `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
+                          ).then(r => r.ok ? r.json() : { clientWeeks: [] });
+                          if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
+                            await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
+                          }
+                          await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
+                          await fetchClientDays(selectedProgram.id, context.enrollmentId!);
+                        } else {
+                          setClientWeeks([]);
+                          setClientDays([]);
                         }
-                        await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
-                        await fetchClientDays(selectedProgram.id, context.enrollmentId!);
-                      } else {
-                        setClientWeeks([]);
-                        setClientDays([]);
-                      }
-                    }}
-                    loading={loadingEnrollments}
-                    className="w-full max-w-sm"
-                  />
-                ) : (
-                  <div /> 
-                )}
+                      }}
+                      loading={loadingEnrollments}
+                      className="w-full max-w-sm"
+                    />
+                  )}
+                </div>
 
                 {/* Row/Calendar Toggle */}
                 <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-1">
@@ -2833,6 +2837,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       availableEvents={availableEvents}
                       isClientView={isClientMode}
                       clientName={isClientMode ? clientViewContext.userName : undefined}
+                      programId={selectedProgram?.id}
+                      programType={selectedProgram?.type}
+                      enrollments={programEnrollments}
                     />
                   );
                 })()

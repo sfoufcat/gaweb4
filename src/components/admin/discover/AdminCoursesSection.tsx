@@ -28,6 +28,13 @@ import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { CategorySelector } from '@/components/admin/CategorySelector';
 import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // Track options for dropdown
 const TRACK_OPTIONS: { value: UserTrack | ''; label: string }[] = [
@@ -683,16 +690,20 @@ function CourseFormDialog({
                 
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Level</label>
-                  <select
-                    value={formData.level}
-                    onChange={e => setFormData(prev => ({ ...prev, level: e.target.value }))}
-                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert"
+                  <Select
+                    value={formData.level || 'none'}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, level: value === 'none' ? '' : value }))}
                   >
-                    <option value="">Select level...</option>
-                    <option value="Beginner">Beginner</option>
-                    <option value="Intermediate">Intermediate</option>
-                    <option value="Advanced">Advanced</option>
-                  </select>
+                    <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      <SelectValue placeholder="Select level..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="Beginner">Beginner</SelectItem>
+                      <SelectItem value="Intermediate">Intermediate</SelectItem>
+                      <SelectItem value="Advanced">Advanced</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 {/* Programs (replaces Track) */}
