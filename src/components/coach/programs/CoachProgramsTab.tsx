@@ -1889,7 +1889,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         )}
 
         {/* Content */}
-        <AnimatePresence mode="wait" custom={viewModeDirection}>
+        <AnimatePresence mode="wait" custom={viewModeDirection} initial={false}>
           <motion.div
             key={viewMode}
             custom={viewModeDirection}
@@ -2041,7 +2041,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           </div>
         ) : viewMode === 'days' ? (
           // Content View - Row (sidebar + editor) or Calendar (full-width)
-          <AnimatePresence mode="wait" custom={contentDirection}>
+          <AnimatePresence mode="wait" custom={contentDirection} initial={false}>
           {contentDisplayMode === 'calendar' ? (
             // Calendar View - Full width, no sidebar
             <motion.div
