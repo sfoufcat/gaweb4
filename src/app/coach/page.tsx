@@ -514,7 +514,7 @@ export default function CoachPage() {
     <>
       {/* Desktop: Fixed sidebar - matches chat's channel list position */}
       <div
-        className="hidden lg:flex fixed top-0 left-[72px] bottom-0 w-[220px] border-r border-[#e1ddd8] dark:border-[#262b35] z-30 flex-col bg-[#faf8f6] dark:bg-[#05070b]"
+        className="hidden lg:flex fixed top-0 left-[72px] bottom-0 w-[220px] border-r border-[#e1ddd8] dark:border-[#262b35] z-30 flex-col overflow-y-auto scrollbar-hide bg-[#faf8f6] dark:bg-[#05070b]"
       >
         {/* Sidebar Header */}
         <div className="p-4 border-b border-[#e1ddd8] dark:border-[#262b35]">

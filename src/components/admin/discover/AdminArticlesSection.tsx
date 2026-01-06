@@ -117,6 +117,17 @@ function ArticleFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.content.trim()) {
+      alert('Content is required');
+      return;
+    }
+
+    if (!formData.coverImageUrl.trim()) {
+      alert('Cover image is required');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -188,7 +199,7 @@ function ArticleFormDialog({
             <RichTextEditor
               value={formData.content}
               onChange={(content) => setFormData(prev => ({ ...prev, content }))}
-              label="Content"
+              label="Content *"
               required
               rows={12}
               placeholder="Write your article content here..."
@@ -352,7 +363,7 @@ function ArticleFormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={saving}
+              disabled={saving || !formData.title.trim() || !formData.content.trim() || !formData.coverImageUrl.trim()}
               className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
             >
               {saving ? 'Saving...' : isEditing ? 'Update Article' : 'Create Article'}

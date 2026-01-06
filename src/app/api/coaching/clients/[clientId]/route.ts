@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import { resolveActivity } from '@/lib/analytics/activity';
 import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
 import { generateDemoClients, generateDemoUserProfile } from '@/lib/demo-data';
 import type {
@@ -402,7 +401,7 @@ export async function GET(
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const thirtyDaysAgoStr = thirtyDaysAgo.toISOString();
 
-    // Fetch all comprehensive data in parallel
+    // Fetch all comprehensive data in parallel (activity uses cached data from membership)
     const [
       tasksSnapshot,
       habitsSnapshot,
@@ -410,7 +409,6 @@ export async function GET(
       eveningCheckinsSnapshot,
       weeklyCheckinsSnapshot,
       programEnrollmentsSnapshot,
-      activityResult,
       coachNotesDoc,
     ] = await Promise.all([
       // Tasks - last 30 days
@@ -420,14 +418,14 @@ export async function GET(
         .orderBy('date', 'desc')
         .limit(100)
         .get(),
-      
+
       // Habits - all active
       adminDb.collection('habits')
         .where('userId', '==', clientId)
         .where('organizationId', '==', organizationId)
         .where('archived', '==', false)
         .get(),
-      
+
       // Morning check-ins - last 30 days
       adminDb.collection('morning_checkins')
         .where('userId', '==', clientId)
@@ -435,7 +433,7 @@ export async function GET(
         .orderBy('date', 'desc')
         .limit(30)
         .get(),
-      
+
       // Evening check-ins - last 30 days
       adminDb.collection('evening_checkins')
         .where('userId', '==', clientId)
@@ -443,7 +441,7 @@ export async function GET(
         .orderBy('date', 'desc')
         .limit(30)
         .get(),
-      
+
       // Weekly check-ins - last 8 weeks
       adminDb.collection('weekly_reflections')
         .where('userId', '==', clientId)
@@ -451,16 +449,13 @@ export async function GET(
         .orderBy('date', 'desc')
         .limit(8)
         .get(),
-      
+
       // Program enrollments
       adminDb.collection('program_enrollments')
         .where('userId', '==', clientId)
         .where('organizationId', '==', organizationId)
         .get(),
-      
-      // Activity score
-      resolveActivity({ orgId: organizationId, userId: clientId }),
-      
+
       // Coach notes about this client
       adminDb.collection('coach_client_notes')
         .doc(`${organizationId}_${userId}_${clientId}`)
@@ -586,13 +581,14 @@ export async function GET(
     );
     const hasActiveCoaching = user.coachingStatus === 'active' || !!user.coaching || hasIndividualProgram;
 
-    // Process activity score
+    // Process activity score from cached membership data (pre-computed by daily cron)
+    // This avoids making 5 expensive Firestore queries per user
     const activityScore: ClientActivityScore = {
-      status: activityResult.status,
-      atRisk: activityResult.atRisk,
-      lastActivityAt: activityResult.activitySignals.lastActivityAt?.toISOString() || null,
-      daysActiveInPeriod: activityResult.activitySignals.daysActiveInPeriod,
-      primarySignal: activityResult.activitySignals.primarySignal,
+      status: memberData?.activityStatus || 'inactive',
+      atRisk: memberData?.atRisk ?? false,
+      lastActivityAt: memberData?.lastActivityAt || null,
+      daysActiveInPeriod: memberData?.daysActiveInPeriod ?? 0,
+      primarySignal: memberData?.primaryActivityType || null,
     };
 
     // Get coach notes

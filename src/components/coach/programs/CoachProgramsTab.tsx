@@ -1877,26 +1877,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl p-6 animate-pulse">
         {/* Header skeleton */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-            <div className="h-4 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded mb-2" />
+            <div className="h-4 w-40 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
           </div>
-          <div className="h-10 w-36 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+          <div className="h-10 w-10 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
         </div>
         {/* Program cards skeleton */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
-              <div className="h-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
-              <div className="p-4 space-y-3">
-                <div className="h-5 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                <div className="flex gap-2">
-                  <div className="h-5 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
-                  <div className="h-5 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
-                </div>
+            <div key={i} className="flex items-center gap-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+              <div className="w-16 h-16 rounded-lg bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded mb-2" />
+                <div className="h-4 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
               </div>
             </div>
           ))}

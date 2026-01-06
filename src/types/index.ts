@@ -2028,6 +2028,22 @@ export interface ClientCoachingData {
   chatChannelId?: string; // Stream Chat channel ID for 1:1 chat
   createdAt: string;
   updatedAt: string;
+
+  // Denormalized user data (synced from users/org_memberships for fast list queries)
+  // These eliminate the need to fetch from users collection for each client
+  cachedUserFirstName?: string;
+  cachedUserLastName?: string;
+  cachedUserEmail?: string;
+  cachedUserImageUrl?: string;
+  cachedUserTimezone?: string;
+
+  // Denormalized activity data (synced from org_memberships by cron)
+  // These eliminate the need to compute activity for each client
+  cachedActivityStatus?: 'thriving' | 'active' | 'inactive';
+  cachedActivityAtRisk?: boolean;
+  cachedActivityLastAt?: string;
+  cachedActivityDaysActive?: number;
+  cachedDataUpdatedAt?: string; // When denormalized data was last synced
 }
 
 // Coaching call scheduled job (for notifications/emails)

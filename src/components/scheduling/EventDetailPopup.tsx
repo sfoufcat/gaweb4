@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react';
 import {
   X,
   Clock,
@@ -23,7 +23,7 @@ interface EventDetailPopupProps {
   onRespond?: (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => void;
   onCounterPropose?: (eventId: string) => void;
   isLoading?: boolean;
-  /** Position for desktop popup (near clicked element) */
+  /** Position for desktop popup (near clicked element) - x,y are the click coordinates */
   position?: { x: number; y: number };
 }
 
@@ -44,6 +44,54 @@ export function EventDetailPopup({
   position,
 }: EventDetailPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
+  const [computedPosition, setComputedPosition] = useState<{ top: number; left: number } | null>(null);
+
+  // Calculate optimal position after popup renders (so we know its size)
+  useLayoutEffect(() => {
+    if (!isOpen || !position || !popupRef.current) {
+      setComputedPosition(null);
+      return;
+    }
+
+    const popup = popupRef.current;
+    const popupRect = popup.getBoundingClientRect();
+    const popupWidth = popupRect.width || 384; // sm:w-96 = 384px fallback
+    const popupHeight = popupRect.height || 400; // estimated height
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const padding = 16; // Minimum distance from viewport edges
+
+    // Start with position below and aligned with click point
+    let top = position.y;
+    let left = position.x;
+
+    // Adjust horizontal position to keep popup in viewport
+    // Try to center the popup horizontally on the click point
+    left = position.x - (popupWidth / 2);
+
+    // Keep within horizontal bounds
+    if (left + popupWidth > viewportWidth - padding) {
+      left = viewportWidth - popupWidth - padding;
+    }
+    if (left < padding) {
+      left = padding;
+    }
+
+    // Adjust vertical position
+    // If popup would go below viewport, position it above the click point
+    if (top + popupHeight > viewportHeight - padding) {
+      // Position above - subtract estimated event height (40px) and popup height
+      top = position.y - popupHeight - 50;
+    }
+
+    // If still outside top of viewport, just position at top with padding
+    if (top < padding) {
+      top = padding;
+    }
+
+    setComputedPosition({ top, left });
+  }, [isOpen, position]);
 
   // Close on escape key
   useEffect(() => {
@@ -139,10 +187,14 @@ export function EventDetailPopup({
           sm:bottom-auto sm:left-auto sm:right-auto sm:rounded-2xl
           animate-modal-slide-up sm:animate-modal-zoom-in
         `}
-        style={position ? {
-          // Desktop: position near clicked element
-          top: `${Math.min(position.y, window.innerHeight - 400)}px`,
-          left: `${Math.min(position.x, window.innerWidth - 400)}px`,
+        style={computedPosition ? {
+          top: `${computedPosition.top}px`,
+          left: `${computedPosition.left}px`,
+        } : position ? {
+          // Fallback: center on desktop until position is computed
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
         } : undefined}
       >
         {/* Header */}

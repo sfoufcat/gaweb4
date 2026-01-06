@@ -36,19 +36,16 @@ export function SquadDiscovery() {
   
   const [coachedSquads, setCoachedSquads] = useState<DiscoverSquad[]>([]);
   const [communitySquads, setCommunitySquads] = useState<DiscoverSquad[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [hasSquads, setHasSquads] = useState(false);
 
   // Fetch available squads
   useEffect(() => {
     const fetchSquads = async () => {
       try {
-        setLoading(true);
         const response = await fetch('/api/squad/discover');
         if (!response.ok) throw new Error('Failed to fetch squads');
-        
+
         const data = await response.json();
-        
+
         // Combine all squads from the API response
         const allSquads: DiscoverSquad[] = [
           ...(data.trackSquads || []),
@@ -57,31 +54,23 @@ export function SquadDiscovery() {
           ...(data.premiumSquads || []),
           ...(data.standardSquads || []),
         ];
-        
+
         // Separate into coached and community squads
         const coached = allSquads.filter((s: DiscoverSquad) => !!s.coachId);
         const community = allSquads.filter((s: DiscoverSquad) => !s.coachId);
-        
+
         setCoachedSquads(coached);
         setCommunitySquads(community);
-        
-        const total = coached.length + community.length;
-        setHasSquads(total > 0);
       } catch (err) {
         console.error('Error fetching squads:', err);
-        setHasSquads(false);
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchSquads();
   }, []);
 
-  // Return null for smooth page fade-in
-  if (loading) {
-    return null;
-  }
+  // Derive hasSquads from array lengths (no separate state needed)
+  const hasSquads = coachedSquads.length > 0 || communitySquads.length > 0;
 
   // No squads available - show empty state with programs CTA
   if (!hasSquads) {

@@ -170,12 +170,8 @@ export default function StandaloneSquadPage() {
     fetchReferralConfig();
   }, [squad?.programId]);
 
-  // Loading state - return null for smooth page fade-in via PageTransition
-  if (!mounted || (!isDemoMode && !userLoaded) || isLoading) {
-    return null;
-  }
-
-  if (!user) {
+  // No user - show sign in message
+  if (mounted && (isDemoMode || userLoaded) && !user) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center text-center px-4">
         <p className="text-text-secondary">Please sign in to view your squad.</p>

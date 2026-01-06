@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Users, User, Star, Repeat } from 'lucide-react';
+import { Users, User, Star } from 'lucide-react';
 
 /**
  * SquadCard Component
@@ -103,9 +103,9 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
 
         {/* Content */}
         <div className={`flex flex-col gap-2 ${isCompact ? 'p-3' : 'p-5'}`}>
-          {/* Title */}
+          {/* Title - min height for 2 lines */}
           <h3 className={`font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 ${
-            isCompact ? 'text-sm' : 'text-[17px]'
+            isCompact ? 'text-sm' : 'text-[17px] min-h-[2.5em]'
           }`}>
             {squad.name}
           </h3>
@@ -117,50 +117,43 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
             </p>
           )}
 
-          {/* Coach */}
-          {squad.coachName && (
-            <div className="flex items-center gap-2">
-              {squad.coachImageUrl ? (
-                <Image
-                  src={squad.coachImageUrl}
-                  alt={squad.coachName}
-                  width={20}
-                  height={20}
-                  className="rounded-full"
-                />
-              ) : (
-                <div className="w-5 h-5 rounded-full bg-brand-accent/20 dark:bg-brand-accent/20 flex items-center justify-center">
-                  <User className="w-3 h-3 text-brand-accent" />
-                </div>
-              )}
-              <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                {squad.coachName}
-              </span>
-            </div>
-          )}
-
-          {/* Meta info pills */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Coach and Members row */}
+          <div className="flex items-center justify-between">
+            {squad.coachName ? (
+              <div className="flex items-center gap-2">
+                {squad.coachImageUrl ? (
+                  <Image
+                    src={squad.coachImageUrl}
+                    alt={squad.coachName}
+                    width={20}
+                    height={20}
+                    className="rounded-full"
+                  />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-brand-accent/20 dark:bg-brand-accent/20 flex items-center justify-center">
+                    <User className="w-3 h-3 text-brand-accent" />
+                  </div>
+                )}
+                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                  {squad.coachName}
+                </span>
+              </div>
+            ) : (
+              <div />
+            )}
             {squad.memberCount !== undefined && squad.memberCount > 0 && (
               <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
                 <Users className="w-3 h-3 text-brand-accent" />
                 {squad.memberCount} members
               </span>
             )}
-
-            {squad.subscriptionEnabled && squad.billingInterval && (
-              <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
-                <Repeat className="w-3 h-3 text-brand-accent" />
-                {squad.billingInterval}
-              </span>
-            )}
           </div>
 
-          {/* Join info */}
+          {/* Footer - simple CTA */}
           {!isCompact && (
             <div className="mt-1 pt-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
               <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
-                Join anytime
+                Join Squad
               </span>
             </div>
           )}

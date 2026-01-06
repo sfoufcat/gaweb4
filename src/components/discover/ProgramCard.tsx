@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Users, User, Calendar, Clock } from 'lucide-react';
+import { Users, User, Clock } from 'lucide-react';
 
 interface ProgramCardProgram {
   id: string;
@@ -45,11 +45,6 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
       return `${price}${intervalSuffix}`;
     }
     return price;
-  };
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const isEnrolled = !!program.userEnrollment;
@@ -127,9 +122,9 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
 
         {/* Content */}
         <div className={`flex flex-col gap-2 ${isCompact ? 'p-3' : 'p-5'}`}>
-          {/* Title */}
+          {/* Title - min height for 2 lines */}
           <h3 className={`font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 ${
-            isCompact ? 'text-sm' : 'text-[17px]'
+            isCompact ? 'text-sm' : 'text-[17px] min-h-[2.5em]'
           }`}>
             {program.name}
           </h3>
@@ -141,75 +136,42 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
             </p>
           )}
 
-          {/* Coach */}
-          {program.coachName && (
-            <div className="flex items-center gap-2">
-              {program.coachImageUrl ? (
-                <Image
-                  src={program.coachImageUrl}
-                  alt={program.coachName}
-                  width={20}
-                  height={20}
-                  className="rounded-full"
-                />
-              ) : (
-                <div className="w-5 h-5 rounded-full bg-brand-accent/20 dark:bg-brand-accent/20 flex items-center justify-center">
-                  <User className="w-3 h-3 text-brand-accent" />
-                </div>
-              )}
-              <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                {program.coachName}
-              </span>
-            </div>
-          )}
-
-          {/* Meta info pills */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Coach and Duration row */}
+          <div className="flex items-center justify-between">
+            {program.coachName ? (
+              <div className="flex items-center gap-2">
+                {program.coachImageUrl ? (
+                  <Image
+                    src={program.coachImageUrl}
+                    alt={program.coachName}
+                    width={20}
+                    height={20}
+                    className="rounded-full"
+                  />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-brand-accent/20 dark:bg-brand-accent/20 flex items-center justify-center">
+                    <User className="w-3 h-3 text-brand-accent" />
+                  </div>
+                )}
+                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                  {program.coachName}
+                </span>
+              </div>
+            ) : (
+              <div />
+            )}
             <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
               <Clock className="w-3 h-3 text-brand-accent" />
               {program.durationType === 'evergreen' ? 'Continuous' : `${program.lengthDays} days`}
             </span>
-
-            {/* Next cohort date for group programs */}
-            {program.type === 'group' && program.nextCohort && (
-              <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
-                <Calendar className="w-3 h-3 text-brand-accent" />
-                {formatDate(program.nextCohort.startDate)}
-              </span>
-            )}
           </div>
 
-          {/* Footer section - always show something for non-compact */}
+          {/* Footer section - simple CTA */}
           {!isCompact && (
             <div className="mt-1 pt-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
-              {program.type === 'group' && program.nextCohort ? (
-                // Group program with upcoming cohort
-                <div className="flex items-center justify-between">
-                  <span className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                    Next: {program.nextCohort.name}
-                  </span>
-                  {program.nextCohort.spotsRemaining > 0 && program.nextCohort.spotsRemaining !== -1 && (
-                    <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
-                      {program.nextCohort.spotsRemaining} spots left
-                    </span>
-                  )}
-                </div>
-              ) : program.type === 'group' && program.durationType === 'evergreen' ? (
-                // Evergreen group program - join anytime
-                <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
-                  Join anytime
-                </span>
-              ) : program.type === 'group' ? (
-                // Group program without cohort - coming soon
-                <span className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                  Cohort dates coming soon
-                </span>
-              ) : (
-                // Individual program - start anytime
-                <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
-                  Start anytime
-                </span>
-              )}
+              <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
+                Start Program
+              </span>
             </div>
           )}
         </div>

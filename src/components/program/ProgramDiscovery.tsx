@@ -45,19 +45,16 @@ export function ProgramDiscovery() {
   
   const [groupPrograms, setGroupPrograms] = useState<DiscoverProgram[]>([]);
   const [individualPrograms, setIndividualPrograms] = useState<DiscoverProgram[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [hasPrograms, setHasPrograms] = useState(false);
 
   // Fetch available programs
   useEffect(() => {
     const fetchPrograms = async () => {
       try {
-        setLoading(true);
         const response = await fetch('/api/discover/programs');
         if (!response.ok) throw new Error('Failed to fetch programs');
-        
+
         const data = await response.json();
-        
+
         // Filter out programs user is already enrolled in
         const availableGroup = (data.groupPrograms || []).filter(
           (p: DiscoverProgram) => !p.userEnrollment
@@ -65,27 +62,19 @@ export function ProgramDiscovery() {
         const availableIndividual = (data.individualPrograms || []).filter(
           (p: DiscoverProgram) => !p.userEnrollment
         );
-        
+
         setGroupPrograms(availableGroup);
         setIndividualPrograms(availableIndividual);
-        
-        const total = availableGroup.length + availableIndividual.length;
-        setHasPrograms(total > 0);
       } catch (err) {
         console.error('Error fetching programs:', err);
-        setHasPrograms(false);
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchPrograms();
   }, []);
 
-  // Return null for smooth page fade-in
-  if (loading) {
-    return null;
-  }
+  // Derive hasPrograms from array lengths (no separate state needed)
+  const hasPrograms = groupPrograms.length > 0 || individualPrograms.length > 0;
 
   // No programs available - show empty state with "Discover more content" CTA
   if (!hasPrograms) {

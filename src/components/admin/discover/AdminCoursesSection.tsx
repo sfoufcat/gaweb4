@@ -529,6 +529,17 @@ function CourseFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.shortDescription.trim()) {
+      alert('Short description is required');
+      return;
+    }
+
+    if (!formData.coverImageUrl.trim()) {
+      alert('Cover image is required');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -791,7 +802,7 @@ function CourseFormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={saving}
+              disabled={saving || !formData.title.trim() || !formData.shortDescription.trim() || !formData.coverImageUrl.trim()}
               className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
             >
               {saving ? 'Saving...' : isEditing ? 'Update Course' : 'Create Course'}
