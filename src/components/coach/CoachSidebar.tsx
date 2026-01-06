@@ -41,7 +41,7 @@ const FULL_NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    name: 'Analytics',
+    name: 'Marketing',
     items: [
       { value: 'analytics', label: 'Analytics' },
       { value: 'funnels', label: 'Funnels' },

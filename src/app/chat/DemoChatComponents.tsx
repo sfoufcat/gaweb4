@@ -413,7 +413,7 @@ export default function DemoChatComponents() {
         <div className={`${showMobileList ? 'flex' : 'hidden'} lg:flex w-full lg:w-72 xl:w-80 border-r border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#05070b] flex-shrink-0 flex-col`}>
           {/* Header */}
           <div className="p-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
-            <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">Messages</h2>
+            <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">Chats</h2>
           </div>
 
           {/* Pill Selector Tabs - matches real chat */}
