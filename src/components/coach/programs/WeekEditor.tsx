@@ -431,19 +431,19 @@ export function WeekEditor({
 
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
-      uploadFormData.append('path', `coach-recordings/${Date.now()}_${file.name}`);
 
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: uploadFormData,
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Upload failed');
+        throw new Error(data.error || 'Upload failed');
       }
 
-      const { url } = await response.json();
-      setFormData(prev => ({ ...prev, coachRecordingUrl: url }));
+      setFormData(prev => ({ ...prev, coachRecordingUrl: data.url }));
       setRecordingStatus('completed');
       setRecordingFile(null);
 

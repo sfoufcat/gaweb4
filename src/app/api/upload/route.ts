@@ -5,16 +5,18 @@ import sharp from 'sharp';
 /**
  * POST /api/upload
  * Generic media upload endpoint for authenticated users
- * Used by feed posts, stories, and other user-generated content
- * 
+ * Used by feed posts, stories, coach recordings, and other user-generated content
+ *
  * Images are automatically compressed using sharp:
- * - Max width: 1200px (maintains aspect ratio)
+ * - Max width: 2000px (maintains aspect ratio)
  * - Quality: 80%
  * - Format preserved (JPEG, PNG, WebP)
- * 
+ *
+ * Audio files are stored as-is (no processing)
+ *
  * Expects: multipart/form-data with:
  *   - file: File
- * 
+ *
  * Returns: { success: true, url: string }
  */
 export async function POST(req: Request) {
@@ -44,13 +46,14 @@ export async function POST(req: Request) {
     // Step 3: Validate file type
     const isImage = file.type.startsWith('image/');
     const isVideo = file.type.startsWith('video/');
-    
-    if (!isImage && !isVideo) {
-      return NextResponse.json({ error: 'File must be an image or video' }, { status: 400 });
+    const isAudio = file.type.startsWith('audio/');
+
+    if (!isImage && !isVideo && !isAudio) {
+      return NextResponse.json({ error: 'File must be an image, video, or audio' }, { status: 400 });
     }
 
-    // Step 4: Validate file size (10MB for images, 100MB for videos)
-    const maxSize = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
+    // Step 4: Validate file size (10MB for images, 100MB for videos, 500MB for audio)
+    const maxSize = isAudio ? 500 * 1024 * 1024 : isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
     if (file.size > maxSize) {
       const maxSizeMB = maxSize / (1024 * 1024);
       return NextResponse.json({ error: `File size must be less than ${maxSizeMB}MB` }, { status: 400 });
@@ -125,10 +128,11 @@ export async function POST(req: Request) {
     }
 
     // Step 9: Create unique filename and upload
-    // Store under users/{userId}/uploads/ for organization
+    // Store under users/{userId}/uploads/ for images/videos, recordings/ for audio
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const storagePath = `users/${userId}/uploads/${timestamp}-${sanitizedName}`;
+    const folder = isAudio ? 'recordings' : 'uploads';
+    const storagePath = `users/${userId}/${folder}/${timestamp}-${sanitizedName}`;
     const fileRef = bucket.file(storagePath);
 
     try {

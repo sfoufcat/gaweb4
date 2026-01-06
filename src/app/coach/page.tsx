@@ -159,15 +159,21 @@ export default function CoachPage() {
   const [activeTab, setActiveTab] = useState<CoachTab>(initialTab);
   const [tabDirection, setTabDirection] = useState<1 | -1>(1);
   const prevTabRef = useRef<CoachTab>(initialTab);
+  // Track if animations should be enabled - starts false to prevent initial mount animation
+  const [animationsEnabled, setAnimationsEnabled] = useState(false);
 
   // Handler for tab changes with direction tracking
   const handleTabChange = useCallback((newTab: CoachTab) => {
+    // Enable animations on first user interaction
+    if (!animationsEnabled) {
+      setAnimationsEnabled(true);
+    }
     const prevOrder = COACH_TAB_ORDER[prevTabRef.current] ?? 0;
     const newOrder = COACH_TAB_ORDER[newTab] ?? 0;
     setTabDirection(newOrder > prevOrder ? 1 : -1);
     prevTabRef.current = newTab;
     setActiveTab(newTab);
-  }, []);
+  }, [animationsEnabled]);
 
   // Tabs horizontal scroll with mouse wheel
   const tabsListRef = useRef<HTMLDivElement>(null);
@@ -757,11 +763,11 @@ export default function CoachPage() {
             <motion.div
               key={activeTab}
               custom={tabDirection}
-              variants={tabSlideVariants}
+              variants={animationsEnabled ? tabSlideVariants : undefined}
               initial={false}
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+              animate={animationsEnabled ? "center" : undefined}
+              exit={animationsEnabled ? "exit" : undefined}
+              transition={animationsEnabled ? { duration: 0.18, ease: [0.25, 0.1, 0.25, 1] } : { duration: 0 }}
             >
           {/* Clients Tab - Consolidated Users + Coaching Clients */}
           <TabsContent value="clients">
