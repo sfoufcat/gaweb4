@@ -618,25 +618,23 @@ export default function CoachPage() {
         <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as CoachTab)} className="w-full">
           {/* Mobile Navigation - horizontal scroll with section groups */}
           <div className="mb-6 lg:hidden overflow-x-auto scrollbar-hide">
-            <TabsList
-              ref={setTabsListRef}
-              onMouseLeave={handleTabsMouseLeave}
-              className="relative inline-flex items-stretch gap-0 p-1.5 bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl"
-            >
-              {/* Sliding highlight */}
-              <div
-                className="absolute h-[calc(100%-12px)] top-1.5 rounded-lg bg-[#ebe8e4] dark:bg-[#262b35] transition-all duration-200 ease-out pointer-events-none"
-                style={{
-                  left: hoverStyle.left,
-                  width: hoverStyle.width,
-                  opacity: hoverStyle.opacity,
-                }}
-              />
-              
+            <div className="inline-flex items-end gap-3 min-w-max">
               {/* === CORE SECTION === */}
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1 text-left">Core</span>
-                <div className="flex gap-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1">Core</span>
+                <TabsList
+                  ref={setTabsListRef}
+                  onMouseLeave={handleTabsMouseLeave}
+                  className="relative flex gap-1 p-1.5 bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl h-auto"
+                >
+                  <div
+                    className="absolute h-[calc(100%-12px)] top-1.5 rounded-lg bg-[#ebe8e4] dark:bg-[#262b35] transition-all duration-200 ease-out pointer-events-none"
+                    style={{
+                      left: hoverStyle.left,
+                      width: hoverStyle.width,
+                      opacity: hoverStyle.opacity,
+                    }}
+                  />
                   <TabsTrigger
                     value="clients"
                     onMouseEnter={handleTabMouseEnter}
@@ -660,19 +658,15 @@ export default function CoachPage() {
                   >
                     Squads
                   </TabsTrigger>
-                </div>
+                </TabsList>
               </div>
-              
-              {/* Divider */}
-              <div className="w-px bg-[#e1ddd8] dark:bg-[#363b47] mx-2 my-1 flex-shrink-0" />
               
               {/* === CONTENT SECTION === */}
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1 text-left">Content</span>
-                <div className="flex gap-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1">Content</span>
+                <TabsList className="relative flex gap-1 p-1.5 bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl h-auto">
                   <TabsTrigger
                     value="discover"
-                    onMouseEnter={handleTabMouseEnter}
                     className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                   >
                     Content
@@ -680,136 +674,112 @@ export default function CoachPage() {
                   {!isLimitedOrgCoach && (
                     <TabsTrigger
                       value="onboarding"
-                      onMouseEnter={handleTabMouseEnter}
                       className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                     >
                       Onboarding
                     </TabsTrigger>
                   )}
-                </div>
+                </TabsList>
               </div>
               
               {!isLimitedOrgCoach && (
                 <>
-                  {/* Divider */}
-                  <div className="w-px bg-[#e1ddd8] dark:bg-[#363b47] mx-2 my-1 flex-shrink-0" />
-                  
                   {/* === ENGAGEMENT SECTION === */}
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1 text-left">Engagement</span>
-                    <div className="flex gap-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1">Engagement</span>
+                    <TabsList className="relative flex gap-1 p-1.5 bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl h-auto">
                       <TabsTrigger
                         value="channels"
-                        onMouseEnter={handleTabMouseEnter}
                         className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                       >
                         Chats
                       </TabsTrigger>
                       <TabsTrigger
                         value="checkins"
-                        onMouseEnter={handleTabMouseEnter}
                         className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                       >
                         Check-ins
                       </TabsTrigger>
                       <TabsTrigger
                         value="referrals"
-                        onMouseEnter={handleTabMouseEnter}
                         className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                       >
                         Referrals
                       </TabsTrigger>
-                    </div>
+                    </TabsList>
                   </div>
-                  
-                  {/* Divider */}
-                  <div className="w-px bg-[#e1ddd8] dark:bg-[#363b47] mx-2 my-1 flex-shrink-0" />
                   
                   {/* === MARKETING SECTION === */}
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1 text-left">Marketing</span>
-                    <div className="flex gap-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1">Marketing</span>
+                    <TabsList className="relative flex gap-1 p-1.5 bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl h-auto">
                       <TabsTrigger
                         value="analytics"
-                        onMouseEnter={handleTabMouseEnter}
                         className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                       >
                         Analytics
                       </TabsTrigger>
                       <TabsTrigger
                         value="funnels"
-                        onMouseEnter={handleTabMouseEnter}
                         className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                       >
                         Funnels
                       </TabsTrigger>
-                    </div>
+                    </TabsList>
                   </div>
-                  
-                  {/* Divider */}
-                  <div className="w-px bg-[#e1ddd8] dark:bg-[#363b47] mx-2 my-1 flex-shrink-0" />
                   
                   {/* === BUSINESS SECTION === */}
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1 text-left">Business</span>
-                    <div className="flex gap-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1">Business</span>
+                    <TabsList className="relative flex gap-1 p-1.5 bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl h-auto">
                       <TabsTrigger
                         value="scheduling"
-                        onMouseEnter={handleTabMouseEnter}
                         className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                       >
                         Scheduling
                       </TabsTrigger>
                       <TabsTrigger
                         value="discounts"
-                        onMouseEnter={handleTabMouseEnter}
                         className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                       >
                         Discounts
                       </TabsTrigger>
                       <TabsTrigger
                         value="integrations"
-                        onMouseEnter={handleTabMouseEnter}
                         className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                       >
                         Integrations
                       </TabsTrigger>
-                    </div>
+                    </TabsList>
                   </div>
-                  
-                  {/* Divider */}
-                  <div className="w-px bg-[#e1ddd8] dark:bg-[#363b47] mx-2 my-1 flex-shrink-0" />
                   
                   {/* === SETTINGS SECTION === */}
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1 text-left">Settings</span>
-                    <div className="flex gap-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1">Settings</span>
+                    <TabsList className="relative flex gap-1 p-1.5 bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl h-auto">
                       <TabsTrigger
                         value="customize"
-                        onMouseEnter={handleTabMouseEnter}
                         className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                       >
                         Customize
                       </TabsTrigger>
                       <TabsTrigger
                         value="plan"
-                        onMouseEnter={handleTabMouseEnter}
                         className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                       >
                         Plan
                       </TabsTrigger>
                       <TabsTrigger
                         value="support"
-                        onMouseEnter={handleTabMouseEnter}
                         className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                       >
                         Support
                       </TabsTrigger>
-                    </div>
+                    </TabsList>
                   </div>
                 </>
               )}
-            </TabsList>
+            </div>
           </div>
 
           {/* Clients Tab - Consolidated Users + Coaching Clients */}

@@ -32,7 +32,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
       <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] -z-10" />
       <motion.div
         key={pathname}
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: isFullWidthPage ? 0 : 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{
           duration: 0.25,
