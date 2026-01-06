@@ -9,8 +9,9 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
   // Pages that should not have the wrapper padding (full-width layouts)
   const isFullWidthPage = pathname === '/chat' || pathname === '/get-coach' || pathname === '/coach';
 
-  // Pages with fixed positioning that break when transform is applied
+  // Pages with fixed positioning or complex layouts that break when transform is applied
   const skipAnimation = pathname === '/chat' ||
+    pathname === '/coach' ||
     pathname.startsWith('/onboarding') ||
     pathname?.startsWith('/join') ||
     pathname.startsWith('/sign-in');

@@ -682,26 +682,25 @@ export function AdminUsersTab({
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl p-6 animate-pulse">
         {/* Header skeleton */}
         <div className="flex items-center justify-between mb-6">
-          <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+          <div>
+            <div className="h-6 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded mb-1" />
+            <div className="h-4 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+          </div>
           <div className="flex gap-2">
-            <div className="h-10 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
-            <div className="h-10 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+            <div className="h-10 w-10 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+            <div className="h-10 w-10 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
           </div>
         </div>
         {/* Search skeleton */}
-        <div className="h-10 w-full max-w-md bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl mb-6" />
-        {/* User rows skeleton */}
+        <div className="h-10 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl mb-6" />
+        {/* User rows skeleton - fewer rows, contained within view */}
         <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
+          {[1, 2, 3].map((i) => (
             <div key={i} className="flex items-center gap-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-              <div className="w-10 h-10 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                <div className="h-3 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-              </div>
-              <div className="flex gap-2">
-                <div className="h-6 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
-                <div className="h-6 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+              <div className="w-10 h-10 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 flex-shrink-0" />
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="h-4 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                <div className="h-3 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
               </div>
             </div>
           ))}
@@ -804,9 +803,9 @@ export function AdminUsersTab({
                   <RefreshCw className="w-5 h-5" />
                 </button>
                 
-                {/* Add Clients Button */}
+                {/* Add Clients Button - square on mobile, full on desktop */}
                 {showInviteButton && (
-                  <Button
+                  <button
                     onClick={() => {
                       if (isDemoMode) {
                         openSignupModal();
@@ -814,12 +813,12 @@ export function AdminUsersTab({
                       }
                       setShowInviteDialog(true);
                     }}
-                    className="bg-brand-accent hover:bg-brand-accent/90 active:bg-[#7a5639] dark:bg-brand-accent dark:hover:bg-brand-accent/90 dark:active:bg-[#96714d] text-white font-albert"
+                    className="p-2.5 sm:px-4 sm:py-2.5 bg-brand-accent hover:bg-brand-accent/90 active:bg-[#7a5639] dark:bg-brand-accent dark:hover:bg-brand-accent/90 dark:active:bg-[#96714d] text-white font-albert rounded-lg transition-colors flex items-center justify-center"
                     title="Add New Clients"
                   >
-                    <UserPlus className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Add New Clients</span>
-                  </Button>
+                    <UserPlus className="w-5 h-5 sm:w-4 sm:h-4 sm:mr-2" />
+                    <span className="hidden sm:inline font-medium">Add New Clients</span>
+                  </button>
                 )}
               </div>
             </div>

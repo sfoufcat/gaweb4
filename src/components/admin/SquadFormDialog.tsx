@@ -408,6 +408,16 @@ export function SquadFormDialog({
       return;
     }
 
+    if (!description.trim()) {
+      alert('Description is required');
+      return;
+    }
+
+    if (!avatarUrl.trim()) {
+      alert('Squad picture is required');
+      return;
+    }
+
     // In demo mode, call the onDemoSave callback instead of making API calls
     if (demoMode && onDemoSave) {
       const formData: SquadFormData = {
@@ -613,7 +623,7 @@ export function SquadFormDialog({
           {/* Description */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-              Description
+              Description *
             </label>
             <textarea
               id="description"
@@ -638,7 +648,7 @@ export function SquadFormDialog({
             >
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  Squad Picture
+                  Squad Picture *
                 </span>
                 <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                   512 x 512px
@@ -1043,7 +1053,7 @@ export function SquadFormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || !name.trim() || !description.trim() || !avatarUrl.trim()}
               className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
             >
               {loading ? 'Saving...' : squad ? 'Update Squad' : 'Create Squad'}

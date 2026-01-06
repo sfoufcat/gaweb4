@@ -12,8 +12,8 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
 import { getDemoPrograms } from '@/lib/demo-data';
-import type { Program, ProgramCohort, ProgramEnrollment, ProgramDay, OrgBranding } from '@/types';
-import { DEFAULT_BRANDING_COLORS } from '@/types';
+import type { Program, ProgramCohort, ProgramEnrollment, ProgramDay, OrgBranding, OrgEnrollmentRules } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_ENROLLMENT_RULES } from '@/types';
 
 interface CohortWithAvailability extends ProgramCohort {
   spotsRemaining: number;
@@ -141,9 +141,28 @@ export async function GET(
       // Fallback to generic coach name
     }
 
+    // Fetch org's enrollment rules
+    let enrollmentRules: OrgEnrollmentRules = DEFAULT_ENROLLMENT_RULES;
+    try {
+      const brandingDoc = await adminDb.collection('org_branding').doc(programData.organizationId).get();
+      if (brandingDoc.exists) {
+        const brandingData = brandingDoc.data() as OrgBranding;
+        if (brandingData.enrollmentRules) {
+          enrollmentRules = brandingData.enrollmentRules;
+        }
+      }
+    } catch (err) {
+      console.error('[DISCOVER_PROGRAM_GET] Error fetching enrollment rules:', err);
+      // Use defaults
+    }
+
+    // Determine if target program is evergreen
+    const isTargetEvergreen = programData.durationType === 'evergreen';
+
     // Get user's enrollments to check constraints
     let userEnrollments: ProgramEnrollment[] = [];
-    let activeGroupEnrollment: ProgramEnrollment | null = null;
+    let activeGroupCohortEnrollment: ProgramEnrollment | null = null; // Fixed-duration group program
+    let activeGroupEvergreenEnrollment: ProgramEnrollment | null = null; // Evergreen group program
     let activeIndividualEnrollment: ProgramEnrollment | null = null;
 
     if (userId) {
@@ -158,13 +177,17 @@ export async function GET(
         ...doc.data(),
       })) as ProgramEnrollment[];
 
-      // Find active enrollments by type
+      // Find active enrollments by type and duration type
       for (const enrollment of userEnrollments) {
         if (enrollment.status === 'active') {
           const enrolledProgramDoc = await adminDb.collection('programs').doc(enrollment.programId).get();
           const enrolledProgram = enrolledProgramDoc.data() as Program | undefined;
           if (enrolledProgram?.type === 'group') {
-            activeGroupEnrollment = enrollment;
+            if (enrolledProgram.durationType === 'evergreen') {
+              activeGroupEvergreenEnrollment = enrollment;
+            } else {
+              activeGroupCohortEnrollment = enrollment;
+            }
           } else if (enrolledProgram?.type === 'individual') {
             activeIndividualEnrollment = enrollment;
           }
@@ -209,26 +232,7 @@ export async function GET(
           isAvailableToUser = false;
           unavailableReason = 'Already enrolled';
         }
-        // User has overlapping active group enrollment
-        else if (activeGroupEnrollment && userId) {
-          // Check if dates overlap with user's current group program
-          const userCohortId = activeGroupEnrollment.cohortId;
-          if (userCohortId) {
-            // For now, we'll let them join future cohorts (upcoming status allowed)
-            // But they can't join a cohort that overlaps with their current one
-            const startDate = new Date(data.startDate);
-            const userEnrollmentEnd = activeGroupEnrollment.startedAt 
-              ? new Date(activeGroupEnrollment.startedAt) 
-              : new Date();
-            
-            // If this cohort starts before the user's current enrollment ends, it's overlapping
-            // (simplified check - in practice you'd look at the full end date)
-            if (startDate < userEnrollmentEnd && activeGroupEnrollment.status === 'active') {
-              isAvailableToUser = false;
-              unavailableReason = 'Overlaps with your current program';
-            }
-          }
-        }
+        // Note: Overlap checks now handled by enrollment rules logic below
 
         return {
           ...data,
@@ -242,23 +246,54 @@ export async function GET(
       });
     }
 
-    // Determine if user can enroll
+    // Determine if user can enroll based on org's enrollment rules
     let canEnroll = true;
     let cannotEnrollReason: string | undefined;
 
     if (existingEnrollment) {
       canEnroll = false;
       cannotEnrollReason = 'Already enrolled in this program';
-    } else if (programData.type === 'group' && activeGroupEnrollment) {
-      // Can still buy future cohorts, so only block if all cohorts are unavailable
-      const hasAvailableCohort = cohorts.some(c => c.isAvailableToUser);
-      if (!hasAvailableCohort && cohorts.length > 0) {
-        canEnroll = false;
-        cannotEnrollReason = 'No available cohorts match your schedule';
+    } else if (programData.type === 'group') {
+      // Group program enrollment rules
+      if (isTargetEvergreen) {
+        // Target is an evergreen group program
+        if (activeGroupEvergreenEnrollment && !enrollmentRules.allowEvergreenWithEvergreen) {
+          canEnroll = false;
+          cannotEnrollReason = 'You can only be in one evergreen program at a time';
+        } else if (activeGroupCohortEnrollment && !enrollmentRules.allowCohortWithEvergreen) {
+          canEnroll = false;
+          cannotEnrollReason = 'You cannot join an evergreen program while in a cohort program';
+        }
+      } else {
+        // Target is a cohort-based group program
+        if (activeGroupCohortEnrollment && !enrollmentRules.allowCohortWithCohort) {
+          canEnroll = false;
+          cannotEnrollReason = 'You can only be in one cohort program at a time';
+        } else if (activeGroupEvergreenEnrollment && !enrollmentRules.allowCohortWithEvergreen) {
+          canEnroll = false;
+          cannotEnrollReason = 'You cannot join a cohort program while in an evergreen program';
+        }
+        // For cohort programs, also check if any cohorts are available
+        if (canEnroll && cohorts.length > 0) {
+          const hasAvailableCohort = cohorts.some(c => c.isAvailableToUser);
+          if (!hasAvailableCohort) {
+            canEnroll = false;
+            cannotEnrollReason = 'No available cohorts';
+          }
+        }
       }
-    } else if (programData.type === 'individual' && activeIndividualEnrollment) {
-      canEnroll = false;
-      cannotEnrollReason = 'You already have an active 1:1 program';
+    } else if (programData.type === 'individual') {
+      // Individual (1:1) program enrollment rules
+      if (activeIndividualEnrollment && !enrollmentRules.allowIndividualWithIndividual) {
+        canEnroll = false;
+        cannotEnrollReason = 'You can only have one 1:1 program at a time';
+      } else if (activeGroupCohortEnrollment && !enrollmentRules.allowIndividualWithCohort) {
+        canEnroll = false;
+        cannotEnrollReason = 'You cannot join a 1:1 program while in a cohort program';
+      } else if (activeGroupEvergreenEnrollment && !enrollmentRules.allowIndividualWithEvergreen) {
+        canEnroll = false;
+        cannotEnrollReason = 'You cannot join a 1:1 program while in an evergreen program';
+      }
     }
 
     const program = {

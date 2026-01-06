@@ -70,10 +70,10 @@ export function ProgramTypePills({
             key={type}
             onClick={() => onSelect(type)}
             className={`
-              flex items-center gap-1 px-3 py-1.5 rounded-full
+              flex items-center gap-2 px-4 py-2 rounded-full
               border transition-all hover:shadow-sm cursor-pointer
-              ${isSelected 
-                ? 'dark:bg-[#222631] dark:border-[#313746]' 
+              ${isSelected
+                ? 'dark:bg-[#222631] dark:border-[#313746]'
                 : 'bg-white dark:bg-[#222631] border-[#e1ddd8] dark:border-[#262b35]'
               }
             `}
@@ -82,36 +82,20 @@ export function ProgramTypePills({
               borderColor: colors.accentLight,
             } : undefined}
           >
-            {/* Checkmark icon with brand accent */}
-            <div 
-              className={`w-5 h-5 rounded-full flex items-center justify-center ${!isSelected ? 'bg-[#f3f1ef] dark:bg-[#262b35]' : ''}`}
-              style={isSelected ? { backgroundColor: accentBgMedium } : undefined}
-            >
-              <svg 
-                className={`w-3 h-3 ${!isSelected ? 'text-[#9d9890] dark:text-[#b2b6c2]' : ''}`} 
-                style={isSelected ? { color: colors.accentLight } : undefined}
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            
             <span className={`font-albert font-semibold text-lg tracking-[-1px] leading-[1.3] ${isSelected ? 'text-text-primary dark:text-[#f5f5f8]' : 'text-text-secondary dark:text-[#b2b6c2]'}`}>
               {label}
             </span>
 
             {count !== undefined && count > 0 && (
-              <span 
+              <span
                 className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${
-                  isSelected 
-                    ? 'text-text-primary dark:text-[#f5f5f8]' 
+                  isSelected
+                    ? 'text-text-primary dark:text-[#f5f5f8]'
                     : 'bg-[#e1ddd8]/50 dark:bg-[#262b35] text-text-muted dark:text-[#7d8190]'
                 }`}
-                style={isSelected ? { 
+                style={isSelected ? {
                   backgroundColor: colors.accentLight + '30',
-                  color: colors.accentLight 
+                  color: colors.accentLight
                 } : undefined}
               >
                 {count}

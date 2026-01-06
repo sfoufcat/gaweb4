@@ -93,8 +93,8 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
             </span>
           </div>
 
-          {/* Price badge - bottom right */}
-          <div className="absolute bottom-3 right-3 z-20">
+          {/* Price badge - top right */}
+          <div className="absolute top-3 right-3 z-20">
             <span className="glass-badge px-3 py-1.5 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-bold rounded-full border border-white/50 dark:border-[#ffffff]/[0.08]">
               {formatPrice(squad.priceInCents || 0)}
             </span>
@@ -110,10 +110,10 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
             {squad.name}
           </h3>
 
-          {/* Description - only on default variant */}
-          {!isCompact && squad.description && (
-            <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2">
-              {squad.description}
+          {/* Description - fixed height for consistency */}
+          {!isCompact && (
+            <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 min-h-[2.6em]">
+              {squad.description || '\u00A0'}
             </p>
           )}
 

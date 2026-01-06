@@ -2772,6 +2772,31 @@ export interface OrgEmailTemplates {
  */
 export type LogoSource = 'generated' | 'custom';
 
+/**
+ * Enrollment rules for an organization
+ * Controls which program combinations users can enroll in simultaneously
+ */
+export interface OrgEnrollmentRules {
+  allowCohortWithCohort: boolean;      // Can user be in multiple cohort-based programs? (default: false)
+  allowCohortWithEvergreen: boolean;   // Can user join evergreen while in cohort? (default: true)
+  allowEvergreenWithEvergreen: boolean; // Can user be in multiple evergreen programs? (default: true)
+  allowIndividualWithCohort: boolean;  // Can user have 1:1 + group cohort? (default: true)
+  allowIndividualWithEvergreen: boolean; // Can user have 1:1 + evergreen? (default: true)
+  allowIndividualWithIndividual: boolean; // Can user have multiple 1:1 programs? (default: false)
+}
+
+/**
+ * Default enrollment rules - permissive for evergreen, restrictive for time-bound
+ */
+export const DEFAULT_ENROLLMENT_RULES: OrgEnrollmentRules = {
+  allowCohortWithCohort: false,
+  allowCohortWithEvergreen: true,
+  allowEvergreenWithEvergreen: true,
+  allowIndividualWithCohort: true,
+  allowIndividualWithEvergreen: true,
+  allowIndividualWithIndividual: false,
+};
+
 export interface OrgBranding {
   id: string;                    // Same as organizationId
   organizationId: string;        // Clerk Organization ID
@@ -2788,6 +2813,7 @@ export interface OrgBranding {
   emailSettings?: OrgEmailSettings; // Whitelabel email settings (optional)
   emailTemplates?: OrgEmailTemplates; // Custom email templates (optional, requires verified email domain)
   defaultTheme?: OrgDefaultTheme; // Default theme for the organization (default: 'light')
+  enrollmentRules?: OrgEnrollmentRules; // Enrollment rules (optional, uses DEFAULT_ENROLLMENT_RULES if not set)
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp
 }

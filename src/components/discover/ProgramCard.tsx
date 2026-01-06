@@ -111,18 +111,14 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
             </span>
           </div>
 
-          {/* Enrolled badge - top right */}
-          {isEnrolled && (
-            <div className="absolute top-3 right-3 z-20">
+          {/* Top right badges - Price and optionally Enrolled */}
+          <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+            {isEnrolled && (
               <span className="glass-badge px-2.5 py-1 bg-emerald-500/85 text-white text-[11px] font-semibold rounded-full flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 {program.userEnrollment?.status === 'active' ? 'Active' : 'Enrolled'}
               </span>
-            </div>
-          )}
-
-          {/* Price badge - bottom right */}
-          <div className="absolute bottom-3 right-3 z-20">
+            )}
             <span className="glass-badge px-3 py-1.5 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-bold rounded-full border border-white/50 dark:border-[#ffffff]/[0.08]">
               {formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)}
             </span>
@@ -138,10 +134,10 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
             {program.name}
           </h3>
 
-          {/* Description - only on default variant */}
-          {!isCompact && program.description && (
-            <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2">
-              {program.description}
+          {/* Description - fixed height for consistency */}
+          {!isCompact && (
+            <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 min-h-[2.6em]">
+              {program.description || '\u00A0'}
             </p>
           )}
 

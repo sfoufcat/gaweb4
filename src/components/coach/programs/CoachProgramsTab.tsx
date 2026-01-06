@@ -15,7 +15,7 @@ import type { DiscoverCourse } from '@/types/discover';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, List, CalendarDays, Check } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, List, CalendarDays, Check } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -28,6 +28,9 @@ import type { ProgramContentDraft, LandingPageDraft, AIGenerationContext } from 
 import { ReferralConfigForm } from '@/components/coach/referrals';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { NewProgramModal } from './NewProgramModal';
+import { EnrollmentSettingsModal } from './EnrollmentSettingsModal';
+import type { OrgEnrollmentRules } from '@/types';
+import { DEFAULT_ENROLLMENT_RULES } from '@/types';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { CoachSelector } from '@/components/coach/CoachSelector';
 import { ClientSelector } from './ClientSelector';
@@ -175,6 +178,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [weekToFill, setWeekToFill] = useState<ProgramWeek | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPageDropdownOpen, setIsPageDropdownOpen] = useState(false);
+  
+  // Enrollment settings modal state
+  const [isEnrollmentSettingsOpen, setIsEnrollmentSettingsOpen] = useState(false);
+  const [enrollmentRules, setEnrollmentRules] = useState<OrgEnrollmentRules>(DEFAULT_ENROLLMENT_RULES);
 
   // Plan tier for limit checking
   const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
@@ -934,6 +941,26 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     };
     fetchTier();
   }, []);
+
+  // Fetch enrollment rules for settings modal
+  useEffect(() => {
+    const fetchEnrollmentRules = async () => {
+      try {
+        const response = await fetch('/api/coach/branding/enrollment-rules');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.rules) {
+            setEnrollmentRules(data.rules);
+          }
+        }
+      } catch (err) {
+        console.error('[CoachProgramsTab] Error fetching enrollment rules:', err);
+      }
+    };
+    if (!isDemoMode) {
+      fetchEnrollmentRules();
+    }
+  }, [isDemoMode]);
 
   useEffect(() => {
     if (selectedProgram) {
@@ -1924,20 +1951,29 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 </p>
               </div>
               {!isDemoMode && (
-                <Button
-                  onClick={() => {
-                    // Check program limit before opening modal
-                    if (checkLimit('max_programs', displayPrograms.length)) {
-                      showLimitModal('max_programs', displayPrograms.length);
-                      return;
-                    }
-                    setIsNewProgramModalOpen(true);
-                  }}
-                  className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center"
-                >
-                  <Plus className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">New Program</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => {
+                      // Check program limit before opening modal
+                      if (checkLimit('max_programs', displayPrograms.length)) {
+                        showLimitModal('max_programs', displayPrograms.length);
+                        return;
+                      }
+                      setIsNewProgramModalOpen(true);
+                    }}
+                    className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center"
+                  >
+                    <Plus className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">New Program</span>
+                  </Button>
+                  <button
+                    onClick={() => setIsEnrollmentSettingsOpen(true)}
+                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-transparent hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] text-[#9c9791] dark:text-[#6b6f7b] hover:text-[#5f5a55] dark:hover:text-[#b2b6c2] transition-colors"
+                    title="Program enrollment settings"
+                  >
+                    <Settings2 className="w-4 h-4" />
+                  </button>
+                </div>
               )}
             </>
           ) : (
@@ -3904,7 +3940,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     {/* Description */}
                     <div>
                       <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                        Description
+                        Description *
                       </label>
                       <textarea
                         value={programFormData.description}
@@ -3924,7 +3960,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                            Cover Image
+                            Cover Image *
                           </span>
                           <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                             1200 x 675px
@@ -4450,7 +4486,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     </Button>
                     <Button
                       onClick={handleSaveProgram}
-                      disabled={saving || !programFormData.name}
+                      disabled={saving || !programFormData.name || !programFormData.description || !programFormData.coverImageUrl}
                       className="bg-brand-accent hover:bg-brand-accent/90 text-white"
                     >
                       {saving ? 'Saving...' : (editingProgram ? 'Update' : 'Create')}
@@ -4868,6 +4904,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           }
           setIsNewProgramModalOpen(false);
         }}
+      />
+
+      {/* Enrollment Settings Modal */}
+      <EnrollmentSettingsModal
+        open={isEnrollmentSettingsOpen}
+        onOpenChange={setIsEnrollmentSettingsOpen}
+        organizationId=""
+        currentRules={enrollmentRules}
+        onSave={(rules) => setEnrollmentRules(rules)}
       />
       
       {/* AI Program Content Modal */}

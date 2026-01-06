@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useSquad } from '@/hooks/useSquad';
 import { SquadHeader } from '@/components/squad/SquadHeader';
@@ -24,13 +23,13 @@ import type { ReferralConfig } from '@/types';
 
 /**
  * Standalone Squad Page
- * 
+ *
  * Displays the user's standalone squads (not attached to a program).
  * This includes:
  * - Coach-created standalone squads
  * - Alumni squads (converted from program squads)
  * - Peer-created squads
- * 
+ *
  * Features:
  * - Squad switcher in SquadHeader when user has multiple standalone squads
  * - Squad header with name and streak
@@ -42,18 +41,12 @@ import type { ReferralConfig } from '@/types';
 
 type TabType = 'squad' | 'stats';
 
-const fadeUpVariants = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -10 },
-};
-
 export default function StandaloneSquadPage() {
   const { user: clerkUser, isLoaded: userLoaded } = useUser();
   const searchParams = useSearchParams();
   const { squad: squadTitle, squadLower } = useMenuTitles();
   const { isDemoMode } = useDemoMode();
-  
+
   // In demo mode, use mock user data
   const user = useMemo(() => {
     if (isDemoMode) {
@@ -66,11 +59,11 @@ export default function StandaloneSquadPage() {
     }
     return clerkUser;
   }, [isDemoMode, clerkUser]);
-  
+
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('squad');
   const [showStreakSheet, setShowStreakSheet] = useState(false);
-  
+
   // Get standalone squad data
   const {
     standaloneSquads,
@@ -84,11 +77,11 @@ export default function StandaloneSquadPage() {
     refetch,
     fetchStatsTabData,
   } = useSquad();
-  
+
   // Get members and stats for the active standalone squad
   const members = squad ? (membersBySquad[squad.id] || []) : [];
   const stats = squad ? (statsBySquad[squad.id] || null) : null;
-  
+
   // Build member counts by squad for the switcher dropdown
   const memberCountsBySquad = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -147,7 +140,7 @@ export default function StandaloneSquadPage() {
     uncertain: '😕',
     stuck: '😔',
   };
-  
+
   // Handle squad switch (passed to SquadHeader)
   const handleSquadSwitch = (squadId: string) => {
     setActiveStandaloneSquadId(squadId);
@@ -155,14 +148,14 @@ export default function StandaloneSquadPage() {
 
   // Fetch program's referralConfig if squad belongs to a program
   const [referralConfig, setReferralConfig] = useState<ReferralConfig | undefined>(undefined);
-  
+
   useEffect(() => {
     const fetchReferralConfig = async () => {
       if (!squad?.programId) {
         setReferralConfig(undefined);
         return;
       }
-      
+
       try {
         const response = await fetch(`/api/programs/${squad.programId}`);
         if (response.ok) {
@@ -173,59 +166,45 @@ export default function StandaloneSquadPage() {
         console.error('Failed to fetch program referral config:', err);
       }
     };
-    
+
     fetchReferralConfig();
   }, [squad?.programId]);
 
-  // Determine which content to show
-  const showLoading = !mounted || (!isDemoMode && !userLoaded) || isLoading;
-  const showSignIn = !showLoading && !user;
-  const showDiscovery = !showLoading && user && (!hasStandaloneSquad || !squad);
-  const showSquad = !showLoading && user && hasStandaloneSquad && squad;
+  // Loading state - return null for smooth page fade-in via PageTransition
+  if (!mounted || (!isDemoMode && !userLoaded) || isLoading) {
+    return null;
+  }
 
-  // Determine unique key for AnimatePresence transitions
-  const contentKey = showLoading
-    ? 'loading'
-    : showSignIn
-    ? 'sign-in'
-    : showDiscovery
-    ? 'discovery'
-    : `squad-${squad?.id}`;
+  if (!user) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center text-center px-4">
+        <p className="text-text-secondary">Please sign in to view your squad.</p>
+      </div>
+    );
+  }
+
+  // No standalone squad - show squad discovery page
+  if (!hasStandaloneSquad || !squad) {
+    return (
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16">
+        <SquadDiscovery />
+      </div>
+    );
+  }
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={contentKey}
-        variants={fadeUpVariants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-        className={showLoading || showSignIn ? 'min-h-[50vh] flex items-center justify-center' : 'max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4'}
-      >
-        {showLoading && (
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
-        )}
-
-        {showSignIn && (
-          <p className="text-text-secondary text-center px-4">Please sign in to view your squad.</p>
-        )}
-
-        {showDiscovery && <SquadDiscovery />}
-
-        {showSquad && (
-          <>
-            {/* Page Title */}
-            <div className="mb-6">
-              <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">
-                {squadTitle}
-          </h1>
-        </div>
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+      {/* Page Title */}
+      <div className="mb-6">
+        <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">
+          {squadTitle}
+        </h1>
+      </div>
 
       {/* Squad Header with switcher dropdown (when multiple squads) */}
       <div className="mb-6">
-        <SquadHeader 
-          squad={squad} 
+        <SquadHeader
+          squad={squad}
           onSquadUpdated={refetch}
           isCoach={isCoach}
           standaloneSquads={standaloneSquads}
@@ -237,14 +216,14 @@ export default function StandaloneSquadPage() {
 
       {/* Squad Call Card */}
       {!!squad.coachId ? (
-        <NextSquadCallCard 
-          squad={squad} 
+        <NextSquadCallCard
+          squad={squad}
           isCoach={isCoach}
           onCallUpdated={refetch}
           coachInfo={coachInfo}
         />
       ) : (
-        <StandardSquadCallCard 
+        <StandardSquadCallCard
           squad={squad}
           onCallUpdated={refetch}
         />
@@ -366,8 +345,8 @@ export default function StandaloneSquadPage() {
         <div>
           {/* Stats Tab */}
           {stats ? (
-            <SquadStats 
-              stats={stats} 
+            <SquadStats
+              stats={stats}
               onOpenStreakInfo={() => setShowStreakSheet(true)}
             />
           ) : (
@@ -378,14 +357,11 @@ export default function StandaloneSquadPage() {
         </div>
       )}
 
-            {/* Squad Streak Bottom Sheet */}
-            <SquadStreakSheet
-              isOpen={showStreakSheet}
-              onClose={() => setShowStreakSheet(false)}
-            />
-          </>
-        )}
-      </motion.div>
-    </AnimatePresence>
+      {/* Squad Streak Bottom Sheet */}
+      <SquadStreakSheet
+        isOpen={showStreakSheet}
+        onClose={() => setShowStreakSheet(false)}
+      />
+    </div>
   );
 }

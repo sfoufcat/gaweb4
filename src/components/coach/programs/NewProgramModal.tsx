@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, Fragment, useCallback, useEffect } from 'react';
+import React, { useState, Fragment, useCallback, useEffect, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import {
   X,
@@ -88,8 +89,39 @@ export function NewProgramModal({
   const [isCreating, setIsCreating] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showCloseWarning, setShowCloseWarning] = useState(false);
+  const [direction, setDirection] = useState(0); // -1 for back, 1 for forward
 
   const isMobile = useMediaQuery('(max-width: 768px)');
+  
+  // Track if this is the initial mount to skip animation on first open
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isOpen) {
+      // Reset on open, but mark as initial mount
+      isInitialMount.current = true;
+      // After a tick, mark as not initial (so subsequent step changes animate)
+      const timer = setTimeout(() => {
+        isInitialMount.current = false;
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  // Slide animation variants
+  const slideVariants = {
+    enter: (dir: number) => ({
+      x: dir > 0 ? 300 : -300,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (dir: number) => ({
+      x: dir < 0 ? 300 : -300,
+      opacity: 0,
+    }),
+  };
 
   // Reset state when modal opens (not on close, to preserve state during exit animation)
   useEffect(() => {
@@ -124,6 +156,7 @@ export function NewProgramModal({
     const steps: WizardStep[] = ['type', 'structure', 'details', 'settings'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex < steps.length - 1) {
+      setDirection(1);
       setStep(steps[currentIndex + 1]);
     }
   };
@@ -132,6 +165,7 @@ export function NewProgramModal({
     const steps: WizardStep[] = ['type', 'structure', 'details', 'settings'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex > 0) {
+      setDirection(-1);
       setStep(steps[currentIndex - 1]);
     }
   };
@@ -304,38 +338,81 @@ export function NewProgramModal({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        {step === 'type' && (
-          <TypeStep
-            value={wizardData.type}
-            onChange={(type) => {
-              updateWizardData({ type });
-              goToNextStep();
-            }}
-          />
-        )}
+        <AnimatePresence mode="wait" custom={direction}>
+          {step === 'type' && (
+            <motion.div
+              key="type"
+              custom={direction}
+              variants={slideVariants}
+              initial={isInitialMount.current ? false : "enter"}
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <TypeStep
+                value={wizardData.type}
+                onChange={(type) => {
+                  updateWizardData({ type });
+                  setDirection(1);
+                  goToNextStep();
+                }}
+              />
+            </motion.div>
+          )}
 
-        {step === 'structure' && (
-          <StructureStep
-            data={wizardData}
-            onChange={updateWizardData}
-          />
-        )}
+          {step === 'structure' && (
+            <motion.div
+              key="structure"
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <StructureStep
+                data={wizardData}
+                onChange={updateWizardData}
+              />
+            </motion.div>
+          )}
 
-        {step === 'details' && (
-          <DetailsStep
-            data={wizardData}
-            onChange={updateWizardData}
-            onImageUpload={handleImageUpload}
-            uploadingImage={uploadingImage}
-          />
-        )}
+          {step === 'details' && (
+            <motion.div
+              key="details"
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <DetailsStep
+                data={wizardData}
+                onChange={updateWizardData}
+                onImageUpload={handleImageUpload}
+                uploadingImage={uploadingImage}
+              />
+            </motion.div>
+          )}
 
-        {step === 'settings' && (
-          <SettingsStep
-            data={wizardData}
-            onChange={updateWizardData}
-          />
-        )}
+          {step === 'settings' && (
+            <motion.div
+              key="settings"
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <SettingsStep
+                data={wizardData}
+                onChange={updateWizardData}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Footer */}
@@ -423,7 +500,7 @@ export function NewProgramModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
+              <Dialog.Panel className={`w-full transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all ${step === 'structure' ? 'max-w-md' : 'max-w-2xl'}`}>
                 {wizardContent}
               </Dialog.Panel>
             </Transition.Child>
@@ -544,7 +621,7 @@ interface StructureStepProps {
 
 function StructureStep({ data, onChange }: StructureStepProps) {
   return (
-    <div className="max-w-md mx-auto space-y-8">
+    <div className="max-w-sm mx-auto space-y-5">
       {/* Duration Type - Prominent Toggle */}
       <div className="text-center">
         <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-[#f3f1ef] dark:bg-[#1d222b] border border-[#e1ddd8]/50 dark:border-[#262b35]/50">

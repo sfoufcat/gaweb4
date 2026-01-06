@@ -669,7 +669,7 @@ function CourseFormDialog({
                   <RichTextEditor
                     value={formData.shortDescription}
                     onChange={(shortDescription) => setFormData(prev => ({ ...prev, shortDescription }))}
-                    label="Short Description"
+                    label="Short Description *"
                     required
                     rows={3}
                     placeholder="Brief course overview..."
