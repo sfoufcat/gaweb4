@@ -427,11 +427,15 @@ function getGoogleOAuthUrl(state: string, scopes: string[], provider: 'google_ca
 }
 
 function getMicrosoftOAuthUrl(state: string, scopes: string[]): string {
-  const clientId = process.env.MICROSOFT_OAUTH_CLIENT_ID;
+  // Support multiple env var naming conventions
+  const clientId = process.env.MICROSOFT_OAUTH_CLIENT_ID
+    || process.env.MS_OAUTH_CLIENT_ID
+    || process.env.AZURE_AD_CLIENT_ID
+    || process.env.MICROSOFT_CLIENT_ID;
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/coach/integrations/outlook_calendar/callback`;
 
   if (!clientId) {
-    throw new Error('MICROSOFT_OAUTH_CLIENT_ID not configured');
+    throw new Error('Microsoft OAuth not configured. Set one of: MICROSOFT_OAUTH_CLIENT_ID, MS_OAUTH_CLIENT_ID, AZURE_AD_CLIENT_ID, or MICROSOFT_CLIENT_ID');
   }
 
   const params = new URLSearchParams({

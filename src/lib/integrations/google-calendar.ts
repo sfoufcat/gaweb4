@@ -62,6 +62,25 @@ interface InternalEvent {
 // =============================================================================
 
 /**
+ * Convert various timestamp formats to a Date object
+ * Handles: Date, string, Firestore Timestamp, or object with _seconds
+ */
+function toDate(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'string') return new Date(value);
+  // Firestore Timestamp object (has toDate method)
+  if (typeof value === 'object' && 'toDate' in value && typeof (value as { toDate: () => Date }).toDate === 'function') {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  // Plain object with _seconds (serialized Firestore Timestamp)
+  if (typeof value === 'object' && '_seconds' in value) {
+    return new Date((value as { _seconds: number })._seconds * 1000);
+  }
+  return null;
+}
+
+/**
  * Refresh Google OAuth tokens
  */
 async function refreshGoogleTokens(
@@ -121,16 +140,18 @@ async function getValidAccessToken(
   integrationId: string,
   accessToken: string,
   refreshToken: string | undefined,
-  expiresAt: Date | string | undefined
+  expiresAt: unknown
 ): Promise<string | null> {
   // Check if token is still valid (with 5 minute buffer)
   if (expiresAt) {
-    const expiry = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
-    const now = new Date();
-    const fiveMinutes = 5 * 60 * 1000;
-    
-    if (expiry.getTime() - now.getTime() > fiveMinutes) {
-      return accessToken;
+    const expiry = toDate(expiresAt);
+    if (expiry) {
+      const now = new Date();
+      const fiveMinutes = 5 * 60 * 1000;
+
+      if (expiry.getTime() - now.getTime() > fiveMinutes) {
+        return accessToken;
+      }
     }
   }
 
@@ -150,7 +171,7 @@ export async function tryRefreshGoogleCalendarTokens(
   orgId: string,
   integrationId: string,
   refreshToken: string | undefined,
-  expiresAt: Date | string | undefined,
+  expiresAt: unknown,
   status?: string
 ): Promise<boolean> {
   // Always try refresh if status is 'expired'
@@ -165,13 +186,15 @@ export async function tryRefreshGoogleCalendarTokens(
 
   // Check if refresh is needed based on expiry time
   if (expiresAt) {
-    const expiry = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
-    const now = new Date();
-    const fiveMinutes = 5 * 60 * 1000;
+    const expiry = toDate(expiresAt);
+    if (expiry) {
+      const now = new Date();
+      const fiveMinutes = 5 * 60 * 1000;
 
-    if (expiry.getTime() - now.getTime() > fiveMinutes) {
-      // Token is still valid
-      return true;
+      if (expiry.getTime() - now.getTime() > fiveMinutes) {
+        // Token is still valid
+        return true;
+      }
     }
   }
 

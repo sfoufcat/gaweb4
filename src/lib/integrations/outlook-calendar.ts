@@ -65,16 +65,42 @@ interface InternalEvent {
 /**
  * Refresh Microsoft OAuth tokens
  */
+/**
+ * Convert various timestamp formats to a Date object
+ * Handles: Date, string, Firestore Timestamp, or object with _seconds
+ */
+function toDate(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'string') return new Date(value);
+  // Firestore Timestamp object (has toDate method)
+  if (typeof value === 'object' && 'toDate' in value && typeof (value as { toDate: () => Date }).toDate === 'function') {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  // Plain object with _seconds (serialized Firestore Timestamp)
+  if (typeof value === 'object' && '_seconds' in value) {
+    return new Date((value as { _seconds: number })._seconds * 1000);
+  }
+  return null;
+}
+
 async function refreshMicrosoftTokens(
   orgId: string,
   integrationId: string,
   refreshToken: string
 ): Promise<string | null> {
-  const clientId = process.env.MICROSOFT_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.MICROSOFT_OAUTH_CLIENT_SECRET;
+  // Support multiple env var naming conventions
+  const clientId = process.env.MICROSOFT_OAUTH_CLIENT_ID
+    || process.env.MS_OAUTH_CLIENT_ID
+    || process.env.AZURE_AD_CLIENT_ID
+    || process.env.MICROSOFT_CLIENT_ID;
+  const clientSecret = process.env.MICROSOFT_OAUTH_CLIENT_SECRET
+    || process.env.MS_OAUTH_CLIENT_SECRET
+    || process.env.AZURE_AD_CLIENT_SECRET
+    || process.env.MICROSOFT_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    console.error('[OUTLOOK_CALENDAR] Missing OAuth credentials for refresh');
+    console.error('[OUTLOOK_CALENDAR] Missing OAuth credentials for refresh. Checked: MICROSOFT_OAUTH_CLIENT_ID, MS_OAUTH_CLIENT_ID, AZURE_AD_CLIENT_ID, MICROSOFT_CLIENT_ID');
     return null;
   }
 
@@ -127,16 +153,18 @@ async function getValidAccessToken(
   integrationId: string,
   accessToken: string,
   refreshToken: string | undefined,
-  expiresAt: Date | string | undefined
+  expiresAt: unknown
 ): Promise<string | null> {
   // Check if token is still valid (with 5 minute buffer)
   if (expiresAt) {
-    const expiry = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
-    const now = new Date();
-    const fiveMinutes = 5 * 60 * 1000;
-    
-    if (expiry.getTime() - now.getTime() > fiveMinutes) {
-      return accessToken;
+    const expiry = toDate(expiresAt);
+    if (expiry) {
+      const now = new Date();
+      const fiveMinutes = 5 * 60 * 1000;
+
+      if (expiry.getTime() - now.getTime() > fiveMinutes) {
+        return accessToken;
+      }
     }
   }
 
@@ -156,7 +184,7 @@ export async function tryRefreshOutlookCalendarTokens(
   orgId: string,
   integrationId: string,
   refreshToken: string | undefined,
-  expiresAt: Date | string | undefined,
+  expiresAt: unknown,
   status?: string
 ): Promise<boolean> {
   // Always try refresh if status is 'expired'
@@ -171,13 +199,15 @@ export async function tryRefreshOutlookCalendarTokens(
 
   // Check if refresh is needed based on expiry time
   if (expiresAt) {
-    const expiry = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
-    const now = new Date();
-    const fiveMinutes = 5 * 60 * 1000;
+    const expiry = toDate(expiresAt);
+    if (expiry) {
+      const now = new Date();
+      const fiveMinutes = 5 * 60 * 1000;
 
-    if (expiry.getTime() - now.getTime() > fiveMinutes) {
-      // Token is still valid
-      return true;
+      if (expiry.getTime() - now.getTime() > fiveMinutes) {
+        // Token is still valid
+        return true;
+      }
     }
   }
 

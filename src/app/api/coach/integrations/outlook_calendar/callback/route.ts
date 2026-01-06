@@ -46,13 +46,19 @@ export async function GET(req: NextRequest) {
     // Determine redirect base URL - use originDomain if available, otherwise fallback
     const redirectBase = originDomain ? `https://${originDomain}` : req.url;
 
-    // Exchange code for tokens
-    const clientId = process.env.MICROSOFT_OAUTH_CLIENT_ID;
-    const clientSecret = process.env.MICROSOFT_OAUTH_CLIENT_SECRET;
+    // Exchange code for tokens - support multiple env var naming conventions
+    const clientId = process.env.MICROSOFT_OAUTH_CLIENT_ID
+      || process.env.MS_OAUTH_CLIENT_ID
+      || process.env.AZURE_AD_CLIENT_ID
+      || process.env.MICROSOFT_CLIENT_ID;
+    const clientSecret = process.env.MICROSOFT_OAUTH_CLIENT_SECRET
+      || process.env.MS_OAUTH_CLIENT_SECRET
+      || process.env.AZURE_AD_CLIENT_SECRET
+      || process.env.MICROSOFT_CLIENT_SECRET;
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/coach/integrations/outlook_calendar/callback`;
 
     if (!clientId || !clientSecret) {
-      console.error('[OUTLOOK_CALENDAR_CALLBACK] Missing OAuth credentials');
+      console.error('[OUTLOOK_CALENDAR_CALLBACK] Missing OAuth credentials. Checked: MICROSOFT_OAUTH_CLIENT_ID, MS_OAUTH_CLIENT_ID, AZURE_AD_CLIENT_ID, MICROSOFT_CLIENT_ID');
       return NextResponse.redirect(
         new URL('/coach/settings?tab=integrations&error=server_config', req.url)
       );
