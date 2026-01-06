@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { ClientDetailView } from './ClientDetailView';
 
@@ -16,10 +18,16 @@ export function ClientDetailSlideOver({
   clientId,
   clientName,
 }: ClientDetailSlideOverProps) {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
+
+  const content = (
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-backdrop-fade-in"
@@ -56,4 +64,6 @@ export function ClientDetailSlideOver({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

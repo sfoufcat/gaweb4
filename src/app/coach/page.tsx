@@ -354,10 +354,10 @@ export default function CoachPage() {
   // Update active tab when URL query param changes
   useEffect(() => {
     const tabParam = searchParams.get('tab') as CoachTab | null;
-    if (tabParam && VALID_TABS.includes(tabParam)) {
+    if (tabParam && VALID_TABS.includes(tabParam) && tabParam !== activeTab) {
       setActiveTab(tabParam);
     }
-  }, [searchParams]);
+  }, [searchParams, activeTab]);
 
   // Check authorization (skip on demo site)
   useEffect(() => {

@@ -1800,12 +1800,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               <nav className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={() => handleViewModeChange('days')}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert transition-all ${
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert flex items-center gap-1.5 transition-all ${
                     viewMode === 'days'
                       ? 'bg-brand-accent text-white shadow-sm'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
                   }`}
                 >
+                  <LayoutTemplate className="w-3.5 h-3.5" />
                   Content
                 </button>
 
@@ -1823,12 +1824,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 )}
                 <button
                   onClick={() => handleViewModeChange('enrollments')}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert transition-all ${
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium font-albert flex items-center gap-1.5 transition-all ${
                     viewMode === 'enrollments'
                       ? 'bg-brand-accent text-white shadow-sm'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
                   }`}
                 >
+                  <Users className="w-3.5 h-3.5" />
                   Enrollments
                 </button>
                 <button
@@ -2052,10 +2054,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               animate="center"
               exit="exit"
               transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
-              className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6"
+              className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-3 sm:p-6"
             >
               {/* Controls row at top of calendar */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-4 sm:mb-6">
                 {/* Left side: Title and Client Selector */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                   <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert whitespace-nowrap shrink-0">
@@ -2083,23 +2085,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         }
                       }}
                       loading={loadingEnrollments}
-                      className="w-full max-w-sm"
+                      className="w-full sm:max-w-sm"
                     />
                   )}
                 </div>
 
                 {/* Row/Calendar Toggle */}
-                <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-1">
+                <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-0.5 sm:p-1 self-start sm:self-auto flex-shrink-0">
                   <button
                     type="button"
                     onClick={() => { setContentDirection(-1); setContentDisplayMode('row'); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                    className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium font-albert rounded-md transition-colors ${
                       isRowMode
                         ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
                         : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                     }`}
                   >
-                    <List className="w-3.5 h-3.5" />
+                    <List className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     Row
                   </button>
                   <button
@@ -2109,13 +2111,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       setContentDisplayMode('calendar');
                       fetchOrganizationCourses();
                     }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                    className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium font-albert rounded-md transition-colors ${
                       isCalendarMode
                         ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
                         : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                     }`}
                   >
-                    <CalendarDays className="w-3.5 h-3.5" />
+                    <CalendarDays className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     Calendar
                   </button>
                 </div>
@@ -2576,9 +2578,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             />
 
             {/* Content column - controls above, then details box */}
-            <div className="flex-1 flex flex-col gap-4">
+            <div className="flex-1 flex flex-col gap-3 sm:gap-4">
               {/* Controls row: Client Selector + Row/Calendar toggle */}
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
                 {/* Client Selector for 1:1 programs */}
                 {selectedProgram?.type === 'individual' ? (
                   <ClientSelector
@@ -2605,24 +2607,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       }
                     }}
                     loading={loadingEnrollments}
-                    className="w-full max-w-sm"
+                    className="w-full sm:max-w-sm"
                   />
                 ) : (
-                  <div /> /* Spacer for group programs */
+                  <div className="hidden sm:block" /> /* Spacer for group programs */
                 )}
 
                 {/* Row/Calendar Toggle */}
-                <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-1">
+                <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-0.5 sm:p-1 self-start sm:self-auto flex-shrink-0">
                   <button
                     type="button"
                     onClick={() => { setContentDirection(-1); setContentDisplayMode('row'); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                    className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium font-albert rounded-md transition-colors ${
                       isRowMode
                         ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
                         : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                     }`}
                   >
-                    <List className="w-3.5 h-3.5" />
+                    <List className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     Row
                   </button>
                   <button
@@ -2632,20 +2634,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       setContentDisplayMode('calendar');
                       fetchOrganizationCourses();
                     }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                    className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium font-albert rounded-md transition-colors ${
                       isCalendarMode
                         ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
                         : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                     }`}
                   >
-                    <CalendarDays className="w-3.5 h-3.5" />
+                    <CalendarDays className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     Calendar
                   </button>
                 </div>
               </div>
 
               {/* Content Editor - conditionally render based on selection */}
-              <div className="flex-1 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
+              <div className="flex-1 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-3 sm:p-6">
                 {loadingDetails ? (
                 <div className="space-y-6 animate-pulse">
                   <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />

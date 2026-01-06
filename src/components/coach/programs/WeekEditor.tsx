@@ -276,119 +276,122 @@ export function WeekEditor({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <h3 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             Week {week.weekNumber}
           </h3>
           {/* Client/Template mode badge */}
           {isClientView ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
               {clientName || 'Client'}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#f3f1ef] text-[#5f5a55] dark:bg-[#262b35] dark:text-[#b2b6c2]">
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-[#f3f1ef] text-[#5f5a55] dark:bg-[#262b35] dark:text-[#b2b6c2]">
               <FileText className="w-3 h-3" />
               Template
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {onFillWithAI && (
             <Button
               variant="outline"
               onClick={onFillWithAI}
-              className="flex items-center gap-2 text-sm"
+              className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2.5 sm:px-3"
             >
-              <Sparkles className="w-4 h-4" />
-              Fill with AI
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Fill with</span> AI
             </Button>
           )}
 
-          {/* Save/Sync Button with Morph Animation */}
-          <div className="relative min-w-[140px]">
-            <AnimatePresence mode="wait">
-              {saveStatus === 'saving' && (
-                <motion.div
-                  key="saving"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <Button disabled className="flex items-center gap-1.5 w-full justify-center">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving...
-                  </Button>
-                </motion.div>
-              )}
-
-              {saveStatus === 'saved' && (
-                <motion.div
-                  key="saved"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <Button
-                    className="flex items-center gap-1.5 w-full justify-center bg-green-600 hover:bg-green-600 text-white"
-                    disabled
+          {/* Save/Sync Button with Morph Animation - only render when there's something to show */}
+          {(saveStatus !== 'idle' || hasChanges || showSyncButton) && (
+            <div className="relative min-w-[100px] sm:min-w-[140px]">
+              <AnimatePresence mode="wait">
+                {saveStatus === 'saving' && (
+                  <motion.div
+                    key="saving"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
                   >
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                    <Button disabled className="flex items-center gap-1.5 w-full justify-center h-8 sm:h-9 text-xs sm:text-sm">
+                      <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                      <span className="hidden sm:inline">Saving...</span>
+                    </Button>
+                  </motion.div>
+                )}
+
+                {saveStatus === 'saved' && (
+                  <motion.div
+                    key="saved"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <Button
+                      className="flex items-center gap-1.5 w-full justify-center bg-green-600 hover:bg-green-600 text-white h-8 sm:h-9 text-xs sm:text-sm"
+                      disabled
                     >
-                      <Check className="w-4 h-4" />
-                    </motion.div>
-                    Saved!
-                  </Button>
-                </motion.div>
-              )}
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                      >
+                        <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </motion.div>
+                      <span className="hidden sm:inline">Saved!</span>
+                    </Button>
+                  </motion.div>
+                )}
 
-              {saveStatus === 'idle' && hasChanges && !showSyncButton && (
-                <motion.div
-                  key="save"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <Button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex items-center gap-1.5 w-full justify-center"
+                {saveStatus === 'idle' && hasChanges && !showSyncButton && (
+                  <motion.div
+                    key="save"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
                   >
-                    <Save className="w-4 h-4" />
-                    Save
-                  </Button>
-                </motion.div>
-              )}
+                    <Button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="flex items-center gap-1.5 w-full justify-center h-8 sm:h-9 text-xs sm:text-sm"
+                    >
+                      <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      Save
+                    </Button>
+                  </motion.div>
+                )}
 
-              {saveStatus === 'idle' && showSyncButton && (
-                <motion.div
-                  key="sync"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <Button
-                    variant="outline"
-                    onClick={() => setSyncDialogOpen(true)}
-                    className="flex items-center gap-1.5 w-full justify-center border-brand-accent text-brand-accent hover:bg-brand-accent/10"
+                {saveStatus === 'idle' && showSyncButton && (
+                  <motion.div
+                    key="sync"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
                   >
-                    <Users className="w-4 h-4" />
-                    Sync to Clients
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => setSyncDialogOpen(true)}
+                      className="flex items-center gap-1.5 w-full justify-center border-brand-accent text-brand-accent hover:bg-brand-accent/10 h-8 sm:h-9 text-xs sm:text-sm"
+                    >
+                      <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Sync to Clients</span>
+                      <span className="sm:hidden">Sync</span>
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </div>
 
