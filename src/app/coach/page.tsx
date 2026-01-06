@@ -753,6 +753,16 @@ export default function CoachPage() {
             )}
           </TabsList>
 
+          <AnimatePresence mode="wait" custom={tabDirection}>
+            <motion.div
+              key={activeTab}
+              custom={tabDirection}
+              variants={tabSlideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+            >
           {/* Clients Tab - Consolidated Users + Coaching Clients */}
           <TabsContent value="clients">
             {selectedClientId ? (
@@ -899,6 +909,8 @@ export default function CoachPage() {
           <TabsContent value="support">
             <CoachSupportTab />
           </TabsContent>
+            </motion.div>
+          </AnimatePresence>
         </Tabs>
       </div>
     </div>
