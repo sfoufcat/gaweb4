@@ -291,7 +291,6 @@ function PaymentForm({ selectedPlan, billingPeriod, onSuccess, onCancel, setupIn
             wallets: {
               applePay: 'auto',
               googlePay: 'auto',
-              link: 'never',
             },
           }}
         />

@@ -320,7 +320,6 @@ function CheckoutForm({ planName, price, onSuccess, onCancel }: CheckoutFormProp
             wallets: {
               applePay: 'auto',
               googlePay: 'auto',
-              link: 'never',
             },
           }}
         />

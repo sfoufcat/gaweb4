@@ -2343,9 +2343,16 @@ async function handleCreditPurchasePaymentSucceeded(paymentIntent: Stripe.Paymen
   const organizationId = paymentIntent.metadata?.organizationId;
   const packSize = paymentIntent.metadata?.packSize;
   const credits = paymentIntent.metadata?.credits;
+  const creditsAddedDirectly = paymentIntent.metadata?.creditsAddedDirectly === 'true';
 
   if (!organizationId || !packSize || !credits) {
     console.error('[STRIPE_WEBHOOK] Credit purchase PaymentIntent missing required metadata:', { organizationId, packSize, credits });
+    return;
+  }
+
+  // Skip if credits were already added directly by the API (saved payment method flow)
+  if (creditsAddedDirectly) {
+    console.log(`[STRIPE_WEBHOOK] Credits already added directly for PaymentIntent ${paymentIntent.id}, skipping`);
     return;
   }
 
@@ -2366,18 +2373,20 @@ async function handleCreditPurchasePaymentSucceeded(paymentIntent: Stripe.Paymen
       }
 
       const orgData = orgDoc.data();
-      const currentCredits = orgData?.summaryCredits || {
-        allocatedMinutes: 0,
-        usedMinutes: 0,
-        purchasedMinutes: 0,
-        usedPurchasedMinutes: 0,
-        periodStart: null,
-        periodEnd: null,
-      };
+      const processedPaymentIntents = orgData?.processedCreditPurchases || [];
+
+      // Check if already processed (idempotency)
+      if (processedPaymentIntents.includes(paymentIntent.id)) {
+        console.log(`[STRIPE_WEBHOOK] PaymentIntent ${paymentIntent.id} already processed, skipping`);
+        return;
+      }
+
+      const currentPurchasedMinutes = orgData?.summaryCredits?.purchasedMinutes || 0;
 
       // Add to purchased minutes (never expire)
       transaction.update(orgRef, {
-        'summaryCredits.purchasedMinutes': (currentCredits.purchasedMinutes || 0) + minutesToAdd,
+        'summaryCredits.purchasedMinutes': currentPurchasedMinutes + minutesToAdd,
+        processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntent.id], // Keep last 100
       });
     });
 

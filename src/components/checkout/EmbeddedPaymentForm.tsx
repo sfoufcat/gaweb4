@@ -95,7 +95,6 @@ function CheckoutForm({ onSuccess: _onSuccess, onCancel, planName, price }: Chec
               wallets: {
                 applePay: 'auto',
                 googlePay: 'auto',
-                link: 'never',
               },
               defaultValues: {
                 billingDetails: {},

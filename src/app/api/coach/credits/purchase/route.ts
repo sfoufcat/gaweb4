@@ -117,14 +117,46 @@ export async function POST(request: NextRequest) {
           userId,
           packSize: String(packSize),
           credits: String(pack.credits),
+          creditsAddedDirectly: 'true', // Flag to prevent webhook from double-adding
         },
       });
 
       if (paymentIntent.status === 'succeeded') {
-        // Credits will be added by the webhook, but we can return success immediately
+        // Add credits immediately (don't rely solely on webhook)
+        const minutesToAdd = pack.credits * 60; // 60 minutes per credit/call
+        try {
+          const orgRef = adminDb.collection('organizations').doc(organizationId);
+          await adminDb.runTransaction(async (transaction) => {
+            const orgDoc = await transaction.get(orgRef);
+            if (!orgDoc.exists) {
+              throw new Error(`Organization ${organizationId} not found`);
+            }
+            const orgData = orgDoc.data();
+            const processedPaymentIntents = orgData?.processedCreditPurchases || [];
+
+            // Check if already processed (idempotency)
+            if (processedPaymentIntents.includes(paymentIntent.id)) {
+              console.log(`[CREDITS_PURCHASE_API] PaymentIntent ${paymentIntent.id} already processed, skipping`);
+              return;
+            }
+
+            const currentPurchasedMinutes = orgData?.summaryCredits?.purchasedMinutes || 0;
+            transaction.update(orgRef, {
+              'summaryCredits.purchasedMinutes': currentPurchasedMinutes + minutesToAdd,
+              processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntent.id], // Keep last 100
+            });
+          });
+          console.log(`[CREDITS_PURCHASE_API] Added ${pack.credits} credits (${minutesToAdd} minutes) to org ${organizationId}`);
+        } catch (creditError) {
+          console.error('[CREDITS_PURCHASE_API] Error adding credits:', creditError);
+          // Payment succeeded but credit addition failed - this is a critical error
+          // Return success but log for investigation
+        }
+
         return NextResponse.json({
           success: true,
           paymentIntentId: paymentIntent.id,
+          creditsAdded: pack.credits,
         });
       } else {
         return NextResponse.json(

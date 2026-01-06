@@ -441,7 +441,6 @@ function StripePaymentForm({
               wallets: {
                 applePay: 'auto',
                 googlePay: 'auto',
-                link: 'never',
               },
             }}
           />

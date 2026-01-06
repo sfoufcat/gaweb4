@@ -400,7 +400,6 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
             wallets: {
               applePay: 'auto',
               googlePay: 'auto',
-              link: 'never',
             },
           }}
         />

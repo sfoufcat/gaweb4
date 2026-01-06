@@ -313,7 +313,6 @@ function PaymentForm({ onSuccess, onCancel, squadName, priceInCents, currency, b
             wallets: {
               applePay: 'auto',
               googlePay: 'auto',
-              link: 'never',
             },
           }}
         />

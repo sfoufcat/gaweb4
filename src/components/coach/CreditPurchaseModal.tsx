@@ -266,6 +266,18 @@ function StripePaymentForm({
       setError(submitError.message || 'Payment failed. Please try again.');
       setIsProcessing(false);
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      // Confirm the credit purchase to ensure credits are added
+      // (fallback in case webhook doesn't fire)
+      try {
+        await fetch('/api/coach/credits/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentIntentId: paymentIntent.id }),
+        });
+      } catch (confirmError) {
+        console.error('Error confirming credits:', confirmError);
+        // Don't block success - webhook may still add credits
+      }
       onSuccess();
     }
   };
@@ -316,7 +328,6 @@ function StripePaymentForm({
             wallets: {
               applePay: 'auto',
               googlePay: 'auto',
-              link: 'never',
             },
           }}
         />
