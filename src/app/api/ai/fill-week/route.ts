@@ -10,8 +10,6 @@ import { adminDb } from '@/lib/firebase-admin';
 import { buildWeekFillPrompt } from '@/lib/ai/prompts';
 import { validateWeekFillResult, type WeekFillResult } from '@/lib/ai/schemas';
 import Anthropic from '@anthropic-ai/sdk';
-import type { ProgramOrientation } from '@/types';
-
 const anthropic = new Anthropic();
 
 interface FillWeekRequest {
@@ -23,7 +21,6 @@ interface FillWeekRequest {
     prompt?: string;
     pdfText?: string;
   };
-  orientation: ProgramOrientation;
 }
 
 export async function POST(request: NextRequest) {
@@ -31,7 +28,7 @@ export async function POST(request: NextRequest) {
     const { organizationId, userId } = await requireCoachWithOrg();
     const body: FillWeekRequest = await request.json();
 
-    const { programId, weekId, source, orientation } = body;
+    const { programId, weekId, source } = body;
 
     // Validate required fields
     if (!programId || !weekId || !source?.type) {
@@ -112,7 +109,6 @@ export async function POST(request: NextRequest) {
         programName: programData.name,
         programDescription: programData.description,
         weekNumber: weekData.weekNumber,
-        orientation: orientation || 'weekly',
       }
     );
 

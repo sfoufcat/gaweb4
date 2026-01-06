@@ -7,7 +7,9 @@ import { ProgramLandingPageEditor } from '../programs/ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { 
   Plus, 
-  Users, 
+  Users,
+  User,
+  Target,
   ChevronRight, 
   UserMinus, 
   FileText, 
@@ -729,71 +731,90 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
           )}
         </div>
 
-        {/* Filter Tabs */}
+        {/* Filter Tabs - Redesigned for clarity */}
         {displaySquads.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 mb-6">
-            {/* Main Filters */}
-            <button
-              onClick={() => setSquadFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
-                squadFilter === 'all'
-                  ? 'bg-brand-accent text-white'
-                  : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
-              }`}
-            >
-              All ({displaySquads.length})
-            </button>
-            <button
-              onClick={() => setSquadFilter('standalone')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
-                squadFilter === 'standalone'
-                  ? 'bg-brand-accent text-white'
-                  : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
-              }`}
-            >
-              Squads ({standaloneCount})
-            </button>
-            
-            {/* Program Squads with sub-filters */}
-            {programCount > 0 && (
-              <>
-                <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] mx-1" />
-                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Communities:</span>
+          <div className="flex flex-col gap-3 mb-6">
+            {/* Primary Filter: Segmented Control */}
+            <div className="flex items-center gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
+              <button
+                onClick={() => setSquadFilter('all')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
+                  squadFilter === 'all'
+                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                }`}
+              >
+                All ({displaySquads.length})
+              </button>
+              <button
+                onClick={() => setSquadFilter('standalone')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 ${
+                  squadFilter === 'standalone'
+                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                Standalone ({standaloneCount})
+              </button>
+              {programCount > 0 && (
                 <button
                   onClick={() => setSquadFilter('program-all')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
-                    squadFilter === 'program-all'
-                      ? 'bg-brand-accent text-white'
-                      : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
+                  className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 ${
+                    squadFilter === 'program-all' || squadFilter === 'program-group' || squadFilter === 'program-individual'
+                      ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                   }`}
                 >
-                  All ({programCount})
+                  <Target className="w-3.5 h-3.5" />
+                  Program Communities ({programCount})
                 </button>
-                {programGroupCount > 0 && (
+              )}
+            </div>
+
+            {/* Secondary Filter: Program Type (shown when Program Communities is active) */}
+            {programCount > 0 && (squadFilter === 'program-all' || squadFilter === 'program-group' || squadFilter === 'program-individual') && (
+              <div className="flex items-center gap-2 pl-1">
+                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Program type:</span>
+                <div className="flex items-center gap-1">
                   <button
-                    onClick={() => setSquadFilter('program-group')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
-                      squadFilter === 'program-group'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                    onClick={() => setSquadFilter('program-all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium font-albert transition-colors ${
+                      squadFilter === 'program-all'
+                        ? 'bg-brand-accent text-white'
+                        : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
                     }`}
                   >
-                    Group ({programGroupCount})
+                    All
                   </button>
-                )}
-                {programIndividualCount > 0 && (
-                  <button
-                    onClick={() => setSquadFilter('program-individual')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
-                      squadFilter === 'program-individual'
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30'
-                    }`}
-                  >
-                    Individual ({programIndividualCount})
-                  </button>
-                )}
-              </>
+                  {programGroupCount > 0 && (
+                    <button
+                      onClick={() => setSquadFilter('program-group')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium font-albert transition-colors flex items-center gap-1.5 ${
+                        squadFilter === 'program-group'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                      }`}
+                    >
+                      <Users className="w-3 h-3" />
+                      Group ({programGroupCount})
+                    </button>
+                  )}
+                  {programIndividualCount > 0 && (
+                    <button
+                      onClick={() => setSquadFilter('program-individual')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium font-albert transition-colors flex items-center gap-1.5 ${
+                        squadFilter === 'program-individual'
+                          ? 'bg-purple-500 text-white'
+                          : 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30'
+                      }`}
+                    >
+                      <User className="w-3 h-3" />
+                      1:1 ({programIndividualCount})
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}

@@ -3,7 +3,7 @@
  *
  * GET /api/coach/org-programs/[programId] - Get program details with days
  * PUT /api/coach/org-programs/[programId] - Full program update
- * PATCH /api/coach/org-programs/[programId] - Partial update (orientation, etc.)
+ * PATCH /api/coach/org-programs/[programId] - Partial update (taskDistribution, etc.)
  * DELETE /api/coach/org-programs/[programId] - Delete program
  */
 
@@ -210,7 +210,15 @@ export async function PUT(
       updateData.hasModules = body.hasModules === true;
     }
 
-    // Handle program orientation (daily vs weekly)
+    // Handle task distribution setting
+    if (body.taskDistribution !== undefined) {
+      const validDistributions = ['repeat-daily', 'spread'];
+      if (validDistributions.includes(body.taskDistribution)) {
+        updateData.taskDistribution = body.taskDistribution;
+      }
+    }
+
+    // Handle legacy orientation (deprecated, for backward compatibility)
     if (body.orientation !== undefined) {
       const validOrientations = ['daily', 'weekly'];
       if (validOrientations.includes(body.orientation)) {
@@ -641,8 +649,8 @@ export async function PUT(
 }
 
 /**
- * PATCH - Partial update for quick field changes (like orientation toggle)
- * Supports: orientation, isActive, isPublished, name
+ * PATCH - Partial update for quick field changes
+ * Supports: taskDistribution, isActive, isPublished, name
  */
 export async function PATCH(
   request: NextRequest,
@@ -670,13 +678,13 @@ export async function PATCH(
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    // Handle orientation toggle
-    if (body.orientation !== undefined) {
-      const validOrientations = ['daily', 'weekly'];
-      if (validOrientations.includes(body.orientation)) {
-        updateData.orientation = body.orientation;
+    // Handle task distribution setting
+    if (body.taskDistribution !== undefined) {
+      const validDistributions = ['repeat-daily', 'spread'];
+      if (validDistributions.includes(body.taskDistribution)) {
+        updateData.taskDistribution = body.taskDistribution;
       } else {
-        return NextResponse.json({ error: 'Invalid orientation value' }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid taskDistribution value' }, { status: 400 });
       }
     }
 

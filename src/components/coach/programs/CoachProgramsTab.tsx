@@ -2,13 +2,13 @@
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Image from 'next/image';
-import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier, ProgramCompletionConfig, ProgramModule, ProgramWeek, ProgramOrientation, DayCourseAssignment, CallSummary, UnifiedEvent, ClientViewContext, ClientProgramWeek, ClientProgramDay } from '@/types';
+import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier, ProgramCompletionConfig, ProgramModule, ProgramWeek, TaskDistribution, DayCourseAssignment, CallSummary, UnifiedEvent, ClientViewContext, CohortViewContext, CohortWeekContent, ClientProgramWeek, ClientProgramDay } from '@/types';
 import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { ModuleWeeksSidebar, type SidebarSelection } from './ModuleWeeksSidebar';
 import { ModuleEditor } from './ModuleEditor';
 import { WeekEditor } from './WeekEditor';
-import { OrientationToggle } from './OrientationToggle';
 import { WeekFillModal } from './WeekFillModal';
+import { ProgramSettingsPopover } from './ProgramSettingsPopover';
 import { DayCourseSelector } from './DayCourseSelector';
 import { ProgramScheduleEditor } from './ProgramScheduleEditor';
 import type { DiscoverCourse } from '@/types/discover';
@@ -26,6 +26,7 @@ import { NewProgramModal } from './NewProgramModal';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { CoachSelector } from '@/components/coach/CoachSelector';
 import { ClientSelector } from './ClientSelector';
+import { CohortSelector } from './CohortSelector';
 import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -125,6 +126,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const isRowMode = contentDisplayMode === 'row';
   const isCalendarMode = contentDisplayMode === 'calendar';
 
+  // Program type filter: 'all' | 'individual' | 'group'
+  const [programTypeFilter, setProgramTypeFilter] = useState<'all' | 'individual' | 'group'>('all');
+
   // Enrollments state
   const [programEnrollments, setProgramEnrollments] = useState<EnrollmentWithUser[]>([]);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
@@ -145,6 +149,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [loadingClientWeeks, setLoadingClientWeeks] = useState(false);
   const [loadingClientDays, setLoadingClientDays] = useState(false);
   const [loadedEnrollmentId, setLoadedEnrollmentId] = useState<string | null>(null);
+
+  // Cohort view context state (for group programs)
+  const [cohortViewContext, setCohortViewContext] = useState<CohortViewContext>({ mode: 'template' });
+  const [cohortWeekContent, setCohortWeekContent] = useState<CohortWeekContent | null>(null);
+  const [loadingCohortContent, setLoadingCohortContent] = useState(false);
 
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
@@ -193,7 +202,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     allowCustomStartDate: boolean;
     completionConfig: ProgramCompletionConfig;
     callCreditsPerMonth: number;
-    orientation: ProgramOrientation;
+    taskDistribution: TaskDistribution;
   }>({
     name: '',
     type: 'group',
@@ -223,7 +232,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       upsellDescription: '',
     },
     callCreditsPerMonth: 0,
-    orientation: 'weekly',
+    taskDistribution: 'spread',
   });
   
   // Available coaches for selection
@@ -395,7 +404,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   }, [apiBasePath, isDemoMode]);
   
   // Use demo data when in demo mode (from session context for interactivity)
-  const displayPrograms: ProgramWithStats[] = useMemo(() => {
+  const allPrograms: ProgramWithStats[] = useMemo(() => {
     if (isDemoMode) {
       return demoSession.programs.map(dp => ({
         id: dp.id,
@@ -418,6 +427,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
     return programs;
   }, [isDemoMode, demoSession.programs, programs]);
+
+  // Filter programs by type
+  const displayPrograms = useMemo(() => {
+    if (programTypeFilter === 'all') return allPrograms;
+    return allPrograms.filter(p => p.type === programTypeFilter);
+  }, [allPrograms, programTypeFilter]);
+
+  // Count programs by type for filter badges
+  const individualCount = useMemo(() => allPrograms.filter(p => p.type === 'individual').length, [allPrograms]);
+  const groupCount = useMemo(() => allPrograms.filter(p => p.type === 'group').length, [allPrograms]);
 
   // Fetch available coaches for assignment
   const fetchCoaches = useCallback(async () => {
@@ -779,6 +798,25 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   }, [apiBasePath]);
 
+  // Fetch cohort-specific week content for group programs
+  const fetchCohortWeekContent = useCallback(async (programId: string, cohortId: string, weekId: string) => {
+    try {
+      setLoadingCohortContent(true);
+      const response = await fetch(`${apiBasePath}/${programId}/cohorts/${cohortId}/week-content/${weekId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCohortWeekContent(data.content || null);
+      } else {
+        setCohortWeekContent(null);
+      }
+    } catch (err) {
+      console.error('Error fetching cohort week content:', err);
+      setCohortWeekContent(null);
+    } finally {
+      setLoadingCohortContent(false);
+    }
+  }, [apiBasePath]);
+
   const handleRemoveEnrollment = async () => {
     if (!removeConfirmEnrollment || !selectedProgram) return;
     
@@ -910,12 +948,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   }, [clientViewContext, selectedProgram, fetchClientWeeks, fetchClientDays]);
 
-  // Reset client view context when switching programs
+  // Reset client/cohort view context when switching programs
   useEffect(() => {
     setClientViewContext({ mode: 'template' });
     setClientWeeks([]);
     setClientDays([]);
     setLoadedEnrollmentId(null);
+    setCohortViewContext({ mode: 'template' });
+    setCohortWeekContent(null);
   }, [selectedProgram?.id]);
 
   // Load day data when day index changes (use client days when in client mode)
@@ -1005,7 +1045,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           upsellDescription: program.completionConfig?.upsellDescription || '',
         },
         callCreditsPerMonth: program.callCreditsPerMonth ?? 0,
-        orientation: program.orientation || 'weekly',
+        taskDistribution: program.taskDistribution || program.weeklyTaskDistribution || 'spread',
       });
     } else {
       setEditingProgram(null);
@@ -1038,7 +1078,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           upsellDescription: '',
         },
         callCreditsPerMonth: 0,
-        orientation: 'weekly',
+        taskDistribution: 'spread',
       });
     }
     setSaveError(null);
@@ -1338,6 +1378,38 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       console.error('Error saving landing page:', err);
       setSaveError(err instanceof Error ? err.message : 'Failed to save landing page');
       return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Update program task distribution setting
+  const handleTaskDistributionChange = async (distribution: TaskDistribution) => {
+    if (!selectedProgram) return;
+
+    try {
+      setSaving(true);
+      setSaveError(null);
+
+      const response = await fetch(`${apiBasePath}/${selectedProgram.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskDistribution: distribution }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update task distribution');
+      }
+
+      // Update local state
+      setSelectedProgram({ ...selectedProgram, taskDistribution: distribution });
+      // Refresh programs list
+      await fetchPrograms();
+    } catch (err) {
+      console.error('Error updating task distribution:', err);
+      setSaveError(err instanceof Error ? err.message : 'Failed to update settings');
     } finally {
       setSaving(false);
     }
@@ -1887,6 +1959,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 </button>
               </nav>
 
+              {/* Program Settings */}
+              <div className="flex-shrink-0 ml-auto pl-4 border-l border-[#e1ddd8] dark:border-[#262b35]">
+                <ProgramSettingsPopover
+                  taskDistribution={selectedProgram?.taskDistribution || 'spread'}
+                  onTaskDistributionChange={handleTaskDistributionChange}
+                  isSaving={saving}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -1917,6 +1997,44 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 Your organization domain is not yet configured. Please contact support.
               </p>
             )}
+          </div>
+        )}
+
+        {/* Program Type Filter - shown in list view */}
+        {viewMode === 'list' && !tenantRequired && allPrograms.length > 0 && (
+          <div className="flex items-center gap-1 mb-6 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
+            <button
+              onClick={() => setProgramTypeFilter('all')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
+                programTypeFilter === 'all'
+                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+              }`}
+            >
+              All ({allPrograms.length})
+            </button>
+            <button
+              onClick={() => setProgramTypeFilter('individual')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 ${
+                programTypeFilter === 'individual'
+                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" />
+              1:1 ({individualCount})
+            </button>
+            <button
+              onClick={() => setProgramTypeFilter('group')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 ${
+                programTypeFilter === 'group'
+                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              Group ({groupCount})
+            </button>
           </div>
         )}
 
@@ -2118,6 +2236,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       className="w-full sm:max-w-sm"
                     />
                   )}
+                  {/* Cohort Selector for group programs */}
+                  {selectedProgram?.type === 'group' && (
+                    <CohortSelector
+                      cohorts={programCohorts}
+                      value={cohortViewContext}
+                      onChange={(context) => {
+                        setCohortViewContext(context);
+                        if (context.mode === 'template') {
+                          setCohortWeekContent(null);
+                        }
+                        // Cohort content will be fetched when a week is selected
+                      }}
+                      onCreateCohort={() => handleOpenCohortModal()}
+                      loading={loadingDetails}
+                      className="w-full sm:max-w-sm"
+                    />
+                  )}
                 </div>
 
                 {/* Row/Calendar Toggle */}
@@ -2159,20 +2294,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 courses={organizationCourses}
                 modules={programModules}
                 weeks={programWeeks}
-                orientation={selectedProgram?.orientation || 'weekly'}
-                onOrientationChange={async (newOrientation: ProgramOrientation) => {
-                  if (!selectedProgram) return;
-                  try {
-                    await fetch(`${apiBasePath}/${selectedProgram.id}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ orientation: newOrientation }),
-                    });
-                    setSelectedProgram({ ...selectedProgram, orientation: newOrientation });
-                  } catch (err) {
-                    console.error('Error updating orientation:', err);
-                  }
-                }}
                 onDayClick={(dayIndex) => {
                   setSelectedDayIndex(dayIndex);
                   setSidebarSelection({ type: 'day', dayIndex });
@@ -2244,84 +2365,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   } else {
                     setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
                   }
-                }
-              }}
-              orientation={selectedProgram?.orientation || 'weekly'}
-              onOrientationChange={async (newOrientation: ProgramOrientation) => {
-                if (!selectedProgram) return;
-                const oldOrientation = selectedProgram.orientation || 'weekly';
-                
-                try {
-                  // Save orientation to program
-                  await fetch(`${apiBasePath}/${selectedProgram.id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orientation: newOrientation }),
-                  });
-                  
-                  // Update local state
-                  setSelectedProgram({ ...selectedProgram, orientation: newOrientation });
-                  
-                  // Auto-distribute tasks when switching from weekly to daily
-                  if (oldOrientation === 'weekly' && newOrientation === 'daily') {
-                    // Distribute week tasks to days
-                    for (const week of programWeeks) {
-                      if (week.weeklyTasks && week.weeklyTasks.length > 0) {
-                        const daysInWeek = week.endDayIndex - week.startDayIndex + 1;
-                        const distribution = week.distribution || 'repeat-daily';
-                        
-                        if (distribution === 'repeat-daily') {
-                          // Copy all tasks to each day
-                          for (let d = week.startDayIndex; d <= week.endDayIndex; d++) {
-                            const existingDay = programDays.find(day => day.dayIndex === d);
-                            if (!existingDay || !existingDay.tasks?.length) {
-                              await fetch(`${apiBasePath}/${selectedProgram.id}/days`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  dayIndex: d,
-                                  tasks: week.weeklyTasks,
-                                  weekId: week.id,
-                                }),
-                              });
-                            }
-                          }
-                        } else {
-                          // Spread tasks across days
-                          const tasksPerDay = Math.ceil(week.weeklyTasks.length / daysInWeek);
-                          let taskIndex = 0;
-                          for (let d = week.startDayIndex; d <= week.endDayIndex && taskIndex < week.weeklyTasks.length; d++) {
-                            const dayTasks = week.weeklyTasks.slice(taskIndex, taskIndex + tasksPerDay);
-                            taskIndex += tasksPerDay;
-                            
-                            if (dayTasks.length > 0) {
-                              const existingDay = programDays.find(day => day.dayIndex === d);
-                              if (!existingDay || !existingDay.tasks?.length) {
-                                await fetch(`${apiBasePath}/${selectedProgram.id}/days`, {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    dayIndex: d,
-                                    tasks: dayTasks,
-                                    weekId: week.id,
-                                  }),
-                                });
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                    
-                    // Reload days data
-                    const daysRes = await fetch(`${apiBasePath}/${selectedProgram.id}/days`);
-                    if (daysRes.ok) {
-                      const daysData = await daysRes.json();
-                      setProgramDays(daysData.days || []);
-                    }
-                  }
-                } catch (err) {
-                  console.error('Error changing orientation:', err);
                 }
               }}
               onAddModule={async () => {
@@ -2641,8 +2684,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     loading={loadingEnrollments}
                     className="w-full sm:max-w-sm"
                   />
+                ) : selectedProgram?.type === 'group' ? (
+                  <CohortSelector
+                    cohorts={programCohorts}
+                    value={cohortViewContext}
+                    onChange={(context) => {
+                      setCohortViewContext(context);
+                      if (context.mode === 'template') {
+                        setCohortWeekContent(null);
+                      }
+                      // Cohort content will be fetched when a week is selected
+                    }}
+                    onCreateCohort={() => handleOpenCohortModal()}
+                    loading={loadingDetails}
+                    className="w-full sm:max-w-sm"
+                  />
                 ) : (
-                  <div className="hidden sm:block" /> /* Spacer for group programs */
+                  <div className="hidden sm:block" /> /* Spacer */
                 )}
 
                 {/* Row/Calendar Toggle */}
@@ -2819,7 +2877,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       days={programDays.filter(d =>
                         d.dayIndex >= startDay && d.dayIndex <= endDay
                       )}
-                      orientation={selectedProgram?.orientation || 'weekly'}
                       onSave={async (updates) => {
                         try {
                           if (isClientMode && clientWeek) {
@@ -2935,6 +2992,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       programId={selectedProgram?.id}
                       programType={selectedProgram?.type}
                       enrollments={programEnrollments}
+                      cohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined}
+                      cohortName={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortName : undefined}
                     />
                   );
                 })()
@@ -4676,7 +4735,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               upsellDescription: '',
             },
             callCreditsPerMonth: 0,
-            orientation: 'weekly',
+            taskDistribution: 'spread',
           });
           setIsProgramModalOpen(true);
         }}
@@ -4808,7 +4867,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           }}
           programId={selectedProgram.id}
           week={weekToFill}
-          orientation={selectedProgram?.orientation || 'weekly'}
           // Pass client context when in client mode for 1:1 programs
           enrollmentId={clientViewContext.mode === 'client' ? clientViewContext.enrollmentId : undefined}
           clientUserId={clientViewContext.mode === 'client' ? clientViewContext.userId : undefined}

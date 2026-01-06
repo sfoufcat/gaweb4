@@ -159,29 +159,35 @@ export default function CoachPage() {
   const [activeTab, setActiveTab] = useState<CoachTab>(initialTab);
   const [tabDirection, setTabDirection] = useState<1 | -1>(1);
   const prevTabRef = useRef<CoachTab>(initialTab);
-  // Track if animations should be enabled - starts false to prevent initial mount animation
-  const [animationsEnabled, setAnimationsEnabled] = useState(false);
+  // Track if this is the first render - use ref to avoid re-renders
+  const isFirstRender = useRef(true);
 
   // Handler for tab changes with direction tracking
   const handleTabChange = useCallback((newTab: CoachTab) => {
-    // Enable animations on first user interaction
-    if (!animationsEnabled) {
-      setAnimationsEnabled(true);
-    }
+    // Mark that user has interacted - enables animations
+    isFirstRender.current = false;
     const prevOrder = COACH_TAB_ORDER[prevTabRef.current] ?? 0;
     const newOrder = COACH_TAB_ORDER[newTab] ?? 0;
     setTabDirection(newOrder > prevOrder ? 1 : -1);
     prevTabRef.current = newTab;
     setActiveTab(newTab);
-  }, [animationsEnabled]);
+  }, []);
 
   // Tabs horizontal scroll with mouse wheel
   const tabsListRef = useRef<HTMLDivElement>(null);
-  const handleTabsWheel = useCallback((e: React.WheelEvent) => {
-    if (tabsListRef.current) {
+
+  // Use native event listener with { passive: false } to allow preventDefault
+  useEffect(() => {
+    const tabsList = tabsListRef.current;
+    if (!tabsList) return;
+
+    const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      tabsListRef.current.scrollLeft += e.deltaY;
-    }
+      tabsList.scrollLeft += e.deltaY;
+    };
+
+    tabsList.addEventListener('wheel', handleWheel, { passive: false });
+    return () => tabsList.removeEventListener('wheel', handleWheel);
   }, []);
 
   // Sliding highlight state for Vercel-style hover effect
@@ -357,13 +363,14 @@ export default function CoachPage() {
     }
   }, [mounted, shouldStartTour, isTourActive]);
 
-  // Update active tab when URL query param changes
+  // Sync tab from URL on mount only (searchParams reference changes on every render in Next.js)
   useEffect(() => {
     const tabParam = searchParams.get('tab') as CoachTab | null;
-    if (tabParam && VALID_TABS.includes(tabParam) && tabParam !== activeTab) {
+    if (tabParam && VALID_TABS.includes(tabParam)) {
       setActiveTab(tabParam);
     }
-  }, [searchParams, activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only on mount to prevent re-renders from searchParams reference changes
 
   // Check authorization (skip on demo site)
   useEffect(() => {
@@ -611,7 +618,6 @@ export default function CoachPage() {
         <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as CoachTab)} className="w-full">
           <TabsList
             ref={tabsListRef}
-            onWheel={handleTabsWheel}
             onMouseLeave={handleTabsMouseLeave}
             className="relative mb-6 w-full flex-nowrap overflow-x-auto overflow-y-hidden justify-start gap-1 p-1.5 scrollbar-hide bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl"
           >
@@ -763,11 +769,11 @@ export default function CoachPage() {
             <motion.div
               key={activeTab}
               custom={tabDirection}
-              variants={animationsEnabled ? tabSlideVariants : undefined}
+              variants={!isFirstRender.current ? tabSlideVariants : undefined}
               initial={false}
-              animate={animationsEnabled ? "center" : undefined}
-              exit={animationsEnabled ? "exit" : undefined}
-              transition={animationsEnabled ? { duration: 0.18, ease: [0.25, 0.1, 0.25, 1] } : { duration: 0 }}
+              animate={!isFirstRender.current ? "center" : undefined}
+              exit={!isFirstRender.current ? "exit" : undefined}
+              transition={!isFirstRender.current ? { duration: 0.18, ease: [0.25, 0.1, 0.25, 1] } : { duration: 0 }}
             >
           {/* Clients Tab - Consolidated Users + Coaching Clients */}
           <TabsContent value="clients">

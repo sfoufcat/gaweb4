@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Plus, Video, BookOpen, ChevronRight, CalendarDays, Edit2 } from 'lucide-react';
-import type { Program, ProgramDay, ProgramModule, ProgramWeek, ProgramOrientation } from '@/types';
+import type { Program, ProgramDay, ProgramModule, ProgramWeek } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';
 
 interface ProgramScheduleEditorProps {
@@ -11,8 +11,6 @@ interface ProgramScheduleEditorProps {
   courses: DiscoverCourse[];
   modules: ProgramModule[];
   weeks: ProgramWeek[];
-  orientation: ProgramOrientation;
-  onOrientationChange: (orientation: ProgramOrientation) => void;
   onDayClick: (dayIndex: number) => void;
   onAddCall: (dayIndex: number) => void;
 }
@@ -23,14 +21,12 @@ export function ProgramScheduleEditor({
   courses,
   modules,
   weeks,
-  orientation,
-  onOrientationChange,
   onDayClick,
   onAddCall,
 }: ProgramScheduleEditorProps) {
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
 
-  // Calculate weeks based on program length and orientation
+  // Calculate weeks based on program length
   const includeWeekends = program.includeWeekends !== false;
   const daysPerWeek = includeWeekends ? 7 : 5;
 

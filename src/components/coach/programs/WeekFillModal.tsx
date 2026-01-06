@@ -30,7 +30,6 @@ import type {
   ProgramWeek,
   ProgramTaskTemplate,
   CallSummary,
-  ProgramOrientation,
   WeekFillSource,
 } from '@/types';
 
@@ -54,7 +53,6 @@ interface WeekFillModalProps {
   onClose: () => void;
   programId: string;
   week: ProgramWeek;
-  orientation: ProgramOrientation;
   onApply: (updates: Partial<ProgramWeek>) => Promise<void>;
   // Client context for 1:1 programs - when provided, filters call summaries by client
   enrollmentId?: string;
@@ -68,7 +66,6 @@ export function WeekFillModal({
   onClose,
   programId,
   week,
-  orientation,
   onApply,
   enrollmentId,
   clientUserId,
@@ -174,7 +171,6 @@ export function WeekFillModal({
           programId,
           weekId: week.id,
           source,
-          orientation,
         }),
       });
 

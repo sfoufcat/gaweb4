@@ -751,8 +751,11 @@ export interface Program {
   includeWeekends?: boolean; // Default true. If false, tasks only feed on weekdays (Mon-Fri)
 
   // Program content mode settings
-  orientation?: ProgramOrientation; // 'weekly' (default) or 'daily' - weekly is simpler, daily is granular
-  weeklyTaskDistribution?: WeeklyTaskDistribution; // Default distribution for weeks ('repeat-daily' | 'spread')
+  /** @deprecated Use taskDistribution instead */
+  orientation?: ProgramOrientation;
+  taskDistribution?: TaskDistribution; // How tasks are distributed: 'repeat-daily' | 'spread' (default: 'spread')
+  /** @deprecated Use taskDistribution instead */
+  weeklyTaskDistribution?: WeeklyTaskDistribution;
   scheduleMode?: ProgramScheduleMode; // What content types are in the schedule
   primaryCourseIds?: string[]; // Main courses that form the schedule backbone
   hasModules?: boolean; // True if using program_modules collection for hierarchy
@@ -855,6 +858,37 @@ export interface ProgramCohort {
   updatedAt: string;
 }
 
+
+/**
+ * Cohort-specific week content - stores recordings and summaries per cohort
+ * This allows group programs to have different call recordings/summaries
+ * for each cohort running the same program template.
+ * 
+ * Stored in Firestore 'cohort_week_content' collection
+ */
+export interface CohortWeekContent {
+  id: string;
+  cohortId: string;           // FK to program_cohorts
+  programWeekId: string;      // FK to program_weeks (template week)
+  programId: string;          // Denormalized for queries
+  organizationId: string;     // Denormalized for queries
+  
+  // Cohort-specific recordings
+  coachRecordingUrl?: string;
+  coachRecordingNotes?: string;
+  
+  // Cohort-specific linked content
+  linkedSummaryIds?: string[];      // CallSummary IDs for this cohort's week
+  linkedCallEventIds?: string[];    // UnifiedEvent IDs for this cohort's calls
+  
+  // Cohort-specific notes
+  manualNotes?: string;             // Coach notes specific to this cohort
+  
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
 /**
  * Program enrollment - User's enrollment in a program
  * Stored in Firestore 'program_enrollments' collection
@@ -918,16 +952,21 @@ export interface ProgramWithStats extends Program {
 // =============================================================================
 
 /**
- * Program orientation - daily or weekly task distribution
+ * @deprecated Use TaskDistribution instead. Kept for backward compatibility.
  */
 export type ProgramOrientation = 'daily' | 'weekly';
 
 /**
- * How weekly tasks are distributed to days
+ * How tasks are distributed to days within a week
  * - repeat-daily: All week tasks appear every day
  * - spread: Tasks distributed across the week (1-2 per day)
  */
-export type WeeklyTaskDistribution = 'repeat-daily' | 'spread';
+export type TaskDistribution = 'repeat-daily' | 'spread';
+
+/**
+ * @deprecated Use TaskDistribution instead
+ */
+export type WeeklyTaskDistribution = TaskDistribution;
 
 /**
  * Program schedule mode - what content types are in the schedule
@@ -994,7 +1033,7 @@ export interface ProgramWeek {
   weeklyTasks?: ProgramTaskTemplate[]; // Tasks for the entire week
   weeklyHabits?: ProgramHabitTemplate[]; // Habits for the week
   weeklyPrompt?: string; // Prompt/theme for the week
-  distribution?: WeeklyTaskDistribution; // How tasks are distributed to days ('repeat-daily' | 'spread')
+  distribution?: TaskDistribution; // How tasks are distributed to days ('repeat-daily' | 'spread')
 
   // Client-facing summary fields
   currentFocus?: string[]; // Max 3 key priorities for the week
@@ -1066,7 +1105,7 @@ export interface ClientProgramWeek {
   weeklyHabits?: ProgramHabitTemplate[];
   currentFocus?: string[];      // Max 3 key priorities
   notes?: string[];             // Max 3 reminder items
-  distribution?: WeeklyTaskDistribution;
+  distribution?: TaskDistribution;
   coachRecordingUrl?: string;
   coachRecordingNotes?: string;
   manualNotes?: string;
@@ -1122,6 +1161,15 @@ export interface ClientProgramDay {
 export type ClientViewContext =
   | { mode: 'template' }
   | { mode: 'client'; enrollmentId: string; userId: string; userName: string };
+
+
+/**
+ * Context for viewing cohort-specific content in group programs
+ * Similar to ClientViewContext but for group program cohorts
+ */
+export type CohortViewContext =
+  | { mode: 'template' }
+  | { mode: 'cohort'; cohortId: string; cohortName: string };
 
 /**
  * Options for syncing template content to client(s).
@@ -5301,6 +5349,10 @@ export interface UploadedRecording {
   uploadedBy: string;                // Coach user ID
   clientUserId?: string;
   programEnrollmentId?: string;
+  // Cohort-specific fields (for group programs)
+  cohortId?: string;
+  programId?: string;
+  weekId?: string;
   fileName: string;
   fileUrl: string;
   fileSizeBytes: number;

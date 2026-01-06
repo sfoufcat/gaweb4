@@ -1472,25 +1472,24 @@ export async function syncProgramV2TasksForToday(
     };
   }
   
-  // 6. Get tasks for this day - check program orientation
-  // In weekly mode, get tasks from the week; in daily mode, get from the day
+  // 6. Get tasks for this day
+  // First try week-level tasks (distributed based on taskDistribution setting)
+  // Then check day-level tasks (manual assignments always take precedence)
   let tasksForToday: ProgramTaskTemplate[] = [];
-  
-  if (program.orientation === 'weekly') {
-    // Weekly mode: Get tasks from the week
-    const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
-    if (week) {
-      tasksForToday = getWeeklyTasksForDay(week, dayIndex);
-      console.log(`[PROGRAM_ENGINE_V2] Weekly mode: Got ${tasksForToday.length} tasks from week ${week.weekNumber} for day ${dayIndex}`);
-    }
+
+  // Try week-level tasks first
+  const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
+  if (week) {
+    tasksForToday = getWeeklyTasksForDay(week, dayIndex);
+    console.log(`[PROGRAM_ENGINE_V2] Got ${tasksForToday.length} tasks from week ${week.weekNumber} for day ${dayIndex}`);
   }
-  
-  // If no weekly tasks or not in weekly mode, try to get from program_days
-  if (tasksForToday.length === 0) {
-    const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
-    if (programDay && programDay.tasks && programDay.tasks.length > 0) {
-      tasksForToday = programDay.tasks;
-    }
+
+  // Also check program_days for manual day-level task assignments
+  const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
+  if (programDay && programDay.tasks && programDay.tasks.length > 0) {
+    // Merge day-level tasks with week-level tasks (day-level = manual overrides)
+    tasksForToday = [...tasksForToday, ...programDay.tasks];
+    console.log(`[PROGRAM_ENGINE_V2] Added ${programDay.tasks.length} day-level tasks for day ${dayIndex}`);
   }
   
   if (tasksForToday.length === 0) {
@@ -1655,7 +1654,7 @@ export async function syncProgramV2TasksForToday(
 }
 
 // ============================================================================
-// WEEKLY SYNC ENGINE (Programs with orientation = 'weekly')
+// WEEKLY SYNC ENGINE (Programs with week-based task distribution)
 // ============================================================================
 
 export interface SyncWeeklyTasksResult {
@@ -1828,19 +1827,8 @@ export async function syncWeeklyTasks(
     };
   }
 
-  // 3. Verify this is a weekly-oriented program
-  if (program.orientation !== 'weekly') {
-    return {
-      success: false,
-      tasksCreated: 0,
-      currentWeekIndex: 0,
-      weekId: null,
-      enrollmentId,
-      programId: program.id,
-      programName: program.name,
-      message: 'Program is not weekly-oriented',
-    };
-  }
+  // 3. Program found - proceed with weekly sync
+  // Note: All programs now use weekly-based task distribution
 
   // 4. Calculate current day and week
   const today = new Date().toISOString().split('T')[0];
@@ -1939,7 +1927,8 @@ export async function syncWeeklyTasks(
   }
 
   // 8. Calculate task dates based on distribution
-  const distribution = program.weeklyTaskDistribution || 'spread';
+  // Use taskDistribution, fall back to weeklyTaskDistribution for backward compat, default to 'spread'
+  const distribution = program.taskDistribution || program.weeklyTaskDistribution || 'spread';
   const taskDates = calculateWeekTaskDates(
     currentWeek.startDayIndex,
     currentWeek.endDayIndex,
@@ -2066,7 +2055,8 @@ export async function queueWeeklyResyncForProgram(
 }
 
 /**
- * Enhanced sync function that checks program orientation and calls appropriate sync
+ * Unified sync function for all programs
+ * Uses weekly task sync which handles both week-level and day-level tasks
  */
 export async function syncProgramTasksAuto(
   userId: string,
@@ -2090,7 +2080,7 @@ export async function syncProgramTasksAuto(
     };
   }
 
-  // Get the program to check orientation
+  // Get the program
   const program = await getProgramV2(enrollment.programId);
 
   if (!program) {
@@ -2108,11 +2098,12 @@ export async function syncProgramTasksAuto(
     };
   }
 
-  // Route to appropriate sync function based on orientation
-  if (program.orientation === 'weekly') {
-    return await syncWeeklyTasks(userId, enrollment.id);
-  } else {
+  // Use unified sync that handles both week-level and day-level tasks
+  // For backward compatibility: legacy daily-only programs fall back to daily sync
+  if (program.orientation === 'daily' && !program.taskDistribution) {
     return await syncProgramV2TasksForToday(userId, todayDate);
   }
+
+  return await syncWeeklyTasks(userId, enrollment.id);
 }
 

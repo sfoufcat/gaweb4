@@ -254,7 +254,6 @@ export interface WeekFillContext {
   programDescription?: string;
   weekNumber: number;
   clientName?: string;
-  orientation: 'daily' | 'weekly';
 }
 
 export function buildWeekFillPrompt(
@@ -264,7 +263,6 @@ export function buildWeekFillPrompt(
   const contextParts: string[] = [
     `Program: "${context.programName}"`,
     `Week: ${context.weekNumber}`,
-    `Orientation: ${context.orientation}`,
   ];
 
   if (context.programDescription) {

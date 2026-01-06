@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, ProgramOrientation, CallSummary, WeeklyTaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
+import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
 import { Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Repeat, ArrowRight, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
@@ -22,7 +22,6 @@ interface EnrollmentWithUser extends ProgramEnrollment {
 interface WeekEditorProps {
   week: ProgramWeek;
   days: ProgramDay[];
-  orientation: ProgramOrientation;
   onSave: (updates: Partial<ProgramWeek>) => Promise<void>;
   onDaySelect?: (dayIndex: number) => void;
   onFillWithAI?: () => void;
@@ -35,6 +34,9 @@ interface WeekEditorProps {
   clientName?: string;
   clientUserId?: string;
   enrollmentId?: string;
+  // Cohort view mode (for group programs)
+  cohortId?: string;
+  cohortName?: string;
   // For sync functionality (1:1 programs)
   programId?: string;
   programType?: 'individual' | 'group';
@@ -45,12 +47,11 @@ interface WeekEditorProps {
 
 /**
  * Editor for program week content
- * Supports both daily and weekly orientation modes
+ * Manages tasks, focus areas, notes, recordings, and AI content
  */
 export function WeekEditor({
   week,
   days,
-  orientation,
   onSave,
   onDaySelect,
   onFillWithAI,
@@ -61,6 +62,8 @@ export function WeekEditor({
   clientName,
   clientUserId,
   enrollmentId,
+  cohortId,
+  cohortName,
   programId,
   programType,
   enrollments = [],
@@ -75,7 +78,7 @@ export function WeekEditor({
     currentFocus: week.currentFocus || [],
     notes: week.notes || [],
     manualNotes: week.manualNotes || '',
-    distribution: (week.distribution || 'repeat-daily') as WeeklyTaskDistribution,
+    distribution: (week.distribution || 'repeat-daily') as TaskDistribution,
     coachRecordingUrl: week.coachRecordingUrl || '',
     coachRecordingNotes: week.coachRecordingNotes || '',
     linkedSummaryIds: week.linkedSummaryIds || [] as string[],
@@ -121,7 +124,7 @@ export function WeekEditor({
       currentFocus: week.currentFocus || [],
       notes: week.notes || [],
       manualNotes: week.manualNotes || '',
-      distribution: (week.distribution || 'repeat-daily') as WeeklyTaskDistribution,
+      distribution: (week.distribution || 'repeat-daily') as TaskDistribution,
       coachRecordingUrl: week.coachRecordingUrl || '',
       coachRecordingNotes: week.coachRecordingNotes || '',
       linkedSummaryIds: week.linkedSummaryIds || [],
@@ -306,13 +309,18 @@ export function WeekEditor({
     setRecordingStatus('idle');
   };
 
+  // Check if we're in cohort mode (group program with cohort selected)
+  const isCohortMode = programType === 'group' && !!cohortId;
+
   // Upload recording and optionally generate summary
   const handleUploadAndGenerateSummary = async () => {
     if (!recordingFile) return;
 
-    // For summary generation, we need a client context
-    if (!clientUserId) {
-      setRecordingError('Please select a client view to generate summaries');
+    // For summary generation, we need either a client context (individual) or cohort context (group)
+    if (!clientUserId && !cohortId) {
+      setRecordingError(programType === 'group' 
+        ? 'Please select a cohort to upload recordings' 
+        : 'Please select a client view to generate summaries');
       return;
     }
 
@@ -323,9 +331,20 @@ export function WeekEditor({
 
       const formDataUpload = new FormData();
       formDataUpload.append('file', recordingFile);
-      formDataUpload.append('clientUserId', clientUserId);
+      // For individual programs, use clientUserId; for group programs, use cohortId
+      if (clientUserId) {
+        formDataUpload.append('clientUserId', clientUserId);
+      }
+      if (cohortId) {
+        formDataUpload.append('cohortId', cohortId);
+      }
       if (enrollmentId) {
         formDataUpload.append('programEnrollmentId', enrollmentId);
+      }
+      // For cohort mode, also send programId and weekId for cohort_week_content storage
+      if (cohortId && programId) {
+        formDataUpload.append('programId', programId);
+        formDataUpload.append('weekId', week.id);
       }
 
       // Upload with progress tracking
@@ -465,11 +484,16 @@ export function WeekEditor({
           <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             Week {week.weekNumber}
           </h3>
-          {/* Client/Template mode badge */}
+          {/* Client/Cohort/Template mode badge */}
           {isClientView ? (
             <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
               {clientName || 'Client'}
+            </span>
+          ) : isCohortMode ? (
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+              <Users className="w-3 h-3" />
+              {cohortName || 'Cohort'}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-[#f3f1ef] text-[#5f5a55] dark:bg-[#262b35] dark:text-[#b2b6c2]">
@@ -637,9 +661,8 @@ export function WeekEditor({
         </div>
       </CollapsibleSection>
 
-      {/* Tasks & Focus Section (Weekly mode only) */}
-      {orientation === 'weekly' && (
-        <CollapsibleSection
+      {/* Tasks & Focus Section */}
+      <CollapsibleSection
           title="Tasks & Focus"
           icon={ListTodo}
           defaultOpen={true}
@@ -782,7 +805,6 @@ export function WeekEditor({
             )}
           </div>
         </CollapsibleSection>
-      )}
 
       {/* Client Notes Section */}
       <CollapsibleSection
@@ -790,25 +812,22 @@ export function WeekEditor({
         icon={ClipboardList}
         defaultOpen={true}
       >
-        {/* Weekly Prompt (only in weekly orientation) */}
-        {orientation === 'weekly' && (
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-              Weekly Prompt
-            </label>
-            <textarea
-              value={formData.weeklyPrompt}
-              onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); trackFieldEdit('syncPrompt'); }}
-              placeholder="Motivational message or guidance for this week..."
-              rows={2}
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-            />
-          </div>
-        )}
+        {/* Weekly Prompt */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Weekly Prompt
+          </label>
+          <textarea
+            value={formData.weeklyPrompt}
+            onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); trackFieldEdit('syncPrompt'); }}
+            placeholder="Motivational message or guidance for this week..."
+            rows={2}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+          />
+        </div>
 
-        {/* Current Focus (max 3) - for daily orientation */}
-        {orientation !== 'weekly' && (
-          <div>
+        {/* Current Focus (max 3) */}
+        <div>
             <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
               <Target className="w-4 h-4 inline mr-1.5" />
               Current Focus <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
@@ -851,7 +870,6 @@ export function WeekEditor({
               </div>
             )}
           </div>
-        )}
 
         {/* Notes (max 3) */}
         <div>
@@ -1005,9 +1023,9 @@ export function WeekEditor({
           </label>
           <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
             Upload a recording to generate an AI summary
-            {isClientView && clientUserId && (
+            {(isClientView && clientUserId) || isCohortMode ? (
               <span className="text-brand-accent ml-1">(Summary will be linked to this week)</span>
-            )}
+            ) : null}
           </p>
 
           {/* Already has a recording URL */}
@@ -1057,7 +1075,7 @@ export function WeekEditor({
                 </button>
               </div>
               <div className="flex gap-2">
-                {isClientView && clientUserId ? (
+                {(isClientView && clientUserId) || isCohortMode ? (
                   <Button
                     onClick={handleUploadAndGenerateSummary}
                     className="flex-1 flex items-center justify-center gap-2"
@@ -1075,9 +1093,12 @@ export function WeekEditor({
                   </Button>
                 )}
               </div>
-              {!isClientView && (
+              {/* Guidance message for template mode */}
+              {!isClientView && !isCohortMode && (
                 <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] italic">
-                  Switch to a client view to generate AI summaries
+                  {programType === 'group'
+                    ? 'Select a cohort to upload recordings and generate AI summaries'
+                    : 'Switch to a client view to generate AI summaries'}
                 </p>
               )}
             </div>

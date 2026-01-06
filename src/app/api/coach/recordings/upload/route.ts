@@ -74,13 +74,18 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File | null;
     const clientUserId = formData.get('clientUserId') as string | null;
     const programEnrollmentId = formData.get('programEnrollmentId') as string | null;
+    // Cohort-specific fields (for group programs)
+    const cohortId = formData.get('cohortId') as string | null;
+    const programId = formData.get('programId') as string | null;
+    const weekId = formData.get('weekId') as string | null;
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    if (!clientUserId) {
-      return NextResponse.json({ error: 'clientUserId is required' }, { status: 400 });
+    // Either clientUserId (individual) OR cohortId (group) is required
+    if (!clientUserId && !cohortId) {
+      return NextResponse.json({ error: 'clientUserId or cohortId is required' }, { status: 400 });
     }
 
     // Validate file type
@@ -162,8 +167,12 @@ export async function POST(request: NextRequest) {
     const recordingData: Omit<UploadedRecording, 'id'> = {
       organizationId,
       uploadedBy: userId,
-      clientUserId,
+      clientUserId: clientUserId || undefined,
       programEnrollmentId: programEnrollmentId || undefined,
+      // Cohort-specific fields
+      cohortId: cohortId || undefined,
+      programId: programId || undefined,
+      weekId: weekId || undefined,
       fileName: file.name,
       fileUrl,
       fileSizeBytes: file.size,
@@ -185,6 +194,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Context for cohort-specific processing
+    const cohortContext = cohortId && programId && weekId
+      ? { cohortId, programId, weekId }
+      : null;
+
     // Process asynchronously based on file type
     if (isFilePdf) {
       processPdfUpload(
@@ -194,7 +208,8 @@ export async function POST(request: NextRequest) {
         fileUrl,
         userId,
         clientUserId,
-        programEnrollmentId
+        programEnrollmentId,
+        cohortContext
       ).catch((error) => {
         console.error(`[RECORDING_UPLOAD] Error processing PDF ${recordingId}:`, error);
       });
@@ -206,7 +221,8 @@ export async function POST(request: NextRequest) {
         userId,
         clientUserId,
         programEnrollmentId,
-        estimatedMinutes
+        estimatedMinutes,
+        cohortContext
       ).catch((error) => {
         console.error(`[RECORDING_UPLOAD] Error processing ${recordingId}:`, error);
       });
@@ -226,6 +242,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Cohort context type for processing
+type CohortContext = {
+  cohortId: string;
+  programId: string;
+  weekId: string;
+};
+
 /**
  * Process uploaded recording (async)
  */
@@ -234,9 +257,10 @@ async function processRecording(
   recordingId: string,
   fileUrl: string,
   coachUserId: string,
-  clientUserId: string,
+  clientUserId: string | null,
   programEnrollmentId: string | null,
-  estimatedMinutes: number
+  estimatedMinutes: number,
+  cohortContext: CohortContext | null
 ): Promise<void> {
   const recordingRef = adminDb
     .collection('organizations')
@@ -282,18 +306,21 @@ async function processRecording(
       durationSeconds: actualDuration,
     });
 
-    // Get coach and client info for summary
-    const [coachDoc, clientDoc] = await Promise.all([
-      adminDb.collection('users').doc(coachUserId).get(),
-      adminDb.collection('users').doc(clientUserId).get(),
-    ]);
-
+    // Get coach info
+    const coachDoc = await adminDb.collection('users').doc(coachUserId).get();
     const coachName = coachDoc.data()?.displayName || 'Coach';
-    const clientName = clientDoc.data()?.displayName || 'Client';
 
-    // Get program info if applicable
+    // Get client info (only for individual programs)
+    let clientName = 'Group Session';
+    if (clientUserId) {
+      const clientDoc = await adminDb.collection('users').doc(clientUserId).get();
+      clientName = clientDoc.data()?.displayName || 'Client';
+    }
+
+    // Get program info - from cohort context or enrollment
     let programName: string | undefined;
-    let programId: string | undefined;
+    let programId: string | undefined = cohortContext?.programId;
+
     if (programEnrollmentId) {
       const enrollmentDoc = await adminDb
         .collection('program_enrollments')
@@ -301,11 +328,12 @@ async function processRecording(
         .get();
       if (enrollmentDoc.exists) {
         programId = enrollmentDoc.data()?.programId;
-        if (programId) {
-          const programDoc = await adminDb.collection('programs').doc(programId).get();
-          programName = programDoc.data()?.title;
-        }
       }
+    }
+
+    if (programId) {
+      const programDoc = await adminDb.collection('programs').doc(programId).get();
+      programName = programDoc.data()?.title;
     }
 
     // Generate summary
@@ -316,7 +344,7 @@ async function processRecording(
       {
         hostUserId: coachUserId,
         hostName: coachName,
-        clientUserId,
+        clientUserId: clientUserId || undefined,
         clientName,
         programId,
         programEnrollmentId: programEnrollmentId || undefined,
@@ -337,6 +365,16 @@ async function processRecording(
       callSummaryId: summaryResult.summaryId,
       updatedAt: FieldValue.serverTimestamp(),
     });
+
+    // Update cohort_week_content if this is a cohort upload
+    if (cohortContext && summaryResult.summaryId) {
+      await updateCohortWeekContent(
+        orgId,
+        cohortContext,
+        fileUrl,
+        summaryResult.summaryId
+      );
+    }
 
     console.log(`[RECORDING_UPLOAD] Completed processing ${recordingId}`);
   } catch (error) {
@@ -365,8 +403,9 @@ async function processPdfUpload(
   fileBuffer: Buffer,
   fileUrl: string,
   coachUserId: string,
-  clientUserId: string,
-  programEnrollmentId: string | null
+  clientUserId: string | null,
+  programEnrollmentId: string | null,
+  cohortContext: CohortContext | null
 ): Promise<void> {
   const recordingRef = adminDb
     .collection('organizations')
@@ -414,18 +453,21 @@ async function processPdfUpload(
       completedAt: FieldValue.serverTimestamp(),
     });
 
-    // Get coach and client info for summary
-    const [coachDoc, clientDoc] = await Promise.all([
-      adminDb.collection('users').doc(coachUserId).get(),
-      adminDb.collection('users').doc(clientUserId).get(),
-    ]);
-
+    // Get coach info
+    const coachDoc = await adminDb.collection('users').doc(coachUserId).get();
     const coachName = coachDoc.data()?.displayName || 'Coach';
-    const clientName = clientDoc.data()?.displayName || 'Client';
 
-    // Get program info if applicable
+    // Get client info (only for individual programs)
+    let clientName = 'Group Session';
+    if (clientUserId) {
+      const clientDoc = await adminDb.collection('users').doc(clientUserId).get();
+      clientName = clientDoc.data()?.displayName || 'Client';
+    }
+
+    // Get program info - from cohort context or enrollment
     let programName: string | undefined;
-    let programId: string | undefined;
+    let programId: string | undefined = cohortContext?.programId;
+
     if (programEnrollmentId) {
       const enrollmentDoc = await adminDb
         .collection('program_enrollments')
@@ -433,11 +475,12 @@ async function processPdfUpload(
         .get();
       if (enrollmentDoc.exists) {
         programId = enrollmentDoc.data()?.programId;
-        if (programId) {
-          const programDoc = await adminDb.collection('programs').doc(programId).get();
-          programName = programDoc.data()?.title;
-        }
       }
+    }
+
+    if (programId) {
+      const programDoc = await adminDb.collection('programs').doc(programId).get();
+      programName = programDoc.data()?.title;
     }
 
     // Generate summary using the same AI service
@@ -448,7 +491,7 @@ async function processPdfUpload(
       {
         hostUserId: coachUserId,
         hostName: coachName,
-        clientUserId,
+        clientUserId: clientUserId || undefined,
         clientName,
         programId,
         programEnrollmentId: programEnrollmentId || undefined,
@@ -469,6 +512,16 @@ async function processPdfUpload(
       callSummaryId: summaryResult.summaryId,
       updatedAt: FieldValue.serverTimestamp(),
     });
+
+    // Update cohort_week_content if this is a cohort upload
+    if (cohortContext && summaryResult.summaryId) {
+      await updateCohortWeekContent(
+        orgId,
+        cohortContext,
+        fileUrl,
+        summaryResult.summaryId
+      );
+    }
 
     console.log(`[RECORDING_UPLOAD] Completed processing PDF ${recordingId}`);
   } catch (error) {
@@ -521,4 +574,67 @@ async function waitForTranscription(
   }
 
   throw new Error('Transcription timeout');
+}
+
+/**
+ * Update cohort_week_content with recording URL and summary ID
+ */
+async function updateCohortWeekContent(
+  orgId: string,
+  cohortContext: CohortContext,
+  recordingUrl: string,
+  summaryId: string
+): Promise<void> {
+  try {
+    const { cohortId, programId, weekId } = cohortContext;
+
+    // Check if content already exists
+    const existingQuery = await adminDb
+      .collection('cohort_week_content')
+      .where('cohortId', '==', cohortId)
+      .where('programWeekId', '==', weekId)
+      .limit(1)
+      .get();
+
+    if (!existingQuery.empty) {
+      // Update existing content
+      const docId = existingQuery.docs[0].id;
+      const existingData = existingQuery.docs[0].data();
+
+      // Add summary ID to linked summaries if not already present
+      const linkedSummaryIds = existingData.linkedSummaryIds || [];
+      if (!linkedSummaryIds.includes(summaryId)) {
+        linkedSummaryIds.push(summaryId);
+      }
+
+      await adminDb.collection('cohort_week_content').doc(docId).update({
+        coachRecordingUrl: recordingUrl,
+        linkedSummaryIds,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      console.log(`[COHORT_WEEK_CONTENT] Updated content ${docId} with recording`);
+    } else {
+      // Create new content
+      const newContent = {
+        cohortId,
+        programWeekId: weekId,
+        programId,
+        organizationId: orgId,
+        coachRecordingUrl: recordingUrl,
+        coachRecordingNotes: null,
+        linkedSummaryIds: [summaryId],
+        linkedCallEventIds: [],
+        manualNotes: null,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+
+      const docRef = await adminDb.collection('cohort_week_content').add(newContent);
+      console.log(`[COHORT_WEEK_CONTENT] Created content ${docRef.id} with recording`);
+    }
+  } catch (error) {
+    console.error('[COHORT_WEEK_CONTENT] Error updating content:', error);
+    // Don't throw - this is a secondary operation and shouldn't fail the main upload
+  }
 }

@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import type { Program, ProgramDay, ProgramModule, ProgramWeek, ProgramOrientation, ClientViewContext } from '@/types';
+import type { Program, ProgramDay, ProgramModule, ProgramWeek, ClientViewContext } from '@/types';
 import {
   ChevronDown,
   ChevronRight,
@@ -18,7 +18,6 @@ import {
   AlertTriangle,
   Shuffle
 } from 'lucide-react';
-import { OrientationToggle } from './OrientationToggle';
 
 // Selection types (same as ProgramSidebarNav for compatibility)
 export type SidebarSelection =
@@ -33,8 +32,6 @@ interface ModuleWeeksSidebarProps {
   days: ProgramDay[];
   selection: SidebarSelection | null;
   onSelect: (selection: SidebarSelection) => void;
-  orientation: ProgramOrientation;
-  onOrientationChange: (mode: ProgramOrientation) => void;
   onModulesReorder: (modules: ProgramModule[]) => Promise<void>;
   onWeeksReorder: (moduleId: string, weeks: ProgramWeek[]) => Promise<void>;
   onWeekMoveToModule: (weekId: string, targetModuleId: string, targetIndex: number) => Promise<void>;
@@ -179,8 +176,6 @@ export function ModuleWeeksSidebar({
   days,
   selection,
   onSelect,
-  orientation,
-  onOrientationChange,
   onModulesReorder,
   onWeeksReorder,
   onAddModule,
@@ -561,15 +556,11 @@ export function ModuleWeeksSidebar({
               <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
 
-            {/* Week info - clickable */}
+            {/* Week info - clickable to select week */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (orientation === 'weekly') {
-                  onSelect(weekSelection);
-                } else {
-                  toggleWeek(week.weekNum);
-                }
+                onSelect(weekSelection);
               }}
               className="flex-1 min-w-0 text-left"
             >
@@ -594,20 +585,20 @@ export function ModuleWeeksSidebar({
               </p>
             </button>
 
-            {/* Content indicator badges */}
-            {orientation === 'daily' && week.contentCount > 0 && (
+            {/* Content indicator badges - show both day count and weekly content */}
+            {week.contentCount > 0 && (
               <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded flex-shrink-0">
                 {week.contentCount}/{week.totalDays}
               </span>
             )}
 
-            {orientation === 'weekly' && hasWeeklyContent && (
-              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded flex-shrink-0">
+            {hasWeeklyContent && (
+              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded flex-shrink-0">
                 ✓
               </span>
             )}
 
-            {/* Fill week with AI button - show in both modes */}
+            {/* Fill week with AI button */}
             {onFillWeek && (
               <button
                 onClick={(e) => {
@@ -621,28 +612,26 @@ export function ModuleWeeksSidebar({
               </button>
             )}
 
-            {/* Expand/collapse for daily mode */}
-            {orientation === 'daily' && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleWeek(week.weekNum);
-                }}
-                className="p-2 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded-lg transition-colors flex-shrink-0"
-              >
-                {isWeekExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                )}
-              </button>
-            )}
+            {/* Expand/collapse button - always visible */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleWeek(week.weekNum);
+              }}
+              className="p-2 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded-lg transition-colors flex-shrink-0"
+            >
+              {isWeekExpanded ? (
+                <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Days in Week (only in Daily mode when expanded) */}
+        {/* Days in Week - shown when expanded */}
         <AnimatePresence initial={false}>
-          {orientation === 'daily' && isWeekExpanded && (
+          {isWeekExpanded && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
@@ -828,16 +817,8 @@ export function ModuleWeeksSidebar({
 
   return (
     <div className="w-96 flex-shrink-0">
-      {/* Orientation Toggle - moved up, no header */}
+      {/* Jump to Today button - only in client view */}
       <div className="mb-4 flex items-center gap-2">
-        <OrientationToggle
-          value={orientation}
-          onChange={onOrientationChange}
-          showConfirmation={true}
-          hasExistingContent={hasExistingContent}
-        />
-
-        {/* Jump to Today button - only in client view */}
         {isClientView && currentDayIndex && onJumpToToday && (
           <button
             onClick={onJumpToToday}
