@@ -199,9 +199,9 @@ export function ModuleWeeksSidebar({
   const [mounted, setMounted] = useState(false);
   
   // Local state to track week order during drag operations
-  // Stores just the weekNums in the desired order (not full objects)
+  // Stores storedWeekIds in the desired order (stable IDs that don't change after backend recalculation)
   // This prevents visual "snap back" during async reorder operations
-  const [localWeekOrder, setLocalWeekOrder] = useState<Map<string, number[]>>(new Map());
+  const [localWeekOrder, setLocalWeekOrder] = useState<Map<string, string[]>>(new Map());
 
   React.useEffect(() => {
     setMounted(true);
@@ -292,17 +292,17 @@ export function ModuleWeeksSidebar({
 
     // Check each module in localWeekOrder
     let allSynced = true;
-    localWeekOrder.forEach((localWeekNums, moduleId) => {
+    localWeekOrder.forEach((localWeekIds, moduleId) => {
       const propsWeeks = weeksByModule.get(moduleId);
       if (!propsWeeks) {
         allSynced = false;
         return;
       }
 
-      // Compare order - check if props weekNums match local ordering
-      const propsWeekNums = propsWeeks.map(w => w.weekNum);
+      // Compare order - check if props storedWeekIds match local ordering
+      const propsWeekIds = propsWeeks.map(w => w.storedWeekId || `temp-${w.weekNum}`);
 
-      if (JSON.stringify(localWeekNums) !== JSON.stringify(propsWeekNums)) {
+      if (JSON.stringify(localWeekIds) !== JSON.stringify(propsWeekIds)) {
         allSynced = false;
       }
     });
@@ -367,10 +367,10 @@ export function ModuleWeeksSidebar({
 
   const handleWeeksReorder = useCallback(async (moduleId: string, reorderedWeeks: CalculatedWeek[]) => {
     // IMMEDIATELY update local state to prevent visual "snap back" during async operations
-    // Store just the weekNums in the desired order (not full objects)
+    // Store storedWeekIds (stable IDs) in the desired order, not weekNums (which change after backend recalculation)
     setLocalWeekOrder(prev => {
       const next = new Map(prev);
-      next.set(moduleId, reorderedWeeks.map(w => w.weekNum));
+      next.set(moduleId, reorderedWeeks.map(w => w.storedWeekId || `temp-${w.weekNum}`));
       return next;
     });
 
@@ -673,9 +673,9 @@ export function ModuleWeeksSidebar({
     const propsWeeks = weeksByModule.get(module.id) || [];
     const localOrder = localWeekOrder.get(module.id);
     
-    // If we have a local order, reorder the current weeks to match
+    // If we have a local order (stored as storedWeekIds), reorder the current weeks to match
     const moduleWeeks = localOrder
-      ? localOrder.map(weekNum => propsWeeks.find(w => w.weekNum === weekNum)).filter((w): w is CalculatedWeek => w !== undefined)
+      ? localOrder.map(id => propsWeeks.find(w => (w.storedWeekId || `temp-${w.weekNum}`) === id)).filter((w): w is CalculatedWeek => w !== undefined)
       : propsWeeks;
     const weekCount = moduleWeeks.length;
 
@@ -766,7 +766,7 @@ export function ModuleWeeksSidebar({
               {moduleWeeks.map((week, idx) => (
                 <Reorder.Item
                   as="div"
-                  key={week.weekNum}
+                  key={week.storedWeekId || `temp-${week.weekNum}`}
                   value={week}
                   className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}
                 >
@@ -777,7 +777,7 @@ export function ModuleWeeksSidebar({
           ) : (
             <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
               {moduleWeeks.map((week, idx) => (
-                <div key={week.weekNum} className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}>
+                <div key={week.storedWeekId || `temp-${week.weekNum}`} className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}>
                   {renderWeekRow(week, module.id)}
                 </div>
               ))}

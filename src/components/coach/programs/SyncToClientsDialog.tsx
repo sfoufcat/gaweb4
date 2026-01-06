@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Users, User, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ interface SyncToClientsDialogProps {
   programId: string;
   weekNumber: number;
   enrollments: EnrollmentWithUser[];
+  editedFields?: Set<string>;
   onSyncComplete?: () => void;
 }
 
@@ -50,6 +51,7 @@ export function SyncToClientsDialog({
   programId,
   weekNumber,
   enrollments,
+  editedFields,
   onSyncComplete,
 }: SyncToClientsDialogProps) {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -58,15 +60,43 @@ export function SyncToClientsDialog({
   const [preserveClientData, setPreserveClientData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [syncFields, setSyncFields] = useState<SyncFieldOptions>({
-    syncName: true,
-    syncTheme: true,
-    syncPrompt: true,
-    syncTasks: true,
-    syncFocus: true,
-    syncNotes: true,
-    syncHabits: true,
-  });
+  
+  // Initialize sync fields based on editedFields (if provided) or default to all selected
+  const getInitialSyncFields = (): SyncFieldOptions => {
+    if (editedFields && editedFields.size > 0) {
+      return {
+        syncName: editedFields.has('syncName'),
+        syncTheme: editedFields.has('syncTheme'),
+        syncPrompt: editedFields.has('syncPrompt'),
+        syncTasks: editedFields.has('syncTasks'),
+        syncFocus: editedFields.has('syncFocus'),
+        syncNotes: editedFields.has('syncNotes'),
+        syncHabits: editedFields.has('syncHabits'),
+      };
+    }
+    // Fallback: all fields selected if no editedFields provided
+    return {
+      syncName: true,
+      syncTheme: true,
+      syncPrompt: true,
+      syncTasks: true,
+      syncFocus: true,
+      syncNotes: true,
+      syncHabits: true,
+    };
+  };
+  
+  const [syncFields, setSyncFields] = useState<SyncFieldOptions>(getInitialSyncFields);
+
+  // Reset syncFields when dialog opens with new editedFields
+  useEffect(() => {
+    if (open) {
+      setSyncFields(getInitialSyncFields());
+      setError(null);
+      setSuccess(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editedFields]);
 
   // Get display name for a client
   const getClientName = (enrollment: EnrollmentWithUser) => {

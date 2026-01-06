@@ -224,6 +224,7 @@ export function WeekEditor({
     };
     setFormData({ ...formData, weeklyTasks: [...formData.weeklyTasks, task] });
     setNewTask('');
+    trackFieldEdit('syncTasks');
   };
 
   const removeTask = (index: number) => {
@@ -231,12 +232,14 @@ export function WeekEditor({
       ...formData,
       weeklyTasks: formData.weeklyTasks.filter((_, i) => i !== index),
     });
+    trackFieldEdit('syncTasks');
   };
 
   const toggleTaskPrimary = (index: number) => {
     const updated = [...formData.weeklyTasks];
     updated[index] = { ...updated[index], isPrimary: !updated[index].isPrimary };
     setFormData({ ...formData, weeklyTasks: updated });
+    trackFieldEdit('syncTasks');
   };
 
   // Focus management (max 3)
@@ -244,6 +247,7 @@ export function WeekEditor({
     if (!newFocus.trim() || formData.currentFocus.length >= 3) return;
     setFormData({ ...formData, currentFocus: [...formData.currentFocus, newFocus.trim()] });
     setNewFocus('');
+    trackFieldEdit('syncFocus');
   };
 
   const removeFocus = (index: number) => {
@@ -251,6 +255,7 @@ export function WeekEditor({
       ...formData,
       currentFocus: formData.currentFocus.filter((_, i) => i !== index),
     });
+    trackFieldEdit('syncFocus');
   };
 
   // Notes management (max 3)
@@ -258,6 +263,7 @@ export function WeekEditor({
     if (!newNote.trim() || formData.notes.length >= 3) return;
     setFormData({ ...formData, notes: [...formData.notes, newNote.trim()] });
     setNewNote('');
+    trackFieldEdit('syncNotes');
   };
 
   const removeNote = (index: number) => {
@@ -265,6 +271,7 @@ export function WeekEditor({
       ...formData,
       notes: formData.notes.filter((_, i) => i !== index),
     });
+    trackFieldEdit('syncNotes');
   };
 
   return (
@@ -300,45 +307,87 @@ export function WeekEditor({
             </Button>
           )}
 
-          {/* Save Button States */}
-          {saveStatus === 'saving' && (
-            <Button disabled className="flex items-center gap-1.5 min-w-[100px]">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </Button>
-          )}
+          {/* Save/Sync Button with Morph Animation */}
+          <div className="relative min-w-[140px]">
+            <AnimatePresence mode="wait">
+              {saveStatus === 'saving' && (
+                <motion.div
+                  key="saving"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Button disabled className="flex items-center gap-1.5 w-full justify-center">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </Button>
+                </motion.div>
+              )}
 
-          {saveStatus === 'saved' && (
-            <Button
-              className="flex items-center gap-1.5 min-w-[100px] bg-green-600 hover:bg-green-600 text-white"
-              disabled
-            >
-              <Check className="w-4 h-4 animate-[scale-in_0.2s_ease-out]" />
-              Saved!
-            </Button>
-          )}
+              {saveStatus === 'saved' && (
+                <motion.div
+                  key="saved"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Button
+                    className="flex items-center gap-1.5 w-full justify-center bg-green-600 hover:bg-green-600 text-white"
+                    disabled
+                  >
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                    >
+                      <Check className="w-4 h-4" />
+                    </motion.div>
+                    Saved!
+                  </Button>
+                </motion.div>
+              )}
 
-          {saveStatus === 'idle' && hasChanges && !showSyncButton && (
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex items-center gap-1.5 min-w-[100px]"
-            >
-              <Save className="w-4 h-4" />
-              Save
-            </Button>
-          )}
+              {saveStatus === 'idle' && hasChanges && !showSyncButton && (
+                <motion.div
+                  key="save"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex items-center gap-1.5 w-full justify-center"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save
+                  </Button>
+                </motion.div>
+              )}
 
-          {saveStatus === 'idle' && showSyncButton && (
-            <Button
-              variant="outline"
-              onClick={() => setSyncDialogOpen(true)}
-              className="flex items-center gap-1.5 border-brand-accent text-brand-accent hover:bg-brand-accent/10"
-            >
-              <Users className="w-4 h-4" />
-              Sync to Clients
-            </Button>
-          )}
+              {saveStatus === 'idle' && showSyncButton && (
+                <motion.div
+                  key="sync"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Button
+                    variant="outline"
+                    onClick={() => setSyncDialogOpen(true)}
+                    className="flex items-center gap-1.5 w-full justify-center border-brand-accent text-brand-accent hover:bg-brand-accent/10"
+                  >
+                    <Users className="w-4 h-4" />
+                    Sync to Clients
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
@@ -361,7 +410,7 @@ export function WeekEditor({
         <input
           type="text"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={(e) => { setFormData({ ...formData, name: e.target.value }); trackFieldEdit('syncName'); }}
           placeholder={`Week ${week.weekNumber}`}
           className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
         />
@@ -375,7 +424,7 @@ export function WeekEditor({
         <input
           type="text"
           value={formData.theme}
-          onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+          onChange={(e) => { setFormData({ ...formData, theme: e.target.value }); trackFieldEdit('syncTheme'); }}
           placeholder="e.g., Building Foundations"
           className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
         />
@@ -433,7 +482,7 @@ export function WeekEditor({
         </label>
         <textarea
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          onChange={(e) => { setFormData({ ...formData, description: e.target.value }); trackFieldEdit('syncName'); }}
           placeholder="What clients will accomplish this week..."
           rows={2}
           className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
@@ -450,7 +499,7 @@ export function WeekEditor({
             </label>
             <textarea
               value={formData.weeklyPrompt}
-              onChange={(e) => setFormData({ ...formData, weeklyPrompt: e.target.value })}
+              onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); trackFieldEdit('syncPrompt'); }}
               placeholder="Motivational message or guidance for this week..."
               rows={2}
               className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
@@ -875,7 +924,11 @@ export function WeekEditor({
           programId={programId}
           weekNumber={week.weekNumber}
           enrollments={enrollments}
-          onSyncComplete={() => setShowSyncButton(false)}
+          editedFields={editedFields}
+          onSyncComplete={() => {
+            setShowSyncButton(false);
+            setEditedFields(new Set());
+          }}
         />
       )}
     </div>

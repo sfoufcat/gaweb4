@@ -28,6 +28,7 @@ import { CoachSelector } from '@/components/coach/CoachSelector';
 import { ClientSelector } from './ClientSelector';
 import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
 
@@ -2005,13 +2006,21 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           </div>
         ) : viewMode === 'days' ? (
           // Content View - Row (sidebar + editor) or Calendar (full-width)
-          contentDisplayMode === 'calendar' ? (
+          <AnimatePresence mode="wait">
+          {contentDisplayMode === 'calendar' ? (
             // Calendar View - Full width, no sidebar
-            <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6">
+            <motion.div
+              key="calendar-view"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6"
+            >
               {/* Controls row at top of calendar */}
-              <div className="flex items-center justify-between gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 {/* Left side: Title and Client Selector */}
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                   <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert whitespace-nowrap shrink-0">
                     Program Schedule
                   </h3>
@@ -2105,10 +2114,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   setContentDisplayMode('row');
                 }}
               />
-            </div>
+            </motion.div>
           ) : (
           // Row View - Sidebar + Editor
-          <div className="flex gap-6">
+          <motion.div
+            key="row-view"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="flex flex-col lg:flex-row gap-4 lg:gap-6"
+          >
             {/* Sidebar Navigation */}
             <ModuleWeeksSidebar
               program={selectedProgram as Program}
@@ -3111,8 +3127,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               )}
             </div>
           </div>
-          </div>
-          )
+          </motion.div>
+          )}
+          </AnimatePresence>
         ) : viewMode === 'cohorts' ? (
           // Cohorts View (Group programs only)
           <div>
