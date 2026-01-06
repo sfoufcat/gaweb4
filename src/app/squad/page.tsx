@@ -170,60 +170,10 @@ export default function StandaloneSquadPage() {
     fetchReferralConfig();
   }, [squad?.programId]);
 
-  // Loading state - show skeleton instead of null for instant perceived loading
+  // Loading state - return null for smooth page fade-in via PageTransition
   // In demo mode, skip waiting for Clerk user to load
   if (!mounted || (!isDemoMode && !userLoaded) || isLoading) {
-    return (
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
-        {/* Page Title Skeleton */}
-        <div className="mb-6">
-          <div className="h-10 w-32 bg-[#f3f1ef] dark:bg-[#171b22] rounded-lg animate-pulse" />
-        </div>
-
-        {/* Squad Header Skeleton */}
-        <div className="mb-6">
-          <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] animate-pulse" />
-              <div className="space-y-2 flex-1">
-                <div className="h-5 w-40 bg-[#f3f1ef] dark:bg-[#262b35] rounded animate-pulse" />
-                <div className="h-4 w-24 bg-[#f3f1ef] dark:bg-[#262b35] rounded animate-pulse" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Call Card Skeleton */}
-        <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] animate-pulse" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 w-32 bg-[#f3f1ef] dark:bg-[#262b35] rounded animate-pulse" />
-              <div className="h-3 w-48 bg-[#f3f1ef] dark:bg-[#262b35] rounded animate-pulse" />
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Bar Skeleton */}
-        <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-2 flex gap-2 mb-6">
-          <div className="flex-1 h-10 bg-white dark:bg-[#171b22] rounded-[32px] animate-pulse" />
-          <div className="flex-1 h-10 bg-transparent rounded-[32px]" />
-        </div>
-
-        {/* Members List Skeleton */}
-        <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4 space-y-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] animate-pulse" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 w-32 bg-[#f3f1ef] dark:bg-[#262b35] rounded animate-pulse" />
-                <div className="h-3 w-20 bg-[#f3f1ef] dark:bg-[#262b35] rounded animate-pulse" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (!user) {

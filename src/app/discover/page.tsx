@@ -30,7 +30,7 @@ export default function DiscoverPage() {
   const [viewMode, setViewMode] = useState<DiscoverViewMode>('browse');
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedProgramType, setSelectedProgramType] = useState<ProgramType>('group');
+  const [selectedProgramType, setSelectedProgramType] = useState<ProgramType>('all');
   const [myContentFilter, setMyContentFilter] = useState<MyContentFilter>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -415,16 +415,6 @@ export default function DiscoverPage() {
             {/* Section Header */}
             <div className="flex items-center justify-between">
               <SectionHeader title={`${programTitle}s`} />
-              {selectedProgramType === 'group' && !enrollmentConstraints.canEnrollInGroup && (
-                <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-full">
-                  Active {programTitle.toLowerCase()} in progress
-                </span>
-              )}
-              {selectedProgramType === 'individual' && !enrollmentConstraints.canEnrollInIndividual && (
-                <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-full">
-                  Active coaching in progress
-                </span>
-              )}
             </div>
 
             {/* Pill Tabs */}
@@ -437,7 +427,17 @@ export default function DiscoverPage() {
             
             {/* Horizontal scrollable list based on selected type */}
             <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-              {selectedProgramType === 'group' ? (
+              {selectedProgramType === 'all' ? (
+                (availableGroupPrograms.length > 0 || availableIndividualPrograms.length > 0) ? (
+                  [...availableGroupPrograms, ...availableIndividualPrograms].map((program) => (
+                    <ProgramCard key={program.id} program={program} fullWidth={false} />
+                  ))
+                ) : (
+                  <p className="text-text-muted text-sm font-sans py-4">
+                    No {programTitle.toLowerCase()}s available at this time.
+                  </p>
+                )
+              ) : selectedProgramType === 'group' ? (
                 availableGroupPrograms.length > 0 ? (
                   availableGroupPrograms.map((program) => (
                     <ProgramCard key={program.id} program={program} fullWidth={false} />

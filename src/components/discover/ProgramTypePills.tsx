@@ -1,9 +1,8 @@
 'use client';
 
-import { Users, User } from 'lucide-react';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 
-export type ProgramType = 'group' | 'individual';
+export type ProgramType = 'all' | 'group' | 'individual';
 
 interface ProgramTypePillsProps {
   selectedType: ProgramType;
@@ -37,25 +36,33 @@ export function ProgramTypePills({
   const accentBgLight = accentRgb 
     ? `rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.15)` 
     : colors.accentLight;
+  const accentBgMedium = accentRgb 
+    ? `rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.25)` 
+    : colors.accentLight;
+
+  const totalCount = (groupCount || 0) + (individualCount || 0);
 
   const pills = [
     { 
+      type: 'all' as ProgramType, 
+      label: 'All',
+      count: totalCount 
+    },
+    { 
       type: 'group' as ProgramType, 
-      label: 'Group', 
-      icon: Users,
+      label: 'Group',
       count: groupCount 
     },
     { 
       type: 'individual' as ProgramType, 
-      label: 'Individual', 
-      icon: User,
+      label: 'Individual',
       count: individualCount 
     },
   ];
 
   return (
-    <div className="flex gap-2">
-      {pills.map(({ type, label, icon: Icon, count }) => {
+    <div className="flex flex-wrap gap-1">
+      {pills.map(({ type, label, count }) => {
         const isSelected = selectedType === type;
         
         return (
@@ -63,11 +70,11 @@ export function ProgramTypePills({
             key={type}
             onClick={() => onSelect(type)}
             className={`
-              flex items-center gap-2 px-4 py-2 rounded-full
+              flex items-center gap-1 px-3 py-1.5 rounded-full
               border transition-all hover:shadow-sm cursor-pointer
               ${isSelected 
                 ? 'dark:bg-[#222631] dark:border-[#313746]' 
-                : 'bg-white/70 dark:bg-[#171b22] border-[#e1ddd8] dark:border-[#262b35] hover:bg-white dark:hover:bg-[#1d222b]'
+                : 'bg-white dark:bg-[#222631] border-[#e1ddd8] dark:border-[#262b35]'
               }
             `}
             style={isSelected ? {
@@ -75,18 +82,23 @@ export function ProgramTypePills({
               borderColor: colors.accentLight,
             } : undefined}
           >
-            <Icon 
-              className={`w-4 h-4 ${isSelected ? '' : 'text-[#9d9890] dark:text-[#7d8190]'}`}
-              style={isSelected ? { color: colors.accentLight } : undefined}
-            />
-            
-            <span 
-              className={`font-albert font-medium text-sm tracking-[-0.5px] ${
-                isSelected 
-                  ? 'text-text-primary dark:text-[#f5f5f8]' 
-                  : 'text-text-secondary dark:text-[#b2b6c2]'
-              }`}
+            {/* Checkmark icon with brand accent */}
+            <div 
+              className={`w-5 h-5 rounded-full flex items-center justify-center ${!isSelected ? 'bg-[#f3f1ef] dark:bg-[#262b35]' : ''}`}
+              style={isSelected ? { backgroundColor: accentBgMedium } : undefined}
             >
+              <svg 
+                className={`w-3 h-3 ${!isSelected ? 'text-[#9d9890] dark:text-[#b2b6c2]' : ''}`} 
+                style={isSelected ? { color: colors.accentLight } : undefined}
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            
+            <span className={`font-albert font-semibold text-lg tracking-[-1px] leading-[1.3] ${isSelected ? 'text-text-primary dark:text-[#f5f5f8]' : 'text-text-secondary dark:text-[#b2b6c2]'}`}>
               {label}
             </span>
 
@@ -111,12 +123,3 @@ export function ProgramTypePills({
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
