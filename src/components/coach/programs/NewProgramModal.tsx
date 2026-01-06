@@ -273,26 +273,26 @@ export function NewProgramModal({
 
       {/* Close Warning */}
       {showCloseWarning && (
-        <div className="mx-6 mt-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
+        <div className="mx-6 mt-4 p-3 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b] border border-[#e1ddd8] dark:border-[#262b35]">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
                 Discard progress?
               </p>
-              <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
                 Your progress will be lost if you close now.
               </p>
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={handleClose}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
                 >
                   Discard
                 </button>
                 <button
                   onClick={() => setShowCloseWarning(false)}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-100 dark:bg-amber-800/30 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
                 >
                   Continue Editing
                 </button>

@@ -2257,13 +2257,22 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     />
                   )}
                   <div className="absolute top-2 right-2 flex gap-1">
+                    {program.isActive ? (
+                      <span className="px-2 py-0.5 bg-brand-accent text-white text-xs rounded-full flex items-center gap-1">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 bg-amber-500 text-white text-xs rounded-full flex items-center gap-1">
+                        Draft
+                      </span>
+                    )}
                     {program.isPublished ? (
                       <span className="px-2 py-0.5 bg-green-500 text-white text-xs rounded-full flex items-center gap-1">
-                        <Eye className="w-3 h-3" /> Live
+                        <Eye className="w-3 h-3" /> Public
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 bg-gray-500 text-white text-xs rounded-full flex items-center gap-1">
-                        <EyeOff className="w-3 h-3" /> Draft
+                        <EyeOff className="w-3 h-3" /> Private
                       </span>
                     )}
                   </div>
