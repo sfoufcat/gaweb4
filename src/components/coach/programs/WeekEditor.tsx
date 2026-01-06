@@ -715,6 +715,82 @@ export function WeekEditor({
             </div>
           )}
         </div>
+
+        {/* Linked Call Summaries */}
+        <div>
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <MessageSquare className="w-4 h-4 inline mr-1.5" />
+            Linked Call Summaries
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Call summaries linked to this week for context and action items
+          </p>
+
+          {/* Currently linked summaries */}
+          {formData.linkedSummaryIds.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {formData.linkedSummaryIds.map((summaryId) => {
+                const summary = availableCallSummaries.find(s => s.id === summaryId);
+                const summaryLabel = summary?.summary?.executive
+                  ? summary.summary.executive.slice(0, 50) + (summary.summary.executive.length > 50 ? '...' : '')
+                  : `Summary ${summaryId.slice(0, 8)}...`;
+                return (
+                  <div
+                    key={summaryId}
+                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                  >
+                    <MessageSquare className="w-4 h-4 text-brand-accent" />
+                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {summaryLabel}
+                    </span>
+                    {summary?.createdAt && (
+                      <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                        {new Date(summary.createdAt).toLocaleDateString()}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => removeSummaryLink(summaryId)}
+                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add summary dropdown */}
+          {availableSummariesToLink.length > 0 && (
+            <select
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  addSummaryLink(e.target.value);
+                }
+              }}
+            >
+              <option value="">Add a call summary...</option>
+              {availableSummariesToLink.map((summary) => {
+                const label = summary.summary?.executive
+                  ? summary.summary.executive.slice(0, 40) + (summary.summary.executive.length > 40 ? '...' : '')
+                  : `Summary from ${new Date(summary.createdAt).toLocaleDateString()}`;
+                return (
+                  <option key={summary.id} value={summary.id}>
+                    {label}
+                  </option>
+                );
+              })}
+            </select>
+          )}
+
+          {formData.linkedSummaryIds.length === 0 && availableSummariesToLink.length === 0 && (
+            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
+              No call summaries available to link
+            </p>
+          )}
+        </div>
       </CollapsibleSection>
 
       {/* Coach Private Section */}
@@ -803,82 +879,6 @@ export function WeekEditor({
               }}
             />
           </div>
-        )}
-      </div>
-
-        {/* Linked Call Summaries */}
-        <div>
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <MessageSquare className="w-4 h-4 inline mr-1.5" />
-            Linked Call Summaries
-          </label>
-        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-          Call summaries linked to this week for context and action items
-        </p>
-
-        {/* Currently linked summaries */}
-        {formData.linkedSummaryIds.length > 0 && (
-          <div className="space-y-2 mb-3">
-            {formData.linkedSummaryIds.map((summaryId) => {
-              const summary = availableCallSummaries.find(s => s.id === summaryId);
-              const summaryLabel = summary?.summary?.executive
-                ? summary.summary.executive.slice(0, 50) + (summary.summary.executive.length > 50 ? '...' : '')
-                : `Summary ${summaryId.slice(0, 8)}...`;
-              return (
-                <div
-                  key={summaryId}
-                  className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-                >
-                  <MessageSquare className="w-4 h-4 text-brand-accent" />
-                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                    {summaryLabel}
-                  </span>
-                  {summary?.createdAt && (
-                    <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                      {new Date(summary.createdAt).toLocaleDateString()}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => removeSummaryLink(summaryId)}
-                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Add summary dropdown */}
-        {availableSummariesToLink.length > 0 && (
-          <select
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-            value=""
-            onChange={(e) => {
-              if (e.target.value) {
-                addSummaryLink(e.target.value);
-              }
-            }}
-          >
-            <option value="">Add a call summary...</option>
-            {availableSummariesToLink.map((summary) => {
-              const label = summary.summary?.executive
-                ? summary.summary.executive.slice(0, 40) + (summary.summary.executive.length > 40 ? '...' : '')
-                : `Summary from ${new Date(summary.createdAt).toLocaleDateString()}`;
-              return (
-                <option key={summary.id} value={summary.id}>
-                  {label}
-                </option>
-              );
-            })}
-          </select>
-        )}
-
-        {formData.linkedSummaryIds.length === 0 && availableSummariesToLink.length === 0 && (
-          <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
-            No call summaries available to link
-          </p>
         )}
       </div>
 
