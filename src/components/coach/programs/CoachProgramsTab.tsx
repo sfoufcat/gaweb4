@@ -1950,6 +1950,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               {!isDemoMode && (
                 <div className="flex items-center gap-2">
                   <Button
+                    variant="ghost"
                     onClick={() => {
                       // Check program limit before opening modal
                       if (checkLimit('max_programs', displayPrograms.length)) {

@@ -708,6 +708,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
           </div>
           {!isDemoMode && (
             <Button
+              variant="ghost"
               onClick={() => {
                 // Check squad limit before opening modal
                 if (checkLimit('max_squads', displaySquads.length)) {

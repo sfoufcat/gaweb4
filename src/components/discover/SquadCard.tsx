@@ -110,9 +110,9 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
             {squad.name}
           </h3>
 
-          {/* Description - fixed height for consistency */}
+          {/* Description - 3 lines max */}
           {!isCompact && (
-            <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 h-[2.6em] overflow-hidden">
+            <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-3">
               {squad.description || '\u00A0'}
             </p>
           )}

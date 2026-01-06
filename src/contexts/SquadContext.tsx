@@ -259,14 +259,16 @@ export function SquadProvider({ children }: SquadProviderProps) {
   const activeMembers = activeSquadId ? (membersBySquad[activeSquadId] || []) : [];
   const activeStats = activeSquadId ? (statsBySquad[activeSquadId] || null) : null;
   
-  // Standalone squads: squads NOT attached to a program (alumni squads, coach-created standalone, peer squads)
-  // These are shown in the Squad menu/page, regardless of whether they have a coach
-  const standaloneSquads = squads.filter(s => !s.programId);
+  // User's squads for the Squad page
+  // Previously filtered to standalone squads only (!s.programId), but this caused confusion
+  // when users only had program-linked squads - they'd see "No squads available yet"
+  // Now showing ALL user squads on the Squad page for better UX
+  const standaloneSquads = squads; // All user squads (keeping variable name for compatibility)
   const hasStandaloneSquad = standaloneSquads.length > 0;
   const hasMultipleStandaloneSquads = standaloneSquads.length > 1;
   
-  // Active standalone squad for the Squad page
-  // Default to the first standalone squad if current selection is invalid
+  // Active squad for the Squad page
+  // Default to the first squad if current selection is invalid
   const effectiveStandaloneId = standaloneSquads.find(s => s.id === activeStandaloneSquadId)
     ? activeStandaloneSquadId
     : (standaloneSquads[0]?.id || null);
