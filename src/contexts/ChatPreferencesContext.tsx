@@ -214,78 +214,95 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
   }, [user?.id, isLoaded, previousUserId]);
 
   // Set up Firestore real-time listener
-  // This is optional - if Firebase Auth isn't ready, the listener will fail silently
-  // and we rely on localStorage cache + optimistic updates for actions
+  // This is optional - if Firebase Auth isn't ready, we retry when it becomes ready
+  // Meanwhile we rely on localStorage cache + optimistic updates for actions
   useEffect(() => {
     if (!isLoaded || !user?.id) {
       return;
     }
 
     // Guard: Firebase not initialized
-    if (!db) {
+    if (!db || !firebaseAuth) {
       console.warn('[ChatPreferencesContext] Firebase not initialized');
       return;
     }
 
-    // Check if Firebase Auth is ready (synchronous check, no blocking)
-    // If not ready, skip listener setup - we'll rely on localStorage cache
-    if (!firebaseAuth?.currentUser) {
-      return;
+    let unsubscribeSnapshot: (() => void) | null = null;
+
+    // Function to set up the Firestore listener
+    const setupListener = () => {
+      if (unsubscribeSnapshot || !db) return; // Already set up or db not ready
+
+      const prefsRef = collection(db, 'users', user.id, CHAT_PREFERENCES_COLLECTION);
+
+      unsubscribeSnapshot = onSnapshot(
+        prefsRef,
+        (snapshot) => {
+          const newPrefs = new Map<string, ChatPreference>();
+          snapshot.docs.forEach((doc) => {
+            newPrefs.set(doc.id, {
+              channelId: doc.id,
+              ...doc.data(),
+            } as ChatPreference);
+          });
+
+          // Only update state if data actually changed (prevents double refresh)
+          setPreferences((currentPrefs) => {
+            // Quick size check first
+            if (currentPrefs.size !== newPrefs.size) {
+              return newPrefs;
+            }
+
+            // Deep compare: check if all keys and values match
+            let hasChanged = false;
+            for (const [key, newPref] of newPrefs) {
+              const currentPref = currentPrefs.get(key);
+              if (!currentPref ||
+                  currentPref.isPinned !== newPref.isPinned ||
+                  currentPref.isArchived !== newPref.isArchived ||
+                  currentPref.isDeleted !== newPref.isDeleted) {
+                hasChanged = true;
+                break;
+              }
+            }
+
+            return hasChanged ? newPrefs : currentPrefs;
+          });
+
+          setIsLoading(false);
+          setError(null);
+
+          // Update cache
+          if (user.id) {
+            saveToCache(user.id, newPrefs);
+          }
+        },
+        (err) => {
+          console.error('[ChatPreferencesContext] Firestore error:', err);
+          setError(err);
+          setIsLoading(false);
+        }
+      );
+    };
+
+    // If Firebase Auth is ready, set up listener immediately
+    if (firebaseAuth.currentUser) {
+      setupListener();
     }
 
-    const prefsRef = collection(db, 'users', user.id, CHAT_PREFERENCES_COLLECTION);
-
-    // Set up real-time listener
-    const unsubscribe = onSnapshot(
-      prefsRef,
-      (snapshot) => {
-        const newPrefs = new Map<string, ChatPreference>();
-        snapshot.docs.forEach((doc) => {
-          newPrefs.set(doc.id, {
-            channelId: doc.id,
-            ...doc.data(),
-          } as ChatPreference);
-        });
-
-        // Only update state if data actually changed (prevents double refresh)
-        setPreferences((currentPrefs) => {
-          // Quick size check first
-          if (currentPrefs.size !== newPrefs.size) {
-            return newPrefs;
-          }
-
-          // Deep compare: check if all keys and values match
-          let hasChanged = false;
-          for (const [key, newPref] of newPrefs) {
-            const currentPref = currentPrefs.get(key);
-            if (!currentPref ||
-                currentPref.isPinned !== newPref.isPinned ||
-                currentPref.isArchived !== newPref.isArchived ||
-                currentPref.isDeleted !== newPref.isDeleted) {
-              hasChanged = true;
-              break;
-            }
-          }
-
-          return hasChanged ? newPrefs : currentPrefs;
-        });
-
-        setIsLoading(false);
-        setError(null);
-
-        // Update cache
-        if (user.id) {
-          saveToCache(user.id, newPrefs);
-        }
-      },
-      (err) => {
-        console.error('[ChatPreferencesContext] Firestore error:', err);
-        setError(err);
-        setIsLoading(false);
+    // Listen for auth state changes to set up listener when auth becomes ready
+    const unsubscribeAuth = firebaseAuth.onAuthStateChanged((authUser) => {
+      if (authUser && !unsubscribeSnapshot) {
+        setupListener();
       }
-    );
+    });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+      }
+    };
   }, [user?.id, isLoaded]);
 
   // Computed sets for quick lookups

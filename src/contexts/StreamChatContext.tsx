@@ -114,8 +114,21 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
           await chatClient.disconnectUser();
         }
 
-        // If not connected, connect now
-        if (!chatClient.user) {
+        // Check if connection is actually healthy (not just user exists)
+        // The SDK singleton might have stale user data after page refresh
+        const isConnectionHealthy = chatClient.user &&
+          chatClient.wsConnection?.isHealthy === true;
+
+        // If not connected or connection is unhealthy, connect now
+        if (!chatClient.user || !isConnectionHealthy) {
+          // Disconnect stale connection if it exists
+          if (chatClient.user && !isConnectionHealthy) {
+            try {
+              await chatClient.disconnectUser();
+            } catch {
+              // Ignore disconnect errors for stale connections
+            }
+          }
           // Fetch token from API
           const response = await fetch('/api/stream-token');
           if (!response.ok) {
