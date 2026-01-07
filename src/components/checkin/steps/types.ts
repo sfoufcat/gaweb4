@@ -21,7 +21,6 @@ export interface EmotionalStartStepProps extends StepProps {
     question?: string;
     fieldName?: string;
   };
-  onComplete: (data: Record<string, unknown>) => void;
 }
 
 /**
@@ -54,7 +53,6 @@ export interface ReframeStepProps extends StepProps {
   config: {
     placeholder?: string;
   };
-  onComplete: (data: { userThought: string }) => void;
 }
 
 /**
@@ -65,7 +63,6 @@ export interface NeutralizeStepProps extends StepProps {
   data?: {
     userThought?: string;
   };
-  onComplete: (data: { aiReframe: string }) => void;
 }
 
 /**
@@ -84,7 +81,8 @@ export interface ManifestStepProps extends StepProps {
   config: {
     showIdentity?: boolean;
     showGoal?: boolean;
-    identityDuration?: number;
+    identityUnlockDuration?: number;
+    identityAutoContinueDuration?: number;
     goalDuration?: number;
   };
 }

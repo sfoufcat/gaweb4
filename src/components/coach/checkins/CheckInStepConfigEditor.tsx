@@ -55,9 +55,13 @@ export function CheckInStepConfigEditor({ step, onClose, onSave }: CheckInStepCo
         return <TaskReviewConfig config={config} updateConfig={updateConfig} />;
       case 'breathing':
         return <BreathingConfig config={config} updateConfig={updateConfig} />;
-      case 'ai_reframe_input':
-      case 'ai_reframe_output':
-        return <AIReframeConfig config={config} updateConfig={updateConfig} isOutput={step.type === 'ai_reframe_output'} />;
+      case 'accept':
+        return <AcceptConfig config={config} updateConfig={updateConfig} />;
+      case 'reframe_input':
+      case 'ai_reframe':
+        return <AIReframeConfig config={config} updateConfig={updateConfig} isOutput={step.type === 'ai_reframe'} />;
+      case 'begin_manifest':
+        return <BeginManifestConfig config={config} updateConfig={updateConfig} />;
       case 'visualization':
         return <VisualizationConfig config={config} updateConfig={updateConfig} />;
       case 'progress_scale':
@@ -469,6 +473,55 @@ function BreathingConfig({ config, updateConfig }: { config: Record<string, unkn
           onChange={(e) => updateConfig('cycles', parseInt(e.target.value) || 3)}
           min={1}
           max={10}
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent"
+        />
+      </div>
+    </div>
+  );
+}
+
+// Config component for accept step
+function AcceptConfig({ config, updateConfig }: { config: Record<string, unknown>; updateConfig: (key: string, value: unknown) => void }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+          Heading
+        </label>
+        <input
+          type="text"
+          value={(config.heading as string) || ''}
+          onChange={(e) => updateConfig('heading', e.target.value)}
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+          Message
+        </label>
+        <textarea
+          value={(config.message as string) || ''}
+          onChange={(e) => updateConfig('message', e.target.value)}
+          rows={3}
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent resize-none"
+        />
+      </div>
+    </div>
+  );
+}
+
+// Config component for begin manifest step
+function BeginManifestConfig({ config, updateConfig }: { config: Record<string, unknown>; updateConfig: (key: string, value: unknown) => void }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+          Heading
+        </label>
+        <input
+          type="text"
+          value={(config.heading as string) || ''}
+          onChange={(e) => updateConfig('heading', e.target.value)}
           className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent"
         />
       </div>

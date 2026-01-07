@@ -20,7 +20,9 @@ import {
   Trophy,
   FileText,
   Loader2,
-  Info
+  Info,
+  Heart,
+  Sun
 } from 'lucide-react';
 import type { CheckInStep, CheckInStepType, OrgCheckInFlow } from '@/types';
 import { CheckInStepConfigEditor } from './CheckInStepConfigEditor';
@@ -80,17 +82,29 @@ const STEP_TYPE_INFO: Record<CheckInStepType, {
     description: 'Guided breathing exercise',
     color: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400'
   },
-  ai_reframe_input: { 
+  accept: { 
+    icon: Heart, 
+    label: 'Accept', 
+    description: 'Acceptance step from morning check-in',
+    color: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
+  },
+  reframe_input: { 
     icon: Brain, 
-    label: 'AI Reframe Input', 
+    label: 'Reframe Input', 
     description: 'User thought input for AI',
     color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400'
   },
-  ai_reframe_output: { 
+  ai_reframe: { 
     icon: Sparkles, 
-    label: 'AI Reframe Output', 
+    label: 'AI Reframe', 
     description: 'AI response display',
     color: 'bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-900/30 dark:text-fuchsia-400'
+  },
+  begin_manifest: { 
+    icon: Sun, 
+    label: 'Begin Manifest', 
+    description: 'Transition screen before manifestation',
+    color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
   },
   visualization: { 
     icon: Eye, 
@@ -133,8 +147,10 @@ const ADDABLE_STEP_TYPES: CheckInStepType[] = [
   'task_planner',
   'task_review',
   'breathing',
-  'ai_reframe_input',
-  'ai_reframe_output',
+  'accept',
+  'reframe_input',
+  'ai_reframe',
+  'begin_manifest',
   'visualization',
   'progress_scale',
   'explainer',
@@ -650,15 +666,24 @@ function getDefaultConfigForType(type: CheckInStepType): unknown {
         pattern: { inhale: 4, hold: 2, exhale: 6 },
         cycles: 3,
       };
-    case 'ai_reframe_input':
+    case 'accept':
+      return {
+        heading: 'Accept where you are',
+        message: 'Acknowledge your current state without judgment.',
+      };
+    case 'reframe_input':
       return {
         heading: 'What\'s on your mind?',
         placeholder: 'Share any thoughts or worries...',
       };
-    case 'ai_reframe_output':
+    case 'ai_reframe':
       return {
         heading: 'Here\'s a different perspective',
         loadingMessage: 'Thinking...',
+      };
+    case 'begin_manifest':
+      return {
+        heading: 'Time to manifest',
       };
     case 'visualization':
       return {

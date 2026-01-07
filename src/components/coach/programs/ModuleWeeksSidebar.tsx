@@ -652,9 +652,9 @@ export function ModuleWeeksSidebar({
 
     return (
       <div className="group/week">
-        {/* Week row - with status-based coloring and modern selection */}
+        {/* Week row - with status-based coloring and modern selection, indented on desktop */}
         <div
-          className={`p-4 transition-all duration-150 ${statusBgClass} ${
+          className={`p-4 md:pl-6 transition-all duration-150 ${statusBgClass} ${
             !statusBgClass ? 'bg-white/40 dark:bg-[#171b22]/40' : ''
           } ${
             canReorderWeeks ? 'cursor-grab active:cursor-grabbing' : ''
@@ -841,11 +841,11 @@ export function ModuleWeeksSidebar({
     const weekCount = moduleWeeks.length;
     const moduleStatus = getModuleStatus(moduleWeeks);
 
-    // Status-based background colors for modules (lighter)
+    // Status-based background colors for modules (lighter) - active uses orange/amber for warmth
     const moduleStatusBgClass = moduleStatus === 'past'
       ? 'bg-amber-50/40 dark:bg-amber-950/15'
       : moduleStatus === 'active'
-      ? 'bg-emerald-50/40 dark:bg-emerald-950/15'
+      ? 'bg-orange-50/40 dark:bg-orange-950/15'
       : 'bg-white/30 dark:bg-[#171b22]/30';
 
     return (
@@ -853,11 +853,17 @@ export function ModuleWeeksSidebar({
         key={module.id}
         className="overflow-hidden rounded-xl"
       >
-        {/* Module Header - glassmorphism style with status coloring and modern selection */}
+        {/* Module Header - distinct from weeks with left accent border */}
         <div
           className={`p-4 backdrop-blur-sm transition-all duration-150 ${moduleStatusBgClass} ${
             canReorderModules ? 'cursor-grab active:cursor-grabbing' : ''
-          } group ${isModuleSelected ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)]' : ''} hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a]`}
+          } group ${isModuleSelected ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)]' : ''} hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a] border-l-[3px] ${
+            moduleStatus === 'past'
+              ? 'border-l-amber-400 dark:border-l-amber-500'
+              : moduleStatus === 'active'
+              ? 'border-l-orange-400 dark:border-l-orange-500'
+              : 'border-l-slate-300 dark:border-l-slate-600'
+          }`}
         >
           <div className="flex items-center gap-4">
             {/* Drag handle for module - only show in template mode */}
@@ -869,24 +875,24 @@ export function ModuleWeeksSidebar({
               <div className="w-5" /> /* Spacer to maintain alignment */
             )}
 
-            {/* Module icon - status-based coloring (lighter) */}
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+            {/* Module icon - larger than week icons, status-based coloring */}
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
               moduleStatus === 'past'
-                ? 'bg-amber-100/60 dark:bg-amber-900/20'
+                ? 'bg-amber-100 dark:bg-amber-900/30'
                 : moduleStatus === 'active'
-                ? 'bg-emerald-100/60 dark:bg-emerald-900/20'
-                : 'bg-slate-100/60 dark:bg-slate-800/25'
+                ? 'bg-orange-100 dark:bg-orange-900/30'
+                : 'bg-slate-100 dark:bg-slate-800/40'
             }`}>
               <Folder className={`w-5 h-5 ${
                 moduleStatus === 'past'
                   ? 'text-amber-500 dark:text-amber-400'
                   : moduleStatus === 'active'
-                  ? 'text-emerald-500 dark:text-emerald-400'
+                  ? 'text-orange-500 dark:text-orange-400'
                   : 'text-slate-400 dark:text-slate-500'
               }`} />
             </div>
 
-            {/* Module name - clickable to select */}
+            {/* Module name - clickable to select, bold to differentiate from weeks */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -894,7 +900,7 @@ export function ModuleWeeksSidebar({
               }}
               className="flex-1 min-w-0 text-left"
             >
-              <p className={`font-medium truncate ${
+              <p className={`font-semibold truncate ${
                 isModuleSelected
                   ? 'text-brand-accent'
                   : 'text-[#1a1a1a] dark:text-[#f5f5f8]'

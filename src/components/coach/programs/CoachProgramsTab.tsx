@@ -388,8 +388,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     setSidebarSelection({ type: 'day', dayIndex: currentDayIndex });
     setSelectedDayIndex(currentDayIndex);
 
-    // Load day data into form
-    const day = programDays.find(d => d.dayIndex === currentDayIndex);
+    // Load day data into form - use daysToUse to respect client mode
+    const day = daysToUse.find(d => d.dayIndex === currentDayIndex);
     if (day) {
       setDayFormData({
         title: day.title || '',
@@ -402,7 +402,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     } else {
       setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
     }
-  }, [currentEnrollment, selectedProgram, programDays]);
+  }, [currentEnrollment, selectedProgram, daysToUse]);
 
   const fetchPrograms = useCallback(async () => {
     // Skip API call in demo mode
@@ -479,6 +479,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   // Count programs by type for filter badges
   const individualCount = useMemo(() => allPrograms.filter(p => p.type === 'individual').length, [allPrograms]);
   const groupCount = useMemo(() => allPrograms.filter(p => p.type === 'group').length, [allPrograms]);
+
+  // Computed days array - use clientDays for 1:1 programs in client mode, otherwise programDays
+  const daysToUse = useMemo(() => {
+    const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
+    const dataMatchesContext = clientViewContext.mode === 'client' && loadedEnrollmentId === clientViewContext.enrollmentId;
+    return (isClientMode && dataMatchesContext) ? clientDays : programDays;
+  }, [selectedProgram?.type, clientViewContext, loadedEnrollmentId, clientDays, programDays]);
 
   // Fetch available coaches for assignment
   const fetchCoaches = useCallback(async () => {
@@ -2571,7 +2578,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             >
               <ProgramScheduleEditor
                 program={selectedProgram!}
-                days={programDays}
+                days={daysToUse}
                 courses={organizationCourses}
                 modules={programModules}
                 weeks={programWeeks}
@@ -2628,15 +2635,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 createdAt: cw.createdAt,
                 updatedAt: cw.updatedAt,
               } as ProgramWeek)) : programWeeks}
-              days={programDays}
+              days={daysToUse}
               selection={sidebarSelection || (selectedDayIndex ? { type: 'day', dayIndex: selectedDayIndex } : null)}
               viewContext={clientViewContext}
               onSelect={(selection) => {
                 setSidebarSelection(selection);
                 if (selection.type === 'day') {
                   setSelectedDayIndex(selection.dayIndex);
-                  // Load day data into form
-                  const day = programDays.find(d => d.dayIndex === selection.dayIndex);
+                  // Load day data into form - use daysToUse to respect client mode
+                  const day = daysToUse.find(d => d.dayIndex === selection.dayIndex);
                   if (day) {
                     setDayFormData({
                       title: day.title || '',
@@ -3167,7 +3174,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       onDaySelect={(dayIndex) => {
                         setSidebarSelection({ type: 'day', dayIndex });
                         setSelectedDayIndex(dayIndex);
-                        const day = programDays.find(d => d.dayIndex === dayIndex);
+                        const day = daysToUse.find(d => d.dayIndex === dayIndex);
                         if (day) {
                           setDayFormData({
                             title: day.title || '',
