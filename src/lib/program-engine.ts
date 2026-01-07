@@ -30,17 +30,19 @@ import type {
   CallSummary,
 } from '@/types';
 
+// Import and re-export client-safe utilities (these can be used in client components)
+// NOTE: These are in a separate file to avoid bundling firebase-admin in client code
+export {
+  isWeekend,
+  countWeekdaysBetween,
+  getActiveCycleNumber,
+  calculateProgramDayIndex,
+} from './program-client-utils';
+import { isWeekend, countWeekdaysBetween, getActiveCycleNumber, calculateProgramDayIndex } from './program-client-utils';
+
 // ============================================================================
 // WEEKEND HELPERS
 // ============================================================================
-
-/**
- * Check if a date is a weekend (Saturday = 6, Sunday = 0)
- */
-export function isWeekend(date: Date): boolean {
-  const day = date.getDay();
-  return day === 0 || day === 6;
-}
 
 /**
  * Get the next Monday from a given date
@@ -55,97 +57,26 @@ export function getNextWeekday(date: Date): Date {
 }
 
 /**
- * Count weekdays between two dates (inclusive of start, exclusive of end for elapsed calculation)
- */
-function countWeekdaysBetween(startDate: Date, endDate: Date): number {
-  let count = 0;
-  const current = new Date(startDate);
-  
-  while (current <= endDate) {
-    if (!isWeekend(current)) {
-      count++;
-    }
-    current.setDate(current.getDate() + 1);
-  }
-  
-  return count;
-}
-
-/**
  * Calculate the number of working days in a program based on total days
  * Assumes a 5-day work week
  */
 export function calculateWorkingDays(totalDays: number): number {
   const fullWeeks = Math.floor(totalDays / 7);
   const remainingDays = totalDays % 7;
-  
+
   // 5 working days per full week
   let workingDays = fullWeeks * 5;
-  
+
   // Add working days from remaining days (assuming start on Monday)
   // This is an approximation - actual count depends on start day
   workingDays += Math.min(remainingDays, 5);
-  
+
   return workingDays;
 }
 
 // ============================================================================
 // EVERGREEN CYCLE HELPERS
 // ============================================================================
-
-/**
- * Get the active cycle number for an enrollment
- * Returns 1 for fixed programs or enrollments without cycle tracking
- */
-export function getActiveCycleNumber(enrollment: ProgramEnrollment | StarterProgramEnrollment): number {
-  return (enrollment as ProgramEnrollment).currentCycleNumber || 1;
-}
-
-/**
- * Calculate the current day index for a program enrollment
- * Works for both fixed and evergreen programs
- * Respects includeWeekends setting (counts only weekdays when false)
- * For evergreen programs with cycle > 1, uses cycle start date
- */
-export function calculateProgramDayIndex(
-  enrollmentStartedAt: string,
-  programLengthDays: number,
-  includeWeekends: boolean,
-  cycleNumber: number,
-  cycleStartedAt?: string,
-  todayDate?: string
-): { dayIndex: number; shouldRollover: boolean } {
-  const today = todayDate || new Date().toISOString().split('T')[0];
-
-  // Use cycle start date if available (for cycles > 1), otherwise use enrollment start
-  const effectiveStartDate = cycleNumber > 1 && cycleStartedAt
-    ? cycleStartedAt.split('T')[0]
-    : enrollmentStartedAt;
-
-  const startDate = new Date(effectiveStartDate + 'T00:00:00');
-  const todayDateObj = new Date(today + 'T00:00:00');
-
-  let dayIndex: number;
-
-  if (includeWeekends) {
-    // Simple day count
-    const elapsedMs = todayDateObj.getTime() - startDate.getTime();
-    const elapsedDays = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
-    dayIndex = elapsedDays + 1;
-  } else {
-    // Count only weekdays
-    dayIndex = countWeekdaysBetween(startDate, todayDateObj);
-  }
-
-  // Check if we need to roll over to next cycle
-  const shouldRollover = dayIndex > programLengthDays;
-
-  // Cap at program length (will trigger rollover for evergreen)
-  return {
-    dayIndex: Math.min(dayIndex, programLengthDays),
-    shouldRollover,
-  };
-}
 
 /**
  * Roll over to the next cycle for an evergreen program

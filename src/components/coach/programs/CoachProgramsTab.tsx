@@ -42,7 +42,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 
 import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
-import { calculateProgramDayIndex, getActiveCycleNumber } from '@/lib/program-engine';
+import { calculateProgramDayIndex, getActiveCycleNumber } from '@/lib/program-client-utils';
 
 // Animation variants for subtle fade transitions (calendar/row switching)
 const fadeVariants = {
