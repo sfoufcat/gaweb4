@@ -76,7 +76,7 @@ export function ProgramScheduleEditor({
       border: 'border-yellow-300 dark:border-yellow-800',
     },
     active: {
-      bg: 'bg-emerald-50/70 dark:bg-emerald-950/30',
+      bg: 'bg-[#F8FFFB] dark:bg-emerald-950/30',
       border: 'border-emerald-300 dark:border-emerald-700',
     },
     future: {

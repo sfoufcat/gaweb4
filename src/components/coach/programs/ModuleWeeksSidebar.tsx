@@ -654,11 +654,11 @@ export function ModuleWeeksSidebar({
     const weekStatus = getWeekStatus(week);
     const moduleColor = moduleColors[moduleIndex % moduleColors.length];
 
-    // Status-based background colors - pastel green for active, yellow for past, gray for future
+    // Status-based background colors - light mint for active, yellow for past, gray for future
     const statusBgClass = weekStatus === 'past'
       ? 'bg-yellow-50/50 dark:bg-yellow-950/20'
       : weekStatus === 'active'
-      ? 'bg-emerald-50/50 dark:bg-emerald-950/20'
+      ? 'bg-[#F8FFFB] dark:bg-emerald-950/20'
       : 'bg-gray-50/50 dark:bg-gray-900/20';
 
     return (
@@ -951,7 +951,7 @@ export function ModuleWeeksSidebar({
             moduleStatus === 'past'
               ? 'bg-yellow-200 dark:bg-yellow-800'
               : moduleStatus === 'active'
-              ? 'bg-emerald-200 dark:bg-emerald-800'
+              ? 'bg-orange-200 dark:bg-orange-800'
               : 'bg-gray-200 dark:bg-gray-700'
           }`} />
         )}
@@ -1004,7 +1004,7 @@ export function ModuleWeeksSidebar({
             moduleStatus === 'past'
               ? 'bg-yellow-200 dark:bg-yellow-800'
               : moduleStatus === 'active'
-              ? 'bg-emerald-200 dark:bg-emerald-800'
+              ? 'bg-orange-200 dark:bg-orange-800'
               : 'bg-gray-200 dark:bg-gray-700'
           }`} />
         )}
