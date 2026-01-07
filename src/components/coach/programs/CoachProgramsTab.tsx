@@ -36,7 +36,7 @@ import { StatusBadge, TypeBadge, VisibilityBadge } from '@/components/ui/program
 import { CoachSelector } from '@/components/coach/CoachSelector';
 import { ClientSelector } from './ClientSelector';
 import { CohortSelector } from './CohortSelector';
-import { LimitReachedModal, useLimitCheck } from '@/components/coach';
+import { LimitReachedModal, useLimitCheck, CohortTasksPanel } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
@@ -3629,6 +3629,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       </button>
                     </div>
                   </div>
+
+                  {/* Task Completion Panel - show for active cohorts */}
+                  {cohort.status === 'active' && (
+                    <div className="mt-4 pt-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                      <CohortTasksPanel
+                        cohortId={cohort.id}
+                        compact={true}
+                        refreshInterval={60000}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
 

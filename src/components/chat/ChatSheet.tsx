@@ -791,7 +791,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
           <AlertDialogHeader>
             <AlertDialogTitle>Delete conversation</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete this conversation? It will be removed permanently.
+              Delete this conversation? Message history will be permanently cleared for you.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -172,6 +172,17 @@ export function StoryPlayerWrapper({
     onClose();
   }, [currentStoryUser, markStoryAsViewed, onClose]);
 
+  // Handle case where current user disappears from queue (data race/refetch)
+  // This can happen when fullStoryQueue recalculates and the index becomes invalid
+  // Without this, the parent stays in "story open" state but nothing renders
+  useEffect(() => {
+    // If we don't have a current story user but the queue isn't empty,
+    // the index is likely out of bounds - close gracefully
+    if (!currentStoryUser && storyUsers.length > 0) {
+      onClose();
+    }
+  }, [currentStoryUser, storyUsers.length, onClose]);
+
   // Don't render if no user
   if (!storyPlayerUser) {
     return null;

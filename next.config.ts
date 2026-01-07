@@ -1,13 +1,18 @@
 import type { NextConfig } from "next";
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirnameESM = dirname(__filename);
 
 const nextConfig: NextConfig = {
   /* config options here */
-  
+
   // Optimize for Vercel deployment
   output: 'standalone',
-  
+
   // Set the root directory for file tracing
-  outputFileTracingRoot: __dirname,
+  outputFileTracingRoot: __dirnameESM,
   
   // CORS headers for API routes (needed for tenant/custom domains)
   async headers() {
@@ -105,7 +110,7 @@ const nextConfig: NextConfig = {
   compress: true,
   
   // Acknowledge Turbopack as default bundler in Next.js 16
-  // Webpack config is used when building with --webpack flag
+  // Note: If Turbopack has race condition issues, build with: npx next build --webpack
   turbopack: {},
   
   webpack: (config, { isServer, dev }) => {
