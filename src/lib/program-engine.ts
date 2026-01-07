@@ -2255,7 +2255,7 @@ export interface SyncProgramTasksToClientDayResult {
 export async function syncProgramTasksToClientDay(
   params: SyncProgramTasksToClientDayParams
 ): Promise<SyncProgramTasksToClientDayResult> {
-  const { userId, programEnrollmentId, date, mode, coachUserId } = params;
+  const { userId, programEnrollmentId, date, mode, coachUserId, forceDayIndex } = params;
   const errors: string[] = [];
   
   // 1. Get the enrollment
@@ -2310,8 +2310,8 @@ export async function syncProgramTasksToClientDay(
     }
   }
   
-  // 4. Calculate program day index for this date
-  const dayIndex = calculateCurrentDayIndexV2(enrollment, program, cohort, date);
+  // 4. Calculate program day index for this date (or use forceDayIndex if provided)
+  const dayIndex = forceDayIndex ?? calculateCurrentDayIndexV2(enrollment, program, cohort, date);
   
   if (dayIndex === 0) {
     return {

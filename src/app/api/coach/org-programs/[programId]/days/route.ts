@@ -190,13 +190,13 @@ export async function POST(
     const program = programDoc.data();
     if (program?.type === 'group' && tasks.length > 0) {
       // Import and trigger cohort sync asynchronously
+      // Use specificDayIndex to sync the exact day that was edited
+      const dayIndex = body.dayIndex;
       import('@/lib/sync-cohort-tasks').then(({ syncProgramTasksToAllCohorts }) => {
-        const today = new Date().toISOString().split('T')[0];
         syncProgramTasksToAllCohorts({
           programId,
-          date: today,
+          specificDayIndex: dayIndex,
           mode: 'fill-empty',
-          syncHorizonDays: 7,
         }).catch(err => {
           console.error('[COHORT_SYNC] Background sync failed:', err);
         });

@@ -9,6 +9,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import {
   syncProgramTasksToClientDay,
   getProgramV2,
+  calculateDateForDayIndex,
   type SyncMode,
   type SyncProgramTasksToClientDayResult,
 } from '@/lib/program-engine';
@@ -28,6 +29,7 @@ export interface SyncProgramTasksToCohortParams {
   date: string; // ISO date YYYY-MM-DD
   mode: SyncMode;
   coachUserId?: string;
+  forceDayIndex?: number; // If provided, use this dayIndex instead of calculating from date
 }
 
 export interface CohortMemberSyncResult {
@@ -66,7 +68,7 @@ export interface SyncProgramTasksToCohortResult {
 export async function syncProgramTasksToCohort(
   params: SyncProgramTasksToCohortParams
 ): Promise<SyncProgramTasksToCohortResult> {
-  const { programId, cohortId, date, mode, coachUserId } = params;
+  const { programId, cohortId, date, mode, coachUserId, forceDayIndex } = params;
   const errors: string[] = [];
 
   console.log(`[COHORT_SYNC] Starting sync for cohort ${cohortId}, date ${date}, mode ${mode}`);
@@ -179,6 +181,7 @@ export async function syncProgramTasksToCohort(
         date,
         mode,
         coachUserId,
+        forceDayIndex,
       });
 
       memberResults.push({
@@ -356,10 +359,11 @@ async function createCohortTaskStatesForSyncedTasks(
 
 export interface SyncToAllCohortsParams {
   programId: string;
-  date: string;
+  date?: string; // Optional if specificDayIndex is provided
   mode: SyncMode;
   coachUserId?: string;
-  syncHorizonDays?: number; // How many days ahead to sync (default 7)
+  syncHorizonDays?: number; // How many days ahead to sync (default 7) - only used with date
+  specificDayIndex?: number; // If provided, sync this specific program day (ignores date/horizon)
 }
 
 export interface SyncToAllCohortsResult {
@@ -378,14 +382,33 @@ export interface SyncToAllCohortsResult {
 /**
  * Sync program tasks to all active cohorts
  * Used when coach saves a program template change
+ *
+ * If specificDayIndex is provided, syncs that specific program day template
+ * to cohort members (calculates the calendar date per cohort).
+ *
+ * If date is provided (without specificDayIndex), syncs based on calendar dates
+ * with optional horizon for multiple days ahead.
  */
 export async function syncProgramTasksToAllCohorts(
   params: SyncToAllCohortsParams
 ): Promise<SyncToAllCohortsResult> {
-  const { programId, date, mode, coachUserId, syncHorizonDays = 7 } = params;
+  const { programId, date, mode, coachUserId, syncHorizonDays = 7, specificDayIndex } = params;
   const errors: string[] = [];
 
-  console.log(`[COHORT_SYNC_ALL] Starting sync for program ${programId}, starting date ${date}`);
+  console.log(`[COHORT_SYNC_ALL] Starting sync for program ${programId}${specificDayIndex ? `, dayIndex ${specificDayIndex}` : `, starting date ${date}`}`);
+
+  // Get the program (needed for date calculations)
+  const program = await getProgramV2(programId);
+  if (!program) {
+    return {
+      success: false,
+      programId,
+      cohortsProcessed: 0,
+      cohortsFailed: 0,
+      results: [],
+      errors: ['Program not found'],
+    };
+  }
 
   // Get all active cohorts for this program
   const cohortsSnapshot = await adminDb
@@ -412,58 +435,93 @@ export async function syncProgramTasksToAllCohorts(
 
   console.log(`[COHORT_SYNC_ALL] Found ${cohorts.length} active cohorts`);
 
-  // Generate dates for sync horizon
-  const datesToSync: string[] = [];
-  const startDate = new Date(date);
-  for (let i = 0; i < syncHorizonDays; i++) {
-    const d = new Date(startDate);
-    d.setDate(d.getDate() + i);
-    datesToSync.push(d.toISOString().split('T')[0]);
-  }
-
   // Sync each cohort
   const results: SyncToAllCohortsResult['results'] = [];
   let cohortsProcessed = 0;
   let cohortsFailed = 0;
 
   for (const cohort of cohorts) {
-    // For each cohort, sync all dates in horizon
     let cohortHadErrors = false;
     let aggregatedResult: SyncProgramTasksToCohortResult | null = null;
 
-    for (const syncDate of datesToSync) {
+    // If specificDayIndex is provided, calculate the date for this cohort
+    if (specificDayIndex) {
+      const cohortDate = calculateDateForDayIndex(cohort, program, specificDayIndex);
+
+      if (!cohortDate) {
+        console.log(`[COHORT_SYNC_ALL] Skipping cohort ${cohort.name}: could not calculate date for dayIndex ${specificDayIndex}`);
+        continue;
+      }
+
+      console.log(`[COHORT_SYNC_ALL] Cohort ${cohort.name}: dayIndex ${specificDayIndex} = date ${cohortDate}`);
+
       try {
         const result = await syncProgramTasksToCohort({
           programId,
           cohortId: cohort.id,
-          date: syncDate,
+          date: cohortDate,
           mode,
           coachUserId,
+          forceDayIndex: specificDayIndex, // Pass the dayIndex to skip recalculation
         });
 
-        if (!aggregatedResult) {
-          aggregatedResult = result;
-        } else {
-          // Aggregate results across dates
-          aggregatedResult.membersProcessed += result.membersProcessed;
-          aggregatedResult.totalTasksCreated += result.totalTasksCreated;
-          aggregatedResult.totalTasksSkipped += result.totalTasksSkipped;
-          aggregatedResult.totalTasksReplaced += result.totalTasksReplaced;
-          aggregatedResult.cohortTaskStatesCreated += result.cohortTaskStatesCreated;
-          aggregatedResult.errors.push(...result.errors);
-          if (!result.success) {
-            aggregatedResult.success = false;
-          }
-        }
-
+        aggregatedResult = result;
         if (!result.success) {
           cohortHadErrors = true;
         }
       } catch (err) {
         cohortHadErrors = true;
         const errorMsg = err instanceof Error ? err.message : String(err);
-        errors.push(`Cohort ${cohort.name} (${cohort.id}), date ${syncDate}: ${errorMsg}`);
+        errors.push(`Cohort ${cohort.name} (${cohort.id}), dayIndex ${specificDayIndex}: ${errorMsg}`);
       }
+    } else if (date) {
+      // Original logic: sync based on calendar date with horizon
+      const datesToSync: string[] = [];
+      const startDate = new Date(date);
+      for (let i = 0; i < syncHorizonDays; i++) {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + i);
+        datesToSync.push(d.toISOString().split('T')[0]);
+      }
+
+      for (const syncDate of datesToSync) {
+        try {
+          const result = await syncProgramTasksToCohort({
+            programId,
+            cohortId: cohort.id,
+            date: syncDate,
+            mode,
+            coachUserId,
+          });
+
+          if (!aggregatedResult) {
+            aggregatedResult = result;
+          } else {
+            // Aggregate results across dates
+            aggregatedResult.membersProcessed += result.membersProcessed;
+            aggregatedResult.totalTasksCreated += result.totalTasksCreated;
+            aggregatedResult.totalTasksSkipped += result.totalTasksSkipped;
+            aggregatedResult.totalTasksReplaced += result.totalTasksReplaced;
+            aggregatedResult.cohortTaskStatesCreated += result.cohortTaskStatesCreated;
+            aggregatedResult.errors.push(...result.errors);
+            if (!result.success) {
+              aggregatedResult.success = false;
+            }
+          }
+
+          if (!result.success) {
+            cohortHadErrors = true;
+          }
+        } catch (err) {
+          cohortHadErrors = true;
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          errors.push(`Cohort ${cohort.name} (${cohort.id}), date ${syncDate}: ${errorMsg}`);
+        }
+      }
+    } else {
+      // Neither date nor specificDayIndex provided
+      errors.push(`Cohort ${cohort.name}: either date or specificDayIndex must be provided`);
+      cohortHadErrors = true;
     }
 
     if (aggregatedResult) {
