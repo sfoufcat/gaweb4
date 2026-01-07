@@ -12,6 +12,7 @@ import {
 import { useUser } from '@clerk/nextjs';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
+import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
 import type {
   ChatPreference,
   ChatChannelType,
@@ -175,6 +176,9 @@ interface ChatPreferencesProviderProps {
  */
 export function ChatPreferencesProvider({ children }: ChatPreferencesProviderProps) {
   const { user, isLoaded } = useUser();
+  // Firebase Auth is required for Firestore security rules
+  // We don't block on it - localStorage cache provides instant data
+  const { isAuthenticated: isFirebaseReady } = useFirebaseAuth();
   const [preferences, setPreferences] = useState<Map<string, ChatPreference>>(() => {
     // Initialize from localStorage synchronously for instant access
     if (typeof window !== 'undefined' && user?.id) {
@@ -204,8 +208,9 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
     // Load cache for new user
     if (currentUserId && currentUserId !== previousUserId) {
       const cached = loadFromCache(currentUserId);
-      if (cached) {
-        setPreferences(cached);
+      if (cached && cached.size > 0) {
+        // Only update if we have cached data and current state is empty
+        setPreferences((current) => current.size === 0 ? cached : current);
       }
     }
 
@@ -213,8 +218,16 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
   }, [user?.id, isLoaded, previousUserId]);
 
   // Set up Firestore real-time listener
+  // Only starts when Firebase Auth is ready (required for security rules)
+  // Until then, we rely on localStorage cache - no blocking!
   useEffect(() => {
     if (!isLoaded || !user?.id) {
+      return;
+    }
+
+    // Wait for Firebase Auth before setting up listener
+    // This is required because security rules check request.auth.uid
+    if (!isFirebaseReady) {
       return;
     }
 
@@ -237,7 +250,30 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
             ...doc.data(),
           } as ChatPreference);
         });
-        setPreferences(newPrefs);
+
+        // Only update state if data actually changed (prevents double refresh)
+        setPreferences((currentPrefs) => {
+          // Quick size check first
+          if (currentPrefs.size !== newPrefs.size) {
+            return newPrefs;
+          }
+
+          // Deep compare: check if all keys and values match
+          let hasChanged = false;
+          for (const [key, newPref] of newPrefs) {
+            const currentPref = currentPrefs.get(key);
+            if (!currentPref ||
+                currentPref.isPinned !== newPref.isPinned ||
+                currentPref.isArchived !== newPref.isArchived ||
+                currentPref.isDeleted !== newPref.isDeleted) {
+              hasChanged = true;
+              break;
+            }
+          }
+
+          return hasChanged ? newPrefs : currentPrefs;
+        });
+
         setIsLoading(false);
         setError(null);
 
@@ -254,7 +290,7 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
     );
 
     return () => unsubscribe();
-  }, [user?.id, isLoaded]);
+  }, [user?.id, isLoaded, isFirebaseReady]);
 
   // Computed sets for quick lookups
   const pinnedChannelIds = useMemo(() => {

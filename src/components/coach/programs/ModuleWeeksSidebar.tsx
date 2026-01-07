@@ -840,7 +840,7 @@ export function ModuleWeeksSidebar({
     return (
       <div
         key={module.id}
-        className="overflow-hidden rounded-xl border-b-2 border-[#d1cdc8] dark:border-[#363d4a] last:border-b-0 mb-2 last:mb-0"
+        className="overflow-hidden rounded-xl mb-3 last:mb-0"
       >
         {/* Module Header - less left padding on desktop to sit further left than weeks */}
         <div
@@ -923,6 +923,11 @@ export function ModuleWeeksSidebar({
             </div>
           </div>
         </div>
+
+        {/* Module-to-weeks divider - decorative gradient line */}
+        {isModuleExpanded && moduleWeeks.length > 0 && (
+          <div className="h-px bg-gradient-to-r from-transparent via-[#c4bfb8] to-transparent dark:via-[#404856] mx-4" />
+        )}
 
         {/* Weeks inside module - static (calendar-aligned weeks cannot be reordered) */}
         <AnimatePresence initial={false}>
