@@ -145,6 +145,13 @@ export default function FeedPage() {
     return [currentUserStory, ...storyUsers];
   }, [user, storyUsers, currentUserStoryStatus]);
 
+  // Calculate story start index from userId (more stable than storing index directly)
+  const storyStartIndex = useMemo(() => {
+    if (!selectedStoryUserId) return -1;
+    const index = fullStoryQueue.findIndex(u => u.id === selectedStoryUserId);
+    return index !== -1 ? index : 0; // Fallback to 0 if not found
+  }, [selectedStoryUserId, fullStoryQueue]);
+
   // Handle post creation
   const handlePostCreated = useCallback((post: FeedPost) => {
     addPost(post);
@@ -260,6 +267,7 @@ export default function FeedPage() {
               onViewStory={(userId) => {
                 // Store the userId directly - StoryPlayerWrapper will find the index
                 // This is more stable than storing an index since the queue can change
+                console.log('[FEED] onViewStory called:', { userId, fullStoryQueueLength: fullStoryQueue.length, fullStoryQueue: fullStoryQueue.map(u => u.id) });
                 setSelectedStoryUserId(userId);
               }}
             />
@@ -497,23 +505,18 @@ export default function FeedPage() {
       )}
 
       {/* Story viewer with prefetching and auto-advance */}
-      {selectedStoryUserId !== null && (() => {
-        // Calculate the index dynamically from the userId
-        // This ensures we always find the user even if the queue changed
-        let startIndex = fullStoryQueue.findIndex(u => u.id === selectedStoryUserId);
-        if (startIndex === -1) {
-          // Fallback: if user not found, default to 0
-          startIndex = 0;
-        }
-        return (
-          <StoryPlayerWrapper
-            storyUsers={fullStoryQueue}
-            startIndex={startIndex}
-            onClose={handleStoryClose}
-            currentUser={currentUserInfo}
-          />
-        );
+      {(() => {
+        console.log('[FEED] Story render check:', { selectedStoryUserId, storyStartIndex, fullStoryQueueLength: fullStoryQueue.length });
+        return null;
       })()}
+      {selectedStoryUserId !== null && storyStartIndex >= 0 && (
+        <StoryPlayerWrapper
+          storyUsers={fullStoryQueue}
+          startIndex={storyStartIndex}
+          onClose={handleStoryClose}
+          currentUser={currentUserInfo}
+        />
+      )}
     </div>
   );
 }

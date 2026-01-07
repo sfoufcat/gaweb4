@@ -1425,7 +1425,16 @@ export function calculateDateForDayIndex(
     return null;
   }
 
-  let startDate = new Date(startDateStr + 'T00:00:00');
+  // Handle both date-only strings (2026-01-03) and full ISO timestamps (2026-01-03T13:10:47.267Z)
+  const dateOnly = startDateStr.includes('T') ? startDateStr.split('T')[0] : startDateStr;
+  let startDate = new Date(dateOnly + 'T00:00:00');
+
+  // Guard against invalid date
+  if (isNaN(startDate.getTime())) {
+    console.warn(`[calculateDateForDayIndex] Invalid start date: ${startDateStr} (parsed as: ${dateOnly})`);
+    return null;
+  }
+
   const includeWeekends = program.includeWeekends !== false;
 
   if (!includeWeekends) {
