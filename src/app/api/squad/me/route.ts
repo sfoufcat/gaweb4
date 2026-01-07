@@ -72,7 +72,7 @@ interface SquadData {
  * Helper function to fetch discoverable squads (for users with no squads)
  * This is a simplified version of /api/squad/discover that returns essential data
  */
-async function fetchDiscoverySquads(organizationId: string): Promise<DiscoverySquad[]> {
+async function fetchDiscoverySquads(organizationId: string, excludeSquadIds: string[] = []): Promise<DiscoverySquad[]> {
   try {
     const squadsSnapshot = await adminDb.collection('squads')
       .where('visibility', '==', 'public')
@@ -83,6 +83,12 @@ async function fetchDiscoverySquads(organizationId: string): Promise<DiscoverySq
 
     for (const doc of squadsSnapshot.docs) {
       const data = doc.data() as Squad;
+
+      // Skip program-linked squads (they belong to programs, not standalone discovery)
+      if (data.programId) continue;
+
+      // Skip squads the user is already a member of
+      if (excludeSquadIds.includes(doc.id)) continue;
 
       // Get member count
       const membersSnapshot = await adminDb.collection('squadMembers')
@@ -420,10 +426,13 @@ export async function GET(request: Request) {
       }
     }
 
-    // If no squad memberships found at all, return empty state WITH discovery squads
+    // Initialize Clerk client once for all squad fetches
+    const clerk = await clerkClient();
+
+    // If no squad memberships, return empty state WITH discovery squads
     if (squadIds.length === 0) {
-      // Fetch available squads user can join
-      const discoverySquads = await fetchDiscoverySquads(userOrgId);
+      // Fetch available squads user can join (excluding squads they're already in)
+      const discoverySquads = await fetchDiscoverySquads(userOrgId, []);
 
       return NextResponse.json({
         squads: [],
@@ -438,9 +447,6 @@ export async function GET(request: Request) {
       });
     }
 
-    // Initialize Clerk client once for all squad fetches
-    const clerk = await clerkClient();
-
     // Fetch all squads in parallel (with org filtering and membership verification)
     const squadDataPromises = squadIds.map(squadId => 
       fetchSquadData(squadId, userId, userOrgId, includeStats, clerk)
@@ -450,6 +456,16 @@ export async function GET(request: Request) {
     // Filter out null squads (filtered by org or not found)
     const validSquads = allSquadData.filter(data => data.squad !== null);
     
+    // Check if user has any standalone squads (not linked to a program)
+    const hasStandaloneSquad = validSquads.some(data => !data.squad?.programId);
+    
+    // Fetch discovery squads if user has no standalone squads
+    // This allows users who only have program squads to discover standalone squads
+    let discoverySquads: DiscoverySquad[] = [];
+    if (!hasStandaloneSquad) {
+      discoverySquads = await fetchDiscoverySquads(userOrgId, squadIds);
+    }
+    
     // For backward compatibility, find first hasCoach squad and first non-hasCoach squad
     const coachSquad = validSquads.find(data => data.squad?.hasCoach);
     const nonCoachSquad = validSquads.find(data => !data.squad?.hasCoach);
@@ -457,6 +473,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       // New multi-squad format
       squads: validSquads,
+      discoverySquads, // Available standalone squads to join (when user has no standalone squads)
       // Legacy format for backward compatibility
       premiumSquad: coachSquad?.squad || null,
       premiumMembers: coachSquad?.members || [],

@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import { UserPlus, RefreshCw, Eye, MessageCircle, Send } from 'lucide-react';
+import { UserPlus, RefreshCw, Eye, MessageCircle, Send, MoreVertical, Trash2 } from 'lucide-react';
 import { SquadManagerPopover } from './SquadManagerPopover';
+import { ProgramManagerPopover } from './ProgramManagerPopover';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { generateDemoUsers, getDemoSquads } from '@/lib/demo-data';
 import { SendDMModal, type DMRecipient } from '@/components/coach/SendDMModal';
@@ -53,6 +54,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { InviteClientsDialog } from '@/components/coach/InviteClientsDialog';
 
@@ -924,7 +931,7 @@ export function AdminUsersTab({
                 {showColumn('programs') && <TableHead className="font-albert">Programs</TableHead>}
                 {showColumn('invitedBy') && <TableHead className="font-albert">Invited By</TableHead>}
                 {showColumn('invitedAt') && <TableHead className="font-albert">Invited At</TableHead>}
-                {showColumn('created') && <TableHead className="font-albert">Created</TableHead>}
+                {showColumn('created') && <TableHead className="font-albert">Joined</TableHead>}
                 {showColumn('actions') && !readOnly && <TableHead className="font-albert text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
@@ -1028,9 +1035,9 @@ export function AdminUsersTab({
                             onValueChange={(newOrgRole) => handleOrgRoleChange(user.id, newOrgRole as OrgRole)}
                             disabled={isUpdatingOrgRole}
                           >
-                            <SelectTrigger className={`w-[140px] font-albert ${isUpdatingOrgRole ? 'opacity-50' : ''}`}>
+                            <SelectTrigger className={`w-[130px] font-albert border-none bg-transparent shadow-none h-auto p-0 ${isUpdatingOrgRole ? 'opacity-50' : ''}`}>
                               <SelectValue>
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getOrgRoleBadgeColor(userOrgRole)}`}>
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${getOrgRoleBadgeColor(userOrgRole)}`}>
                                   {formatOrgRoleName(userOrgRole)}
                                 </span>
                               </SelectValue>
@@ -1039,7 +1046,7 @@ export function AdminUsersTab({
                               {/* Super admins can assign all org roles including super_coach */}
                               {(isSuperAdmin(currentUserRole) ? getAssignableOrgRolesForAdmin() : getAssignableOrgRoles()).map((orgRole) => (
                                 <SelectItem key={orgRole} value={orgRole} className="font-albert">
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getOrgRoleBadgeColor(orgRole)}`}>
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${getOrgRoleBadgeColor(orgRole)}`}>
                                     {formatOrgRoleName(orgRole)}
                                   </span>
                                 </SelectItem>
@@ -1047,7 +1054,7 @@ export function AdminUsersTab({
                             </SelectContent>
                           </Select>
                         ) : (
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getOrgRoleBadgeColor(userOrgRole)}`}>
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium font-albert ${getOrgRoleBadgeColor(userOrgRole)}`}>
                             {formatOrgRoleName(userOrgRole)}
                           </span>
                         )}
@@ -1136,28 +1143,13 @@ export function AdminUsersTab({
                       </TableCell>
                     )}
                     
-                    {/* Programs - Shows enrolled programs with (1:1)/(Group) prefix */}
+                    {/* Programs - Shows enrolled programs with (1:1)/(Group) prefix in dropdown */}
                     {showColumn('programs') && (
-                      <TableCell>
-                        {user.programs && user.programs.length > 0 ? (
-                          <div className="flex flex-col gap-1 max-w-[200px]">
-                            {user.programs.map((program) => (
-                              <span
-                                key={program.programId}
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-albert truncate ${
-                                  program.programType === 'individual'
-                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                }`}
-                                title={`${program.programType === 'individual' ? '(1:1)' : '(Group)'} ${program.programName}`}
-                              >
-                                {program.programType === 'individual' ? '(1:1)' : '(Group)'} {program.programName}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-[#8c8c8c] dark:text-[#7d8190]">—</span>
-                        )}
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <ProgramManagerPopover
+                          programs={user.programs || []}
+                          disabled={showDemoData}
+                        />
                       </TableCell>
                     )}
                     
@@ -1218,16 +1210,29 @@ export function AdminUsersTab({
                               <span className="hidden sm:inline">Message</span>
                             </button>
                           )}
-                          {canDeleteThisUser && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setUserToDelete(user)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 font-albert"
-                            >
-                              Delete
-                            </Button>
-                          )}
+                          {/* Actions Dropdown */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b]"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[160px]">
+                              {canDeleteThisUser && (
+                                <DropdownMenuItem
+                                  onClick={() => setUserToDelete(user)}
+                                  className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <span className="font-albert">Delete</span>
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     )}

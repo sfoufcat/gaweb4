@@ -1960,7 +1960,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       }
                       setIsNewProgramModalOpen(true);
                     }}
-                    className="text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-medium flex items-center transition-colors duration-200"
+                    className="text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-medium flex items-center transition-colors duration-200 text-[15px] !px-2.5"
                   >
                     <Plus className="w-4 h-4 sm:mr-2" />
                     <span className="hidden sm:inline">New Program</span>
@@ -2346,7 +2346,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 mb-2">
                     {program.name}
                   </h3>
-                  <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 h-[2.6em] overflow-hidden mb-4">
+                  <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
                     {program.description || 'No description'}
                   </p>
 

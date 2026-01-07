@@ -204,7 +204,7 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
           </p>
           <button
             onClick={handleAddNewClients}
-            className="px-3 py-2 rounded-lg text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-albert font-medium transition-colors duration-200 inline-flex items-center gap-2"
+            className="px-2.5 py-1.5 rounded-lg text-[15px] text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-albert font-medium transition-colors duration-200 inline-flex items-center gap-2"
           >
             <UserPlus className="w-5 h-5" />
             Add New Clients
@@ -240,7 +240,7 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
           </button>
           <button
             onClick={handleAddNewClients}
-            className="p-2.5 sm:px-3 sm:py-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white text-sm rounded-lg font-albert font-medium transition-colors duration-200 flex items-center gap-0 sm:gap-2"
+            className="p-2 sm:px-2.5 sm:py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white text-[15px] rounded-lg font-albert font-medium transition-colors duration-200 flex items-center gap-0 sm:gap-2"
             title="Add New Clients"
           >
             <UserPlus className="w-4 h-4" />

@@ -50,7 +50,7 @@ const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'a
 
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
 // Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
-const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'squad', 'programs', 'invitedBy', 'invitedAt', 'created', 'actions'];
+const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'squad', 'programs', 'invitedBy', 'created', 'actions'];
 
 /**
  * Scheduling Tab Component

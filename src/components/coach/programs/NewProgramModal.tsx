@@ -646,7 +646,7 @@ function StructureStep({ data, onChange }: StructureStepProps) {
       </div>
 
       {/* Duration + Modules Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Duration Card */}
         <div className="p-4 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 border border-[#e1ddd8]/60 dark:border-[#262b35]/60 text-center">
           <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
@@ -703,13 +703,13 @@ function StructureStep({ data, onChange }: StructureStepProps) {
       </div>
 
       {/* Weeks per module + Weekends - tighter spacing */}
-      <div className="space-y-2">
+      <div className="space-y-1">
         <p className="text-center text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
           {Math.round(data.durationWeeks / data.numModules * 10) / 10} weeks per module
         </p>
 
         {/* Weekends Toggle */}
-      <div className="flex items-center justify-between p-4 rounded-2xl bg-[#faf8f6] dark:bg-[#1d222b]/50">
+      <div className="flex items-center justify-between p-4 rounded-2xl bg-transparent md:bg-[#faf8f6] dark:bg-transparent dark:md:bg-[#1d222b]/50">
         <div>
           <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             Include Weekends
