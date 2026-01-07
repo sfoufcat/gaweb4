@@ -2,482 +2,181 @@
   "master": {
     "tasks": [
       {
-        "id": "25",
-        "title": "Extend Task Schema with Source Tracking Fields",
-        "description": "Add new fields to existing Task model to track source information and visibility without breaking existing functionality",
-        "details": "Extend the existing Task interface/model with: sourceType ('client' | 'program_day' | 'program_week' | 'coach_manual'), sourceProgramId (nullable string), sourceProgramDayId (nullable string), sourceWeekId (nullable string), assignedByCoachId (nullable string), visibility ('public' | 'private'), clientLocked (boolean). Set appropriate defaults: sourceType='client', visibility='private' for client tasks, clientLocked=false. Ensure database migration handles existing records gracefully with defaults.",
-        "testStrategy": "Unit tests for schema validation, integration tests ensuring existing tasks work with new fields, verify defaults are applied correctly for existing records",
+        "id": "60",
+        "title": "Create Coaching Chat API Endpoint",
+        "description": "Implement a new API endpoint for creating and retrieving coaching chat channels",
+        "details": "Create `/api/chat/coaching/route.ts` that accepts a `clientId` parameter and returns existing coaching channel or creates a new one with format `coaching-{orgSuffix}-{userSuffix}`. The endpoint should check if a coaching channel already exists between the coach and client, and if not, create one with proper custom data properties: `isCoachingChat: true`, `organizationId`, `coachId`, `clientId`. Store the `chatChannelId` in the `clientCoachingData` collection for future reference.",
+        "testStrategy": "Unit tests for API endpoint with mock data, integration tests to verify channel creation/retrieval, test with existing and non-existing coaching channels",
         "priority": "high",
         "dependencies": [],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T17:17:07.315Z"
+        "updatedAt": "2026-01-07T19:15:25.799Z"
       },
       {
-        "id": "26",
-        "title": "Implement Program Day Calculation Logic",
-        "description": "Create utility function to calculate program day number from enrollment date and calendar date",
-        "details": "Implement calculateProgramDay(enrollmentStartDate: Date, targetDate: Date, includeWeekends: boolean): number function. Use existing enrollment progress calculation logic. Handle weekend skipping based on includeWeekends setting. Account for enrollment start date and map calendar dates to program day numbers correctly.",
-        "testStrategy": "Unit tests with various date scenarios, weekend skipping validation, edge cases around enrollment start dates, verify consistency with existing enrollment logic",
+        "id": "61",
+        "title": "Modify DM API to Check for Existing Coaching Channels",
+        "description": "Update the DM channel creation logic to prevent duplicate channels between coaches and clients",
+        "details": "Modify `/api/chat/dm/route.ts` to check if one user is an org admin (coach) and the other is a client. Before creating a new DM channel, check if a coaching channel already exists using the coaching API. If a coaching channel exists, return that channel instead of creating a new DM. If one user is a coach, always use/create the coaching channel format instead of the DM format.",
+        "testStrategy": "Test scenarios: coach-client DM creation (should use coaching channel), regular user DM creation (should use DM channel), existing coaching channel scenarios",
         "priority": "high",
         "dependencies": [
-          "25"
+          "60"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T17:17:07.317Z"
+        "updatedAt": "2026-01-07T19:16:29.093Z"
       },
       {
-        "id": "27",
-        "title": "Create Program Task Retrieval Function",
-        "description": "Build function to fetch appropriate program tasks for a given program day",
-        "details": "Implement getProgramTasksForDay(programId: string, programDay: number): Promise<Task[]>. Priority logic: day-level tasks override weekly tasks when present. For weekly tasks, apply distribution mode (repeat daily OR spread across week). Return tasks with proper source metadata (sourceType, sourceProgramId, etc.).",
-        "testStrategy": "Unit tests for day vs weekly task priority, weekly distribution modes, verify correct source metadata assignment, test with various program configurations",
+        "id": "62",
+        "title": "Update openOrCreateDirectChat Function",
+        "description": "Enhance the chat opening logic to handle coaching context appropriately",
+        "details": "Update `openOrCreateDirectChat()` function in `src/lib/chat.ts` to add an `isCoachingContext` parameter. When `isCoachingContext` is true, use the `/api/chat/coaching` endpoint instead of `/api/chat/dm`. This function should determine the context based on user roles and relationship (coach-client vs regular users).",
+        "testStrategy": "Test function with coaching context enabled/disabled, verify correct API endpoint usage, test with different user role combinations",
         "priority": "high",
         "dependencies": [
-          "26"
+          "60",
+          "61"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T17:17:07.318Z"
+        "updatedAt": "2026-01-07T19:17:04.198Z"
       },
       {
-        "id": "28",
-        "title": "Implement Core Sync Function",
-        "description": "Create the main syncProgramTasksToClientDay function with fill-empty and override modes",
-        "details": "Implement syncProgramTasksToClientDay with parameters: userId, programEnrollmentId, date, mode ('fill-empty' | 'override-program-sourced'). fill-empty mode: only add tasks to empty slots, never override existing. override-program-sourced mode: replace only program/coach sourced tasks, preserve client tasks. Respect max Daily Focus limit (3 or org-configured), send excess to backlog. Set visibility='public' for program tasks.",
-        "testStrategy": "Integration tests for both sync modes, verify client tasks never overwritten, test max task limit enforcement, validate proper source field assignment",
+        "id": "63",
+        "title": "Implement Dynamic Channel Name Display Logic",
+        "description": "Create logic to dynamically generate channel display names based on viewer role",
+        "details": "Remove static `name` property from coaching channels and implement dynamic naming logic. For coaches viewing coaching channels, display the client's full name. For clients in 1:1 programs, display 'Work with me 1:1' with coach image. For clients not in 1:1 programs, display the coach's name. Create a utility function that takes the channel, current user, and context to return the appropriate display name.",
+        "testStrategy": "Test display names for different user roles and program enrollment states, verify coach sees client names and clients see appropriate coach branding",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T19:18:36.459Z"
+      },
+      {
+        "id": "64",
+        "title": "Fix Channel Tab Filtering Logic",
+        "description": "Update the channel list UI to correctly categorize coaching channels into appropriate tabs",
+        "details": "Update `StreamChatComponents.tsx` to fix tab filtering logic for coaching channels. For coaches, all coaching channels should appear in the Direct tab. For clients enrolled in 1:1 programs, coaching channels should appear in the Main tab. For clients not enrolled in 1:1 programs but where the coach has messaged them, channels should appear in the Direct tab. Implement logic to check program enrollment status and user roles to determine correct tab placement.",
+        "testStrategy": "Test tab placement for coaches (all in Direct), clients with 1:1 enrollment (Main tab), clients without 1:1 enrollment (Direct tab), verify channels don't appear until coach initiates contact for non-enrolled clients",
         "priority": "high",
         "dependencies": [
-          "27"
+          "63"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T17:19:45.869Z"
+        "updatedAt": "2026-01-07T19:18:36.460Z"
       },
       {
-        "id": "29",
-        "title": "Add Client Lock Protection Logic",
-        "description": "Implement clientLocked field logic to prevent sync overwrites of user-modified tasks",
-        "details": "Add logic to set clientLocked=true when client edits or deletes program-sourced tasks. Update sync function to skip tasks where clientLocked=true. Implement in task update/delete endpoints. Ensure program tasks can still be synced if not client-locked.",
-        "testStrategy": "Unit tests for clientLocked flag setting, integration tests ensuring locked tasks are preserved during sync, verify unlock behavior when appropriate",
+        "id": "65",
+        "title": "Update Profile Message Icon Handler",
+        "description": "Modify profile page message icons to use coaching chat consistently",
+        "details": "Update `/app/profile/[userId]/page.tsx` to check if the current user is a coach viewing a client profile. If so, use the coaching chat endpoint instead of the regular DM endpoint. Check for existing `coachingChatChannelId` in the `clientCoachingData` collection and use the coaching context when opening chats. Ensure the message icon always opens the same coaching channel that appears in the channel list.",
+        "testStrategy": "Test message icon clicks from client profiles as coach, verify same channel opens as in channel list, test with existing and new coaching relationships",
         "priority": "medium",
         "dependencies": [
-          "28"
+          "62"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T17:19:45.870Z"
+        "updatedAt": "2026-01-07T19:20:49.122Z"
       },
       {
-        "id": "30",
-        "title": "Wire Sync Triggers to Coach Program Editor",
-        "description": "Add sync function calls to coach program save operations",
-        "details": "Add sync triggers: On Save Day template - sync today + 7 days for all active enrollments using fill-empty mode. On Save Week template - sync affected week days for all enrollments using fill-empty mode. On Save Day per-client override - immediate sync for that client using override-program-sourced mode. Include today if edited day corresponds to client's current day.",
-        "testStrategy": "Integration tests for each save scenario, verify correct sync mode usage, test multi-client template syncing, validate immediate per-client sync",
-        "priority": "high",
-        "dependencies": [
-          "29"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T17:24:45.611Z"
-      },
-      {
-        "id": "31",
-        "title": "Implement Task Visibility Toggle for Clients",
-        "description": "Ensure client task creation and editing supports public/private visibility toggle",
-        "details": "Verify/implement visibility toggle in client task create/edit UI and API endpoints. Default to 'private' for client-created tasks. Allow clients to change visibility between public/private. Update task forms and API validation to handle visibility field.",
-        "testStrategy": "UI tests for visibility toggle, API tests for visibility field validation, verify default behavior for new client tasks",
+        "id": "66",
+        "title": "Update Client Card Message Icons",
+        "description": "Ensure all message icons in coach client management areas use coaching channels",
+        "details": "Update message icons in `/app/coach/clients/` components and any client card components to use the coaching chat endpoint. Ensure all message icons throughout the coach interface (client lists, client cards, etc.) consistently open the same coaching channel. Update the `ChatSheet.tsx` component to use coaching channels when opened from client context.",
+        "testStrategy": "Test message icons from various coach interface locations (client list, client cards, chat sheet), verify all open the same coaching channel, test consistency across different entry points",
         "priority": "medium",
         "dependencies": [
-          "25"
+          "62"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T17:27:07.996Z"
+        "updatedAt": "2026-01-07T19:20:49.123Z"
       },
       {
-        "id": "32",
-        "title": "Create Coach Task Filtering API",
-        "description": "Implement API endpoints for coaches to view client tasks with proper visibility filtering",
-        "details": "Create/update coach API endpoints to return: all program/coach tasks + client tasks where visibility='public'. Filter out private client tasks. Include task source information and completion status. Ensure real-time updates for task status changes.",
-        "testStrategy": "API tests for visibility filtering, verify private tasks are excluded, test real-time status updates, validate source information inclusion",
+        "id": "67",
+        "title": "Add Coaching Channel Custom Properties",
+        "description": "Ensure all coaching channels have the required custom data properties for proper filtering and identification",
+        "details": "Update coaching channel creation to include all required custom data properties: `isCoachingChat: true`, `organizationId`, `coachId`, `clientId`, `created_by_id: coachId`. Ensure these properties are consistently set when creating new coaching channels and can be used for filtering and identification throughout the application.",
+        "testStrategy": "Verify custom properties are set on new coaching channels, test channel filtering using these properties, validate data integrity across channel operations",
         "priority": "medium",
         "dependencies": [
-          "31"
+          "60"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T17:29:50.734Z"
+        "updatedAt": "2026-01-07T19:20:49.123Z"
       },
       {
-        "id": "33",
-        "title": "Update Coach Program Client View",
-        "description": "Add Today's Tasks section to coach's program client view showing task completion status",
-        "details": "Add 'Today's Tasks' section in coach program client view. Display tasks with completion status, source indicators (program vs client-created), and real-time updates. Show task titles, completion checkboxes (read-only for coach), and source badges.",
-        "testStrategy": "UI tests for task display, verify completion status accuracy, test source indicator display, validate real-time updates",
+        "id": "68",
+        "title": "Implement Channel Visibility Rules",
+        "description": "Create logic to control when coaching channels are visible to clients based on enrollment and coach interaction",
+        "details": "Implement visibility rules where coaching chats only appear for clients if they are enrolled in an active 1:1 program (Main tab) or if the coach has initiated contact (Direct tab). For clients not in 1:1 programs, channels should be hidden by default and only appear after the coach sends the first message. Create functions to check program enrollment status and message history to determine visibility.",
+        "testStrategy": "Test channel visibility for clients with/without 1:1 enrollment, verify channels appear after coach initiates contact, test hiding channels for clients without coach interaction",
         "priority": "medium",
         "dependencies": [
-          "32"
+          "64",
+          "67"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T17:32:53.529Z"
+        "updatedAt": "2026-01-07T19:20:49.124Z"
       },
       {
-        "id": "34",
-        "title": "Enhance Client Details View for Coaches",
-        "description": "Update client details view to show comprehensive task status and source information",
-        "details": "Enhance existing client details view with task status section. Show daily task overview, completion rates, source breakdown (program vs client tasks). Include filtering options for task types and date ranges. Maintain existing functionality while adding task insights.",
-        "testStrategy": "UI tests for enhanced details view, verify task status accuracy, test filtering functionality, ensure existing features remain intact",
-        "priority": "medium",
-        "dependencies": [
-          "33"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T17:33:50.114Z"
-      },
-      {
-        "id": "35",
-        "title": "Implement Graceful Legacy Data Handling",
-        "description": "Ensure application handles both old and new task record formats without migration scripts",
-        "details": "Add null-safe handling for new fields in all read operations. Implement default value logic: sourceType='client' if missing, visibility='private' for existing client tasks, clientLocked=false if missing. Update all task queries and display logic to handle missing fields gracefully.",
-        "testStrategy": "Integration tests with mixed old/new task records, verify default value application, test all task display scenarios with legacy data",
-        "priority": "medium",
-        "dependencies": [
-          "25"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T17:34:24.717Z"
-      },
-      {
-        "id": "36",
-        "title": "Add Max Task Limit Enforcement",
-        "description": "Implement Daily Focus task limit enforcement with backlog overflow handling",
-        "details": "Implement max task limit checking (default 3 or org-configured). When sync would exceed limit, move excess tasks to backlog. Prioritize program tasks over client tasks when at limit. Add configuration for per-organization task limits. Handle limit changes gracefully.",
-        "testStrategy": "Unit tests for limit enforcement, test backlog overflow behavior, verify task prioritization logic, test org-specific limit configurations",
-        "priority": "medium",
-        "dependencies": [
-          "28"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T17:34:24.718Z"
-      },
-      {
-        "id": "37",
-        "title": "Create Sync Result Reporting System",
-        "description": "Implement comprehensive sync result tracking and error handling",
-        "details": "Create SyncResult interface with success/failure counts, error details, and affected task IDs. Add logging for sync operations. Implement retry logic for failed syncs. Create monitoring dashboard for sync health. Handle partial sync failures gracefully.",
-        "testStrategy": "Unit tests for result tracking, integration tests for error scenarios, verify logging functionality, test retry mechanisms",
+        "id": "69",
+        "title": "Create Migration Script for Existing Channels",
+        "description": "Develop a migration script to consolidate existing DM channels into coaching channels",
+        "details": "Create a migration script that identifies existing DM channels between coaches and clients, checks if corresponding coaching channels exist, and consolidates them. If both DM and coaching channels exist, migrate messages from DM to coaching channel (if Stream Chat API allows) and delete the DM channel. Update existing coaching channels to include missing custom data properties and remove hardcoded name properties.",
+        "testStrategy": "Test migration script with sample data, verify message preservation, test rollback procedures, validate data integrity after migration",
         "priority": "low",
         "dependencies": [
-          "36"
+          "67"
         ],
-        "status": "deferred",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T17:34:35.463Z"
+        "status": "pending",
+        "subtasks": []
       },
       {
-        "id": "38",
-        "title": "Add Real-time Task Status Updates",
-        "description": "Implement WebSocket or polling mechanism for real-time task completion status updates",
-        "details": "Implement real-time updates for task completion status between coach and client views. Use WebSocket connections or optimized polling. Update coach views immediately when client marks tasks complete. Handle connection failures and reconnection gracefully.",
-        "testStrategy": "Integration tests for real-time updates, test WebSocket connection handling, verify update propagation speed, test offline/reconnection scenarios",
-        "priority": "low",
+        "id": "70",
+        "title": "Handle Program Enrollment State Changes",
+        "description": "Implement logic to handle coaching channel visibility when clients enroll or unenroll from 1:1 programs",
+        "details": "Create event handlers for program enrollment changes that update coaching channel visibility and tab placement. When a client enrolls in a 1:1 program, move their coaching chat to the Main tab with 'Work with me 1:1' branding. When they unenroll, move the chat to the Direct tab and update the display name to show the coach's name. Preserve all chat history during these transitions.",
+        "testStrategy": "Test enrollment/unenrollment scenarios, verify channel moves between tabs correctly, test display name updates, ensure chat history is preserved",
+        "priority": "medium",
         "dependencies": [
-          "34"
+          "68"
         ],
-        "status": "deferred",
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T17:34:35.464Z"
+        "updatedAt": "2026-01-07T19:21:03.406Z"
       },
       {
-        "id": "39",
+        "id": "71",
         "title": "Comprehensive Integration Testing and Validation",
-        "description": "Execute end-to-end testing of complete two-way sync functionality",
-        "details": "Comprehensive testing of entire sync flow: coach edits → immediate client sync, client task visibility → coach views, completion status updates, edge cases with weekend skipping, multiple enrollment scenarios, concurrent edit handling, performance testing with large task volumes.",
-        "testStrategy": "End-to-end test scenarios covering all user stories, performance testing, concurrent user testing, edge case validation, regression testing for existing functionality",
+        "description": "Perform end-to-end testing to validate all coaching chat consolidation requirements",
+        "details": "Execute comprehensive testing covering all success criteria: verify message icons from all locations open the same coaching chat, validate correct tab placement for different user types and enrollment states, test channel naming consistency, ensure no duplicate channels are created, verify channels don't disappear when clicked, and validate unread counts work correctly. Test edge cases including multiple coaches, enrollment changes, and coach-initiated contact scenarios.",
+        "testStrategy": "End-to-end testing scenarios for coaches and clients, automated tests for channel creation/retrieval, manual testing of UI interactions, performance testing for channel loading, validation of all success criteria from the PRD",
         "priority": "high",
         "dependencies": [
-          "37",
-          "38"
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 40,
-        "title": "Extend Program Schema with Cohort Completion Threshold",
-        "description": "Add cohortCompletionThreshold field to Program interface and database schema to support configurable completion thresholds for group programs",
-        "details": "1. Update Program interface in types/index.ts to include optional cohortCompletionThreshold: number field\n2. Add database migration to add cohortCompletionThreshold column to programs table with default value 50\n3. Update program validation schema to ensure threshold is between 0-100\n4. Add TypeScript type guards for group programs with threshold validation\n\nImplementation:\n```typescript\ninterface Program {\n  // existing fields...\n  cohortCompletionThreshold?: number; // 0-100, default 50\n}\n\n// Validation\nconst validateThreshold = (threshold: number) => {\n  return threshold >= 0 && threshold <= 100;\n};\n```",
-        "testStrategy": "Unit tests for schema validation, integration tests for database operations, verify default value assignment for existing programs",
-        "priority": "high",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 41,
-        "title": "Create CohortTaskState Data Model and Collection",
-        "description": "Design and implement the CohortTaskState interface and Firestore collection to track per-member task completion at cohort level",
-        "details": "1. Create CohortTaskState interface in types/index.ts with all required fields\n2. Set up Firestore collection 'cohort_task_states' with proper indexing\n3. Create composite indexes: [cohortId, date], [cohortId, programDayIndex]\n4. Implement utility functions for CRUD operations\n5. Add validation for memberStates record structure\n\nImplementation:\n```typescript\ninterface CohortTaskState {\n  id: string;\n  cohortId: string;\n  programId: string;\n  programDayIndex: number;\n  taskTemplateId: string;\n  taskTitle: string;\n  date: string;\n  totalMembers: number;\n  completedCount: number;\n  completionRate: number;\n  isThresholdMet: boolean;\n  memberStates: Record<string, {\n    status: 'pending' | 'completed';\n    completedAt?: string;\n    taskId?: string;\n  }>;\n  createdAt: string;\n  updatedAt: string;\n}\n```",
-        "testStrategy": "Unit tests for interface validation, Firestore rules testing, index performance testing with sample data",
-        "priority": "high",
-        "dependencies": [
-          40
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 42,
-        "title": "Implement Program Completion Threshold Settings UI",
-        "description": "Add UI components to allow coaches to configure completion threshold for group programs in the program settings",
-        "details": "1. Add threshold input field to group program settings form\n2. Implement number input with validation (0-100 range)\n3. Add helper text: 'Task shows as completed when X% of members complete it'\n4. Show current threshold value and allow editing\n5. Update program save API to handle threshold updates\n6. Add visual feedback for threshold changes\n\nImplementation:\n```tsx\nconst ThresholdInput = ({ value, onChange }) => (\n  <div className=\"threshold-setting\">\n    <label>Completion Threshold (%)</label>\n    <input \n      type=\"number\" \n      min=\"0\" \n      max=\"100\" \n      value={value || 50}\n      onChange={(e) => onChange(parseInt(e.target.value))}\n    />\n    <span className=\"helper-text\">\n      Task shows as completed when {value || 50}% of members complete it\n    </span>\n  </div>\n);\n```",
-        "testStrategy": "Component testing with various threshold values, form validation testing, API integration testing for save operations",
-        "priority": "medium",
-        "dependencies": [
-          40
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 43,
-        "title": "Create Cohort Task State Management Utilities",
-        "description": "Implement utility functions for creating, updating, and querying CohortTaskState documents with proper error handling",
-        "details": "1. Create createCohortTaskState function for initial state creation\n2. Implement updateMemberTaskState for individual completion updates\n3. Add recalculateAggregates function for completion metrics\n4. Create getCohortTaskStates query function with filtering\n5. Add batch operations for multi-member updates\n6. Implement proper error handling and logging\n\nImplementation:\n```typescript\nconst createCohortTaskState = async (params: {\n  cohortId: string;\n  programId: string;\n  taskTemplateId: string;\n  memberIds: string[];\n}) => {\n  const memberStates = memberIds.reduce((acc, id) => {\n    acc[id] = { status: 'pending' };\n    return acc;\n  }, {});\n  \n  return await db.collection('cohort_task_states').add({\n    ...params,\n    totalMembers: memberIds.length,\n    completedCount: 0,\n    completionRate: 0,\n    isThresholdMet: false,\n    memberStates,\n    createdAt: new Date().toISOString(),\n    updatedAt: new Date().toISOString()\n  });\n};\n```",
-        "testStrategy": "Unit tests for each utility function, integration tests with Firestore, error handling verification, performance testing with large member sets",
-        "priority": "high",
-        "dependencies": [
-          41
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 44,
-        "title": "Implement Core Cohort Task Sync Function",
-        "description": "Create the main syncProgramTasksToCohort function that pushes program tasks to all active cohort members",
-        "details": "1. Implement syncProgramTasksToCohort with specified signature\n2. Get all active enrollments for the cohort from database\n3. Calculate program day for each member based on cohort start date\n4. Call existing syncProgramTasksToClientDay for each member\n5. Create/update CohortTaskState documents for synced tasks\n6. Handle max Daily Focus cap by moving excess to backlog\n7. Return comprehensive sync results with error handling\n\nImplementation:\n```typescript\nasync function syncProgramTasksToCohort(params: {\n  programId: string;\n  cohortId: string;\n  date: Date;\n  mode: 'fill-empty' | 'override-program-sourced';\n}): Promise<CohortSyncResult> {\n  const enrollments = await getActiveCohortEnrollments(params.cohortId);\n  const results = [];\n  \n  for (const enrollment of enrollments) {\n    const programDay = calculateProgramDay(enrollment.startDate, params.date);\n    const syncResult = await syncProgramTasksToClientDay({\n      userId: enrollment.userId,\n      programId: params.programId,\n      programDay,\n      date: params.date,\n      mode: params.mode\n    });\n    results.push(syncResult);\n  }\n  \n  await updateCohortTaskStates(params, results);\n  return aggregateResults(results);\n}\n```",
-        "testStrategy": "Integration tests with mock cohort data, test different program day calculations, verify task distribution respects Daily Focus limits, error handling for failed syncs",
-        "priority": "high",
-        "dependencies": [
-          43
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 45,
-        "title": "Add Cohort Sync Triggers to Program Editor",
-        "description": "Wire the sync function to coach program editor save actions for automatic task distribution to cohort members",
-        "details": "1. Hook into Save Day template action for group programs\n2. Hook into Save Week template action for group programs\n3. Add cohort-specific override sync for targeted updates\n4. Implement sync horizon logic (today + 7 days configurable)\n5. Add background processing queue for large cohorts (>50 members)\n6. Add debouncing for rapid coach edits (2s idle timeout)\n7. Provide user feedback during sync operations\n\nImplementation:\n```typescript\nconst handleProgramSave = async (programId: string, editType: 'day' | 'week' | 'cohort-override') => {\n  const program = await getProgram(programId);\n  if (program.type !== 'group') return;\n  \n  const cohorts = await getActiveCohorts(programId);\n  const syncPromises = cohorts.map(cohort => {\n    if (cohort.memberCount > 50) {\n      return queueBackgroundSync(cohort.id, programId);\n    }\n    return syncProgramTasksToCohort({\n      programId,\n      cohortId: cohort.id,\n      date: new Date(),\n      mode: 'override-program-sourced'\n    });\n  });\n  \n  await Promise.allSettled(syncPromises);\n};\n```",
-        "testStrategy": "Test sync triggers on various editor actions, verify background processing for large cohorts, test debouncing behavior, validate sync horizon logic",
-        "priority": "high",
-        "dependencies": [
-          44
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 46,
-        "title": "Implement Task Completion to Cohort State Update Hook",
-        "description": "Create system to update cohort-level state when individual members complete program tasks",
-        "details": "1. Hook into existing task completion API (PATCH /api/tasks/[id])\n2. Check if completed task has sourceType='program_day' or 'program_week'\n3. Find corresponding CohortTaskState document\n4. Update memberStates[userId] to 'completed' with timestamp\n5. Recalculate completedCount, completionRate, and isThresholdMet\n6. Handle task uncomplete by reversing the update\n7. Add proper error handling and logging\n\nImplementation:\n```typescript\nconst handleTaskCompletion = async (taskId: string, userId: string, completed: boolean) => {\n  const task = await getTask(taskId);\n  if (!task.sourceType?.startsWith('program_')) return;\n  \n  const cohortState = await findCohortTaskState({\n    taskTemplateId: task.sourceId,\n    date: task.date\n  });\n  \n  if (cohortState) {\n    cohortState.memberStates[userId] = {\n      status: completed ? 'completed' : 'pending',\n      completedAt: completed ? new Date().toISOString() : undefined,\n      taskId\n    };\n    \n    await recalculateAggregates(cohortState);\n    await updateCohortTaskState(cohortState);\n  }\n};\n```",
-        "testStrategy": "Test completion and uncomplete scenarios, verify aggregate calculations, test with various threshold values, validate performance with large cohorts",
-        "priority": "high",
-        "dependencies": [
-          43
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 47,
-        "title": "Create Coach Cohort Tasks API Endpoint",
-        "description": "Implement REST API endpoint for coaches to retrieve cohort-level task completion data with member breakdown",
-        "details": "1. Create GET /api/coach/cohort-tasks/[cohortId] endpoint\n2. Support date query parameter for historical views\n3. Fetch CohortTaskState documents for specified cohort and date\n4. Include member breakdown with user profile information\n5. Calculate overall stats (total tasks, tasks at threshold, completion rate)\n6. Add proper authentication and authorization checks\n7. Implement caching for frequently accessed data\n\nImplementation:\n```typescript\nexport async function GET(request: Request, { params }: { params: { cohortId: string } }) {\n  const { searchParams } = new URL(request.url);\n  const date = searchParams.get('date') || new Date().toISOString().split('T')[0];\n  \n  const cohortTasks = await getCohortTaskStates(params.cohortId, date);\n  const memberProfiles = await getUserProfiles(cohortTasks.flatMap(t => Object.keys(t.memberStates)));\n  \n  const response: CohortTasksResponse = {\n    cohortId: params.cohortId,\n    date,\n    threshold: await getCohortThreshold(params.cohortId),\n    tasks: cohortTasks.map(task => ({\n      ...task,\n      memberBreakdown: Object.entries(task.memberStates).map(([userId, state]) => ({\n        ...memberProfiles[userId],\n        ...state\n      }))\n    })),\n    stats: calculateOverallStats(cohortTasks)\n  };\n  \n  return Response.json(response);\n}\n```",
-        "testStrategy": "API endpoint testing with various date ranges, authentication testing, performance testing with large cohorts, data accuracy validation",
-        "priority": "medium",
-        "dependencies": [
-          46
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 48,
-        "title": "Build CohortTasksPanel UI Component",
-        "description": "Create React component to display cohort task completion with progress visualization and member breakdown",
-        "details": "1. Create CohortTasksPanel component with task list display\n2. Implement progress bars showing completion percentages\n3. Add color coding: green (threshold met), yellow (close), gray (low)\n4. Create expandable member list per task with completion status\n5. Add checkmark/pending icons for individual members\n6. Implement real-time updates using SWR or similar\n7. Add loading states and error handling\n\nImplementation:\n```tsx\nconst CohortTasksPanel = ({ cohortId, date }: Props) => {\n  const { data, error, isLoading } = useSWR(\n    `/api/coach/cohort-tasks/${cohortId}?date=${date}`,\n    fetcher,\n    { refreshInterval: 30000 }\n  );\n  \n  return (\n    <div className=\"cohort-tasks-panel\">\n      {data?.tasks.map(task => (\n        <TaskRow key={task.taskTemplateId}>\n          <TaskTitle>{task.title}</TaskTitle>\n          <ProgressBar \n            completion={task.completionRate}\n            threshold={data.threshold}\n            isThresholdMet={task.isThresholdMet}\n          />\n          <MemberBreakdown members={task.memberBreakdown} />\n        </TaskRow>\n      ))}\n    </div>\n  );\n};\n```",
-        "testStrategy": "Component testing with various completion states, visual regression testing, accessibility testing, responsive design testing",
-        "priority": "medium",
-        "dependencies": [
-          47
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 49,
-        "title": "Integrate CohortTasksPanel into Coach Dashboard",
-        "description": "Add the cohort tasks panel to existing coach dashboard and cohort management views",
-        "details": "1. Identify appropriate location in coach dashboard layout\n2. Add CohortTasksPanel to cohort management view\n3. Implement date picker for historical task viewing\n4. Add navigation between different cohorts\n5. Ensure responsive design works with existing layout\n6. Add proper loading states and error boundaries\n7. Update navigation and routing as needed\n\nImplementation:\n```tsx\nconst CohortManagementView = ({ cohortId }: Props) => {\n  const [selectedDate, setSelectedDate] = useState(new Date());\n  \n  return (\n    <div className=\"cohort-management\">\n      <CohortHeader cohortId={cohortId} />\n      <DatePicker \n        value={selectedDate}\n        onChange={setSelectedDate}\n        maxDate={new Date()}\n      />\n      <CohortTasksPanel \n        cohortId={cohortId}\n        date={selectedDate.toISOString().split('T')[0]}\n      />\n      <CohortMembersPanel cohortId={cohortId} />\n    </div>\n  );\n};\n```",
-        "testStrategy": "Integration testing with existing dashboard, navigation testing, responsive design validation, user experience testing",
-        "priority": "medium",
-        "dependencies": [
-          48
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 50,
-        "title": "Implement Cohort Day Calculation Logic",
-        "description": "Create utility functions to calculate program day for cohort members based on cohort start date and weekend settings",
-        "details": "1. Implement calculateCohortProgramDay function\n2. Use cohort.startDate as base for all members (no individual start dates)\n3. Respect program.includeWeekends setting for day calculation\n4. Handle timezone considerations for date calculations\n5. Add validation for edge cases (negative days, future dates)\n6. Create helper functions for weekend skipping logic\n\nImplementation:\n```typescript\nconst calculateCohortProgramDay = (cohortStartDate: Date, currentDate: Date, includeWeekends: boolean): number => {\n  let programDay = 1;\n  let currentDay = new Date(cohortStartDate);\n  \n  while (currentDay < currentDate) {\n    if (includeWeekends || !isWeekend(currentDay)) {\n      programDay++;\n    }\n    currentDay.setDate(currentDay.getDate() + 1);\n  }\n  \n  return programDay;\n};\n\nconst isWeekend = (date: Date): boolean => {\n  const day = date.getDay();\n  return day === 0 || day === 6; // Sunday or Saturday\n};\n```",
-        "testStrategy": "Unit tests for various date scenarios, weekend skipping validation, timezone handling tests, edge case testing",
-        "priority": "medium",
-        "dependencies": [
-          41
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 51,
-        "title": "Handle Member Addition/Removal in Active Cohorts",
-        "description": "Implement logic to handle cohort membership changes and update task states accordingly",
-        "details": "1. Create addMemberToCohort function for new member onboarding\n2. Implement removeMemberFromCohort function with state preservation\n3. Update CohortTaskState documents when membership changes\n4. Add new members to current day's tasks (no historical backfill)\n5. Mark removed members in memberStates but preserve historical data\n6. Recalculate aggregates after membership changes\n7. Handle edge cases like re-adding previously removed members\n\nImplementation:\n```typescript\nconst addMemberToCohort = async (cohortId: string, userId: string) => {\n  const currentDate = new Date().toISOString().split('T')[0];\n  const cohortStates = await getCohortTaskStates(cohortId, currentDate);\n  \n  for (const state of cohortStates) {\n    state.memberStates[userId] = { status: 'pending' };\n    state.totalMembers += 1;\n    await recalculateAggregates(state);\n    await updateCohortTaskState(state);\n  }\n  \n  // Sync current day's tasks to new member\n  await syncProgramTasksToNewMember(cohortId, userId);\n};\n\nconst removeMemberFromCohort = async (cohortId: string, userId: string) => {\n  const cohortStates = await getAllCohortTaskStates(cohortId);\n  \n  for (const state of cohortStates) {\n    if (state.memberStates[userId]) {\n      state.memberStates[userId].removed = true;\n      state.totalMembers -= 1;\n      await recalculateAggregates(state);\n      await updateCohortTaskState(state);\n    }\n  }\n};\n```",
-        "testStrategy": "Test member addition with current tasks sync, test removal with data preservation, validate aggregate recalculations, test re-addition scenarios",
-        "priority": "medium",
-        "dependencies": [
-          43,
-          50
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 52,
-        "title": "Implement Background Processing for Large Cohorts",
-        "description": "Create queue system and background workers to handle task sync for cohorts with many members",
-        "details": "1. Set up job queue system (Redis/Bull or similar)\n2. Create background worker for cohort sync operations\n3. Implement job queuing for cohorts >50 members\n4. Add job status tracking and progress reporting\n5. Implement retry logic for failed sync operations\n6. Add monitoring and alerting for queue health\n7. Create admin interface for queue management\n\nImplementation:\n```typescript\nimport Queue from 'bull';\n\nconst cohortSyncQueue = new Queue('cohort sync', process.env.REDIS_URL);\n\ncohortSyncQueue.process('sync-large-cohort', async (job) => {\n  const { cohortId, programId, date, mode } = job.data;\n  \n  try {\n    const result = await syncProgramTasksToCohort({\n      cohortId,\n      programId,\n      date: new Date(date),\n      mode\n    });\n    \n    job.progress(100);\n    return result;\n  } catch (error) {\n    job.log(`Sync failed: ${error.message}`);\n    throw error;\n  }\n});\n\nconst queueLargeCohortSync = async (params: SyncParams) => {\n  const job = await cohortSyncQueue.add('sync-large-cohort', params, {\n    attempts: 3,\n    backoff: 'exponential',\n    delay: 2000\n  });\n  \n  return job.id;\n};\n```",
-        "testStrategy": "Load testing with large cohorts, queue reliability testing, job failure and retry testing, monitoring system validation",
-        "priority": "medium",
-        "dependencies": [
-          44
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 53,
-        "title": "Add Cohort Task Completion Analytics",
-        "description": "Implement analytics tracking and reporting for cohort task completion patterns and trends",
-        "details": "1. Create analytics collection for cohort completion events\n2. Track daily cohort completion rates and trends\n3. Implement cohort performance comparison metrics\n4. Add member engagement scoring based on task completion\n5. Create weekly/monthly cohort reports\n6. Add data export functionality for coaches\n7. Implement visualization components for trends\n\nImplementation:\n```typescript\ninterface CohortAnalytics {\n  cohortId: string;\n  date: string;\n  totalTasks: number;\n  completedTasks: number;\n  averageCompletionRate: number;\n  memberEngagementScores: Record<string, number>;\n  trendsData: {\n    weeklyAverage: number;\n    monthlyAverage: number;\n    improvementRate: number;\n  };\n}\n\nconst trackCohortCompletion = async (cohortId: string, date: string) => {\n  const cohortStates = await getCohortTaskStates(cohortId, date);\n  const analytics = calculateCohortAnalytics(cohortStates);\n  \n  await saveCohortAnalytics(analytics);\n  await updateTrendingData(cohortId, analytics);\n};\n```",
-        "testStrategy": "Analytics accuracy testing, performance testing with historical data, visualization component testing, data export validation",
-        "priority": "low",
-        "dependencies": [
-          46
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 54,
-        "title": "Create Cohort Contribution Grid Component",
-        "description": "Build GitHub-style heatmap visualization showing cohort completion history over time",
-        "details": "1. Create CohortContributionGrid component similar to squad version\n2. Calculate daily cohort alignment as average completion rate\n3. Implement GitHub-style heatmap with color coding\n4. Add tooltip showing date and completion details\n5. Support different time ranges (3 months, 6 months, 1 year)\n6. Add legend explaining color coding\n7. Make component responsive for different screen sizes\n\nImplementation:\n```tsx\nconst CohortContributionGrid = ({ cohortId, timeRange = '3months' }: Props) => {\n  const { data } = useSWR(`/api/cohort-analytics/${cohortId}?range=${timeRange}`);\n  \n  const getColorIntensity = (completionRate: number) => {\n    if (completionRate >= 80) return 'high';\n    if (completionRate >= 60) return 'medium';\n    if (completionRate >= 40) return 'low';\n    return 'none';\n  };\n  \n  return (\n    <div className=\"cohort-contribution-grid\">\n      <div className=\"grid-container\">\n        {data?.dailyStats.map(day => (\n          <div \n            key={day.date}\n            className={`grid-cell ${getColorIntensity(day.completionRate)}`}\n            title={`${day.date}: ${day.completionRate}% completion`}\n          />\n        ))}\n      </div>\n      <GridLegend />\n    </div>\n  );\n};\n```",
-        "testStrategy": "Visual testing with various completion patterns, tooltip functionality testing, responsive design validation, performance testing with large datasets",
-        "priority": "low",
-        "dependencies": [
-          53
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 55,
-        "title": "Implement Data Migration for Existing Programs",
-        "description": "Create migration scripts to add default completion thresholds to existing group programs",
-        "details": "1. Create database migration script for existing group programs\n2. Set cohortCompletionThreshold=50 as default for all group programs\n3. Add validation to ensure no programs are missed\n4. Create rollback script in case of issues\n5. Add logging and progress tracking for migration\n6. Test migration on staging environment first\n7. Create post-migration validation script\n\nImplementation:\n```typescript\nconst migrateExistingPrograms = async () => {\n  const groupPrograms = await db.collection('programs')\n    .where('type', '==', 'group')\n    .where('cohortCompletionThreshold', '==', null)\n    .get();\n  \n  const batch = db.batch();\n  let count = 0;\n  \n  groupPrograms.docs.forEach(doc => {\n    batch.update(doc.ref, {\n      cohortCompletionThreshold: 50,\n      updatedAt: new Date().toISOString()\n    });\n    count++;\n  });\n  \n  await batch.commit();\n  console.log(`Migrated ${count} group programs`);\n  \n  // Validation\n  const remaining = await db.collection('programs')\n    .where('type', '==', 'group')\n    .where('cohortCompletionThreshold', '==', null)\n    .get();\n    \n  if (remaining.size > 0) {\n    throw new Error(`Migration incomplete: ${remaining.size} programs remaining`);\n  }\n};\n```",
-        "testStrategy": "Migration testing on staging data, rollback testing, validation script testing, performance testing with large datasets",
-        "priority": "medium",
-        "dependencies": [
-          40
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 56,
-        "title": "Add Comprehensive Error Handling and Logging",
-        "description": "Implement robust error handling, logging, and monitoring across all cohort sync operations",
-        "details": "1. Add structured logging to all sync operations\n2. Implement error categorization (network, validation, business logic)\n3. Add retry mechanisms for transient failures\n4. Create error reporting dashboard for coaches\n5. Add health checks for sync system components\n6. Implement alerting for critical failures\n7. Add performance monitoring and metrics collection\n\nImplementation:\n```typescript\nconst logger = createLogger({\n  service: 'cohort-sync',\n  level: process.env.LOG_LEVEL || 'info'\n});\n\nconst withErrorHandling = async <T>(operation: () => Promise<T>, context: string): Promise<T> => {\n  try {\n    logger.info(`Starting ${context}`);\n    const result = await operation();\n    logger.info(`Completed ${context}`, { success: true });\n    return result;\n  } catch (error) {\n    logger.error(`Failed ${context}`, {\n      error: error.message,\n      stack: error.stack,\n      context\n    });\n    \n    if (isRetryableError(error)) {\n      logger.info(`Retrying ${context}`);\n      await delay(1000);\n      return withErrorHandling(operation, `${context} (retry)`);\n    }\n    \n    throw error;\n  }\n};\n\nconst syncWithErrorHandling = (params: SyncParams) => \n  withErrorHandling(\n    () => syncProgramTasksToCohort(params),\n    `cohort-sync-${params.cohortId}`\n  );\n```",
-        "testStrategy": "Error simulation testing, logging verification, retry mechanism testing, monitoring dashboard validation, alert system testing",
-        "priority": "medium",
-        "dependencies": [
-          44,
-          46
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 57,
-        "title": "Implement Performance Optimizations",
-        "description": "Add caching, batch operations, and other performance optimizations for cohort sync operations",
-        "details": "1. Implement Redis caching for frequently accessed cohort data\n2. Add batch operations for multiple member updates\n3. Optimize database queries with proper indexing\n4. Implement connection pooling for database operations\n5. Add request debouncing for rapid coach edits\n6. Create efficient pagination for large member lists\n7. Add performance monitoring and alerting\n\nImplementation:\n```typescript\nconst cache = new Redis(process.env.REDIS_URL);\n\nconst getCachedCohortMembers = async (cohortId: string): Promise<string[]> => {\n  const cacheKey = `cohort:${cohortId}:members`;\n  const cached = await cache.get(cacheKey);\n  \n  if (cached) {\n    return JSON.parse(cached);\n  }\n  \n  const members = await db.collection('cohort_enrollments')\n    .where('cohortId', '==', cohortId)\n    .where('status', '==', 'active')\n    .select('userId')\n    .get();\n    \n  const memberIds = members.docs.map(doc => doc.data().userId);\n  await cache.setex(cacheKey, 300, JSON.stringify(memberIds)); // 5 min cache\n  \n  return memberIds;\n};\n\nconst batchUpdateMemberStates = async (updates: MemberStateUpdate[]) => {\n  const batch = db.batch();\n  \n  updates.forEach(update => {\n    const docRef = db.collection('cohort_task_states').doc(update.stateId);\n    batch.update(docRef, {\n      [`memberStates.${update.userId}`]: update.state,\n      updatedAt: new Date().toISOString()\n    });\n  });\n  \n  await batch.commit();\n};\n```",
-        "testStrategy": "Performance benchmarking, cache hit rate testing, batch operation validation, load testing with concurrent operations",
-        "priority": "medium",
-        "dependencies": [
-          44,
-          46
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 58,
-        "title": "Create Comprehensive Test Suite",
-        "description": "Implement thorough testing coverage for all cohort sync functionality including unit, integration, and end-to-end tests",
-        "details": "1. Create unit tests for all utility functions and components\n2. Implement integration tests for API endpoints\n3. Add end-to-end tests for complete sync workflows\n4. Create performance tests for large cohort scenarios\n5. Add boundary testing for threshold calculations\n6. Implement mock data generators for testing\n7. Add visual regression tests for UI components\n\nImplementation:\n```typescript\n// Unit test example\ndescribe('CohortTaskState utilities', () => {\n  test('recalculateAggregates updates completion rate correctly', () => {\n    const state = createMockCohortTaskState({\n      totalMembers: 10,\n      memberStates: {\n        'user1': { status: 'completed' },\n        'user2': { status: 'completed' },\n        'user3': { status: 'pending' }\n        // ... 7 more pending\n      }\n    });\n    \n    recalculateAggregates(state);\n    \n    expect(state.completedCount).toBe(2);\n    expect(state.completionRate).toBe(20);\n    expect(state.isThresholdMet).toBe(false); // assuming 50% threshold\n  });\n});\n\n// Integration test example\ndescribe('Cohort sync API', () => {\n  test('syncs tasks to all cohort members', async () => {\n    const cohort = await createTestCohort(5); // 5 members\n    const program = await createTestProgram();\n    \n    const result = await syncProgramTasksToCohort({\n      programId: program.id,\n      cohortId: cohort.id,\n      date: new Date(),\n      mode: 'fill-empty'\n    });\n    \n    expect(result.membersProcessed).toBe(5);\n    expect(result.tasksCreated).toBeGreaterThan(0);\n    expect(result.errors).toHaveLength(0);\n  });\n});\n```",
-        "testStrategy": "Automated test execution in CI/CD, test coverage reporting, performance regression testing, cross-browser testing for UI components",
-        "priority": "medium",
-        "dependencies": [
-          44,
-          46,
-          48
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 59,
-        "title": "Create Documentation and Coach Training Materials",
-        "description": "Develop comprehensive documentation and training materials for coaches to understand and use the cohort task sync features",
-        "details": "1. Create user guide for cohort task management features\n2. Document completion threshold configuration and best practices\n3. Create video tutorials for coach dashboard usage\n4. Add tooltips and help text throughout the UI\n5. Create troubleshooting guide for common issues\n6. Document API endpoints for advanced users\n7. Create onboarding checklist for new cohort features\n\nImplementation:\n```markdown\n# Cohort Task Management Guide\n\n## Setting Up Completion Thresholds\n1. Navigate to your group program settings\n2. Find the \"Completion Threshold\" section\n3. Set the percentage (0-100%) that determines when a task is considered \"completed\" for the cohort\n4. Default is 50% - adjust based on your coaching style and cohort needs\n\n## Understanding the Cohort Tasks Panel\n- Green progress bars: Task has met the completion threshold\n- Yellow progress bars: Task is close to threshold (within 10%)\n- Gray progress bars: Task needs more member participation\n\n## Best Practices\n- Set realistic thresholds based on cohort engagement levels\n- Monitor completion rates to identify struggling members\n- Use member breakdown to provide targeted support\n```",
-        "testStrategy": "Documentation accuracy review, user testing with actual coaches, feedback collection and iteration, accessibility testing for help content",
-        "priority": "low",
-        "dependencies": [
-          49,
-          54
+          "65",
+          "66",
+          "68",
+          "70"
         ],
         "status": "pending",
         "subtasks": []
       }
     ],
     "metadata": {
-      "created": "2026-01-07T17:52:52.210Z",
-      "updated": "2026-01-07T17:52:52.210Z",
-      "description": "Tasks for master context"
+      "version": "1.0.0",
+      "lastModified": "2026-01-07T19:21:03.407Z",
+      "taskCount": 12,
+      "completedCount": 10,
+      "tags": [
+        "master"
+      ]
     }
   }
 }

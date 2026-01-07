@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Mic, MicOff } from 'lucide-react';
 import type { ReframeStepProps } from './types';
 
@@ -55,20 +55,21 @@ export function ReframeStep({ config, onComplete }: ReframeStepProps) {
   const [thought, setThought] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(true);
+  const [speechSupported, setSpeechSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+
+  // Check speech recognition support on mount
+  useEffect(() => {
+    const supported =
+      typeof window !== 'undefined' &&
+      ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
+    setSpeechSupported(supported);
+  }, []);
 
   // Initialize speech recognition
   const startListening = () => {
-    if (typeof window === 'undefined') return;
-
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      setSpeechSupported(false);
-      return;
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SpeechRecognitionConstructor = (window as Record<string, unknown>).webkitSpeechRecognition || (window as Record<string, unknown>).SpeechRecognition;
+    const SpeechRecognitionConstructor = (window as unknown as Record<string, unknown>).webkitSpeechRecognition || (window as unknown as Record<string, unknown>).SpeechRecognition;
     const recognition = new (SpeechRecognitionConstructor as new () => SpeechRecognitionInstance)();
 
     recognition.continuous = true;

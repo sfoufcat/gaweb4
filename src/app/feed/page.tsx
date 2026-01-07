@@ -96,7 +96,7 @@ export default function FeedPage() {
   const [selectedPostForShare, setSelectedPostForShare] = useState<string | null>(null);
   const [selectedPostForReport, setSelectedPostForReport] = useState<string | null>(null);
   const [selectedPostForView, setSelectedPostForView] = useState<string | null>(null);
-  const [selectedStoryStartIndex, setSelectedStoryStartIndex] = useState<number | null>(null);
+  const [selectedStoryUserId, setSelectedStoryUserId] = useState<string | null>(null);
   
   // Handler for creating post - shows signup modal in demo mode
   const handleCreatePost = useCallback(() => {
@@ -200,7 +200,7 @@ export default function FeedPage() {
 
   // Handle story viewer close - also refetch stories to get fresh data
   const handleStoryClose = useCallback(() => {
-    setSelectedStoryStartIndex(null);
+    setSelectedStoryUserId(null);
     // Refetch stories to update cache after viewing
     refetchStories();
   }, [refetchStories]);
@@ -258,32 +258,9 @@ export default function FeedPage() {
               isLoading={isLoadingSquad || isLoadingStories}
               onCreateStory={() => setShowCreateStoryModal(true)}
               onViewStory={(userId) => {
-                // Find the index in the full queue (current user is at index 0)
-                let index = fullStoryQueue.findIndex(u => u.id === userId);
-                
-                // Fallback: if user not found but is current user, use index 0
-                if (index === -1 && userId === user?.id) {
-                  index = 0;
-                }
-                
-                // Fallback: if user still not found, try finding in storyUsers
-                if (index === -1) {
-                  const storyUserIndex = storyUsers.findIndex(u => u.id === userId);
-                  if (storyUserIndex !== -1) {
-                    // +1 for current user at position 0 (if they have a story)
-                    index = user && currentUserStoryStatus.hasStory 
-                      ? storyUserIndex + 1 
-                      : storyUserIndex;
-                  }
-                }
-                
-                // Final fallback: always open something rather than do nothing
-                // This ensures clicks always work even if data is stale
-                if (index === -1) {
-                  index = 0;
-                }
-                
-                setSelectedStoryStartIndex(index);
+                // Store the userId directly - StoryPlayerWrapper will find the index
+                // This is more stable than storing an index since the queue can change
+                setSelectedStoryUserId(userId);
               }}
             />
           </div>
@@ -520,14 +497,23 @@ export default function FeedPage() {
       )}
 
       {/* Story viewer with prefetching and auto-advance */}
-      {selectedStoryStartIndex !== null && (
-        <StoryPlayerWrapper
-          storyUsers={fullStoryQueue}
-          startIndex={selectedStoryStartIndex}
-          onClose={handleStoryClose}
-          currentUser={currentUserInfo}
-        />
-      )}
+      {selectedStoryUserId !== null && (() => {
+        // Calculate the index dynamically from the userId
+        // This ensures we always find the user even if the queue changed
+        let startIndex = fullStoryQueue.findIndex(u => u.id === selectedStoryUserId);
+        if (startIndex === -1) {
+          // Fallback: if user not found, default to 0
+          startIndex = 0;
+        }
+        return (
+          <StoryPlayerWrapper
+            storyUsers={fullStoryQueue}
+            startIndex={startIndex}
+            onClose={handleStoryClose}
+            currentUser={currentUserInfo}
+          />
+        );
+      })()}
     </div>
   );
 }

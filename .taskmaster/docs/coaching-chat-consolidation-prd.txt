@@ -1,0 +1,173 @@
+# Coaching Chat Consolidation PRD
+
+## Problem Statement
+
+The current chat system creates multiple separate channels between a coach and client, causing confusion and poor UX:
+
+1. **Duplicate Channels**: When a coach clicks the message icon from a client's profile, a new DM channel (`dm-xxx-xxx`) is created instead of using the existing coaching channel (`coaching-xxx-xxx`)
+2. **Wrong Tab Placement**: Client messages appear in the "Main" tab for coaches when they should appear in "Direct"
+3. **Inconsistent Naming**: Channels show wrong names (e.g., showing organization name instead of client name)
+4. **Disappearing Channels**: When clicked, some channels disappear from the chat list
+5. **Message Icon Inconsistency**: Message icons on client profiles open a different chat than the coaching channel
+
+## Current Architecture
+
+### Channel Types
+- **Coaching Channel** (`coaching-{orgSuffix}-{userSuffix}`): Created during individual program enrollment via `/api/programs/enroll/` or `/api/user/sync-coaching-channel`
+- **DM Channel** (`dm-{shortId1}-{shortId2}`): Created via `/api/chat/dm` when clicking message icon from profile
+
+### Key Files
+- `src/lib/chat.ts` - `openOrCreateDirectChat()` function
+- `src/app/api/chat/dm/route.ts` - Creates DM channels
+- `src/app/api/user/sync-coaching-channel/route.ts` - Creates/syncs coaching channels
+- `src/app/api/programs/enroll/route.ts` - Creates coaching channel on program enrollment
+- `src/app/chat/StreamChatComponents.tsx` - Channel list UI and tab filtering
+- `src/app/profile/[userId]/page.tsx` - Profile message icon handler
+- `src/contexts/CoachingContext.tsx` - Stores `coachingChatChannelId`
+
+### Current Channel Detection
+The system identifies coaching channels by checking if `channelId?.startsWith('coaching-')`.
+
+## Requirements
+
+### Consolidated Coaching Chat Rules
+
+1. **One Chat Per Coach-Client Pair**: Each coach-client relationship should have exactly ONE chat channel
+2. **Channel ID Format**: Use `coaching-{orgSuffix}-{userSuffix}` for all coach-client chats
+3. **Message Icon Behavior**: All message icons (profile, client card, etc.) MUST open the same coaching chat
+
+### Tab Display Rules
+
+| User Type | Channel Location | Display Name | Conditions |
+|-----------|-----------------|--------------|------------|
+| Coach | Direct tab | Client's name only | Always in Direct |
+| Client (1:1 program) | Main tab | "Work with me 1:1" with coach image | Only if enrolled in individual program |
+| Client (no 1:1 program) | Direct tab | Coach's name | Only if coach has messaged them |
+| Client (no 1:1 program) | Hidden | N/A | Not shown until coach initiates |
+
+### Visibility Rules
+
+1. **For Clients**:
+   - Coaching chat only appears in Main tab if enrolled in an active 1:1 (individual) program
+   - If not in a 1:1 program but coach has messaged, appears in Direct tab
+   - Does NOT appear by default - only after coach initiates contact
+
+2. **For Coaches**:
+   - All client coaching chats appear in Direct tab
+   - Display client's name (not org name or "Coaching")
+
+### Channel Properties
+
+When creating the consolidated coaching channel:
+
+```typescript
+{
+  id: `coaching-${orgSuffix}-${userSuffix}`,
+  type: 'messaging',
+  members: [coachId, clientId],
+  created_by_id: coachId, // Coach owns the channel
+  // Custom data for filtering
+  isCoachingChat: true,
+  organizationId: orgId,
+  coachId: coachId,
+  clientId: clientId,
+  // NO name property - derive display name dynamically based on viewer
+}
+```
+
+## Technical Implementation
+
+### Phase 1: API Consolidation
+
+1. **Modify `/api/chat/dm/route.ts`**:
+   - Before creating a new DM channel, check if a coaching channel already exists
+   - If coaching channel exists, return that channel instead
+   - If one user is org admin (coach), ALWAYS use/create coaching channel format
+
+2. **Create `/api/chat/coaching/route.ts`** (new):
+   - Single endpoint for creating/getting coaching chat
+   - Accepts `clientId` parameter
+   - Returns existing coaching channel or creates new one
+   - Stores `chatChannelId` in `clientCoachingData` collection
+
+3. **Update `openOrCreateDirectChat()` in `src/lib/chat.ts`**:
+   - Add `isCoachingContext` parameter
+   - When in coaching context, use `/api/chat/coaching` instead of `/api/chat/dm`
+
+### Phase 2: Channel Display Fix
+
+1. **Update `StreamChatComponents.tsx`**:
+   - Fix tab filtering logic for coaching channels
+   - For coaches: coaching channels go to Direct tab
+   - For clients: coaching channels go to Main tab (if in 1:1 program) or Direct (otherwise)
+   - Derive display name dynamically based on viewer role
+
+2. **Fix Channel Naming**:
+   - Remove static `name` property from coaching channels
+   - Derive name at display time:
+     - Coach sees: Client's full name
+     - Client sees: "Work with me 1:1" (if in program) or Coach's name (if not)
+
+### Phase 3: Message Icon Consistency
+
+1. **Update `/app/profile/[userId]/page.tsx`**:
+   - Check if viewing a client (current user is coach)
+   - If so, use coaching chat endpoint
+   - Check for existing `coachingChatChannelId` in `clientCoachingData`
+
+2. **Update `/app/coach/clients/` components**:
+   - Ensure all message icons use the same coaching chat
+
+3. **Update `ChatSheet.tsx`**:
+   - When opening chat from client context, use coaching channel
+
+### Phase 4: Migration & Cleanup
+
+1. **Create migration script**:
+   - Find all DM channels between coaches and clients
+   - Check if coaching channel also exists
+   - Migrate messages from DM to coaching channel (if possible)
+   - Delete orphan DM channels
+
+2. **Update existing coaching channels**:
+   - Add missing custom data properties (`isCoachingChat`, `coachId`, `clientId`)
+   - Remove hardcoded `name` property
+
+## Edge Cases
+
+1. **Coach messages client before they enroll**: Create coaching channel, show in Direct for both until client enrolls
+2. **Client unenrolls from 1:1 program**: Move coaching chat from Main to Direct tab, keep history
+3. **Multiple coaches in org**: Each coach-client pair has separate coaching channel
+4. **Client has multiple enrollments**: Use single coaching channel regardless of program count
+
+## Success Criteria
+
+1. [ ] Clicking message icon from any location opens the same coaching chat
+2. [ ] Coaching chats appear in correct tab for coaches (Direct) and clients (Main if enrolled, Direct otherwise)
+3. [ ] Channel names display correctly (client name for coach, coach branding for client)
+4. [ ] No duplicate channels created between coach-client pairs
+5. [ ] Channels don't disappear when clicked
+6. [ ] Unread counts work correctly across tabs
+
+## Testing Plan
+
+1. **As Coach**:
+   - [ ] Click message icon on client profile - opens coaching chat
+   - [ ] Message appears in Direct tab
+   - [ ] Shows client's name
+   - [ ] Send message, client receives it
+
+2. **As Client (enrolled in 1:1)**:
+   - [ ] Coaching chat appears in Main tab as "Work with me 1:1"
+   - [ ] Clicking it opens the same chat coach uses
+   - [ ] Messages sync between both views
+
+3. **As Client (not enrolled)**:
+   - [ ] No coaching chat visible by default
+   - [ ] When coach messages, chat appears in Direct tab
+   - [ ] Shows coach's name
+
+4. **Cross-checks**:
+   - [ ] Only ONE channel exists per coach-client pair
+   - [ ] All message icons point to same channel
+   - [ ] History preserved when navigating between tabs

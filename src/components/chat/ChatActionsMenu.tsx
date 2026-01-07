@@ -173,7 +173,7 @@ export function ChatActionsMenu({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete conversation</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete this conversation? Message history will be permanently cleared for you.
+              Delete this conversation? This will permanently delete it for everyone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

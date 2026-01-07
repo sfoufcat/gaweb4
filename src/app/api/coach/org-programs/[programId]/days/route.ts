@@ -196,7 +196,7 @@ export async function POST(
         syncProgramTasksToAllCohorts({
           programId,
           specificDayIndex: dayIndex,
-          mode: 'fill-empty',
+          mode: 'override-program-sourced',
         }).catch(err => {
           console.error('[COHORT_SYNC] Background sync failed:', err);
         });

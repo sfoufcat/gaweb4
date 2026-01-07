@@ -1,0 +1,150 @@
+# PRD: Instant Chat Loading (<1 Second)
+
+## Problem Statement
+
+The chat slideup (ChatSheet) on mobile takes 5-15+ seconds to load. There's also a critical bug where chat alternates between loading and not loading on refresh. The goal is to achieve consistent <1 second chat loading.
+
+## Current State Analysis
+
+### Root Causes Identified:
+
+1. **Race Condition Bug (Critical)**: The event-based listener system has a race condition:
+   - `connectionListeners.clear()` fires before listeners can respond
+   - `StreamChat.getInstance()` returns a singleton that may already be connected
+   - The `[isConnected]` dependency causes effect re-runs that lose the listener subscription
+   - Result: Chat alternates between loading and not loading on refresh
+
+2. **Network Dependency**: Even when working, chat waits for:
+   - Stream Chat connection (~300-800ms)
+   - `client.queryChannels()` API call (~200ms-5s depending on network)
+   - Total: 500ms-6s+ minimum before channels display
+
+3. **No Caching**: Every page load requires fresh network requests. No data is cached.
+
+## Requirements
+
+### Functional Requirements:
+- FR1: Chat channels must load and display in <1 second on subsequent visits
+- FR2: Chat must load consistently on every refresh (no alternating behavior)
+- FR3: First-time users should see channels within 2-3 seconds (acceptable for first visit)
+- FR4: Cached data should refresh in background without blocking display
+- FR5: Multi-tenancy filtering must still work correctly (only show user's org/squad channels)
+
+### Non-Functional Requirements:
+- NFR1: No visual flash of wrong channels
+- NFR2: Solution must work on mobile and desktop
+- NFR3: Cache must invalidate appropriately on user change
+
+## Proposed Solution: localStorage Channel Caching
+
+### Architecture:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Page Load                               │
+└─────────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  1. Load cached channels from localStorage (instant, ~10ms) │
+│     - Key: `chat-channels-{userId}`                         │
+│     - If cache exists: Display immediately, set initialized │
+└─────────────────────────────────────────────────────────────┘
+                           │
+                           ▼ (parallel, non-blocking)
+┌─────────────────────────────────────────────────────────────┐
+│  2. Connect to Stream Chat in background                    │
+│     - Fire-and-forget connection                            │
+│     - When connected, fetch fresh channels                  │
+│     - Update localStorage cache                             │
+│     - Update UI seamlessly (no loading state)               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Implementation Steps:
+
+#### Step 1: Fix the Race Condition Bug
+File: `src/contexts/StreamChatContext.tsx`
+
+Remove the event-based listener system that's causing issues. Instead, use a simpler approach:
+- Use a Promise that resolves when connection is ready
+- Components can await this promise if they need to wait
+- OR just use the existing `isConnected` state properly
+
+#### Step 2: Create Chat Cache Utility
+File: `src/lib/chat-cache.ts` (new)
+
+```typescript
+interface CachedChatData {
+  channels: ChannelPreview[];
+  timestamp: number;
+  userId: string;
+}
+
+const CACHE_KEY_PREFIX = 'chat-channels-';
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+export function getCachedChannels(userId: string): ChannelPreview[] | null;
+export function setCachedChannels(userId: string, channels: ChannelPreview[]): void;
+export function clearChannelCache(): void;
+```
+
+#### Step 3: Update ChatChannelsContext
+File: `src/contexts/ChatChannelsContext.tsx`
+
+Changes:
+1. On mount, immediately load from cache and set `isInitialized = true` if cache exists
+2. Start background refresh regardless of cache
+3. Update cache when fresh data arrives
+4. Handle user change by clearing and re-fetching
+
+```typescript
+// Pseudo-code for new flow:
+useEffect(() => {
+  const userId = client?.userID;
+  if (!userId) return;
+
+  // Step 1: Load from cache immediately (instant!)
+  const cached = getCachedChannels(userId);
+  if (cached && cached.length > 0) {
+    setChannels(cached);
+    setIsInitialized(true); // User sees channels NOW
+  }
+
+  // Step 2: Fetch fresh in background (non-blocking)
+  fetchChannelsInBackground().then(fresh => {
+    setChannels(fresh);
+    setCachedChannels(userId, fresh);
+    setIsInitialized(true); // Only matters if cache was empty
+  });
+}, [userId]);
+```
+
+#### Step 4: Simplify StreamChatContext
+File: `src/contexts/StreamChatContext.tsx`
+
+Remove the problematic event listener system. Use a simpler state sync:
+- Remove `connectionListeners`, `onStreamConnected`, `notifyConnectionListeners`
+- Just use React state properly - when `globalClient` is set, update state
+- The existing main effect already handles this via `.then()`
+
+### Files to Modify:
+1. `src/contexts/StreamChatContext.tsx` - Remove broken listener system, simplify
+2. `src/lib/chat-cache.ts` - NEW: Cache utilities
+3. `src/contexts/ChatChannelsContext.tsx` - Add cache read/write
+
+### Success Metrics:
+- Chat loads in <1 second on cached visits
+- Chat loads consistently on every refresh (no alternating)
+- First visit loads within 3 seconds
+- No flash of incorrect channels
+
+### Risks:
+1. **Stale data**: Mitigated by background refresh and 24h TTL
+2. **Wrong user channels**: Mitigated by keying cache by userId and clearing on user change
+3. **localStorage size**: Channel previews are small, should be fine
+
+## Out of Scope:
+- Stream Chat SDK offline mode (complex, less control)
+- Service Worker caching (overkill for this use case)
+- SSR of actual channel data (not possible - requires Stream connection)

@@ -394,23 +394,18 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
 
   const deleteChannel = useCallback(
     async (channelId: string, channelType: ChatChannelType) => {
-      // For DMs, use Stream's native hide with clearHistory
-      // This hides the channel AND clears message history for just this user
-      // The channel will automatically reappear if the other person sends a new message
-      if (channelType === 'dm' && client?.userID) {
+      // For DMs, permanently delete the channel for everyone on Stream
+      // No need for Firestore tracking - Stream handles the deletion
+      if (channelType === 'dm' && client) {
         try {
           const channel = client.channel('messaging', channelId);
-          await channel.hide(client.userID, true); // true = clear history
+          await channel.delete(); // Permanently deletes for all users
         } catch (error) {
-          console.error('Failed to hide channel on Stream:', error);
+          console.error('Failed to delete channel on Stream:', error);
         }
       }
-
-      // Keep Firestore soft-delete as fallback/record
-      applyOptimisticUpdate(channelId, channelType, { isDeleted: true, deletedAt: new Date().toISOString() });
-      await updatePreference(channelId, channelType, 'delete');
     },
-    [applyOptimisticUpdate, client]
+    [client]
   );
 
   const undeleteChannel = useCallback(

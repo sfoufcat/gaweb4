@@ -1015,8 +1015,14 @@ function ChatContent({
     const channels = Object.values(client.activeChannels);
     for (const channel of channels) {
       const channelId = channel.id;
+
+      // Skip deleted channels - don't count their unreads
+      if (channelId && deletedChannelIds.has(channelId)) {
+        continue;
+      }
+
       const unread = channel.countUnread();
-      
+
       // Track last message times for special channels
       const lastMessageAt = channel.state?.last_message_at;
       if (channelId === ANNOUNCEMENTS_CHANNEL_ID && lastMessageAt) {
@@ -1108,18 +1114,28 @@ function ChatContent({
           }
         }
 
-        // Main: squad, coaching, announcements, social corner, share wins, org channels
+        // Main vs Direct tab assignment depends on channel type AND user role
+        // For coaches: coaching channels go to Direct (that's where they see client chats)
+        // For clients: coaching channels go to Main (that's where they see their coach)
+        const isCoachingChannelForUser = channelId?.startsWith('coaching-');
+        const coachingGoesToDirect = isCoachingChannelForUser && isCoach;
+        
+        // Main: squad, org channels, announcements, social corner, share wins
+        // AND coaching channels for CLIENTS only
         if (
           channelId === ANNOUNCEMENTS_CHANNEL_ID ||
           channelId === SOCIAL_CORNER_CHANNEL_ID ||
           channelId === SHARE_WINS_CHANNEL_ID ||
           channelId?.startsWith('squad-') ||
-          channelId?.startsWith('coaching-') ||
+          (isCoachingChannelForUser && !isCoach) || // Coaching goes to Main for clients
           (channelId && orgChannelStreamIds.has(channelId))
         ) {
           main += unread;
+        } else if (coachingGoesToDirect) {
+          // Coaching channels go to Direct for coaches
+          direct += unread;
         } else {
-          // Direct messages
+          // Regular DMs go to Direct
           direct += unread;
         }
       }
