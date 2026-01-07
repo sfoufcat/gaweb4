@@ -98,7 +98,17 @@ export async function GET(
     
     const enrollments: EnrollmentWithUser[] = await Promise.all(
       enrollmentsSnapshot.docs.map(async (doc) => {
-        const enrollment = { id: doc.id, ...doc.data() } as ProgramEnrollment;
+        const data = doc.data();
+        const enrollment = {
+          id: doc.id,
+          ...data,
+          // Convert Firestore Timestamps to ISO strings
+          startedAt: data.startedAt?.toDate?.()?.toISOString?.() || data.startedAt,
+          createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+          completedAt: data.completedAt?.toDate?.()?.toISOString?.() || data.completedAt,
+          stoppedAt: data.stoppedAt?.toDate?.()?.toISOString?.() || data.stoppedAt,
+        } as ProgramEnrollment;
         
         let user: EnrollmentWithUser['user'] = undefined;
         let callCredits: CreditsInfo | null = null;

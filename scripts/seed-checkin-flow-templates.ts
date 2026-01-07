@@ -111,10 +111,10 @@ const MORNING_TEMPLATE_STEPS: Omit<CheckInStep, 'id' | 'flowId' | 'createdAt' | 
   },
   {
     order: 3,
-    type: 'ai_reframe_input',
+    type: 'reframe_input',
     name: 'Reframe Input',
     config: {
-      type: 'ai_reframe_input',
+      type: 'reframe_input',
       config: {
         heading: 'What\'s on your mind?',
         placeholder: 'Share any thoughts or worries that are weighing on you...',
@@ -126,10 +126,10 @@ const MORNING_TEMPLATE_STEPS: Omit<CheckInStep, 'id' | 'flowId' | 'createdAt' | 
   },
   {
     order: 4,
-    type: 'ai_reframe_output',
+    type: 'ai_reframe',
     name: 'Reframe Response',
     config: {
-      type: 'ai_reframe_output',
+      type: 'ai_reframe',
       config: {
         heading: 'A different perspective',
         loadingMessage: 'Finding a helpful perspective...',

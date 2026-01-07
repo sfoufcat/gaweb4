@@ -30,6 +30,16 @@ import { ArchivedChatsLink } from '@/components/chat/ArchivedChatsLink';
 import { useChatPreferences } from '@/hooks/useChatPreferences';
 import type { ChatChannelType } from '@/types/chat-preferences';
 import { Archive, Trash2, PinOff, ArchiveRestore } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 // Helper to convert ChannelPreview type to ChatChannelType
 function toChatChannelType(type: 'dm' | 'squad' | 'global' | 'coaching'): ChatChannelType {
@@ -86,7 +96,9 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   const { isDemoMode } = useDemoMode();
   // Track if we've already auto-selected for the current initialChannelId
   const [autoSelectedChannelId, setAutoSelectedChannelId] = useState<string | null>(null);
-  
+  // Delete confirmation dialog state
+  const [deleteDialogChannel, setDeleteDialogChannel] = useState<{ id: string; type: ChatChannelType } | null>(null);
+
   // Coaching promo data - from context (loaded at app startup - instant!)
   const coachingPromo = useCoachingPromo();
   const coachingData = useCoachingContext();
@@ -484,9 +496,17 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         icon: isPinned ? <PinOff className="w-5 h-5" /> : <Pin className="w-5 h-5" />,
         label: isPinned ? 'Unpin' : 'Pin',
         bgColor: 'bg-blue-500',
-        onClick: () => isPinned
-          ? unpinChannel(channelPreview.id, channelType)
-          : pinChannel(channelPreview.id, channelType),
+        onClick: async () => {
+          try {
+            if (isPinned) {
+              await unpinChannel(channelPreview.id, channelType);
+            } else {
+              await pinChannel(channelPreview.id, channelType);
+            }
+          } catch (error) {
+            console.error('[ChatSheet] Pin action failed:', error);
+          }
+        },
       });
     }
 
@@ -496,9 +516,17 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         icon: isArchived ? <ArchiveRestore className="w-5 h-5" /> : <Archive className="w-5 h-5" />,
         label: isArchived ? 'Restore' : 'Archive',
         bgColor: 'bg-amber-500',
-        onClick: () => isArchived
-          ? unarchiveChannel(channelPreview.id, channelType)
-          : archiveChannel(channelPreview.id, channelType),
+        onClick: async () => {
+          try {
+            if (isArchived) {
+              await unarchiveChannel(channelPreview.id, channelType);
+            } else {
+              await archiveChannel(channelPreview.id, channelType);
+            }
+          } catch (error) {
+            console.error('[ChatSheet] Archive action failed:', error);
+          }
+        },
       });
     }
 
@@ -509,15 +537,13 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         label: 'Delete',
         bgColor: 'bg-red-500',
         onClick: () => {
-          if (window.confirm('Delete this conversation?')) {
-            deleteChannel(channelPreview.id, channelType);
-          }
+          setDeleteDialogChannel({ id: channelPreview.id, type: channelType });
         },
       });
     }
 
     return actions;
-  }, [pinnedChannelIds, archivedChannelIds, canPin, canArchive, canDelete, pinChannel, unpinChannel, archiveChannel, unarchiveChannel, deleteChannel]);
+  }, [pinnedChannelIds, archivedChannelIds, canPin, canArchive, canDelete, pinChannel, unpinChannel, archiveChannel, unarchiveChannel, deleteChannel, setDeleteDialogChannel]);
 
   // Get selected channel name for header
   const selectedChannelName = useMemo(() => {
@@ -536,7 +562,19 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     promoData?.isEnabled &&
     !hasCoaching;
 
+  // Handle delete confirmation
+  const handleConfirmDelete = async () => {
+    if (!deleteDialogChannel) return;
+    try {
+      await deleteChannel(deleteDialogChannel.id, deleteDialogChannel.type);
+    } catch (error) {
+      console.error('[ChatSheet] Delete action failed:', error);
+    }
+    setDeleteDialogChannel(null);
+  };
+
   return (
+    <>
     <Drawer
       open={isOpen}
       onOpenChange={(open) => !open && onClose()}
@@ -896,6 +934,27 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         )}
       </DrawerContent>
     </Drawer>
+
+      <AlertDialog open={!!deleteDialogChannel} onOpenChange={(open) => !open && setDeleteDialogChannel(null)}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete conversation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete this conversation? You can restore it from Archived Chats.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -912,14 +971,46 @@ function ChatSheetMessageView({
   isReadOnly: boolean;
 }) {
   const { setActiveChannel } = useChatContext();
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
 
   // Set active channel when mounted
   useEffect(() => {
     setActiveChannel(channel);
   }, [channel, setActiveChannel]);
 
+  // Handle swipe-right to go back (edge swipe)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    // Only track if starting from left edge (within 30px)
+    if (touch.clientX < 30) {
+      setTouchStart({ x: touch.clientX, y: touch.clientY });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStart.x;
+    const deltaY = Math.abs(touch.clientY - touchStart.y);
+
+    // Swipe right detected (moved at least 80px right, and more horizontal than vertical)
+    if (deltaX > 80 && deltaX > deltaY * 2) {
+      setTouchStart(null);
+      onBack();
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setTouchStart(null);
+  };
+
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-[#171b22] overflow-hidden">
+    <div
+      className="h-full flex flex-col bg-white dark:bg-[#171b22] overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Header - fixed height */}
       <div className="px-4 py-3 flex items-center gap-3 border-b border-[#e8e4df] dark:border-[#262b35] flex-shrink-0 bg-white dark:bg-[#171b22]">
         <button

@@ -3753,8 +3753,10 @@ export type CheckInStepType =
   | 'task_planner'        // Plan your day - tasks management
   | 'task_review'         // Review task completion (evening)
   | 'breathing'           // Guided breathing exercise
-  | 'ai_reframe_input'    // User thought input for AI reframe
-  | 'ai_reframe_output'   // AI response display
+  | 'accept'              // Acceptance step (from morning check-in)
+  | 'reframe_input'       // User thought input for AI reframe
+  | 'ai_reframe'          // AI reframe response display
+  | 'begin_manifest'      // Transition screen before manifestation
   | 'visualization'       // Manifestation: goal + identity + optional music
   | 'progress_scale'      // Weekly progress slider (0-100%)
   | 'completion'          // End screen with celebration
@@ -3840,15 +3842,24 @@ export interface CheckInStepConfigBreathing {
   backgroundGradient?: string;
 }
 
-export interface CheckInStepConfigAiReframeInput {
+export interface CheckInStepConfigAccept {
+  heading?: string;
+  message?: string;
+}
+
+export interface CheckInStepConfigReframeInput {
   heading?: string;
   placeholder?: string;
   promptTemplate?: string;              // System prompt for AI
 }
 
-export interface CheckInStepConfigAiReframeOutput {
+export interface CheckInStepConfigAiReframe {
   heading?: string;
   loadingMessage?: string;
+}
+
+export interface CheckInStepConfigBeginManifest {
+  heading?: string;
 }
 
 export interface CheckInStepConfigVisualization {
@@ -3901,8 +3912,10 @@ export type CheckInStepConfig =
   | { type: 'task_planner'; config: CheckInStepConfigTaskPlanner }
   | { type: 'task_review'; config: CheckInStepConfigTaskReview }
   | { type: 'breathing'; config: CheckInStepConfigBreathing }
-  | { type: 'ai_reframe_input'; config: CheckInStepConfigAiReframeInput }
-  | { type: 'ai_reframe_output'; config: CheckInStepConfigAiReframeOutput }
+  | { type: 'accept'; config: CheckInStepConfigAccept }
+  | { type: 'reframe_input'; config: CheckInStepConfigReframeInput }
+  | { type: 'ai_reframe'; config: CheckInStepConfigAiReframe }
+  | { type: 'begin_manifest'; config: CheckInStepConfigBeginManifest }
   | { type: 'visualization'; config: CheckInStepConfigVisualization }
   | { type: 'progress_scale'; config: CheckInStepConfigProgressScale }
   | { type: 'completion'; config: CheckInStepConfigCompletion }

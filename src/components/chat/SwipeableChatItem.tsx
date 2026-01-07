@@ -7,7 +7,7 @@ export interface SwipeAction {
   icon: ReactNode;
   label: string;
   bgColor: string;
-  onClick: () => void;
+  onClick: () => void | Promise<void>;
 }
 
 interface SwipeableChatItemProps {
@@ -133,28 +133,32 @@ export function SwipeableChatItem({
     <div className="relative overflow-hidden">
       {/* Action buttons revealed on swipe */}
       <div
-        className="absolute inset-y-0 right-0 flex items-stretch gap-1 pr-1"
+        className="absolute inset-y-0 right-0 flex items-stretch"
         style={{ width: maxSwipe }}
       >
-        {actions.map((action, i) => (
-          <button
-            key={i}
-            onClick={() => handleActionClick(action)}
-            className={cn(
-              'flex flex-col items-center justify-center gap-1.5 text-white text-[11px] font-medium rounded-2xl my-1 transition-all active:scale-95',
-              action.bgColor
-            )}
-            style={{ width: ACTION_WIDTH - 8 }}
-          >
-            {action.icon}
-            <span>{action.label}</span>
-          </button>
-        ))}
+        {actions.map((action, i) => {
+          const isLast = i === actions.length - 1;
+          return (
+            <button
+              key={i}
+              onClick={() => handleActionClick(action)}
+              className={cn(
+                'flex flex-col items-center justify-center gap-1.5 text-white text-[11px] font-medium transition-all active:opacity-80',
+                isLast && 'rounded-r-2xl',
+                action.bgColor
+              )}
+              style={{ width: ACTION_WIDTH }}
+            >
+              {action.icon}
+              <span>{action.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Main content slides left */}
+      {/* Main content slides left - rounded */}
       <div
-        className="relative bg-white dark:bg-[#171b22] touch-pan-y"
+        className="relative bg-white dark:bg-[#171b22] touch-pan-y rounded-2xl"
         style={{
           transform: `translateX(${translateX}px)`,
           transition: isDraggingRef.current ? 'none' : 'transform 0.25s ease-out',
