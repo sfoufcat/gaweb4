@@ -2156,3 +2156,498 @@ export async function syncProgramTasksAuto(
   return await syncWeeklyTasks(userId, enrollment.id);
 }
 
+
+// =============================================================================
+// 2-WAY COACH-CLIENT TASK SYNC
+// =============================================================================
+
+export type SyncMode = 'fill-empty' | 'override-program-sourced';
+
+export interface SyncProgramTasksToClientDayParams {
+  userId: string;
+  programEnrollmentId: string;
+  date: string; // ISO date string YYYY-MM-DD
+  mode: SyncMode;
+  coachUserId?: string; // For tracking who triggered the sync
+}
+
+export interface SyncProgramTasksToClientDayResult {
+  success: boolean;
+  tasksCreated: number;
+  tasksSkipped: number;
+  tasksReplaced: number;
+  tasksToBacklog: number;
+  programDayIndex: number;
+  message: string;
+  errors?: string[];
+}
+
+/**
+ * Sync program tasks to a client's Daily Focus for a specific date.
+ * 
+ * This is the core 2-way sync function that enables immediate task sync
+ * when coaches edit program content.
+ * 
+ * Modes:
+ * - 'fill-empty': Only fill empty slots, never override existing tasks
+ * - 'override-program-sourced': Replace program/coach tasks, preserve client tasks
+ * 
+ * Rules:
+ * - Client-created tasks (sourceType='user') are NEVER overwritten
+ * - Tasks with clientLocked=true are NEVER overwritten
+ * - Max Daily Focus limit is respected (excess goes to backlog)
+ * - Program-sourced tasks get visibility='public' by default
+ */
+export async function syncProgramTasksToClientDay(
+  params: SyncProgramTasksToClientDayParams
+): Promise<SyncProgramTasksToClientDayResult> {
+  const { userId, programEnrollmentId, date, mode, coachUserId } = params;
+  const errors: string[] = [];
+  
+  // 1. Get the enrollment
+  const enrollmentDoc = await adminDb.collection('program_enrollments').doc(programEnrollmentId).get();
+  if (!enrollmentDoc.exists) {
+    return {
+      success: false,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      tasksReplaced: 0,
+      tasksToBacklog: 0,
+      programDayIndex: 0,
+      message: 'Enrollment not found',
+    };
+  }
+  
+  const enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
+  
+  // Verify ownership
+  if (enrollment.userId !== userId) {
+    return {
+      success: false,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      tasksReplaced: 0,
+      tasksToBacklog: 0,
+      programDayIndex: 0,
+      message: 'Enrollment does not belong to user',
+    };
+  }
+  
+  // 2. Get the program
+  const program = await getProgramV2(enrollment.programId);
+  if (!program) {
+    return {
+      success: false,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      tasksReplaced: 0,
+      tasksToBacklog: 0,
+      programDayIndex: 0,
+      message: 'Program not found',
+    };
+  }
+  
+  // 3. Get cohort if applicable
+  let cohort: ProgramCohort | null = null;
+  if (enrollment.cohortId) {
+    const cohortDoc = await adminDb.collection('program_cohorts').doc(enrollment.cohortId).get();
+    if (cohortDoc.exists) {
+      cohort = { id: cohortDoc.id, ...cohortDoc.data() } as ProgramCohort;
+    }
+  }
+  
+  // 4. Calculate program day index for this date
+  const dayIndex = calculateCurrentDayIndexV2(enrollment, program, cohort, date);
+  
+  if (dayIndex === 0) {
+    return {
+      success: true,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      tasksReplaced: 0,
+      tasksToBacklog: 0,
+      programDayIndex: 0,
+      message: 'Date is before program start or on a weekend (weekends excluded)',
+    };
+  }
+  
+  if (dayIndex > program.lengthDays) {
+    return {
+      success: true,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      tasksReplaced: 0,
+      tasksToBacklog: 0,
+      programDayIndex: dayIndex,
+      message: 'Date is after program end',
+    };
+  }
+  
+  // 5. Get tasks for this day from program templates
+  let tasksForDay: ProgramTaskTemplate[] = [];
+  let sourceType: 'program_day' | 'program_week' = 'program_day';
+  let sourceWeekId: string | null = null;
+  let sourceProgramDayId: string | null = null;
+  
+  // For 1:1 programs, check client-specific day first
+  if (program.type === 'individual') {
+    const clientDay = await getClientProgramDay(programEnrollmentId, dayIndex);
+    if (clientDay && clientDay.tasks && clientDay.tasks.length > 0) {
+      tasksForDay = [...clientDay.tasks];
+      sourceType = 'program_day';
+      sourceProgramDayId = clientDay.id;
+      console.log(`[SYNC_TO_CLIENT] Got ${clientDay.tasks.length} client-specific tasks for day ${dayIndex}`);
+    }
+  }
+  
+  // If no client-specific tasks, try week-level tasks
+  if (tasksForDay.length === 0) {
+    const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
+    if (week && week.weeklyTasks && week.weeklyTasks.length > 0) {
+      tasksForDay = getWeeklyTasksForDay(week, dayIndex);
+      sourceType = 'program_week';
+      sourceWeekId = week.id;
+      console.log(`[SYNC_TO_CLIENT] Got ${tasksForDay.length} tasks from week ${week.weekNumber} for day ${dayIndex}`);
+    }
+  }
+  
+  // Fallback to day-level template tasks
+  if (tasksForDay.length === 0) {
+    const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
+    if (programDay && programDay.tasks && programDay.tasks.length > 0) {
+      tasksForDay = [...programDay.tasks];
+      sourceType = 'program_day';
+      sourceProgramDayId = programDay.id;
+      console.log(`[SYNC_TO_CLIENT] Got ${programDay.tasks.length} day-level tasks for day ${dayIndex}`);
+    }
+  }
+  
+  if (tasksForDay.length === 0) {
+    return {
+      success: true,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      tasksReplaced: 0,
+      tasksToBacklog: 0,
+      programDayIndex: dayIndex,
+      message: `No tasks defined for day ${dayIndex}`,
+    };
+  }
+  
+  // 6. Get existing tasks for this user on this date
+  const existingTasksSnapshot = await adminDb
+    .collection('tasks')
+    .where('userId', '==', userId)
+    .where('date', '==', date)
+    .get();
+  
+  const existingTasks: Task[] = existingTasksSnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as Task[];
+  
+  const existingFocusTasks = existingTasks.filter(t => t.listType === 'focus');
+  const existingBacklogTasks = existingTasks.filter(t => t.listType === 'backlog');
+  
+  // 7. Get focus limit from org settings or program
+  let focusLimit = program.dailyFocusSlots || 3;
+  try {
+    const orgSettingsDoc = await adminDb.collection('org_settings').doc(enrollment.organizationId).get();
+    const orgSettings = orgSettingsDoc.data();
+    if (orgSettings?.defaultDailyFocusSlots) {
+      focusLimit = orgSettings.defaultDailyFocusSlots;
+    }
+  } catch {
+    // Use default
+  }
+  
+  // 8. Process tasks based on mode
+  let tasksCreated = 0;
+  let tasksSkipped = 0;
+  let tasksReplaced = 0;
+  let tasksToBacklog = 0;
+  
+  const now = new Date().toISOString();
+  
+  // In override mode, first delete existing program-sourced tasks
+  if (mode === 'override-program-sourced') {
+    const tasksToDelete = existingTasks.filter(t => {
+      // Never delete client-created tasks
+      if (t.sourceType === 'user' || !t.sourceType) return false;
+      // Never delete client-locked tasks
+      if (t.clientLocked) return false;
+      // Delete program and coach tasks
+      return ['program', 'program_day', 'program_week', 'coach_manual'].includes(t.sourceType);
+    });
+    
+    for (const task of tasksToDelete) {
+      try {
+        await adminDb.collection('tasks').doc(task.id).delete();
+        tasksReplaced++;
+        console.log(`[SYNC_TO_CLIENT] Deleted replaceable task: "${task.title}"`);
+      } catch (err) {
+        errors.push(`Failed to delete task ${task.id}: ${err}`);
+      }
+    }
+  }
+  
+  // Recalculate available slots after potential deletions
+  const remainingTasksSnapshot = await adminDb
+    .collection('tasks')
+    .where('userId', '==', userId)
+    .where('date', '==', date)
+    .where('listType', '==', 'focus')
+    .get();
+  
+  let availableFocusSlots = focusLimit - remainingTasksSnapshot.size;
+  
+  // Get max order numbers
+  const allRemainingSnapshot = await adminDb
+    .collection('tasks')
+    .where('userId', '==', userId)
+    .where('date', '==', date)
+    .get();
+  
+  const remainingTasks = allRemainingSnapshot.docs.map(doc => doc.data() as Task);
+  const remainingFocus = remainingTasks.filter(t => t.listType === 'focus');
+  const remainingBacklog = remainingTasks.filter(t => t.listType === 'backlog');
+  
+  let nextFocusOrder = remainingFocus.length > 0
+    ? Math.max(...remainingFocus.map(t => t.order || 0)) + 1
+    : 0;
+  let nextBacklogOrder = remainingBacklog.length > 0
+    ? Math.max(...remainingBacklog.map(t => t.order || 0)) + 1
+    : 0;
+  
+  // 9. Create new tasks from templates
+  for (const template of tasksForDay) {
+    // Check if task with same title already exists (avoid duplicates)
+    const existingWithSameTitle = remainingTasks.find(
+      t => t.title === template.label && t.programEnrollmentId === programEnrollmentId
+    );
+    
+    if (existingWithSameTitle) {
+      // In fill-empty mode, skip if task exists
+      if (mode === 'fill-empty') {
+        tasksSkipped++;
+        console.log(`[SYNC_TO_CLIENT] Skipped existing task: "${template.label}"`);
+        continue;
+      }
+      // In override mode, we already deleted replaceable tasks, so if it still exists
+      // it means it's client-locked or client-created - skip it
+      if (existingWithSameTitle.clientLocked || existingWithSameTitle.sourceType === 'user') {
+        tasksSkipped++;
+        console.log(`[SYNC_TO_CLIENT] Skipped client-protected task: "${template.label}"`);
+        continue;
+      }
+    }
+    
+    // Determine placement
+    let listType: 'focus' | 'backlog';
+    let order: number;
+    
+    if (template.isPrimary && availableFocusSlots > 0) {
+      listType = 'focus';
+      order = nextFocusOrder++;
+      availableFocusSlots--;
+    } else if (availableFocusSlots > 0 && !template.isPrimary) {
+      // Non-primary tasks go to backlog
+      listType = 'backlog';
+      order = nextBacklogOrder++;
+      tasksToBacklog++;
+    } else {
+      // Focus is full, go to backlog
+      listType = 'backlog';
+      order = nextBacklogOrder++;
+      tasksToBacklog++;
+    }
+    
+    // Create the task with sync metadata
+    const taskData: Omit<Task, 'id'> = {
+      userId,
+      organizationId: enrollment.organizationId,
+      title: template.label,
+      status: 'pending',
+      listType,
+      order,
+      date,
+      isPrivate: false,
+      sourceType,
+      programEnrollmentId,
+      programDayIndex: dayIndex,
+      createdAt: now,
+      updatedAt: now,
+      // New sync fields
+      visibility: 'public', // Program tasks are always visible to coach
+      clientLocked: false,
+      sourceProgramId: enrollment.programId,
+      sourceProgramDayId,
+      sourceWeekId,
+      assignedByCoachId: coachUserId || null,
+    };
+    
+    try {
+      await adminDb.collection('tasks').add(taskData);
+      tasksCreated++;
+      console.log(`[SYNC_TO_CLIENT] Created task: "${template.label}" (${listType}) for day ${dayIndex}`);
+    } catch (err) {
+      errors.push(`Failed to create task "${template.label}": ${err}`);
+    }
+  }
+  
+  console.log(`[SYNC_TO_CLIENT] Completed sync for user ${userId}, date ${date}: ${tasksCreated} created, ${tasksSkipped} skipped, ${tasksReplaced} replaced`);
+  
+  return {
+    success: errors.length === 0,
+    tasksCreated,
+    tasksSkipped,
+    tasksReplaced,
+    tasksToBacklog,
+    programDayIndex: dayIndex,
+    message: `Synced ${tasksCreated} tasks for day ${dayIndex}`,
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
+
+/**
+ * Sync program tasks for multiple dates (used when coach edits template)
+ * Syncs from today to today + horizon days
+ */
+export async function syncProgramTasksForDateRange(
+  programId: string,
+  options: {
+    mode: SyncMode;
+    horizonDays?: number; // Default 7
+    coachUserId?: string;
+    specificEnrollmentId?: string; // If set, only sync for this enrollment
+  }
+): Promise<{
+  success: boolean;
+  enrollmentsSynced: number;
+  totalTasksCreated: number;
+  errors: string[];
+}> {
+  const { mode, horizonDays = 7, coachUserId, specificEnrollmentId } = options;
+  const errors: string[] = [];
+  let enrollmentsSynced = 0;
+  let totalTasksCreated = 0;
+  
+  // Get active enrollments for this program
+  let enrollmentsQuery = adminDb
+    .collection('program_enrollments')
+    .where('programId', '==', programId)
+    .where('status', '==', 'active');
+  
+  if (specificEnrollmentId) {
+    // Only sync for a specific enrollment
+    const enrollmentDoc = await adminDb.collection('program_enrollments').doc(specificEnrollmentId).get();
+    if (!enrollmentDoc.exists) {
+      return { success: false, enrollmentsSynced: 0, totalTasksCreated: 0, errors: ['Enrollment not found'] };
+    }
+    const enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
+    
+    // Sync for each day in the horizon
+    const today = new Date();
+    for (let i = 0; i <= horizonDays; i++) {
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + i);
+      const dateStr = targetDate.toISOString().split('T')[0];
+      
+      const result = await syncProgramTasksToClientDay({
+        userId: enrollment.userId,
+        programEnrollmentId: enrollment.id,
+        date: dateStr,
+        mode,
+        coachUserId,
+      });
+      
+      totalTasksCreated += result.tasksCreated;
+      if (result.errors) {
+        errors.push(...result.errors);
+      }
+    }
+    enrollmentsSynced = 1;
+  } else {
+    // Sync for all active enrollments
+    const enrollmentsSnapshot = await enrollmentsQuery.get();
+    
+    for (const doc of enrollmentsSnapshot.docs) {
+      const enrollment = { id: doc.id, ...doc.data() } as ProgramEnrollment;
+      
+      // Sync for each day in the horizon
+      const today = new Date();
+      for (let i = 0; i <= horizonDays; i++) {
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + i);
+        const dateStr = targetDate.toISOString().split('T')[0];
+        
+        try {
+          const result = await syncProgramTasksToClientDay({
+            userId: enrollment.userId,
+            programEnrollmentId: enrollment.id,
+            date: dateStr,
+            mode,
+            coachUserId,
+          });
+          
+          totalTasksCreated += result.tasksCreated;
+          if (result.errors) {
+            errors.push(...result.errors);
+          }
+        } catch (err) {
+          errors.push(`Failed to sync enrollment ${enrollment.id}: ${err}`);
+        }
+      }
+      enrollmentsSynced++;
+    }
+  }
+  
+  console.log(`[SYNC_RANGE] Synced ${enrollmentsSynced} enrollments, ${totalTasksCreated} tasks created`);
+  
+  return {
+    success: errors.length === 0,
+    enrollmentsSynced,
+    totalTasksCreated,
+    errors,
+  };
+}
+
+/**
+ * Helper: Calculate the date for a given program day index
+ */
+export function calculateDateForProgramDay(
+  enrollment: ProgramEnrollment,
+  program: Program,
+  cohort: ProgramCohort | null,
+  targetDayIndex: number
+): string | null {
+  const startDateStr = cohort?.startDate || enrollment.startedAt;
+  let startDate = new Date(startDateStr + 'T00:00:00');
+  const includeWeekends = program.includeWeekends !== false;
+  
+  if (!includeWeekends) {
+    // Adjust start date if it falls on weekend
+    if (isWeekend(startDate)) {
+      startDate = getNextWeekday(startDate);
+    }
+    
+    // Count forward, skipping weekends
+    let currentDate = new Date(startDate);
+    let dayCount = 1;
+    
+    while (dayCount < targetDayIndex) {
+      currentDate.setDate(currentDate.getDate() + 1);
+      if (!isWeekend(currentDate)) {
+        dayCount++;
+      }
+    }
+    
+    return currentDate.toISOString().split('T')[0];
+  }
+  
+  // With weekends: simple day math
+  const targetDate = new Date(startDate);
+  targetDate.setDate(startDate.getDate() + targetDayIndex - 1);
+  return targetDate.toISOString().split('T')[0];
+}
+

@@ -438,9 +438,17 @@ export interface GoalSaveResponse {
 }
 
 // Task Types
-export type TaskStatus = 'pending' | 'completed';
+export type TaskStatus = 'pending' | 'completed' | 'deleted';
 export type TaskListType = 'focus' | 'backlog';
-export type TaskSourceType = 'user' | 'program' | 'call_suggestion';
+// Extended source types for 2-way coach-client sync
+export type TaskSourceType = 
+  | 'user'           // Client-created task
+  | 'program'        // Legacy: generic program task (kept for backward compatibility)
+  | 'program_day'    // Task from program day template
+  | 'program_week'   // Task from program week template
+  | 'coach_manual'   // Manually assigned by coach
+  | 'call_suggestion'; // From AI call summary
+export type TaskVisibility = 'public' | 'private';
 
 export interface Task {
   id: string;
@@ -451,17 +459,24 @@ export interface Task {
   listType: TaskListType;
   order: number;
   date: string; // ISO date (YYYY-MM-DD)
-  isPrivate: boolean;
+  isPrivate: boolean;                  // Legacy field - use visibility instead
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
   // Program-related fields
-  sourceType?: TaskSourceType; // 'user' | 'program' | 'call_suggestion' - defaults to 'user'
-  programEnrollmentId?: string | null; // FK to starter_program_enrollments
-  programDayIndex?: number | null; // Which program day this task came from
+  sourceType?: TaskSourceType;         // Source of the task - defaults to 'user'
+  programEnrollmentId?: string | null; // FK to program_enrollments
+  programDayIndex?: number | null;     // Which program day this task came from
   // Call summary fields (when sourceType === 'call_suggestion')
-  callSummaryId?: string; // FK to call_summaries
-  suggestedTaskId?: string; // FK to suggested_tasks
+  callSummaryId?: string;              // FK to call_summaries
+  suggestedTaskId?: string;            // FK to suggested_tasks
+  // 2-way sync fields
+  visibility?: TaskVisibility;         // 'public' = coach can see, 'private' = client only
+  clientLocked?: boolean;              // true if client edited/deleted - sync cannot override
+  sourceProgramId?: string | null;     // FK to programs (for tracking)
+  sourceProgramDayId?: string | null;  // FK to program_days (for day-level tasks)
+  sourceWeekId?: string | null;        // FK to program_weeks (for week-level tasks)
+  assignedByCoachId?: string | null;   // Coach user ID who assigned the task
 }
 
 export interface TaskFormData {
@@ -476,6 +491,13 @@ export interface CreateTaskRequest extends TaskFormData {
   sourceType?: TaskSourceType;
   programEnrollmentId?: string;
   programDayIndex?: number;
+  // 2-way sync fields (optional)
+  visibility?: TaskVisibility;
+  clientLocked?: boolean;
+  sourceProgramId?: string;
+  sourceProgramDayId?: string;
+  sourceWeekId?: string;
+  assignedByCoachId?: string;
 }
 
 export interface UpdateTaskRequest {
@@ -484,6 +506,7 @@ export interface UpdateTaskRequest {
   listType?: TaskListType;
   order?: number;
   isPrivate?: boolean;
+  visibility?: TaskVisibility;  // 'public' | 'private' - new field for 2-way sync
 }
 
 // ============================================================================

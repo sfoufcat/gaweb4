@@ -52,6 +52,20 @@ export async function PATCH(
       updatedAt: new Date().toISOString(),
     };
 
+    // 2-way sync: If client edits a program-sourced task, lock it from future sync overwrites
+    const isProgramSourced = existingTask.sourceType && 
+      ['program', 'program_day', 'program_week', 'coach_manual'].includes(existingTask.sourceType);
+    if (isProgramSourced && !existingTask.clientLocked) {
+      updates.clientLocked = true;
+    }
+
+    // Handle visibility update
+    if (body.visibility !== undefined) {
+      updates.visibility = body.visibility;
+      // Sync with legacy isPrivate field
+      updates.isPrivate = body.visibility === 'private';
+    }
+
     if (body.title !== undefined) {
       updates.title = body.title.trim();
     }
@@ -72,6 +86,8 @@ export async function PATCH(
 
     if (body.isPrivate !== undefined) {
       updates.isPrivate = body.isPrivate;
+      // Sync with new visibility field
+      updates.visibility = body.isPrivate ? 'private' : 'public';
     }
 
     if (body.order !== undefined) {
@@ -174,6 +190,7 @@ export async function PATCH(
 /**
  * DELETE /api/tasks/:id
  * Deletes a task
+ * For program-sourced tasks: soft-delete to prevent sync from recreating them
  */
 export async function DELETE(
   request: NextRequest,
@@ -210,7 +227,22 @@ export async function DELETE(
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
-    await taskRef.delete();
+    // 2-way sync: For program-sourced tasks, soft-delete to prevent sync from recreating
+    const isProgramSourced = existingTask.sourceType && 
+      ['program', 'program_day', 'program_week', 'coach_manual'].includes(existingTask.sourceType);
+    
+    if (isProgramSourced) {
+      // Soft delete: mark as deleted and client-locked instead of actually deleting
+      await taskRef.update({
+        status: 'deleted' as const, // Using a special status to hide the task
+        clientLocked: true,
+        updatedAt: new Date().toISOString(),
+      });
+      console.log(`[TASKS] Soft-deleted program-sourced task ${id}`);
+    } else {
+      // Regular delete for client-created tasks
+      await taskRef.delete();
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

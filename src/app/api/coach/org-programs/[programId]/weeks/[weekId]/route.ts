@@ -11,6 +11,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { recalculateWeekDayIndices, distributeWeeklyTasksToDays } from '@/lib/program-utils';
+import { syncProgramTasksForDateRange } from '@/lib/program-engine';
 import type { ProgramWeek } from '@/types';
 
 export async function GET(
@@ -141,6 +142,23 @@ export async function PATCH(
       }
     }
 
+    // 2-way sync: If weekly tasks were updated, sync to all active enrollments
+    let syncResult = null;
+    if (body.weeklyTasks !== undefined && body.syncToClients !== false) {
+      try {
+        const { userId } = await requireCoachWithOrg();
+        syncResult = await syncProgramTasksForDateRange(programId, {
+          mode: 'fill-empty', // Template changes use fill-empty to not overwrite client tasks
+          horizonDays: 7,
+          coachUserId: userId,
+        });
+        console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Synced tasks to clients: ${JSON.stringify(syncResult)}`);
+      } catch (syncErr) {
+        console.error('[COACH_ORG_PROGRAM_WEEK_PATCH] Failed to sync tasks to clients:', syncErr);
+        // Don't fail the whole request, just log the error
+      }
+    }
+
     // Fetch the updated week
     const savedDoc = await adminDb.collection('program_weeks').doc(weekId).get();
     const savedWeek = {
@@ -155,6 +173,7 @@ export async function PATCH(
       week: savedWeek,
       message: 'Week updated successfully',
       ...(distributionResult && { distribution: distributionResult }),
+      ...(syncResult && { clientSync: syncResult }),
     });
   } catch (error) {
     console.error('[COACH_ORG_PROGRAM_WEEK_PATCH] Error:', error);

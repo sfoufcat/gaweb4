@@ -38,6 +38,9 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { useMenuTitles, useCoachingPromo } from '@/contexts/BrandingContext';
 import { useCoachingContext } from '@/contexts/CoachingContext';
 import { CoachingPromoNotEnabledModal } from '@/components/coach/CoachingPromoNotEnabledModal';
+import { useChatPreferences } from '@/hooks/useChatPreferences';
+import { ArchivedChatsLink } from '@/components/chat/ArchivedChatsLink';
+import { ArchiveRestore, ChevronLeft } from 'lucide-react';
 
 // Import Stream Chat default CSS
 import 'stream-chat-react/dist/css/v2/index.css';
@@ -68,16 +71,18 @@ const MobileViewContext = createContext<(() => void) | null>(null);
 
 // Channel preview component with mobile view support
 function ChannelPreviewWithMobile(props: ChannelPreviewUIComponentProps) {
-  const { 
-    channel, 
-    setActiveChannel, 
+  const {
+    channel,
+    setActiveChannel,
     active,
     unread,
     lastMessage,
     displayTitle,
   } = props;
-  
+
   const onMobileSelect = useContext(MobileViewContext);
+  const { pinnedChannelIds } = useChatPreferences();
+  const isPinned = channel.id ? pinnedChannelIds.has(channel.id) : false;
 
   // Get channel data - cast to Record to access custom properties
   const channelData = channel.data as Record<string, unknown> | undefined;
@@ -144,11 +149,17 @@ function ChannelPreviewWithMobile(props: ChannelPreviewUIComponentProps) {
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className={`font-albert text-[15px] truncate ${
-            unread !== undefined && unread > 0 ? 'font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]' : 'font-medium text-[#1a1a1a] dark:text-[#f5f5f8]'
-          }`}>
-            {channelName}
-          </span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className={`font-albert text-[15px] truncate ${
+              unread !== undefined && unread > 0 ? 'font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]' : 'font-medium text-[#1a1a1a] dark:text-[#f5f5f8]'
+            }`}>
+              {channelName}
+            </span>
+            {/* Pin indicator */}
+            {isPinned && (
+              <PinIcon className="w-3.5 h-3.5 text-brand-accent flex-shrink-0" />
+            )}
+          </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {timestamp && (
               <span className="font-albert text-[12px] text-[#8c8c8c] dark:text-[#7d8190]">
@@ -846,6 +857,18 @@ function ChatContent({
   // Get coaching promo from SSR context (prevents flash)
   const coachingPromo = useCoachingPromo();
 
+  // Chat preferences for pin/archive/delete functionality
+  const {
+    pinnedChannelIds,
+    archivedChannelIds,
+    deletedChannelIds,
+    unarchiveChannel,
+  } = useChatPreferences();
+
+  // Archived view state
+  const [showArchivedView, setShowArchivedView] = useState(false);
+  const [archivedChannels, setArchivedChannels] = useState<StreamChannel[]>([]);
+
   // Coaching data from context (loaded at app startup - instant!)
   const coachingCtxData = useCoachingContext();
   const promoIsEnabled = coachingCtxData.promoIsEnabled;
@@ -889,6 +912,31 @@ function ChatContent({
 
     fetchOrgChannels();
   }, []);
+
+  // Fetch archived channels when archivedChannelIds changes
+  useEffect(() => {
+    if (!client || archivedChannelIds.size === 0) {
+      setArchivedChannels([]);
+      return;
+    }
+
+    const fetchArchivedChannels = async () => {
+      try {
+        const channelIds = Array.from(archivedChannelIds);
+        const channels = await client.queryChannels(
+          { type: 'messaging', id: { $in: channelIds } },
+          { last_message_at: -1 },
+          { limit: 50 }
+        );
+        setArchivedChannels(channels);
+      } catch (error) {
+        console.warn('Failed to fetch archived channels:', error);
+        setArchivedChannels([]);
+      }
+    };
+
+    fetchArchivedChannels();
+  }, [client, archivedChannelIds]);
 
   // Coaching promo data is now loaded from CoachingContext at app startup - no fetch needed!
 
@@ -1283,9 +1331,18 @@ function ChatContent({
     const orgChannelIds = new Set(orgChannels.map(c => c.streamChannelId));
     return channels.filter(ch => {
       const channelId = ch.id;
+
+      // Filter out archived and deleted channels
+      if (channelId && archivedChannelIds.has(channelId)) {
+        return false;
+      }
+      if (channelId && deletedChannelIds.has(channelId)) {
+        return false;
+      }
+
       // Exclude special channels (they're shown separately)
       if (
-        channelId === ANNOUNCEMENTS_CHANNEL_ID || 
+        channelId === ANNOUNCEMENTS_CHANNEL_ID ||
         channelId === SOCIAL_CORNER_CHANNEL_ID ||
         channelId === SHARE_WINS_CHANNEL_ID
       ) {
@@ -1306,7 +1363,7 @@ function ChatContent({
       }
       return true;
     });
-  }, [orgChannels, isCoach]);
+  }, [orgChannels, isCoach, archivedChannelIds, deletedChannelIds]);
 
   // Determine whether to show message input
   const showMessageInput = !isAnnouncementsChannel || canPostInAnnouncements;
@@ -1677,6 +1734,16 @@ function ChatContent({
                 <EditChannelsLink />
               </div>
             )}
+
+            {/* Archived Chats Link */}
+            {archivedChannelIds.size > 0 && (
+              <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                <ArchivedChatsLink
+                  count={archivedChannelIds.size}
+                  onClick={() => setShowArchivedView(true)}
+                />
+              </div>
+            )}
           </div>
           
           {/* Direct Tab Content - Always rendered to preserve state */}
@@ -1702,6 +1769,99 @@ function ChatContent({
               />
             </MobileViewContext.Provider>
           </div>
+
+          {/* Archived Channels View - Overlay that appears when showArchivedView is true */}
+          {showArchivedView && (
+            <div className="absolute inset-0 bg-[#faf8f6] dark:bg-[#05070b] z-10 flex flex-col animate-in slide-in-from-right-4 duration-200">
+              {/* Header */}
+              <div className="flex items-center gap-3 p-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                <button
+                  onClick={() => setShowArchivedView(false)}
+                  className="w-8 h-8 flex items-center justify-center text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] rounded-full transition-colors"
+                  aria-label="Go back"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <h3 className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  Archived Chats
+                </h3>
+              </div>
+
+              {/* Archived Channels List */}
+              <div className="flex-1 overflow-y-auto p-2">
+                {archivedChannels.length === 0 ? (
+                  <div className="px-4 py-8 text-center">
+                    <p className="font-albert text-[14px] text-[#8c8c8c] dark:text-[#7d8190]">
+                      No archived chats
+                    </p>
+                  </div>
+                ) : (
+                  archivedChannels.map((channel) => {
+                    const channelData = channel.data as Record<string, unknown> | undefined;
+                    const channelName = (channelData?.name as string) || channel.id || 'Chat';
+                    const channelImage = channelData?.image as string | undefined;
+                    const members = Object.values(channel.state.members).filter(m => m.user);
+                    const otherMember = members.find(m => m.user?.id !== client?.userID);
+                    const avatarUrl = channelImage || otherMember?.user?.image;
+                    const displayName = channel.id?.startsWith('coaching-')
+                      ? (otherMember?.user?.name || 'Coaching Chat')
+                      : (channelData?.name as string) || otherMember?.user?.name || 'Chat';
+
+                    // Determine channel type for unarchive
+                    const orgChannelStreamIds = new Set(orgChannels.map(c => c.streamChannelId));
+                    const isOrgChannel = channel.id && orgChannelStreamIds.has(channel.id);
+                    const isDmChannel = channel.id?.startsWith('coaching-') || (members.length <= 2 && !channelName);
+                    const channelType: ChatChannelType = isOrgChannel ? 'org' : isDmChannel ? 'dm' : 'squad';
+
+                    return (
+                      <div
+                        key={channel.id}
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#ffffff]/60 dark:hover:bg-[#171b22]/60 transition-colors"
+                      >
+                        {/* Avatar */}
+                        {avatarUrl ? (
+                          <Image
+                            src={avatarUrl}
+                            alt={displayName}
+                            width={48}
+                            height={48}
+                            className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold text-lg flex-shrink-0">
+                            {displayName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+
+                        {/* Name */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-albert text-[15px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                            {displayName}
+                          </p>
+                          <p className="font-albert text-[13px] text-[#8c8c8c] dark:text-[#7d8190]">
+                            Archived
+                          </p>
+                        </div>
+
+                        {/* Restore button */}
+                        <button
+                          onClick={() => {
+                            if (channel.id) {
+                              unarchiveChannel(channel.id, channelType);
+                            }
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-accent/10 hover:bg-brand-accent/20 text-brand-accent transition-colors"
+                        >
+                          <ArchiveRestore className="w-4 h-4" />
+                          <span className="font-albert text-[13px] font-medium">Restore</span>
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 /**
@@ -64,6 +65,29 @@ export function AttachmentMenu({
   anchorRef,
 }: AttachmentMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [portalPosition, setPortalPosition] = useState<{ top: number; left: number } | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  // Check if desktop (lg breakpoint = 1024px)
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
+
+  // Calculate popover position based on anchor element
+  useEffect(() => {
+    if (isOpen && isDesktop && anchorRef?.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setPortalPosition({
+        top: rect.top - 8, // Position above the button with 8px margin
+        left: rect.left,
+      });
+    }
+  }, [isOpen, isDesktop, anchorRef]);
 
   // Close on escape key
   useEffect(() => {
@@ -147,35 +171,43 @@ export function AttachmentMenu({
         </Drawer>
       </div>
 
-      {/* Desktop: Popover anchored to button */}
-      <div 
-        ref={menuRef}
-        className="hidden lg:block absolute bottom-full left-0 mb-2 z-50"
-      >
-        <div className="bg-white dark:bg-[#171b22] rounded-[16px] shadow-xl border border-[#e1ddd8] dark:border-[#262b35] p-3 animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex items-center gap-2">
-            {menuItems.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => {
-                  item.onClick();
-                  onClose();
-                }}
-                className="flex flex-col items-center gap-1.5 p-2 rounded-[12px] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors"
-              >
-                {/* Icon Container */}
-                <div className="w-[48px] h-[48px] rounded-[16px] bg-[#f3f1ef] dark:bg-[#1e222a] flex items-center justify-center">
-                  {item.icon}
-                </div>
-                {/* Label */}
-                <span className="font-albert text-[12px] text-[#1a1a1a] dark:text-[#f5f5f8] capitalize tracking-[-0.5px]">
-                  {item.label}
-                </span>
-              </button>
-            ))}
+      {/* Desktop: Popover anchored to button - rendered via Portal to escape overflow */}
+      {isDesktop && portalPosition && createPortal(
+        <div
+          ref={menuRef}
+          className="fixed z-[9999]"
+          style={{
+            top: portalPosition.top,
+            left: portalPosition.left,
+            transform: 'translateY(-100%)',
+          }}
+        >
+          <div className="bg-white dark:bg-[#171b22] rounded-[16px] shadow-xl border border-[#e1ddd8] dark:border-[#262b35] p-3 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-2">
+              {menuItems.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => {
+                    item.onClick();
+                    onClose();
+                  }}
+                  className="flex flex-col items-center gap-1.5 p-2 rounded-[12px] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors"
+                >
+                  {/* Icon Container */}
+                  <div className="w-[48px] h-[48px] rounded-[16px] bg-[#f3f1ef] dark:bg-[#1e222a] flex items-center justify-center">
+                    {item.icon}
+                  </div>
+                  {/* Label */}
+                  <span className="font-albert text-[12px] text-[#1a1a1a] dark:text-[#f5f5f8] capitalize tracking-[-0.5px]">
+                    {item.label}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }

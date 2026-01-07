@@ -10,7 +10,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { ClientProgramDay } from '@/types';
+import { syncProgramTasksToClientDay, calculateDateForProgramDay, getProgramV2 } from '@/lib/program-engine';
+import type { ClientProgramDay, ProgramEnrollment, ProgramCohort } from '@/types';
 
 export async function GET(
   request: NextRequest,
@@ -107,10 +108,59 @@ export async function PATCH(
       lastSyncedAt: savedDoc.data()?.lastSyncedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.lastSyncedAt,
     } as ClientProgramDay;
 
+    // 2-way sync: If tasks were updated, immediately sync to client's Daily Focus
+    let syncResult = null;
+    if (body.tasks !== undefined && body.syncToClient !== false) {
+      try {
+        const clientDayData = savedDoc.data() as ClientProgramDay;
+        const enrollmentId = clientDayData.enrollmentId;
+        const dayIndex = clientDayData.dayIndex;
+        
+        if (enrollmentId && dayIndex) {
+          // Get enrollment to calculate the date
+          const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
+          if (enrollmentDoc.exists) {
+            const enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
+            const program = await getProgramV2(enrollment.programId);
+            
+            if (program) {
+              // Get cohort if applicable
+              let cohort: ProgramCohort | null = null;
+              if (enrollment.cohortId) {
+                const cohortDoc = await adminDb.collection('program_cohorts').doc(enrollment.cohortId).get();
+                if (cohortDoc.exists) {
+                  cohort = { id: cohortDoc.id, ...cohortDoc.data() } as ProgramCohort;
+                }
+              }
+              
+              // Calculate the date for this day index
+              const dateForDay = calculateDateForProgramDay(enrollment, program, cohort, dayIndex);
+              
+              if (dateForDay) {
+                const { userId } = await requireCoachWithOrg();
+                syncResult = await syncProgramTasksToClientDay({
+                  userId: enrollment.userId,
+                  programEnrollmentId: enrollmentId,
+                  date: dateForDay,
+                  mode: 'override-program-sourced', // Per-client edits use override mode
+                  coachUserId: userId,
+                });
+                console.log(`[COACH_CLIENT_DAY_PATCH] Synced tasks to client: ${JSON.stringify(syncResult)}`);
+              }
+            }
+          }
+        }
+      } catch (syncErr) {
+        console.error('[COACH_CLIENT_DAY_PATCH] Failed to sync tasks to client:', syncErr);
+        // Don't fail the whole request, just log the error
+      }
+    }
+
     return NextResponse.json({
       success: true,
       clientDay: savedDay,
       message: 'Client day updated successfully',
+      ...(syncResult && { clientSync: syncResult }),
     });
   } catch (error) {
     console.error('[COACH_CLIENT_DAY_PATCH] Error:', error);

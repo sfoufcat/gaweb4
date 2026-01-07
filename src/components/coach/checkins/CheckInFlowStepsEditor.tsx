@@ -25,7 +25,8 @@ import {
   Sun,
   Moon,
   Mic,
-  TrendingUp
+  TrendingUp,
+  ExternalLink
 } from 'lucide-react';
 import type { CheckInStep, CheckInStepType, OrgCheckInFlow } from '@/types';
 import { CheckInStepConfigEditor } from './CheckInStepConfigEditor';
@@ -560,12 +561,26 @@ export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack
             <span className="text-sm font-medium text-text-primary dark:text-[#f5f5f8]">
               {sortableSteps.length} {sortableSteps.length === 1 ? 'step' : 'steps'}
             </span>
-            {isSaving && (
-              <span className="text-xs text-text-muted dark:text-[#666d7c] flex items-center gap-1">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Saving...
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {isSaving && (
+                <span className="text-xs text-text-muted dark:text-[#666d7c] flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Saving...
+                </span>
+              )}
+              <button
+                onClick={() => {
+                  const previewUrl = flow?.type && ['morning', 'evening', 'weekly'].includes(flow.type)
+                    ? `/checkin/flow/${flow.type}`
+                    : `/checkin/flow/custom?flowId=${flowId}`;
+                  window.open(previewUrl, '_blank');
+                }}
+                className="p-1.5 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                title="Preview check-in flow in new tab"
+              >
+                <ExternalLink className="w-4 h-4 text-text-secondary dark:text-[#b2b6c2]" />
+              </button>
+            </div>
           </div>
         </div>
 

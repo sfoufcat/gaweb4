@@ -2,199 +2,209 @@
   "master": {
     "tasks": [
       {
-        "id": "11",
-        "title": "Update Type System with New Step Types",
-        "description": "Add new step types to CheckInStepType enum and update related type definitions for evening and weekly check-in flows",
-        "details": "Add the following step types to types/index.ts: evening_task_review, evening_mood, evening_reflection, on_track_scale, momentum_progress, voice_text, weekly_focus. Update CheckInFlowRenderer to handle these new types in GenericStepRenderer switch statement. Add entries to STEP_TYPE_INFO in CheckInFlowStepsEditor with appropriate icons and labels. Add getDefaultConfigForType cases for each new step type. Include all new types in ADDABLE_STEP_TYPES array for coach editor.",
-        "testStrategy": "Verify TypeScript compilation passes without errors. Test that new step types render correctly in CheckInFlowRenderer. Confirm new steps appear in coach editor dropdown with correct metadata.",
+        "id": "25",
+        "title": "Extend Task Schema with Source Tracking Fields",
+        "description": "Add new fields to existing Task model to track source information and visibility without breaking existing functionality",
+        "details": "Extend the existing Task interface/model with: sourceType ('client' | 'program_day' | 'program_week' | 'coach_manual'), sourceProgramId (nullable string), sourceProgramDayId (nullable string), sourceWeekId (nullable string), assignedByCoachId (nullable string), visibility ('public' | 'private'), clientLocked (boolean). Set appropriate defaults: sourceType='client', visibility='private' for client tasks, clientLocked=false. Ensure database migration handles existing records gracefully with defaults.",
+        "testStrategy": "Unit tests for schema validation, integration tests ensuring existing tasks work with new fields, verify defaults are applied correctly for existing records",
         "priority": "high",
         "dependencies": [],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T14:15:46.763Z"
+        "updatedAt": "2026-01-07T17:17:07.315Z"
       },
       {
-        "id": "12",
-        "title": "Create Evening Task Review Step Component",
-        "description": "Extract and implement EveningTaskReviewStep component from existing evening check-in page",
-        "details": "Create EveningTaskReviewStep component that displays today's focus tasks with completion checkmarks. Show completion count format '3 of 5 tasks completed'. Display appropriate emoji (👏 for all done, 🌿 for partial completion). Include different messaging for complete vs partial completion. Call useEveningCheckIn().startCheckIn(completedCount, tasksTotal) on component mount. Support demo mode with mock tasks when no real data available. Use existing task data structure and styling patterns.",
-        "testStrategy": "Test with various task completion scenarios (0%, 50%, 100%). Verify API call is made on mount with correct parameters. Test demo mode functionality. Validate emoji and messaging display correctly.",
+        "id": "26",
+        "title": "Implement Program Day Calculation Logic",
+        "description": "Create utility function to calculate program day number from enrollment date and calendar date",
+        "details": "Implement calculateProgramDay(enrollmentStartDate: Date, targetDate: Date, includeWeekends: boolean): number function. Use existing enrollment progress calculation logic. Handle weekend skipping based on includeWeekends setting. Account for enrollment start date and map calendar dates to program day numbers correctly.",
+        "testStrategy": "Unit tests with various date scenarios, weekend skipping validation, edge cases around enrollment start dates, verify consistency with existing enrollment logic",
         "priority": "high",
         "dependencies": [
-          "11"
+          "25"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T14:17:34.765Z"
+        "updatedAt": "2026-01-07T17:17:07.317Z"
       },
       {
-        "id": "13",
-        "title": "Implement Evening Mood Step with 5-State Slider",
-        "description": "Create EveningMoodStep component with 5-state mood slider and gradient backgrounds",
-        "details": "Implement 5-state slider with states: tough_day, mixed, steady, good_day, great_day. Create full-screen gradient backgrounds for each state with smooth 0.7s CSS transitions. Build multi-color gradient slider track (red to green spectrum). Implement touch and mouse drag interactions. Call useEveningCheckIn().updateEmotionalState(state) when selection changes. Use CSS custom properties for gradient transitions and ensure smooth performance on mobile devices.",
-        "testStrategy": "Test slider interaction on desktop and mobile. Verify gradient transitions are smooth and performant. Test all 5 mood states and confirm API calls. Validate touch gestures work correctly on mobile devices.",
+        "id": "27",
+        "title": "Create Program Task Retrieval Function",
+        "description": "Build function to fetch appropriate program tasks for a given program day",
+        "details": "Implement getProgramTasksForDay(programId: string, programDay: number): Promise<Task[]>. Priority logic: day-level tasks override weekly tasks when present. For weekly tasks, apply distribution mode (repeat daily OR spread across week). Return tasks with proper source metadata (sourceType, sourceProgramId, etc.).",
+        "testStrategy": "Unit tests for day vs weekly task priority, weekly distribution modes, verify correct source metadata assignment, test with various program configurations",
         "priority": "high",
         "dependencies": [
-          "11"
+          "26"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T14:17:34.776Z"
+        "updatedAt": "2026-01-07T17:17:07.318Z"
       },
       {
-        "id": "14",
-        "title": "Build Evening Reflection Step with Voice Input",
-        "description": "Create EveningReflectionStep component with Web Speech API voice-to-text functionality",
-        "details": "Implement text area with placeholder text for evening reflection. Integrate Web Speech API using SpeechRecognition with continuous=true and interimResults=true. Add microphone toggle button with pulsing animation during active listening. Show 'Listening...' indicator during speech recognition. Include skip option since reflection is optional. Call useEveningCheckIn().saveReflection(text) and POST to /api/goal/reflections for daily reflection storage. Handle browser compatibility (Chrome, Safari support).",
-        "testStrategy": "Test voice input in supported browsers (Chrome, Safari). Verify speech-to-text accuracy. Test microphone permissions and error handling. Confirm reflection saves to both evening check-in and reflections collection. Test skip functionality.",
+        "id": "28",
+        "title": "Implement Core Sync Function",
+        "description": "Create the main syncProgramTasksToClientDay function with fill-empty and override modes",
+        "details": "Implement syncProgramTasksToClientDay with parameters: userId, programEnrollmentId, date, mode ('fill-empty' | 'override-program-sourced'). fill-empty mode: only add tasks to empty slots, never override existing. override-program-sourced mode: replace only program/coach sourced tasks, preserve client tasks. Respect max Daily Focus limit (3 or org-configured), send excess to backlog. Set visibility='public' for program tasks.",
+        "testStrategy": "Integration tests for both sync modes, verify client tasks never overwritten, test max task limit enforcement, validate proper source field assignment",
         "priority": "high",
         "dependencies": [
-          "11"
+          "27"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T14:17:34.777Z"
+        "updatedAt": "2026-01-07T17:19:45.869Z"
       },
       {
-        "id": "15",
-        "title": "Enhance Completion Step for Evening Flow",
-        "description": "Enhance existing CompletionStep to handle evening-specific completion logic and animations",
-        "details": "Add evening-specific completion handling to CompletionStep. Implement confetti celebration animation with 100 pieces. Display 'Day closed ✨' messaging for evening completions. Call useEveningCheckIn().completeCheckIn() on completion. Move focus tasks to backlog via /api/tasks/move-to-backlog API call. Add Friday detection logic to trigger weekly reflection notification. Include demo mode signup modal trigger for non-authenticated users.",
-        "testStrategy": "Test confetti animation renders correctly. Verify tasks are moved to backlog on completion. Test Friday detection and weekly notification trigger. Confirm demo mode signup modal appears appropriately.",
+        "id": "29",
+        "title": "Add Client Lock Protection Logic",
+        "description": "Implement clientLocked field logic to prevent sync overwrites of user-modified tasks",
+        "details": "Add logic to set clientLocked=true when client edits or deletes program-sourced tasks. Update sync function to skip tasks where clientLocked=true. Implement in task update/delete endpoints. Ensure program tasks can still be synced if not client-locked.",
+        "testStrategy": "Unit tests for clientLocked flag setting, integration tests ensuring locked tasks are preserved during sync, verify unlock behavior when appropriate",
         "priority": "medium",
         "dependencies": [
-          "11",
-          "12"
+          "28"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T17:19:45.870Z"
       },
       {
-        "id": "16",
-        "title": "Create On Track Step for Weekly Flow",
-        "description": "Extract and implement OnTrackStep component for weekly check-in goal tracking",
-        "details": "Create OnTrackStep with 3-state slider: off_track, not_sure, on_track. Implement full-screen gradient backgrounds (red → gray → green) with smooth transitions. Display 'Are you on track to achieve your goal?' heading. Call useWeeklyReflection().startCheckIn() if weekly reflection doesn't exist. Call useWeeklyReflection().updateOnTrackStatus(status) when selection changes. Use similar gradient transition patterns as evening mood step.",
-        "testStrategy": "Test 3-state slider transitions and gradient backgrounds. Verify weekly reflection is created if it doesn't exist. Confirm on-track status is saved correctly. Test visual transitions between states.",
+        "id": "30",
+        "title": "Wire Sync Triggers to Coach Program Editor",
+        "description": "Add sync function calls to coach program save operations",
+        "details": "Add sync triggers: On Save Day template - sync today + 7 days for all active enrollments using fill-empty mode. On Save Week template - sync affected week days for all enrollments using fill-empty mode. On Save Day per-client override - immediate sync for that client using override-program-sourced mode. Include today if edited day corresponds to client's current day.",
+        "testStrategy": "Integration tests for each save scenario, verify correct sync mode usage, test multi-client template syncing, validate immediate per-client sync",
         "priority": "high",
         "dependencies": [
-          "11"
+          "29"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T14:17:34.777Z"
+        "updatedAt": "2026-01-07T17:24:45.611Z"
       },
       {
-        "id": "17",
-        "title": "Implement Weekly Progress Step with Momentum Physics",
-        "description": "Create WeeklyProgressStep with momentum physics and audio feedback",
-        "details": "Build horizontal 0-100% progress slider with momentum physics (friction: 0.88, minVelocity: 0.3). Implement velocity-based animation on release using requestAnimationFrame. Add snap-to-5% increments functionality. Create audio tick feedback using Web Audio API (800Hz oscillator, 0.05s duration, 0.1 gain) at 5% boundaries. Display user's goal card by fetching from /api/user/me. Call useWeeklyReflection().updateProgress(progress) on changes. Set flag for goal achieved step if progress >= 100%.",
-        "testStrategy": "Test momentum physics feel and snap-to-grid behavior. Verify audio ticks play at correct intervals. Test progress saving to weekly reflection and org_membership. Confirm goal achieved flag is set at 100% progress.",
+        "id": "31",
+        "title": "Implement Task Visibility Toggle for Clients",
+        "description": "Ensure client task creation and editing supports public/private visibility toggle",
+        "details": "Verify/implement visibility toggle in client task create/edit UI and API endpoints. Default to 'private' for client-created tasks. Allow clients to change visibility between public/private. Update task forms and API validation to handle visibility field.",
+        "testStrategy": "UI tests for visibility toggle, API tests for visibility field validation, verify default behavior for new client tasks",
+        "priority": "medium",
+        "dependencies": [
+          "25"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T17:27:07.996Z"
+      },
+      {
+        "id": "32",
+        "title": "Create Coach Task Filtering API",
+        "description": "Implement API endpoints for coaches to view client tasks with proper visibility filtering",
+        "details": "Create/update coach API endpoints to return: all program/coach tasks + client tasks where visibility='public'. Filter out private client tasks. Include task source information and completion status. Ensure real-time updates for task status changes.",
+        "testStrategy": "API tests for visibility filtering, verify private tasks are excluded, test real-time status updates, validate source information inclusion",
+        "priority": "medium",
+        "dependencies": [
+          "31"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T17:29:50.734Z"
+      },
+      {
+        "id": "33",
+        "title": "Update Coach Program Client View",
+        "description": "Add Today's Tasks section to coach's program client view showing task completion status",
+        "details": "Add 'Today's Tasks' section in coach program client view. Display tasks with completion status, source indicators (program vs client-created), and real-time updates. Show task titles, completion checkboxes (read-only for coach), and source badges.",
+        "testStrategy": "UI tests for task display, verify completion status accuracy, test source indicator display, validate real-time updates",
+        "priority": "medium",
+        "dependencies": [
+          "32"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T17:32:53.529Z"
+      },
+      {
+        "id": "34",
+        "title": "Enhance Client Details View for Coaches",
+        "description": "Update client details view to show comprehensive task status and source information",
+        "details": "Enhance existing client details view with task status section. Show daily task overview, completion rates, source breakdown (program vs client tasks). Include filtering options for task types and date ranges. Maintain existing functionality while adding task insights.",
+        "testStrategy": "UI tests for enhanced details view, verify task status accuracy, test filtering functionality, ensure existing features remain intact",
+        "priority": "medium",
+        "dependencies": [
+          "33"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T17:33:50.114Z"
+      },
+      {
+        "id": "35",
+        "title": "Implement Graceful Legacy Data Handling",
+        "description": "Ensure application handles both old and new task record formats without migration scripts",
+        "details": "Add null-safe handling for new fields in all read operations. Implement default value logic: sourceType='client' if missing, visibility='private' for existing client tasks, clientLocked=false if missing. Update all task queries and display logic to handle missing fields gracefully.",
+        "testStrategy": "Integration tests with mixed old/new task records, verify default value application, test all task display scenarios with legacy data",
+        "priority": "medium",
+        "dependencies": [
+          "25"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T17:34:24.717Z"
+      },
+      {
+        "id": "36",
+        "title": "Add Max Task Limit Enforcement",
+        "description": "Implement Daily Focus task limit enforcement with backlog overflow handling",
+        "details": "Implement max task limit checking (default 3 or org-configured). When sync would exceed limit, move excess tasks to backlog. Prioritize program tasks over client tasks when at limit. Add configuration for per-organization task limits. Handle limit changes gracefully.",
+        "testStrategy": "Unit tests for limit enforcement, test backlog overflow behavior, verify task prioritization logic, test org-specific limit configurations",
+        "priority": "medium",
+        "dependencies": [
+          "28"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T17:34:24.718Z"
+      },
+      {
+        "id": "37",
+        "title": "Create Sync Result Reporting System",
+        "description": "Implement comprehensive sync result tracking and error handling",
+        "details": "Create SyncResult interface with success/failure counts, error details, and affected task IDs. Add logging for sync operations. Implement retry logic for failed syncs. Create monitoring dashboard for sync health. Handle partial sync failures gracefully.",
+        "testStrategy": "Unit tests for result tracking, integration tests for error scenarios, verify logging functionality, test retry mechanisms",
+        "priority": "low",
+        "dependencies": [
+          "36"
+        ],
+        "status": "deferred",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T17:34:35.463Z"
+      },
+      {
+        "id": "38",
+        "title": "Add Real-time Task Status Updates",
+        "description": "Implement WebSocket or polling mechanism for real-time task completion status updates",
+        "details": "Implement real-time updates for task completion status between coach and client views. Use WebSocket connections or optimized polling. Update coach views immediately when client marks tasks complete. Handle connection failures and reconnection gracefully.",
+        "testStrategy": "Integration tests for real-time updates, test WebSocket connection handling, verify update propagation speed, test offline/reconnection scenarios",
+        "priority": "low",
+        "dependencies": [
+          "34"
+        ],
+        "status": "deferred",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T17:34:35.464Z"
+      },
+      {
+        "id": "39",
+        "title": "Comprehensive Integration Testing and Validation",
+        "description": "Execute end-to-end testing of complete two-way sync functionality",
+        "details": "Comprehensive testing of entire sync flow: coach edits → immediate client sync, client task visibility → coach views, completion status updates, edge cases with weekend skipping, multiple enrollment scenarios, concurrent edit handling, performance testing with large task volumes.",
+        "testStrategy": "End-to-end test scenarios covering all user stories, performance testing, concurrent user testing, edge case validation, regression testing for existing functionality",
         "priority": "high",
         "dependencies": [
-          "11"
-        ],
-        "status": "in-progress",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T14:17:34.778Z"
-      },
-      {
-        "id": "18",
-        "title": "Build Reusable Voice Text Step Component",
-        "description": "Create reusable VoiceTextStep component for weekly reflection text inputs",
-        "details": "Create configurable VoiceTextStep component with props for question text, placeholder, fieldName (whatWentWell, biggestObstacles, nextWeekPlan), and isRequired flag. Reuse Web Speech API implementation from evening reflection step. Add microphone toggle with pulsing animation. Call useWeeklyReflection().saveReflection(fieldName, value) with dynamic field name. Support all three weekly text input scenarios with appropriate validation.",
-        "testStrategy": "Test component with all three field configurations. Verify voice input works consistently across instances. Test required vs optional field validation. Confirm data saves to correct weekly reflection fields.",
-        "priority": "medium",
-        "dependencies": [
-          "11",
-          "14"
-        ],
-        "status": "in-progress",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T14:17:34.779Z"
-      },
-      {
-        "id": "19",
-        "title": "Create Weekly Focus Step with AI Integration",
-        "description": "Implement WeeklyFocusStep with AI suggestion and summary generation",
-        "details": "Build WeeklyFocusStep with '(public)' visibility badge. Add text input for weekly focus entry. Implement AI suggestion pill that fetches from /api/weekly-focus/suggestion with one-click application. Add 'Share my plan' button that calls saveReflection + completeCheckIn. Include 'Skip this time' option that only calls completeCheckIn. Integrate AI summary generation via summarizeWeeklyFocus() function. Update org_membership with publicFocus and publicFocusSummary fields.",
-        "testStrategy": "Test AI suggestion fetching and application. Verify focus saves to weekly reflection. Test AI summary generation and org_membership updates. Confirm public focus appears on user profile.",
-        "priority": "medium",
-        "dependencies": [
-          "11"
-        ],
-        "status": "in-progress",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T14:17:34.779Z"
-      },
-      {
-        "id": "20",
-        "title": "Enhance Goal Achieved Step for Weekly Flow",
-        "description": "Update GoalAchievedStep to handle weekly goal completion scenarios",
-        "details": "Enhance GoalAchievedStep to conditionally appear only when weeklyProgress >= 100%. Display 'Goal achieved — well done! 💫' messaging. Add 'Create new goal' button that navigates to /onboarding/goal. Include 'Skip for now' button that navigates to home. Call useWeeklyReflection().markGoalComplete() on goal completion. Implement liquid blob celebration animation for visual feedback.",
-        "testStrategy": "Test conditional rendering based on progress >= 100%. Verify navigation buttons work correctly. Test goal completion marking in weekly reflection. Confirm celebration animation displays properly.",
-        "priority": "medium",
-        "dependencies": [
-          "11",
-          "17"
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": "21",
-        "title": "Update CheckInFlowRenderer with New Step Components",
-        "description": "Integrate all new step components into CheckInFlowRenderer's GenericStepRenderer",
-        "details": "Add cases to CheckInFlowRenderer's GenericStepRenderer switch statement for all new step types: evening_task_review, evening_mood, evening_reflection, on_track_scale, momentum_progress, voice_text, weekly_focus. Import all new step components and ensure proper props passing. Add default configurations for each step type in getDefaultConfigForType function. Ensure step navigation and data flow works correctly with new components.",
-        "testStrategy": "Test complete evening and weekly flows end-to-end. Verify all new step types render correctly. Test step navigation and data persistence. Confirm props are passed correctly to each component.",
-        "priority": "high",
-        "dependencies": [
-          "12",
-          "13",
-          "14",
-          "16",
-          "17",
-          "18",
-          "19",
-          "20"
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": "22",
-        "title": "Update Template Configurations",
-        "description": "Update seed templates with new step types for evening and weekly flows",
-        "details": "Update EVENING_TEMPLATE_STEPS array with: evening_task_review, evening_mood, evening_reflection, completion. Update WEEKLY_TEMPLATE_STEPS array with: on_track_scale, momentum_progress, voice_text (3 instances with different configs), weekly_focus, completion, goal_achieved. Remove old generic step types (task_review, mood_scale, open_text, progress_scale) from templates. Ensure correct step ordering and default configurations.",
-        "testStrategy": "Test new org creation uses updated templates. Verify evening and weekly flows have correct step sequence. Test that old generic steps are no longer used in new templates.",
-        "priority": "medium",
-        "dependencies": [
-          "21"
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": "23",
-        "title": "Create Migration Script for Existing Flows",
-        "description": "Build migration script to update existing org flows with new step types",
-        "details": "Create migration script that queries orgCheckInFlows collection for existing evening and weekly flows. Map old generic step types to new specific step types: task_review → evening_task_review, mood_scale → evening_mood/on_track_scale, open_text → evening_reflection/voice_text, progress_scale → momentum_progress. Preserve coach customizations where possible. Add comprehensive logging for migration progress and errors. Include dry-run mode for testing before actual migration.",
-        "testStrategy": "Test migration script in dry-run mode first. Verify all existing flows are identified correctly. Test step type mapping preserves functionality. Confirm no data loss during migration process.",
-        "priority": "medium",
-        "dependencies": [
-          "22"
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": "24",
-        "title": "End-to-End Testing and Validation",
-        "description": "Comprehensive testing of migrated evening and weekly check-in flows",
-        "details": "Perform comprehensive end-to-end testing of both evening and weekly flows. Test all new step components individually and in complete flow sequences. Validate data persistence across all steps (evening_checkins, weekly_reflections, reflections, org_membership). Test voice input functionality across different browsers and devices. Verify momentum physics and audio feedback work correctly. Test AI integration and summary generation. Validate coach editor functionality with new step types.",
-        "testStrategy": "Create test scenarios covering all user paths. Test on multiple browsers and devices. Verify data integrity in all database collections. Test error handling and edge cases. Validate performance with voice input and animations.",
-        "priority": "high",
-        "dependencies": [
-          "23"
+          "37",
+          "38"
         ],
         "status": "pending",
         "subtasks": []
@@ -202,9 +212,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-07T14:17:34.779Z",
-      "taskCount": 14,
-      "completedCount": 2,
+      "lastModified": "2026-01-07T17:34:35.464Z",
+      "taskCount": 15,
+      "completedCount": 12,
       "tags": [
         "master"
       ]

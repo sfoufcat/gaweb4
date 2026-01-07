@@ -25,6 +25,7 @@ import { DemoModeProvider } from "@/contexts/DemoModeContext";
 import { DemoSessionProvider } from "@/contexts/DemoSessionContext";
 import { ChatSheetProvider } from "@/contexts/ChatSheetContext";
 import { ChatPreferencesProvider } from "@/contexts/ChatPreferencesContext";
+import { ChatChannelsProvider } from "@/contexts/ChatChannelsContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -189,6 +190,7 @@ export default async function RootLayout({
               <CoachingProvider>
               <OrganizationProvider>
                 <StreamChatProvider>
+                  <ChatChannelsProvider>
                   <StreamVideoProvider>
                     <ChatPreferencesProvider>
                     <ChatSheetProvider>
@@ -218,6 +220,7 @@ export default async function RootLayout({
                     </ChatSheetProvider>
                     </ChatPreferencesProvider>
                   </StreamVideoProvider>
+                  </ChatChannelsProvider>
                 </StreamChatProvider>
               </OrganizationProvider>
               </CoachingProvider>

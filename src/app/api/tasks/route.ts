@@ -277,6 +277,7 @@ export async function POST(request: NextRequest) {
       order,
       date,
       isPrivate: isPrivate || false,
+      visibility: isPrivate ? 'private' : 'public',
       createdAt: now,
       updatedAt: now,
       // Program-related fields (defaults to user-created task)

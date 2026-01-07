@@ -1,0 +1,192 @@
+# Two-Way Task Sync: Coach Programs ↔ Client Daily Focus
+
+## Overview
+Implement true 2-way synchronization between coach-defined program tasks and client Daily Focus tasks. Currently, program tasks only appear starting the next morning (hydrated during morning check-in). This PRD describes immediate sync in both directions.
+
+## Goals
+- Goal 1: Coach edits to program tasks sync immediately to client Daily Focus (including current day)
+- Goal 2: Client public tasks become visible to coach in real-time
+- Goal 3: Task completion status visible to both parties immediately
+- Goal 4: No breaking changes to existing functionality (stories, squads, check-ins, task display)
+- Goal 5: Respect max Daily Focus tasks rule (default 3 or org-configured)
+
+## Current State
+- Coaches define tasks at day-level and week-level in programs
+- Weekly tasks can repeat daily OR spread across the week
+- Day tasks override weekly tasks when present
+- Clients see tasks in Home > Daily Focus
+- Tasks are hydrated only during morning check-in (causing next-day delay)
+- No visibility of client-created tasks to coaches
+- No immediate sync when coach edits program tasks
+
+## User Stories
+
+### As a Coach
+- I want my program task edits to appear immediately in client Daily Focus so clients see updates without waiting until tomorrow
+- I want to see client's public tasks and completion status so I can monitor progress
+- I want per-client task overrides to sync immediately to that specific client
+
+### As a Client
+- I want program tasks to appear in my Daily Focus immediately when my coach adds them
+- I want to mark my own tasks as public or private to control what my coach sees
+- I want my existing tasks to remain unchanged when program tasks sync
+
+## Features & Requirements
+
+### Feature 1: Task Source Model Extension
+**Description:**
+Extend the existing Daily Focus task record with source tracking fields without creating a new parallel system.
+
+**Schema Extensions:**
+```typescript
+// Extend existing Task type
+interface TaskSourceFields {
+  sourceType: 'client' | 'program_day' | 'program_week' | 'coach_manual';
+  sourceProgramId?: string | null;
+  sourceProgramDayId?: string | null;
+  sourceWeekId?: string | null;
+  assignedByCoachId?: string | null;
+  visibility: 'public' | 'private';
+  clientLocked: boolean; // true if user edited/deleted, sync cannot override
+}
+```
+
+**Requirements:**
+- [ ] Add sourceType field with default 'client' for existing tasks
+- [ ] Add sourceProgramId, sourceProgramDayId, sourceWeekId nullable fields
+- [ ] Add assignedByCoachId nullable field
+- [ ] Add visibility field with default 'private' for client tasks, 'public' for program/coach tasks
+- [ ] Add clientLocked boolean field with default false
+- [ ] Ensure updatedAt/createdAt fields exist
+
+**Acceptance Criteria:**
+- Existing tasks continue to work with new fields defaulting appropriately
+- New tasks can specify source information
+- No data migration required (defaults handle existing records)
+
+### Feature 2: Program-to-Client Sync Function
+**Description:**
+Create a reusable sync function that pulls program tasks to client Daily Focus.
+
+**Function Signature:**
+```typescript
+async function syncProgramTasksToClientDay(params: {
+  userId: string;
+  programEnrollmentId: string;
+  date: Date;
+  mode: 'fill-empty' | 'override-program-sourced';
+}): Promise<SyncResult>
+```
+
+**Requirements:**
+- [ ] Calculate program day number using existing enrollment logic (including weekends handling)
+- [ ] Pull tasks from day-level if defined, otherwise weekly tasks
+- [ ] Apply weekly distribution mode (repeat daily OR spread across week)
+- [ ] Write tasks to client's Daily Focus for the specified date
+- [ ] fill-empty mode: only fill empty slots, never override existing
+- [ ] override-program-sourced mode: replace only program/coach tasks, never client tasks
+- [ ] Respect max Daily Focus cap (3 or org-configured), excess to backlog
+- [ ] Set sourceType appropriately (program_day, program_week)
+- [ ] Set visibility='public' for program-sourced tasks
+
+**Acceptance Criteria:**
+- Day tasks appear correctly for calculated program day
+- Weekly tasks distribute according to configuration
+- Client-created tasks never overwritten
+- Max task limit respected
+
+### Feature 3: Sync Triggers on Coach Edits
+**Description:**
+Wire sync function to coach program editor save actions.
+
+**Requirements:**
+- [ ] On Save Day (template): sync today + 7 days for all active enrollments using fill-empty mode
+- [ ] On Save Week (template): sync affected week days for all active enrollments using fill-empty mode
+- [ ] On Save Day (per-client override): immediately sync affected dates for that client using override-program-sourced mode
+- [ ] Include today if edited day corresponds to today for the client
+
+**Acceptance Criteria:**
+- Template edits sync to all enrolled clients within horizon
+- Per-client edits sync immediately to that specific client
+- No destructive overwrites of client-created tasks
+
+### Feature 4: Client Public/Private Task Visibility
+**Description:**
+Ensure clients can toggle task visibility and coaches see appropriate tasks.
+
+**Requirements:**
+- [ ] Client task create/edit supports visibility toggle (verify existing implementation)
+- [ ] Coach APIs filter: return all program/coach tasks + client tasks where visibility='public'
+- [ ] Program-sourced and coach-created tasks always have visibility='public'
+
+**Acceptance Criteria:**
+- Clients can mark tasks as public or private
+- Coaches only see public client tasks
+- Coaches always see program-sourced and coach-assigned tasks
+
+### Feature 5: Coach Views Update
+**Description:**
+Display client tasks and completion status in coach views.
+
+**Requirements:**
+- [ ] Show "Today's Tasks" with completion status in program client view
+- [ ] Show task status in client details view
+- [ ] Include source indicator (program vs client-created)
+- [ ] No full timeline UI needed yet
+
+**Acceptance Criteria:**
+- Coaches can see client's daily tasks with completion state
+- Clear distinction between program and client tasks
+- Real-time status updates
+
+### Feature 6: Migration/Backfill Safety
+**Description:**
+Ensure existing tasks get sensible defaults without data migration scripts.
+
+**Requirements:**
+- [ ] Existing tasks default to sourceType='client' if field missing
+- [ ] Existing client tasks default to visibility='private'
+- [ ] Handle missing fields gracefully in all read operations
+
+**Acceptance Criteria:**
+- No breaking changes to existing task records
+- Application handles both old and new task formats
+
+## Technical Considerations
+
+### Day Calculation Logic
+Must use existing enrollment progress calculation:
+- Calculate enrollment start date
+- Account for includeWeekends setting
+- Map calendar date to program day number
+
+### Task Priority/Override Rules
+1. Day-level tasks take precedence over weekly tasks
+2. Client-locked tasks never overwritten
+3. Client-created tasks never overwritten (even in override mode)
+4. Program-sourced tasks can be overwritten in override mode
+
+### Sync Timing
+- Coach template edits: async background sync to all enrollments
+- Coach per-client edits: immediate sync to that client
+- No sync during check-in hydration (existing flow continues)
+
+## Out of Scope
+- Full task timeline UI for coaches
+- Batch task operations
+- Task reordering/prioritization sync
+- Historical task sync (only today + future)
+- Changes to morning check-in flow logic
+
+## Testing Requirements
+- [ ] Weekend skipping day mapping
+- [ ] fill-empty does not override client tasks
+- [ ] override-program-sourced replaces only program tasks
+- [ ] Public tasks visible to coach, private not visible
+- [ ] Max task limit enforcement
+- [ ] Existing functionality unaffected
+
+## Notes
+- This is an additive implementation - no rewrites of existing systems
+- Preserve all existing task interactions (stories, squads, check-ins)
+- Program engine remains unchanged except for sync triggers

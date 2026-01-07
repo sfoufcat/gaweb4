@@ -12,7 +12,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { BrandedCheckbox } from '@/components/ui/checkbox';
+import { BrandedCheckbox, BrandedRadio } from '@/components/ui/checkbox';
 import type { ProgramEnrollment, TemplateSyncOptions } from '@/types';
 
 interface EnrollmentWithUser extends ProgramEnrollment {
@@ -61,7 +61,7 @@ export function SyncToClientsDialog({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
-  // Initialize sync fields based on editedFields (if provided) or default to all selected
+  // Initialize sync fields based on editedFields (if provided) or default to none selected
   const getInitialSyncFields = (): SyncFieldOptions => {
     if (editedFields && editedFields.size > 0) {
       return {
@@ -74,19 +74,34 @@ export function SyncToClientsDialog({
         syncHabits: editedFields.has('syncHabits'),
       };
     }
-    // Fallback: all fields selected if no editedFields provided
+    // Default: nothing selected, user must choose what to sync
     return {
-      syncName: true,
-      syncTheme: true,
-      syncPrompt: true,
-      syncTasks: true,
-      syncFocus: true,
-      syncNotes: true,
-      syncHabits: true,
+      syncName: false,
+      syncTheme: false,
+      syncPrompt: false,
+      syncTasks: false,
+      syncFocus: false,
+      syncNotes: false,
+      syncHabits: false,
     };
   };
   
   const [syncFields, setSyncFields] = useState<SyncFieldOptions>(getInitialSyncFields);
+  
+  // Select all / deselect all helper
+  const allFieldsSelected = Object.values(syncFields).every(v => v);
+  const toggleSelectAll = () => {
+    const newValue = !allFieldsSelected;
+    setSyncFields({
+      syncName: newValue,
+      syncTheme: newValue,
+      syncPrompt: newValue,
+      syncTasks: newValue,
+      syncFocus: newValue,
+      syncNotes: newValue,
+      syncHabits: newValue,
+    });
+  };
 
   // Reset syncFields when dialog opens with new editedFields
   useEffect(() => {
@@ -215,9 +230,18 @@ export function SyncToClientsDialog({
         <div className="space-y-5 py-2">
           {/* What to sync */}
           <div>
-            <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 block">
-              Select what to sync:
-            </label>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                Select what to sync:
+              </label>
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                className="text-xs font-medium font-albert text-brand-accent hover:text-brand-accent/80 transition-colors"
+              >
+                {allFieldsSelected ? 'Deselect all' : 'Select all'}
+              </button>
+            </div>
             <div className="space-y-2">
               {fieldOptions.map(({ key, label }) => (
                 <label
@@ -228,7 +252,7 @@ export function SyncToClientsDialog({
                     checked={syncFields[key]}
                     onChange={() => toggleField(key)}
                   />
-                  <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors">
+                  <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors">
                     {label}
                   </span>
                 </label>
@@ -238,31 +262,27 @@ export function SyncToClientsDialog({
 
           {/* Apply to */}
           <div>
-            <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 block">
+            <label className="text-sm font-medium font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 block">
               Apply to:
             </label>
             <div className="space-y-2">
               <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="radio"
+                <BrandedRadio
                   name="targetMode"
                   checked={targetMode === 'all'}
                   onChange={() => setTargetMode('all')}
-                  className="w-4 h-4 text-brand-accent focus:ring-brand-accent"
                 />
-                <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
                   All enrolled clients ({activeEnrollments.length})
                 </span>
               </label>
               <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="radio"
+                <BrandedRadio
                   name="targetMode"
                   checked={targetMode === 'select'}
                   onChange={() => setTargetMode('select')}
-                  className="w-4 h-4 text-brand-accent focus:ring-brand-accent"
                 />
-                <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
                   Select specific clients...
                 </span>
               </label>
@@ -272,7 +292,7 @@ export function SyncToClientsDialog({
             {targetMode === 'select' && (
               <div className="mt-3 max-h-40 overflow-y-auto border border-[#e1ddd8] dark:border-[#262b35] rounded-lg">
                 {activeEnrollments.length === 0 ? (
-                  <div className="p-3 text-sm text-[#5f5a55] dark:text-[#b2b6c2] text-center">
+                  <div className="p-3 text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] text-center">
                     No active clients
                   </div>
                 ) : (
@@ -298,7 +318,7 @@ export function SyncToClientsDialog({
                           <User className="h-3 w-3 text-[#5f5a55] dark:text-[#7d8190]" />
                         </div>
                       )}
-                      <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                      <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
                         {getClientName(enrollment)}
                       </span>
                     </label>
@@ -316,10 +336,10 @@ export function SyncToClientsDialog({
                 onChange={() => setPreserveClientData(!preserveClientData)}
               />
               <div>
-                <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
                   Preserve client-specific data
                 </span>
-                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                <p className="text-xs font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
                   Keep each client&apos;s recordings, notes, and linked calls
                 </p>
               </div>
@@ -330,14 +350,14 @@ export function SyncToClientsDialog({
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
               <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              <p className="text-sm font-albert text-red-600 dark:text-red-400">{error}</p>
             </div>
           )}
 
           {success && (
             <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
               <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-              <p className="text-sm text-green-600 dark:text-green-400">{success}</p>
+              <p className="text-sm font-albert text-green-600 dark:text-green-400">{success}</p>
             </div>
           )}
         </div>

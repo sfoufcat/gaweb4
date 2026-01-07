@@ -97,6 +97,18 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
   const [resources, setResources] = useState<CoachingResource[]>([]);
   const [privateNotes, setPrivateNotes] = useState<CoachPrivateNotes[]>([]);
   
+  // Client tasks state (for 2-way sync visibility)
+  interface ClientTask {
+    id: string;
+    title: string;
+    status: 'pending' | 'completed';
+    listType: 'focus' | 'backlog';
+    sourceType: string;
+    isProgramSourced: boolean;
+  }
+  const [clientTasks, setClientTasks] = useState<ClientTask[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
+
   // New item inputs
   const [newFocusArea, setNewFocusArea] = useState('');
   const [newActionItem, setNewActionItem] = useState('');
@@ -199,6 +211,26 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
   useEffect(() => {
     fetchClientData();
   }, [fetchClientData]);
+
+  // Fetch client's tasks for today (2-way sync feature)
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        setLoadingTasks(true);
+        const today = new Date().toISOString().split('T')[0];
+        const response = await fetch(`/api/coach/client-tasks/${clientId}?date=${today}`);
+        if (response.ok) {
+          const data = await response.json();
+          setClientTasks(data.focusTasks || []);
+        }
+      } catch (err) {
+        console.error('Error fetching client tasks:', err);
+      } finally {
+        setLoadingTasks(false);
+      }
+    };
+    fetchTasks();
+  }, [clientId]);
 
   // Save focus areas and action items
   const handleSaveChanges = async () => {
@@ -732,6 +764,55 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
           <p className="font-albert text-[15px] text-[#8c8c8c] text-center py-4">
             No call scheduled yet.
           </p>
+        )}
+      </div>
+
+      {/* Today's Tasks - 2-way sync visibility */}
+      <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <ClipboardList className="w-5 h-5 text-brand-accent" />
+          <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
+            Today&apos;s Tasks
+          </h3>
+          {!loadingTasks && clientTasks.length > 0 && (
+            <span className="ml-auto text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
+              {clientTasks.filter(t => t.status === 'completed').length}/{clientTasks.length} done
+            </span>
+          )}
+        </div>
+
+        {loadingTasks ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-10 bg-[#e1ddd8]/30 dark:bg-[#272d38]/30 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : clientTasks.length === 0 ? (
+          <p className="font-albert text-[15px] text-[#8c8c8c] text-center py-4">
+            No tasks for today.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {clientTasks.map((task) => (
+              <div key={task.id} className="flex items-center gap-3 p-3 bg-[#f9f8f6] dark:bg-[#11141b] rounded-lg">
+                <span className={`text-lg ${task.status === 'completed' ? 'text-brand-accent' : 'text-[#c4bfb9] dark:text-[#7d8190]'}`}>
+                  {task.status === 'completed' ? '✓' : '○'}
+                </span>
+                <span className={`font-albert text-[15px] flex-1 ${
+                  task.status === 'completed' 
+                    ? 'text-[#8c8c8c] dark:text-[#7d8190] line-through' 
+                    : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                }`}>
+                  {task.title}
+                </span>
+                {task.isProgramSourced && (
+                  <span className="px-2 py-0.5 text-xs font-albert bg-brand-accent/10 text-brand-accent rounded-full">
+                    Program
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
 

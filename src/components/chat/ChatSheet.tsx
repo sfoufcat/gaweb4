@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { MessageCircle, ChevronRight, ChevronLeft, Users, Megaphone, PartyPopper, Trophy, X, Pin } from 'lucide-react';
 import { useStreamChatClient } from '@/contexts/StreamChatContext';
+import { useChatChannels, type ChannelPreview } from '@/contexts/ChatChannelsContext';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
 import { formatDistanceToNow } from 'date-fns';
 import Image from 'next/image';
@@ -67,16 +68,7 @@ interface ChatSheetProps {
   initialChannelId?: string | null;
 }
 
-interface ChannelPreview {
-  id: string;
-  name: string;
-  image?: string;
-  lastMessage?: string;
-  lastMessageTime?: Date;
-  unread: number;
-  type: 'dm' | 'squad' | 'global' | 'coaching';
-  channel: StreamChannel;
-}
+// ChannelPreview interface is now imported from ChatChannelsContext
 
 /**
  * ChatSheet Component
@@ -88,8 +80,20 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   const { client, isConnected } = useStreamChatClient();
   // Use client.user as direct source of truth - bypasses any state sync issues
   const actuallyConnected = !!(client?.user) || isConnected;
-  const [channels, setChannels] = useState<ChannelPreview[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // PRE-FETCHED CHANNEL DATA from ChatChannelsContext
+  // Channels are loaded in background after Stream connects, making this instant!
+  const {
+    channels,
+    orgChannelIds,
+    isPlatformMode,
+    isLoading: isChannelsLoading,
+    isInitialized: channelsInitialized,
+  } = useChatChannels();
+
+  // Show loading only if channels haven't been initialized yet
+  const isLoading = !channelsInitialized;
+
   const [view, setView] = useState<'list' | 'channel'>('list');
   const [selectedChannel, setSelectedChannel] = useState<StreamChannel | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -115,12 +119,8 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     imageUrl: coachingData.promoImageUrl,
   }), [coachingData]);
 
-  // Org-specific channels (for filtering out cross-org channels)
-  const [orgChannelIds, setOrgChannelIds] = useState<Set<string>>(new Set());
-  const [isPlatformMode, setIsPlatformMode] = useState(false);
-
-  // Use squad data from context (already loaded at app startup - instant!)
-  const { squads, isLoading: isSquadLoading } = useSquad();
+  // Squad data from context (already loaded at app startup - instant!)
+  const { squads } = useSquad();
 
   // Check if user is a coach (affects where coaching channels appear)
   const { isCoach } = useCoachSquads();
@@ -147,7 +147,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   // State for which swipe item is open (only one at a time)
   const [openSwipeItemId, setOpenSwipeItemId] = useState<string | null>(null);
 
-  // Build userSquadChannelIds from context data (memoized)
+  // Build userSquadChannelIds from context data (for local reference only)
   const userSquadChannelIds = useMemo(() => {
     const ids = new Set<string>();
     for (const squad of squads) {
@@ -158,35 +158,8 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     return ids;
   }, [squads]);
 
-  // Squad channels are "loaded" when context is done loading
-  const squadChannelsLoaded = !isSquadLoading;
-
-  // Fetch org channels for filtering (coaching data now from context)
-  useEffect(() => {
-    if (isOpen) {
-      // Fetch org channels for filtering
-      fetch('/api/user/org-channels')
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data) {
-            setIsPlatformMode(data.isPlatformMode || false);
-            // Build set of allowed org channel IDs
-            const channelIds = new Set<string>();
-            if (data.channels) {
-              for (const ch of data.channels) {
-                if (ch.streamChannelId) {
-                  channelIds.add(ch.streamChannelId);
-                }
-              }
-            }
-            setOrgChannelIds(channelIds);
-          }
-        })
-        .catch(() => {
-          // Silently fail - will show all channels
-        });
-    }
-  }, [isOpen]);
+  // NOTE: Org channels and channel fetching is now handled by ChatChannelsContext
+  // The context pre-fetches data after Stream connects, so it's ready when this opens
 
   // Close on escape key and lock body scroll
   useEffect(() => {
@@ -220,138 +193,8 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     }
   }, [isOpen]);
 
-  // Fetch channels when sheet opens
-  useEffect(() => {
-    if (!isOpen || !client || !actuallyConnected) {
-      setIsLoading(false);
-      return;
-    }
-
-    const fetchChannels = async () => {
-      setIsLoading(true);
-      try {
-        // Query user's channels
-        const channelResponse = await client.queryChannels(
-          {
-            members: { $in: [client.userID!] },
-          },
-          { last_message_at: -1 },
-          { limit: 50, watch: true }
-        );
-
-        const previews: ChannelPreview[] = [];
-
-        for (const channel of channelResponse) {
-          const channelData = channel.data as Record<string, unknown>;
-          const channelId = channel.id || '';
-
-          // Determine channel type and name
-          let type: ChannelPreview['type'] = 'dm';
-          let name = (channelData?.name as string) || '';
-          let image = channelData?.image as string | undefined;
-          
-          if (channelId === ANNOUNCEMENTS_CHANNEL_ID || channelId.includes('-announcements')) {
-            type = 'global';
-            name = name || 'Announcements';
-          } else if (channelId === SOCIAL_CORNER_CHANNEL_ID || channelId.includes('-social')) {
-            type = 'global';
-            name = name || 'Social Corner';
-          } else if (channelId === SHARE_WINS_CHANNEL_ID || channelId.includes('-wins')) {
-            type = 'global';
-            name = name || 'Share Wins';
-          } else if (channelId.startsWith('org-')) {
-            type = 'global';
-            // Use the channel name from data
-          } else if (channelId.startsWith('squad-')) {
-            type = 'squad';
-            name = name || 'Squad Chat';
-          } else if (channelId.startsWith('coaching-') || (name && name.toLowerCase().includes('coaching'))) {
-            type = 'coaching';
-            // For coaching channels, show the OTHER member's name (coach for clients, client for coaches)
-            const members = Object.values(channel.state.members).filter(m => m.user);
-            const otherMember = members.find(m => m.user?.id !== client.userID);
-            if (otherMember?.user) {
-              name = otherMember.user.name || 'Coach';
-              image = otherMember.user.image;
-            } else {
-              name = name || 'Coaching';
-            }
-          } else {
-            // DM - get other member's info
-            const members = Object.values(channel.state.members).filter(m => m.user);
-            const otherMember = members.find(m => m.user?.id !== client.userID);
-            if (otherMember?.user) {
-              name = otherMember.user.name || 'Chat';
-              image = otherMember.user.image;
-              
-              // Fallback: Check if this is a coaching chat that was created as a DM
-              if (name.toLowerCase().includes('coach') || (channelData?.name as string)?.toLowerCase().includes('coaching')) {
-                type = 'coaching';
-              }
-            }
-          }
-
-          // MULTI-TENANCY: Filter out channels from other organizations
-          // Skip filtering if in platform mode (show all channels)
-          if (!isPlatformMode) {
-            // Filter squad channels - only show ones in user's current org
-            // userSquadChannelIds comes from /api/squad/me which already filters by org
-            if (type === 'squad') {
-              // Only filter once squad data has loaded (prevents race condition)
-              if (squadChannelsLoaded && !userSquadChannelIds.has(channelId)) {
-                continue; // Skip squad channels from other orgs
-              }
-            }
-
-            // Filter org channels (like announcements, social corner) - only show current org
-            // These have format: org-{orgId}-{type} or legacy format
-            if (channelId.startsWith('org-')) {
-              if (!orgChannelIds.has(channelId)) {
-                continue; // Skip org channels from other orgs
-              }
-            }
-
-            // Legacy global channel IDs (announcements, social-corner, share-wins)
-            // These are now replaced by org-specific channels, but skip them unless in orgChannelIds
-            if (channelId === ANNOUNCEMENTS_CHANNEL_ID ||
-                channelId === SOCIAL_CORNER_CHANNEL_ID ||
-                channelId === SHARE_WINS_CHANNEL_ID) {
-              // Only show if they're in the current org's channel list (for backward compat)
-              if (orgChannelIds.size > 0 && !orgChannelIds.has(channelId)) {
-                continue;
-              }
-            }
-
-            // Coaching channels - keep them (they're per-user so should be fine)
-            // DMs - keep them (person-to-person, not org-specific)
-          }
-
-          // Get last message
-          const messages = channel.state.messages;
-          const lastMsg = messages[messages.length - 1];
-          
-          previews.push({
-            id: channelId,
-            name,
-            image,
-            lastMessage: lastMsg?.text,
-            lastMessageTime: lastMsg?.created_at ? new Date(lastMsg.created_at) : undefined,
-            unread: channel.countUnread(),
-            type,
-            channel,
-          });
-        }
-
-        setChannels(previews);
-      } catch (err) {
-        console.error('Failed to fetch channels:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchChannels();
-  }, [isOpen, client, actuallyConnected, isPlatformMode, orgChannelIds, userSquadChannelIds, squadChannelsLoaded, initialChannelId]);
+  // NOTE: Channel fetching is now handled by ChatChannelsContext
+  // Channels are pre-fetched when Stream connects, so they're ready when this opens
 
   // Handle channel click - show messages with animation
   const handleChannelClick = useCallback((channel: StreamChannel) => {

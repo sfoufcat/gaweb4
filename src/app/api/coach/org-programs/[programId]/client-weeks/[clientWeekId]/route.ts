@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
+import { syncProgramTasksForDateRange } from '@/lib/program-engine';
 import type { ClientProgramWeek } from '@/types';
 
 export async function GET(
@@ -116,10 +117,34 @@ export async function PATCH(
       lastSyncedAt: savedDoc.data()?.lastSyncedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.lastSyncedAt,
     } as ClientProgramWeek;
 
+    // 2-way sync: If weekly tasks were updated, sync to this client's Daily Focus
+    let syncResult = null;
+    if (body.weeklyTasks !== undefined && body.syncToClient !== false) {
+      try {
+        const clientWeekData = savedDoc.data() as ClientProgramWeek;
+        const enrollmentId = clientWeekData.enrollmentId;
+        
+        if (enrollmentId) {
+          const { userId } = await requireCoachWithOrg();
+          syncResult = await syncProgramTasksForDateRange(programId, {
+            mode: 'override-program-sourced', // Per-client edits use override mode
+            horizonDays: 7,
+            coachUserId: userId,
+            specificEnrollmentId: enrollmentId, // Only sync for this client
+          });
+          console.log(`[COACH_CLIENT_WEEK_PATCH] Synced tasks to client: ${JSON.stringify(syncResult)}`);
+        }
+      } catch (syncErr) {
+        console.error('[COACH_CLIENT_WEEK_PATCH] Failed to sync tasks to client:', syncErr);
+        // Don't fail the whole request, just log the error
+      }
+    }
+
     return NextResponse.json({
       success: true,
       clientWeek: savedWeek,
       message: 'Client week updated successfully',
+      ...(syncResult && { clientSync: syncResult }),
     });
   } catch (error) {
     console.error('[COACH_CLIENT_WEEK_PATCH] Error:', error);
