@@ -34,6 +34,7 @@ interface AlignmentSheetProps {
   onClose: () => void;
   alignment: UserAlignment | null;
   summary: UserAlignmentSummary | null;
+  alignmentConfig?: AlignmentActivityConfig;
 }
 
 /**
@@ -115,8 +116,10 @@ export function AlignmentSheet({
   onClose,
   alignment,
   summary,
+  alignmentConfig,
 }: AlignmentSheetProps) {
-  const [config, setConfig] = useState<AlignmentActivityConfig>(DEFAULT_ALIGNMENT_CONFIG);
+  // Use provided config or fall back to default
+  const config = alignmentConfig ?? DEFAULT_ALIGNMENT_CONFIG;
   const [isMobile, setIsMobile] = useState(false);
 
   // Detect mobile vs desktop
@@ -126,27 +129,6 @@ export function AlignmentSheet({
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  // Fetch org alignment config
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const response = await fetch('/api/org/settings');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.settings?.alignmentConfig) {
-            setConfig(data.settings.alignmentConfig);
-          }
-        }
-      } catch {
-        console.error('Failed to fetch org alignment config');
-      }
-    };
-
-    if (isOpen) {
-      fetchConfig();
-    }
-  }, [isOpen]);
 
   // Close on escape key
   useEffect(() => {

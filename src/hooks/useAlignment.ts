@@ -2,7 +2,8 @@
 
 import useSWR from 'swr';
 import { useCallback, useMemo } from 'react';
-import type { UserAlignment, UserAlignmentSummary, AlignmentState } from '@/types';
+import type { UserAlignment, UserAlignmentSummary, AlignmentState, AlignmentActivityConfig } from '@/types';
+import { DEFAULT_ALIGNMENT_CONFIG } from '@/types';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 
 const ALIGNMENT_CACHE_KEY = '/api/alignment';
@@ -10,9 +11,11 @@ const ALIGNMENT_CACHE_KEY = '/api/alignment';
 interface AlignmentResponse {
   alignment: UserAlignment;
   summary: UserAlignmentSummary;
+  alignmentConfig: AlignmentActivityConfig;
 }
 
 interface UseAlignmentReturn extends AlignmentState {
+  alignmentConfig: AlignmentActivityConfig;
   refresh: () => Promise<void>;
   updateAlignment: (updates: {
     didMorningCheckin?: boolean;
@@ -61,6 +64,7 @@ export function useAlignment(): UseAlignmentReturn {
       lastAlignedDate: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString(),
     },
+    alignmentConfig: DEFAULT_ALIGNMENT_CONFIG,
   }), []);
   
   const { data, error, isLoading, mutate } = useSWR<AlignmentResponse>(
@@ -83,6 +87,7 @@ export function useAlignment(): UseAlignmentReturn {
 
   const alignment = isDemoMode ? demoAlignment.alignment : (data?.alignment ?? null);
   const summary = isDemoMode ? demoAlignment.summary : (data?.summary ?? null);
+  const alignmentConfig = isDemoMode ? demoAlignment.alignmentConfig : (data?.alignmentConfig ?? DEFAULT_ALIGNMENT_CONFIG);
 
   // Refresh alignment from server
   const refresh = useCallback(async () => {
@@ -150,6 +155,7 @@ export function useAlignment(): UseAlignmentReturn {
   return {
     alignment,
     summary,
+    alignmentConfig,
     isLoading: isDemoMode ? false : (isLoading && !data),
     error: isDemoMode ? null : (error?.message ?? null),
     refresh,

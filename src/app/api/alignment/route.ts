@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { 
-  getFullAlignmentState, 
-  updateAlignmentForToday, 
+import {
+  getFullAlignmentState,
+  updateAlignmentForToday,
   initializeAlignmentForToday,
-  getTodayDate 
+  getTodayDate,
+  getOrgAlignmentConfig,
 } from '@/lib/alignment';
+import { DEFAULT_ALIGNMENT_CONFIG } from '@/types';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { AlignmentUpdatePayload } from '@/types';
 
@@ -58,6 +60,7 @@ export async function GET(request: NextRequest) {
           lastAlignedDate: null,
           updatedAt: new Date().toISOString(),
         },
+        alignmentConfig: DEFAULT_ALIGNMENT_CONFIG,
       });
     }
 
@@ -70,12 +73,17 @@ export async function GET(request: NextRequest) {
       await initializeAlignmentForToday(userId, organizationId);
     }
 
-    const { alignment, summary } = await getFullAlignmentState(userId, organizationId, date);
+    // Fetch alignment state and org config in parallel
+    const [{ alignment, summary }, alignmentConfig] = await Promise.all([
+      getFullAlignmentState(userId, organizationId, date),
+      getOrgAlignmentConfig(organizationId),
+    ]);
 
     return NextResponse.json({
       success: true,
       alignment,
       summary,
+      alignmentConfig,
     });
   } catch (error) {
     console.error('[ALIGNMENT_GET_ERROR]', error);

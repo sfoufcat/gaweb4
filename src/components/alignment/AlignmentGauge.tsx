@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AlignmentSheet } from './AlignmentSheet';
-import type { UserAlignment, UserAlignmentSummary } from '@/types';
+import type { UserAlignment, UserAlignmentSummary, AlignmentActivityConfig } from '@/types';
 
 // Fire icon SVG component
 function FireIcon({ size = 24, className = '' }: { size?: number; className?: string }) {
@@ -30,6 +30,7 @@ function FireIcon({ size = 24, className = '' }: { size?: number; className?: st
 interface AlignmentGaugeProps {
   alignment: UserAlignment | null;
   summary: UserAlignmentSummary | null;
+  alignmentConfig?: AlignmentActivityConfig;
   isLoading?: boolean;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   /** When true, uses xs size on mobile and sm size on desktop */
@@ -49,6 +50,7 @@ interface AlignmentGaugeProps {
 export function AlignmentGauge({
   alignment,
   summary,
+  alignmentConfig,
   isLoading = false,
   size = 'sm',
   responsive = false,
@@ -227,6 +229,7 @@ export function AlignmentGauge({
           onClose={() => setShowSheet(false)}
           alignment={alignment}
           summary={summary}
+          alignmentConfig={alignmentConfig}
         />
       )}
     </>

@@ -185,7 +185,7 @@ export function DashboardPage() {
   const { habits, isLoading: habitsLoading, markComplete, fetchHabits } = useHabits();
   
   // Integrate alignment hook for daily alignment & streak
-  const { alignment, summary, isLoading: alignmentLoading } = useAlignment();
+  const { alignment, summary, alignmentConfig, isLoading: alignmentLoading } = useAlignment();
   
   // Integrate squad context for My Squad section
   const { squad, members, isLoading: squadLoading } = useSquadContext();
@@ -1638,6 +1638,7 @@ export function DashboardPage() {
             <AlignmentGauge
               alignment={alignment}
               summary={summary}
+              alignmentConfig={alignmentConfig}
               isLoading={alignmentLoading}
               size="sm"
             />
