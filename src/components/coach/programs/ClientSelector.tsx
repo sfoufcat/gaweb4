@@ -104,6 +104,7 @@ export function ClientSelector({
       enrollmentId: enrollment.id,
       userId: enrollment.userId,
       userName: getClientName(enrollment),
+      enrollmentStartedAt: enrollment.startedAt,
     });
     setOpen(false);
     setSearchTerm('');

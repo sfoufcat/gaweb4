@@ -13,6 +13,7 @@ import { useProgramCoachingData } from '@/hooks/useProgramCoachingData';
 import { ArticleCard } from '@/components/discover/ArticleCard';
 import { RequestCallModal } from '@/components/scheduling';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { calculateCalendarWeeks, getCalendarWeekForDay, type CalendarWeek } from '@/lib/calendar-weeks';
 
 /**
  * ProgramDetailView Component
@@ -240,9 +241,24 @@ export function ProgramDetailView({
   // Check if any days have tasks
   const hasAnyTasks = threeDayFocus.some(day => day.tasks.length > 0);
 
-  // Format week progress
-  const weekProgress = Math.ceil(progress.currentDay / 7);
-  const totalWeeks = Math.ceil(progress.totalDays / 7);
+  // Calculate calendar-aligned weeks
+  const calendarWeeks = useMemo(() => {
+    if (!enrollment?.startedAt) return [];
+    const includeWeekends = program.includeWeekends !== false;
+    return calculateCalendarWeeks(enrollment.startedAt, progress.totalDays, includeWeekends);
+  }, [enrollment?.startedAt, progress.totalDays, program.includeWeekends]);
+
+  // Get current calendar week
+  const currentCalendarWeek = useMemo(() => {
+    if (!enrollment?.startedAt || calendarWeeks.length === 0) return null;
+    const includeWeekends = program.includeWeekends !== false;
+    const currentDay = isPreStart ? 1 : progress.currentDay;
+    return getCalendarWeekForDay(enrollment.startedAt, currentDay, progress.totalDays, includeWeekends);
+  }, [enrollment?.startedAt, calendarWeeks.length, progress.currentDay, progress.totalDays, program.includeWeekends, isPreStart]);
+
+  // Format week progress label
+  const weekProgressLabel = currentCalendarWeek?.label || 'Week 1';
+  const totalWeeks = calendarWeeks.length;
 
   // Get upcoming events
   const upcomingEvents = events.filter(e => new Date(e.date) >= new Date());
@@ -311,7 +327,7 @@ export function ProgramDetailView({
               <path d="M1 9.5V13h3.5V9.5H1zm5-4V13h3.5V5.5H6zm5-4V13h3V1.5h-3z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span className="font-sans text-[13px] font-medium text-text-secondary dark:text-[#7d8190] leading-none">
-              Week {weekProgress}/{totalWeeks}
+              {weekProgressLabel}
             </span>
           </div>
         </div>

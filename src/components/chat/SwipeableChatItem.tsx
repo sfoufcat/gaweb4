@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, TouchEvent, ReactNode } from 'react';
+import { useState, useRef, TouchEvent, ReactNode, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface SwipeAction {
@@ -14,23 +14,37 @@ interface SwipeableChatItemProps {
   children: ReactNode;
   actions: SwipeAction[];
   disabled?: boolean;
+  itemId: string;
+  openItemId: string | null;
+  onOpen: (id: string | null) => void;
 }
 
 const SWIPE_THRESHOLD = 60;
-const ACTION_WIDTH = 72;
+const ACTION_WIDTH = 76;
 
 export function SwipeableChatItem({
   children,
   actions,
   disabled = false,
+  itemId,
+  openItemId,
+  onOpen,
 }: SwipeableChatItemProps) {
   const [translateX, setTranslateX] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
   const startXRef = useRef(0);
   const startYRef = useRef(0);
   const isDraggingRef = useRef(false);
   const isVerticalScrollRef = useRef(false);
   const maxSwipe = actions.length * ACTION_WIDTH;
+
+  // Controlled: if another item opens, close this one
+  const isOpen = openItemId === itemId;
+
+  useEffect(() => {
+    if (!isOpen && translateX !== 0) {
+      setTranslateX(0);
+    }
+  }, [isOpen, translateX]);
 
   const handleTouchStart = (e: TouchEvent) => {
     if (disabled) return;
@@ -83,10 +97,12 @@ export function SwipeableChatItem({
     // Snap to open or closed based on threshold
     if (Math.abs(translateX) > SWIPE_THRESHOLD) {
       setTranslateX(-maxSwipe);
-      setIsOpen(true);
+      onOpen(itemId); // Tell parent this item is now open
     } else {
       setTranslateX(0);
-      setIsOpen(false);
+      if (isOpen) {
+        onOpen(null); // Close
+      }
     }
     isDraggingRef.current = false;
   };
@@ -94,7 +110,7 @@ export function SwipeableChatItem({
   const handleActionClick = (action: SwipeAction) => {
     // Reset swipe state
     setTranslateX(0);
-    setIsOpen(false);
+    onOpen(null);
     // Execute action
     action.onClick();
   };
@@ -103,7 +119,7 @@ export function SwipeableChatItem({
   const handleContentClick = () => {
     if (isOpen) {
       setTranslateX(0);
-      setIsOpen(false);
+      onOpen(null);
     }
   };
 
@@ -115,7 +131,7 @@ export function SwipeableChatItem({
     <div className="relative overflow-hidden">
       {/* Action buttons revealed on swipe */}
       <div
-        className="absolute inset-y-0 right-0 flex"
+        className="absolute inset-y-0 right-0 flex items-stretch gap-1 pr-1"
         style={{ width: maxSwipe }}
       >
         {actions.map((action, i) => (
@@ -123,10 +139,10 @@ export function SwipeableChatItem({
             key={i}
             onClick={() => handleActionClick(action)}
             className={cn(
-              'flex flex-col items-center justify-center gap-1 text-white text-[11px] font-medium transition-opacity',
+              'flex flex-col items-center justify-center gap-1.5 text-white text-[11px] font-medium rounded-2xl my-1 transition-all active:scale-95',
               action.bgColor
             )}
-            style={{ width: ACTION_WIDTH }}
+            style={{ width: ACTION_WIDTH - 8 }}
           >
             {action.icon}
             <span>{action.label}</span>
@@ -139,7 +155,7 @@ export function SwipeableChatItem({
         className="relative bg-white dark:bg-[#171b22] touch-pan-y"
         style={{
           transform: `translateX(${translateX}px)`,
-          transition: isDraggingRef.current ? 'none' : 'transform 0.2s ease-out',
+          transition: isDraggingRef.current ? 'none' : 'transform 0.25s ease-out',
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

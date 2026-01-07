@@ -3,8 +3,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { UserPlus, RefreshCw, Eye, MessageCircle, Send, Trash2, Download } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { SquadManagerPopover } from './SquadManagerPopover';
 import { ProgramManagerPopover } from './ProgramManagerPopover';
 import { useDemoMode } from '@/contexts/DemoModeContext';
@@ -717,8 +715,8 @@ export function AdminUsersTab({
     }
   };
 
-  // Export selected users to PDF
-  const handleExportPDF = useCallback(() => {
+  // Export selected users to CSV
+  const handleExportCSV = useCallback(() => {
     const selectedUsers = filteredUsers.filter(u => selectedUserIds.has(u.id));
     if (selectedUsers.length === 0) {
       alert('Please select users to export');
@@ -728,70 +726,53 @@ export function AdminUsersTab({
     // Helper to get squad names from IDs
     const getSquadNames = (user: ClerkAdminUser): string => {
       const squadIds = user.squadIds || (user.squadId ? [user.squadId] : []);
-      if (squadIds.length === 0) return '-';
+      if (squadIds.length === 0) return '';
       const squadMap = new Map(displaySquads.map(s => [s.id, s.name]));
-      return squadIds.map(id => squadMap.get(id) || 'Unknown').join(', ');
+      return squadIds.map(id => squadMap.get(id) || 'Unknown').join('; ');
     };
 
     // Helper to get program names
     const getProgramNames = (user: ClerkAdminUser): string => {
-      if (!user.programs || user.programs.length === 0) return '-';
-      return user.programs.map(p => p.programName).join(', ');
+      if (!user.programs || user.programs.length === 0) return '';
+      return user.programs.map(p => p.programName).join('; ');
     };
 
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
+    // Helper to escape CSV values
+    const escapeCSV = (value: string): string => {
+      if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    };
 
-    // Title
-    doc.setFontSize(18);
-    doc.text(headerTitle || 'Clients', pageWidth / 2, 20, { align: 'center' });
+    // CSV headers
+    const headers = ['Name', 'Email', 'Role', 'Squad', 'Programs', 'Joined'];
 
-    // Subtitle with date
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Exported on ${new Date().toLocaleDateString()}`, pageWidth / 2, 28, { align: 'center' });
-    doc.text(`${selectedUsers.length} user${selectedUsers.length !== 1 ? 's' : ''}`, pageWidth / 2, 34, { align: 'center' });
-
-    // Table data
-    const tableData = selectedUsers.map(user => [
-      user.name || 'Unnamed',
-      user.email || '-',
-      formatOrgRoleName(user.orgRoleForOrg || user.orgRole || 'member'),
-      getSquadNames(user),
-      getProgramNames(user),
+    // CSV rows
+    const rows = selectedUsers.map(user => [
+      escapeCSV(user.name || 'Unnamed'),
+      escapeCSV(user.email || ''),
+      escapeCSV(formatOrgRoleName(user.orgRoleForOrg || user.orgRole || 'member')),
+      escapeCSV(getSquadNames(user)),
+      escapeCSV(getProgramNames(user)),
       new Date(user.createdAt).toLocaleDateString(),
     ]);
 
-    // Generate table
-    autoTable(doc, {
-      startY: 42,
-      head: [['Name', 'Email', 'Role', 'Squad', 'Programs', 'Joined']],
-      body: tableData,
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-      },
-      headStyles: {
-        fillColor: [180, 140, 100],
-        textColor: 255,
-        fontStyle: 'bold',
-      },
-      alternateRowStyles: {
-        fillColor: [250, 248, 246],
-      },
-      columnStyles: {
-        0: { cellWidth: 30 },
-        1: { cellWidth: 45 },
-        2: { cellWidth: 22 },
-        3: { cellWidth: 30 },
-        4: { cellWidth: 35 },
-        5: { cellWidth: 22 },
-      },
-    });
+    // Build CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
 
-    // Save PDF
-    const filename = `${(headerTitle || 'clients').toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const filename = `${(headerTitle || 'clients').toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
   }, [filteredUsers, selectedUserIds, headerTitle, displaySquads]);
 
   if (loading) {
@@ -920,13 +901,13 @@ export function AdminUsersTab({
                   <RefreshCw className="w-5 h-5" />
                 </button>
 
-                {/* Export PDF Button */}
+                {/* Export CSV Button */}
                 {isCoachContext && (
                   <button
-                    onClick={handleExportPDF}
+                    onClick={handleExportCSV}
                     disabled={selectedUserIds.size === 0}
                     className="p-2.5 sm:px-4 sm:py-2.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] active:bg-[#e8e5e1] dark:active:bg-[#1a1e27] rounded-lg border border-[#e1ddd8] dark:border-[#262b35] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
-                    title={selectedUserIds.size === 0 ? 'Select users to export' : 'Export selected users to PDF'}
+                    title={selectedUserIds.size === 0 ? 'Select users to export' : 'Export selected users to CSV'}
                   >
                     <Download className="w-5 h-5 sm:w-4 sm:h-4 sm:mr-2" />
                     <span className="hidden sm:inline font-albert font-medium">Export</span>
@@ -1012,14 +993,14 @@ export function AdminUsersTab({
               </Select>
             </div>
 
-            {/* Export PDF button */}
+            {/* Export CSV button */}
             <button
-              onClick={handleExportPDF}
+              onClick={handleExportCSV}
               className="ml-auto inline-flex items-center gap-1.5 font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
-              title="Export selected users to PDF"
+              title="Export selected users to CSV"
             >
               <Download className="w-4 h-4" />
-              Export PDF
+              Export CSV
             </button>
 
             <button
@@ -1060,7 +1041,7 @@ export function AdminUsersTab({
                 {showColumn('name') && <TableHead className="font-albert">Name</TableHead>}
                 {showColumn('email') && <TableHead className="font-albert">Email</TableHead>}
                 {showColumn('role') && !showOrgRole && <TableHead className="font-albert">Role</TableHead>}
-                {showColumn('role') && showOrgRole && <TableHead className="font-albert">Org Role</TableHead>}
+                {showColumn('role') && showOrgRole && <TableHead className="font-albert">Role</TableHead>}
                 {showColumn('tier') && <TableHead className="font-albert">Tier</TableHead>}
                 {showColumn('squad') && <TableHead className="font-albert">Squad</TableHead>}
                 {showColumn('coach') && <TableHead className="font-albert">Coach</TableHead>}
@@ -1176,7 +1157,7 @@ export function AdminUsersTab({
                             onValueChange={(newOrgRole) => handleOrgRoleChange(user.id, newOrgRole as OrgRole)}
                             disabled={isUpdatingOrgRole}
                           >
-                            <SelectTrigger className={`w-[130px] font-albert border-none bg-transparent shadow-none h-auto p-0 ${isUpdatingOrgRole ? 'opacity-50' : ''}`}>
+                            <SelectTrigger className={`w-auto font-albert border-none bg-transparent shadow-none h-auto p-0 gap-1 ${isUpdatingOrgRole ? 'opacity-50' : ''}`}>
                               <SelectValue>
                                 <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${getOrgRoleBadgeColor(userOrgRole)}`}>
                                   {formatOrgRoleName(userOrgRole)}

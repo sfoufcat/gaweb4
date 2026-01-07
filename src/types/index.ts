@@ -1168,7 +1168,7 @@ export interface ClientProgramDay {
  */
 export type ClientViewContext =
   | { mode: 'template' }
-  | { mode: 'client'; enrollmentId: string; userId: string; userName: string };
+  | { mode: 'client'; enrollmentId: string; userId: string; userName: string; enrollmentStartedAt?: string };
 
 
 /**

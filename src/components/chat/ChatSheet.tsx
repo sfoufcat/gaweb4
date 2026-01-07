@@ -25,7 +25,6 @@ import { useCoachSquads } from '@/hooks/useCoachSquads';
 import { useCoachingContext } from '@/contexts/CoachingContext';
 import { generateAvatarUrl } from '@/lib/demo-data';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
-import { ChatActionsMenu } from '@/components/chat/ChatActionsMenu';
 import { SwipeableChatItem, type SwipeAction } from '@/components/chat/SwipeableChatItem';
 import { ArchivedChatsLink } from '@/components/chat/ArchivedChatsLink';
 import { useChatPreferences } from '@/hooks/useChatPreferences';
@@ -129,6 +128,9 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
 
   // State for archived view
   const [showArchivedView, setShowArchivedView] = useState(false);
+
+  // State for which swipe item is open (only one at a time)
+  const [openSwipeItemId, setOpenSwipeItemId] = useState<string | null>(null);
 
   // Build userSquadChannelIds from context data (memoized)
   const userSquadChannelIds = useMemo(() => {
@@ -523,13 +525,6 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     return found?.name || 'Chat';
   }, [selectedChannel, channels]);
 
-  // Get selected channel type for actions menu
-  const selectedChannelType = useMemo((): ChatChannelType => {
-    if (!selectedChannel) return 'dm';
-    const found = channels.find(c => c.id === selectedChannel.id);
-    return found ? toChatChannelType(found.type) : 'dm';
-  }, [selectedChannel, channels]);
-
   // Check if announcements channel (read-only)
   const isAnnouncementsChannel = selectedChannel?.id === ANNOUNCEMENTS_CHANNEL_ID;
 
@@ -666,6 +661,9 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                       {filteredChannels.map((channelPreview) => (
                         <SwipeableChatItem
                           key={channelPreview.id}
+                          itemId={channelPreview.id}
+                          openItemId={openSwipeItemId}
+                          onOpen={setOpenSwipeItemId}
                           actions={getSwipeActions(channelPreview)}
                         >
                           <button
@@ -777,7 +775,6 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                   <ChatSheetMessageView
                     channel={selectedChannel}
                     channelName={selectedChannelName}
-                    channelType={selectedChannelType}
                     onBack={handleBack}
                     isReadOnly={isAnnouncementsChannel}
                   />
@@ -905,13 +902,11 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
 function ChatSheetMessageView({
   channel,
   channelName,
-  channelType,
   onBack,
   isReadOnly
 }: {
   channel: StreamChannel;
   channelName: string;
-  channelType: ChatChannelType;
   onBack: () => void;
   isReadOnly: boolean;
 }) {
@@ -933,14 +928,9 @@ function ChatSheetMessageView({
         >
           <ChevronLeft className="w-5 h-5 text-text-primary" />
         </button>
-        <h3 className="font-albert text-[16px] font-semibold text-text-primary truncate flex-1">
+        <h3 className="font-albert text-[16px] font-semibold text-text-primary truncate">
           {channelName}
         </h3>
-        <ChatActionsMenu
-          channelId={channel.id || ''}
-          channelType={channelType}
-          onActionComplete={onBack}
-        />
       </div>
 
       {/* Messages + Input Container - explicit flex layout */}

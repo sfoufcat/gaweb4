@@ -1,0 +1,86 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Integrate BreathingAnimation Component into Dynamic Flow",
+        "description": "Replace the generic circle animation in BreathingStep with the original multi-circle expanding BreathingAnimation component",
+        "details": "Import and integrate the BreathingAnimation component from `/components/checkin/BreathingAnimation.tsx` into the BreathingStep within CheckInFlowRenderer.tsx. Ensure the component maintains its multi-circle expanding animation, 'Breathe in'/'Breathe out' text, single cycle timing (5s inhale, 5s exhale), and proper dark mode support. Update the step to respect any breathing-specific configurations from Firestore while preserving the original animation design. Maintain session data flow for tracking completion.",
+        "testStrategy": "Verify the breathing animation displays correctly with multiple expanding circles, proper timing, and text labels. Test dark mode compatibility and ensure the animation completes properly before allowing progression to next step. Validate that Firestore configurations (cycles, duration) are respected.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T09:59:55.203Z"
+      },
+      {
+        "id": "2",
+        "title": "Integrate EmotionalSlider Component into Mood Scale Step",
+        "description": "Replace the generic mood slider in MoodScaleStep with the original EmotionalSlider component featuring proper gradients and emotional states",
+        "details": "Import and integrate the EmotionalSlider component from `/components/checkin/EmotionalSlider.tsx` into the MoodScaleStep. Ensure all 7 emotional states are properly implemented: low_stuck, uneasy, uncertain, neutral, steady, confident, energized. Maintain the multi-color gradient track, proper state labels, and smooth transitions. Update the step to capture and pass the selected emotional state through sessionData. Preserve responsive design and dark mode compatibility.",
+        "testStrategy": "Test all 7 emotional states display with correct gradients and labels. Verify smooth slider transitions and proper state selection. Validate that selected mood data is correctly stored in sessionData and passed to subsequent steps. Test responsive behavior on mobile devices and dark mode compatibility.",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T10:02:22.010Z"
+      },
+      {
+        "id": "3",
+        "title": "Integrate Full Task Planner into TaskPlannerStep",
+        "description": "Replace the empty placeholder in TaskPlannerStep with the complete task planner implementation including drag-and-drop functionality",
+        "details": "Extract and integrate the full task planner logic from `/checkin/morning/plan-day/page.tsx` into TaskPlannerStep. Implement @dnd-kit drag-and-drop functionality with Focus tasks (max 3) and Backlog sections. Include Add/Edit/Delete task functionality, rocket launch animation on completion, and integration with useTasks hook. Ensure program task sync works properly. Maintain session data flow to track selected focus tasks and overall completion status.",
+        "testStrategy": "Test drag-and-drop functionality between Focus and Backlog sections. Verify max 3 focus tasks limitation. Test add/edit/delete operations work correctly. Validate rocket launch animation triggers on completion. Ensure useTasks hook integration and program task sync function properly. Test mobile responsiveness and dark mode support.",
+        "priority": "high",
+        "dependencies": [
+          "2"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T10:06:12.278Z"
+      },
+      {
+        "id": "4",
+        "title": "Enhance Visualization Step with ManifestCard Design",
+        "description": "Upgrade the basic visualization step to use ManifestCard component styling with better animations and design",
+        "details": "Reference ManifestCard component from `/components/checkin/ManifestCard.tsx` and the manifest page implementation from `/checkin/morning/manifest/page.tsx` to enhance the visualization step. Apply proper styling, animations, and transitions that match the original manifest flow. Implement timer progress indicator and ensure proper dark mode support. Maintain compatibility with step configurations (showGoal, showIdentity) from Firestore while improving the visual presentation.",
+        "testStrategy": "Verify the visualization step displays with improved styling matching the original ManifestCard design. Test animations and transitions work smoothly. Validate timer progress indicator functions correctly. Ensure showGoal and showIdentity configurations from Firestore are respected. Test dark mode compatibility and responsive design on various screen sizes.",
+        "priority": "medium",
+        "dependencies": [
+          "3"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T10:08:04.810Z"
+      },
+      {
+        "id": "5",
+        "title": "Validate Complete Integration and Session Data Flow",
+        "description": "Perform comprehensive testing to ensure all integrated components work together seamlessly within the dynamic flow system",
+        "details": "Conduct end-to-end testing of the complete morning check-in flow to ensure all integrated components work together properly. Verify session data flows correctly between steps, dynamic flow configuration from Firestore is respected, and no regressions exist in existing functionality. Test various flow configurations (enabled/disabled steps, different conditions) to ensure the system maintains its flexibility. Validate that the morning check-in flow now looks identical to the original static pages while preserving dynamic capabilities.",
+        "testStrategy": "Run complete morning check-in flows with different Firestore configurations. Verify session data is properly tracked and passed between all steps. Test various step combinations (enabled/disabled) to ensure dynamic flow still works. Compare final result with original static pages to ensure visual parity. Perform regression testing on existing functionality. Test across different devices, browsers, and in both light and dark modes.",
+        "priority": "high",
+        "dependencies": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T10:09:51.301Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-01-07T10:09:51.301Z",
+      "taskCount": 5,
+      "completedCount": 5,
+      "tags": [
+        "master"
+      ]
+    }
+  }
+}

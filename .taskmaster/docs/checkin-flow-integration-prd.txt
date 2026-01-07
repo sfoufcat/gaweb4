@@ -1,0 +1,79 @@
+# PRD: Integrate Original Morning Check-in Designs into Dynamic Flow System
+
+## Background
+The app has two check-in systems:
+1. **OLD**: Static pages at `/checkin/morning/*` with polished, designed components
+2. **NEW**: Dynamic flow system using `CheckInFlowRenderer.tsx` that reads org-configured steps
+
+The new dynamic flow system was correctly implemented but uses generic placeholder components instead of the original designed components. This results in a degraded user experience.
+
+## Problem Statement
+The new dynamic check-in flow shows:
+- Generic breathing animation (simple circle) instead of the multi-circle expanding animation
+- Generic mood slider instead of the EmotionalSlider with proper gradients
+- Empty "Plan your day" placeholder instead of the full task planner with drag-and-drop
+- Basic visualization step instead of the polished ManifestCard design
+
+## Goal
+Integrate the original designed components from the old check-in pages into the new CheckInFlowRenderer step components while maintaining the dynamic flow architecture.
+
+## Scope
+
+### 1. Breathing Step Integration
+**Current**: Simple circle animation in `BreathingStep` within CheckInFlowRenderer
+**Target**: Use `BreathingAnimation` component from `/components/checkin/BreathingAnimation.tsx`
+- Multi-circle expanding animation
+- "Breathe in" / "Breathe out" text
+- Single cycle (5s inhale, 5s exhale)
+- Proper dark mode support
+
+### 2. Mood Scale / Emotional Slider Integration
+**Current**: Generic `MoodScaleStep` with simple slider
+**Target**: Use `EmotionalSlider` component from `/components/checkin/EmotionalSlider.tsx`
+- Proper gradient backgrounds for each emotional state
+- 7 emotional states: low_stuck, uneasy, uncertain, neutral, steady, confident, energized
+- Multi-color gradient track
+- Proper state labels and transitions
+
+### 3. Task Planner Integration
+**Current**: Empty placeholder in `TaskPlannerStep`
+**Target**: Integrate full task planner from `/checkin/morning/plan-day/page.tsx`
+- Drag-and-drop with @dnd-kit
+- Focus tasks (max 3) and Backlog sections
+- Add/Edit/Delete task functionality
+- Rocket launch animation on completion
+- Integration with useTasks hook
+- Program task sync
+
+### 4. Visualization Step Enhancement
+**Current**: Basic cards showing identity/goal
+**Target**: Better design matching original manifest flow
+- Use ManifestCard component styling
+- Better animations and transitions
+- Proper dark mode support
+- Timer progress indicator
+
+## Technical Requirements
+
+1. **Maintain Dynamic Flow Architecture**: The CheckInFlowRenderer must continue to work with org-configured flows from Firestore
+2. **Step Config Compatibility**: Step configurations from Firestore must be respected (showGoal, showIdentity, cycles, etc.)
+3. **Session Data Flow**: Steps must continue to pass data through sessionData for tracking
+4. **Dark Mode Support**: All components must support dark mode
+5. **Mobile Responsive**: All components must be mobile-responsive
+
+## Files to Modify
+- `/src/components/checkin/CheckInFlowRenderer.tsx` - Main file with step components
+
+## Files to Reference (original designs)
+- `/src/components/checkin/BreathingAnimation.tsx` - Original breathing animation
+- `/src/components/checkin/EmotionalSlider.tsx` - Original mood slider
+- `/src/components/checkin/ManifestCard.tsx` - Manifest card component
+- `/src/app/checkin/morning/plan-day/page.tsx` - Full task planner implementation
+- `/src/app/checkin/morning/manifest/page.tsx` - Manifest visualization
+
+## Success Criteria
+1. Morning check-in flow looks identical to the original static pages
+2. All step types render with proper designed components
+3. Dynamic flow configuration still works (enabled/disabled steps, conditions)
+4. Session data is properly tracked
+5. No regression in existing functionality

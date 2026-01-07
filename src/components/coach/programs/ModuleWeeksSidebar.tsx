@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import type { Program, ProgramDay, ProgramModule, ProgramWeek, ClientViewContext } from '@/types';
+import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
 import {
   ChevronDown,
   ChevronRight,
@@ -194,7 +195,9 @@ export function ModuleWeeksSidebar({
 }: ModuleWeeksSidebarProps) {
   // In client view mode, disable reordering (structure comes from template)
   const isClientView = viewContext?.mode === 'client';
-  const canReorder = !isClientView;
+  const canReorderModules = !isClientView;
+  // Weeks are calendar-aligned and cannot be reordered (they represent fixed Mon-Fri slots)
+  const canReorderWeeks = false;
   const [expandedModules, setExpandedModules] = useState<Set<string>>(
     new Set(modules.map(m => m.id))
   );
@@ -254,6 +257,27 @@ export function ModuleWeeksSidebar({
       };
     });
   }, [program.lengthDays, program.includeWeekends, days, weeks]);
+
+  // Calculate calendar-aligned weeks when in client view mode
+  // These are based on the client's enrollment start date
+  const calendarWeeks = useMemo((): CalendarWeek[] => {
+    if (!isClientView || viewContext?.mode !== 'client' || !viewContext.enrollmentStartedAt) {
+      return [];
+    }
+    const totalDays = program.lengthDays || 30;
+    const includeWeekends = program.includeWeekends !== false;
+    return calculateCalendarWeeks(viewContext.enrollmentStartedAt, totalDays, includeWeekends);
+  }, [isClientView, viewContext, program.lengthDays, program.includeWeekends]);
+
+  // Helper to get calendar week label for a given program day
+  const getCalendarWeekLabel = useCallback((startDay: number, endDay: number, weekNum: number): string => {
+    if (!isClientView || calendarWeeks.length === 0) {
+      return `Week ${weekNum}`;
+    }
+    // Find the calendar week that contains the start day of this template week
+    const calWeek = calendarWeeks.find(cw => startDay >= cw.startDayIndex && startDay <= cw.endDayIndex);
+    return calWeek?.label || `Week ${weekNum}`;
+  }, [isClientView, calendarWeeks]);
 
   // Group weeks by module
   const weeksByModule = useMemo(() => {
@@ -590,12 +614,12 @@ export function ModuleWeeksSidebar({
           className={`p-4 transition-all duration-150 ${statusBgClass} ${
             !statusBgClass ? 'bg-white/40 dark:bg-[#171b22]/40' : ''
           } ${
-            canReorder ? 'cursor-grab active:cursor-grabbing' : ''
+            canReorderWeeks ? 'cursor-grab active:cursor-grabbing' : ''
           } ${isWeekSelected ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)]' : ''} hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a]`}
         >
           <div className="flex items-center gap-4">
-            {/* Drag handle - only show in template mode */}
-            {canReorder ? (
+            {/* Drag handle - only show if weeks can be reordered */}
+            {canReorderWeeks ? (
               <div className="touch-none">
                 <GripVertical className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
               </div>
@@ -641,7 +665,7 @@ export function ModuleWeeksSidebar({
                       : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
                   }`}
                 >
-                  {week.theme || `Week ${week.weekNum}`}
+                  {week.theme || getCalendarWeekLabel(week.startDay, week.endDay, week.weekNum)}
                 </motion.p>
               </AnimatePresence>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
@@ -789,12 +813,12 @@ export function ModuleWeeksSidebar({
         {/* Module Header - glassmorphism style with status coloring and modern selection */}
         <div
           className={`p-4 backdrop-blur-sm transition-all duration-150 ${moduleStatusBgClass} ${
-            canReorder ? 'cursor-grab active:cursor-grabbing' : ''
+            canReorderModules ? 'cursor-grab active:cursor-grabbing' : ''
           } group ${isModuleSelected ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)]' : ''} hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a]`}
         >
           <div className="flex items-center gap-4">
             {/* Drag handle for module - only show in template mode */}
-            {canReorder ? (
+            {canReorderModules ? (
               <div className="touch-none">
                 <GripVertical className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
               </div>
@@ -842,7 +866,7 @@ export function ModuleWeeksSidebar({
             {/* Action buttons group */}
             <div className="flex items-center gap-1">
               {/* Delete button - only show in template mode */}
-              {canReorder && modules.length > 1 && onDeleteModule && (
+              {canReorderModules && modules.length > 1 && onDeleteModule && (
                 <button
                   onClick={(e) => handleDeleteModuleClick(module, e)}
                   className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
@@ -870,7 +894,7 @@ export function ModuleWeeksSidebar({
           </div>
         </div>
 
-        {/* Weeks inside module - draggable in template mode, static in client mode */}
+        {/* Weeks inside module - static (calendar-aligned weeks cannot be reordered) */}
         <AnimatePresence initial={false}>
           {isModuleExpanded && moduleWeeks.length > 0 && (
             <motion.div
@@ -880,7 +904,7 @@ export function ModuleWeeksSidebar({
               transition={{ duration: 0.25, ease: "easeInOut" }}
               style={{ overflow: "hidden" }}
             >
-              {canReorder ? (
+              {canReorderWeeks ? (
                 <Reorder.Group
                   as="div"
                   axis="y"
@@ -944,11 +968,11 @@ export function ModuleWeeksSidebar({
               <Folder className="w-6 h-6 text-brand-accent" />
             </div>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
-              {canReorder
+              {canReorderModules
                 ? 'No modules yet. Create your first module to organize weeks.'
                 : 'No modules in this program. Add modules from the template view.'}
             </p>
-            {canReorder && (
+            {canReorderModules && (
               <button
                 onClick={onAddModule}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg text-sm font-medium font-albert hover:bg-brand-accent/90 transition-colors"
@@ -958,7 +982,7 @@ export function ModuleWeeksSidebar({
               </button>
             )}
           </div>
-        ) : canReorder ? (
+        ) : canReorderModules ? (
           // Modules list with drag-and-drop (template mode)
           <Reorder.Group
             as="div"
@@ -981,7 +1005,7 @@ export function ModuleWeeksSidebar({
         )}
 
         {/* Add Module button - only show in template mode */}
-        {canReorder && sortedModules.length > 0 && (
+        {canReorderModules && sortedModules.length > 0 && (
           <button
             onClick={onAddModule}
             className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent hover:text-brand-accent transition-colors text-sm font-albert"
@@ -992,7 +1016,7 @@ export function ModuleWeeksSidebar({
         )}
 
         {/* Auto-distribute weeks button - only show when there are multiple modules and weeks */}
-        {canReorder && sortedModules.length > 1 && onAutoDistributeWeeks && (
+        {canReorderModules && sortedModules.length > 1 && onAutoDistributeWeeks && (
           <button
             onClick={onAutoDistributeWeeks}
             className="w-full flex items-center justify-center gap-2 py-3 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors text-sm font-albert"

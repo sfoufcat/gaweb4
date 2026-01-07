@@ -83,21 +83,21 @@ export function ChatActionsMenu({
           <MoreVertical className="w-5 h-5 text-text-secondary" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className="w-44">
         {canPin(channelType) && (
           <DropdownMenuItem
             onClick={handlePin}
-            className="gap-2 cursor-pointer"
+            className="gap-3"
             disabled={isLoading}
           >
             {isPinned ? (
               <>
-                <PinOff className="w-4 h-4" />
+                <PinOff className="w-[18px] h-[18px] text-text-secondary" />
                 Unpin
               </>
             ) : (
               <>
-                <Pin className="w-4 h-4" />
+                <Pin className="w-[18px] h-[18px] text-text-secondary" />
                 Pin
               </>
             )}
@@ -107,17 +107,17 @@ export function ChatActionsMenu({
         {canArchive(channelType) && (
           <DropdownMenuItem
             onClick={handleArchive}
-            className="gap-2 cursor-pointer"
+            className="gap-3"
             disabled={isLoading}
           >
             {isArchived ? (
               <>
-                <ArchiveRestore className="w-4 h-4" />
+                <ArchiveRestore className="w-[18px] h-[18px] text-text-secondary" />
                 Unarchive
               </>
             ) : (
               <>
-                <Archive className="w-4 h-4" />
+                <Archive className="w-[18px] h-[18px] text-text-secondary" />
                 Archive
               </>
             )}
@@ -129,10 +129,10 @@ export function ChatActionsMenu({
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={handleDelete}
-              className="gap-2 cursor-pointer text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+              className="gap-3 text-red-500 focus:text-red-500 dark:text-red-400 dark:focus:text-red-400"
               disabled={isLoading}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-[18px] h-[18px]" />
               Delete
             </DropdownMenuItem>
           </>
