@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
+import { syncProgramTasksToAllCohorts } from '@/lib/sync-cohort-tasks';
 import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment } from '@/types';
 
 export async function GET(
@@ -186,23 +187,22 @@ export async function POST(
       updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
     } as ProgramDay;
 
-    // Trigger cohort sync for group programs (async, don't block response)
+    // Trigger cohort sync for group programs
+    // Must await to complete before response - serverless functions terminate after response
     const program = programDoc.data();
     if (program?.type === 'group' && tasks.length > 0) {
-      // Import and trigger cohort sync asynchronously
-      // Use specificDayIndex to sync the exact day that was edited
       const dayIndex = body.dayIndex;
-      import('@/lib/sync-cohort-tasks').then(({ syncProgramTasksToAllCohorts }) => {
-        syncProgramTasksToAllCohorts({
+      try {
+        const syncResult = await syncProgramTasksToAllCohorts({
           programId,
           specificDayIndex: dayIndex,
           mode: 'override-program-sourced',
-        }).catch(err => {
-          console.error('[COHORT_SYNC] Background sync failed:', err);
         });
-      }).catch(err => {
-        console.error('[COHORT_SYNC] Failed to import sync module:', err);
-      });
+        console.log(`[COHORT_SYNC] Sync completed:`, JSON.stringify(syncResult));
+      } catch (err) {
+        console.error('[COHORT_SYNC] Sync failed:', err);
+        // Don't fail the request if sync fails
+      }
     }
 
     return NextResponse.json({ 

@@ -2611,9 +2611,40 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 courses={organizationCourses}
                 modules={programModules}
                 weeks={programWeeks}
-                viewMode={clientViewContext.mode === 'client' ? 'client' : 'template'}
-                enrollmentStartDate={currentEnrollment?.startedAt}
-                currentDayIndex={currentEnrollment?.currentDayIndex}
+                viewMode={(clientViewContext.mode === 'client' || cohortViewContext.mode === 'cohort') ? 'client' : 'template'}
+                enrollmentStartDate={currentEnrollment?.startedAt || (cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortStartDate : undefined)}
+                currentDayIndex={currentEnrollment?.currentDayIndex || (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortStartDate ? (() => {
+                  // Calculate current day index for cohort based on start date
+                  const startDate = new Date(cohortViewContext.cohortStartDate);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  startDate.setHours(0, 0, 0, 0);
+
+                  const diffTime = today.getTime() - startDate.getTime();
+                  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                  // If cohort hasn't started yet or is in the past
+                  if (diffDays < 0) return undefined;
+                  if (diffDays >= (selectedProgram?.lengthDays || 30)) return undefined;
+
+                  // Convert to 1-based day index, accounting for weekends if not included
+                  const includeWeekends = selectedProgram?.includeWeekends !== false;
+                  if (includeWeekends) {
+                    return diffDays + 1;
+                  } else {
+                    // Calculate business days (weekdays only)
+                    let businessDays = 0;
+                    const currentDate = new Date(startDate);
+                    while (currentDate <= today) {
+                      const dayOfWeek = currentDate.getDay();
+                      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
+                        businessDays++;
+                      }
+                      currentDate.setDate(currentDate.getDate() + 1);
+                    }
+                    return businessDays > 0 ? businessDays : undefined;
+                  }
+                })() : undefined)}
                 onDayClick={(dayIndex) => {
                   setSelectedDayIndex(dayIndex);
                   setSidebarSelection({ type: 'day', dayIndex });

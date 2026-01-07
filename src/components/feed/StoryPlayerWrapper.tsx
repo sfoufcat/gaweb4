@@ -54,7 +54,6 @@ export function StoryPlayerWrapper({
   onClose,
   currentUser,
 }: StoryPlayerWrapperProps) {
-  console.log('[StoryPlayerWrapper] Mounted:', { startIndex, storyUsersLength: storyUsers.length, storyUserIds: storyUsers.map(u => u.id) });
   const { user: clerkUser } = useUser();
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [initialSlideIndex, setInitialSlideIndex] = useState(0);
@@ -194,9 +193,7 @@ export function StoryPlayerWrapper({
   }, [currentStoryUser, storyUsers.length, onClose]);
 
   // Don't render if no user
-  console.log('[StoryPlayerWrapper] Render check:', { currentIndex, currentStoryUser: !!currentStoryUser, storyPlayerUser: !!storyPlayerUser, storyUsersLength: storyUsers.length });
   if (!storyPlayerUser) {
-    console.log('[StoryPlayerWrapper] Returning null - no storyPlayerUser');
     return null;
   }
 

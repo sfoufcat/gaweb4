@@ -412,19 +412,66 @@ export function ModuleWeeksSidebar({
     }
   }, [weeksByModule, localWeekOrder]);
 
-  // Auto-expand to current week/day based on currentDayIndex
-  // This runs once when displayWeeks are calculated and currentDayIndex is available
+  // Determine view status for proper week expansion behavior
+  const viewStatus = useMemo((): 'template' | 'upcoming' | 'active' | 'completed' => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (isCohortView && cohortViewContext?.cohortStartDate) {
+      const startDate = new Date(cohortViewContext.cohortStartDate);
+      startDate.setHours(0, 0, 0, 0);
+      const programEndDate = new Date(startDate);
+      programEndDate.setDate(programEndDate.getDate() + (program.lengthDays || 30));
+
+      if (today < startDate) return 'upcoming';
+      if (today >= programEndDate) return 'completed';
+      return 'active';
+    }
+
+    if (isClientView && viewContext?.enrollmentStartedAt) {
+      const startDate = new Date(viewContext.enrollmentStartedAt);
+      startDate.setHours(0, 0, 0, 0);
+      if (today < startDate) return 'upcoming';
+      // For client view, completed status is determined by currentDayIndex reaching program length
+      return 'active';
+    }
+
+    return 'template';
+  }, [isCohortView, isClientView, cohortViewContext, viewContext, program.lengthDays]);
+
+  // Auto-expand to current week/day based on currentDayIndex and viewStatus
+  // This runs once when displayWeeks are calculated and relevant data is available
   const hasInitializedExpansion = React.useRef(false);
   React.useEffect(() => {
     if (hasInitializedExpansion.current) return;
     if (displayWeeks.length === 0) return;
 
     if (!currentDayIndex) {
-      // No currentDayIndex means template editing - default to week 1
-      if (expandedWeeks.size === 0) {
+      // Template mode: default to week 1
+      if (viewStatus === 'template') {
+        if (expandedWeeks.size === 0) {
+          setExpandedWeeks(new Set([1]));
+          hasInitializedExpansion.current = true;
+        }
+        return;
+      }
+
+      // Completed cohort/enrollment: show last week
+      if (viewStatus === 'completed') {
+        const lastWeek = displayWeeks[displayWeeks.length - 1];
+        setExpandedWeeks(new Set([lastWeek.weekNum]));
+        hasInitializedExpansion.current = true;
+        return;
+      }
+
+      // Upcoming cohort/enrollment: show Week 1
+      if (viewStatus === 'upcoming') {
         setExpandedWeeks(new Set([1]));
         hasInitializedExpansion.current = true;
+        return;
       }
+
+      // Active cohort/enrollment but currentDayIndex not yet calculated: wait
       return;
     }
 
@@ -432,11 +479,11 @@ export function ModuleWeeksSidebar({
     const currentWeek = displayWeeks.find(
       w => currentDayIndex >= w.startDay && currentDayIndex <= w.endDay
     );
-    
+
     if (currentWeek) {
       // Expand the current week
       setExpandedWeeks(new Set([currentWeek.weekNum]));
-      
+
       // Ensure the module containing this week is expanded
       if (currentWeek.moduleId) {
         setExpandedModules(prev => {
@@ -445,7 +492,7 @@ export function ModuleWeeksSidebar({
           return next;
         });
       }
-      
+
       // Auto-select the current day
       onSelect({
         type: 'day',
@@ -453,14 +500,14 @@ export function ModuleWeeksSidebar({
         weekId: currentWeek.storedWeekId,
         moduleId: currentWeek.moduleId,
       });
-      
+
       hasInitializedExpansion.current = true;
     } else {
       // currentDayIndex is outside program range - default to week 1
       setExpandedWeeks(new Set([1]));
       hasInitializedExpansion.current = true;
     }
-  }, [currentDayIndex, displayWeeks, expandedWeeks.size, onSelect]);
+  }, [currentDayIndex, displayWeeks, expandedWeeks.size, onSelect, viewStatus]);
 
   // Sorted modules for rendering
   const sortedModules = useMemo(() =>

@@ -267,7 +267,6 @@ export default function FeedPage() {
               onViewStory={(userId) => {
                 // Store the userId directly - StoryPlayerWrapper will find the index
                 // This is more stable than storing an index since the queue can change
-                console.log('[FEED] onViewStory called:', { userId, fullStoryQueueLength: fullStoryQueue.length, fullStoryQueue: fullStoryQueue.map(u => u.id) });
                 setSelectedStoryUserId(userId);
               }}
             />
@@ -505,10 +504,6 @@ export default function FeedPage() {
       )}
 
       {/* Story viewer with prefetching and auto-advance */}
-      {(() => {
-        console.log('[FEED] Story render check:', { selectedStoryUserId, storyStartIndex, fullStoryQueueLength: fullStoryQueue.length });
-        return null;
-      })()}
       {selectedStoryUserId !== null && storyStartIndex >= 0 && (
         <StoryPlayerWrapper
           storyUsers={fullStoryQueue}
