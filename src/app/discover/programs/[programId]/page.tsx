@@ -283,7 +283,9 @@ export default function ProgramDetailPage() {
 
     // Calculate total price with order bumps
     const basePrice = data?.program.priceInCents || 0;
-    const bumpsTotal = orderBumpTotal;
+    const bumpsTotal = data?.program.orderBumps?.enabled 
+      ? calculateBumpTotal(data.program.orderBumps.bumps, selectedBumpIds)
+      : 0;
     const totalPrice = basePrice + bumpsTotal;
 
     // For paid programs, open the payment modal
@@ -1259,7 +1261,7 @@ export default function ProgramDetailPage() {
                   }))
               : undefined
           }
-          orderBumpTotal={orderBumpTotal}
+          orderBumpTotal={data.program.orderBumps?.enabled ? calculateBumpTotal(data.program.orderBumps.bumps, selectedBumpIds) : 0}
         />
       )}
     </div>
