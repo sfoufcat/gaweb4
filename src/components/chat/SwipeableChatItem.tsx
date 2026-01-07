@@ -40,11 +40,13 @@ export function SwipeableChatItem({
   // Controlled: if another item opens, close this one
   const isOpen = openItemId === itemId;
 
+  // When another item opens (isOpen becomes false externally), close this one
   useEffect(() => {
-    if (!isOpen && translateX !== 0) {
+    if (!isOpen) {
       setTranslateX(0);
     }
-  }, [isOpen, translateX]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]); // Only react to isOpen changes, not translateX
 
   const handleTouchStart = (e: TouchEvent) => {
     if (disabled) return;

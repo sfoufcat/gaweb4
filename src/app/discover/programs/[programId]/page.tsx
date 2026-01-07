@@ -366,8 +366,8 @@ export default function ProgramDetailPage() {
 
   return (
     <div className="min-h-[100dvh] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col">
-      {/* Hero Section - Full Width */}
-      <div className="relative overflow-hidden">
+      {/* Hero Section - Rounded Card Style */}
+      <div className="relative pt-4 px-4 sm:px-6 lg:px-10">
         {/* Decorative blur elements */}
         <div 
           className="absolute -top-20 -right-20 w-64 h-64 rounded-full blur-3xl opacity-40"
@@ -378,7 +378,7 @@ export default function ProgramDetailPage() {
           style={{ background: `radial-gradient(circle, ${hexToRgba(accentDark, 0.5)}, transparent)` }}
         />
         <div 
-          className="h-[200px] sm:h-[260px] w-full relative"
+          className="h-[200px] sm:h-[260px] w-full relative rounded-[40px] overflow-hidden"
           style={{ background: `linear-gradient(135deg, ${hexToRgba(accentLight, 0.25)}, ${hexToRgba(accentLightHover, 0.08)}, ${hexToRgba(accentDark, 0.15)})` }}
         >
           {coverImage ? (

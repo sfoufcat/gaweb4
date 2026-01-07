@@ -19,7 +19,7 @@ export type CalendarWeekType = 'onboarding' | 'regular' | 'closing';
 export interface CalendarWeek {
   /** Type of week: onboarding (first), regular (middle), closing (last) */
   type: CalendarWeekType;
-  /** Display label: "Onboarding Week", "Week 1", "Closing Week" */
+  /** Display label: "Onboarding", "Week 1", "Closing" */
   label: string;
   /** Week number: 0 for onboarding, 1+ for regular, -1 for closing */
   weekNumber: number;
@@ -146,10 +146,10 @@ function countDaysBetween(startDate: Date, endDate: Date): number {
  * calculateCalendarWeeks('2024-12-05', 15, false)
  * // Returns:
  * // [
- * //   { type: 'onboarding', label: 'Onboarding Week', dayCount: 2, ... },
+ * //   { type: 'onboarding', label: 'Onboarding', dayCount: 2, ... },
  * //   { type: 'regular', label: 'Week 1', dayCount: 5, ... },
  * //   { type: 'regular', label: 'Week 2', dayCount: 5, ... },
- * //   { type: 'closing', label: 'Closing Week', dayCount: 3, ... },
+ * //   { type: 'closing', label: 'Closing', dayCount: 3, ... },
  * // ]
  */
 export function calculateCalendarWeeks(
@@ -205,7 +205,7 @@ export function calculateCalendarWeeks(
   // Onboarding Week (always exists)
   weeks.push({
     type: 'onboarding',
-    label: 'Onboarding Week',
+    label: 'Onboarding',
     weekNumber: 0,
     startDate: formatDate(effectiveStartDate),
     endDate: formatDate(actualOnboardingEndDate),
@@ -218,7 +218,7 @@ export function calculateCalendarWeeks(
   if (onboardingDays >= programLengthDays) {
     // Update to be both onboarding and closing
     weeks[0].type = 'closing'; // It's also the closing week
-    weeks[0].label = programLengthDays <= daysPerWeek ? 'Program Week' : 'Onboarding Week';
+    weeks[0].label = programLengthDays <= daysPerWeek ? 'Program' : 'Onboarding';
     return weeks;
   }
 
@@ -250,7 +250,7 @@ export function calculateCalendarWeeks(
 
     weeks.push({
       type: isLastWeek ? 'closing' : 'regular',
-      label: isLastWeek ? 'Closing Week' : `Week ${weekNumber}`,
+      label: isLastWeek ? 'Closing' : `Week ${weekNumber}`,
       weekNumber: isLastWeek ? -1 : weekNumber,
       startDate: formatDate(currentMonday),
       endDate: formatDate(weekEndDate),
@@ -423,7 +423,7 @@ export function dateToDayIndex(
  * Get a display-friendly week label.
  *
  * @param week - CalendarWeek object
- * @returns Display string like "Onboarding Week (2 days)" or "Week 1"
+ * @returns Display string like "Onboarding (2 days)" or "Week 1"
  */
 export function getWeekLabel(week: CalendarWeek, includeDayCount: boolean = false): string {
   if (includeDayCount && week.dayCount < 5) {

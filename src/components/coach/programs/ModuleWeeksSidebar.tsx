@@ -269,15 +269,55 @@ export function ModuleWeeksSidebar({
     return calculateCalendarWeeks(viewContext.enrollmentStartedAt, totalDays, includeWeekends);
   }, [isClientView, viewContext, program.lengthDays, program.includeWeekends]);
 
-  // Helper to get calendar week label for a given program day
-  const getCalendarWeekLabel = useCallback((startDay: number, endDay: number, weekNum: number): string => {
-    if (!isClientView || calendarWeeks.length === 0) {
-      return `Week ${weekNum}`;
+  // Convert calendar weeks to CalculatedWeek format for display in client view
+  const calendarWeeksAsCalculated = useMemo((): CalculatedWeek[] => {
+    if (calendarWeeks.length === 0) return [];
+
+    return calendarWeeks.map((cw, idx) => {
+      const daysInWeek = Array.from(
+        { length: cw.endDayIndex - cw.startDayIndex + 1 },
+        (_, i) => cw.startDayIndex + i
+      );
+
+      // Find content for these days
+      const daysWithContent = daysInWeek.filter(day =>
+        days.some(d => d.dayIndex === day && (d.tasks?.length > 0 || d.title))
+      );
+
+      // Find the stored week that contains these days (for theme, etc.)
+      const storedWeek = weeks.find(w => {
+        const includeWeekends = program.includeWeekends !== false;
+        const daysPerWeek = includeWeekends ? 7 : 5;
+        const weekStart = (w.weekNumber - 1) * daysPerWeek + 1;
+        const weekEnd = w.weekNumber * daysPerWeek;
+        // Check if any of our calendar week days fall in this stored week
+        return cw.startDayIndex >= weekStart && cw.startDayIndex <= weekEnd;
+      });
+
+      return {
+        weekNum: idx + 1, // Sequential for internal use
+        startDay: cw.startDayIndex,
+        endDay: cw.endDayIndex,
+        daysInWeek,
+        contentCount: daysWithContent.length,
+        totalDays: daysInWeek.length,
+        theme: cw.label, // Use calendar week label as theme
+        distribution: storedWeek?.distribution || 'repeat-daily',
+        weeklyTasks: storedWeek?.weeklyTasks || [],
+        storedWeekId: storedWeek?.id,
+        moduleId: storedWeek?.moduleId,
+        order: idx, // Maintain calendar order
+      };
+    });
+  }, [calendarWeeks, days, weeks, program.includeWeekends]);
+
+  // Use calendar weeks in client view, template weeks otherwise
+  const displayWeeks = useMemo((): CalculatedWeek[] => {
+    if (isClientView && calendarWeeksAsCalculated.length > 0) {
+      return calendarWeeksAsCalculated;
     }
-    // Find the calendar week that contains the start day of this template week
-    const calWeek = calendarWeeks.find(cw => startDay >= cw.startDayIndex && startDay <= cw.endDayIndex);
-    return calWeek?.label || `Week ${weekNum}`;
-  }, [isClientView, calendarWeeks]);
+    return calculatedWeeks;
+  }, [isClientView, calendarWeeksAsCalculated, calculatedWeeks]);
 
   // Group weeks by module
   const weeksByModule = useMemo(() => {
@@ -286,8 +326,11 @@ export function ModuleWeeksSidebar({
     // Initialize with empty arrays for each module
     modules.forEach(m => map.set(m.id, []));
 
-    // Assign calculated weeks to their modules
-    calculatedWeeks.forEach(week => {
+    // In client view with calendar weeks, put all weeks in first module (simplified view)
+    // In template view, assign weeks to their modules
+    const weeksToAssign = displayWeeks;
+
+    weeksToAssign.forEach(week => {
       if (week.moduleId && map.has(week.moduleId)) {
         map.get(week.moduleId)!.push(week);
       } else if (modules.length > 0) {
@@ -313,7 +356,7 @@ export function ModuleWeeksSidebar({
     });
 
     return map;
-  }, [modules, calculatedWeeks]);
+  }, [modules, displayWeeks]);
 
   // Clear localWeekOrder when props catch up to local state
   // This prevents visual snap-back during async operations
@@ -665,7 +708,7 @@ export function ModuleWeeksSidebar({
                       : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
                   }`}
                 >
-                  {week.theme || getCalendarWeekLabel(week.startDay, week.endDay, week.weekNum)}
+                  {week.theme || `Week ${week.weekNum}`}
                 </motion.p>
               </AnimatePresence>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">

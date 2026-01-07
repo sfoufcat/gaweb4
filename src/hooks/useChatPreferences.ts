@@ -54,7 +54,7 @@ async function updatePreference(
   }
 }
 
-export function useChatPreferences(): UseChatPreferencesReturn {
+export function useChatPreferences(enabled: boolean = true): UseChatPreferencesReturn {
   const { user, isLoaded } = useUser();
   const [preferences, setPreferences] = useState<Map<string, ChatPreference>>(
     new Map()
@@ -64,6 +64,11 @@ export function useChatPreferences(): UseChatPreferencesReturn {
 
   // Real-time listener for preferences subcollection
   useEffect(() => {
+    // Don't set up listener until enabled (e.g., drawer is open)
+    if (!enabled) {
+      return;
+    }
+
     if (!isLoaded || !user?.id) {
       setIsLoading(false);
       return;
@@ -106,7 +111,7 @@ export function useChatPreferences(): UseChatPreferencesReturn {
     );
 
     return () => unsubscribe();
-  }, [user?.id, isLoaded]);
+  }, [user?.id, isLoaded, enabled]);
 
   // Computed sets for quick lookups
   const pinnedChannelIds = useMemo(() => {

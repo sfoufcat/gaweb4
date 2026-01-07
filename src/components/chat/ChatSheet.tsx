@@ -112,6 +112,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   const { isCoach } = useCoachSquads();
 
   // Chat preferences for pinning/archiving/deleting
+  // Only enable after Stream Chat is connected to avoid competing network requests
   const {
     pinnedChannelIds,
     archivedChannelIds,
@@ -124,7 +125,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     canPin,
     canArchive,
     canDelete,
-  } = useChatPreferences();
+  } = useChatPreferences(isOpen && isConnected);
 
   // State for archived view
   const [showArchivedView, setShowArchivedView] = useState(false);
