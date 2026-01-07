@@ -94,10 +94,16 @@ const STEP_TYPE_INFO: Record<CheckInStepType, {
     description: 'User thought input for AI',
     color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400'
   },
-  ai_reframe: { 
-    icon: Sparkles, 
-    label: 'AI Reframe', 
+  ai_reframe: {
+    icon: Sparkles,
+    label: 'AI Reframe',
     description: 'AI response display',
+    color: 'bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-900/30 dark:text-fuchsia-400'
+  },
+  ai_reframe_input: {
+    icon: Sparkles,
+    label: 'AI Reframe',
+    description: 'AI response display (legacy)',
     color: 'bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-900/30 dark:text-fuchsia-400'
   },
   begin_manifest: { 

@@ -46,6 +46,16 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const initializingRef = useRef(false);
 
+  // Sync state with global client on mount and when it changes
+  // This ensures state is up-to-date even after navigation/re-renders
+  useEffect(() => {
+    if (globalClient?.user && !isConnected) {
+      setClient(globalClient);
+      setIsConnected(true);
+      setIsConnecting(false);
+    }
+  }, [isConnected]);
+
   const initializeClient = useCallback(async (userId: string, userData: { firstName?: string | null; lastName?: string | null; imageUrl?: string }) => {
     const expectedName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User';
     const expectedImage = userData.imageUrl;

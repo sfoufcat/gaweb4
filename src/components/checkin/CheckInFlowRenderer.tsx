@@ -281,15 +281,16 @@ export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: C
       {/* Step content */}
       <div className="flex-1 overflow-y-auto">
         <AnimatePresence mode="wait">
-          <motion.div
-            key={currentStep?.id || currentStepIndex}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
-          >
-            {currentStep && (
+          {/* Immersive steps (full-screen with own backgrounds) render instantly without slide animation */}
+          {currentStep && ['visualization', 'mood_scale', 'breathing', 'begin_manifest', 'task_planner'].includes(currentStep.type) ? (
+            <motion.div
+              key={currentStep?.id || currentStepIndex}
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="h-full"
+            >
               <GenericStepRenderer
                 step={currentStep}
                 data={sessionData}
@@ -297,8 +298,27 @@ export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: C
                 onBack={!isFirstStep ? handleBack : undefined}
                 isLastStep={isLastStep}
               />
-            )}
-          </motion.div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key={currentStep?.id || currentStepIndex}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="h-full"
+            >
+              {currentStep && (
+                <GenericStepRenderer
+                  step={currentStep}
+                  data={sessionData}
+                  onComplete={handleStepComplete}
+                  onBack={!isFirstStep ? handleBack : undefined}
+                  isLastStep={isLastStep}
+                />
+              )}
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
     </motion.div>
@@ -330,6 +350,7 @@ function GenericStepRenderer({ step, data, onComplete, onBack, isLastStep }: Gen
     case 'reframe_input':
       return <ReframeStep config={stepConfig} onComplete={onComplete} />;
     case 'ai_reframe':
+    case 'ai_reframe_input': // Legacy/alternate name for ai_reframe
       return <NeutralizeStep config={stepConfig} data={data} onComplete={onComplete} />;
     case 'begin_manifest':
       return <BeginManifestStep config={stepConfig} onComplete={onComplete} />;

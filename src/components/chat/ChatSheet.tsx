@@ -85,7 +85,7 @@ interface ChannelPreview {
  * Shows channel list first, then messages when channel selected.
  */
 export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps) {
-  const { client, isConnected } = useStreamChatClient();
+  const { client, isConnected, isConnecting, error } = useStreamChatClient();
   const [channels, setChannels] = useState<ChannelPreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [view, setView] = useState<'list' | 'channel'>('list');
@@ -920,15 +920,33 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
             </div>
           </Chat>
         ) : (
-          // Not connected state
+          // Not connected state - show appropriate feedback
           <div className="flex-1 flex items-center justify-center">
             <div className="py-12 px-5 text-center">
               <div className="w-14 h-14 bg-[#f3f1ef] dark:bg-[#272d38] rounded-full flex items-center justify-center mx-auto mb-4">
-                <MessageCircle className="w-7 h-7 text-text-muted" />
+                {isConnecting ? (
+                  <div className="w-6 h-6 border-2 border-text-muted border-t-brand-accent rounded-full animate-spin" />
+                ) : (
+                  <MessageCircle className="w-7 h-7 text-text-muted" />
+                )}
               </div>
-              <p className="font-sans text-[15px] text-text-secondary">
-                Connecting to chat...
-              </p>
+              {error ? (
+                <>
+                  <p className="font-sans text-[15px] text-text-secondary mb-3">
+                    Unable to connect to chat
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 text-sm font-medium text-white bg-brand-accent rounded-lg hover:bg-brand-accent/90 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </>
+              ) : (
+                <p className="font-sans text-[15px] text-text-secondary">
+                  {isConnecting ? 'Connecting to chat...' : 'Loading chat...'}
+                </p>
+              )}
             </div>
           </div>
         )}

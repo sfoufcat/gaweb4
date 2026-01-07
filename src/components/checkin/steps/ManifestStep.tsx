@@ -42,6 +42,7 @@ export function ManifestStep({ config, onComplete }: ManifestStepProps) {
   const hasAutoAdvancedIdentity = useRef(false);
   const identityStartTime = useRef<number | null>(null);
   const goalStartTime = useRef<number | null>(null);
+  const shouldSkipImmediately = useRef(false);
 
   // Configurable durations with defaults
   const identityUnlockDuration = (config.identityUnlockDuration as number) || 10;
@@ -187,8 +188,8 @@ export function ManifestStep({ config, onComplete }: ManifestStepProps) {
 
         // Determine what to show
         if (!shouldShowIdentity && !shouldShowGoal) {
-          // Nothing to show - complete immediately
-          setIsLoading(false);
+          // Nothing to show - complete immediately without audio/visual
+          shouldSkipImmediately.current = true;
           onComplete();
           return;
         } else if (!shouldShowIdentity) {
@@ -216,7 +217,8 @@ export function ManifestStep({ config, onComplete }: ManifestStepProps) {
 
   // Audio playback - separate effect, runs ONCE when loaded
   useEffect(() => {
-    if (isLoading || audioStarted.current) return;
+    // Don't play audio if we're skipping immediately or already started
+    if (isLoading || audioStarted.current || shouldSkipImmediately.current) return;
 
     audioStarted.current = true;
 
@@ -245,7 +247,8 @@ export function ManifestStep({ config, onComplete }: ManifestStepProps) {
 
   // Timer logic - separate from audio
   useEffect(() => {
-    if (isLoading) return;
+    // Don't run timer if loading or skipping
+    if (isLoading || shouldSkipImmediately.current) return;
 
     // Initialize identity start time only if we have identity
     if (hasIdentity && !identityStartTime.current) {
