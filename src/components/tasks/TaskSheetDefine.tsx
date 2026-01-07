@@ -105,14 +105,14 @@ export function TaskSheetDefine({
             className="flex items-center gap-2 pt-6"
           >
             <div
-              className={`w-4 h-4 rounded border ${
+              className={`w-5 h-5 rounded-md border ${
                 isPrivate
-                  ? 'bg-accent-secondary border-accent-secondary'
+                  ? 'border-brand-accent'
                   : 'border-[#e1ddd8] dark:border-[#262b35]'
-              } flex items-center justify-center`}
+              } flex items-center justify-center bg-white dark:bg-[#181d26] transition-all duration-300`}
             >
               {isPrivate && (
-                <div className="w-2 h-2 bg-white rounded-sm" />
+                <div className="w-3 h-3 bg-brand-accent rounded-sm" />
               )}
             </div>
             <span className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2]">

@@ -197,7 +197,10 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   // Channels are pre-fetched when Stream connects, so they're ready when this opens
 
   // Handle channel click - show messages with animation
-  const handleChannelClick = useCallback((channel: StreamChannel) => {
+  const handleChannelClick = useCallback((channel: StreamChannel | null) => {
+    // Skip if channel is null (cached preview without real channel)
+    if (!channel) return;
+
     setSelectedChannel(channel);
     setIsAnimating(true);
     // Small delay for animation

@@ -23,30 +23,6 @@ let globalClient: StreamChatType | null = null;
 let globalConnectionPromise: Promise<StreamChatType | null> | null = null;
 let globalConnectedUserId: string | null = null;
 
-// Event-based connection notification (replaces polling)
-const connectionListeners = new Set<() => void>();
-
-/**
- * Subscribe to Stream Chat connection events.
- * If already connected, callback fires immediately.
- * Returns unsubscribe function.
- */
-export function onStreamConnected(callback: () => void): () => void {
-  if (globalClient?.user) {
-    // Already connected, call immediately
-    callback();
-  } else {
-    connectionListeners.add(callback);
-  }
-  return () => connectionListeners.delete(callback);
-}
-
-// Notify all listeners when connection is established
-function notifyConnectionListeners() {
-  connectionListeners.forEach(cb => cb());
-  connectionListeners.clear();
-}
-
 interface StreamChatProviderProps {
   children: ReactNode;
 }
@@ -69,28 +45,6 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
   const [isConnected, setIsConnected] = useState(!!globalClient?.user);
   const [error, setError] = useState<string | null>(null);
   const initializingRef = useRef(false);
-
-  // Sync state with global client using event-based notification (instant, no polling)
-  useEffect(() => {
-    // Sync immediately if already connected
-    if (globalClient?.user && !isConnected) {
-      setClient(globalClient);
-      setIsConnected(true);
-      setIsConnecting(false);
-      return;
-    }
-
-    // Subscribe to connection events - fires instantly when connected
-    const unsubscribe = onStreamConnected(() => {
-      if (globalClient?.user) {
-        setClient(globalClient);
-        setIsConnected(true);
-        setIsConnecting(false);
-      }
-    });
-
-    return unsubscribe;
-  }, [isConnected]);
 
   const initializeClient = useCallback(async (userId: string, userData: { firstName?: string | null; lastName?: string | null; imageUrl?: string }) => {
     const expectedName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User';
@@ -213,10 +167,6 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
         }
 
         globalClient = chatClient;
-
-        // Notify all waiting components that connection is ready (instant!)
-        notifyConnectionListeners();
-
         return chatClient;
       } catch (err) {
         console.error('[StreamChatContext] Connection error:', err);

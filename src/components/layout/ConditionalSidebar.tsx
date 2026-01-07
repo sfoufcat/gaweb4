@@ -57,18 +57,10 @@ export function ConditionalSidebar({ layoutMode }: ConditionalSidebarProps) {
     });
   }, [layoutMode, pathname]);
   
-  // SSR-based check: If middleware determined this is fullscreen mode, don't render sidebar
-  // This prevents flash on marketing domain and other fullscreen pages
-  // Default to showing sidebar if layoutMode is undefined (defensive)
-  if (layoutMode === 'fullscreen') {
-    console.log('[ConditionalSidebar] Hiding: layoutMode is fullscreen');
-    return null;
-  }
-  
-  // If layoutMode is undefined or unexpected, log it but still show sidebar
-  if (!layoutMode || (layoutMode !== 'with-sidebar' && layoutMode !== 'fullscreen')) {
-    console.warn('[ConditionalSidebar] Unexpected layoutMode:', layoutMode, '- defaulting to show sidebar');
-  }
+  // --- Client-side pathname checks (source of truth for sidebar visibility) ---
+  // These checks use the current pathname which updates on client-side navigation.
+  // IMPORTANT: layoutMode prop is set during SSR and doesn't update on client-side 
+  // navigation, so we must rely on pathname for determining sidebar visibility.
   
   // Hide sidebar on onboarding pages
   const isOnboardingPage = pathname?.startsWith('/onboarding');
@@ -108,7 +100,15 @@ export function ConditionalSidebar({ layoutMode }: ConditionalSidebarProps) {
   // Hide sidebar on coach welcome page (fullscreen experience)
   const isCoachWelcome = pathname?.startsWith('/coach/welcome');
   
-  const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage || isMarketplacePage || isCoachOnboarding || isCoachWelcome;
+  // Check for marketing domain (client-side only)
+  // On marketing domain root (/), we hide sidebar but this isn't detectable by pathname alone
+  const isMarketingDomainRoot = typeof window !== 'undefined' && 
+    (window.location.hostname === 'coachful.co' || window.location.hostname === 'www.coachful.co') &&
+    pathname === '/';
+  
+  const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || 
+    isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || 
+    isInvitePage || isMarketplacePage || isCoachOnboarding || isCoachWelcome || isMarketingDomainRoot;
   
   if (shouldHideSidebar) {
     console.log('[ConditionalSidebar] Hiding due to pathname:', {
@@ -124,8 +124,14 @@ export function ConditionalSidebar({ layoutMode }: ConditionalSidebarProps) {
       isMarketplacePage,
       isCoachOnboarding,
       isCoachWelcome,
+      isMarketingDomainRoot,
     });
     return null;
+  }
+  
+  // If layoutMode is undefined or unexpected, log it but still show sidebar
+  if (!layoutMode || (layoutMode !== 'with-sidebar' && layoutMode !== 'fullscreen')) {
+    console.warn('[ConditionalSidebar] Unexpected layoutMode:', layoutMode, '- defaulting to show sidebar');
   }
   
   console.log('[ConditionalSidebar] Rendering Sidebar');

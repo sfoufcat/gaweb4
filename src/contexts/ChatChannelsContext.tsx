@@ -18,6 +18,12 @@ import {
   SOCIAL_CORNER_CHANNEL_ID,
   SHARE_WINS_CHANNEL_ID,
 } from '@/lib/chat-constants';
+import {
+  getCachedChannels,
+  setCachedChannels,
+  clearUserChannelCache,
+  type CachedChannelPreview,
+} from '@/lib/chat-cache';
 
 /**
  * Channel preview data for display in the chat list.
@@ -31,7 +37,8 @@ export interface ChannelPreview {
   lastMessageTime?: Date;
   unread: number;
   type: 'dm' | 'squad' | 'global' | 'coaching';
-  channel: StreamChannel;
+  /** Stream channel object - may be null for cached previews */
+  channel: StreamChannel | null;
 }
 
 interface ChatChannelsContextValue {
@@ -125,6 +132,44 @@ export function ChatChannelsProvider({
 
   // Whether we have SSR filter data (for immediate filtering)
   const hasSSRFilterData = (initialOrgChannelIds?.length ?? 0) > 0 || (initialSquadChannelIds?.length ?? 0) > 0;
+
+  // Track previous user ID to detect user changes
+  const prevUserIdRef = useRef<string | null>(null);
+
+  // Load cached channels immediately on mount for instant display
+  useEffect(() => {
+    const userId = client?.userID;
+    if (!userId) return;
+
+    // Detect user change and clear cache
+    if (prevUserIdRef.current && prevUserIdRef.current !== userId) {
+      clearUserChannelCache(prevUserIdRef.current);
+      setChannels([]);
+      setIsInitialized(false);
+    }
+    prevUserIdRef.current = userId;
+
+    // If already initialized with real data, skip cache load
+    if (isInitialized && channels.length > 0 && channels[0]?.channel) return;
+
+    // Load from cache for instant display
+    const cached = getCachedChannels(userId);
+    if (cached && cached.length > 0) {
+      // Convert cached previews to ChannelPreview (with null channel)
+      const cachedPreviews: ChannelPreview[] = cached.map((c: CachedChannelPreview) => ({
+        id: c.id,
+        name: c.name,
+        image: c.image,
+        lastMessage: c.lastMessage,
+        lastMessageTime: c.lastMessageTime ? new Date(c.lastMessageTime) : undefined,
+        unread: c.unread,
+        type: c.type,
+        channel: null, // No channel object for cached data
+      }));
+      setChannels(cachedPreviews);
+      setIsInitialized(true); // Show channels immediately!
+    }
+  }, [client?.userID, isInitialized, channels]);
 
   /**
    * Process a Stream channel into a ChannelPreview
@@ -346,6 +391,11 @@ export function ChatChannelsProvider({
 
       setChannels(previews);
       setIsInitialized(true);
+
+      // Update cache with fresh data for next load
+      if (client?.userID) {
+        setCachedChannels(client.userID, previews);
+      }
     } catch (err) {
       console.error('[ChatChannelsContext] Failed to fetch channels:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch channels');
@@ -403,6 +453,12 @@ export function ChatChannelsProvider({
         // Update existing channel
         const existing = prev[existingIndex];
         const streamChannel = existing.channel;
+
+        // Skip update if channel is null (cached preview)
+        if (!streamChannel) {
+          return prev;
+        }
+
         const messages = streamChannel.state.messages;
         const lastMsg = messages[messages.length - 1];
 
