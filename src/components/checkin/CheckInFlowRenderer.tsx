@@ -351,6 +351,7 @@ function GenericStepRenderer({ step, data, onComplete, onBack, isLastStep }: Gen
       return <ReframeStep config={stepConfig} onComplete={onComplete} />;
     case 'ai_reframe':
     case 'ai_reframe_input': // Legacy/alternate name for ai_reframe
+    case 'ai_reframe_output': // Legacy/alternate name for ai_reframe
       return <NeutralizeStep config={stepConfig} data={data} onComplete={onComplete} />;
     case 'begin_manifest':
       return <BeginManifestStep config={stepConfig} onComplete={onComplete} />;

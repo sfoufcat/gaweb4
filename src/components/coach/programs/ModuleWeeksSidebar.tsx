@@ -261,26 +261,12 @@ export function ModuleWeeksSidebar({
   // Calculate calendar-aligned weeks when in client view mode
   // These are based on the client's enrollment start date
   const calendarWeeks = useMemo((): CalendarWeek[] => {
-    // DEBUG: Log what we're receiving
-    console.log('[ModuleWeeksSidebar] Calendar weeks check:', {
-      isClientView,
-      mode: viewContext?.mode,
-      enrollmentStartedAt: viewContext?.mode === 'client' ? viewContext.enrollmentStartedAt : undefined,
-    });
-
     if (!isClientView || viewContext?.mode !== 'client' || !viewContext.enrollmentStartedAt) {
-      console.log('[ModuleWeeksSidebar] Falling back to template weeks');
       return [];
     }
     const totalDays = program.lengthDays || 30;
     const includeWeekends = program.includeWeekends !== false;
-    const weeks = calculateCalendarWeeks(viewContext.enrollmentStartedAt, totalDays, includeWeekends);
-    console.log('[ModuleWeeksSidebar] Calendar weeks calculated:', weeks.slice(0, 3).map(w => ({
-      label: w.label,
-      days: `${w.startDayIndex}-${w.endDayIndex}`,
-      dayCount: w.dayCount,
-    })));
-    return weeks;
+    return calculateCalendarWeeks(viewContext.enrollmentStartedAt, totalDays, includeWeekends);
   }, [isClientView, viewContext, program.lengthDays, program.includeWeekends]);
 
   // Convert calendar weeks to CalculatedWeek format for display in client view
@@ -668,24 +654,22 @@ export function ModuleWeeksSidebar({
       <div className="group/week">
         {/* Week row - with status-based coloring and modern selection */}
         <div
-          className={`p-4 transition-all duration-150 ${statusBgClass} ${
+          className={`px-3 py-2.5 transition-all duration-150 ${statusBgClass} ${
             !statusBgClass ? 'bg-white/40 dark:bg-[#171b22]/40' : ''
           } ${
             canReorderWeeks ? 'cursor-grab active:cursor-grabbing' : ''
           } ${isWeekSelected ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)]' : ''} hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a]`}
         >
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {/* Drag handle - only show if weeks can be reordered */}
-            {canReorderWeeks ? (
+            {canReorderWeeks && (
               <div className="touch-none">
                 <GripVertical className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
               </div>
-            ) : (
-              <div className="w-5" /> /* Spacer to maintain alignment */
             )}
 
             {/* Week icon - status-based coloring (lighter) */}
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
               weekStatus === 'past'
                 ? 'bg-yellow-100/70 dark:bg-yellow-900/25'
                 : weekStatus === 'active'
@@ -795,7 +779,7 @@ export function ModuleWeeksSidebar({
                   <button
                     key={dayIndex}
                     onClick={() => onSelect({ type: 'day', dayIndex, moduleId })}
-                    className={`w-full text-left flex items-center gap-3 px-4 py-3 pl-[72px] transition-all duration-150 ${dayStatusBgClass} ${
+                    className={`w-full text-left flex items-center gap-3 px-3 py-2.5 pl-12 transition-all duration-150 ${dayStatusBgClass} ${
                       isDaySelected
                         ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)] text-brand-accent'
                         : dayStatus === 'past'
@@ -865,26 +849,24 @@ export function ModuleWeeksSidebar({
     return (
       <div
         key={module.id}
-        className="overflow-hidden rounded-xl"
+        className="overflow-hidden rounded-xl border-b-2 border-[#d1cdc8] dark:border-[#363d4a] last:border-b-0 mb-2 last:mb-0"
       >
         {/* Module Header - less left padding on desktop to sit further left than weeks */}
         <div
-          className={`p-4 md:pl-2 backdrop-blur-sm transition-all duration-150 ${moduleStatusBgClass} ${
+          className={`px-3 py-2.5 backdrop-blur-sm transition-all duration-150 ${moduleStatusBgClass} ${
             canReorderModules ? 'cursor-grab active:cursor-grabbing' : ''
           } group ${isModuleSelected ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)]' : ''} hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a]`}
         >
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {/* Drag handle for module - only show in template mode */}
-            {canReorderModules ? (
+            {canReorderModules && (
               <div className="touch-none">
                 <GripVertical className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
               </div>
-            ) : (
-              <div className="w-5" /> /* Spacer to maintain alignment */
             )}
 
             {/* Module icon - larger than week icons, status-based coloring */}
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
               moduleStatus === 'past'
                 ? 'bg-yellow-100 dark:bg-yellow-900/30'
                 : moduleStatus === 'active'
@@ -967,7 +949,7 @@ export function ModuleWeeksSidebar({
                   axis="y"
                   values={moduleWeeks}
                   onReorder={(newWeeks) => handleWeeksReorder(module.id, newWeeks)}
-                  className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]"
+                  className="divide-y divide-[#e8e5e1] dark:divide-[#2a303d]"
                 >
                   {moduleWeeks.map((week, idx) => (
                     <Reorder.Item
@@ -981,7 +963,7 @@ export function ModuleWeeksSidebar({
                   ))}
                 </Reorder.Group>
               ) : (
-                <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
+                <div className="divide-y divide-[#e8e5e1] dark:divide-[#2a303d]">
                   {moduleWeeks.map((week, idx) => (
                     <div key={week.storedWeekId || `temp-${week.weekNum}`} className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}>
                       {renderWeekRow(week, module.id)}
@@ -1017,7 +999,7 @@ export function ModuleWeeksSidebar({
 
       {/* Modules & Weeks Tree */}
       <div className="flex-1 overflow-hidden relative">
-        <div className="space-y-3 h-full max-h-[50vh] lg:max-h-[calc(100vh-220px)] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-[#d1cdc8] dark:scrollbar-thumb-[#363d4a] scrollbar-track-transparent">
+        <div className="h-full max-h-[50vh] lg:max-h-[calc(100vh-220px)] overflow-y-auto px-2 py-3 scrollbar-thin scrollbar-thumb-[#d1cdc8] dark:scrollbar-thumb-[#363d4a] scrollbar-track-transparent">
         {sortedModules.length === 0 ? (
           // No modules yet - prompt to add one (only in template mode)
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6 text-center">
@@ -1046,7 +1028,7 @@ export function ModuleWeeksSidebar({
             axis="y"
             values={sortedModules}
             onReorder={handleModuleReorder}
-            className="space-y-3"
+            className=""
           >
             {sortedModules.map((module) => (
               <Reorder.Item as="div" key={module.id} value={module}>
@@ -1056,7 +1038,7 @@ export function ModuleWeeksSidebar({
           </Reorder.Group>
         ) : (
           // Static modules list (client view mode - no reordering)
-          <div className="space-y-3">
+          <div className="">
             {sortedModules.map((module) => renderModuleWithWeeks(module))}
           </div>
         )}

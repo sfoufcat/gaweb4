@@ -110,6 +110,7 @@ export function SwipeableChatItem({
   };
 
   const handleActionClick = (action: SwipeAction) => {
+    console.log('[SwipeableChatItem] handleActionClick called:', { label: action.label, itemId });
     // Reset swipe state
     setTranslateX(0);
     onOpen(null);

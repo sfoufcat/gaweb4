@@ -3757,6 +3757,7 @@ export type CheckInStepType =
   | 'reframe_input'       // User thought input for AI reframe
   | 'ai_reframe'          // AI reframe response display
   | 'ai_reframe_input'    // Alias for ai_reframe (legacy)
+  | 'ai_reframe_output'   // Alias for ai_reframe (legacy)
   | 'begin_manifest'      // Transition screen before manifestation
   | 'visualization'       // Manifestation: goal + identity + optional music
   | 'progress_scale'      // Weekly progress slider (0-100%)

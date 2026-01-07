@@ -51,27 +51,40 @@ export function ChatActionsMenu({
   const isPinned = preference?.isPinned ?? false;
   const isArchived = preference?.isArchived ?? false;
 
-  const handleAction = async (action: () => Promise<void>) => {
+  // Debug: log rendered state
+  console.log('[ChatActionsMenu] render:', {
+    channelId,
+    channelType,
+    isPinned,
+    isArchived,
+    canPinResult: canPin(channelType),
+    canArchiveResult: canArchive(channelType),
+    canDeleteResult: canDelete(channelType),
+  });
+
+  const handleAction = async (actionName: string, action: () => Promise<void>) => {
+    console.log('[ChatActionsMenu] Starting action:', actionName, { channelId, channelType });
     setIsLoading(true);
     try {
       await action();
+      console.log('[ChatActionsMenu] Action completed:', actionName);
       onActionComplete?.();
     } catch (error) {
-      console.error('[ChatActionsMenu] Action failed:', error);
+      console.error('[ChatActionsMenu] Action failed:', actionName, error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handlePin = () =>
-    handleAction(() =>
+    handleAction(isPinned ? 'unpin' : 'pin', () =>
       isPinned
         ? unpinChannel(channelId, channelType)
         : pinChannel(channelId, channelType)
     );
 
   const handleArchive = () =>
-    handleAction(() =>
+    handleAction(isArchived ? 'unarchive' : 'archive', () =>
       isArchived
         ? unarchiveChannel(channelId, channelType)
         : archiveChannel(channelId, channelType)
@@ -81,8 +94,8 @@ export function ChatActionsMenu({
     setShowDeleteDialog(true);
   };
 
-  const confirmDelete = () => {
-    handleAction(() => deleteChannel(channelId, channelType));
+  const confirmDelete = async () => {
+    await handleAction('delete', () => deleteChannel(channelId, channelType));
     setShowDeleteDialog(false);
   };
 
@@ -101,7 +114,7 @@ export function ChatActionsMenu({
         <DropdownMenuContent align="end" className="w-44">
           {canPin(channelType) && (
             <DropdownMenuItem
-              onClick={handlePin}
+              onSelect={() => handlePin()}
               className="gap-3"
               disabled={isLoading}
             >
@@ -121,7 +134,7 @@ export function ChatActionsMenu({
 
           {canArchive(channelType) && (
             <DropdownMenuItem
-              onClick={handleArchive}
+              onSelect={() => handleArchive()}
               className="gap-3"
               disabled={isLoading}
             >
@@ -143,7 +156,7 @@ export function ChatActionsMenu({
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={handleDelete}
+                onSelect={() => handleDelete()}
                 className="gap-3 text-red-500 focus:text-red-500 dark:text-red-400 dark:focus:text-red-400"
                 disabled={isLoading}
               >

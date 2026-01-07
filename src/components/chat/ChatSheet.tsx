@@ -85,7 +85,9 @@ interface ChannelPreview {
  * Shows channel list first, then messages when channel selected.
  */
 export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps) {
-  const { client, isConnected, isConnecting, error } = useStreamChatClient();
+  const { client, isConnected } = useStreamChatClient();
+  // Use client.user as direct source of truth - bypasses any state sync issues
+  const actuallyConnected = !!(client?.user) || isConnected;
   const [channels, setChannels] = useState<ChannelPreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [view, setView] = useState<'list' | 'channel'>('list');
@@ -137,7 +139,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     canPin,
     canArchive,
     canDelete,
-  } = useChatPreferences(isOpen && isConnected);
+  } = useChatPreferences(isOpen && actuallyConnected);
 
   // State for archived view
   const [showArchivedView, setShowArchivedView] = useState(false);
@@ -220,7 +222,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
 
   // Fetch channels when sheet opens
   useEffect(() => {
-    if (!isOpen || !client || !isConnected) {
+    if (!isOpen || !client || !actuallyConnected) {
       setIsLoading(false);
       return;
     }
@@ -349,7 +351,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     };
 
     fetchChannels();
-  }, [isOpen, client, isConnected, isPlatformMode, orgChannelIds, userSquadChannelIds, squadChannelsLoaded, initialChannelId]);
+  }, [isOpen, client, actuallyConnected, isPlatformMode, orgChannelIds, userSquadChannelIds, squadChannelsLoaded, initialChannelId]);
 
   // Handle channel click - show messages with animation
   const handleChannelClick = useCallback((channel: StreamChannel) => {
@@ -497,12 +499,14 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         label: isPinned ? 'Unpin' : 'Pin',
         bgColor: 'bg-blue-500',
         onClick: async () => {
+          console.log('[ChatSheet] Pin action clicked:', { channelId: channelPreview.id, channelType, isPinned });
           try {
             if (isPinned) {
               await unpinChannel(channelPreview.id, channelType);
             } else {
               await pinChannel(channelPreview.id, channelType);
             }
+            console.log('[ChatSheet] Pin action completed');
           } catch (error) {
             console.error('[ChatSheet] Pin action failed:', error);
           }
@@ -517,12 +521,14 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         label: isArchived ? 'Restore' : 'Archive',
         bgColor: 'bg-amber-500',
         onClick: async () => {
+          console.log('[ChatSheet] Archive action clicked:', { channelId: channelPreview.id, channelType, isArchived });
           try {
             if (isArchived) {
               await unarchiveChannel(channelPreview.id, channelType);
             } else {
               await archiveChannel(channelPreview.id, channelType);
             }
+            console.log('[ChatSheet] Archive action completed');
           } catch (error) {
             console.error('[ChatSheet] Archive action failed:', error);
           }
@@ -537,6 +543,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         label: 'Delete',
         bgColor: 'bg-red-500',
         onClick: () => {
+          console.log('[ChatSheet] Delete action clicked:', { channelId: channelPreview.id, channelType });
           setDeleteDialogChannel({ id: channelPreview.id, type: channelType });
         },
       });
@@ -584,7 +591,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         {isDemoMode ? (
           // Demo mode: show mock chat interface
           <DemoChatSheetContent onClose={onClose} />
-        ) : client && isConnected ? (
+        ) : client && actuallyConnected ? (
           <Chat client={client} theme={theme === 'dark' ? 'str-chat__theme-dark' : 'str-chat__theme-light'}>
             {/* Views Container - handles animation */}
             <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden">
@@ -919,37 +926,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
               </div>
             </div>
           </Chat>
-        ) : (
-          // Not connected state - show appropriate feedback
-          <div className="flex-1 flex items-center justify-center">
-            <div className="py-12 px-5 text-center">
-              <div className="w-14 h-14 bg-[#f3f1ef] dark:bg-[#272d38] rounded-full flex items-center justify-center mx-auto mb-4">
-                {isConnecting ? (
-                  <div className="w-6 h-6 border-2 border-text-muted border-t-brand-accent rounded-full animate-spin" />
-                ) : (
-                  <MessageCircle className="w-7 h-7 text-text-muted" />
-                )}
-              </div>
-              {error ? (
-                <>
-                  <p className="font-sans text-[15px] text-text-secondary mb-3">
-                    Unable to connect to chat
-                  </p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="px-4 py-2 text-sm font-medium text-white bg-brand-accent rounded-lg hover:bg-brand-accent/90 transition-colors"
-                  >
-                    Retry
-                  </button>
-                </>
-              ) : (
-                <p className="font-sans text-[15px] text-text-secondary">
-                  {isConnecting ? 'Connecting to chat...' : 'Loading chat...'}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+        ) : null}
       </DrawerContent>
     </Drawer>
 

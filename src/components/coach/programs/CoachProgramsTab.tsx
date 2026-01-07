@@ -42,6 +42,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 
 import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
+import { calculateProgramDayIndex, getActiveCycleNumber } from '@/lib/program-engine';
 
 // Animation variants for subtle fade transitions (calendar/row switching)
 const fadeVariants = {
@@ -354,38 +355,28 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     setViewMode(newMode);
   }, []);
 
-  // Helper to calculate current day index from enrollment start date
-  const calculateDayIndex = useCallback((startedAt: string, lengthDays: number): number => {
-    const start = new Date(startedAt);
-    start.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const diffTime = today.getTime() - start.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    // Day 1 is the first day (0 days elapsed)
-    const dayIndex = diffDays + 1;
-    
-    // Clamp to valid range
-    if (dayIndex < 1) return 0; // Program hasn't started yet
-    if (dayIndex > lengthDays) return lengthDays; // Program is completed
-    return dayIndex;
-  }, []);
-
   // Get current enrollment's day index for "Jump to Today" feature
   const currentEnrollment = useMemo(() => {
     if (clientViewContext.mode !== 'client') return null;
     const enrollment = programEnrollments.find(e => e.id === clientViewContext.enrollmentId);
     if (!enrollment || !selectedProgram) return null;
-    
-    // Calculate the current day index based on startedAt and program length
-    const currentDayIndex = enrollment.startedAt && enrollment.status === 'active'
-      ? calculateDayIndex(enrollment.startedAt, selectedProgram.lengthDays)
-      : 0;
-    
+
+    // Calculate the current day index using proper weekday-aware calculation
+    let currentDayIndex = 0;
+    if (enrollment.startedAt && enrollment.status === 'active') {
+      const cycleNumber = getActiveCycleNumber(enrollment);
+      const result = calculateProgramDayIndex(
+        enrollment.startedAt,
+        selectedProgram.lengthDays,
+        selectedProgram.includeWeekends !== false, // defaults to true
+        cycleNumber,
+        enrollment.cycleStartedAt
+      );
+      currentDayIndex = result.dayIndex;
+    }
+
     return { ...enrollment, currentDayIndex };
-  }, [clientViewContext, programEnrollments, selectedProgram, calculateDayIndex]);
+  }, [clientViewContext, programEnrollments, selectedProgram]);
 
   const handleJumpToToday = useCallback(() => {
     const currentDayIndex = currentEnrollment?.currentDayIndex;

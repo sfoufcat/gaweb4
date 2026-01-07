@@ -9,7 +9,7 @@
 
 import {
   getActiveCycleNumber,
-  calculateCycleAwareDayIndex,
+  calculateProgramDayIndex,
 } from '../program-engine';
 import type { ProgramEnrollment } from '@/types';
 
@@ -53,10 +53,10 @@ describe('getActiveCycleNumber', () => {
   });
 });
 
-describe('calculateCycleAwareDayIndex', () => {
+describe('calculateProgramDayIndex', () => {
   describe('with weekends included', () => {
     it('should calculate day index from enrollment start for cycle 1', () => {
-      const result = calculateCycleAwareDayIndex(
+      const result = calculateProgramDayIndex(
         '2025-01-01', // enrollmentStartedAt
         30, // programLengthDays
         true, // includeWeekends
@@ -70,7 +70,7 @@ describe('calculateCycleAwareDayIndex', () => {
     });
 
     it('should calculate day index from cycle start for cycle > 1', () => {
-      const result = calculateCycleAwareDayIndex(
+      const result = calculateProgramDayIndex(
         '2025-01-01', // enrollmentStartedAt (original)
         30, // programLengthDays
         true, // includeWeekends
@@ -84,7 +84,7 @@ describe('calculateCycleAwareDayIndex', () => {
     });
 
     it('should cap at program length and indicate rollover needed', () => {
-      const result = calculateCycleAwareDayIndex(
+      const result = calculateProgramDayIndex(
         '2025-01-01', // enrollmentStartedAt
         30, // programLengthDays
         true, // includeWeekends
@@ -103,7 +103,7 @@ describe('calculateCycleAwareDayIndex', () => {
       // 2025-01-01 is a Wednesday
       // 2025-01-10 is a Friday
       // Weekdays: Wed(1), Thu(2), Fri(3), Mon(6), Tue(7), Wed(8), Thu(9), Fri(10) = 8 weekdays
-      const result = calculateCycleAwareDayIndex(
+      const result = calculateProgramDayIndex(
         '2025-01-01', // enrollmentStartedAt (Wednesday)
         30, // programLengthDays
         false, // includeWeekends = false

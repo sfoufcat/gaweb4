@@ -102,11 +102,12 @@ export function getActiveCycleNumber(enrollment: ProgramEnrollment | StarterProg
 }
 
 /**
- * Calculate the current day index within a cycle for evergreen programs
- * For fixed programs, this is the same as calculateCurrentDayIndex
- * For evergreen programs, day index is relative to the current cycle start
+ * Calculate the current day index for a program enrollment
+ * Works for both fixed and evergreen programs
+ * Respects includeWeekends setting (counts only weekdays when false)
+ * For evergreen programs with cycle > 1, uses cycle start date
  */
-export function calculateCycleAwareDayIndex(
+export function calculateProgramDayIndex(
   enrollmentStartedAt: string,
   programLengthDays: number,
   includeWeekends: boolean,

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient, ensureSystemBotUser, SYSTEM_BOT_USER_ID } from '@/lib/stream-server';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 
 interface SquadNotificationResult {
   squadId: string;
@@ -24,6 +25,13 @@ export async function POST(_request: Request) {
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get the current organization context - only send to squads in this org
+    const organizationId = await getEffectiveOrgId();
+    if (!organizationId) {
+      console.log(`[SQUAD_NOTIFICATION] No organization context - skipping notifications`);
+      return NextResponse.json({ success: true, noOrg: true, message: 'No organization context' });
     }
 
     // Get today's date in YYYY-MM-DD format
@@ -117,7 +125,19 @@ export async function POST(_request: Request) {
         const isStandaloneSquad = !squadData?.programId;
         const hasChatChannel = !!squadData?.chatChannelId;
         
-        console.log(`[SQUAD_NOTIFICATION] Processing squad ${squadId} (${squadName}): isStandalone=${isStandaloneSquad}, hasChatChannel=${hasChatChannel}, programId=${squadData?.programId || 'none'}`);
+        console.log(`[SQUAD_NOTIFICATION] Processing squad ${squadId} (${squadName}): isStandalone=${isStandaloneSquad}, hasChatChannel=${hasChatChannel}, programId=${squadData?.programId || 'none'}, squadOrgId=${squadData?.organizationId || 'none'}`);
+
+        // MULTI-TENANCY: Skip squads from other organizations
+        if (squadData?.organizationId !== organizationId) {
+          console.log(`[SQUAD_NOTIFICATION] Skipping squad ${squadId} (${squadName}): belongs to org ${squadData?.organizationId}, not ${organizationId}`);
+          results.push({
+            squadId,
+            squadName,
+            sent: false,
+            error: 'Squad belongs to different organization',
+          });
+          continue;
+        }
 
         if (existingNotification.exists) {
           results.push({

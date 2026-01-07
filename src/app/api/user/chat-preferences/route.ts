@@ -53,14 +53,17 @@ export async function GET() {
  * Body: { channelId: string, channelType: ChatChannelType, action: ChatPreferenceAction }
  */
 export async function POST(req: Request) {
+  console.log('[CHAT_PREFERENCES_POST] Received request');
   try {
     const { userId } = await auth();
+    console.log('[CHAT_PREFERENCES_POST] userId:', userId);
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await req.json();
+    console.log('[CHAT_PREFERENCES_POST] body:', body);
     const { channelId, channelType, action } = body as {
       channelId: string;
       channelType: ChatChannelType;

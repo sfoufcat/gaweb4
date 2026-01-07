@@ -46,13 +46,31 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const initializingRef = useRef(false);
 
-  // Sync state with global client on mount and when it changes
+  // Sync state with global client on mount and periodically
   // This ensures state is up-to-date even after navigation/re-renders
+  // The interval catches cases where globalClient connects between renders
   useEffect(() => {
-    if (globalClient?.user && !isConnected) {
-      setClient(globalClient);
-      setIsConnected(true);
-      setIsConnecting(false);
+    const syncWithGlobal = () => {
+      if (globalClient?.user && !isConnected) {
+        setClient(globalClient);
+        setIsConnected(true);
+        setIsConnecting(false);
+      }
+    };
+
+    // Sync immediately on mount
+    syncWithGlobal();
+
+    // If not connected, poll briefly to catch the connection
+    // This handles race conditions where globalClient connects after mount
+    if (!isConnected) {
+      const interval = setInterval(syncWithGlobal, 100);
+      // Stop polling after 5 seconds (connection should be done by then)
+      const timeout = setTimeout(() => clearInterval(interval), 5000);
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
     }
   }, [isConnected]);
 

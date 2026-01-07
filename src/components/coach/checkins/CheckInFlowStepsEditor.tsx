@@ -106,6 +106,12 @@ const STEP_TYPE_INFO: Record<CheckInStepType, {
     description: 'AI response display (legacy)',
     color: 'bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-900/30 dark:text-fuchsia-400'
   },
+  ai_reframe_output: {
+    icon: Sparkles,
+    label: 'AI Reframe',
+    description: 'AI response display (legacy)',
+    color: 'bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-900/30 dark:text-fuchsia-400'
+  },
   begin_manifest: { 
     icon: Sun, 
     label: 'Begin Manifest', 

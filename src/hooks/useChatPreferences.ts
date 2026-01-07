@@ -42,6 +42,7 @@ async function updatePreference(
   channelType: ChatChannelType,
   action: ChatPreferenceAction
 ): Promise<void> {
+  console.log('[useChatPreferences] updatePreference called:', { channelId, channelType, action });
   const response = await fetch('/api/user/chat-preferences', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -50,8 +51,10 @@ async function updatePreference(
 
   if (!response.ok) {
     const data = await response.json();
+    console.error('[useChatPreferences] API error:', data);
     throw new Error(data.error || 'Failed to update chat preference');
   }
+  console.log('[useChatPreferences] updatePreference success');
 }
 
 export function useChatPreferences(enabled: boolean = true): UseChatPreferencesReturn {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   DndContext,
   closestCenter,
@@ -282,6 +283,7 @@ function SortableTaskItem({
  * - TaskSheetDefine for add/edit
  */
 export function PlanDayStep({ config, onComplete }: PlanDayStepProps) {
+  const router = useRouter();
   const { isDemoMode, openSignupModal } = useDemoMode();
   const today = new Date().toISOString().split('T')[0];
   const {
@@ -506,9 +508,12 @@ export function PlanDayStep({ config, onComplete }: PlanDayStepProps) {
   const handleAnimationComplete = useCallback(() => {
     if (isDemoMode) {
       openSignupModal();
+      return;
     }
-    onComplete();
-  }, [isDemoMode, openSignupModal, onComplete]);
+    // Navigate directly to dashboard instead of continuing flow
+    // This skips any remaining steps (like "Ready to go")
+    router.push('/');
+  }, [isDemoMode, openSignupModal, router]);
 
   if (isLoading) {
     return (
