@@ -3754,6 +3754,7 @@ export type CheckInStepType =
   | 'task_review'         // Review task completion (evening)
   | 'breathing'           // Guided breathing exercise
   | 'accept'              // Acceptance step (from morning check-in)
+  | 'reframe'             // Alias for reframe_input (legacy)
   | 'reframe_input'       // User thought input for AI reframe
   | 'ai_reframe'          // AI reframe response display
   | 'ai_reframe_input'    // Alias for ai_reframe (legacy)
@@ -3762,7 +3763,16 @@ export type CheckInStepType =
   | 'visualization'       // Manifestation: goal + identity + optional music
   | 'progress_scale'      // Weekly progress slider (0-100%)
   | 'completion'          // End screen with celebration
-  | 'goal_achieved';      // Conditional end screen when goal is 100%
+  | 'goal_achieved'       // Conditional end screen when goal is 100%
+  // Evening check-in specific steps
+  | 'evening_task_review' // Evening task review with completion status
+  | 'evening_mood'        // 5-state evening mood slider (tough_day → great_day)
+  | 'evening_reflection'  // Text with voice input for evening reflection
+  // Weekly check-in specific steps
+  | 'on_track_scale'      // 3-state weekly on-track slider
+  | 'momentum_progress'   // Weekly progress with momentum physics + audio
+  | 'voice_text'          // Enhanced text input with voice-to-text
+  | 'weekly_focus';       // Public focus with AI suggestion
 
 /**
  * Check-in step configuration types
@@ -3886,13 +3896,18 @@ export interface CheckInStepConfigCompletion {
   showConfetti?: boolean;
   buttonText?: string;
   variant?: 'day_closed' | 'week_closed' | 'great_job' | 'custom';
+  flowType?: 'morning' | 'evening' | 'weekly';
+  confettiCount?: number;
 }
 
 export interface CheckInStepConfigGoalAchieved {
   heading: string;
   description?: string;
+  emoji?: string;
   showCreateNewGoal?: boolean;
   showSkipOption?: boolean;
+  flowType?: 'weekly';
+  isGoalAchieved?: boolean;
 }
 
 export interface CheckInStepConfigExplainer {
@@ -3901,6 +3916,70 @@ export interface CheckInStepConfigExplainer {
   imageUrl?: string;
   videoUrl?: string;
   ctaText?: string;
+}
+
+// Evening check-in specific config types
+export interface CheckInStepConfigEveningTaskReview {
+  heading?: string;
+  completedMessage?: string;
+  partialMessage?: string;
+  noTasksMessage?: string;
+  showTaskList?: boolean;
+  allowTaskEdit?: boolean;
+}
+
+export interface CheckInStepConfigEveningMood {
+  question?: string;
+  options: {
+    value: string;
+    label: string;
+    gradient: string;
+  }[];
+}
+
+export interface CheckInStepConfigEveningReflection {
+  question?: string;
+  placeholder?: string;
+  fieldName?: string;
+  showSkip?: boolean;
+  enableVoice?: boolean;
+}
+
+// Weekly check-in specific config types
+export interface CheckInStepConfigOnTrackScale {
+  question?: string;
+  subheading?: string;
+  options: {
+    value: string;
+    label: string;
+    gradient: string;
+  }[];
+}
+
+export interface CheckInStepConfigMomentumProgress {
+  question?: string;
+  showGoal?: boolean;
+  goalAchievedThreshold?: number;
+  enableMomentum?: boolean;
+  enableAudioFeedback?: boolean;
+}
+
+export interface CheckInStepConfigVoiceText {
+  question?: string;
+  placeholder?: string;
+  fieldName?: string;
+  isRequired?: boolean;
+  enableVoice?: boolean;
+}
+
+export interface CheckInStepConfigWeeklyFocus {
+  question?: string;
+  placeholder?: string;
+  fieldName?: string;
+  showAiSuggestion?: boolean;
+  showPublicBadge?: boolean;
+  showShareButton?: boolean;
+  showSkipButton?: boolean;
 }
 
 /**
@@ -3922,7 +4001,16 @@ export type CheckInStepConfig =
   | { type: 'progress_scale'; config: CheckInStepConfigProgressScale }
   | { type: 'completion'; config: CheckInStepConfigCompletion }
   | { type: 'goal_achieved'; config: CheckInStepConfigGoalAchieved }
-  | { type: 'explainer'; config: CheckInStepConfigExplainer };
+  | { type: 'explainer'; config: CheckInStepConfigExplainer }
+  // Evening check-in specific configs
+  | { type: 'evening_task_review'; config: CheckInStepConfigEveningTaskReview }
+  | { type: 'evening_mood'; config: CheckInStepConfigEveningMood }
+  | { type: 'evening_reflection'; config: CheckInStepConfigEveningReflection }
+  // Weekly check-in specific configs
+  | { type: 'on_track_scale'; config: CheckInStepConfigOnTrackScale }
+  | { type: 'momentum_progress'; config: CheckInStepConfigMomentumProgress }
+  | { type: 'voice_text'; config: CheckInStepConfigVoiceText }
+  | { type: 'weekly_focus'; config: CheckInStepConfigWeeklyFocus };
 
 /**
  * Check-in step condition - for conditional display of steps

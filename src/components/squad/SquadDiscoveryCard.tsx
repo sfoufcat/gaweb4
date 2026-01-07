@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Users, User, Repeat } from 'lucide-react';
-import { SquadTypeBadge } from '@/components/ui/program-badges';
+import { SquadTypeBadge, PriceBadge } from '@/components/ui/program-badges';
 
 /**
  * SquadDiscoveryCard Component
@@ -128,9 +128,7 @@ export function SquadDiscoveryCard({ squad }: SquadDiscoveryCardProps) {
             <span className="text-xs text-green-600 dark:text-green-400">
               Join anytime
             </span>
-            <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-              {formatPrice(squad.priceInCents || 0, squad.subscriptionEnabled ? squad.billingInterval : undefined)}
-            </span>
+            <PriceBadge price={formatPrice(squad.priceInCents || 0, squad.subscriptionEnabled ? squad.billingInterval : undefined)} size="sm" />
           </div>
         </div>
       </div>

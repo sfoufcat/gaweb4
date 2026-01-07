@@ -95,3 +95,108 @@ export interface PlanDayStepProps extends StepProps {
     heading?: string;
   };
 }
+
+// ============================================
+// Evening Check-in Step Props
+// ============================================
+
+/**
+ * Props for the EveningTaskReviewStep (evening_task_review)
+ */
+export interface EveningTaskReviewStepProps extends StepProps {
+  config: {
+    heading?: string;
+    allCompletedEmoji?: string;
+    partialEmoji?: string;
+    allCompletedTitle?: string;
+    partialTitle?: string;
+    allCompletedMessage?: string;
+    partialMessage?: string;
+    noTasksMessage?: string;
+  };
+}
+
+/**
+ * Props for the EveningMoodStep (evening_mood)
+ */
+export interface EveningMoodStepProps extends StepProps {
+  config: {
+    question?: string;
+    states?: Array<{
+      value: string;
+      label: string;
+      gradient: string;
+    }>;
+  };
+}
+
+/**
+ * Props for the EveningReflectionStep (evening_reflection)
+ */
+export interface EveningReflectionStepProps extends StepProps {
+  config: {
+    question?: string;
+    placeholder?: string;
+    showSkip?: boolean;
+    fieldName?: string;
+    enableVoice?: boolean;
+  };
+}
+
+// ============================================
+// Weekly Check-in Step Props
+// ============================================
+
+/**
+ * Props for the OnTrackStep (on_track_scale)
+ */
+export interface OnTrackStepProps extends StepProps {
+  config: {
+    question?: string;
+    subheading?: string;
+    options?: Array<{
+      value: string;
+      label: string;
+      gradient: string;
+    }>;
+  };
+}
+
+/**
+ * Props for the WeeklyProgressStep (momentum_progress)
+ */
+export interface WeeklyProgressStepProps extends StepProps {
+  config: {
+    question?: string;
+    showGoal?: boolean;
+    goalAchievedThreshold?: number;
+    enableMomentum?: boolean;
+    enableAudioFeedback?: boolean;
+  };
+}
+
+/**
+ * Props for the VoiceTextStep (voice_text)
+ */
+export interface VoiceTextStepProps extends StepProps {
+  config: {
+    question?: string;
+    placeholder?: string;
+    fieldName?: string;
+    isRequired?: boolean;
+    enableVoice?: boolean;
+  };
+}
+
+/**
+ * Props for the WeeklyFocusStep (weekly_focus)
+ */
+export interface WeeklyFocusStepProps extends StepProps {
+  config: {
+    question?: string;
+    placeholder?: string;
+    showAiSuggestion?: boolean;
+    showSkip?: boolean;
+    isPublic?: boolean;
+  };
+}

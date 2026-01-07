@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { Check, ChevronDown, FileText, User } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, FileText, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -46,6 +46,9 @@ export function ClientSelector({
 }: ClientSelectorProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive'>('active');
+  const [currentPage, setCurrentPage] = useState(0);
+  const PAGE_SIZE = 10;
 
   // Get display name for a client
   const getClientName = (enrollment: EnrollmentWithUser) => {
@@ -72,25 +75,57 @@ export function ClientSelector({
     return { name: 'Select view...', subtitle: '', imageUrl: null, isTemplate: false };
   }, [value, enrollments]);
 
-  // Filter enrollments by search term
-  const filteredEnrollments = useMemo(() =>
+  // Count enrollments by status category
+  const activeCount = useMemo(() =>
+    enrollments.filter(e => e.status === 'active' || e.status === 'upcoming').length,
+    [enrollments]
+  );
+  const inactiveCount = useMemo(() =>
+    enrollments.filter(e => e.status === 'stopped' || e.status === 'completed').length,
+    [enrollments]
+  );
+
+  // Filter by status category first
+  const statusFilteredEnrollments = useMemo(() =>
     enrollments.filter(e => {
+      if (statusFilter === 'active') {
+        return e.status === 'active' || e.status === 'upcoming';
+      }
+      return e.status === 'stopped' || e.status === 'completed';
+    }),
+    [enrollments, statusFilter]
+  );
+
+  // Then filter by search term
+  const searchFilteredEnrollments = useMemo(() =>
+    statusFilteredEnrollments.filter(e => {
       const name = getClientName(e).toLowerCase();
       const email = (e.user?.email || '').toLowerCase();
       const term = searchTerm.toLowerCase();
       return name.includes(term) || email.includes(term);
     }),
-    [enrollments, searchTerm]
+    [statusFilteredEnrollments, searchTerm]
   );
 
-  // Active/upcoming enrollments first, then completed
+  // Sort by createdAt descending (most recently added first)
   const sortedEnrollments = useMemo(() =>
-    [...filteredEnrollments].sort((a, b) => {
-      const statusOrder = { active: 0, upcoming: 1, completed: 2, stopped: 3 };
-      return (statusOrder[a.status] || 4) - (statusOrder[b.status] || 4);
-    }),
-    [filteredEnrollments]
+    [...searchFilteredEnrollments].sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    ),
+    [searchFilteredEnrollments]
   );
+
+  // Pagination
+  const totalPages = Math.ceil(sortedEnrollments.length / PAGE_SIZE);
+  const paginatedEnrollments = sortedEnrollments.slice(
+    currentPage * PAGE_SIZE,
+    (currentPage + 1) * PAGE_SIZE
+  );
+
+  // Reset page when filter or search changes
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [statusFilter, searchTerm]);
 
   const selectTemplate = () => {
     onChange({ mode: 'template' });
@@ -164,6 +199,46 @@ export function ClientSelector({
             />
           </div>
 
+          {/* Status filter pills */}
+          <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35] flex gap-2">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('active')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                statusFilter === 'active'
+                  ? 'bg-brand-accent/15 text-brand-accent border border-brand-accent/30'
+                  : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] border border-transparent hover:bg-[#e9e5e0] dark:hover:bg-[#313746]'
+              }`}
+            >
+              Active
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                statusFilter === 'active'
+                  ? 'bg-brand-accent/20 text-brand-accent'
+                  : 'bg-[#e1ddd8]/50 dark:bg-[#3a4150] text-[#7d7a76] dark:text-[#7d8190]'
+              }`}>
+                {activeCount}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('inactive')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                statusFilter === 'inactive'
+                  ? 'bg-brand-accent/15 text-brand-accent border border-brand-accent/30'
+                  : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] border border-transparent hover:bg-[#e9e5e0] dark:hover:bg-[#313746]'
+              }`}
+            >
+              Inactive
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                statusFilter === 'inactive'
+                  ? 'bg-brand-accent/20 text-brand-accent'
+                  : 'bg-[#e1ddd8]/50 dark:bg-[#3a4150] text-[#7d7a76] dark:text-[#7d8190]'
+              }`}>
+                {inactiveCount}
+              </span>
+            </button>
+          </div>
+
           <div className="max-h-[300px] overflow-y-auto p-1">
             {/* Template option - always first */}
             <button
@@ -196,7 +271,7 @@ export function ClientSelector({
             </button>
 
             {/* Separator */}
-            {sortedEnrollments.length > 0 && (
+            {paginatedEnrollments.length > 0 && (
               <div className="my-1 mx-2 h-px bg-[#e1ddd8] dark:bg-[#262b35]" />
             )}
 
@@ -211,10 +286,10 @@ export function ClientSelector({
               </div>
             ) : sortedEnrollments.length === 0 ? (
               <div className="p-4 text-center text-sm text-text-secondary dark:text-[#7d8190]">
-                No enrolled clients yet.
+                No {statusFilter === 'active' ? 'active' : 'inactive'} clients.
               </div>
             ) : (
-              sortedEnrollments.map(enrollment => {
+              paginatedEnrollments.map(enrollment => {
                 const isSelected = value.mode === 'client' && value.enrollmentId === enrollment.id;
                 const clientName = getClientName(enrollment);
 
@@ -277,10 +352,31 @@ export function ClientSelector({
             )}
           </div>
 
-          {/* Footer with count */}
-          <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#11141b]">
+          {/* Footer with pagination */}
+          <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#11141b] flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+                className="p-1 rounded hover:bg-[#e9e5e0] dark:hover:bg-[#262b35] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              </button>
+              <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] min-w-[60px] text-center">
+                {totalPages > 0 ? `${currentPage + 1} of ${totalPages}` : '0 of 0'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={currentPage >= totalPages - 1}
+                className="p-1 rounded hover:bg-[#e9e5e0] dark:hover:bg-[#262b35] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="h-4 w-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              </button>
+            </div>
             <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-              {enrollments.length} enrolled client{enrollments.length !== 1 ? 's' : ''}
+              {sortedEnrollments.length} client{sortedEnrollments.length !== 1 ? 's' : ''}
             </p>
           </div>
         </PopoverContent>

@@ -1156,7 +1156,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         lengthDays: program.lengthDays,
         priceInCents: program.priceInCents,
         currency: program.currency,
-        subscriptionEnabled: program.subscriptionEnabled || false,
+        subscriptionEnabled: program.durationType === 'evergreen' ? (program.subscriptionEnabled || false) : false,
         billingInterval: program.billingInterval || 'monthly',
         squadCapacity: program.squadCapacity || 10,
         coachInSquads: program.coachInSquads !== false,
@@ -1335,7 +1335,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       const savedProgramId = data.program?.id || editingProgram?.id;
 
       // If subscription is enabled, create the Stripe price via the subscription endpoint
-      if (programFormData.subscriptionEnabled && programFormData.priceInCents > 0 && savedProgramId) {
+      // Only call subscription endpoint for evergreen programs (recurring billing not allowed for fixed-duration)
+      const isEvergreenProgram = editingProgram?.durationType === 'evergreen';
+      if (isEvergreenProgram && programFormData.subscriptionEnabled && programFormData.priceInCents > 0 && savedProgramId) {
         try {
           const subscriptionResponse = await fetch(`/api/coach/org-programs/${savedProgramId}/subscription`, {
             method: 'POST',

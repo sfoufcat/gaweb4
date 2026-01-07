@@ -69,7 +69,7 @@ export function ProgramScheduleEditor({
     { bg: 'bg-rose-50 dark:bg-rose-900/20', border: 'border-rose-200 dark:border-rose-800', text: 'text-rose-700 dark:text-rose-300', accent: 'bg-rose-100 dark:bg-rose-900/30' },
   ];
 
-  // Status colors for today indicator
+  // Status colors for today indicator (days)
   const statusColors = {
     past: {
       bg: 'bg-yellow-50/70 dark:bg-yellow-950/30',
@@ -80,6 +80,23 @@ export function ProgramScheduleEditor({
       border: 'border-emerald-300 dark:border-emerald-700',
     },
     future: null, // Use module color
+  };
+
+  // Module status colors (orange for active module)
+  const moduleStatusColors = {
+    past: {
+      bg: 'bg-yellow-50 dark:bg-yellow-950/30',
+      border: 'border-yellow-300 dark:border-yellow-700',
+      text: 'text-yellow-700 dark:text-yellow-300',
+      accent: 'bg-yellow-200 dark:bg-yellow-800',
+    },
+    active: {
+      bg: 'bg-orange-50 dark:bg-orange-950/30',
+      border: 'border-orange-300 dark:border-orange-700',
+      text: 'text-orange-700 dark:text-orange-300',
+      accent: 'bg-orange-200 dark:bg-orange-800',
+    },
+    future: null, // Use default module color
   };
 
   // Calculate calendar-aligned weeks
@@ -138,6 +155,31 @@ export function ProgramScheduleEditor({
     if (dayIndex < currentDayIndex) return 'past';
     if (dayIndex === currentDayIndex) return 'active';
     return 'future';
+  };
+
+  // Get module status based on its calendar weeks
+  const getModuleStatus = (moduleCalendarWeeks: CalendarWeek[]): 'past' | 'active' | 'future' => {
+    if (!currentDayIndex || viewMode !== 'client' || moduleCalendarWeeks.length === 0) return 'future';
+
+    // Get the day range for this module
+    const minDay = Math.min(...moduleCalendarWeeks.map(cw => cw.startDayIndex));
+    const maxDay = Math.max(...moduleCalendarWeeks.map(cw => cw.endDayIndex));
+
+    // If current day is within module range, it's active
+    if (currentDayIndex >= minDay && currentDayIndex <= maxDay) return 'active';
+    // If current day is past all days in module, module is past
+    if (currentDayIndex > maxDay) return 'past';
+    // Otherwise it's future
+    return 'future';
+  };
+
+  // Get theme for a calendar week from stored week data
+  const getWeekTheme = (cw: CalendarWeek): string | undefined => {
+    const firstDay = cw.startDayIndex;
+    const storedWeek = weeks.find(w =>
+      firstDay >= w.startDayIndex && firstDay <= w.endDayIndex
+    );
+    return storedWeek?.theme;
   };
 
   // Get days for a calendar week
@@ -274,9 +316,15 @@ export function ProgramScheduleEditor({
       {/* Modules and Weeks Structure */}
       <div className="space-y-4">
         {sortedModules.map((module, moduleIndex) => {
-          const moduleColor = moduleColors[moduleIndex % moduleColors.length];
+          const defaultModuleColor = moduleColors[moduleIndex % moduleColors.length];
           const moduleCalendarWeeks = calendarWeeksByModule.get(module.id) || [];
           const isCollapsed = collapsedModules.has(module.id);
+          const moduleStatus = getModuleStatus(moduleCalendarWeeks);
+
+          // Use status colors for client view, default module colors otherwise
+          const moduleColor = (viewMode === 'client' && moduleStatusColors[moduleStatus])
+            ? moduleStatusColors[moduleStatus]!
+            : defaultModuleColor;
 
           return (
             <div key={module.id} className={`rounded-xl border ${moduleColor.border} overflow-hidden`}>
@@ -312,6 +360,11 @@ export function ProgramScheduleEditor({
                           <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                             {cw.label}
                           </span>
+                          {getWeekTheme(cw) && (
+                            <span className="text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                              {getWeekTheme(cw)}
+                            </span>
+                          )}
                           <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
                             Days {cw.startDayIndex}–{cw.endDayIndex}
                           </span>
@@ -377,6 +430,10 @@ export function ProgramScheduleEditor({
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-300 dark:border-yellow-800" />
               <span>Past</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded bg-orange-50 dark:bg-orange-950/30 border border-orange-300 dark:border-orange-700" />
+              <span>Active</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-700" />

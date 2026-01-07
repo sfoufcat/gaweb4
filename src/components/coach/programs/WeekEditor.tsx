@@ -618,20 +618,6 @@ export function WeekEditor({
         icon={Info}
         defaultOpen={false}
       >
-        {/* Week Name */}
-        <div>
-          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-            Week Name
-          </label>
-          <input
-            type="text"
-            value={formData.name}
-            onChange={(e) => { setFormData({ ...formData, name: e.target.value }); trackFieldEdit('syncName'); }}
-            placeholder={`Week ${week.weekNumber}`}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-          />
-        </div>
-
         {/* Week Theme */}
         <div>
           <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
@@ -717,14 +703,14 @@ export function WeekEditor({
             </div>
           </div>
 
-          {/* Current Focus (max 3) */}
+          {/* Weekly Outcomes (max 3) */}
           <div>
             <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
               <Target className="w-4 h-4 inline mr-1.5" />
-              Current Focus <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
+              Weekly Outcomes <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
             </label>
             <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-              Key priorities shown to the client for this week
+              Key outcomes for the client to achieve this week
             </p>
             <div className="space-y-2 mb-3">
               {formData.currentFocus.map((focus, index) => (
@@ -752,7 +738,7 @@ export function WeekEditor({
                   value={newFocus}
                   onChange={(e) => setNewFocus(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addFocus()}
-                  placeholder="Add focus area..."
+                  placeholder="Add outcome..."
                   className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
                 />
                 <Button onClick={addFocus} variant="outline" size="sm">
@@ -782,51 +768,6 @@ export function WeekEditor({
             className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
           />
         </div>
-
-        {/* Current Focus (max 3) */}
-        <div>
-            <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-              <Target className="w-4 h-4 inline mr-1.5" />
-              Current Focus <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
-            </label>
-            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-              Key priorities shown to the client for this week
-            </p>
-            <div className="space-y-2 mb-3">
-              {formData.currentFocus.map((focus, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-                >
-                  <span className="w-2 h-2 rounded-full bg-brand-accent" />
-                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                    {focus}
-                  </span>
-                  <button
-                    onClick={() => removeFocus(index)}
-                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            {formData.currentFocus.length < 3 && (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newFocus}
-                  onChange={(e) => setNewFocus(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addFocus()}
-                  placeholder="Add focus area..."
-                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-                />
-                <Button onClick={addFocus} variant="outline" size="sm">
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          </div>
 
         {/* Notes (max 3) */}
         <div>

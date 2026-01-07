@@ -64,7 +64,8 @@ interface CalculatedWeek {
   daysInWeek: number[];
   contentCount: number;
   totalDays: number;
-  theme?: string;
+  label: string; // Display label (e.g., "Onboarding", "Week 1", "Closing")
+  theme?: string; // Week theme from stored week (e.g., "Building Foundations")
   distribution: 'repeat-daily' | 'spread';
   weeklyTasks: unknown[];
   storedWeekId?: string;
@@ -248,6 +249,7 @@ export function ModuleWeeksSidebar({
         daysInWeek,
         contentCount: daysWithContent.length,
         totalDays: daysInWeek.length,
+        label: `Week ${weekNum}`,
         theme: storedWeek?.theme,
         distribution: storedWeek?.distribution || 'repeat-daily',
         weeklyTasks: storedWeek?.weeklyTasks || [],
@@ -301,7 +303,8 @@ export function ModuleWeeksSidebar({
         daysInWeek,
         contentCount: daysWithContent.length,
         totalDays: daysInWeek.length,
-        theme: cw.label, // Use calendar week label as theme
+        label: cw.label, // Calendar week label (Onboarding, Week 1, etc.)
+        theme: storedWeek?.theme, // Actual theme from stored week
         distribution: storedWeek?.distribution || 'repeat-daily',
         weeklyTasks: storedWeek?.weeklyTasks || [],
         storedWeekId: storedWeek?.id,
@@ -692,20 +695,27 @@ export function ModuleWeeksSidebar({
               className="flex-1 min-w-0 text-left"
             >
               <AnimatePresence mode="wait">
-                <motion.p
-                  key={week.theme || week.weekNum}
+                <motion.div
+                  key={week.label}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className={`font-medium truncate ${
+                  className="flex items-center gap-2 truncate"
+                >
+                  <span className={`font-medium ${
                     isWeekSelected
                       ? 'text-brand-accent'
                       : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-                  }`}
-                >
-                  {week.theme || `Week ${week.weekNum}`}
-                </motion.p>
+                  }`}>
+                    {week.label}
+                  </span>
+                  {week.theme && (
+                    <span className="text-sm text-[#8c8c8c] dark:text-[#7d8190] truncate">
+                      {week.theme}
+                    </span>
+                  )}
+                </motion.div>
               </AnimatePresence>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
                 Days {week.startDay}–{week.endDay}

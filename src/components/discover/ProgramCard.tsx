@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Users, User, Clock } from 'lucide-react';
-import { TypeBadge, EnrolledBadge } from '@/components/ui/program-badges';
+import { TypeBadge, EnrolledBadge, PriceBadge } from '@/components/ui/program-badges';
 
 interface ProgramCardProgram {
   id: string;
@@ -151,9 +151,7 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
               <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
                 Start Program
               </span>
-              <span className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                {formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)}
-              </span>
+              <PriceBadge price={formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)} size="sm" />
             </div>
           )}
         </div>

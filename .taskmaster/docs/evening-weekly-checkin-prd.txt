@@ -1,0 +1,303 @@
+# Evening & Weekly Check-in Flow Migration
+
+## Overview
+Migrate evening and weekly check-ins from old static pages to the new dynamic flow mechanism (CheckInFlowRenderer), preserving all features from the original implementations including voice input, momentum physics, AI integration, and data persistence.
+
+## Goals
+- Goal 1: Evening check-in at `/checkin/flow/evening` has full feature parity with old `/checkin/evening/*` pages
+- Goal 2: Weekly check-in at `/checkin/flow/weekly` has full feature parity with old `/checkin/weekly/*` pages
+- Goal 3: Data persistence works correctly (evening_checkins, weekly_reflections, reflections, org_membership)
+- Goal 4: Existing org flows are migrated to use new step types
+- Goal 5: Coaches can customize evening/weekly flows in the editor
+
+## Background
+The morning check-in was successfully migrated to use CheckInFlowRenderer with specific step components (EmotionalStartStep, BreathStep, ManifestStep, PlanDayStep, etc.). Evening and weekly check-ins currently use generic step types (task_review, mood_scale, open_text, progress_scale) that lack the special features from the original implementations.
+
+## User Stories
+
+### As a User
+- I want voice-to-text input during evening reflection so I can speak my thoughts
+- I want the 5-state evening mood slider with smooth gradient transitions
+- I want momentum physics on the weekly progress slider for natural feel
+- I want audio feedback when adjusting weekly progress
+- I want my weekly focus to be summarized by AI for my profile
+
+### As a Coach
+- I want to customize evening/weekly flows with the new step types
+- I want existing flows to be automatically upgraded to use new features
+
+## Features & Requirements
+
+### Feature 1: Evening Task Review Step
+**Description:**
+Extract EveningTaskReviewStep from `/src/app/checkin/evening/start/page.tsx`
+
+**Requirements:**
+- [ ] Display today's focus tasks with completion checkmarks
+- [ ] Show completion count (e.g., "3 of 5 tasks completed")
+- [ ] Show emoji based on completion (👏 all done, 🌿 partial)
+- [ ] Different messaging for all completed vs partial
+- [ ] Call useEveningCheckIn().startCheckIn(completedCount, tasksTotal)
+- [ ] Support demo mode with mock tasks
+
+**Acceptance Criteria:**
+- Task list renders with correct completion status
+- API called on step mount to start check-in
+- Works in demo mode without API calls
+
+### Feature 2: Evening Mood Step (5-state)
+**Description:**
+Extract EveningMoodStep from `/src/app/checkin/evening/evaluate/page.tsx`
+
+**Requirements:**
+- [ ] 5-state slider: tough_day, mixed, steady, good_day, great_day
+- [ ] Full-screen gradient background per state
+- [ ] Smooth 0.7s gradient transitions between states
+- [ ] Multi-color gradient slider track (red to green)
+- [ ] Touch and mouse drag interaction
+- [ ] Call useEveningCheckIn().updateEmotionalState(state)
+
+**Acceptance Criteria:**
+- Slider smoothly transitions between 5 states
+- Background gradient changes with selection
+- Emotional state saved to evening check-in
+
+### Feature 3: Evening Reflection Step (Voice Input)
+**Description:**
+Extract EveningReflectionStep from `/src/app/checkin/evening/reflect/page.tsx`
+
+**Requirements:**
+- [ ] Text area with placeholder text
+- [ ] Web Speech API voice-to-text support
+- [ ] Microphone toggle button with pulsing animation when active
+- [ ] "Listening..." indicator during speech recognition
+- [ ] Skip option (reflection is optional)
+- [ ] Call useEveningCheckIn().saveReflection(text)
+- [ ] Also POST to /api/goal/reflections for daily reflection
+
+**Acceptance Criteria:**
+- Voice input works in supported browsers (Chrome, Safari)
+- Text correctly transcribed from speech
+- Reflection saved to evening check-in and reflections collection
+
+### Feature 4: Evening Completion Enhancement
+**Description:**
+Enhance existing CompletionStep to handle evening-specific completion
+
+**Requirements:**
+- [ ] Confetti celebration animation (100 pieces)
+- [ ] "Day closed ✨" messaging
+- [ ] Call useEveningCheckIn().completeCheckIn()
+- [ ] Move focus tasks to backlog via /api/tasks/move-to-backlog
+- [ ] Friday detection for weekly notification trigger
+- [ ] Demo mode signup modal trigger
+
+**Acceptance Criteria:**
+- Confetti animates on completion
+- Tasks moved to backlog
+- Friday triggers weekly reflection notification
+
+### Feature 5: On Track Step (Weekly)
+**Description:**
+Extract OnTrackStep from `/src/app/checkin/weekly/checkin/page.tsx`
+
+**Requirements:**
+- [ ] 3-state slider: off_track, not_sure, on_track
+- [ ] Full-screen gradient background per state (red → gray → green)
+- [ ] "Are you on track to achieve your goal?" heading
+- [ ] Call useWeeklyReflection().startCheckIn() if not exists
+- [ ] Call useWeeklyReflection().updateOnTrackStatus(status)
+
+**Acceptance Criteria:**
+- Slider transitions between 3 states
+- On-track status saved to weekly reflection
+
+### Feature 6: Weekly Progress Step (Momentum)
+**Description:**
+Extract WeeklyProgressStep from `/src/app/checkin/weekly/evaluate/page.tsx`
+
+**Requirements:**
+- [ ] 0-100% horizontal progress slider
+- [ ] Momentum physics: friction 0.88, minVelocity 0.3
+- [ ] Velocity-based animation on release
+- [ ] Snap to 5% increments
+- [ ] Audio tick feedback at 5% increments using Web Audio API
+- [ ] Display user's goal card (fetch from /api/user/me)
+- [ ] Call useWeeklyReflection().updateProgress(progress)
+- [ ] If progress >= 100%, set flag for goal achieved step
+
+**Acceptance Criteria:**
+- Slider has momentum feel when dragged and released
+- Audio ticks play when crossing 5% boundaries
+- Progress saved to weekly reflection and org_membership
+
+### Feature 7: Voice Text Step (Reusable)
+**Description:**
+Create reusable VoiceTextStep for weekly reflection inputs
+
+**Requirements:**
+- [ ] Text area with configurable question and placeholder
+- [ ] Web Speech API voice-to-text support
+- [ ] Microphone toggle button with animation
+- [ ] Configurable fieldName: whatWentWell, biggestObstacles, nextWeekPlan
+- [ ] Configurable isRequired flag
+- [ ] Call useWeeklyReflection().saveReflection(fieldName, value)
+
+**Acceptance Criteria:**
+- Component reusable for all 3 weekly text inputs
+- Voice input works correctly
+- Field saved to weekly reflection
+
+### Feature 8: Weekly Focus Step (AI Summary)
+**Description:**
+Extract WeeklyFocusStep from `/src/app/checkin/weekly/focus/page.tsx`
+
+**Requirements:**
+- [ ] "(public)" badge indicating visibility
+- [ ] Text input for weekly focus
+- [ ] AI suggestion pill (fetch from /api/weekly-focus/suggestion)
+- [ ] One-click to use AI suggestion
+- [ ] "Share my plan" button → saveReflection + completeCheckIn
+- [ ] "Skip this time" option → completeCheckIn only
+- [ ] AI summary generation via summarizeWeeklyFocus()
+- [ ] Update org_membership with publicFocus and publicFocusSummary
+
+**Acceptance Criteria:**
+- Focus saved to weekly reflection
+- AI summary generated and saved to org_membership
+- Public focus visible on user profile
+
+### Feature 9: Weekly Goal Achieved Step
+**Description:**
+Enhance GoalAchievedStep for weekly flow
+
+**Requirements:**
+- [ ] Conditional: only show when weeklyProgress >= 100
+- [ ] "Goal achieved — well done! 💫" messaging
+- [ ] "Create new goal" button → /onboarding/goal
+- [ ] "Skip for now" button → home
+- [ ] Call useWeeklyReflection().markGoalComplete()
+- [ ] Liquid blob celebration animation
+
+**Acceptance Criteria:**
+- Step only appears when goal achieved
+- Goal completion saved to org_membership
+
+### Feature 10: Type System Updates
+**Description:**
+Add new step types to CheckInStepType
+
+**Requirements:**
+- [ ] Add to types/index.ts: evening_task_review, evening_mood, evening_reflection, on_track_scale, momentum_progress, voice_text, weekly_focus
+- [ ] Add cases to CheckInFlowRenderer GenericStepRenderer
+- [ ] Add STEP_TYPE_INFO entries to CheckInFlowStepsEditor
+- [ ] Add getDefaultConfigForType cases
+- [ ] Add to ADDABLE_STEP_TYPES array
+
+**Acceptance Criteria:**
+- All new types compile without errors
+- Steps render correctly in CheckInFlowRenderer
+- Steps appear in coach editor with correct icons/labels
+
+### Feature 11: Template Updates
+**Description:**
+Update seed templates with new step types
+
+**Requirements:**
+- [ ] Update EVENING_TEMPLATE_STEPS with: evening_task_review, evening_mood, evening_reflection, completion
+- [ ] Update WEEKLY_TEMPLATE_STEPS with: on_track_scale, momentum_progress, voice_text (x3), weekly_focus, completion, goal_achieved
+- [ ] Remove old generic steps (task_review, mood_scale, open_text, progress_scale)
+
+**Acceptance Criteria:**
+- New orgs get flows with new step types
+- Templates have correct step order and configs
+
+### Feature 12: Migration Script
+**Description:**
+Create script to update existing org flows
+
+**Requirements:**
+- [ ] Script to find all evening/weekly flows in orgCheckInFlows collection
+- [ ] Replace old steps with new step types
+- [ ] Preserve any coach customizations where possible
+- [ ] Log migration progress and any errors
+- [ ] Dry-run mode for testing
+
+**Acceptance Criteria:**
+- All existing org evening/weekly flows upgraded
+- No data loss during migration
+- Coaches see new features without manual updates
+
+## Technical Considerations
+
+### Web Speech API
+```typescript
+// Check browser support
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+// Initialize
+const recognition = new SpeechRecognition();
+recognition.continuous = true;
+recognition.interimResults = true;
+
+// Handle results
+recognition.onresult = (event) => {
+  const transcript = Array.from(event.results)
+    .map(result => result[0].transcript)
+    .join('');
+  setText(transcript);
+};
+```
+
+### Momentum Physics
+```typescript
+const FRICTION = 0.88;
+const MIN_VELOCITY = 0.3;
+
+const animate = () => {
+  velocity *= FRICTION;
+  if (Math.abs(velocity) > MIN_VELOCITY) {
+    progress += velocity;
+    requestAnimationFrame(animate);
+  } else {
+    // Snap to nearest 5%
+    progress = Math.round(progress / 5) * 5;
+  }
+};
+```
+
+### Web Audio API (Tick Sound)
+```typescript
+const audioContext = new AudioContext();
+
+const playTick = () => {
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  oscillator.frequency.value = 800;
+  gainNode.gain.value = 0.1;
+  oscillator.start();
+  oscillator.stop(audioContext.currentTime + 0.05);
+};
+```
+
+## Out of Scope
+- Changes to the API routes (use existing hooks)
+- Changes to Firestore collections structure
+- New coach customization options beyond step reordering
+
+## Dependencies
+- Existing hooks: useEveningCheckIn, useWeeklyReflection
+- Existing API routes: /api/checkin/evening, /api/checkin/weekly
+- AI integration: summarizeWeeklyFocus() in /src/lib/anthropic.ts
+- CheckInFlowRenderer component
+- CheckInFlowStepsEditor component
+
+## Implementation Order
+1. Type definitions (Feature 10)
+2. Evening components (Features 1-4)
+3. Weekly components (Features 5-9)
+4. Template updates (Feature 11)
+5. Migration script (Feature 12)
+6. End-to-end testing

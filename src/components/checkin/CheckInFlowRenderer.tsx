@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft } from 'lucide-react';
 import type { CheckInStep, CheckInStepCondition, EmotionalState } from '@/types';
 
-// Import extracted step components from morning check-in
+// Import extracted step components
 import {
   EmotionalStartStep,
   AcceptStep,
@@ -16,10 +16,22 @@ import {
   BeginManifestStep,
   ManifestStep,
   PlanDayStep,
+  // Evening check-in steps
+  EveningTaskReviewStep,
+  EveningMoodStep,
+  EveningReflectionStep,
+  // Weekly check-in steps
+  OnTrackStep,
+  WeeklyProgressStep,
+  VoiceTextStep,
+  WeeklyFocusStep,
 } from '@/components/checkin/steps';
 
 // Import hooks
 import { useCheckInFlow } from '@/hooks/useCheckInFlow';
+import { useEveningCheckIn } from '@/hooks/useEveningCheckIn';
+import { useWeeklyReflection } from '@/hooks/useWeeklyReflection';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 interface CheckInFlowRendererProps {
   flowType?: 'morning' | 'evening' | 'weekly' | 'custom';
@@ -357,6 +369,7 @@ function GenericStepRenderer({ step, data, onComplete, onBack, isLastStep }: Gen
       return <AcceptStep config={stepConfig} data={data} onComplete={onComplete} />;
     case 'breathing':
       return <BreathStep config={stepConfig} onComplete={onComplete} />;
+    case 'reframe':       // Legacy/alternate name
     case 'reframe_input':
       return <ReframeStep config={stepConfig} onComplete={onComplete} />;
     case 'ai_reframe':
@@ -369,6 +382,24 @@ function GenericStepRenderer({ step, data, onComplete, onBack, isLastStep }: Gen
       return <ManifestStep config={stepConfig} onComplete={onComplete} />;
     case 'task_planner':
       return <PlanDayStep config={stepConfig} onComplete={onComplete} />;
+
+    // Evening check-in steps - using extracted components
+    case 'evening_task_review':
+      return <EveningTaskReviewStep config={stepConfig} onComplete={onComplete} />;
+    case 'evening_mood':
+      return <EveningMoodStep config={stepConfig} onComplete={onComplete} />;
+    case 'evening_reflection':
+      return <EveningReflectionStep config={stepConfig} data={data} onComplete={onComplete} />;
+
+    // Weekly check-in steps - using extracted components
+    case 'on_track_scale':
+      return <OnTrackStep config={stepConfig} onComplete={onComplete} />;
+    case 'momentum_progress':
+      return <WeeklyProgressStep config={stepConfig} onComplete={onComplete} />;
+    case 'voice_text':
+      return <VoiceTextStep config={stepConfig} onComplete={onComplete} />;
+    case 'weekly_focus':
+      return <WeeklyFocusStep config={stepConfig} onComplete={onComplete} />;
 
     // Generic steps - keeping inline implementations
     case 'explainer':
@@ -543,13 +574,53 @@ function OpenTextStep({ config, onComplete }: { config: Record<string, unknown>;
 }
 
 
-function CompletionStep({ config, onComplete, isLastStep }: { config: Record<string, unknown>; onComplete: () => void; isLastStep: boolean }) {
-  const [showConfetti, setShowConfetti] = useState(false);
+/**
+ * ConfettiPiece - Individual confetti particle with random properties
+ */
+function ConfettiPiece({ index }: { index: number }) {
+  const colors = ['#ff6b6b', '#ff8c42', '#ffa500', '#9b59b6', '#a07855', '#4ecdc4', '#45b7d1', '#96ceb4'];
+  const color = colors[index % colors.length];
+  const left = Math.random() * 100;
+  const animationDelay = Math.random() * 0.5;
+  const animationDuration = 2 + Math.random() * 2;
+  const size = 8 + Math.random() * 8;
+  const rotation = Math.random() * 360;
 
-  const emoji = config.emoji ? String(config.emoji) : '🎉';
+  return (
+    <motion.div
+      initial={{ y: -20, rotate: rotation, opacity: 1 }}
+      animate={{ y: '100vh', rotate: rotation + 720, opacity: 0 }}
+      transition={{
+        duration: animationDuration,
+        delay: animationDelay,
+        ease: 'linear'
+      }}
+      className="fixed pointer-events-none"
+      style={{
+        left: `${left}%`,
+        top: 0,
+        width: `${size}px`,
+        height: `${size}px`,
+        backgroundColor: color,
+        borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+        zIndex: 9999,
+      }}
+    />
+  );
+}
+
+function CompletionStep({ config, onComplete, isLastStep }: { config: Record<string, unknown>; onComplete: () => void; isLastStep: boolean }) {
+  const { isDemoMode, openSignupModal } = useDemoMode();
+  const { completeCheckIn } = useEveningCheckIn();
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const emoji = config.emoji ? String(config.emoji) : '';
   const heading = config.heading ? String(config.heading) : '';
   const subheading = config.subheading ? String(config.subheading) : '';
   const buttonText = config.buttonText ? String(config.buttonText) : 'Continue';
+  const flowType = config.flowType ? String(config.flowType) : '';
+  const confettiCount = config.confettiCount ? Number(config.confettiCount) : 100;
 
   useEffect(() => {
     if (config.showConfetti) {
@@ -557,19 +628,69 @@ function CompletionStep({ config, onComplete, isLastStep }: { config: Record<str
     }
   }, [config.showConfetti]);
 
+  // Generate confetti pieces array
+  const confettiPieces = showConfetti ? Array.from({ length: confettiCount }, (_, i) => i) : [];
+
+  const handleComplete = useCallback(async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    // Trigger confetti on button press for evening flow
+    if (flowType === 'evening' && config.showConfetti) {
+      setShowConfetti(true);
+    }
+
+    try {
+      // Evening flow specific completion logic
+      if (flowType === 'evening' && !isDemoMode) {
+        // Mark evening check-in as completed
+        await completeCheckIn();
+
+        // Move all focus tasks to backlog so user can use them tomorrow
+        await fetch('/api/tasks/move-to-backlog', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    } catch (error) {
+      console.error('Failed to complete check-in:', error);
+    }
+
+    // Wait for confetti animation if showing, then complete
+    if (showConfetti || (flowType === 'evening' && config.showConfetti)) {
+      setTimeout(() => {
+        if (isDemoMode && flowType === 'evening') {
+          openSignupModal();
+        }
+        onComplete();
+      }, 1500);
+    } else {
+      onComplete();
+    }
+  }, [isSubmitting, flowType, isDemoMode, config.showConfetti, showConfetti, completeCheckIn, openSignupModal, onComplete]);
+
   return (
-    <div className="flex flex-col items-center justify-center h-full px-6 py-8">
-      {/* Confetti placeholder */}
-      
+    <div className="flex flex-col items-center justify-center h-full px-6 py-8 relative">
+      {/* Confetti Layer */}
+      {showConfetti && (
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
+          {confettiPieces.map((index) => (
+            <ConfettiPiece key={index} index={index} />
+          ))}
+        </div>
+      )}
+
       <div className="text-center max-w-md">
-        <motion.div
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-          className="text-[60px] mb-6"
-        >
-          {emoji}
-        </motion.div>
+        {emoji && (
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+            className="text-[60px] mb-6"
+          >
+            {emoji}
+          </motion.div>
+        )}
 
         <h1 className="font-albert text-[28px] md:text-[36px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2] mb-4">
           {heading}
@@ -582,10 +703,11 @@ function CompletionStep({ config, onComplete, isLastStep }: { config: Record<str
         )}
 
         <button
-          onClick={onComplete}
-          className="w-full max-w-[400px] bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] py-4 rounded-full font-sans text-[16px] font-bold tracking-[-0.5px] shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+          onClick={handleComplete}
+          disabled={isSubmitting}
+          className="w-full max-w-[400px] bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] py-4 rounded-full font-sans text-[16px] font-bold tracking-[-0.5px] shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-80"
         >
-          {buttonText}
+          {isSubmitting && flowType === 'evening' ? 'See you tomorrow!' : buttonText}
         </button>
       </div>
     </div>
@@ -662,45 +784,275 @@ function TaskReviewStep({ config, onComplete }: { config: Record<string, unknown
   );
 }
 
+/**
+ * LiquidCelebration - Animated liquid blob celebration for weekly completion
+ */
+function LiquidCelebration({ onComplete }: { onComplete: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onComplete, 3000);
+    return () => clearTimeout(timer);
+  }, [onComplete]);
+
+  const blobs = useMemo(() => Array.from({ length: 12 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: 80 + Math.random() * 200,
+    delay: Math.random() * 0.5,
+    duration: 2 + Math.random() * 1.5,
+    color: [
+      'rgba(120, 180, 140, 0.7)',
+      'rgba(100, 160, 130, 0.6)',
+      'rgba(80, 140, 110, 0.5)',
+      'rgba(140, 200, 160, 0.6)',
+      'rgba(160, 210, 180, 0.5)',
+      'rgba(90, 170, 130, 0.7)',
+    ][i % 6],
+  })), []);
+
+  const sparkles = useMemo(() => Array.from({ length: 20 }, (_, i) => ({
+    id: i,
+    x: 10 + Math.random() * 80,
+    y: 10 + Math.random() * 80,
+    delay: Math.random() * 1,
+    size: 4 + Math.random() * 8,
+  })), []);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[10000] pointer-events-none overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* Liquid blobs */}
+      {blobs.map((blob) => (
+        <motion.div
+          key={blob.id}
+          className="absolute rounded-full"
+          style={{
+            left: `${blob.x}%`,
+            top: `${blob.y}%`,
+            width: blob.size,
+            height: blob.size,
+            background: blob.color,
+            filter: 'blur(40px)',
+          }}
+          initial={{ scale: 0, opacity: 0, x: '-50%', y: '-50%' }}
+          animate={{
+            scale: [0, 1.5, 1.2, 1.8, 0],
+            opacity: [0, 0.8, 0.6, 0.4, 0],
+            x: ['-50%', '-30%', '-70%', '-50%'],
+            y: ['-50%', '-70%', '-30%', '-50%'],
+          }}
+          transition={{
+            duration: blob.duration,
+            delay: blob.delay,
+            ease: 'easeInOut',
+          }}
+        />
+      ))}
+
+      {/* Sparkles */}
+      {sparkles.map((sparkle) => (
+        <motion.div
+          key={`sparkle-${sparkle.id}`}
+          className="absolute"
+          style={{
+            left: `${sparkle.x}%`,
+            top: `${sparkle.y}%`,
+            width: sparkle.size,
+            height: sparkle.size,
+          }}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
+          transition={{ duration: 1, delay: sparkle.delay + 0.5, ease: 'easeOut' }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+            <path
+              d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z"
+              fill="rgba(255, 215, 0, 0.9)"
+            />
+          </svg>
+        </motion.div>
+      ))}
+
+      {/* Center burst */}
+      <motion.div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: [0, 3, 4], opacity: [0, 0.6, 0] }}
+        transition={{ duration: 1.5, delay: 0.2, ease: 'easeOut' }}
+      >
+        <div
+          className="w-[200px] h-[200px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(120, 180, 140, 0.8) 0%, rgba(100, 160, 130, 0.4) 50%, transparent 70%)',
+          }}
+        />
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function GoalAchievedStep({ config, onComplete }: { config: Record<string, unknown>; onComplete: () => void }) {
+  const router = useRouter();
+  const { isDemoMode, openSignupModal } = useDemoMode();
+  const { markGoalComplete } = useWeeklyReflection();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
   const heading = config.heading ? String(config.heading) : '';
   const description = config.description ? String(config.description) : '';
-  
-  return (
-    <div className="flex flex-col h-full px-6 py-8">
-      <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full">
-        <div className="text-[60px] mb-6">💫</div>
+  const emoji = config.emoji ? String(config.emoji) : '💫';
+  const isGoalAchieved = Boolean(config.isGoalAchieved);
+  const flowType = config.flowType ? String(config.flowType) : '';
 
-        <h1 className="font-albert text-[28px] md:text-[36px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2] text-center mb-6">
-          {heading}
-        </h1>
+  // Mark goal complete on mount if this is goal achieved screen
+  useEffect(() => {
+    if (isGoalAchieved && !isDemoMode) {
+      markGoalComplete();
+    }
+  }, [isGoalAchieved, isDemoMode, markGoalComplete]);
 
-        {description && (
-          <p className="font-albert text-[18px] text-[#5f5a55] dark:text-[#b2b6c2] tracking-[-0.5px] leading-[1.5] text-center whitespace-pre-line">
-            {description}
-          </p>
-        )}
-      </div>
+  const handleCreateNewGoal = useCallback(async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-      <div className="pb-8 space-y-3">
-        {Boolean(config.showCreateNewGoal) && (
-          <button
-            onClick={onComplete}
-            className="w-full max-w-[400px] mx-auto block bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] py-4 rounded-full font-sans text-[16px] font-bold"
+    try {
+      if (isDemoMode) {
+        openSignupModal();
+        onComplete();
+      } else {
+        // Navigate to goal onboarding to create new goal
+        router.push('/onboarding/goal');
+      }
+    } catch (error) {
+      console.error('Error navigating:', error);
+      setIsSubmitting(false);
+    }
+  }, [isSubmitting, isDemoMode, openSignupModal, onComplete, router]);
+
+  const handleSkipForNow = useCallback(() => {
+    if (isDemoMode) {
+      openSignupModal();
+    }
+    onComplete();
+  }, [isDemoMode, openSignupModal, onComplete]);
+
+  const handleCloseWeek = useCallback(() => {
+    setIsClosing(true);
+    setShowCelebration(true);
+  }, []);
+
+  const handleCelebrationComplete = useCallback(() => {
+    if (isDemoMode) {
+      openSignupModal();
+    }
+    onComplete();
+  }, [isDemoMode, openSignupModal, onComplete]);
+
+  // Goal Achieved Screen - when user hit 100% progress
+  if (isGoalAchieved) {
+    return (
+      <div className="flex flex-col h-full px-6 py-8">
+        <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full">
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+            className="text-[60px] mb-6"
           >
-            Create new goal
-          </button>
-        )}
-        {Boolean(config.showSkipOption) && (
+            {emoji}
+          </motion.div>
+
+          <h1 className="font-albert text-[28px] md:text-[36px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2] text-center mb-6">
+            {heading || 'Goal achieved — well done!'}
+          </h1>
+
+          {description ? (
+            <p className="font-albert text-[18px] text-[#5f5a55] dark:text-[#b2b6c2] tracking-[-0.5px] leading-[1.5] text-center whitespace-pre-line">
+              {description}
+            </p>
+          ) : (
+            <div className="font-albert text-[20px] md:text-[24px] font-medium text-[#1a1a1a] dark:text-white tracking-[-1px] md:tracking-[-1.5px] leading-[1.4] space-y-4 text-center">
+              <p>You reached your goal — that&apos;s a milestone worth celebrating.</p>
+              <p>Your effort and consistency are really paying off.</p>
+              <p className="mt-6">If you&apos;re ready, set a new goal to keep your momentum going.</p>
+              <p>Or skip for now and enjoy the win — you&apos;ve earned it.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="pb-8 space-y-3">
           <button
-            onClick={onComplete}
-            className="w-full max-w-[400px] mx-auto block bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] py-4 rounded-full font-sans text-[16px] font-bold"
+            onClick={handleCreateNewGoal}
+            disabled={isSubmitting}
+            className="w-full max-w-[400px] mx-auto block bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] py-4 rounded-full font-sans text-[16px] font-bold shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            {isSubmitting ? 'Loading...' : 'Create new goal'}
+          </button>
+          <button
+            onClick={handleSkipForNow}
+            disabled={isSubmitting}
+            className="w-full max-w-[400px] mx-auto block bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] py-4 rounded-full font-sans text-[16px] font-bold hover:bg-[#f3f1ef] dark:hover:bg-[#1d222b] transition-all disabled:opacity-50"
           >
             Skip for now
           </button>
-        )}
+        </div>
       </div>
-    </div>
+    );
+  }
+
+  // Normal Weekly Completion Screen - "Great work reflecting"
+  return (
+    <>
+      {/* Celebration Animation */}
+      <AnimatePresence>
+        {showCelebration && (
+          <LiquidCelebration onComplete={handleCelebrationComplete} />
+        )}
+      </AnimatePresence>
+
+      <motion.div
+        animate={{ opacity: isClosing ? 0.3 : 1 }}
+        transition={{ duration: 0.5 }}
+        className="flex flex-col h-full px-6 py-8"
+      >
+        <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full">
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+            className="text-[60px] mb-6"
+          >
+            {emoji || '🎉'}
+          </motion.div>
+
+          <h1 className="font-albert text-[28px] md:text-[36px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2] text-center mb-6">
+            {heading || 'Great work reflecting on your week!'}
+          </h1>
+
+          {description && (
+            <p className="font-albert text-[20px] md:text-[24px] font-medium text-[#1a1a1a] dark:text-white tracking-[-1px] md:tracking-[-1.5px] leading-[1.4] text-center mb-8 md:mb-10">
+              {description}
+            </p>
+          )}
+        </div>
+
+        <div className="pb-8">
+          <button
+            onClick={handleCloseWeek}
+            disabled={isClosing}
+            className="w-full max-w-[400px] mx-auto block bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] py-4 rounded-full font-sans text-[16px] font-bold shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            {isClosing ? 'Closing...' : 'Close my week'}
+          </button>
+        </div>
+      </motion.div>
+    </>
   );
 }
 

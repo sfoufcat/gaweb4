@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { 
-  Plus, 
-  GripVertical, 
-  Trash2, 
+import {
+  Plus,
+  GripVertical,
+  Trash2,
   Pencil,
   SmilePlus,
   MessageSquare,
@@ -22,7 +22,10 @@ import {
   Loader2,
   Info,
   Heart,
-  Sun
+  Sun,
+  Moon,
+  Mic,
+  TrendingUp
 } from 'lucide-react';
 import type { CheckInStep, CheckInStepType, OrgCheckInFlow } from '@/types';
 import { CheckInStepConfigEditor } from './CheckInStepConfigEditor';
@@ -88,9 +91,15 @@ const STEP_TYPE_INFO: Record<CheckInStepType, {
     description: 'Acceptance step from morning check-in',
     color: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
   },
-  reframe_input: { 
-    icon: Brain, 
-    label: 'Reframe Input', 
+  reframe: {
+    icon: Brain,
+    label: 'Reframe Input',
+    description: 'User thought input for AI (legacy)',
+    color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400'
+  },
+  reframe_input: {
+    icon: Brain,
+    label: 'Reframe Input',
     description: 'User thought input for AI',
     color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400'
   },
@@ -142,11 +151,55 @@ const STEP_TYPE_INFO: Record<CheckInStepType, {
     description: 'Conditional end when goal is 100%',
     color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400'
   },
-  explainer: { 
-    icon: Info, 
-    label: 'Explainer', 
+  explainer: {
+    icon: Info,
+    label: 'Explainer',
     description: 'Text with optional media',
     color: 'bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400'
+  },
+  // Evening check-in specific steps
+  evening_task_review: {
+    icon: CheckSquare,
+    label: 'Evening Task Review',
+    description: 'Review today\'s task completion with status',
+    color: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400'
+  },
+  evening_mood: {
+    icon: Moon,
+    label: 'Evening Mood',
+    description: '5-state day evaluation slider',
+    color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+  },
+  evening_reflection: {
+    icon: Mic,
+    label: 'Evening Reflection',
+    description: 'Text with voice input for reflection',
+    color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
+  },
+  // Weekly check-in specific steps
+  on_track_scale: {
+    icon: Target,
+    label: 'On Track Scale',
+    description: '3-state weekly on-track slider',
+    color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+  },
+  momentum_progress: {
+    icon: TrendingUp,
+    label: 'Progress Slider',
+    description: 'Weekly progress with momentum gestures',
+    color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+  },
+  voice_text: {
+    icon: Mic,
+    label: 'Voice Text Input',
+    description: 'Text input with voice-to-text',
+    color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+  },
+  weekly_focus: {
+    icon: Sparkles,
+    label: 'Weekly Focus',
+    description: 'Public focus with AI suggestion',
+    color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
   },
 };
 
@@ -167,6 +220,15 @@ const ADDABLE_STEP_TYPES: CheckInStepType[] = [
   'progress_scale',
   'explainer',
   'goal_achieved',
+  // Evening check-in specific
+  'evening_task_review',
+  'evening_mood',
+  'evening_reflection',
+  // Weekly check-in specific
+  'on_track_scale',
+  'momentum_progress',
+  'voice_text',
+  'weekly_focus',
 ];
 
 // Steps that should typically be at the end
@@ -729,6 +791,71 @@ function getDefaultConfigForType(type: CheckInStepType): unknown {
       return {
         heading: 'Welcome',
         body: 'This is an information step.',
+      };
+    // Evening check-in specific steps
+    case 'evening_task_review':
+      return {
+        heading: 'Close your day',
+        allCompletedEmoji: '👏',
+        partialEmoji: '🌿',
+        allCompletedTitle: 'Well done today',
+        partialTitle: 'You did what you could today',
+        allCompletedMessage: 'You showed up and moved things forward.',
+        partialMessage: 'Progress isn\'t always linear — and that\'s okay.',
+      };
+    case 'evening_mood':
+      return {
+        question: 'How did today feel?',
+        states: [
+          { value: 'tough_day', label: 'Tough day', gradient: 'linear-gradient(180deg, #7a8b9b 0%, #9b8b7b 50%, #b87a6a 100%)' },
+          { value: 'mixed', label: 'Mixed', gradient: 'linear-gradient(180deg, #8a9b9b 0%, #9b9b8b 50%, #a89b8b 100%)' },
+          { value: 'steady', label: 'Steady', gradient: 'linear-gradient(180deg, #6b9bab 0%, #8bb8a8 50%, #a8c8b8 100%)' },
+          { value: 'good_day', label: 'Good day', gradient: 'linear-gradient(180deg, #7bc8c8 0%, #a8c8d8 50%, #c8d8e0 100%)' },
+          { value: 'great_day', label: 'Amazing', gradient: 'linear-gradient(180deg, #4bdbd0 0%, #7bc8f0 50%, #b8d8ff 100%)' },
+        ],
+      };
+    case 'evening_reflection':
+      return {
+        question: 'Anything you\'d like to reflect on?',
+        placeholder: 'What stood out today — something you learned, noticed, felt grateful for...',
+        showSkip: true,
+        fieldName: 'reflectionText',
+        enableVoice: true,
+      };
+    // Weekly check-in specific steps
+    case 'on_track_scale':
+      return {
+        question: 'Are you on track to achieve your goal?',
+        subheading: 'Reflect on your week',
+        options: [
+          { value: 'off_track', label: 'No', gradient: 'linear-gradient(180deg, rgba(180, 80, 60, 0.8) 0%, rgba(120, 50, 40, 0.9) 100%)' },
+          { value: 'not_sure', label: 'Not sure', gradient: 'linear-gradient(180deg, rgba(140, 130, 110, 0.8) 0%, rgba(100, 90, 80, 0.9) 100%)' },
+          { value: 'on_track', label: 'Yes', gradient: 'linear-gradient(180deg, rgba(60, 140, 100, 0.8) 0%, rgba(40, 100, 70, 0.9) 100%)' },
+        ],
+      };
+    case 'momentum_progress':
+      return {
+        question: 'How are you progressing toward your goal?',
+        showGoal: true,
+        goalAchievedThreshold: 100,
+        enableMomentum: true,
+        enableAudioFeedback: true,
+      };
+    case 'voice_text':
+      return {
+        question: 'What went well this week?',
+        placeholder: 'Share your wins, big or small...',
+        fieldName: 'whatWentWell',
+        isRequired: false,
+        enableVoice: true,
+      };
+    case 'weekly_focus':
+      return {
+        question: 'What\'s your focus for the next week?',
+        placeholder: 'This week I\'m committing to...',
+        showAiSuggestion: true,
+        showSkip: true,
+        isPublic: true,
       };
     default:
       return {};

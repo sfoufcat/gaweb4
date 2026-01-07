@@ -2,80 +2,209 @@
   "master": {
     "tasks": [
       {
-        "id": "6",
-        "title": "Create ChatPreferencesProvider Context",
-        "description": "Implement a root-level React context provider that manages chat preferences state globally with localStorage caching for instant hydration",
-        "details": "Create ChatPreferencesContext.tsx in src/contexts/ directory. Implement the following:\n\n```typescript\nconst CACHE_KEY = `chat_preferences_v1_${userId}`;\nconst CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours\n\ninterface CachedPreferences {\n  data: Array<[string, ChatPreference]>;\n  timestamp: number;\n  userId: string;\n}\n\ninterface ChatPreferencesContextValue {\n  pinnedChannelIds: Set<string>;\n  archivedChannelIds: Set<string>;\n  deletedChannelIds: Set<string>;\n  pin: (channelId: string) => Promise<void>;\n  unpin: (channelId: string) => Promise<void>;\n  archive: (channelId: string) => Promise<void>;\n  unarchive: (channelId: string) => Promise<void>;\n  delete: (channelId: string) => Promise<void>;\n  undelete: (channelId: string) => Promise<void>;\n}\n```\n\nImplementation steps:\n1. Initialize state from localStorage on mount (synchronous)\n2. Set up Firestore onSnapshot listener in useEffect\n3. Update localStorage when Firestore data changes\n4. Clear cache on user logout/change\n5. Provide computed sets and action methods\n6. Handle cache expiry and validation",
-        "testStrategy": "Unit tests: Verify localStorage initialization, cache expiry handling, and state updates. Integration tests: Test Firestore listener setup and real-time updates. Mock localStorage and Firestore for isolated testing. Verify cache clearing on user change.",
+        "id": "11",
+        "title": "Update Type System with New Step Types",
+        "description": "Add new step types to CheckInStepType enum and update related type definitions for evening and weekly check-in flows",
+        "details": "Add the following step types to types/index.ts: evening_task_review, evening_mood, evening_reflection, on_track_scale, momentum_progress, voice_text, weekly_focus. Update CheckInFlowRenderer to handle these new types in GenericStepRenderer switch statement. Add entries to STEP_TYPE_INFO in CheckInFlowStepsEditor with appropriate icons and labels. Add getDefaultConfigForType cases for each new step type. Include all new types in ADDABLE_STEP_TYPES array for coach editor.",
+        "testStrategy": "Verify TypeScript compilation passes without errors. Test that new step types render correctly in CheckInFlowRenderer. Confirm new steps appear in coach editor dropdown with correct metadata.",
         "priority": "high",
         "dependencies": [],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T13:01:45.185Z"
+        "updatedAt": "2026-01-07T14:15:46.763Z"
       },
       {
-        "id": "7",
-        "title": "Refactor useChatPreferences Hook",
-        "description": "Convert the existing useChatPreferences hook to be a thin wrapper around ChatPreferencesContext instead of managing its own Firestore listener",
-        "details": "Refactor the existing useChatPreferences hook:\n\n```typescript\n// Remove existing Firestore onSnapshot logic\n// Replace with context consumption\nexport const useChatPreferences = (): UseChatPreferencesReturn => {\n  const context = useContext(ChatPreferencesContext);\n  \n  if (!context) {\n    throw new Error('useChatPreferences must be used within ChatPreferencesProvider');\n  }\n  \n  return {\n    pinnedChannelIds: context.pinnedChannelIds,\n    archivedChannelIds: context.archivedChannelIds,\n    deletedChannelIds: context.deletedChannelIds,\n    pin: context.pin,\n    unpin: context.unpin,\n    archive: context.archive,\n    unarchive: context.unarchive,\n    delete: context.delete,\n    undelete: context.undelete,\n    // Remove loading states as data is instantly available\n  };\n};\n```\n\nEnsure the UseChatPreferencesReturn interface remains unchanged to prevent breaking changes.",
-        "testStrategy": "Unit tests: Verify hook returns correct context values and throws error when used outside provider. Integration tests: Test that existing consumers continue to work without changes. Verify no duplicate Firestore listeners are created.",
+        "id": "12",
+        "title": "Create Evening Task Review Step Component",
+        "description": "Extract and implement EveningTaskReviewStep component from existing evening check-in page",
+        "details": "Create EveningTaskReviewStep component that displays today's focus tasks with completion checkmarks. Show completion count format '3 of 5 tasks completed'. Display appropriate emoji (👏 for all done, 🌿 for partial completion). Include different messaging for complete vs partial completion. Call useEveningCheckIn().startCheckIn(completedCount, tasksTotal) on component mount. Support demo mode with mock tasks when no real data available. Use existing task data structure and styling patterns.",
+        "testStrategy": "Test with various task completion scenarios (0%, 50%, 100%). Verify API call is made on mount with correct parameters. Test demo mode functionality. Validate emoji and messaging display correctly.",
         "priority": "high",
         "dependencies": [
-          "6"
+          "11"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T13:02:09.541Z"
+        "updatedAt": "2026-01-07T14:17:34.765Z"
       },
       {
-        "id": "8",
-        "title": "Integrate ChatPreferencesProvider with App Layout",
-        "description": "Add ChatPreferencesProvider to the app's provider hierarchy in the correct position within layout.tsx",
-        "details": "Update layout.tsx to include ChatPreferencesProvider in the correct hierarchy:\n\n```typescript\n// Provider hierarchy should be:\n<ClerkProvider>\n  <StreamChatProvider>\n    <ChatPreferencesProvider> {/* NEW - after StreamChatProvider */}\n      <ChatSheetProvider> {/* before ChatSheetProvider */}\n        {/* rest of app */}\n      </ChatSheetProvider>\n    </ChatPreferencesProvider>\n  </StreamChatProvider>\n</ClerkProvider>\n```\n\nEnsure the provider:\n1. Has access to user context from StreamChatProvider\n2. Is available to ChatSheetProvider and all child components\n3. Initializes properly on app load\n4. Handles user authentication state changes",
-        "testStrategy": "Integration tests: Verify provider initializes on app load and preferences are available throughout the component tree. Test user authentication flow and ensure cache is cleared on logout. Verify no provider ordering issues or missing dependencies.",
+        "id": "13",
+        "title": "Implement Evening Mood Step with 5-State Slider",
+        "description": "Create EveningMoodStep component with 5-state mood slider and gradient backgrounds",
+        "details": "Implement 5-state slider with states: tough_day, mixed, steady, good_day, great_day. Create full-screen gradient backgrounds for each state with smooth 0.7s CSS transitions. Build multi-color gradient slider track (red to green spectrum). Implement touch and mouse drag interactions. Call useEveningCheckIn().updateEmotionalState(state) when selection changes. Use CSS custom properties for gradient transitions and ensure smooth performance on mobile devices.",
+        "testStrategy": "Test slider interaction on desktop and mobile. Verify gradient transitions are smooth and performant. Test all 5 mood states and confirm API calls. Validate touch gestures work correctly on mobile devices.",
         "priority": "high",
         "dependencies": [
-          "6"
+          "11"
         ],
-        "status": "done",
+        "status": "in-progress",
         "subtasks": [],
-        "updatedAt": "2026-01-07T13:02:45.590Z"
+        "updatedAt": "2026-01-07T14:17:34.776Z"
       },
       {
-        "id": "9",
-        "title": "Update Chat Components for Simplified Interface",
-        "description": "Update ChatSheet and ChatActionsMenu components to use the simplified useChatPreferences hook interface without the enabled parameter",
-        "details": "Update chat components to use the simplified hook:\n\n```typescript\n// In ChatSheet.tsx - remove enabled parameter\n// Before:\nconst preferences = useChatPreferences({ enabled: isOpen });\n\n// After:\nconst preferences = useChatPreferences();\n```\n\nVerify ChatActionsMenu.tsx continues to work without changes since it likely doesn't use the enabled parameter.\n\nEnsure:\n1. Mobile chat slideup opens in <1s with instant preferences\n2. Desktop chat actions menu shows correct pin/archive state immediately\n3. No console errors or warnings\n4. Real-time updates still work across devices",
-        "testStrategy": "End-to-end tests: Measure chat open time (<1s requirement). Test pin/archive/delete actions work correctly. Verify real-time sync across multiple browser tabs. Test offline functionality with localStorage cache. Performance tests to ensure <1ms preference availability.",
-        "priority": "medium",
+        "id": "14",
+        "title": "Build Evening Reflection Step with Voice Input",
+        "description": "Create EveningReflectionStep component with Web Speech API voice-to-text functionality",
+        "details": "Implement text area with placeholder text for evening reflection. Integrate Web Speech API using SpeechRecognition with continuous=true and interimResults=true. Add microphone toggle button with pulsing animation during active listening. Show 'Listening...' indicator during speech recognition. Include skip option since reflection is optional. Call useEveningCheckIn().saveReflection(text) and POST to /api/goal/reflections for daily reflection storage. Handle browser compatibility (Chrome, Safari support).",
+        "testStrategy": "Test voice input in supported browsers (Chrome, Safari). Verify speech-to-text accuracy. Test microphone permissions and error handling. Confirm reflection saves to both evening check-in and reflections collection. Test skip functionality.",
+        "priority": "high",
         "dependencies": [
-          "7",
-          "8"
+          "11"
         ],
-        "status": "done",
+        "status": "in-progress",
         "subtasks": [],
-        "updatedAt": "2026-01-07T13:03:17.811Z"
+        "updatedAt": "2026-01-07T14:17:34.777Z"
       },
       {
-        "id": "10",
-        "title": "Performance Validation and Cache Optimization",
-        "description": "Validate performance requirements are met and optimize localStorage cache implementation for instant preference availability",
-        "details": "Implement performance monitoring and optimization:\n\n```typescript\n// Add performance measurement\nconst startTime = performance.now();\nconst preferences = getCachedPreferences();\nconst loadTime = performance.now() - startTime;\nconsole.assert(loadTime < 1, `Preferences load time: ${loadTime}ms`);\n```\n\nOptimizations:\n1. Ensure localStorage reads are synchronous and cached\n2. Implement efficient Set operations for preference lookups\n3. Add cache warming on user login\n4. Optimize JSON serialization/deserialization\n5. Add cache size monitoring and cleanup\n6. Implement graceful fallbacks for localStorage failures\n7. Add performance metrics collection\n\nValidate all requirements:\n- <1ms preference availability\n- Real-time updates work\n- No blocking on Firestore connection\n- Offline functionality from cache",
-        "testStrategy": "Performance tests: Measure preference load times across different devices and cache sizes. Stress tests: Test with large numbers of preferences. Offline tests: Verify functionality without network connection. Cross-device tests: Validate real-time sync. Memory leak tests: Ensure proper cleanup on user logout.",
+        "id": "15",
+        "title": "Enhance Completion Step for Evening Flow",
+        "description": "Enhance existing CompletionStep to handle evening-specific completion logic and animations",
+        "details": "Add evening-specific completion handling to CompletionStep. Implement confetti celebration animation with 100 pieces. Display 'Day closed ✨' messaging for evening completions. Call useEveningCheckIn().completeCheckIn() on completion. Move focus tasks to backlog via /api/tasks/move-to-backlog API call. Add Friday detection logic to trigger weekly reflection notification. Include demo mode signup modal trigger for non-authenticated users.",
+        "testStrategy": "Test confetti animation renders correctly. Verify tasks are moved to backlog on completion. Test Friday detection and weekly notification trigger. Confirm demo mode signup modal appears appropriately.",
         "priority": "medium",
         "dependencies": [
-          "9"
+          "11",
+          "12"
         ],
-        "status": "done",
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "16",
+        "title": "Create On Track Step for Weekly Flow",
+        "description": "Extract and implement OnTrackStep component for weekly check-in goal tracking",
+        "details": "Create OnTrackStep with 3-state slider: off_track, not_sure, on_track. Implement full-screen gradient backgrounds (red → gray → green) with smooth transitions. Display 'Are you on track to achieve your goal?' heading. Call useWeeklyReflection().startCheckIn() if weekly reflection doesn't exist. Call useWeeklyReflection().updateOnTrackStatus(status) when selection changes. Use similar gradient transition patterns as evening mood step.",
+        "testStrategy": "Test 3-state slider transitions and gradient backgrounds. Verify weekly reflection is created if it doesn't exist. Confirm on-track status is saved correctly. Test visual transitions between states.",
+        "priority": "high",
+        "dependencies": [
+          "11"
+        ],
+        "status": "in-progress",
         "subtasks": [],
-        "updatedAt": "2026-01-07T13:04:50.583Z"
+        "updatedAt": "2026-01-07T14:17:34.777Z"
+      },
+      {
+        "id": "17",
+        "title": "Implement Weekly Progress Step with Momentum Physics",
+        "description": "Create WeeklyProgressStep with momentum physics and audio feedback",
+        "details": "Build horizontal 0-100% progress slider with momentum physics (friction: 0.88, minVelocity: 0.3). Implement velocity-based animation on release using requestAnimationFrame. Add snap-to-5% increments functionality. Create audio tick feedback using Web Audio API (800Hz oscillator, 0.05s duration, 0.1 gain) at 5% boundaries. Display user's goal card by fetching from /api/user/me. Call useWeeklyReflection().updateProgress(progress) on changes. Set flag for goal achieved step if progress >= 100%.",
+        "testStrategy": "Test momentum physics feel and snap-to-grid behavior. Verify audio ticks play at correct intervals. Test progress saving to weekly reflection and org_membership. Confirm goal achieved flag is set at 100% progress.",
+        "priority": "high",
+        "dependencies": [
+          "11"
+        ],
+        "status": "in-progress",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T14:17:34.778Z"
+      },
+      {
+        "id": "18",
+        "title": "Build Reusable Voice Text Step Component",
+        "description": "Create reusable VoiceTextStep component for weekly reflection text inputs",
+        "details": "Create configurable VoiceTextStep component with props for question text, placeholder, fieldName (whatWentWell, biggestObstacles, nextWeekPlan), and isRequired flag. Reuse Web Speech API implementation from evening reflection step. Add microphone toggle with pulsing animation. Call useWeeklyReflection().saveReflection(fieldName, value) with dynamic field name. Support all three weekly text input scenarios with appropriate validation.",
+        "testStrategy": "Test component with all three field configurations. Verify voice input works consistently across instances. Test required vs optional field validation. Confirm data saves to correct weekly reflection fields.",
+        "priority": "medium",
+        "dependencies": [
+          "11",
+          "14"
+        ],
+        "status": "in-progress",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T14:17:34.779Z"
+      },
+      {
+        "id": "19",
+        "title": "Create Weekly Focus Step with AI Integration",
+        "description": "Implement WeeklyFocusStep with AI suggestion and summary generation",
+        "details": "Build WeeklyFocusStep with '(public)' visibility badge. Add text input for weekly focus entry. Implement AI suggestion pill that fetches from /api/weekly-focus/suggestion with one-click application. Add 'Share my plan' button that calls saveReflection + completeCheckIn. Include 'Skip this time' option that only calls completeCheckIn. Integrate AI summary generation via summarizeWeeklyFocus() function. Update org_membership with publicFocus and publicFocusSummary fields.",
+        "testStrategy": "Test AI suggestion fetching and application. Verify focus saves to weekly reflection. Test AI summary generation and org_membership updates. Confirm public focus appears on user profile.",
+        "priority": "medium",
+        "dependencies": [
+          "11"
+        ],
+        "status": "in-progress",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T14:17:34.779Z"
+      },
+      {
+        "id": "20",
+        "title": "Enhance Goal Achieved Step for Weekly Flow",
+        "description": "Update GoalAchievedStep to handle weekly goal completion scenarios",
+        "details": "Enhance GoalAchievedStep to conditionally appear only when weeklyProgress >= 100%. Display 'Goal achieved — well done! 💫' messaging. Add 'Create new goal' button that navigates to /onboarding/goal. Include 'Skip for now' button that navigates to home. Call useWeeklyReflection().markGoalComplete() on goal completion. Implement liquid blob celebration animation for visual feedback.",
+        "testStrategy": "Test conditional rendering based on progress >= 100%. Verify navigation buttons work correctly. Test goal completion marking in weekly reflection. Confirm celebration animation displays properly.",
+        "priority": "medium",
+        "dependencies": [
+          "11",
+          "17"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "21",
+        "title": "Update CheckInFlowRenderer with New Step Components",
+        "description": "Integrate all new step components into CheckInFlowRenderer's GenericStepRenderer",
+        "details": "Add cases to CheckInFlowRenderer's GenericStepRenderer switch statement for all new step types: evening_task_review, evening_mood, evening_reflection, on_track_scale, momentum_progress, voice_text, weekly_focus. Import all new step components and ensure proper props passing. Add default configurations for each step type in getDefaultConfigForType function. Ensure step navigation and data flow works correctly with new components.",
+        "testStrategy": "Test complete evening and weekly flows end-to-end. Verify all new step types render correctly. Test step navigation and data persistence. Confirm props are passed correctly to each component.",
+        "priority": "high",
+        "dependencies": [
+          "12",
+          "13",
+          "14",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "22",
+        "title": "Update Template Configurations",
+        "description": "Update seed templates with new step types for evening and weekly flows",
+        "details": "Update EVENING_TEMPLATE_STEPS array with: evening_task_review, evening_mood, evening_reflection, completion. Update WEEKLY_TEMPLATE_STEPS array with: on_track_scale, momentum_progress, voice_text (3 instances with different configs), weekly_focus, completion, goal_achieved. Remove old generic step types (task_review, mood_scale, open_text, progress_scale) from templates. Ensure correct step ordering and default configurations.",
+        "testStrategy": "Test new org creation uses updated templates. Verify evening and weekly flows have correct step sequence. Test that old generic steps are no longer used in new templates.",
+        "priority": "medium",
+        "dependencies": [
+          "21"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "23",
+        "title": "Create Migration Script for Existing Flows",
+        "description": "Build migration script to update existing org flows with new step types",
+        "details": "Create migration script that queries orgCheckInFlows collection for existing evening and weekly flows. Map old generic step types to new specific step types: task_review → evening_task_review, mood_scale → evening_mood/on_track_scale, open_text → evening_reflection/voice_text, progress_scale → momentum_progress. Preserve coach customizations where possible. Add comprehensive logging for migration progress and errors. Include dry-run mode for testing before actual migration.",
+        "testStrategy": "Test migration script in dry-run mode first. Verify all existing flows are identified correctly. Test step type mapping preserves functionality. Confirm no data loss during migration process.",
+        "priority": "medium",
+        "dependencies": [
+          "22"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "24",
+        "title": "End-to-End Testing and Validation",
+        "description": "Comprehensive testing of migrated evening and weekly check-in flows",
+        "details": "Perform comprehensive end-to-end testing of both evening and weekly flows. Test all new step components individually and in complete flow sequences. Validate data persistence across all steps (evening_checkins, weekly_reflections, reflections, org_membership). Test voice input functionality across different browsers and devices. Verify momentum physics and audio feedback work correctly. Test AI integration and summary generation. Validate coach editor functionality with new step types.",
+        "testStrategy": "Create test scenarios covering all user paths. Test on multiple browsers and devices. Verify data integrity in all database collections. Test error handling and edge cases. Validate performance with voice input and animations.",
+        "priority": "high",
+        "dependencies": [
+          "23"
+        ],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-07T13:04:50.585Z",
-      "taskCount": 5,
-      "completedCount": 5,
+      "lastModified": "2026-01-07T14:17:34.779Z",
+      "taskCount": 14,
+      "completedCount": 2,
       "tags": [
         "master"
       ]

@@ -1,4 +1,4 @@
 # Doppler configuration file
 setup:
-  project: coachful
+  project: growthaddicts
   config: dev
