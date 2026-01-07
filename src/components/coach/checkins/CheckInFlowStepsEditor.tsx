@@ -356,11 +356,15 @@ export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack
         body: JSON.stringify({ type, config: defaultConfig, order: insertOrder }),
       });
 
-      if (!response.ok) throw new Error('Failed to add step');
-      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to add step (${response.status})`);
+      }
+
       setShowAddStep(false);
       await fetchSteps();
     } catch (err) {
+      console.error('Error adding step:', err);
       alert(err instanceof Error ? err.message : 'Failed to add step');
     } finally {
       setIsSaving(false);

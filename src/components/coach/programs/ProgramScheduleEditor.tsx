@@ -69,17 +69,20 @@ export function ProgramScheduleEditor({
     { bg: 'bg-rose-50 dark:bg-rose-900/20', border: 'border-rose-200 dark:border-rose-800', text: 'text-rose-700 dark:text-rose-300', accent: 'bg-rose-100 dark:bg-rose-900/30' },
   ];
 
-  // Status colors for today indicator (days)
+  // Status colors for day cards - consistent with sidebar
   const statusColors = {
     past: {
       bg: 'bg-yellow-50/70 dark:bg-yellow-950/30',
       border: 'border-yellow-300 dark:border-yellow-800',
     },
     active: {
-      bg: 'bg-emerald-50/70 dark:bg-emerald-950/30',
-      border: 'border-emerald-300 dark:border-emerald-700',
+      bg: 'bg-orange-50/70 dark:bg-orange-950/30',
+      border: 'border-orange-300 dark:border-orange-700',
     },
-    future: null, // Use module color
+    future: {
+      bg: 'bg-gray-50/70 dark:bg-gray-900/30',
+      border: 'border-gray-200 dark:border-gray-700',
+    },
   };
 
   // Module status colors (orange for active module)
@@ -176,9 +179,13 @@ export function ProgramScheduleEditor({
   // Get theme for a calendar week from stored week data
   const getWeekTheme = (cw: CalendarWeek): string | undefined => {
     const firstDay = cw.startDayIndex;
-    const storedWeek = weeks.find(w =>
-      firstDay >= w.startDayIndex && firstDay <= w.endDayIndex
-    );
+    // Calculate expected day range from weekNumber (same as ModuleWeeksSidebar)
+    const daysPerWeek = includeWeekends ? 7 : 5;
+    const storedWeek = weeks.find(w => {
+      const weekStart = (w.weekNumber - 1) * daysPerWeek + 1;
+      const weekEnd = w.weekNumber * daysPerWeek;
+      return firstDay >= weekStart && firstDay <= weekEnd;
+    });
     return storedWeek?.theme;
   };
 
@@ -246,7 +253,7 @@ export function ProgramScheduleEditor({
             <div className="flex items-center justify-between mb-1">
               <span className={`text-xs font-medium font-albert ${
                 status === 'active'
-                  ? 'text-emerald-700 dark:text-emerald-300'
+                  ? 'text-orange-700 dark:text-orange-300'
                   : status === 'past'
                     ? 'text-yellow-700 dark:text-yellow-300'
                     : 'text-[#1a1a1a] dark:text-[#f5f5f8]'

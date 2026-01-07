@@ -213,6 +213,15 @@ export function ModuleWeeksSidebar({
   // This prevents visual "snap back" during async reorder operations
   const [localWeekOrder, setLocalWeekOrder] = useState<Map<string, string[]>>(new Map());
 
+  // Module colors for visual distinction - matches ProgramScheduleEditor calendar colors
+  const moduleColors = [
+    { bg: 'bg-blue-50/50 dark:bg-blue-900/15', icon: 'bg-blue-100/70 dark:bg-blue-900/25', iconText: 'text-blue-500 dark:text-blue-400' },
+    { bg: 'bg-purple-50/50 dark:bg-purple-900/15', icon: 'bg-purple-100/70 dark:bg-purple-900/25', iconText: 'text-purple-500 dark:text-purple-400' },
+    { bg: 'bg-emerald-50/50 dark:bg-emerald-900/15', icon: 'bg-emerald-100/70 dark:bg-emerald-900/25', iconText: 'text-emerald-500 dark:text-emerald-400' },
+    { bg: 'bg-amber-50/50 dark:bg-amber-900/15', icon: 'bg-amber-100/70 dark:bg-amber-900/25', iconText: 'text-amber-500 dark:text-amber-400' },
+    { bg: 'bg-rose-50/50 dark:bg-rose-900/15', icon: 'bg-rose-100/70 dark:bg-rose-900/25', iconText: 'text-rose-500 dark:text-rose-400' },
+  ];
+
   React.useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
@@ -633,7 +642,7 @@ export function ModuleWeeksSidebar({
     );
   }
 
-  const renderWeekRow = (week: CalculatedWeek, moduleId: string) => {
+  const renderWeekRow = (week: CalculatedWeek, moduleId: string, moduleIndex: number = 0) => {
     const weekSelection: SidebarSelection = {
       type: 'week',
       id: week.storedWeekId || `week-${week.weekNum}`,
@@ -643,13 +652,14 @@ export function ModuleWeeksSidebar({
     const isWeekSelected = isSelected(weekSelection);
     const isWeekExpanded = expandedWeeks.has(week.weekNum);
     const weekStatus = getWeekStatus(week);
+    const moduleColor = moduleColors[moduleIndex % moduleColors.length];
 
-    // Status-based background colors (very light pastel)
+    // Status-based background colors - orange for active, yellow for past, module color for future
     const statusBgClass = weekStatus === 'past'
       ? 'bg-yellow-50/50 dark:bg-yellow-950/20'
       : weekStatus === 'active'
-      ? 'bg-emerald-50/50 dark:bg-emerald-950/20'
-      : '';
+      ? 'bg-orange-50/50 dark:bg-orange-950/20'
+      : moduleColor.bg;
 
     return (
       <div className="group/week">
@@ -669,20 +679,20 @@ export function ModuleWeeksSidebar({
               </div>
             )}
 
-            {/* Week icon - status-based coloring (lighter) */}
+            {/* Week icon - status-based coloring, module color for future */}
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
               weekStatus === 'past'
                 ? 'bg-yellow-100/70 dark:bg-yellow-900/25'
                 : weekStatus === 'active'
-                ? 'bg-emerald-100/70 dark:bg-emerald-900/25'
-                : 'bg-slate-100/70 dark:bg-slate-800/30'
+                ? 'bg-orange-100/70 dark:bg-orange-900/25'
+                : moduleColor.icon
             }`}>
               <Calendar className={`w-5 h-5 ${
                 weekStatus === 'past'
                   ? 'text-yellow-500 dark:text-yellow-400'
                   : weekStatus === 'active'
-                  ? 'text-emerald-500 dark:text-emerald-400'
-                  : 'text-slate-400 dark:text-slate-500'
+                  ? 'text-orange-500 dark:text-orange-400'
+                  : moduleColor.iconText
               }`} />
             </div>
 
@@ -826,9 +836,10 @@ export function ModuleWeeksSidebar({
   };
 
   // Render a module with its weeks
-  const renderModuleWithWeeks = (module: ProgramModule) => {
+  const renderModuleWithWeeks = (module: ProgramModule, moduleIndex: number) => {
     const isModuleExpanded = expandedModules.has(module.id);
     const isModuleSelected = isSelected({ type: 'module', id: module.id, moduleIndex: module.order });
+    const moduleColor = moduleColors[moduleIndex % moduleColors.length];
     // Use local order if available (during drag), otherwise use computed order from props
     const propsWeeks = weeksByModule.get(module.id) || [];
     const localOrder = localWeekOrder.get(module.id);
@@ -840,12 +851,12 @@ export function ModuleWeeksSidebar({
     const weekCount = moduleWeeks.length;
     const moduleStatus = getModuleStatus(moduleWeeks);
 
-    // Status-based background colors for modules (lighter) - active uses orange for warmth
+    // Status-based background colors for modules - module color for future
     const moduleStatusBgClass = moduleStatus === 'past'
       ? 'bg-yellow-50/40 dark:bg-yellow-950/15'
       : moduleStatus === 'active'
       ? 'bg-orange-50/40 dark:bg-orange-950/15'
-      : 'bg-white/30 dark:bg-[#171b22]/30';
+      : moduleColor.bg;
 
     return (
       <div
@@ -866,20 +877,20 @@ export function ModuleWeeksSidebar({
               </div>
             )}
 
-            {/* Module icon - larger than week icons, status-based coloring */}
+            {/* Module icon - larger than week icons, module color for future */}
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
               moduleStatus === 'past'
                 ? 'bg-yellow-100 dark:bg-yellow-900/30'
                 : moduleStatus === 'active'
                 ? 'bg-orange-100 dark:bg-orange-900/30'
-                : 'bg-slate-100 dark:bg-slate-800/40'
+                : moduleColor.icon
             }`}>
               <Folder className={`w-5 h-5 ${
                 moduleStatus === 'past'
                   ? 'text-yellow-500 dark:text-yellow-400'
                   : moduleStatus === 'active'
                   ? 'text-orange-500 dark:text-orange-400'
-                  : 'text-slate-400 dark:text-slate-500'
+                  : moduleColor.iconText
               }`} />
             </div>
 
@@ -934,9 +945,15 @@ export function ModuleWeeksSidebar({
           </div>
         </div>
 
-        {/* Module-to-weeks divider - decorative gradient line */}
+        {/* Module-to-weeks divider - solid status-colored line */}
         {isModuleExpanded && moduleWeeks.length > 0 && (
-          <div className="h-px bg-gradient-to-r from-transparent via-[#c4bfb8] to-transparent dark:via-[#404856] mx-4" />
+          <div className={`h-0.5 mx-4 rounded-full ${
+            moduleStatus === 'past'
+              ? 'bg-yellow-300 dark:bg-yellow-700'
+              : moduleStatus === 'active'
+              ? 'bg-orange-300 dark:bg-orange-700'
+              : 'bg-gray-200 dark:bg-gray-700'
+          }`} />
         )}
 
         {/* Weeks inside module - static (calendar-aligned weeks cannot be reordered) */}
@@ -964,7 +981,7 @@ export function ModuleWeeksSidebar({
                       value={week}
                       className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}
                     >
-                      {renderWeekRow(week, module.id)}
+                      {renderWeekRow(week, module.id, moduleIndex)}
                     </Reorder.Item>
                   ))}
                 </Reorder.Group>
@@ -972,7 +989,7 @@ export function ModuleWeeksSidebar({
                 <div className="divide-y divide-[#e8e5e1] dark:divide-[#2a303d]">
                   {moduleWeeks.map((week, idx) => (
                     <div key={week.storedWeekId || `temp-${week.weekNum}`} className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}>
-                      {renderWeekRow(week, module.id)}
+                      {renderWeekRow(week, module.id, moduleIndex)}
                     </div>
                   ))}
                 </div>
@@ -980,6 +997,19 @@ export function ModuleWeeksSidebar({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Module-ending divider - beautiful separator between modules */}
+        {isModuleExpanded && moduleWeeks.length > 0 && (
+          <div className="px-4 pt-3 pb-1">
+            <div className={`h-1 rounded-full ${
+              moduleStatus === 'past'
+                ? 'bg-gradient-to-r from-yellow-200 via-yellow-300 to-yellow-200 dark:from-yellow-900/40 dark:via-yellow-800/60 dark:to-yellow-900/40'
+                : moduleStatus === 'active'
+                ? 'bg-gradient-to-r from-orange-200 via-orange-300 to-orange-200 dark:from-orange-900/40 dark:via-orange-800/60 dark:to-orange-900/40'
+                : 'bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 dark:from-gray-800/40 dark:via-gray-700/60 dark:to-gray-800/40'
+            }`} />
+          </div>
+        )}
 
         {/* Empty state for module with no weeks */}
         {isModuleExpanded && moduleWeeks.length === 0 && (
@@ -1036,16 +1066,16 @@ export function ModuleWeeksSidebar({
             onReorder={handleModuleReorder}
             className=""
           >
-            {sortedModules.map((module) => (
+            {sortedModules.map((module, idx) => (
               <Reorder.Item as="div" key={module.id} value={module}>
-                {renderModuleWithWeeks(module)}
+                {renderModuleWithWeeks(module, idx)}
               </Reorder.Item>
             ))}
           </Reorder.Group>
         ) : (
           // Static modules list (client view mode - no reordering)
           <div className="">
-            {sortedModules.map((module) => renderModuleWithWeeks(module))}
+            {sortedModules.map((module, idx) => renderModuleWithWeeks(module, idx))}
           </div>
         )}
 
