@@ -139,7 +139,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     canPin,
     canArchive,
     canDelete,
-  } = useChatPreferences(isOpen);
+  } = useChatPreferences();
 
   // State for archived view
   const [showArchivedView, setShowArchivedView] = useState(false);

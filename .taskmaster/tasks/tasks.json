@@ -2,80 +2,78 @@
   "master": {
     "tasks": [
       {
-        "id": "1",
-        "title": "Integrate BreathingAnimation Component into Dynamic Flow",
-        "description": "Replace the generic circle animation in BreathingStep with the original multi-circle expanding BreathingAnimation component",
-        "details": "Import and integrate the BreathingAnimation component from `/components/checkin/BreathingAnimation.tsx` into the BreathingStep within CheckInFlowRenderer.tsx. Ensure the component maintains its multi-circle expanding animation, 'Breathe in'/'Breathe out' text, single cycle timing (5s inhale, 5s exhale), and proper dark mode support. Update the step to respect any breathing-specific configurations from Firestore while preserving the original animation design. Maintain session data flow for tracking completion.",
-        "testStrategy": "Verify the breathing animation displays correctly with multiple expanding circles, proper timing, and text labels. Test dark mode compatibility and ensure the animation completes properly before allowing progression to next step. Validate that Firestore configurations (cycles, duration) are respected.",
+        "id": "6",
+        "title": "Create ChatPreferencesProvider Context",
+        "description": "Implement a root-level React context provider that manages chat preferences state globally with localStorage caching for instant hydration",
+        "details": "Create ChatPreferencesContext.tsx in src/contexts/ directory. Implement the following:\n\n```typescript\nconst CACHE_KEY = `chat_preferences_v1_${userId}`;\nconst CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours\n\ninterface CachedPreferences {\n  data: Array<[string, ChatPreference]>;\n  timestamp: number;\n  userId: string;\n}\n\ninterface ChatPreferencesContextValue {\n  pinnedChannelIds: Set<string>;\n  archivedChannelIds: Set<string>;\n  deletedChannelIds: Set<string>;\n  pin: (channelId: string) => Promise<void>;\n  unpin: (channelId: string) => Promise<void>;\n  archive: (channelId: string) => Promise<void>;\n  unarchive: (channelId: string) => Promise<void>;\n  delete: (channelId: string) => Promise<void>;\n  undelete: (channelId: string) => Promise<void>;\n}\n```\n\nImplementation steps:\n1. Initialize state from localStorage on mount (synchronous)\n2. Set up Firestore onSnapshot listener in useEffect\n3. Update localStorage when Firestore data changes\n4. Clear cache on user logout/change\n5. Provide computed sets and action methods\n6. Handle cache expiry and validation",
+        "testStrategy": "Unit tests: Verify localStorage initialization, cache expiry handling, and state updates. Integration tests: Test Firestore listener setup and real-time updates. Mock localStorage and Firestore for isolated testing. Verify cache clearing on user change.",
         "priority": "high",
         "dependencies": [],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T09:59:55.203Z"
+        "updatedAt": "2026-01-07T13:01:45.185Z"
       },
       {
-        "id": "2",
-        "title": "Integrate EmotionalSlider Component into Mood Scale Step",
-        "description": "Replace the generic mood slider in MoodScaleStep with the original EmotionalSlider component featuring proper gradients and emotional states",
-        "details": "Import and integrate the EmotionalSlider component from `/components/checkin/EmotionalSlider.tsx` into the MoodScaleStep. Ensure all 7 emotional states are properly implemented: low_stuck, uneasy, uncertain, neutral, steady, confident, energized. Maintain the multi-color gradient track, proper state labels, and smooth transitions. Update the step to capture and pass the selected emotional state through sessionData. Preserve responsive design and dark mode compatibility.",
-        "testStrategy": "Test all 7 emotional states display with correct gradients and labels. Verify smooth slider transitions and proper state selection. Validate that selected mood data is correctly stored in sessionData and passed to subsequent steps. Test responsive behavior on mobile devices and dark mode compatibility.",
+        "id": "7",
+        "title": "Refactor useChatPreferences Hook",
+        "description": "Convert the existing useChatPreferences hook to be a thin wrapper around ChatPreferencesContext instead of managing its own Firestore listener",
+        "details": "Refactor the existing useChatPreferences hook:\n\n```typescript\n// Remove existing Firestore onSnapshot logic\n// Replace with context consumption\nexport const useChatPreferences = (): UseChatPreferencesReturn => {\n  const context = useContext(ChatPreferencesContext);\n  \n  if (!context) {\n    throw new Error('useChatPreferences must be used within ChatPreferencesProvider');\n  }\n  \n  return {\n    pinnedChannelIds: context.pinnedChannelIds,\n    archivedChannelIds: context.archivedChannelIds,\n    deletedChannelIds: context.deletedChannelIds,\n    pin: context.pin,\n    unpin: context.unpin,\n    archive: context.archive,\n    unarchive: context.unarchive,\n    delete: context.delete,\n    undelete: context.undelete,\n    // Remove loading states as data is instantly available\n  };\n};\n```\n\nEnsure the UseChatPreferencesReturn interface remains unchanged to prevent breaking changes.",
+        "testStrategy": "Unit tests: Verify hook returns correct context values and throws error when used outside provider. Integration tests: Test that existing consumers continue to work without changes. Verify no duplicate Firestore listeners are created.",
         "priority": "high",
         "dependencies": [
-          "1"
+          "6"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T10:02:22.010Z"
+        "updatedAt": "2026-01-07T13:02:09.541Z"
       },
       {
-        "id": "3",
-        "title": "Integrate Full Task Planner into TaskPlannerStep",
-        "description": "Replace the empty placeholder in TaskPlannerStep with the complete task planner implementation including drag-and-drop functionality",
-        "details": "Extract and integrate the full task planner logic from `/checkin/morning/plan-day/page.tsx` into TaskPlannerStep. Implement @dnd-kit drag-and-drop functionality with Focus tasks (max 3) and Backlog sections. Include Add/Edit/Delete task functionality, rocket launch animation on completion, and integration with useTasks hook. Ensure program task sync works properly. Maintain session data flow to track selected focus tasks and overall completion status.",
-        "testStrategy": "Test drag-and-drop functionality between Focus and Backlog sections. Verify max 3 focus tasks limitation. Test add/edit/delete operations work correctly. Validate rocket launch animation triggers on completion. Ensure useTasks hook integration and program task sync function properly. Test mobile responsiveness and dark mode support.",
+        "id": "8",
+        "title": "Integrate ChatPreferencesProvider with App Layout",
+        "description": "Add ChatPreferencesProvider to the app's provider hierarchy in the correct position within layout.tsx",
+        "details": "Update layout.tsx to include ChatPreferencesProvider in the correct hierarchy:\n\n```typescript\n// Provider hierarchy should be:\n<ClerkProvider>\n  <StreamChatProvider>\n    <ChatPreferencesProvider> {/* NEW - after StreamChatProvider */}\n      <ChatSheetProvider> {/* before ChatSheetProvider */}\n        {/* rest of app */}\n      </ChatSheetProvider>\n    </ChatPreferencesProvider>\n  </StreamChatProvider>\n</ClerkProvider>\n```\n\nEnsure the provider:\n1. Has access to user context from StreamChatProvider\n2. Is available to ChatSheetProvider and all child components\n3. Initializes properly on app load\n4. Handles user authentication state changes",
+        "testStrategy": "Integration tests: Verify provider initializes on app load and preferences are available throughout the component tree. Test user authentication flow and ensure cache is cleared on logout. Verify no provider ordering issues or missing dependencies.",
         "priority": "high",
         "dependencies": [
-          "2"
+          "6"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T10:06:12.278Z"
+        "updatedAt": "2026-01-07T13:02:45.590Z"
       },
       {
-        "id": "4",
-        "title": "Enhance Visualization Step with ManifestCard Design",
-        "description": "Upgrade the basic visualization step to use ManifestCard component styling with better animations and design",
-        "details": "Reference ManifestCard component from `/components/checkin/ManifestCard.tsx` and the manifest page implementation from `/checkin/morning/manifest/page.tsx` to enhance the visualization step. Apply proper styling, animations, and transitions that match the original manifest flow. Implement timer progress indicator and ensure proper dark mode support. Maintain compatibility with step configurations (showGoal, showIdentity) from Firestore while improving the visual presentation.",
-        "testStrategy": "Verify the visualization step displays with improved styling matching the original ManifestCard design. Test animations and transitions work smoothly. Validate timer progress indicator functions correctly. Ensure showGoal and showIdentity configurations from Firestore are respected. Test dark mode compatibility and responsive design on various screen sizes.",
+        "id": "9",
+        "title": "Update Chat Components for Simplified Interface",
+        "description": "Update ChatSheet and ChatActionsMenu components to use the simplified useChatPreferences hook interface without the enabled parameter",
+        "details": "Update chat components to use the simplified hook:\n\n```typescript\n// In ChatSheet.tsx - remove enabled parameter\n// Before:\nconst preferences = useChatPreferences({ enabled: isOpen });\n\n// After:\nconst preferences = useChatPreferences();\n```\n\nVerify ChatActionsMenu.tsx continues to work without changes since it likely doesn't use the enabled parameter.\n\nEnsure:\n1. Mobile chat slideup opens in <1s with instant preferences\n2. Desktop chat actions menu shows correct pin/archive state immediately\n3. No console errors or warnings\n4. Real-time updates still work across devices",
+        "testStrategy": "End-to-end tests: Measure chat open time (<1s requirement). Test pin/archive/delete actions work correctly. Verify real-time sync across multiple browser tabs. Test offline functionality with localStorage cache. Performance tests to ensure <1ms preference availability.",
         "priority": "medium",
         "dependencies": [
-          "3"
+          "7",
+          "8"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T10:08:04.810Z"
+        "updatedAt": "2026-01-07T13:03:17.811Z"
       },
       {
-        "id": "5",
-        "title": "Validate Complete Integration and Session Data Flow",
-        "description": "Perform comprehensive testing to ensure all integrated components work together seamlessly within the dynamic flow system",
-        "details": "Conduct end-to-end testing of the complete morning check-in flow to ensure all integrated components work together properly. Verify session data flows correctly between steps, dynamic flow configuration from Firestore is respected, and no regressions exist in existing functionality. Test various flow configurations (enabled/disabled steps, different conditions) to ensure the system maintains its flexibility. Validate that the morning check-in flow now looks identical to the original static pages while preserving dynamic capabilities.",
-        "testStrategy": "Run complete morning check-in flows with different Firestore configurations. Verify session data is properly tracked and passed between all steps. Test various step combinations (enabled/disabled) to ensure dynamic flow still works. Compare final result with original static pages to ensure visual parity. Perform regression testing on existing functionality. Test across different devices, browsers, and in both light and dark modes.",
-        "priority": "high",
+        "id": "10",
+        "title": "Performance Validation and Cache Optimization",
+        "description": "Validate performance requirements are met and optimize localStorage cache implementation for instant preference availability",
+        "details": "Implement performance monitoring and optimization:\n\n```typescript\n// Add performance measurement\nconst startTime = performance.now();\nconst preferences = getCachedPreferences();\nconst loadTime = performance.now() - startTime;\nconsole.assert(loadTime < 1, `Preferences load time: ${loadTime}ms`);\n```\n\nOptimizations:\n1. Ensure localStorage reads are synchronous and cached\n2. Implement efficient Set operations for preference lookups\n3. Add cache warming on user login\n4. Optimize JSON serialization/deserialization\n5. Add cache size monitoring and cleanup\n6. Implement graceful fallbacks for localStorage failures\n7. Add performance metrics collection\n\nValidate all requirements:\n- <1ms preference availability\n- Real-time updates work\n- No blocking on Firestore connection\n- Offline functionality from cache",
+        "testStrategy": "Performance tests: Measure preference load times across different devices and cache sizes. Stress tests: Test with large numbers of preferences. Offline tests: Verify functionality without network connection. Cross-device tests: Validate real-time sync. Memory leak tests: Ensure proper cleanup on user logout.",
+        "priority": "medium",
         "dependencies": [
-          "1",
-          "2",
-          "3",
-          "4"
+          "9"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T10:09:51.301Z"
+        "updatedAt": "2026-01-07T13:04:50.583Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-07T10:09:51.301Z",
+      "lastModified": "2026-01-07T13:04:50.585Z",
       "taskCount": 5,
       "completedCount": 5,
       "tags": [

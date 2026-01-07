@@ -24,6 +24,7 @@ import { DEFAULT_LOGO_URL, DEFAULT_THEME } from "@/types";
 import { DemoModeProvider } from "@/contexts/DemoModeContext";
 import { DemoSessionProvider } from "@/contexts/DemoSessionContext";
 import { ChatSheetProvider } from "@/contexts/ChatSheetContext";
+import { ChatPreferencesProvider } from "@/contexts/ChatPreferencesContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -189,6 +190,7 @@ export default async function RootLayout({
               <OrganizationProvider>
                 <StreamChatProvider>
                   <StreamVideoProvider>
+                    <ChatPreferencesProvider>
                     <ChatSheetProvider>
                       <Suspense fallback={null}>
                         <ConditionalSidebar layoutMode={layoutMode} />
@@ -214,6 +216,7 @@ export default async function RootLayout({
                         <GATracker />
                       </Suspense>
                     </ChatSheetProvider>
+                    </ChatPreferencesProvider>
                   </StreamVideoProvider>
                 </StreamChatProvider>
               </OrganizationProvider>

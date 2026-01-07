@@ -359,14 +359,27 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const currentEnrollment = useMemo(() => {
     if (clientViewContext.mode !== 'client') return null;
     const enrollment = programEnrollments.find(e => e.id === clientViewContext.enrollmentId);
+
+    // Debug logging for day calculation issues
+    if (clientViewContext.mode === 'client') {
+      console.log('[currentEnrollment] Debug:', {
+        enrollmentId: clientViewContext.enrollmentId,
+        enrollmentsCount: programEnrollments.length,
+        foundEnrollment: !!enrollment,
+        enrollmentStatus: enrollment?.status,
+        enrollmentStartedAt: enrollment?.startedAt,
+        selectedProgramId: selectedProgram?.id,
+      });
+    }
+
     if (!enrollment || !selectedProgram) return null;
 
     // Calculate the current day index using proper weekday-aware calculation
     // Calculate for active, completed, and stopped enrollments (not upcoming)
     let currentDayIndex = 0;
-    const shouldCalculateDay = enrollment.startedAt && 
+    const shouldCalculateDay = enrollment.startedAt &&
       (enrollment.status === 'active' || enrollment.status === 'completed' || enrollment.status === 'stopped');
-    
+
     if (shouldCalculateDay) {
       const cycleNumber = getActiveCycleNumber(enrollment);
       const result = calculateProgramDayIndex(
@@ -377,11 +390,25 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         enrollment.cycleStartedAt
       );
       currentDayIndex = result.dayIndex;
-      
+
+      console.log('[currentEnrollment] Day calculation:', {
+        startedAt: enrollment.startedAt,
+        programLengthDays: selectedProgram.lengthDays,
+        includeWeekends: selectedProgram.includeWeekends !== false,
+        cycleNumber,
+        calculatedDayIndex: currentDayIndex,
+      });
+
       // For completed enrollments, show the last day
       if (enrollment.status === 'completed') {
         currentDayIndex = selectedProgram.lengthDays;
       }
+    } else {
+      console.log('[currentEnrollment] Skipping day calculation:', {
+        hasStartedAt: !!enrollment.startedAt,
+        status: enrollment.status,
+        shouldCalculateDay,
+      });
     }
 
     return { ...enrollment, currentDayIndex };
