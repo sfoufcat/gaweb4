@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { BreathStepProps } from './types';
 
 type BreathPhase = 'ready' | 'inhale' | 'hold' | 'exhale' | 'complete';
@@ -143,25 +144,44 @@ export function BreathStep({ config, onComplete }: BreathStepProps) {
 
         {/* Action button */}
         <div className="w-full mt-8 md:mt-10">
-          {phase === 'ready' ? (
-            <button
-              onClick={startBreathing}
-              className="w-full max-w-[400px] mx-auto block bg-[#2c2520] dark:bg-white text-white dark:text-[#1a1a1a] py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[18px] font-bold tracking-[-0.5px] shadow-[0px_8px_30px_0px_rgba(0,0,0,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              Begin
-            </button>
-          ) : phase === 'complete' ? (
-            <button
-              onClick={() => onComplete()}
-              className="w-full max-w-[400px] mx-auto block bg-[#2c2520] dark:bg-white text-white dark:text-[#1a1a1a] py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[18px] font-bold tracking-[-0.5px] shadow-[0px_8px_30px_0px_rgba(0,0,0,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              Continue
-            </button>
-          ) : (
-            <div className="w-full max-w-[400px] mx-auto block bg-[#e1ddd8] dark:bg-[#262b35] text-[#a7a39e] dark:text-[#7d8190] py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[18px] font-bold tracking-[-0.5px] text-center">
-              Breathing...
-            </div>
-          )}
+          <AnimatePresence mode="wait">
+            {phase === 'ready' ? (
+              <motion.button
+                key="begin-button"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+                onClick={startBreathing}
+                className="w-full max-w-[400px] mx-auto block bg-[#2c2520] dark:bg-white text-white dark:text-[#1a1a1a] py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[18px] font-bold tracking-[-0.5px] shadow-[0px_8px_30px_0px_rgba(0,0,0,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-colors"
+              >
+                Begin
+              </motion.button>
+            ) : phase === 'complete' ? (
+              <motion.button
+                key="continue-button"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+                onClick={() => onComplete()}
+                className="w-full max-w-[400px] mx-auto block bg-[#2c2520] dark:bg-white text-white dark:text-[#1a1a1a] py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[18px] font-bold tracking-[-0.5px] shadow-[0px_8px_30px_0px_rgba(0,0,0,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-colors"
+              >
+                Continue
+              </motion.button>
+            ) : (
+              <motion.div
+                key="breathing-indicator"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+                className="w-full max-w-[400px] mx-auto block bg-[#e1ddd8] dark:bg-[#262b35] text-[#a7a39e] dark:text-[#7d8190] py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[18px] font-bold tracking-[-0.5px] text-center"
+              >
+                Breathing...
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

@@ -10,9 +10,8 @@ import {
   type ReactNode,
 } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { db } from '@/lib/firebase';
+import { db, auth as firebaseAuth } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
 import type {
   ChatPreference,
   ChatChannelType,
@@ -176,9 +175,6 @@ interface ChatPreferencesProviderProps {
  */
 export function ChatPreferencesProvider({ children }: ChatPreferencesProviderProps) {
   const { user, isLoaded } = useUser();
-  // Firebase Auth is required for Firestore security rules
-  // We don't block on it - localStorage cache provides instant data
-  const { isAuthenticated: isFirebaseReady } = useFirebaseAuth();
   const [preferences, setPreferences] = useState<Map<string, ChatPreference>>(() => {
     // Initialize from localStorage synchronously for instant access
     if (typeof window !== 'undefined' && user?.id) {
@@ -218,22 +214,22 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
   }, [user?.id, isLoaded, previousUserId]);
 
   // Set up Firestore real-time listener
-  // Only starts when Firebase Auth is ready (required for security rules)
-  // Until then, we rely on localStorage cache - no blocking!
+  // This is optional - if Firebase Auth isn't ready, the listener will fail silently
+  // and we rely on localStorage cache + optimistic updates for actions
   useEffect(() => {
     if (!isLoaded || !user?.id) {
-      return;
-    }
-
-    // Wait for Firebase Auth before setting up listener
-    // This is required because security rules check request.auth.uid
-    if (!isFirebaseReady) {
       return;
     }
 
     // Guard: Firebase not initialized
     if (!db) {
       console.warn('[ChatPreferencesContext] Firebase not initialized');
+      return;
+    }
+
+    // Check if Firebase Auth is ready (synchronous check, no blocking)
+    // If not ready, skip listener setup - we'll rely on localStorage cache
+    if (!firebaseAuth?.currentUser) {
       return;
     }
 
@@ -290,7 +286,7 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
     );
 
     return () => unsubscribe();
-  }, [user?.id, isLoaded, isFirebaseReady]);
+  }, [user?.id, isLoaded]);
 
   // Computed sets for quick lookups
   const pinnedChannelIds = useMemo(() => {
@@ -334,47 +330,80 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
     [preferences]
   );
 
-  // Actions
+  // Helper to apply optimistic update
+  const applyOptimisticUpdate = useCallback(
+    (channelId: string, channelType: ChatChannelType, updates: Partial<ChatPreference>) => {
+      setPreferences((current) => {
+        const newPrefs = new Map(current);
+        const existing = current.get(channelId);
+        const now = new Date().toISOString();
+        newPrefs.set(channelId, {
+          channelId,
+          channelType,
+          isPinned: false,
+          isArchived: false,
+          isDeleted: false,
+          updatedAt: now,
+          ...existing,
+          ...updates,
+        });
+        // Also update localStorage cache
+        if (user?.id) {
+          saveToCache(user.id, newPrefs);
+        }
+        return newPrefs;
+      });
+    },
+    [user?.id]
+  );
+
+  // Actions with optimistic updates - UI updates immediately, API call in background
   const pinChannel = useCallback(
     async (channelId: string, channelType: ChatChannelType) => {
+      applyOptimisticUpdate(channelId, channelType, { isPinned: true, pinnedAt: new Date().toISOString() });
       await updatePreference(channelId, channelType, 'pin');
     },
-    []
+    [applyOptimisticUpdate]
   );
 
   const unpinChannel = useCallback(
     async (channelId: string, channelType: ChatChannelType) => {
+      applyOptimisticUpdate(channelId, channelType, { isPinned: false });
       await updatePreference(channelId, channelType, 'unpin');
     },
-    []
+    [applyOptimisticUpdate]
   );
 
   const archiveChannel = useCallback(
     async (channelId: string, channelType: ChatChannelType) => {
+      applyOptimisticUpdate(channelId, channelType, { isArchived: true, archivedAt: new Date().toISOString() });
       await updatePreference(channelId, channelType, 'archive');
     },
-    []
+    [applyOptimisticUpdate]
   );
 
   const unarchiveChannel = useCallback(
     async (channelId: string, channelType: ChatChannelType) => {
+      applyOptimisticUpdate(channelId, channelType, { isArchived: false });
       await updatePreference(channelId, channelType, 'unarchive');
     },
-    []
+    [applyOptimisticUpdate]
   );
 
   const deleteChannel = useCallback(
     async (channelId: string, channelType: ChatChannelType) => {
+      applyOptimisticUpdate(channelId, channelType, { isDeleted: true, deletedAt: new Date().toISOString() });
       await updatePreference(channelId, channelType, 'delete');
     },
-    []
+    [applyOptimisticUpdate]
   );
 
   const undeleteChannel = useCallback(
     async (channelId: string, channelType: ChatChannelType) => {
+      applyOptimisticUpdate(channelId, channelType, { isDeleted: false });
       await updatePreference(channelId, channelType, 'undelete');
     },
-    []
+    [applyOptimisticUpdate]
   );
 
   const contextValue = useMemo<ChatPreferencesContextValue>(

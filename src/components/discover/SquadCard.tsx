@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Users, User } from 'lucide-react';
-import { SquadTypeBadge, PriceBadge } from '@/components/ui/program-badges';
+import { SquadTypeBadge } from '@/components/ui/program-badges';
 
 /**
  * SquadCard Component
@@ -78,10 +78,7 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
             <SquadTypeBadge isCoached={isCoached} />
           </div>
 
-          {/* Price badge - top right */}
-          <div className="absolute top-3 right-3 z-20">
-            <PriceBadge price={formatPrice(squad.priceInCents || 0)} />
-          </div>
+          
         </div>
 
         {/* Content */}
@@ -132,11 +129,14 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
             )}
           </div>
 
-          {/* Footer - simple CTA */}
+          {/* Footer - CTA with price */}
           {!isCompact && (
-            <div className="mt-1 pt-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+            <div className="mt-1 pt-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex items-center justify-between">
               <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
                 Join Squad
+              </span>
+              <span className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                {formatPrice(squad.priceInCents || 0)}
               </span>
             </div>
           )}

@@ -166,12 +166,11 @@ const ADDABLE_STEP_TYPES: CheckInStepType[] = [
   'visualization',
   'progress_scale',
   'explainer',
-  'completion',
   'goal_achieved',
 ];
 
 // Steps that should typically be at the end
-const END_STEP_TYPES: CheckInStepType[] = ['completion', 'goal_achieved'];
+const END_STEP_TYPES: CheckInStepType[] = ['goal_achieved'];
 
 export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack }: CheckInFlowStepsEditorProps) {
   const [steps, setSteps] = useState<CheckInStep[]>([]);

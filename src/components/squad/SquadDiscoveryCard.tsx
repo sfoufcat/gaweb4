@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Users, User, Repeat } from 'lucide-react';
-import { SquadTypeBadge, PriceBadge } from '@/components/ui/program-badges';
+import { SquadTypeBadge } from '@/components/ui/program-badges';
 
 /**
  * SquadDiscoveryCard Component
@@ -67,10 +67,7 @@ export function SquadDiscoveryCard({ squad }: SquadDiscoveryCardProps) {
             <SquadTypeBadge isCoached={isCoached} />
           </div>
 
-          {/* Price badge */}
-          <div className="absolute top-3 right-3">
-            <PriceBadge price={formatPrice(squad.priceInCents || 0, squad.subscriptionEnabled ? squad.billingInterval : undefined)} />
-          </div>
+          
         </div>
         
         {/* Content */}
@@ -126,10 +123,13 @@ export function SquadDiscoveryCard({ squad }: SquadDiscoveryCardProps) {
             )}
           </div>
 
-          {/* Join info */}
-          <div className="mt-1 pt-2 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+          {/* Join info with price */}
+          <div className="mt-1 pt-2 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex items-center justify-between">
             <span className="text-xs text-green-600 dark:text-green-400">
               Join anytime
+            </span>
+            <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+              {formatPrice(squad.priceInCents || 0, squad.subscriptionEnabled ? squad.billingInterval : undefined)}
             </span>
           </div>
         </div>

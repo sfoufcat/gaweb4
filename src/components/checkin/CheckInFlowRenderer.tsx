@@ -122,11 +122,15 @@ export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: C
       setIsNavigating(true);
       await saveSession(updatedSessionData);
       
-      if (onComplete) {
-        onComplete();
-      } else {
-        router.push('/');
-      }
+      // Wait for exit animation to complete before navigating
+      // This ensures the overlay fades out and sidebar can appear
+      setTimeout(() => {
+        if (onComplete) {
+          onComplete();
+        } else {
+          router.push('/');
+        }
+      }, 300);
     } else {
       // Move to next step
       setCurrentStepIndex(prev => prev + 1);
@@ -236,11 +240,15 @@ export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: C
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="fixed inset-0 z-[9999] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col overflow-hidden"
-    >
+    <AnimatePresence>
+      {!isNavigating && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="fixed inset-0 z-[9999] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col overflow-hidden"
+        >
       {/* Header */}
       <div className="flex items-center justify-between px-6 pt-6 pb-4">
         {!isFirstStep ? (
@@ -321,7 +329,9 @@ export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: C
           )}
         </AnimatePresence>
       </div>
-    </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Users, User, Clock } from 'lucide-react';
-import { TypeBadge, EnrolledBadge, PriceBadge } from '@/components/ui/program-badges';
+import { TypeBadge, EnrolledBadge } from '@/components/ui/program-badges';
 
 interface ProgramCardProgram {
   id: string;
@@ -91,13 +91,12 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
             <TypeBadge type={program.type} />
           </div>
 
-          {/* Top right badges - Price and optionally Enrolled */}
-          <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
-            {isEnrolled && (
+          {/* Enrolled badge - top right (only when enrolled) */}
+          {isEnrolled && (
+            <div className="absolute top-3 right-3 z-20">
               <EnrolledBadge status={program.userEnrollment?.status === 'active' ? 'active' : 'enrolled'} />
-            )}
-            <PriceBadge price={formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)} />
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -146,11 +145,14 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
             </span>
           </div>
 
-          {/* Footer section - simple CTA */}
+          {/* Footer section - CTA with price */}
           {!isCompact && (
-            <div className="mt-1 pt-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+            <div className="mt-1 pt-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex items-center justify-between">
               <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
                 Start Program
+              </span>
+              <span className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                {formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)}
               </span>
             </div>
           )}

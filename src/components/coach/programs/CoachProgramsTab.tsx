@@ -2609,6 +2609,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 courses={organizationCourses}
                 modules={programModules}
                 weeks={programWeeks}
+                viewMode={clientViewContext.mode === 'client' ? 'client' : 'template'}
+                enrollmentStartDate={currentEnrollment?.startedAt}
+                currentDayIndex={currentEnrollment?.currentDayIndex}
                 onDayClick={(dayIndex) => {
                   setSelectedDayIndex(dayIndex);
                   setSidebarSelection({ type: 'day', dayIndex });

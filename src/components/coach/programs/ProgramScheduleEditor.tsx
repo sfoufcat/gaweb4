@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Video, BookOpen, ChevronRight, CalendarDays, Edit2 } from 'lucide-react';
 import type { Program, ProgramDay, ProgramModule, ProgramWeek } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';
+import { calculateCalendarWeeks, dayIndexToDate, type CalendarWeek } from '@/lib/calendar-weeks';
 
 interface ProgramScheduleEditorProps {
   program: Program;
@@ -13,6 +14,20 @@ interface ProgramScheduleEditorProps {
   weeks: ProgramWeek[];
   onDayClick: (dayIndex: number) => void;
   onAddCall: (dayIndex: number) => void;
+  // New props for calendar alignment
+  currentDayIndex?: number;
+  enrollmentStartDate?: string;
+  viewMode?: 'template' | 'client';
+}
+
+// Get a default Monday start date for template view
+function getDefaultMondayStart(): string {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Get to Monday
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - daysToSubtract);
+  return monday.toISOString().split('T')[0];
 }
 
 export function ProgramScheduleEditor({
@@ -23,12 +38,27 @@ export function ProgramScheduleEditor({
   weeks,
   onDayClick,
   onAddCall,
+  currentDayIndex,
+  enrollmentStartDate,
+  viewMode = 'template',
 }: ProgramScheduleEditorProps) {
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
 
-  // Calculate weeks based on program length
+  // Calculate calendar settings
   const includeWeekends = program.includeWeekends !== false;
-  const daysPerWeek = includeWeekends ? 7 : 5;
+  const gridCols = includeWeekends ? 7 : 5;
+  const dayHeaders = includeWeekends
+    ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
+  // For template view, always start on Monday
+  // For client view, use enrollment date
+  const effectiveStartDate = useMemo(() => {
+    if (viewMode === 'client' && enrollmentStartDate) {
+      return enrollmentStartDate;
+    }
+    return getDefaultMondayStart();
+  }, [viewMode, enrollmentStartDate]);
 
   // Module colors for visual distinction
   const moduleColors = [
@@ -39,51 +69,89 @@ export function ProgramScheduleEditor({
     { bg: 'bg-rose-50 dark:bg-rose-900/20', border: 'border-rose-200 dark:border-rose-800', text: 'text-rose-700 dark:text-rose-300', accent: 'bg-rose-100 dark:bg-rose-900/30' },
   ];
 
-  // Group weeks by module
-  const moduleWeeksMap = useMemo(() => {
-    const map = new Map<string, ProgramWeek[]>();
+  // Status colors for today indicator
+  const statusColors = {
+    past: {
+      bg: 'bg-yellow-50/70 dark:bg-yellow-950/30',
+      border: 'border-yellow-300 dark:border-yellow-800',
+    },
+    active: {
+      bg: 'bg-emerald-50/70 dark:bg-emerald-950/30',
+      border: 'border-emerald-300 dark:border-emerald-700',
+    },
+    future: null, // Use module color
+  };
 
-    // Sort modules by order
+  // Calculate calendar-aligned weeks
+  const calendarWeeks = useMemo(() => {
+    const totalDays = program.lengthDays || 30;
+    return calculateCalendarWeeks(effectiveStartDate, totalDays, includeWeekends);
+  }, [effectiveStartDate, program.lengthDays, includeWeekends]);
+
+  // Group calendar weeks by module
+  const calendarWeeksByModule = useMemo(() => {
+    const result = new Map<string, CalendarWeek[]>();
+
+    // Sort modules by order and initialize map
     const sortedModules = [...modules].sort((a, b) => (a.order || 0) - (b.order || 0));
+    sortedModules.forEach(m => result.set(m.id, []));
 
-    // Initialize with empty arrays for each module
-    sortedModules.forEach(m => map.set(m.id, []));
+    // Map each calendar week to a module based on which module contains its first day
+    calendarWeeks.forEach(cw => {
+      const firstDay = cw.startDayIndex;
 
-    // Group weeks into their modules, sorted by order
-    weeks.forEach(week => {
-      if (week.moduleId && map.has(week.moduleId)) {
-        map.get(week.moduleId)!.push(week);
+      // Find which stored week contains this day
+      const storedWeek = weeks.find(w =>
+        firstDay >= w.startDayIndex && firstDay <= w.endDayIndex
+      );
+
+      // Use the module from the stored week, or default to first module
+      const moduleId = storedWeek?.moduleId || sortedModules[0]?.id;
+      if (moduleId && result.has(moduleId)) {
+        result.get(moduleId)!.push(cw);
+      } else if (sortedModules.length > 0) {
+        // Fallback: add to first module if no match
+        result.get(sortedModules[0].id)!.push(cw);
       }
     });
 
-    // Sort weeks within each module by order
-    map.forEach((moduleWeeks) => {
-      moduleWeeks.sort((a, b) => (a.order || 0) - (b.order || 0));
-    });
+    return result;
+  }, [calendarWeeks, modules, weeks]);
 
-    return map;
-  }, [modules, weeks]);
+  // Get day column position (0-indexed) based on actual calendar date
+  const getDayColumn = (dayIndex: number): number => {
+    const date = dayIndexToDate(effectiveStartDate, dayIndex, includeWeekends);
+    const dayOfWeek = date.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
 
-  // Get days for a specific week
-  const getWeekDays = (weekNum: number, weekLength: number) => {
-    const startDay = (weekNum - 1) * daysPerWeek + 1;
-    const endDay = Math.min(startDay + weekLength - 1, program.lengthDays || 30);
+    if (includeWeekends) {
+      // Mon=0, Tue=1, ..., Sun=6
+      return dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    } else {
+      // Mon=0, Tue=1, Wed=2, Thu=3, Fri=4
+      return dayOfWeek - 1;
+    }
+  };
 
-    return Array.from({ length: Math.max(0, endDay - startDay + 1) }, (_, i) => {
-      const dayIndex = startDay + i;
+  // Get day status for styling
+  const getDayStatus = (dayIndex: number): 'past' | 'active' | 'future' => {
+    if (!currentDayIndex || viewMode !== 'client') return 'future';
+    if (dayIndex < currentDayIndex) return 'past';
+    if (dayIndex === currentDayIndex) return 'active';
+    return 'future';
+  };
+
+  // Get days for a calendar week
+  const getWeekDays = (cw: CalendarWeek) => {
+    return Array.from({ length: cw.endDayIndex - cw.startDayIndex + 1 }, (_, i) => {
+      const dayIndex = cw.startDayIndex + i;
       const dayData = days.find(d => d.dayIndex === dayIndex);
       return {
         dayIndex,
         data: dayData,
         hasContent: dayData && ((dayData.tasks?.length || 0) > 0 || (dayData.courseAssignments?.length || 0) > 0),
+        column: getDayColumn(dayIndex),
       };
     });
-  };
-
-  // Day name for header
-  const getDayName = (dayOfWeek: number) => {
-    const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return names[dayOfWeek % 7];
   };
 
   // Toggle module collapse
@@ -104,13 +172,110 @@ export function ProgramScheduleEditor({
     return [...modules].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [modules]);
 
+  // Render day cells for a calendar week
+  const renderDayCells = (cw: CalendarWeek, moduleColor: typeof moduleColors[0]) => {
+    const weekDays = getWeekDays(cw);
+    const daysByColumn = new Map<number, typeof weekDays[0]>();
+
+    // Map days to their columns
+    weekDays.forEach(day => {
+      daysByColumn.set(day.column, day);
+    });
+
+    // Render all columns
+    const cells = [];
+    for (let col = 0; col < gridCols; col++) {
+      const day = daysByColumn.get(col);
+
+      if (day) {
+        const status = getDayStatus(day.dayIndex);
+        const statusStyle = statusColors[status];
+
+        // Use status color if available, otherwise module color
+        const bgClass = statusStyle?.bg || moduleColor.bg;
+        const borderClass = statusStyle?.border || moduleColor.border;
+
+        cells.push(
+          <div
+            key={day.dayIndex}
+            className={`min-h-[100px] ${bgClass} rounded-lg border ${borderClass} p-2 space-y-1 transition-colors`}
+          >
+            {/* Day Number Header */}
+            <div className="flex items-center justify-between mb-1">
+              <span className={`text-xs font-medium font-albert ${
+                status === 'active'
+                  ? 'text-emerald-700 dark:text-emerald-300'
+                  : status === 'past'
+                    ? 'text-yellow-700 dark:text-yellow-300'
+                    : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+              }`}>
+                Day {day.dayIndex}
+              </span>
+              <button
+                onClick={() => onDayClick(day.dayIndex)}
+                className="p-0.5 rounded hover:bg-white/50 dark:hover:bg-black/20 text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent transition-colors"
+              >
+                <Edit2 className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Day Content */}
+            {day.data?.title && (
+              <p className="text-[10px] text-[#5f5a55] dark:text-[#b2b6c2] truncate font-albert">
+                {day.data.title}
+              </p>
+            )}
+
+            {/* Tasks Count */}
+            {day.data?.tasks && day.data.tasks.length > 0 && (
+              <div className="flex items-center gap-1 text-[10px] text-[#a7a39e] dark:text-[#7d8190]">
+                <CalendarDays className="w-2.5 h-2.5" />
+                <span>{day.data.tasks.length}</span>
+              </div>
+            )}
+
+            {/* Course Assignments */}
+            {day.data?.courseAssignments && day.data.courseAssignments.length > 0 && (
+              <div className="flex items-center gap-1 text-[10px]">
+                <BookOpen className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
+                <span className="text-blue-700 dark:text-blue-300">
+                  {day.data.courseAssignments.length}
+                </span>
+              </div>
+            )}
+
+            {/* Empty State - Add Button */}
+            {!day.hasContent && !day.data?.title && (
+              <button
+                onClick={() => onDayClick(day.dayIndex)}
+                className="w-full h-full flex items-center justify-center"
+              >
+                <Plus className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent transition-colors" />
+              </button>
+            )}
+          </div>
+        );
+      } else {
+        // Empty cell for days not in this week
+        cells.push(
+          <div
+            key={`empty-${cw.weekNumber}-${col}`}
+            className="min-h-[100px] bg-[#f3f1ef]/30 dark:bg-[#171b22]/30 rounded-lg border border-dashed border-[#e1ddd8] dark:border-[#262b35]"
+          />
+        );
+      }
+    }
+
+    return cells;
+  };
+
   return (
     <div className="space-y-4">
       {/* Modules and Weeks Structure */}
       <div className="space-y-4">
         {sortedModules.map((module, moduleIndex) => {
           const moduleColor = moduleColors[moduleIndex % moduleColors.length];
-          const moduleWeeks = moduleWeeksMap.get(module.id) || [];
+          const moduleCalendarWeeks = calendarWeeksByModule.get(module.id) || [];
           const isCollapsed = collapsedModules.has(module.id);
 
           return (
@@ -126,7 +291,7 @@ export function ProgramScheduleEditor({
                     {module.name || `Module ${moduleIndex + 1}`}
                   </span>
                   <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                    {moduleWeeks.length} week{moduleWeeks.length !== 1 ? 's' : ''}
+                    {moduleCalendarWeeks.length} week{moduleCalendarWeeks.length !== 1 ? 's' : ''}
                   </span>
                 </div>
                 <ChevronRight className={`w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2] transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
@@ -135,108 +300,40 @@ export function ProgramScheduleEditor({
               {/* Module Weeks */}
               {!isCollapsed && (
                 <div className="p-4 space-y-6 bg-white dark:bg-[#171b22]">
-                  {moduleWeeks.length === 0 ? (
+                  {moduleCalendarWeeks.length === 0 ? (
                     <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] text-center py-4 font-albert">
                       No weeks in this module
                     </p>
                   ) : (
-                    moduleWeeks.map((week) => {
-                      const weekDays = getWeekDays(week.weekNumber, daysPerWeek);
-
-                      return (
-                        <div key={week.id} className="space-y-2">
-                          {/* Week Header */}
-                          <div className="flex items-center gap-2 pb-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-                            <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                              Week {week.weekNumber}
-                            </span>
-                            {week.theme && (
-                              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                                — {week.theme}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Week Grid */}
-                          <div className="grid grid-cols-7 gap-2">
-                            {/* Day Headers */}
-                            {Array.from({ length: Math.min(7, daysPerWeek) }, (_, i) => (
-                              <div
-                                key={`header-${week.id}-${i}`}
-                                className="text-center text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] pb-1 font-albert"
-                              >
-                                {getDayName(i)}
-                              </div>
-                            ))}
-
-                            {/* Day Cells */}
-                            {weekDays.map(({ dayIndex, data, hasContent }) => (
-                              <div
-                                key={dayIndex}
-                                className={`min-h-[100px] ${moduleColor.bg} rounded-lg border ${moduleColor.border} p-2 space-y-1`}
-                              >
-                                {/* Day Number Header */}
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-xs font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                                    Day {dayIndex}
-                                  </span>
-                                  <button
-                                    onClick={() => onDayClick(dayIndex)}
-                                    className="p-0.5 rounded hover:bg-white/50 dark:hover:bg-black/20 text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent transition-colors"
-                                  >
-                                    <Edit2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-
-                                {/* Day Content */}
-                                {data?.title && (
-                                  <p className="text-[10px] text-[#5f5a55] dark:text-[#b2b6c2] truncate font-albert">
-                                    {data.title}
-                                  </p>
-                                )}
-
-                                {/* Tasks Count */}
-                                {data?.tasks && data.tasks.length > 0 && (
-                                  <div className="flex items-center gap-1 text-[10px] text-[#a7a39e] dark:text-[#7d8190]">
-                                    <CalendarDays className="w-2.5 h-2.5" />
-                                    <span>{data.tasks.length}</span>
-                                  </div>
-                                )}
-
-                                {/* Course Assignments */}
-                                {data?.courseAssignments && data.courseAssignments.length > 0 && (
-                                  <div className="flex items-center gap-1 text-[10px]">
-                                    <BookOpen className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
-                                    <span className="text-blue-700 dark:text-blue-300">
-                                      {data.courseAssignments.length}
-                                    </span>
-                                  </div>
-                                )}
-
-                                {/* Empty State - Add Button */}
-                                {!hasContent && !data?.title && (
-                                  <button
-                                    onClick={() => onDayClick(dayIndex)}
-                                    className="w-full h-full flex items-center justify-center"
-                                  >
-                                    <Plus className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent transition-colors" />
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-
-                            {/* Fill remaining cells for incomplete weeks */}
-                            {weekDays.length < daysPerWeek &&
-                              Array.from({ length: daysPerWeek - weekDays.length }, (_, i) => (
-                                <div
-                                  key={`empty-${week.id}-${i}`}
-                                  className="min-h-[100px] bg-[#f3f1ef]/30 dark:bg-[#171b22]/30 rounded-lg border border-dashed border-[#e1ddd8] dark:border-[#262b35]"
-                                />
-                              ))}
-                          </div>
+                    moduleCalendarWeeks.map((cw) => (
+                      <div key={`${cw.type}-${cw.weekNumber}`} className="space-y-2">
+                        {/* Week Header */}
+                        <div className="flex items-center gap-2 pb-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                          <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                            {cw.label}
+                          </span>
+                          <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                            Days {cw.startDayIndex}–{cw.endDayIndex}
+                          </span>
                         </div>
-                      );
-                    })
+
+                        {/* Week Grid */}
+                        <div className={`grid gap-2 ${gridCols === 5 ? 'grid-cols-5' : 'grid-cols-7'}`}>
+                          {/* Day Headers */}
+                          {dayHeaders.map((name, i) => (
+                            <div
+                              key={`header-${cw.weekNumber}-${i}`}
+                              className="text-center text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] pb-1 font-albert"
+                            >
+                              {name}
+                            </div>
+                          ))}
+
+                          {/* Day Cells */}
+                          {renderDayCells(cw, moduleColor)}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               )}
@@ -255,7 +352,7 @@ export function ProgramScheduleEditor({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert pt-2">
+      <div className="flex flex-wrap items-center gap-4 text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert pt-2">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
             <Video className="w-2 h-2 text-purple-600 dark:text-purple-400" />
@@ -274,6 +371,19 @@ export function ProgramScheduleEditor({
           </div>
           <span>Tasks</span>
         </div>
+        {currentDayIndex && viewMode === 'client' && (
+          <>
+            <div className="w-px h-3 bg-[#e1ddd8] dark:bg-[#262b35]" />
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-300 dark:border-yellow-800" />
+              <span>Past</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-700" />
+              <span>Today</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

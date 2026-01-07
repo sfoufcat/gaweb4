@@ -22,7 +22,8 @@ import {
   Copy,
   X,
   Sparkles,
-  Eye
+  Eye,
+  Search
 } from 'lucide-react';
 import { AIHelperModal } from '@/components/ai';
 import type { LandingPageDraft, ProgramContentDraft, AIGenerationContext } from '@/lib/ai/types';
@@ -87,6 +88,9 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   
   // Squad filter - default to standalone
   const [squadFilter, setSquadFilter] = useState<SquadFilterType>('standalone');
+  
+  // Search query for filtering squads by name
+  const [searchQuery, setSearchQuery] = useState('');
   
   // View mode: 'list' | 'members' | 'squad-view' | 'landing' | 'referrals'
   const [viewMode, setViewMode] = useState<'list' | 'members' | 'squad-view' | 'landing' | 'referrals'>('list');
@@ -655,17 +659,22 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
     );
   }
 
-  // Filter squads based on selected filter
+  // Filter squads based on search and selected filter
   const filteredSquads = displaySquads.filter((squad) => {
+    // Apply search filter first (case-insensitive)
+    if (searchQuery) {
+      const matchesSearch = squad.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+      // When searching, show all matching squads regardless of tab
+      return true;
+    }
+
+    // Apply tab filter when not searching
     switch (squadFilter) {
       case 'standalone':
         return !squad.programId;
       case 'program-all':
         return !!squad.programId;
-      case 'program-group':
-        return !!squad.programId && squad.programType === 'group';
-      case 'program-individual':
-        return !!squad.programId && squad.programType === 'individual';
       case 'all':
       default:
         return true;
@@ -707,25 +716,52 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
               Manage your squads and communities
             </p>
           </div>
-          {!isDemoMode && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                // Check squad limit before opening modal
-                if (checkLimit('max_squads', displaySquads.length)) {
-                  showLimitModal('max_squads', displaySquads.length);
-                  return;
-                }
-                setEditingSquad(null);
-                setIsSquadModalOpen(true);
-              }}
-              className="text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-medium font-albert transition-colors duration-200 text-[15px] !px-2.5"
-            >
-              <Plus className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">New Squad</span>
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9ca3af]" />
+              <input
+                type="text"
+                placeholder="Search squads..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (e.target.value) {
+                    setSquadFilter('all');
+                  }
+                }}
+                className="pl-9 pr-8 py-1.5 w-48 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#6b6560] dark:hover:text-[#f5f5f8]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            
+            {!isDemoMode && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  // Check squad limit before opening modal
+                  if (checkLimit('max_squads', displaySquads.length)) {
+                    showLimitModal('max_squads', displaySquads.length);
+                    return;
+                  }
+                  setEditingSquad(null);
+                  setIsSquadModalOpen(true);
+                }}
+                className="text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-medium font-albert transition-colors duration-200 text-[15px] !px-2.5"
+              >
+                <Plus className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">New Squad</span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Filter Tabs - Redesigned for clarity */}
@@ -769,50 +805,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
               </button>
             </div>
 
-            {/* Secondary Filter: Program Type (shown when Program Communities is active) */}
-            {programCount > 0 && (squadFilter === 'program-all' || squadFilter === 'program-group' || squadFilter === 'program-individual') && (
-              <div className="flex items-center gap-2 pl-1">
-                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Program type:</span>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setSquadFilter('program-all')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium font-albert transition-colors ${
-                      squadFilter === 'program-all'
-                        ? 'bg-brand-accent text-white'
-                        : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
-                    }`}
-                  >
-                    All
-                  </button>
-                  {programGroupCount > 0 && (
-                    <button
-                      onClick={() => setSquadFilter('program-group')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium font-albert transition-colors flex items-center gap-1.5 ${
-                        squadFilter === 'program-group'
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-                      }`}
-                    >
-                      <Users className="w-3 h-3" />
-                      Group ({programGroupCount})
-                    </button>
-                  )}
-                  {programIndividualCount > 0 && (
-                    <button
-                      onClick={() => setSquadFilter('program-individual')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium font-albert transition-colors flex items-center gap-1.5 ${
-                        squadFilter === 'program-individual'
-                          ? 'bg-purple-500 text-white'
-                          : 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30'
-                      }`}
-                    >
-                      <User className="w-3 h-3" />
-                      1:1 ({programIndividualCount})
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+
           </div>
         )}
 
