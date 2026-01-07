@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import { UserPlus, RefreshCw, Eye, MessageCircle, Send, MoreVertical, Trash2 } from 'lucide-react';
+import { UserPlus, RefreshCw, Eye, MessageCircle, Send, Trash2 } from 'lucide-react';
 import { SquadManagerPopover } from './SquadManagerPopover';
 import { ProgramManagerPopover } from './ProgramManagerPopover';
 import { useDemoMode } from '@/contexts/DemoModeContext';
@@ -54,12 +54,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { InviteClientsDialog } from '@/components/coach/InviteClientsDialog';
 
@@ -202,6 +196,33 @@ export function AdminUsersTab({
   // DM Modal state
   const [dmRecipients, setDmRecipients] = useState<DMRecipient[]>([]);
   const [showDmModal, setShowDmModal] = useState(false);
+
+  // Table scroll ref for horizontal scroll on vertical wheel
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Handle wheel event to convert vertical scroll to horizontal when hovering over table
+  const handleTableWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    const container = tableContainerRef.current;
+    if (!container) return;
+
+    // Check if there's horizontal overflow
+    const hasHorizontalScroll = container.scrollWidth > container.clientWidth;
+    if (!hasHorizontalScroll) return;
+
+    // Only intercept if we're scrolling vertically and there's room to scroll horizontally
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      const atLeftEdge = container.scrollLeft === 0;
+      const atRightEdge = container.scrollLeft >= container.scrollWidth - container.clientWidth - 1;
+
+      // Don't prevent default if we're at the edge and trying to scroll past it
+      if ((e.deltaY < 0 && atLeftEdge) || (e.deltaY > 0 && atRightEdge)) {
+        return;
+      }
+
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
+    }
+  }, []);
   
   // Detected org role from API response (used as fallback when prop isn't provided)
   const [detectedOrgRole, setDetectedOrgRole] = useState<OrgRole | undefined>(undefined);
@@ -906,7 +927,11 @@ export function AdminUsersTab({
         )}
 
         {/* Users table */}
-        <div className="overflow-x-auto">
+        <div
+          ref={tableContainerRef}
+          onWheel={handleTableWheel}
+          className="overflow-x-auto"
+        >
           <Table>
             <TableHeader>
               <TableRow>
@@ -929,7 +954,7 @@ export function AdminUsersTab({
                 {showColumn('coach') && <TableHead className="font-albert">Coach</TableHead>}
                 {showColumn('coaching') && <TableHead className="font-albert">Coaching</TableHead>}
                 {showColumn('programs') && <TableHead className="font-albert">Programs</TableHead>}
-                {showColumn('invitedBy') && <TableHead className="font-albert">Invited By</TableHead>}
+                {showColumn('invitedBy') && <TableHead className="font-albert whitespace-nowrap">Invited By</TableHead>}
                 {showColumn('invitedAt') && <TableHead className="font-albert">Invited At</TableHead>}
                 {showColumn('created') && <TableHead className="font-albert">Joined</TableHead>}
                 {showColumn('actions') && !readOnly && <TableHead className="font-albert text-right">Actions</TableHead>}
@@ -1190,8 +1215,8 @@ export function AdminUsersTab({
                     {/* Actions */}
                     {showColumn('actions') && !readOnly && (
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-2">
-                          {/* Message Button - only in coach context */}
+                        <div className="flex items-center justify-end gap-1">
+                          {/* Message Icon Button - only in coach context */}
                           {isCoachContext && !showDemoData && (
                             <button
                               onClick={() => {
@@ -1203,36 +1228,22 @@ export function AdminUsersTab({
                                 }]);
                                 setShowDmModal(true);
                               }}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                              className="h-8 w-8 p-0 inline-flex items-center justify-center rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                               title={`Message ${user.name}`}
                             >
-                              <MessageCircle className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">Message</span>
+                              <MessageCircle className="w-4 h-4" />
                             </button>
                           )}
-                          {/* Actions Dropdown */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b]"
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[160px]">
-                              {canDeleteThisUser && (
-                                <DropdownMenuItem
-                                  onClick={() => setUserToDelete(user)}
-                                  className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  <span className="font-albert">Delete</span>
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {/* Delete Icon Button */}
+                          {canDeleteThisUser && (
+                            <button
+                              onClick={() => setUserToDelete(user)}
+                              className="h-8 w-8 p-0 inline-flex items-center justify-center rounded-lg text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                              title={`Delete ${user.name}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </TableCell>
                     )}

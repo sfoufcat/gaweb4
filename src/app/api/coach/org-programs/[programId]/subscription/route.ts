@@ -102,6 +102,14 @@ export async function POST(
       return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
     }
 
+    // Validate that recurring billing is only allowed for evergreen programs
+    const durationType = program.durationType || 'fixed';
+    if (durationType !== 'evergreen') {
+      return NextResponse.json({ 
+        error: 'Recurring billing is only available for Evergreen programs. Fixed-duration programs must use one-time billing.' 
+      }, { status: 400 });
+    }
+
     // Get org settings for Stripe Connect
     const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
     const orgSettings = orgSettingsDoc.data() as OrgSettings | undefined;

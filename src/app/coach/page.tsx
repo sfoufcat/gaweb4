@@ -142,10 +142,19 @@ export default function CoachPage() {
   const initialTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'clients';
   const [activeTab, setActiveTab] = useState<CoachTab>(initialTab);
 
-  // Handler for tab changes
+  // Handler for tab changes - updates URL without navigation
   const handleTabChange = useCallback((newTab: CoachTab) => {
     setActiveTab(newTab);
-  }, []);
+
+    // Build URL preserving existing query params (like tour=true)
+    const url = new URL(window.location.href);
+    if (newTab === 'clients') {
+      url.searchParams.delete('tab'); // Clean URL for default tab
+    } else {
+      url.searchParams.set('tab', newTab);
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
 
   // Tabs horizontal scroll with mouse wheel - use callback ref for guaranteed attachment
   const tabsListRef = useRef<HTMLDivElement | null>(null);
@@ -271,14 +280,17 @@ export default function CoachPage() {
       return isOrgCoach(membershipOrgRole);
     }
     
-    // Still loading? Wait - don't redirect prematurely
-    if (orgLoading || !clerkOrgsLoaded) {
-      return true; // Assume access while loading (page will re-check)
-    }
-    
-    // Both systems loaded, no membership found - no access
+    // No membership found - no access (loading state handled separately by isAccessLoading)
     return false;
-  }, [isDemoSite, isDefault, role, isClerkAdmin, currentTenantMembership, orgLoading, clerkOrgsLoaded]);
+  }, [isDemoSite, isDefault, role, isClerkAdmin, currentTenantMembership]);
+
+  // Consolidated loading check - true while any auth/org data is still loading
+  const isAccessLoading = useMemo(() => {
+    if (isDemoSite) return false;
+    if (!isLoaded) return true;
+    if (!isDefault && (orgLoading || !clerkOrgsLoaded)) return true;
+    return false;
+  }, [isDemoSite, isLoaded, isDefault, orgLoading, clerkOrgsLoaded]);
   
   // Determine access level for this tenant:
   // - Full access: super_admin, or super_coach in THIS tenant
@@ -352,16 +364,30 @@ export default function CoachPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only on mount to prevent re-renders from searchParams reference changes
 
+  // Sync tab state when browser back/forward changes URL
+  useEffect(() => {
+    const handlePopState = () => {
+      const url = new URL(window.location.href);
+      const tabFromUrl = url.searchParams.get('tab') as CoachTab | null;
+      setActiveTab(tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'clients');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Check authorization (skip on demo site)
   useEffect(() => {
     // Skip auth redirect if coming from OAuth callback (give Clerk time to sync session)
     if (searchParams.get('calendar_connected') || searchParams.get('integration_connected')) {
       return;
     }
-    if (!isDemoSite && isLoaded && mounted && !hasAccess) {
+    // Don't redirect while still loading auth/org data
+    if (isDemoSite || !mounted || isAccessLoading) return;
+    // Now we know for certain: redirect if no access
+    if (!hasAccess) {
       router.push('/');
     }
-  }, [hasAccess, isLoaded, router, mounted, isDemoSite, searchParams]);
+  }, [hasAccess, isAccessLoading, router, mounted, isDemoSite, searchParams]);
 
   // Handle redirect param (for OAuth callback two-step redirect from subdomain to custom domain)
   useEffect(() => {

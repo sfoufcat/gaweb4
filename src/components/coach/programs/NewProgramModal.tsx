@@ -611,7 +611,7 @@ interface StructureStepProps {
 
 function StructureStep({ data, onChange }: StructureStepProps) {
   return (
-    <div className="max-w-md mx-auto space-y-4">
+    <div className="max-w-md mx-auto space-y-6">
       {/* Duration Type - Prominent Toggle */}
       <div className="text-center">
         <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-[#f3f1ef] dark:bg-[#1d222b] border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
@@ -646,9 +646,9 @@ function StructureStep({ data, onChange }: StructureStepProps) {
       </div>
 
       {/* Duration + Modules Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {/* Duration Card */}
-        <div className="p-4 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 border border-[#e1ddd8]/60 dark:border-[#262b35]/60 text-center">
+        <div className="p-4 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 text-center">
           <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
             {data.durationType === 'evergreen' ? 'Cycle Length' : 'Duration'}
           </label>
@@ -656,18 +656,18 @@ function StructureStep({ data, onChange }: StructureStepProps) {
             <button
               onClick={() => onChange({ durationWeeks: Math.max(1, data.durationWeeks - 1) })}
               disabled={data.durationWeeks <= 1}
-              className="w-11 h-11 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
+              className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
             >
               −
             </button>
             <div className="flex flex-col items-center">
-              <span className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums">{data.durationWeeks}</span>
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">weeks</span>
+              <span className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums">{data.durationWeeks}</span>
+              <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">weeks</span>
             </div>
             <button
               onClick={() => onChange({ durationWeeks: Math.min(52, data.durationWeeks + 1) })}
               disabled={data.durationWeeks >= 52}
-              className="w-11 h-11 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
+              className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
             >
               +
             </button>
@@ -675,7 +675,7 @@ function StructureStep({ data, onChange }: StructureStepProps) {
         </div>
 
         {/* Modules Card */}
-        <div className="p-4 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 border border-[#e1ddd8]/60 dark:border-[#262b35]/60 text-center">
+        <div className="p-4 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 text-center">
           <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
             Modules
           </label>
@@ -683,18 +683,18 @@ function StructureStep({ data, onChange }: StructureStepProps) {
             <button
               onClick={() => onChange({ numModules: Math.max(1, data.numModules - 1) })}
               disabled={data.numModules <= 1}
-              className="w-11 h-11 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
+              className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
             >
               −
             </button>
             <div className="flex flex-col items-center">
-              <span className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums">{data.numModules}</span>
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">modules</span>
+              <span className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums">{data.numModules}</span>
+              <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">modules</span>
             </div>
             <button
               onClick={() => onChange({ numModules: Math.min(12, data.numModules + 1) })}
               disabled={data.numModules >= 12}
-              className="w-11 h-11 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
+              className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
             >
               +
             </button>
@@ -702,15 +702,14 @@ function StructureStep({ data, onChange }: StructureStepProps) {
         </div>
       </div>
 
-      {/* Weeks per module + Weekends - tighter spacing */}
-      <div className="space-y-1">
-        <p className="text-center text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
-          {Math.round(data.durationWeeks / data.numModules * 10) / 10} weeks per module
-        </p>
+      {/* Weeks per module calculation */}
+      <p className="text-center text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
+        {Math.round(data.durationWeeks / data.numModules * 10) / 10} weeks per module
+      </p>
 
-        {/* Weekends Toggle */}
-      <div className="flex items-center justify-between p-4 rounded-2xl bg-transparent md:bg-[#faf8f6] dark:bg-transparent dark:md:bg-[#1d222b]/50">
-        <div>
+      {/* Weekends Toggle */}
+      <div className="flex items-center justify-center gap-8 p-4 rounded-2xl bg-[#faf8f6] dark:bg-[#1d222b]/50">
+        <div className="text-center">
           <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             Include Weekends
           </label>
@@ -722,7 +721,6 @@ function StructureStep({ data, onChange }: StructureStepProps) {
           checked={data.includeWeekends}
           onCheckedChange={(checked) => onChange({ includeWeekends: checked })}
         />
-      </div>
       </div>
     </div>
   );

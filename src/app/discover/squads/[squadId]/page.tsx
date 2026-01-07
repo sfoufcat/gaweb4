@@ -171,7 +171,7 @@ function FAQItem({
   accentLight: string;
 }) {
   return (
-    <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] overflow-hidden">
+    <div className="bg-white/70 dark:bg-[#171b22]/70 backdrop-blur-md rounded-2xl border border-white/50 dark:border-white/10 overflow-hidden shadow-sm">
       <button
         onClick={onToggle}
         className="w-full flex items-center justify-between p-5 text-left hover:bg-[#faf8f6] dark:hover:bg-[#1d222b] transition-colors"
@@ -417,10 +417,19 @@ export default function SquadDetailPage() {
   return (
     <div className="min-h-[100dvh] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col">
       {/* Hero Section - Full Width */}
-      <div className="relative">
+      <div className="relative overflow-hidden">
+        {/* Decorative blur elements */}
+        <div 
+          className="absolute -top-20 -right-20 w-64 h-64 rounded-full blur-3xl opacity-40"
+          style={{ background: `radial-gradient(circle, ${hexToRgba(accentLight, 0.6)}, transparent)` }}
+        />
+        <div 
+          className="absolute -bottom-10 -left-10 w-48 h-48 rounded-full blur-3xl opacity-30"
+          style={{ background: `radial-gradient(circle, ${hexToRgba(accentDark, 0.5)}, transparent)` }}
+        />
         <div 
           className="h-[200px] sm:h-[260px] w-full relative"
-          style={{ background: `linear-gradient(to bottom right, ${hexToRgba(accentLight, 0.3)}, ${hexToRgba(accentLightHover, 0.1)})` }}
+          style={{ background: `linear-gradient(135deg, ${hexToRgba(accentLight, 0.25)}, ${hexToRgba(accentLightHover, 0.08)}, ${hexToRgba(accentDark, 0.15)})` }}
         >
           {squad.avatarUrl ? (
             <div className="w-full h-full flex items-center justify-center">
@@ -463,8 +472,17 @@ export default function SquadDetailPage() {
       </div>
 
       {/* Main Content Container */}
-      <div className="bg-[#faf8f6] dark:bg-[#05070b] flex-shrink-0">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pt-8 pb-16">
+      <div className="bg-[#faf8f6] dark:bg-[#05070b] flex-shrink-0 relative">
+        {/* Ambient background gradients */}
+        <div 
+          className="absolute top-40 right-0 w-[500px] h-[500px] rounded-full blur-[120px] opacity-[0.15] pointer-events-none"
+          style={{ background: `radial-gradient(circle, ${accentLight}, transparent)` }}
+        />
+        <div 
+          className="absolute top-[600px] left-0 w-[400px] h-[400px] rounded-full blur-[100px] opacity-[0.1] pointer-events-none"
+          style={{ background: `radial-gradient(circle, ${accentDark}, transparent)` }}
+        />
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pt-8 pb-16 relative">
           
           {/* Top Section - Two Column Grid */}
           <div className="grid lg:grid-cols-5 gap-8 lg:gap-12 items-start">
@@ -510,7 +528,7 @@ export default function SquadDetailPage() {
 
               {/* Coach Info */}
               {squad.coachId && (
-                <div className="flex items-center gap-4 p-4 bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]">
+                <div className="flex items-center gap-4 p-4 bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-md rounded-2xl border border-white/40 dark:border-white/10">
                   {squad.coachImageUrl ? (
                     <Image
                       src={squad.coachImageUrl}
@@ -583,7 +601,7 @@ export default function SquadDetailPage() {
 
               {/* Testimonial Preview (single) */}
               {squad.testimonials && squad.testimonials.length > 0 && (
-                <div className="mt-8 bg-white dark:bg-[#171b22] rounded-2xl p-6 border border-[#e1ddd8] dark:border-[#262b35]">
+                <div className="mt-8 bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-md rounded-2xl p-6 border border-white/40 dark:border-white/10">
                   <div className="flex items-center gap-1 mb-3">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star
@@ -629,7 +647,7 @@ export default function SquadDetailPage() {
 
             {/* Right Column - Sticky Pricing Card */}
             <div className="lg:col-span-2 lg:sticky lg:top-8">
-              <div className="bg-white dark:bg-[#171b22] rounded-3xl p-6 sm:p-8 shadow-lg border border-[#e1ddd8] dark:border-[#262b35]">
+              <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl rounded-[32px] p-6 sm:p-8 shadow-2xl shadow-black/5 dark:shadow-black/20 border border-white/50 dark:border-white/10 ring-1 ring-black/[0.03] dark:ring-white/[0.05]">
                 {/* Squad badge */}
                 <div className="flex items-center justify-center gap-2 mb-6">
                   <div 
@@ -749,7 +767,7 @@ export default function SquadDetailPage() {
           
           {/* What's Included Card */}
           {squad.features && squad.features.length > 0 && (
-            <div className="mt-12 bg-white dark:bg-[#171b22] rounded-3xl p-6 sm:p-10 border border-[#e1ddd8] dark:border-[#262b35]">
+            <div className="mt-12 bg-white/70 dark:bg-[#171b22]/70 backdrop-blur-lg rounded-[32px] p-6 sm:p-10 border border-white/50 dark:border-white/10 shadow-xl shadow-black/[0.03] dark:shadow-black/20">
               <h2 className="font-albert text-[22px] sm:text-[26px] font-semibold text-text-primary text-center mb-8 tracking-[-1px]">
                 What&apos;s included
               </h2>
@@ -793,7 +811,7 @@ export default function SquadDetailPage() {
 
           {/* All Testimonials Card */}
           {squad.testimonials && squad.testimonials.length > 1 && (
-            <div className="mt-8 bg-white dark:bg-[#171b22] rounded-3xl p-6 sm:p-10 border border-[#e1ddd8] dark:border-[#262b35]">
+            <div className="mt-8 bg-white/70 dark:bg-[#171b22]/70 backdrop-blur-lg rounded-[32px] p-6 sm:p-10 border border-white/50 dark:border-white/10 shadow-xl shadow-black/[0.03] dark:shadow-black/20">
               <h2 className="font-albert text-[22px] sm:text-[26px] font-semibold text-text-primary text-center mb-8 tracking-[-1px]">
                 What members are saying
               </h2>
@@ -877,11 +895,13 @@ export default function SquadDetailPage() {
         </div>
       </div>
 
-      {/* Bottom Floating CTA - Dark Card */}
+      {/* Bottom Floating CTA - Glass Card */}
       {!isMember && (
         <div 
-          className="bg-[#1a1a1a] pt-12 pb-24 md:pb-12 rounded-[32px] mt-auto mx-4 sm:mx-6 lg:mx-10 mb-8"
+          className="relative overflow-hidden bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] pt-12 pb-24 md:pb-12 rounded-[40px] mt-auto mx-4 sm:mx-6 lg:mx-10 mb-8 border border-white/[0.08] shadow-2xl"
         >
+          {/* Glass highlight at top */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           <div className="max-w-[600px] mx-auto px-4 text-center">
             <h2 className="font-albert text-[24px] sm:text-[28px] font-semibold text-white mb-3 tracking-[-1px]">
               Ready to join the squad?

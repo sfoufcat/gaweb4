@@ -226,9 +226,46 @@ export async function PUT(
       }
     }
     
-    // Subscription settings
-    if (body.subscriptionEnabled !== undefined) updateData.subscriptionEnabled = body.subscriptionEnabled;
-    if (body.billingInterval !== undefined) updateData.billingInterval = body.billingInterval;
+    // Subscription settings - validate that recurring is only allowed for evergreen programs
+    if (body.subscriptionEnabled !== undefined) {
+      // Get the effective durationType (either from the update or existing data)
+      const effectiveDurationType = body.durationType ?? currentData?.durationType ?? 'fixed';
+      
+      // Recurring billing is only allowed for evergreen programs
+      if (body.subscriptionEnabled === true && effectiveDurationType !== 'evergreen') {
+        return NextResponse.json(
+          { error: 'Recurring billing is only available for Evergreen programs. Fixed-duration programs must use one-time billing.' },
+          { status: 400 }
+        );
+      }
+      
+      updateData.subscriptionEnabled = body.subscriptionEnabled;
+      
+      // If disabling subscription, also clear billing interval
+      if (body.subscriptionEnabled === false) {
+        updateData.billingInterval = null;
+      }
+    }
+    
+    if (body.billingInterval !== undefined) {
+      // Validate billing interval is only set when subscription is enabled
+      const effectiveSubscriptionEnabled = body.subscriptionEnabled ?? currentData?.subscriptionEnabled ?? false;
+      if (effectiveSubscriptionEnabled) {
+        updateData.billingInterval = body.billingInterval;
+      }
+    }
+    
+    // Handle durationType changes - if switching to fixed, disable subscription
+    if (body.durationType !== undefined && body.durationType !== currentData?.durationType) {
+      updateData.durationType = body.durationType;
+      
+      // If switching to fixed duration, force disable subscription
+      if (body.durationType === 'fixed' && currentData?.subscriptionEnabled) {
+        updateData.subscriptionEnabled = false;
+        updateData.billingInterval = null;
+        console.log(`[COACH_ORG_PROGRAM_PUT] Program ${programId} switched to fixed duration - disabled recurring subscription`);
+      }
+    }
     
     // Handle clientCommunityEnabled for individual programs
     if (body.clientCommunityEnabled !== undefined && currentData?.type === 'individual') {

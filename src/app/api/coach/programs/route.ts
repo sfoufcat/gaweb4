@@ -31,6 +31,10 @@ interface CreateProgramRequest {
   pricing: 'free' | 'paid';
   price?: number; // in dollars
   status: 'active' | 'draft';
+  
+  // Subscription settings (only valid for evergreen programs)
+  subscriptionEnabled?: boolean;
+  billingInterval?: 'monthly' | 'quarterly' | 'yearly';
 }
 
 function slugify(text: string): string {
@@ -63,12 +67,31 @@ export async function POST(request: NextRequest) {
       pricing,
       price,
       status,
+      subscriptionEnabled,
+      billingInterval,
     } = body;
 
     // Validate required fields
     if (!type || !name || !durationWeeks) {
       return NextResponse.json(
         { error: 'type, name, and durationWeeks are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate subscription settings: recurring billing is only allowed for evergreen programs
+    const effectiveDurationType = durationType || 'fixed';
+    if (effectiveDurationType !== 'evergreen' && subscriptionEnabled) {
+      return NextResponse.json(
+        { error: 'Recurring billing is only available for Evergreen programs. Fixed-duration programs must use one-time billing.' },
+        { status: 400 }
+      );
+    }
+
+    // Validate billing interval is required when subscription is enabled
+    if (subscriptionEnabled && !billingInterval) {
+      return NextResponse.json(
+        { error: 'Billing interval is required when subscription is enabled.' },
         { status: 400 }
       );
     }
@@ -109,9 +132,12 @@ export async function POST(request: NextRequest) {
       type: type === 'group' ? 'group' : 'individual',
       lengthDays,
       lengthWeeks: durationWeeks,
-      durationType: durationType || 'fixed', // Default to 'fixed' for backward compatibility
+      durationType: effectiveDurationType,
       priceInCents: pricing === 'paid' && price ? Math.round(price * 100) : 0,
       currency: 'usd',
+      // Subscription settings (only for evergreen programs with paid pricing)
+      subscriptionEnabled: effectiveDurationType === 'evergreen' && subscriptionEnabled === true,
+      billingInterval: effectiveDurationType === 'evergreen' && subscriptionEnabled ? (billingInterval || 'monthly') : undefined,
       defaultHabits: [],
       includeWeekends,
       hasModules: numModules > 1,

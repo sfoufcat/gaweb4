@@ -4023,27 +4023,53 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     </div>
 
                     {/* Subscription Settings */}
-                    {programFormData.priceInCents > 0 && (
-                      <div className="space-y-3 p-4 bg-[#faf8f6] dark:bg-[#1d222b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]">
+                    {programFormData.priceInCents > 0 && (() => {
+                      // Recurring billing is only allowed for evergreen programs
+                      const isEvergreen = editingProgram?.durationType === 'evergreen';
+                      const canEnableRecurring = isEvergreen;
+                      
+                      return (
+                      <div className={`space-y-3 p-4 rounded-lg border ${
+                        canEnableRecurring 
+                          ? 'bg-[#faf8f6] dark:bg-[#1d222b] border-[#e1ddd8] dark:border-[#262b35]'
+                          : 'bg-[#faf8f6]/50 dark:bg-[#1d222b]/50 border-[#e1ddd8]/50 dark:border-[#262b35]/50'
+                      }`}>
                         <div className="flex items-center gap-2">
                           <BrandedCheckbox
-                            checked={programFormData.subscriptionEnabled}
-                            onChange={(checked) => setProgramFormData({ ...programFormData, subscriptionEnabled: checked })}
+                            checked={programFormData.subscriptionEnabled && canEnableRecurring}
+                            onChange={(checked) => {
+                              if (canEnableRecurring) {
+                                setProgramFormData({ ...programFormData, subscriptionEnabled: checked });
+                              }
+                            }}
+                            disabled={!canEnableRecurring}
                           />
                           <div 
-                            className="cursor-pointer" 
-                            onClick={() => setProgramFormData({ ...programFormData, subscriptionEnabled: !programFormData.subscriptionEnabled })}
+                            className={canEnableRecurring ? "cursor-pointer" : "cursor-not-allowed opacity-60"}
+                            onClick={() => {
+                              if (canEnableRecurring) {
+                                setProgramFormData({ ...programFormData, subscriptionEnabled: !programFormData.subscriptionEnabled });
+                              }
+                            }}
                           >
-                            <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                            <span className={`text-sm font-medium font-albert ${
+                              canEnableRecurring ? 'text-[#1a1a1a] dark:text-[#f5f5f8]' : 'text-[#a7a39e] dark:text-[#7d8190]'
+                            }`}>
                               Enable recurring subscription
                             </span>
-                            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
-                              Users will be charged automatically each billing period
-                            </p>
+                            {!isEvergreen ? (
+                              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                                Recurring billing is only available for Evergreen programs
+                              </p>
+                            ) : (
+                              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                                Users will be charged automatically each billing period
+                              </p>
+                            )}
                           </div>
                         </div>
 
-                        {programFormData.subscriptionEnabled && (
+                        {programFormData.subscriptionEnabled && canEnableRecurring && (
                           <div className="mt-3">
                             <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
                               Billing Interval
@@ -4070,7 +4096,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           </div>
                         )}
                       </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Daily Focus Settings */}
                     <div>
