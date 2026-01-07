@@ -88,7 +88,7 @@ export async function GET(request: Request) {
           // Sync program tasks for this user
           const result = await syncProgramV2TasksForToday(userId);
 
-          if (result && (result.synced > 0 || result.created > 0)) {
+          if (result && result.tasksCreated > 0) {
             syncedCount++;
             console.log(`[CRON_PROGRAMS_SYNC] Synced tasks for user ${userId}:`, result);
           } else {

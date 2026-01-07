@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     // This ensures users get program tasks when they open the app (timezone-aware)
     const today = new Date().toISOString().split('T')[0];
     if (date === today) {
-      const hasProgramTasks = tasks.some(t => t.source === 'program');
+      const hasProgramTasks = tasks.some(t => t.sourceType === 'program');
 
       if (!hasProgramTasks) {
         try {
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
             console.log(`[TASKS_GET] Lazy sync result:`, syncResult);
 
             // Re-fetch tasks to include newly synced program tasks
-            if (syncResult && (syncResult.synced > 0 || syncResult.created > 0)) {
+            if (syncResult && syncResult.tasksCreated > 0) {
               const refreshSnapshot = await tasksRef.get();
               tasks.length = 0; // Clear existing tasks
               refreshSnapshot.forEach((doc) => {
