@@ -110,6 +110,12 @@ export function ChatChannelsProvider({
   const fetchingRef = useRef(false);
   const lastFetchTimeRef = useRef<number>(0);
 
+  // Track if cache was loaded to prevent infinite loop
+  const cacheLoadedRef = useRef(false);
+
+  // Ref for fetchChannels to avoid circular dependency in effects
+  const fetchChannelsRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
   // SSR squad channel IDs - ready immediately for filtering
   const ssrSquadChannelIds = useMemo(
     () => new Set(initialSquadChannelIds || []),
@@ -137,24 +143,27 @@ export function ChatChannelsProvider({
   const prevUserIdRef = useRef<string | null>(null);
 
   // Load cached channels immediately on mount for instant display
+  // IMPORTANT: Do NOT include 'channels' or 'isInitialized' in deps to avoid infinite loop
   useEffect(() => {
     const userId = client?.userID;
     if (!userId) return;
 
-    // Detect user change and clear cache
+    // Detect user change and reset cache tracking
     if (prevUserIdRef.current && prevUserIdRef.current !== userId) {
       clearUserChannelCache(prevUserIdRef.current);
+      cacheLoadedRef.current = false;
       setChannels([]);
       setIsInitialized(false);
     }
     prevUserIdRef.current = userId;
 
-    // If already initialized with real data, skip cache load
-    if (isInitialized && channels.length > 0 && channels[0]?.channel) return;
+    // Skip if we already loaded cache for this user
+    if (cacheLoadedRef.current) return;
 
     // Load from cache for instant display
     const cached = getCachedChannels(userId);
     if (cached && cached.length > 0) {
+      cacheLoadedRef.current = true; // Mark as loaded BEFORE setState
       // Convert cached previews to ChannelPreview (with null channel)
       const cachedPreviews: ChannelPreview[] = cached.map((c: CachedChannelPreview) => ({
         id: c.id,
@@ -169,7 +178,7 @@ export function ChatChannelsProvider({
       setChannels(cachedPreviews);
       setIsInitialized(true); // Show channels immediately!
     }
-  }, [client?.userID, isInitialized, channels]);
+  }, [client?.userID]); // Removed isInitialized and channels to prevent infinite loop
 
   /**
    * Process a Stream channel into a ChannelPreview
@@ -405,6 +414,9 @@ export function ChatChannelsProvider({
     }
   }, [client, fetchOrgChannels, processChannel, userSquadChannelIds, hasSSRFilterData, orgChannelIds, isPlatformMode]);
 
+  // Keep ref updated for use in effects that shouldn't re-run when fetchChannels changes
+  fetchChannelsRef.current = fetchChannels;
+
   /**
    * Update a single channel's preview (for real-time updates)
    */
@@ -538,15 +550,16 @@ export function ChatChannelsProvider({
   }, [client, handleChannelEvent]);
 
   // Re-fetch when squad data changes (user might have joined/left squads)
+  // Use fetchChannelsRef to avoid circular dependency (fetchChannels updates state it depends on)
   useEffect(() => {
     if (isInitialized && squadChannelsLoaded && client?.user) {
       // Debounce to avoid excessive refetches
       const timer = setTimeout(() => {
-        fetchChannels();
+        fetchChannelsRef.current();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [userSquadChannelIds, isInitialized, squadChannelsLoaded, client, fetchChannels]);
+  }, [userSquadChannelIds, isInitialized, squadChannelsLoaded, client]); // Removed fetchChannels - using ref instead
 
   const value = useMemo(
     () => ({

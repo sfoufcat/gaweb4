@@ -25,7 +25,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
     const container = scrollRef.current;
-    const cardWidth = 280; // card width + gap
+    const cardWidth = 340; // card width + gap
     const newIndex = Math.round(container.scrollLeft / cardWidth);
     setActiveIndex(Math.max(0, Math.min(newIndex, enrollments.length - 1)));
   }, [enrollments.length]);
@@ -52,9 +52,9 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
         {[1, 2].map((i) => (
           <div 
             key={i}
-            className="flex-shrink-0 w-[260px] glass-card p-4 animate-pulse"
+            className="flex-shrink-0 w-[280px] sm:w-[340px] glass-card p-4 animate-pulse"
           >
-            <div className="w-full h-[140px] rounded-xl bg-text-primary/10 mb-3" />
+            <div className="w-full h-[160px] rounded-xl bg-text-primary/10 mb-3" />
             <div className="h-5 bg-text-primary/10 rounded w-3/4 mb-2" />
             <div className="h-4 bg-text-primary/5 rounded w-1/2" />
           </div>
@@ -140,11 +140,11 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
           <Link
             key={enrollment.id}
             href={`/program?programId=${enrollment.programId}`}
-            className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
+            className="flex-shrink-0 w-[280px] sm:w-[340px] snap-start"
           >
             <div className="glass-card overflow-hidden cursor-pointer group h-full flex flex-col">
               {/* Cover Image */}
-              <div className="relative w-full h-[140px] overflow-hidden flex-shrink-0">
+              <div className="relative w-full h-[160px] overflow-hidden flex-shrink-0">
                 {enrollment.program.coverImageUrl ? (
                   <>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10" />
@@ -153,7 +153,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                       alt={enrollment.program.name}
                       fill
                       className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-                      sizes="280px"
+                      sizes="340px"
                     />
                   </>
                 ) : (
@@ -238,7 +238,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
         {hasAvailablePrograms && (
           <Link
             href="/discover"
-            className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
+            className="flex-shrink-0 w-[280px] sm:w-[340px] snap-start"
           >
             <div className="glass-card border-dashed border-brand-accent/30 h-full min-h-[280px] flex items-center justify-center hover:border-brand-accent/60 transition-all group">
               <div className="text-center p-4">
@@ -262,7 +262,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
               key={i}
               onClick={() => {
                 scrollRef.current?.scrollTo({
-                  left: i * 280,
+                  left: i * 340,
                   behavior: 'smooth',
                 });
               }}
@@ -278,7 +278,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
             <button
               onClick={() => {
                 scrollRef.current?.scrollTo({
-                  left: enrollments.length * 280,
+                  left: enrollments.length * 340,
                   behavior: 'smooth',
                 });
               }}
