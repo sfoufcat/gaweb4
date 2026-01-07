@@ -7,6 +7,7 @@ import { Users, User, ChevronRight, Plus } from 'lucide-react';
 import type { ProgramEnrollmentWithDetails } from '@/hooks/useDashboard';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { MenuIcon } from '@/lib/menu-icons';
+import { TypeBadge, EnrolledBadge } from '@/components/ui/program-badges';
 
 interface ProgramCarouselProps {
   enrollments: ProgramEnrollmentWithDetails[];
@@ -169,35 +170,12 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
 
                 {/* Type badge - top left */}
                 <div className="absolute top-3 left-3 z-20">
-                  <span className={`glass-badge px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
-                    enrollment.program.type === 'group'
-                      ? 'bg-blue-500/90 text-white'
-                      : 'bg-purple-500/90 text-white'
-                  }`}>
-                    {enrollment.program.type === 'group' ? (
-                      <>
-                        <Users className="w-3 h-3" />
-                        Group
-                      </>
-                    ) : (
-                      <>
-                        <User className="w-3 h-3" />
-                        1:1
-                      </>
-                    )}
-                  </span>
+                  <TypeBadge type={enrollment.program.type} />
                 </div>
 
                 {/* Status badge - top right */}
                 <div className="absolute top-3 right-3 z-20">
-                  <span className={`glass-badge px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
-                    enrollment.status === 'active'
-                      ? 'bg-emerald-500/85 text-white'
-                      : 'bg-brand-accent/85 text-white'
-                  }`}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                    {enrollment.status === 'active' ? 'Active' : 'Upcoming'}
-                  </span>
+                  <EnrolledBadge status={enrollment.status === 'active' ? 'active' : 'enrolled'} />
                 </div>
               </div>
 

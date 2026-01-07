@@ -1796,7 +1796,7 @@ export function DashboardPage() {
                 
                 <Link
                   href="/checkin/morning/start"
-                  className="inline-flex items-center gap-2 mt-6 px-7 py-3.5 bg-gradient-to-r from-[#2c2520] to-[#3d3530] dark:from-brand-accent dark:to-brand-accent/90 text-white rounded-full font-sans text-[14px] font-medium shadow-lg shadow-black/10 dark:shadow-brand-accent/20 hover:shadow-xl hover:shadow-black/15 dark:hover:shadow-brand-accent/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                  className="inline-flex items-center gap-2 mt-6 px-7 py-3.5 bg-brand-accent text-brand-accent-foreground rounded-full font-sans text-[14px] font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                 >
                   Start Check-In
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

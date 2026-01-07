@@ -16,7 +16,11 @@ import {
   GripVertical,
   Trash2,
   AlertTriangle,
-  Shuffle
+  Shuffle,
+  Phone,
+  BookOpen,
+  CheckSquare,
+  LayoutList
 } from 'lucide-react';
 
 // Selection types (same as ProgramSidebarNav for compatibility)
@@ -523,6 +527,18 @@ export function ModuleWeeksSidebar({
     return 'future';
   }, [currentDayIndex]);
 
+  // Helper to get day content types for displaying icons
+  const getDayContentTypes = useCallback((dayIndex: number): { hasTasks: boolean; hasCourses: boolean; hasCalls: boolean } => {
+    const day = days.find(d => d.dayIndex === dayIndex);
+    if (!day) return { hasTasks: false, hasCourses: false, hasCalls: false };
+
+    const hasTasks = (day.tasks?.length || 0) > 0;
+    const hasCourses = (day.courseAssignments?.length || 0) > 0;
+    const hasCalls = day.scheduledItems?.some(item => item.type === 'call') || false;
+
+    return { hasTasks, hasCourses, hasCalls };
+  }, [days]);
+
   if (isLoading) {
     return (
       <div className="w-80 flex-shrink-0 space-y-4 animate-pulse">
@@ -560,22 +576,22 @@ export function ModuleWeeksSidebar({
     const hasWeeklyContent = week.weeklyTasks.length > 0 || week.theme;
     const weekStatus = getWeekStatus(week);
 
-    // Status-based background colors (pastel)
+    // Status-based background colors (very light pastel)
     const statusBgClass = weekStatus === 'past'
-      ? 'bg-amber-50/80 dark:bg-amber-900/20'
+      ? 'bg-amber-50/50 dark:bg-amber-950/20'
       : weekStatus === 'active'
-      ? 'bg-emerald-50/80 dark:bg-emerald-900/20'
+      ? 'bg-emerald-50/50 dark:bg-emerald-950/20'
       : '';
 
     return (
       <div className="group/week">
-        {/* Week row - with status-based coloring */}
+        {/* Week row - with status-based coloring and modern selection */}
         <div
-          className={`p-4 transition-colors ${statusBgClass} ${
-            !statusBgClass ? 'bg-white/60 dark:bg-[#171b22]/60' : ''
+          className={`p-4 transition-all duration-150 ${statusBgClass} ${
+            !statusBgClass ? 'bg-white/40 dark:bg-[#171b22]/40' : ''
           } ${
             canReorder ? 'cursor-grab active:cursor-grabbing' : ''
-          } ${isWeekSelected ? 'ring-2 ring-brand-accent ring-inset' : ''} hover:brightness-95 dark:hover:brightness-110`}
+          } ${isWeekSelected ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)]' : ''} hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a]`}
         >
           <div className="flex items-center gap-4">
             {/* Drag handle - only show in template mode */}
@@ -587,20 +603,20 @@ export function ModuleWeeksSidebar({
               <div className="w-5" /> /* Spacer to maintain alignment */
             )}
 
-            {/* Week icon - status-based coloring */}
+            {/* Week icon - status-based coloring (lighter) */}
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
               weekStatus === 'past'
-                ? 'bg-amber-100 dark:bg-amber-800/30'
+                ? 'bg-amber-100/70 dark:bg-amber-900/25'
                 : weekStatus === 'active'
-                ? 'bg-emerald-100 dark:bg-emerald-800/30'
-                : 'bg-slate-100 dark:bg-slate-800/30'
+                ? 'bg-emerald-100/70 dark:bg-emerald-900/25'
+                : 'bg-slate-100/70 dark:bg-slate-800/30'
             }`}>
               <Calendar className={`w-5 h-5 ${
                 weekStatus === 'past'
-                  ? 'text-amber-600 dark:text-amber-400'
+                  ? 'text-amber-500 dark:text-amber-400'
                   : weekStatus === 'active'
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-slate-500 dark:text-slate-400'
+                  ? 'text-emerald-500 dark:text-emerald-400'
+                  : 'text-slate-400 dark:text-slate-500'
               }`} />
             </div>
 
@@ -680,45 +696,59 @@ export function ModuleWeeksSidebar({
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.25, ease: "easeInOut" }}
               style={{ overflow: "hidden" }}
-              className="bg-[#faf8f6] dark:bg-[#1a1e25] border-t border-[#e1ddd8] dark:border-[#262b35]"
+              className="bg-white/30 dark:bg-[#171b22]/30"
             >
               {week.daysInWeek.map((dayIndex) => {
-                const hasContent = dayHasContent(dayIndex);
                 const isDaySelected = isSelected({ type: 'day', dayIndex });
                 const dayStatus = getDayStatus(dayIndex);
+                const contentTypes = getDayContentTypes(dayIndex);
 
-                // Status-based background colors for days
+                // Status-based background colors for days (lighter)
                 const dayStatusBgClass = dayStatus === 'past'
-                  ? 'bg-amber-50/60 dark:bg-amber-900/15'
+                  ? 'bg-amber-50/40 dark:bg-amber-950/15'
                   : dayStatus === 'active'
-                  ? 'bg-emerald-50/60 dark:bg-emerald-900/15'
+                  ? 'bg-emerald-50/40 dark:bg-emerald-950/15'
                   : '';
 
                 return (
                   <button
                     key={dayIndex}
                     onClick={() => onSelect({ type: 'day', dayIndex, moduleId })}
-                    className={`w-full text-left flex items-center gap-3 px-4 py-3 pl-[72px] transition-colors ${dayStatusBgClass} ${
+                    className={`w-full text-left flex items-center gap-3 px-4 py-3 pl-[72px] transition-all duration-150 ${dayStatusBgClass} ${
                       isDaySelected
-                        ? 'ring-2 ring-brand-accent ring-inset text-brand-accent'
+                        ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)] text-brand-accent'
                         : dayStatus === 'past'
-                        ? 'text-amber-700 dark:text-amber-400'
+                        ? 'text-amber-600 dark:text-amber-400'
                         : dayStatus === 'active'
-                        ? 'text-emerald-700 dark:text-emerald-400'
+                        ? 'text-emerald-600 dark:text-emerald-400'
                         : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-                    } hover:brightness-95 dark:hover:brightness-110`}
+                    } hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a]`}
                   >
-                    <FileText className={`w-4 h-4 ${
-                      dayStatus === 'past' ? 'text-amber-500 dark:text-amber-400' :
-                      dayStatus === 'active' ? 'text-emerald-500 dark:text-emerald-400' :
-                      ''
+                    <FileText className={`w-4 h-4 flex-shrink-0 ${
+                      isDaySelected ? 'text-brand-accent' :
+                      dayStatus === 'past' ? 'text-amber-400 dark:text-amber-500' :
+                      dayStatus === 'active' ? 'text-emerald-400 dark:text-emerald-500' :
+                      'text-[#a7a39e] dark:text-[#7d8190]'
                     }`} />
-                    <span className="font-medium">Day {dayIndex}</span>
-                    {hasContent && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded">
-                        ✓
-                      </span>
-                    )}
+                    <span className="font-medium flex-1">Day {dayIndex}</span>
+                    {/* Content type icons - shown on the right */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {contentTypes.hasTasks && (
+                        <span title="Has tasks">
+                          <CheckSquare className="w-3.5 h-3.5 text-[#a7a39e] dark:text-[#7d8190]" />
+                        </span>
+                      )}
+                      {contentTypes.hasCourses && (
+                        <span title="Has course content">
+                          <BookOpen className="w-3.5 h-3.5 text-[#a7a39e] dark:text-[#7d8190]" />
+                        </span>
+                      )}
+                      {contentTypes.hasCalls && (
+                        <span title="Has scheduled call">
+                          <Phone className="w-3.5 h-3.5 text-[#a7a39e] dark:text-[#7d8190]" />
+                        </span>
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -744,23 +774,23 @@ export function ModuleWeeksSidebar({
     const weekCount = moduleWeeks.length;
     const moduleStatus = getModuleStatus(moduleWeeks);
 
-    // Status-based background colors for modules
+    // Status-based background colors for modules (lighter)
     const moduleStatusBgClass = moduleStatus === 'past'
-      ? 'bg-amber-50/60 dark:bg-amber-900/15'
+      ? 'bg-amber-50/40 dark:bg-amber-950/15'
       : moduleStatus === 'active'
-      ? 'bg-emerald-50/60 dark:bg-emerald-900/15'
-      : 'bg-white/40 dark:bg-[#171b22]/40';
+      ? 'bg-emerald-50/40 dark:bg-emerald-950/15'
+      : 'bg-white/30 dark:bg-[#171b22]/30';
 
     return (
       <div
         key={module.id}
-        className="overflow-hidden"
+        className="overflow-hidden rounded-xl"
       >
-        {/* Module Header - glassmorphism style with status coloring */}
+        {/* Module Header - glassmorphism style with status coloring and modern selection */}
         <div
-          className={`p-4 backdrop-blur-sm transition-colors ${moduleStatusBgClass} ${
+          className={`p-4 backdrop-blur-sm transition-all duration-150 ${moduleStatusBgClass} ${
             canReorder ? 'cursor-grab active:cursor-grabbing' : ''
-          } group ${isModuleSelected ? 'ring-2 ring-brand-accent ring-inset' : ''} hover:brightness-95 dark:hover:brightness-110`}
+          } group ${isModuleSelected ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)]' : ''} hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a]`}
         >
           <div className="flex items-center gap-4">
             {/* Drag handle for module - only show in template mode */}
@@ -772,20 +802,20 @@ export function ModuleWeeksSidebar({
               <div className="w-5" /> /* Spacer to maintain alignment */
             )}
 
-            {/* Module icon - status-based coloring */}
+            {/* Module icon - status-based coloring (lighter) */}
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
               moduleStatus === 'past'
-                ? 'bg-amber-100 dark:bg-amber-800/30'
+                ? 'bg-amber-100/60 dark:bg-amber-900/20'
                 : moduleStatus === 'active'
-                ? 'bg-emerald-100 dark:bg-emerald-800/30'
-                : 'bg-slate-100 dark:bg-slate-800/30'
+                ? 'bg-emerald-100/60 dark:bg-emerald-900/20'
+                : 'bg-slate-100/60 dark:bg-slate-800/25'
             }`}>
               <Folder className={`w-5 h-5 ${
                 moduleStatus === 'past'
-                  ? 'text-amber-600 dark:text-amber-400'
+                  ? 'text-amber-500 dark:text-amber-400'
                   : moduleStatus === 'active'
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-slate-500 dark:text-slate-400'
+                  ? 'text-emerald-500 dark:text-emerald-400'
+                  : 'text-slate-400 dark:text-slate-500'
               }`} />
             </div>
 
@@ -895,10 +925,18 @@ export function ModuleWeeksSidebar({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full flex flex-col">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <LayoutList className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+          <h3 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Structure</h3>
+        </div>
+      </div>
+
       {/* Modules & Weeks Tree */}
-      <div className="overflow-hidden">
-        <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto p-4">
+      <div className="flex-1 overflow-hidden">
+        <div className="space-y-3 h-full max-h-[calc(100vh-280px)] lg:max-h-none overflow-y-auto p-4">
         {sortedModules.length === 0 ? (
           // No modules yet - prompt to add one (only in template mode)
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6 text-center">
@@ -927,7 +965,7 @@ export function ModuleWeeksSidebar({
             axis="y"
             values={sortedModules}
             onReorder={handleModuleReorder}
-            className="space-y-4"
+            className="space-y-3"
           >
             {sortedModules.map((module) => (
               <Reorder.Item as="div" key={module.id} value={module}>
@@ -937,7 +975,7 @@ export function ModuleWeeksSidebar({
           </Reorder.Group>
         ) : (
           // Static modules list (client view mode - no reordering)
-          <div className="space-y-4">
+          <div className="space-y-3">
             {sortedModules.map((module) => renderModuleWithWeeks(module))}
           </div>
         )}
@@ -967,18 +1005,18 @@ export function ModuleWeeksSidebar({
 
         {/* Status Legend - only show when viewing client progress */}
         {currentDayIndex && (
-          <div className="px-4 py-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+          <div className="px-4 py-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex-shrink-0">
             <div className="flex items-center justify-center gap-4 text-xs font-albert">
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-amber-100 dark:bg-amber-800/40" />
+                <div className="w-3 h-3 rounded bg-amber-100/70 dark:bg-amber-900/30" />
                 <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Past</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-emerald-100 dark:bg-emerald-800/40" />
+                <div className="w-3 h-3 rounded bg-emerald-100/70 dark:bg-emerald-900/30" />
                 <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Active</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-slate-100 dark:bg-slate-800/40" />
+                <div className="w-3 h-3 rounded bg-slate-100/70 dark:bg-slate-800/30" />
                 <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Future</span>
               </div>
             </div>

@@ -1,0 +1,153 @@
+'use client';
+
+import { useState, useRef, TouchEvent, ReactNode } from 'react';
+import { cn } from '@/lib/utils';
+
+export interface SwipeAction {
+  icon: ReactNode;
+  label: string;
+  bgColor: string;
+  onClick: () => void;
+}
+
+interface SwipeableChatItemProps {
+  children: ReactNode;
+  actions: SwipeAction[];
+  disabled?: boolean;
+}
+
+const SWIPE_THRESHOLD = 60;
+const ACTION_WIDTH = 72;
+
+export function SwipeableChatItem({
+  children,
+  actions,
+  disabled = false,
+}: SwipeableChatItemProps) {
+  const [translateX, setTranslateX] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const startXRef = useRef(0);
+  const startYRef = useRef(0);
+  const isDraggingRef = useRef(false);
+  const isVerticalScrollRef = useRef(false);
+  const maxSwipe = actions.length * ACTION_WIDTH;
+
+  const handleTouchStart = (e: TouchEvent) => {
+    if (disabled) return;
+    startXRef.current = e.touches[0].clientX;
+    startYRef.current = e.touches[0].clientY;
+    isDraggingRef.current = false;
+    isVerticalScrollRef.current = false;
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (disabled) return;
+
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = startXRef.current - currentX;
+    const diffY = startYRef.current - currentY;
+
+    // Determine scroll direction on first significant movement
+    if (!isDraggingRef.current && !isVerticalScrollRef.current) {
+      if (Math.abs(diffY) > 10 && Math.abs(diffY) > Math.abs(diffX)) {
+        // Vertical scroll detected - don't interfere
+        isVerticalScrollRef.current = true;
+        return;
+      }
+      if (Math.abs(diffX) > 10) {
+        isDraggingRef.current = true;
+      }
+    }
+
+    if (isVerticalScrollRef.current) return;
+    if (!isDraggingRef.current) return;
+
+    // Calculate new position
+    let newTranslate: number;
+    if (isOpen) {
+      // If already open, start from open position
+      newTranslate = -maxSwipe - diffX;
+    } else {
+      newTranslate = -diffX;
+    }
+
+    // Clamp between 0 and -maxSwipe (allow small overscroll for feel)
+    newTranslate = Math.max(-maxSwipe - 20, Math.min(20, newTranslate));
+    setTranslateX(newTranslate);
+  };
+
+  const handleTouchEnd = () => {
+    if (disabled || isVerticalScrollRef.current) return;
+
+    // Snap to open or closed based on threshold
+    if (Math.abs(translateX) > SWIPE_THRESHOLD) {
+      setTranslateX(-maxSwipe);
+      setIsOpen(true);
+    } else {
+      setTranslateX(0);
+      setIsOpen(false);
+    }
+    isDraggingRef.current = false;
+  };
+
+  const handleActionClick = (action: SwipeAction) => {
+    // Reset swipe state
+    setTranslateX(0);
+    setIsOpen(false);
+    // Execute action
+    action.onClick();
+  };
+
+  // Close on click outside (clicking the content area)
+  const handleContentClick = () => {
+    if (isOpen) {
+      setTranslateX(0);
+      setIsOpen(false);
+    }
+  };
+
+  if (actions.length === 0 || disabled) {
+    return <>{children}</>;
+  }
+
+  return (
+    <div className="relative overflow-hidden">
+      {/* Action buttons revealed on swipe */}
+      <div
+        className="absolute inset-y-0 right-0 flex"
+        style={{ width: maxSwipe }}
+      >
+        {actions.map((action, i) => (
+          <button
+            key={i}
+            onClick={() => handleActionClick(action)}
+            className={cn(
+              'flex flex-col items-center justify-center gap-1 text-white text-[11px] font-medium transition-opacity',
+              action.bgColor
+            )}
+            style={{ width: ACTION_WIDTH }}
+          >
+            {action.icon}
+            <span>{action.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Main content slides left */}
+      <div
+        className="relative bg-white dark:bg-[#171b22] touch-pan-y"
+        style={{
+          transform: `translateX(${translateX}px)`,
+          transition: isDraggingRef.current ? 'none' : 'transform 0.2s ease-out',
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClick={handleContentClick}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}

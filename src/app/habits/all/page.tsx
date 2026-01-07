@@ -244,9 +244,9 @@ export default function GrowingHabitsPage() {
             {/* Add Habit Button */}
             <Link
               href="/habits/new"
-              className="bg-[#f3f1ef] rounded-[20px] p-4 flex items-center justify-center w-full text-center hover:scale-[1.01] transition-all"
+              className="bg-brand-accent text-brand-accent-foreground rounded-[20px] p-4 flex items-center justify-center w-full text-center hover:scale-[1.01] transition-all"
             >
-              <p className="font-albert text-[18px] font-semibold text-text-muted tracking-[-1px] leading-[1.3]">
+              <p className="font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3]">
                 Add habit
               </p>
             </Link>

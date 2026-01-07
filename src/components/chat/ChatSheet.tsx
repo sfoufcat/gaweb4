@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { MessageCircle, ChevronRight, ChevronLeft, Users, Megaphone, PartyPopper, Trophy, X } from 'lucide-react';
+import { MessageCircle, ChevronRight, ChevronLeft, Users, Megaphone, PartyPopper, Trophy, X, Pin } from 'lucide-react';
 import { useStreamChatClient } from '@/contexts/StreamChatContext';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
 import { formatDistanceToNow } from 'date-fns';
@@ -25,6 +25,27 @@ import { useCoachSquads } from '@/hooks/useCoachSquads';
 import { useCoachingContext } from '@/contexts/CoachingContext';
 import { generateAvatarUrl } from '@/lib/demo-data';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { ChatActionsMenu } from '@/components/chat/ChatActionsMenu';
+import { SwipeableChatItem, type SwipeAction } from '@/components/chat/SwipeableChatItem';
+import { ArchivedChatsLink } from '@/components/chat/ArchivedChatsLink';
+import { useChatPreferences } from '@/hooks/useChatPreferences';
+import type { ChatChannelType } from '@/types/chat-preferences';
+import { Archive, Trash2, PinOff, ArchiveRestore } from 'lucide-react';
+
+// Helper to convert ChannelPreview type to ChatChannelType
+function toChatChannelType(type: 'dm' | 'squad' | 'global' | 'coaching'): ChatChannelType {
+  switch (type) {
+    case 'dm':
+    case 'coaching':
+      return 'dm';
+    case 'squad':
+      return 'squad';
+    case 'global':
+      return 'org';
+    default:
+      return 'dm';
+  }
+}
 
 // Import Stream Chat CSS
 import 'stream-chat-react/dist/css/v2/index.css';
@@ -90,6 +111,24 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
 
   // Check if user is a coach (affects where coaching channels appear)
   const { isCoach } = useCoachSquads();
+
+  // Chat preferences for pinning/archiving/deleting
+  const {
+    pinnedChannelIds,
+    archivedChannelIds,
+    deletedChannelIds,
+    pinChannel,
+    unpinChannel,
+    archiveChannel,
+    unarchiveChannel,
+    deleteChannel,
+    canPin,
+    canArchive,
+    canDelete,
+  } = useChatPreferences();
+
+  // State for archived view
+  const [showArchivedView, setShowArchivedView] = useState(false);
 
   // Build userSquadChannelIds from context data (memoized)
   const userSquadChannelIds = useMemo(() => {
@@ -159,6 +198,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       setView('list');
       setSelectedChannel(null);
       setIsAnimating(false);
+      setShowArchivedView(false);
       // Squad data is from context now - no state to reset
     }
   }, [isOpen]);
@@ -360,9 +400,20 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     return <MessageCircle className="w-5 h-5 text-text-secondary" />;
   };
 
-  // Sort channels: coaching first (pinned) for CLIENTS only, then unread, then by last message time
+  // Sort channels: user-pinned first, then coaching for clients, then unread, then by last message time
   const sortedChannels = useMemo(() => {
-    return [...channels].sort((a, b) => {
+    // First filter out archived and deleted channels
+    const visibleChannels = channels.filter(c =>
+      !archivedChannelIds.has(c.id) && !deletedChannelIds.has(c.id)
+    );
+
+    return visibleChannels.sort((a, b) => {
+      // User-pinned channels first
+      const aPinned = pinnedChannelIds.has(a.id);
+      const bPinned = pinnedChannelIds.has(b.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+
       // Coaching channels pinned to top ONLY for clients (not coaches)
       if (!isCoach) {
         if (a.type === 'coaching' && b.type !== 'coaching') return -1;
@@ -377,7 +428,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       }
       return 0;
     });
-  }, [channels, isCoach]);
+  }, [channels, isCoach, pinnedChannelIds, archivedChannelIds, deletedChannelIds]);
 
   // Filter channels into main vs direct
   // For coaches: coaching channels go in Direct tab (like DMs with clients)
@@ -412,11 +463,71 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   // Get filtered channels based on active tab
   const filteredChannels = activeTab === 'main' ? mainChannels : directChannels;
 
+  // Get archived channels (for the archived view)
+  const archivedChannels = useMemo(() => {
+    return channels.filter(c => archivedChannelIds.has(c.id) || deletedChannelIds.has(c.id));
+  }, [channels, archivedChannelIds, deletedChannelIds]);
+
+  // Build swipe actions for a channel
+  const getSwipeActions = useCallback((channelPreview: ChannelPreview): SwipeAction[] => {
+    const channelType = toChatChannelType(channelPreview.type);
+    const isPinned = pinnedChannelIds.has(channelPreview.id);
+    const isArchived = archivedChannelIds.has(channelPreview.id);
+    const actions: SwipeAction[] = [];
+
+    // Pin action (all channel types)
+    if (canPin(channelType)) {
+      actions.push({
+        icon: isPinned ? <PinOff className="w-5 h-5" /> : <Pin className="w-5 h-5" />,
+        label: isPinned ? 'Unpin' : 'Pin',
+        bgColor: 'bg-blue-500',
+        onClick: () => isPinned
+          ? unpinChannel(channelPreview.id, channelType)
+          : pinChannel(channelPreview.id, channelType),
+      });
+    }
+
+    // Archive action (DMs and squads only)
+    if (canArchive(channelType)) {
+      actions.push({
+        icon: isArchived ? <ArchiveRestore className="w-5 h-5" /> : <Archive className="w-5 h-5" />,
+        label: isArchived ? 'Restore' : 'Archive',
+        bgColor: 'bg-amber-500',
+        onClick: () => isArchived
+          ? unarchiveChannel(channelPreview.id, channelType)
+          : archiveChannel(channelPreview.id, channelType),
+      });
+    }
+
+    // Delete action (DMs only)
+    if (canDelete(channelType)) {
+      actions.push({
+        icon: <Trash2 className="w-5 h-5" />,
+        label: 'Delete',
+        bgColor: 'bg-red-500',
+        onClick: () => {
+          if (window.confirm('Delete this conversation?')) {
+            deleteChannel(channelPreview.id, channelType);
+          }
+        },
+      });
+    }
+
+    return actions;
+  }, [pinnedChannelIds, archivedChannelIds, canPin, canArchive, canDelete, pinChannel, unpinChannel, archiveChannel, unarchiveChannel, deleteChannel]);
+
   // Get selected channel name for header
   const selectedChannelName = useMemo(() => {
     if (!selectedChannel) return '';
     const found = channels.find(c => c.id === selectedChannel.id);
     return found?.name || 'Chat';
+  }, [selectedChannel, channels]);
+
+  // Get selected channel type for actions menu
+  const selectedChannelType = useMemo((): ChatChannelType => {
+    if (!selectedChannel) return 'dm';
+    const found = channels.find(c => c.id === selectedChannel.id);
+    return found ? toChatChannelType(found.type) : 'dm';
   }, [selectedChannel, channels]);
 
   // Check if announcements channel (read-only)
@@ -553,53 +664,62 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                     // Channel list
                     <div>
                       {filteredChannels.map((channelPreview) => (
-                        <button
+                        <SwipeableChatItem
                           key={channelPreview.id}
-                          onClick={() => handleChannelClick(channelPreview.channel)}
-                          className="w-full px-5 py-3 flex items-center gap-3 hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors text-left active:bg-[#e9e5e0] dark:active:bg-[#252a33]"
+                          actions={getSwipeActions(channelPreview)}
                         >
-                          {/* Avatar */}
-                          <div className="relative w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#272d38] flex items-center justify-center overflow-hidden flex-shrink-0">
-                            {channelPreview.image ? (
-                              <Image
-                                src={channelPreview.image}
-                                alt={channelPreview.name}
-                                fill
-                                className="object-cover"
-                              />
-                            ) : (
-                              getChannelIcon(channelPreview.type, channelPreview.id)
-                            )}
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className={`font-albert text-[15px] truncate ${channelPreview.unread > 0 ? 'font-semibold text-text-primary' : 'text-text-primary'}`}>
-                                {channelPreview.name}
-                              </span>
-                              {channelPreview.lastMessageTime && (
-                                <span className="font-sans text-[12px] text-text-muted flex-shrink-0">
-                                  {formatDistanceToNow(channelPreview.lastMessageTime, { addSuffix: false })}
-                                </span>
+                          <button
+                            onClick={() => handleChannelClick(channelPreview.channel)}
+                            className="w-full px-5 py-3 flex items-center gap-3 hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors text-left active:bg-[#e9e5e0] dark:active:bg-[#252a33]"
+                          >
+                            {/* Avatar */}
+                            <div className="relative w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#272d38] flex items-center justify-center overflow-hidden flex-shrink-0">
+                              {channelPreview.image ? (
+                                <Image
+                                  src={channelPreview.image}
+                                  alt={channelPreview.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                getChannelIcon(channelPreview.type, channelPreview.id)
                               )}
                             </div>
-                            {channelPreview.lastMessage && (
-                              <p className={`font-sans text-[13px] truncate ${channelPreview.unread > 0 ? 'text-text-secondary font-medium' : 'text-text-muted'}`}>
-                                {channelPreview.lastMessage}
-                              </p>
-                            )}
-                          </div>
 
-                          {/* Unread badge or chevron */}
-                          {channelPreview.unread > 0 ? (
-                            <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-[#E74C3C] text-white text-[11px] font-semibold rounded-full">
-                              {channelPreview.unread > 9 ? '9+' : channelPreview.unread}
-                            </span>
-                          ) : (
-                            <ChevronRight className="w-4 h-4 text-text-muted flex-shrink-0" />
-                          )}
-                        </button>
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className={`font-albert text-[15px] truncate ${channelPreview.unread > 0 ? 'font-semibold text-text-primary' : 'text-text-primary'}`}>
+                                  {channelPreview.name}
+                                </span>
+                                {channelPreview.lastMessageTime && (
+                                  <span className="font-sans text-[12px] text-text-muted flex-shrink-0">
+                                    {formatDistanceToNow(channelPreview.lastMessageTime, { addSuffix: false })}
+                                  </span>
+                                )}
+                              </div>
+                              {channelPreview.lastMessage && (
+                                <p className={`font-sans text-[13px] truncate ${channelPreview.unread > 0 ? 'text-text-secondary font-medium' : 'text-text-muted'}`}>
+                                  {channelPreview.lastMessage}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Pinned indicator */}
+                            {pinnedChannelIds.has(channelPreview.id) && (
+                              <Pin className="w-3.5 h-3.5 text-brand-accent flex-shrink-0" />
+                            )}
+
+                            {/* Unread badge or chevron */}
+                            {channelPreview.unread > 0 ? (
+                              <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-[#E74C3C] text-white text-[11px] font-semibold rounded-full">
+                                {channelPreview.unread > 9 ? '9+' : channelPreview.unread}
+                              </span>
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-text-muted flex-shrink-0" />
+                            )}
+                          </button>
+                        </SwipeableChatItem>
                       ))}
 
                       {/* Coach Promo Item */}
@@ -636,6 +756,12 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                           </div>
                         </a>
                       )}
+
+                      {/* Archived Chats Link */}
+                      <ArchivedChatsLink
+                        count={archivedChannels.length}
+                        onClick={() => setShowArchivedView(true)}
+                      />
                     </div>
                   )}
                 </div>
@@ -648,13 +774,112 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                 }`}
               >
                 {selectedChannel && (
-                  <ChatSheetMessageView 
+                  <ChatSheetMessageView
                     channel={selectedChannel}
                     channelName={selectedChannelName}
+                    channelType={selectedChannelType}
                     onBack={handleBack}
                     isReadOnly={isAnnouncementsChannel}
                   />
                 )}
+              </div>
+
+              {/* Archived View - slides in from right */}
+              <div
+                className={`absolute inset-0 flex flex-col transition-transform duration-200 ease-out bg-white dark:bg-[#171b22] ${
+                  showArchivedView ? 'translate-x-0' : 'translate-x-full'
+                }`}
+              >
+                {/* Header */}
+                <div className="px-4 py-3 flex items-center gap-3 border-b border-[#e8e4df] dark:border-[#262b35] flex-shrink-0">
+                  <button
+                    onClick={() => setShowArchivedView(false)}
+                    className="p-1.5 -ml-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#272d38] transition-colors"
+                    aria-label="Back to messages"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-text-primary" />
+                  </button>
+                  <h3 className="font-albert text-[16px] font-semibold text-text-primary truncate">
+                    Archived
+                  </h3>
+                </div>
+
+                {/* Archived Channel List */}
+                <div className="flex-1 overflow-y-auto pb-safe">
+                  {archivedChannels.length === 0 ? (
+                    <div className="py-12 px-5 text-center">
+                      <div className="w-14 h-14 bg-[#f3f1ef] dark:bg-[#272d38] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Archive className="w-7 h-7 text-text-muted" />
+                      </div>
+                      <p className="font-sans text-[15px] text-text-secondary">
+                        No archived chats
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      {archivedChannels.map((channelPreview) => {
+                        const channelType = toChatChannelType(channelPreview.type);
+                        const isDeleted = deletedChannelIds.has(channelPreview.id);
+
+                        return (
+                          <div
+                            key={channelPreview.id}
+                            className="w-full px-5 py-3 flex items-center gap-3 border-b border-[#e8e4df] dark:border-[#262b35]"
+                          >
+                            {/* Avatar */}
+                            <div className="relative w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#272d38] flex items-center justify-center overflow-hidden flex-shrink-0">
+                              {channelPreview.image ? (
+                                <Image
+                                  src={channelPreview.image}
+                                  alt={channelPreview.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                getChannelIcon(channelPreview.type, channelPreview.id)
+                              )}
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <span className="font-albert text-[15px] text-text-primary truncate block">
+                                {channelPreview.name}
+                              </span>
+                              <span className="font-sans text-[12px] text-text-muted">
+                                {isDeleted ? 'Deleted' : 'Archived'}
+                              </span>
+                            </div>
+
+                            {/* Restore button */}
+                            <button
+                              onClick={async () => {
+                                if (isDeleted) {
+                                  // Undelete (which also unarchives)
+                                  await fetch('/api/user/chat-preferences', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      channelId: channelPreview.id,
+                                      channelType,
+                                      action: 'undelete',
+                                    }),
+                                  });
+                                  // Also unarchive if it was archived
+                                  await unarchiveChannel(channelPreview.id, channelType);
+                                } else {
+                                  await unarchiveChannel(channelPreview.id, channelType);
+                                }
+                              }}
+                              className="px-3 py-1.5 text-[13px] font-medium text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#272d38] rounded-lg transition-colors"
+                            >
+                              Restore
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </Chat>
@@ -677,14 +902,16 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
 }
 
 // Message view component (needs to be inside Chat context)
-function ChatSheetMessageView({ 
-  channel, 
-  channelName, 
+function ChatSheetMessageView({
+  channel,
+  channelName,
+  channelType,
   onBack,
-  isReadOnly 
-}: { 
+  isReadOnly
+}: {
   channel: StreamChannel;
   channelName: string;
+  channelType: ChatChannelType;
   onBack: () => void;
   isReadOnly: boolean;
 }) {
@@ -706,9 +933,14 @@ function ChatSheetMessageView({
         >
           <ChevronLeft className="w-5 h-5 text-text-primary" />
         </button>
-        <h3 className="font-albert text-[16px] font-semibold text-text-primary truncate">
+        <h3 className="font-albert text-[16px] font-semibold text-text-primary truncate flex-1">
           {channelName}
         </h3>
+        <ChatActionsMenu
+          channelId={channel.id || ''}
+          channelType={channelType}
+          onActionComplete={onBack}
+        />
       </div>
 
       {/* Messages + Input Container - explicit flex layout */}

@@ -676,8 +676,13 @@ export function AdminUsersTab({
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
 
-    if (!canDeleteUser(currentUserRole, userToDelete.role || 'user')) {
-      alert('You do not have permission to delete this user.');
+    // Check permission based on context
+    const userOrgRole = userToDelete.orgRoleForOrg || userToDelete.orgRole || 'member';
+    const hasPermission = canDeleteUser(currentUserRole, userToDelete.role || 'user') ||
+      (isCoachContext && isSuperCoach(effectiveOrgRole) && userOrgRole !== 'super_coach');
+
+    if (!hasPermission) {
+      alert('You do not have permission to remove this user.');
       setUserToDelete(null);
       return;
     }
@@ -685,21 +690,70 @@ export function AdminUsersTab({
     try {
       setDeleteLoading(true);
 
-      const response = await fetch(`/api/admin/users/${userToDelete.id}`, {
+      // Use coach endpoint when in coach context, otherwise admin endpoint
+      const deleteEndpoint = isCoachContext
+        ? `/api/coach/org-users/${userToDelete.id}`
+        : `/api/admin/users/${userToDelete.id}`;
+
+      const response = await fetch(deleteEndpoint, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to delete user');
+        throw new Error(error.error || 'Failed to remove user');
       }
 
       // Refresh users list
       await fetchUsers();
       setUserToDelete(null);
     } catch (err) {
-      console.error('Error deleting user:', err);
-      alert(err instanceof Error ? err.message : 'Failed to delete user');
+      console.error('Error removing user:', err);
+      alert(err instanceof Error ? err.message : 'Failed to remove user');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Native confirm delete handler for coach context
+  const handleNativeDeleteUser = async (user: ClerkAdminUser) => {
+    const userOrgRole = user.orgRoleForOrg || user.orgRole || 'member';
+    const hasPermission = canDeleteUser(currentUserRole, user.role || 'user') ||
+      (isCoachContext && isSuperCoach(effectiveOrgRole) && userOrgRole !== 'super_coach');
+
+    if (!hasPermission) {
+      alert('You do not have permission to remove this user.');
+      return;
+    }
+
+    const confirmMessage = isCoachContext
+      ? `Are you sure you want to remove ${user.name || user.email} from your organization? This action cannot be undone.`
+      : `Are you sure you want to delete ${user.name || user.email}? This action cannot be undone.`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      setDeleteLoading(true);
+
+      const deleteEndpoint = isCoachContext
+        ? `/api/coach/org-users/${user.id}`
+        : `/api/admin/users/${user.id}`;
+
+      const response = await fetch(deleteEndpoint, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to remove user');
+      }
+
+      await fetchUsers();
+    } catch (err) {
+      console.error('Error removing user:', err);
+      alert(err instanceof Error ? err.message : 'Failed to remove user');
     } finally {
       setDeleteLoading(false);
     }
@@ -967,7 +1021,11 @@ export function AdminUsersTab({
                 const userOrgRole = user.orgRoleForOrg || user.orgRole || 'member';
                 const userTier = user.tier || 'free';
                 const canModifyThisUser = canModifyUserRole(currentUserRole, userRole, userRole);
-                const canDeleteThisUser = canDeleteUser(currentUserRole, userRole);
+                // Allow deletion if:
+                // 1. Platform admin can delete (via canDeleteUser)
+                // 2. In coach context: super_coach can delete members/coaches (but not other super_coach)
+                const canDeleteThisUser = canDeleteUser(currentUserRole, userRole) ||
+                  (isCoachContext && isSuperCoach(effectiveOrgRole) && userOrgRole !== 'super_coach');
                 const isUpdatingTier = updatingTierUserId === user.id;
                 const isUpdatingOrgRole = updatingOrgRoleUserId === user.id;
                 // Super admin can modify any org role; super_coach can modify coach/member (but not super_coach)
@@ -1237,9 +1295,10 @@ export function AdminUsersTab({
                           {/* Delete Icon Button */}
                           {canDeleteThisUser && (
                             <button
-                              onClick={() => setUserToDelete(user)}
-                              className="h-8 w-8 p-0 inline-flex items-center justify-center rounded-lg text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                              title={`Delete ${user.name}`}
+                              onClick={() => handleNativeDeleteUser(user)}
+                              disabled={deleteLoading}
+                              className="h-8 w-8 p-0 inline-flex items-center justify-center rounded-lg text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
+                              title={isCoachContext ? `Remove ${user.name} from organization` : `Delete ${user.name}`}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>

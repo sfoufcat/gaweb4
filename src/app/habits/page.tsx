@@ -594,18 +594,18 @@ export default function GrowingHabitsPage() {
               isDemoMode ? (
                 <button
                   onClick={openSignupModal}
-                  className="bg-[#f3f1ef] dark:bg-[#171b22] rounded-[20px] p-4 flex items-center justify-center w-full text-center hover:scale-[1.01] transition-all"
+                  className="bg-brand-accent text-brand-accent-foreground rounded-[20px] p-4 flex items-center justify-center w-full text-center hover:scale-[1.01] transition-all"
                 >
-                  <p className="font-albert text-[18px] font-semibold text-text-muted dark:text-[#7d8190] tracking-[-1px] leading-[1.3]">
+                  <p className="font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3]">
                     Add habit
                   </p>
                 </button>
               ) : (
                 <Link
                   href="/habits/new"
-                  className="bg-[#f3f1ef] dark:bg-[#171b22] rounded-[20px] p-4 flex items-center justify-center w-full text-center hover:scale-[1.01] transition-all"
+                  className="bg-brand-accent text-brand-accent-foreground rounded-[20px] p-4 flex items-center justify-center w-full text-center hover:scale-[1.01] transition-all"
                 >
-                  <p className="font-albert text-[18px] font-semibold text-text-muted dark:text-[#7d8190] tracking-[-1px] leading-[1.3]">
+                  <p className="font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3]">
                     Add habit
                   </p>
                 </Link>

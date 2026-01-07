@@ -288,11 +288,14 @@ export default function CoachPage() {
   const isAccessLoading = useMemo(() => {
     if (isDemoSite) return false;
     if (!isLoaded) return true;
-    // On tenant domains, wait for both clerkOrgsLoaded AND userMemberships.data to be populated
-    // Clerk's isLoaded can be true before the actual membership data is fetched
-    if (!isDefault && (orgLoading || !clerkOrgsLoaded || !userMemberships?.data)) return true;
+    // On tenant domains, wait for Clerk orgs to be fully loaded (not just initialized)
+    // - clerkOrgsLoaded: Clerk SDK initialized
+    // - userMemberships not ready: data undefined or still fetching
+    // - orgLoading: Firestore org data still loading
+    const isMembershipsReady = userMemberships?.data !== undefined && userMemberships?.isFetching !== true;
+    if (!isDefault && (orgLoading || !clerkOrgsLoaded || !isMembershipsReady)) return true;
     return false;
-  }, [isDemoSite, isLoaded, isDefault, orgLoading, clerkOrgsLoaded, userMemberships?.data]);
+  }, [isDemoSite, isLoaded, isDefault, orgLoading, clerkOrgsLoaded, userMemberships?.data, userMemberships?.isFetching]);
   
   // Determine access level for this tenant:
   // - Full access: super_admin, or super_coach in THIS tenant

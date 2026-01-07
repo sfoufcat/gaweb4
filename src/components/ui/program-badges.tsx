@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { Users, Eye, EyeOff, Globe, Lock, Star } from "lucide-react";
+import { Users, User, Eye, EyeOff, Globe, Lock, Star } from "lucide-react";
 
 interface BadgeBaseProps extends React.HTMLAttributes<HTMLSpanElement> {
   size?: 'sm' | 'md';
@@ -70,8 +70,8 @@ export function StatusBadge({
 
 /**
  * TypeBadge - Shows Group/1:1 program type
- * Group: Blue glassmorphic with users icon (3 people)
- * Individual: Purple glassmorphic with "1:1" text
+ * Group: Blue badge with users icon only (no text)
+ * Individual: Purple badge with user icon + "1:1" text
  */
 export function TypeBadge({
   type,
@@ -80,45 +80,43 @@ export function TypeBadge({
   ...props
 }: BadgeBaseProps & { type: 'group' | 'individual' }) {
   if (type === 'group') {
+    // Group: icon only (3 people)
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1.5",
-          "rounded-full backdrop-blur-xl",
-          "bg-blue-500/15 dark:bg-blue-500/10",
-          "border border-blue-400/30 dark:border-blue-400/20",
-          "text-blue-600 dark:text-blue-400",
+          "inline-flex items-center justify-center",
+          "rounded-full backdrop-blur-sm",
+          "bg-blue-500/90 dark:bg-blue-600/90",
+          "text-white",
           "shadow-sm",
-          size === 'sm'
-            ? "px-2 py-0.5 text-[10px] font-semibold"
-            : "px-2.5 py-1 text-[11px] font-semibold",
+          size === 'sm' ? "w-6 h-6" : "w-7 h-7",
           className
         )}
+        title="Group"
         {...props}
       >
-        <Users className={cn(size === 'sm' ? "w-2.5 h-2.5" : "w-3 h-3")} />
-        Group
+        <Users className={cn(size === 'sm' ? "w-3 h-3" : "w-3.5 h-3.5")} />
       </span>
     );
   }
 
-  // Individual: 1:1 badge
+  // Individual: 1 person icon + "1:1" text
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center",
-        "rounded-full backdrop-blur-xl",
-        "bg-violet-500/15 dark:bg-violet-500/10",
-        "border border-violet-400/30 dark:border-violet-400/20",
-        "text-violet-600 dark:text-violet-400",
+        "inline-flex items-center gap-1",
+        "rounded-full backdrop-blur-sm",
+        "bg-violet-500/90 dark:bg-violet-600/90",
+        "text-white",
         "shadow-sm",
         size === 'sm'
-          ? "px-2 py-0.5 text-[10px] font-bold"
+          ? "px-2 py-1 text-[10px] font-bold"
           : "px-2.5 py-1 text-[11px] font-bold",
         className
       )}
       {...props}
     >
+      <User className={cn(size === 'sm' ? "w-2.5 h-2.5" : "w-3 h-3")} />
       1:1
     </span>
   );
@@ -126,8 +124,8 @@ export function TypeBadge({
 
 /**
  * VisibilityBadge - Shows Public/Private status
- * Public: Green-tinted glassmorphic with eye icon
- * Private: Gray glassmorphic with lock icon
+ * Public: Green badge with eye icon
+ * Private: Gray badge with lock icon
  */
 export function VisibilityBadge({
   isPublic,
@@ -140,13 +138,12 @@ export function VisibilityBadge({
       <span
         className={cn(
           "inline-flex items-center gap-1.5",
-          "rounded-full backdrop-blur-xl",
-          "bg-emerald-500/10 dark:bg-emerald-500/8",
-          "border border-emerald-400/25 dark:border-emerald-400/15",
-          "text-emerald-600 dark:text-emerald-400",
+          "rounded-full backdrop-blur-sm",
+          "bg-emerald-500/90 dark:bg-emerald-600/90",
+          "text-white",
           "shadow-sm",
           size === 'sm'
-            ? "px-2 py-0.5 text-[10px] font-medium"
+            ? "px-2 py-1 text-[10px] font-medium"
             : "px-2.5 py-1 text-[11px] font-medium",
           className
         )}
@@ -163,13 +160,13 @@ export function VisibilityBadge({
     <span
       className={cn(
         "inline-flex items-center gap-1.5",
-        "rounded-full backdrop-blur-xl",
-        "bg-white/60 dark:bg-[#171b22]/60",
-        "border border-[#e1ddd8]/40 dark:border-[#262b35]/40",
+        "rounded-full backdrop-blur-sm",
+        "bg-white/95 dark:bg-[#262b35]/95",
+        "border border-[#e1ddd8]/60 dark:border-[#3a3f4a]/60",
         "text-[#5f5a55] dark:text-[#b2b6c2]",
         "shadow-sm",
         size === 'sm'
-          ? "px-2 py-0.5 text-[10px] font-medium"
+          ? "px-2 py-1 text-[10px] font-medium"
           : "px-2.5 py-1 text-[11px] font-medium",
         className
       )}
@@ -196,13 +193,12 @@ export function SquadVisibilityBadge({
       <span
         className={cn(
           "inline-flex items-center gap-1.5",
-          "rounded-full backdrop-blur-xl",
-          "bg-emerald-500/10 dark:bg-emerald-500/8",
-          "border border-emerald-400/25 dark:border-emerald-400/15",
-          "text-emerald-600 dark:text-emerald-400",
+          "rounded-full backdrop-blur-sm",
+          "bg-emerald-500/90 dark:bg-emerald-600/90",
+          "text-white",
           "shadow-sm",
           size === 'sm'
-            ? "px-2 py-0.5 text-[10px] font-medium"
+            ? "px-2 py-1 text-[10px] font-medium"
             : "px-2.5 py-1 text-[11px] font-medium",
           className
         )}
@@ -219,13 +215,13 @@ export function SquadVisibilityBadge({
     <span
       className={cn(
         "inline-flex items-center gap-1.5",
-        "rounded-full backdrop-blur-xl",
-        "bg-white/60 dark:bg-[#171b22]/60",
-        "border border-[#e1ddd8]/40 dark:border-[#262b35]/40",
+        "rounded-full backdrop-blur-sm",
+        "bg-white/95 dark:bg-[#262b35]/95",
+        "border border-[#e1ddd8]/60 dark:border-[#3a3f4a]/60",
         "text-[#5f5a55] dark:text-[#b2b6c2]",
         "shadow-sm",
         size === 'sm'
-          ? "px-2 py-0.5 text-[10px] font-medium"
+          ? "px-2 py-1 text-[10px] font-medium"
           : "px-2.5 py-1 text-[11px] font-medium",
         className
       )}
@@ -250,20 +246,19 @@ export function EnrolledBadge({
     <span
       className={cn(
         "inline-flex items-center gap-1.5",
-        "rounded-full backdrop-blur-xl",
-        "bg-emerald-500/15 dark:bg-emerald-500/10",
-        "border border-emerald-400/30 dark:border-emerald-400/20",
-        "text-emerald-600 dark:text-emerald-400",
+        "rounded-full backdrop-blur-sm",
+        "bg-emerald-500/90 dark:bg-emerald-600/90",
+        "text-white",
         "shadow-sm",
         size === 'sm'
-          ? "px-2 py-0.5 text-[10px] font-semibold"
+          ? "px-2 py-1 text-[10px] font-semibold"
           : "px-2.5 py-1 text-[11px] font-semibold",
         className
       )}
       {...props}
     >
       <span className={cn(
-        "rounded-full bg-emerald-500 animate-pulse",
+        "rounded-full bg-white animate-pulse",
         size === 'sm' ? "w-1.5 h-1.5" : "w-1.5 h-1.5"
       )} />
       {status === 'active' ? 'Active' : 'Enrolled'}
@@ -317,14 +312,13 @@ export function SquadTypeBadge({
       <span
         className={cn(
           "inline-flex items-center gap-1.5",
-          "rounded-full backdrop-blur-xl",
-          "bg-gradient-to-r from-orange-400/20 to-rose-400/20",
-          "dark:from-orange-400/15 dark:to-rose-400/15",
-          "border border-orange-400/30 dark:border-orange-400/20",
-          "text-orange-600 dark:text-orange-400",
+          "rounded-full backdrop-blur-sm",
+          "bg-gradient-to-r from-orange-500/90 to-rose-500/90",
+          "dark:from-orange-500/90 dark:to-rose-500/90",
+          "text-white",
           "shadow-sm",
           size === 'sm'
-            ? "px-2 py-0.5 text-[10px] font-semibold"
+            ? "px-2 py-1 text-[10px] font-semibold"
             : "px-2.5 py-1 text-[11px] font-semibold",
           className
         )}
@@ -341,13 +335,12 @@ export function SquadTypeBadge({
     <span
       className={cn(
         "inline-flex items-center gap-1.5",
-        "rounded-full backdrop-blur-xl",
-        "bg-emerald-500/15 dark:bg-emerald-500/10",
-        "border border-emerald-400/30 dark:border-emerald-400/20",
-        "text-emerald-600 dark:text-emerald-400",
+        "rounded-full backdrop-blur-sm",
+        "bg-emerald-500/90 dark:bg-emerald-600/90",
+        "text-white",
         "shadow-sm",
         size === 'sm'
-          ? "px-2 py-0.5 text-[10px] font-semibold"
+          ? "px-2 py-1 text-[10px] font-semibold"
           : "px-2.5 py-1 text-[11px] font-semibold",
         className
       )}
