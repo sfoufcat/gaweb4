@@ -159,6 +159,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [loadingClientDays, setLoadingClientDays] = useState(false);
   const [loadedEnrollmentId, setLoadedEnrollmentId] = useState<string | null>(null);
 
+  // Computed days array - use clientDays for 1:1 programs in client mode, otherwise programDays
+  const daysToUse = useMemo(() => {
+    const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
+    const dataMatchesContext = clientViewContext.mode === 'client' && loadedEnrollmentId === clientViewContext.enrollmentId;
+    return (isClientMode && dataMatchesContext) ? clientDays : programDays;
+  }, [selectedProgram?.type, clientViewContext, loadedEnrollmentId, clientDays, programDays]);
+
   // Cohort view context state (for group programs)
   const [cohortViewContext, setCohortViewContext] = useState<CohortViewContext>({ mode: 'template' });
   const [cohortWeekContent, setCohortWeekContent] = useState<CohortWeekContent | null>(null);
@@ -479,13 +486,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   // Count programs by type for filter badges
   const individualCount = useMemo(() => allPrograms.filter(p => p.type === 'individual').length, [allPrograms]);
   const groupCount = useMemo(() => allPrograms.filter(p => p.type === 'group').length, [allPrograms]);
-
-  // Computed days array - use clientDays for 1:1 programs in client mode, otherwise programDays
-  const daysToUse = useMemo(() => {
-    const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
-    const dataMatchesContext = clientViewContext.mode === 'client' && loadedEnrollmentId === clientViewContext.enrollmentId;
-    return (isClientMode && dataMatchesContext) ? clientDays : programDays;
-  }, [selectedProgram?.type, clientViewContext, loadedEnrollmentId, clientDays, programDays]);
 
   // Fetch available coaches for assignment
   const fetchCoaches = useCallback(async () => {
