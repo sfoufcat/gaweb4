@@ -58,6 +58,12 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isCoachOfUser(userId);
         allow create, update, delete: if isOwner(userId);
       }
+
+      // Chat Preferences subcollection
+      match /chat_preferences/{preferenceId} {
+        // User can read/write their own chat preferences
+        allow read, write: if isOwner(userId);
+      }
     }
     
     // Goals collection

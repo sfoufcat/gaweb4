@@ -62,7 +62,7 @@ export function useChatPreferences(enabled: boolean = true): UseChatPreferencesR
   const [preferences, setPreferences] = useState<Map<string, ChatPreference>>(
     new Map()
   );
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   // Real-time listener for preferences subcollection

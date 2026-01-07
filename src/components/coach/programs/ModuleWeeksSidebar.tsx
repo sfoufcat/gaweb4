@@ -313,6 +313,13 @@ export function ModuleWeeksSidebar({
 
   // Use calendar weeks in client view, template weeks otherwise
   const displayWeeks = useMemo((): CalculatedWeek[] => {
+    console.log('[ModuleWeeksSidebar] displayWeeks:', {
+      isClientView,
+      calendarWeeksCount: calendarWeeksAsCalculated.length,
+      calculatedWeeksCount: calculatedWeeks.length,
+      calendarWeeksLabels: calendarWeeksAsCalculated.map(w => `${w.theme} (${w.startDay}-${w.endDay})`),
+      calculatedWeeksLabels: calculatedWeeks.map(w => `${w.theme || `Week ${w.weekNum}`} (${w.startDay}-${w.endDay})`),
+    });
     if (isClientView && calendarWeeksAsCalculated.length > 0) {
       return calendarWeeksAsCalculated;
     }
@@ -321,13 +328,18 @@ export function ModuleWeeksSidebar({
 
   // Group weeks by module
   const weeksByModule = useMemo(() => {
+    console.log('[ModuleWeeksSidebar] weeksByModule input:', {
+      modulesCount: modules.length,
+      moduleNames: modules.map(m => m.name),
+      displayWeeksCount: displayWeeks.length,
+      displayWeeksModuleIds: displayWeeks.map(w => w.moduleId),
+    });
     const map = new Map<string, CalculatedWeek[]>();
 
     // Initialize with empty arrays for each module
     modules.forEach(m => map.set(m.id, []));
 
-    // In client view with calendar weeks, put all weeks in first module (simplified view)
-    // In template view, assign weeks to their modules
+    // Assign weeks to their modules based on moduleId
     const weeksToAssign = displayWeeks;
 
     weeksToAssign.forEach(week => {
@@ -640,7 +652,6 @@ export function ModuleWeeksSidebar({
     };
     const isWeekSelected = isSelected(weekSelection);
     const isWeekExpanded = expandedWeeks.has(week.weekNum);
-    const hasWeeklyContent = week.weeklyTasks.length > 0 || week.theme;
     const weekStatus = getWeekStatus(week);
 
     // Status-based background colors (very light pastel)
@@ -713,13 +724,6 @@ export function ModuleWeeksSidebar({
                 Days {week.startDay}–{week.endDay}
               </p>
             </button>
-
-            {/* Content indicator - only show checkmark if has weekly content */}
-            {hasWeeklyContent && (
-              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded flex-shrink-0">
-                ✓
-              </span>
-            )}
 
             {/* Fill week with AI button */}
             {onFillWeek && (
