@@ -935,8 +935,8 @@ export function ModuleWeeksSidebar({
       </div>
 
       {/* Modules & Weeks Tree */}
-      <div className="flex-1 overflow-hidden">
-        <div className="space-y-3 h-full max-h-[calc(100vh-280px)] lg:max-h-none overflow-y-auto p-4">
+      <div className="flex-1 overflow-hidden relative">
+        <div className="space-y-3 h-full max-h-[50vh] lg:max-h-[calc(100vh-220px)] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-[#d1cdc8] dark:scrollbar-thumb-[#363d4a] scrollbar-track-transparent">
         {sortedModules.length === 0 ? (
           // No modules yet - prompt to add one (only in template mode)
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6 text-center">
@@ -1002,8 +1002,11 @@ export function ModuleWeeksSidebar({
           </button>
         )}
         </div>
+        {/* Fade gradient at bottom to indicate more content */}
+        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white/80 dark:from-[#171b22]/80 to-transparent pointer-events-none" />
+      </div>
 
-        {/* Status Legend - only show when viewing client progress */}
+      {/* Status Legend - only show when viewing client progress */}
         {currentDayIndex && (
           <div className="px-4 py-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex-shrink-0">
             <div className="flex items-center justify-center gap-4 text-xs font-albert">
@@ -1022,7 +1025,6 @@ export function ModuleWeeksSidebar({
             </div>
           </div>
         )}
-      </div>
 
       {/* Delete Module Modal */}
       {mounted && moduleToDelete && (

@@ -717,50 +717,6 @@ export function AdminUsersTab({
     }
   };
 
-  // Native confirm delete handler for coach context
-  const handleNativeDeleteUser = async (user: ClerkAdminUser) => {
-    const userOrgRole = user.orgRoleForOrg || user.orgRole || 'member';
-    const hasPermission = canDeleteUser(currentUserRole, user.role || 'user') ||
-      (isCoachContext && isSuperCoach(effectiveOrgRole) && userOrgRole !== 'super_coach');
-
-    if (!hasPermission) {
-      alert('You do not have permission to remove this user.');
-      return;
-    }
-
-    const confirmMessage = isCoachContext
-      ? `Are you sure you want to remove ${user.name || user.email} from your organization? This action cannot be undone.`
-      : `Are you sure you want to delete ${user.name || user.email}? This action cannot be undone.`;
-
-    if (!confirm(confirmMessage)) {
-      return;
-    }
-
-    try {
-      setDeleteLoading(true);
-
-      const deleteEndpoint = isCoachContext
-        ? `/api/coach/org-users/${user.id}`
-        : `/api/admin/users/${user.id}`;
-
-      const response = await fetch(deleteEndpoint, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to remove user');
-      }
-
-      await fetchUsers();
-    } catch (err) {
-      console.error('Error removing user:', err);
-      alert(err instanceof Error ? err.message : 'Failed to remove user');
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
   // Export selected users to PDF
   const handleExportPDF = useCallback(() => {
     const selectedUsers = filteredUsers.filter(u => selectedUserIds.has(u.id));
@@ -768,6 +724,20 @@ export function AdminUsersTab({
       alert('Please select users to export');
       return;
     }
+
+    // Helper to get squad names from IDs
+    const getSquadNames = (user: ClerkAdminUser): string => {
+      const squadIds = user.squadIds || (user.squadId ? [user.squadId] : []);
+      if (squadIds.length === 0) return '-';
+      const squadMap = new Map(displaySquads.map(s => [s.id, s.name]));
+      return squadIds.map(id => squadMap.get(id) || 'Unknown').join(', ');
+    };
+
+    // Helper to get program names
+    const getProgramNames = (user: ClerkAdminUser): string => {
+      if (!user.programs || user.programs.length === 0) return '-';
+      return user.programs.map(p => p.programName).join(', ');
+    };
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -787,8 +757,8 @@ export function AdminUsersTab({
       user.name || 'Unnamed',
       user.email || '-',
       formatOrgRoleName(user.orgRoleForOrg || user.orgRole || 'member'),
-      user.squadNames?.join(', ') || '-',
-      user.programNames?.join(', ') || '-',
+      getSquadNames(user),
+      getProgramNames(user),
       new Date(user.createdAt).toLocaleDateString(),
     ]);
 
@@ -822,7 +792,7 @@ export function AdminUsersTab({
     // Save PDF
     const filename = `${(headerTitle || 'clients').toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
-  }, [filteredUsers, selectedUserIds, headerTitle]);
+  }, [filteredUsers, selectedUserIds, headerTitle, displaySquads]);
 
   if (loading) {
     return (
@@ -939,17 +909,30 @@ export function AdminUsersTab({
                 )}
               </div>
               
-              {/* Refresh Icon + Add Button row on mobile */}
+              {/* Refresh Icon + Export + Add Button row on mobile */}
               <div className="flex items-center gap-3">
                 {/* Refresh Icon */}
-                <button 
+                <button
                   onClick={fetchUsers}
                   className="p-2.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] active:bg-[#e8e5e1] dark:active:bg-[#1a1e27] rounded-lg border border-[#e1ddd8] dark:border-[#262b35] transition-colors"
                   title="Refresh"
                 >
                   <RefreshCw className="w-5 h-5" />
                 </button>
-                
+
+                {/* Export PDF Button */}
+                {isCoachContext && (
+                  <button
+                    onClick={handleExportPDF}
+                    disabled={selectedUserIds.size === 0}
+                    className="p-2.5 sm:px-4 sm:py-2.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] active:bg-[#e8e5e1] dark:active:bg-[#1a1e27] rounded-lg border border-[#e1ddd8] dark:border-[#262b35] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                    title={selectedUserIds.size === 0 ? 'Select users to export' : 'Export selected users to PDF'}
+                  >
+                    <Download className="w-5 h-5 sm:w-4 sm:h-4 sm:mr-2" />
+                    <span className="hidden sm:inline font-albert font-medium">Export</span>
+                  </button>
+                )}
+
                 {/* Add Clients Button - square on mobile, full on desktop */}
                 {showInviteButton && (
                   <button
@@ -1367,17 +1350,23 @@ export function AdminUsersTab({
                               <MessageCircle className="w-4 h-4" />
                             </button>
                           )}
-                          {/* Delete Icon Button */}
-                          {canDeleteThisUser && (
-                            <button
-                              onClick={() => handleNativeDeleteUser(user)}
-                              disabled={deleteLoading}
-                              className="h-8 w-8 p-0 inline-flex items-center justify-center rounded-lg text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
-                              title={isCoachContext ? `Remove ${user.name} from organization` : `Delete ${user.name}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+                          {/* Delete Icon Button - always visible, grayed out when no permission */}
+                          <button
+                            onClick={() => canDeleteThisUser && setUserToDelete(user)}
+                            disabled={deleteLoading || !canDeleteThisUser}
+                            className={`h-8 w-8 p-0 inline-flex items-center justify-center rounded-lg transition-colors ${
+                              canDeleteThisUser
+                                ? 'text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30'
+                                : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                            } disabled:opacity-50`}
+                            title={
+                              canDeleteThisUser
+                                ? (isCoachContext ? `Remove ${user.name} from organization` : `Delete ${user.name}`)
+                                : 'You cannot remove this user'
+                            }
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </TableCell>
                     )}
@@ -1426,15 +1415,25 @@ export function AdminUsersTab({
         )}
       </div>
 
-      {/* Delete confirmation dialog */}
+      {/* Delete/Remove confirmation dialog */}
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-albert">Delete User</AlertDialogTitle>
+            <AlertDialogTitle className="font-albert">
+              {isCoachContext ? 'Remove from Organization' : 'Delete User'}
+            </AlertDialogTitle>
             <AlertDialogDescription className="font-albert">
-              Are you sure you want to delete <strong>{userToDelete?.name || userToDelete?.email}</strong>? 
-              This action cannot be undone.
-              {/* TODO: Integrate with Clerk to also delete from authentication system */}
+              {isCoachContext ? (
+                <>
+                  Are you sure you want to remove <strong>{userToDelete?.name || userToDelete?.email}</strong> from your organization?
+                  They will lose access to all squads and programs in this organization.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to delete <strong>{userToDelete?.name || userToDelete?.email}</strong>?
+                  This action cannot be undone.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1446,7 +1445,7 @@ export function AdminUsersTab({
               disabled={deleteLoading}
               className="bg-red-600 hover:bg-red-700 font-albert"
             >
-              {deleteLoading ? 'Deleting...' : 'Delete'}
+              {deleteLoading ? (isCoachContext ? 'Removing...' : 'Deleting...') : (isCoachContext ? 'Remove' : 'Delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

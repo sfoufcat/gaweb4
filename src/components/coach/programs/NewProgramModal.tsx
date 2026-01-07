@@ -28,6 +28,13 @@ import {
 } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // Wizard step types
 type WizardStep = 'type' | 'structure' | 'details' | 'settings';
@@ -49,6 +56,8 @@ interface ProgramWizardData {
   visibility: 'public' | 'private';
   pricing: 'free' | 'paid';
   price: number;
+  recurring: boolean;
+  recurringCadence: 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
   status: 'active' | 'draft';
 }
 
@@ -64,8 +73,10 @@ const DEFAULT_WIZARD_DATA: ProgramWizardData = {
   visibility: 'private',
   pricing: 'free',
   price: 297,
+  recurring: false,
+  recurringCadence: 'monthly',
   status: 'draft',
-};
+};;
 
 interface NewProgramModalProps {
   isOpen: boolean;
@@ -823,6 +834,8 @@ interface SettingsStepProps {
 }
 
 function SettingsStep({ data, onChange }: SettingsStepProps) {
+  const isEvergreen = data.durationType === 'evergreen';
+  
   return (
     <div className="space-y-6">
       {/* Visibility */}

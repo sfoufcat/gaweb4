@@ -2463,9 +2463,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           >
             {/* Content area - Unified Sidebar + Editor Card */}
             <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
-              <div className="flex flex-col lg:flex-row lg:items-stretch">
-                {/* Sidebar Navigation - glassmorphism style, stretches to match content */}
-                <div className="lg:w-96 lg:flex-shrink-0 lg:self-stretch bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border-b lg:border-b-0 lg:border-r border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+              <div className="flex flex-col lg:flex-row lg:items-start">
+                {/* Sidebar Navigation - glassmorphism style with constrained height */}
+                <div className="lg:w-96 lg:flex-shrink-0 lg:sticky lg:top-4 bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border-b lg:border-b-0 lg:border-r border-[#e1ddd8]/40 dark:border-[#262b35]/40">
                   <ModuleWeeksSidebar
               program={selectedProgram as Program}
               modules={programModules}

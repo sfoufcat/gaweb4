@@ -1774,36 +1774,30 @@ export function DashboardPage() {
               Daily Focus
             </h2>
           </div>
-          <div className="relative overflow-hidden rounded-[24px] p-[1px] bg-gradient-to-br from-white/60 via-white/20 to-white/40 dark:from-white/20 dark:via-white/5 dark:to-white/10">
-            <div className="relative bg-white/70 dark:bg-[#171b22]/80 backdrop-blur-xl rounded-[23px] p-8 text-center">
-              {/* Subtle gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-50/30 via-transparent to-orange-50/20 dark:from-brand-accent/5 dark:via-transparent dark:to-amber-500/5 rounded-[23px] pointer-events-none" />
-              
-              <div className="relative max-w-[320px] mx-auto">
-                {/* Glassmorphic icon container */}
-                <div className="w-14 h-14 bg-gradient-to-br from-white/80 to-white/40 dark:from-white/10 dark:to-white/5 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-black/5 dark:shadow-black/20 border border-white/50 dark:border-white/10">
-                  <svg className="w-7 h-7 text-[#8b8580] dark:text-[#9a958f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                
-                <p className="font-albert text-[17px] font-medium text-[#3d3833] dark:text-[#e8e6e3] leading-[1.5] tracking-[-0.3px]">
-                  Your focus for today will appear here after the morning check-in.
-                </p>
-                <p className="font-sans text-[14px] text-[#8b8580] dark:text-[#7d7872] mt-2 leading-[1.4]">
-                  Please complete the morning check-in first.
-                </p>
-                
-                <Link
-                  href="/checkin/morning/start"
-                  className="inline-flex items-center gap-2 mt-6 px-7 py-3.5 bg-brand-accent text-brand-accent-foreground rounded-full font-sans text-[14px] font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                >
-                  Start Check-In
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </Link>
+          <div className="bg-white dark:bg-surface rounded-[20px] p-8 text-center">
+            <div className="max-w-[320px] mx-auto">
+              <div className="w-14 h-14 bg-surface-secondary dark:bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <svg className="w-7 h-7 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
+
+              <p className="font-albert text-[17px] font-medium text-text-primary leading-[1.5] tracking-[-0.3px]">
+                Your focus for today will appear here after the morning check-in.
+              </p>
+              <p className="font-sans text-[14px] text-text-secondary mt-2 leading-[1.4]">
+                Please complete the morning check-in first.
+              </p>
+
+              <Link
+                href="/checkin/morning/start"
+                className="inline-flex items-center gap-2 mt-6 px-7 py-3.5 bg-brand-accent text-brand-accent-foreground rounded-full font-sans text-[14px] font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+              >
+                Start Check-In
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </Link>
             </div>
           </div>
         </div>
@@ -1858,96 +1852,89 @@ export function DashboardPage() {
             ))}
           </div>
         ) : displayHabits.length === 0 ? (
-          <div className="relative overflow-hidden rounded-[24px] p-[1px] bg-gradient-to-br from-white/60 via-white/20 to-white/40 dark:from-white/20 dark:via-white/5 dark:to-white/10">
-            <div className="relative bg-white/70 dark:bg-[#171b22]/80 backdrop-blur-xl rounded-[23px] p-8 text-center">
-              {/* Subtle gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/30 via-transparent to-teal-50/20 dark:from-emerald-500/5 dark:via-transparent dark:to-teal-500/5 rounded-[23px] pointer-events-none" />
-              
-              <div className="relative">
-                {showFirstDayMissedCheckin ? (
-                  /* First day + missed morning check-in: Special encouraging copy */
-                  <>
-                    {/* Success icon */}
-                    <div className="w-14 h-14 bg-gradient-to-br from-emerald-100/80 to-emerald-50/60 dark:from-emerald-500/20 dark:to-emerald-500/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-emerald-500/10 dark:shadow-emerald-500/20 border border-emerald-200/50 dark:border-emerald-500/20">
-                      <svg className="w-7 h-7 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <div className="bg-white dark:bg-surface rounded-[20px] p-8 text-center">
+            <div>
+              {showFirstDayMissedCheckin ? (
+                /* First day + missed morning check-in: Special encouraging copy */
+                <>
+                  <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                    <svg className="w-7 h-7 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+
+                  <p className="font-albert text-[18px] font-semibold text-text-primary mb-2 tracking-[-0.3px]">
+                    You&apos;ve taken your first step. Great job!
+                  </p>
+                  <p className="font-sans text-[14px] text-text-secondary leading-[1.6] mb-1.5">
+                    The day is almost over, so enjoy the rest of it and recharge.
+                  </p>
+                  <p className="font-sans text-[14px] text-text-secondary leading-[1.6] mb-3">
+                    Tomorrow your journey begins with the morning check-in, and I&apos;ll remind you when it&apos;s time.
+                  </p>
+                  <p className="font-sans text-[13px] text-text-tertiary leading-[1.5] mb-5">
+                    In the meantime, you can add your first habit to start building momentum today.
+                  </p>
+                  {isDemoMode ? (
+                    <button
+                      onClick={openSignupModal}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent text-brand-accent-foreground rounded-full font-sans text-[13px] font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                       </svg>
-                    </div>
-                    
-                    <p className="font-albert text-[18px] font-semibold text-[#3d3833] dark:text-[#e8e6e3] mb-2 tracking-[-0.3px]">
-                      You&apos;ve taken your first step. Great job!
-                    </p>
-                    <p className="font-sans text-[14px] text-[#6b665f] dark:text-[#9a958f] leading-[1.6] mb-1.5">
-                      The day is almost over, so enjoy the rest of it and recharge.
-                    </p>
-                    <p className="font-sans text-[14px] text-[#6b665f] dark:text-[#9a958f] leading-[1.6] mb-3">
-                      Tomorrow your journey begins with the morning check-in, and I&apos;ll remind you when it&apos;s time.
-                    </p>
-                    <p className="font-sans text-[13px] text-[#8b8580] dark:text-[#7d7872] leading-[1.5] mb-5">
-                      In the meantime, you can add your first habit to start building momentum today.
-                    </p>
-                    {isDemoMode ? (
-                      <button
-                        onClick={openSignupModal}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#2c2520] to-[#3d3530] dark:from-brand-accent dark:to-brand-accent/90 text-white rounded-full font-sans text-[13px] font-medium shadow-lg shadow-black/10 dark:shadow-brand-accent/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        Add your first habit
-                      </button>
-                    ) : (
-                      <Link 
-                        href="/habits/new"
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#2c2520] to-[#3d3530] dark:from-brand-accent dark:to-brand-accent/90 text-white rounded-full font-sans text-[13px] font-medium shadow-lg shadow-black/10 dark:shadow-brand-accent/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        Add your first habit
-                      </Link>
-                    )}
-                  </>
-                ) : (
-                  /* Normal empty state */
-                  <>
-                    {/* Habit icon */}
-                    <div className="w-14 h-14 bg-gradient-to-br from-white/80 to-white/40 dark:from-white/10 dark:to-white/5 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-black/5 dark:shadow-black/20 border border-white/50 dark:border-white/10">
-                      <svg className="w-7 h-7 text-[#8b8580] dark:text-[#9a958f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                      Add your first habit
+                    </button>
+                  ) : (
+                    <Link
+                      href="/habits/new"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent text-brand-accent-foreground rounded-full font-sans text-[13px] font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                       </svg>
-                    </div>
-                    
-                    <p className="font-albert text-[17px] font-medium text-[#3d3833] dark:text-[#e8e6e3] mb-2 tracking-[-0.3px]">
-                      No habits yet
-                    </p>
-                    <p className="font-sans text-[14px] text-[#8b8580] dark:text-[#7d7872] mb-5 leading-[1.4]">
-                      Start building consistency with daily habits
-                    </p>
-                    {isDemoMode ? (
-                      <button
-                        onClick={openSignupModal}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#2c2520] to-[#3d3530] dark:from-brand-accent dark:to-brand-accent/90 text-white rounded-full font-sans text-[13px] font-medium shadow-lg shadow-black/10 dark:shadow-brand-accent/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        Create your first habit
-                      </button>
-                    ) : (
-                      <Link 
-                        href="/habits/new"
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#2c2520] to-[#3d3530] dark:from-brand-accent dark:to-brand-accent/90 text-white rounded-full font-sans text-[13px] font-medium shadow-lg shadow-black/10 dark:shadow-brand-accent/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        Create your first habit
-                      </Link>
-                    )}
-                  </>
-                )}
-              </div>
+                      Add your first habit
+                    </Link>
+                  )}
+                </>
+              ) : (
+                /* Normal empty state */
+                <>
+                  <div className="w-14 h-14 bg-surface-secondary dark:bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                    <svg className="w-7 h-7 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                  </div>
+
+                  <p className="font-albert text-[17px] font-medium text-text-primary mb-2 tracking-[-0.3px]">
+                    No habits yet
+                  </p>
+                  <p className="font-sans text-[14px] text-text-secondary mb-5 leading-[1.4]">
+                    Start building consistency with daily habits
+                  </p>
+                  {isDemoMode ? (
+                    <button
+                      onClick={openSignupModal}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent text-brand-accent-foreground rounded-full font-sans text-[13px] font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      Create your first habit
+                    </button>
+                  ) : (
+                    <Link
+                      href="/habits/new"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent text-brand-accent-foreground rounded-full font-sans text-[13px] font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      Create your first habit
+                    </Link>
+                  )}
+                </>
+              )}
             </div>
           </div>
         ) : (
