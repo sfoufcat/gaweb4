@@ -22,17 +22,17 @@ import { DEMO_USER } from '@/lib/demo-utils';
 import type { ReferralConfig } from '@/types';
 
 /**
- * Squad Page
+ * Standalone Squad Page
  *
- * Displays ALL of the user's squads (both program-linked and standalone).
+ * Displays the user's standalone squads (not attached to a program).
+ * Program-linked squads are accessed through the Program page instead.
  * This includes:
- * - Program-linked squads (squads created as part of a program)
  * - Coach-created standalone squads
  * - Alumni squads (converted from program squads)
  * - Peer-created squads
  *
  * Features:
- * - Squad switcher in SquadHeader when user has multiple squads
+ * - Squad switcher in SquadHeader when user has multiple standalone squads
  * - Squad header with name and streak
  * - Coach info (if squad has a coach)
  * - Member list with alignment indicators

@@ -702,12 +702,13 @@ function StructureStep({ data, onChange }: StructureStepProps) {
         </div>
       </div>
 
-      {/* Weeks per module calculation */}
-      <p className="text-center text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
-        {Math.round(data.durationWeeks / data.numModules * 10) / 10} weeks per module
-      </p>
+      {/* Weeks per module + Weekends - tighter spacing */}
+      <div className="space-y-2">
+        <p className="text-center text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
+          {Math.round(data.durationWeeks / data.numModules * 10) / 10} weeks per module
+        </p>
 
-      {/* Weekends Toggle */}
+        {/* Weekends Toggle */}
       <div className="flex items-center justify-between p-4 rounded-2xl bg-[#faf8f6] dark:bg-[#1d222b]/50">
         <div>
           <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -721,6 +722,7 @@ function StructureStep({ data, onChange }: StructureStepProps) {
           checked={data.includeWeekends}
           onCheckedChange={(checked) => onChange({ includeWeekends: checked })}
         />
+      </div>
       </div>
     </div>
   );

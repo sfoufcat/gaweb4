@@ -124,14 +124,14 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
         <div className={`flex flex-col gap-2 ${isCompact ? 'p-3' : 'p-5'}`}>
           {/* Title - fixed height for 2 lines */}
           <h3 className={`font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 ${
-            isCompact ? 'text-sm' : 'text-[17px] h-[2.65em]'
+            isCompact ? 'text-sm' : 'text-[17px]'
           }`}>
             {program.name}
           </h3>
 
-          {/* Description - 3 lines max */}
+          {/* Description - 2 lines max */}
           {!isCompact && (
-            <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-3">
+            <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2">
               {program.description || '\u00A0'}
             </p>
           )}

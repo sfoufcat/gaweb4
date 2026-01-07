@@ -990,7 +990,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   const minDate = new Date().toISOString().split('T')[0];
   const displayName = user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Unknown User';
   const userTier = (user?.tier || 'free') as 'free' | 'standard' | 'premium';
-  const coachingStatus = user?.coachingStatus || (user?.coaching ? 'active' : 'none');
+  const coachingStatus = hasCoaching ? 'active' : (user?.coachingStatus || 'none');
 
   if (loading) {
     return (
@@ -1105,7 +1105,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 {formatTierName(userTier)}
               </span>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getCoachingStatusBadgeColor(coachingStatus as CoachingStatus)}`}>
-                {formatCoachingStatus(coachingStatus as CoachingStatus)}
+                {hasCoaching ? 'Has 1:1 Coaching' : formatCoachingStatus(coachingStatus as CoachingStatus)}
               </span>
               {streak > 0 && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium font-albert bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">

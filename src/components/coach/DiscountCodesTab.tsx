@@ -438,8 +438,9 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
         </div>
         <Button
           variant="ghost"
+          size="sm"
           onClick={() => handleOpenModal()}
-          className="text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-semibold flex items-center gap-2 transition-colors duration-200"
+          className="text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-medium flex items-center gap-2 transition-colors duration-200"
         >
           <Plus className="w-4 h-4" />
           <span className="hidden sm:inline">New Code</span>
