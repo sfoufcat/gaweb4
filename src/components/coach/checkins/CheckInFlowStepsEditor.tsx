@@ -291,8 +291,8 @@ export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack
     fetchSteps();
   }, [fetchFlow, fetchSteps]);
 
-  // Get all steps sorted by order
-  const sortableSteps = steps.sort((a, b) => a.order - b.order);
+  // Get all steps sorted by order (use spread to avoid mutating state)
+  const sortableSteps = [...steps].sort((a, b) => a.order - b.order);
 
   const handleReorder = async (reorderedSteps: CheckInStep[]) => {
     // Validate completion step must remain last
@@ -337,17 +337,20 @@ export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack
       // Default config based on type
       const defaultConfig = getDefaultConfigForType(type);
       
+      // Get current sorted steps (calculate fresh to avoid stale closure)
+      const currentSortedSteps = [...steps].sort((a, b) => a.order - b.order);
+      
       // Find completion step - new steps must be inserted before it
-      const completionIndex = sortableSteps.findIndex(s => 
+      const completionIndex = currentSortedSteps.findIndex(s => 
         s.type === 'completion' || s.type === 'goal_achieved'
       );
       
       // Default: insert before completion step (or at end if no completion step)
-      let insertOrder = completionIndex !== -1 ? completionIndex : sortableSteps.length;
+      let insertOrder = completionIndex !== -1 ? completionIndex : currentSortedSteps.length;
       
       // If this IS a completion-type step, put it at the end
       if (END_STEP_TYPES.includes(type)) {
-        insertOrder = sortableSteps.length;
+        insertOrder = currentSortedSteps.length;
       }
 
       const response = await fetch(`/api/coach/org-checkin-flows/${flowId}/steps`, {

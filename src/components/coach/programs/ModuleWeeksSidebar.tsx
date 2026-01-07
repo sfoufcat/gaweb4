@@ -654,12 +654,12 @@ export function ModuleWeeksSidebar({
     const weekStatus = getWeekStatus(week);
     const moduleColor = moduleColors[moduleIndex % moduleColors.length];
 
-    // Status-based background colors - orange for active, yellow for past, module color for future
+    // Status-based background colors - orange for active, yellow for past, gray for future
     const statusBgClass = weekStatus === 'past'
       ? 'bg-yellow-50/50 dark:bg-yellow-950/20'
       : weekStatus === 'active'
       ? 'bg-orange-50/50 dark:bg-orange-950/20'
-      : moduleColor.bg;
+      : 'bg-gray-50/50 dark:bg-gray-900/20';
 
     return (
       <div className="group/week">
@@ -679,20 +679,20 @@ export function ModuleWeeksSidebar({
               </div>
             )}
 
-            {/* Week icon - status-based coloring, module color for future */}
+            {/* Week icon - status-based coloring, gray for future */}
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
               weekStatus === 'past'
                 ? 'bg-yellow-100/70 dark:bg-yellow-900/25'
                 : weekStatus === 'active'
                 ? 'bg-orange-100/70 dark:bg-orange-900/25'
-                : moduleColor.icon
+                : 'bg-gray-100/70 dark:bg-gray-900/25'
             }`}>
               <Calendar className={`w-5 h-5 ${
                 weekStatus === 'past'
                   ? 'text-yellow-500 dark:text-yellow-400'
                   : weekStatus === 'active'
                   ? 'text-orange-500 dark:text-orange-400'
-                  : moduleColor.iconText
+                  : 'text-gray-500 dark:text-gray-400'
               }`} />
             </div>
 
@@ -947,7 +947,7 @@ export function ModuleWeeksSidebar({
 
         {/* Module-to-weeks divider - solid status-colored line */}
         {isModuleExpanded && moduleWeeks.length > 0 && (
-          <div className={`h-0.5 mx-4 rounded-full ${
+          <div className={`h-0.5 rounded-full ${
             moduleStatus === 'past'
               ? 'bg-yellow-300 dark:bg-yellow-700'
               : moduleStatus === 'active'
@@ -998,17 +998,15 @@ export function ModuleWeeksSidebar({
           )}
         </AnimatePresence>
 
-        {/* Module-ending divider - beautiful separator between modules */}
+        {/* Module-ending divider - slim elegant separator */}
         {isModuleExpanded && moduleWeeks.length > 0 && (
-          <div className="px-4 pt-3 pb-1">
-            <div className={`h-1 rounded-full ${
-              moduleStatus === 'past'
-                ? 'bg-gradient-to-r from-yellow-200 via-yellow-300 to-yellow-200 dark:from-yellow-900/40 dark:via-yellow-800/60 dark:to-yellow-900/40'
-                : moduleStatus === 'active'
-                ? 'bg-gradient-to-r from-orange-200 via-orange-300 to-orange-200 dark:from-orange-900/40 dark:via-orange-800/60 dark:to-orange-900/40'
-                : 'bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 dark:from-gray-800/40 dark:via-gray-700/60 dark:to-gray-800/40'
-            }`} />
-          </div>
+          <div className={`h-0.5 rounded-full ${
+            moduleStatus === 'past'
+              ? 'bg-yellow-300 dark:bg-yellow-700'
+              : moduleStatus === 'active'
+              ? 'bg-orange-300 dark:bg-orange-700'
+              : 'bg-gray-200 dark:bg-gray-700'
+          }`} />
         )}
 
         {/* Empty state for module with no weeks */}
