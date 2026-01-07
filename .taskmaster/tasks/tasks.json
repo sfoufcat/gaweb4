@@ -2,248 +2,84 @@
   "master": {
     "tasks": [
       {
-        "id": "60",
-        "title": "Create Coaching Chat API Endpoint",
-        "description": "Implement a new API endpoint for creating and retrieving coaching chat channels",
-        "details": "Create `/api/chat/coaching/route.ts` that accepts a `clientId` parameter and returns existing coaching channel or creates a new one with format `coaching-{orgSuffix}-{userSuffix}`. The endpoint should check if a coaching channel already exists between the coach and client, and if not, create one with proper custom data properties: `isCoachingChat: true`, `organizationId`, `coachId`, `clientId`. Store the `chatChannelId` in the `clientCoachingData` collection for future reference.",
-        "testStrategy": "Unit tests for API endpoint with mock data, integration tests to verify channel creation/retrieval, test with existing and non-existing coaching channels",
+        "id": "78",
+        "title": "Fix calculateDateForProgramDay Bug",
+        "description": "Fix the critical RangeError in calculateDateForProgramDay function that crashes when enrollment.startedAt is undefined, blocking coach-to-client sync",
+        "details": "In src/lib/program-engine.ts at line 2671, add null/undefined checks for startDateStr parameter at the beginning of the calculateDateForProgramDay function. Add validation using isNaN(startDate.getTime()) to detect invalid Date objects. Return null instead of crashing when date is invalid. Add console.warn logging for debugging purposes. This fix will unblock the already deployed coach-to-client sync code that currently fails silently.",
+        "testStrategy": "Unit tests with undefined startDateStr, invalid date strings, and valid dates. Verify function returns null for invalid inputs and correct dates for valid inputs. Test coach program edits to ensure sync no longer crashes.",
         "priority": "high",
         "dependencies": [],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T19:15:25.799Z"
+        "updatedAt": "2026-01-07T20:47:15.410Z"
       },
       {
-        "id": "61",
-        "title": "Modify DM API to Check for Existing Coaching Channels",
-        "description": "Update the DM channel creation logic to prevent duplicate channels between coaches and clients",
-        "details": "Modify `/api/chat/dm/route.ts` to check if one user is an org admin (coach) and the other is a client. Before creating a new DM channel, check if a coaching channel already exists using the coaching API. If a coaching channel exists, return that channel instead of creating a new DM. If one user is a coach, always use/create the coaching channel format instead of the DM format.",
-        "testStrategy": "Test scenarios: coach-client DM creation (should use coaching channel), regular user DM creation (should use DM channel), existing coaching channel scenarios",
+        "id": "79",
+        "title": "Implement Lazy Sync on Task Fetch",
+        "description": "Add automatic program task sync when users fetch their tasks, ensuring timezone-aware delivery without manual intervention",
+        "details": "Modify src/app/api/tasks/route.ts GET endpoint to check if user has active program enrollment and existing program tasks for today. If no program tasks exist with source: 'program' for today, call syncProgramV2TasksForToday(userId) in background. Implement error handling to ensure task fetch succeeds even if sync fails. Use existing programTaskExistsV2() function to prevent duplicates. This provides natural timezone handling as tasks sync when user needs them.",
+        "testStrategy": "Test with users in different timezones opening app. Verify program tasks appear automatically. Test error scenarios where sync fails but task fetch still works. Verify no duplicate tasks are created.",
         "priority": "high",
         "dependencies": [
-          "60"
+          "78"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T19:16:29.093Z"
+        "updatedAt": "2026-01-07T20:48:31.134Z"
       },
       {
-        "id": "62",
-        "title": "Update openOrCreateDirectChat Function",
-        "description": "Enhance the chat opening logic to handle coaching context appropriately",
-        "details": "Update `openOrCreateDirectChat()` function in `src/lib/chat.ts` to add an `isCoachingContext` parameter. When `isCoachingContext` is true, use the `/api/chat/coaching` endpoint instead of `/api/chat/dm`. This function should determine the context based on user roles and relationship (coach-client vs regular users).",
-        "testStrategy": "Test function with coaching context enabled/disabled, verify correct API endpoint usage, test with different user role combinations",
+        "id": "80",
+        "title": "Create Backup Cron Job for Program Sync",
+        "description": "Implement a backup cron job running every 6 hours to ensure users who don't open the app still receive program tasks for push notifications",
+        "details": "Create new file src/app/api/cron/programs-daily-sync/route.ts with POST handler. Fetch all active enrollments where status === 'active'. For each enrollment, check if user has program tasks for today using programTaskExistsV2(). If not, call syncProgramV2TasksForToday(userId). Implement batching for >1000 enrollments to avoid overwhelming Firestore. Add rate limiting and comprehensive logging. Update vercel.json with cron schedule '0 */6 * * *' for 0:00, 6:00, 12:00, 18:00 UTC.",
+        "testStrategy": "Test cron execution with mock enrollments. Verify batching works with large datasets. Test error handling for individual user sync failures. Monitor logs for successful execution and performance metrics.",
+        "priority": "medium",
+        "dependencies": [
+          "78"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-07T20:49:27.590Z"
+      },
+      {
+        "id": "81",
+        "title": "Add Program Sync on Enrollment",
+        "description": "Automatically sync program tasks when users enroll in programs, ensuring Day 1 tasks appear immediately",
+        "details": "Modify src/app/api/programs/enroll/route.ts and src/app/api/programs/complete-enrollment/route.ts to trigger sync after creating active enrollment. Check if start date (cohort.startDate or enrollment.startedAt) is today or in the past. If so, call syncProgramV2TasksForToday(userId). Implement graceful error handling - enrollment should succeed even if sync fails. Add logging for sync success/failure during enrollment process.",
+        "testStrategy": "Test enrollment flow with immediate task sync. Verify Day 1 tasks appear for new enrollees. Test error scenarios where sync fails but enrollment completes successfully. Test both direct enrollment and post-payment enrollment paths.",
         "priority": "high",
         "dependencies": [
-          "60",
-          "61"
+          "78"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T19:17:04.198Z"
+        "updatedAt": "2026-01-07T20:50:45.330Z"
       },
       {
-        "id": "63",
-        "title": "Implement Dynamic Channel Name Display Logic",
-        "description": "Create logic to dynamically generate channel display names based on viewer role",
-        "details": "Remove static `name` property from coaching channels and implement dynamic naming logic. For coaches viewing coaching channels, display the client's full name. For clients in 1:1 programs, display 'Work with me 1:1' with coach image. For clients not in 1:1 programs, display the coach's name. Create a utility function that takes the channel, current user, and context to return the appropriate display name.",
-        "testStrategy": "Test display names for different user roles and program enrollment states, verify coach sees client names and clients see appropriate coach branding",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T19:18:36.459Z"
-      },
-      {
-        "id": "64",
-        "title": "Fix Channel Tab Filtering Logic",
-        "description": "Update the channel list UI to correctly categorize coaching channels into appropriate tabs",
-        "details": "Update `StreamChatComponents.tsx` to fix tab filtering logic for coaching channels. For coaches, all coaching channels should appear in the Direct tab. For clients enrolled in 1:1 programs, coaching channels should appear in the Main tab. For clients not enrolled in 1:1 programs but where the coach has messaged them, channels should appear in the Direct tab. Implement logic to check program enrollment status and user roles to determine correct tab placement.",
-        "testStrategy": "Test tab placement for coaches (all in Direct), clients with 1:1 enrollment (Main tab), clients without 1:1 enrollment (Direct tab), verify channels don't appear until coach initiates contact for non-enrolled clients",
-        "priority": "high",
-        "dependencies": [
-          "63"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T19:18:36.460Z"
-      },
-      {
-        "id": "65",
-        "title": "Update Profile Message Icon Handler",
-        "description": "Modify profile page message icons to use coaching chat consistently",
-        "details": "Update `/app/profile/[userId]/page.tsx` to check if the current user is a coach viewing a client profile. If so, use the coaching chat endpoint instead of the regular DM endpoint. Check for existing `coachingChatChannelId` in the `clientCoachingData` collection and use the coaching context when opening chats. Ensure the message icon always opens the same coaching channel that appears in the channel list.",
-        "testStrategy": "Test message icon clicks from client profiles as coach, verify same channel opens as in channel list, test with existing and new coaching relationships",
+        "id": "82",
+        "title": "Update Vercel Configuration for Cron",
+        "description": "Configure Vercel cron jobs to enable the backup program sync functionality",
+        "details": "Update vercel.json file to include cron configuration for the programs-daily-sync endpoint. Add cron object with path '/api/cron/programs-daily-sync' and schedule '0 */6 * * *' to run every 6 hours at 0:00, 6:00, 12:00, and 18:00 UTC. Ensure proper formatting and syntax for Vercel cron jobs. This enables the backup sync mechanism for users who don't actively open the app.",
+        "testStrategy": "Deploy configuration and verify cron job appears in Vercel dashboard. Monitor cron execution logs. Test manual trigger of cron endpoint to ensure it works before automated scheduling.",
         "priority": "medium",
         "dependencies": [
-          "62"
+          "80"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-07T19:20:49.122Z"
+        "updatedAt": "2026-01-07T20:49:27.593Z"
       },
       {
-        "id": "66",
-        "title": "Update Client Card Message Icons",
-        "description": "Ensure all message icons in coach client management areas use coaching channels",
-        "details": "Update message icons in `/app/coach/clients/` components and any client card components to use the coaching chat endpoint. Ensure all message icons throughout the coach interface (client lists, client cards, etc.) consistently open the same coaching channel. Update the `ChatSheet.tsx` component to use coaching channels when opened from client context.",
-        "testStrategy": "Test message icons from various coach interface locations (client list, client cards, chat sheet), verify all open the same coaching channel, test consistency across different entry points",
+        "id": "83",
+        "title": "Integration Testing and Monitoring Setup",
+        "description": "Implement comprehensive testing and monitoring for the complete program task sync architecture",
+        "details": "Create end-to-end tests covering all sync scenarios: lazy sync on app open, enrollment sync, cron backup sync, and coach edit sync. Set up monitoring and alerting for sync failures. Add metrics tracking for sync success rates, performance, and user coverage. Test timezone edge cases and high-load scenarios. Verify the complete architecture works as designed with no task duplication and proper error handling.",
+        "testStrategy": "End-to-end testing with real user scenarios across different timezones. Load testing with multiple concurrent syncs. Monitor sync success rates and performance metrics. Test failure scenarios and recovery mechanisms.",
         "priority": "medium",
         "dependencies": [
-          "62"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T19:20:49.123Z"
-      },
-      {
-        "id": "67",
-        "title": "Add Coaching Channel Custom Properties",
-        "description": "Ensure all coaching channels have the required custom data properties for proper filtering and identification",
-        "details": "Update coaching channel creation to include all required custom data properties: `isCoachingChat: true`, `organizationId`, `coachId`, `clientId`, `created_by_id: coachId`. Ensure these properties are consistently set when creating new coaching channels and can be used for filtering and identification throughout the application.",
-        "testStrategy": "Verify custom properties are set on new coaching channels, test channel filtering using these properties, validate data integrity across channel operations",
-        "priority": "medium",
-        "dependencies": [
-          "60"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T19:20:49.123Z"
-      },
-      {
-        "id": "68",
-        "title": "Implement Channel Visibility Rules",
-        "description": "Create logic to control when coaching channels are visible to clients based on enrollment and coach interaction",
-        "details": "Implement visibility rules where coaching chats only appear for clients if they are enrolled in an active 1:1 program (Main tab) or if the coach has initiated contact (Direct tab). For clients not in 1:1 programs, channels should be hidden by default and only appear after the coach sends the first message. Create functions to check program enrollment status and message history to determine visibility.",
-        "testStrategy": "Test channel visibility for clients with/without 1:1 enrollment, verify channels appear after coach initiates contact, test hiding channels for clients without coach interaction",
-        "priority": "medium",
-        "dependencies": [
-          "64",
-          "67"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T19:20:49.124Z"
-      },
-      {
-        "id": "69",
-        "title": "Create Migration Script for Existing Channels",
-        "description": "Develop a migration script to consolidate existing DM channels into coaching channels",
-        "details": "Create a migration script that identifies existing DM channels between coaches and clients, checks if corresponding coaching channels exist, and consolidates them. If both DM and coaching channels exist, migrate messages from DM to coaching channel (if Stream Chat API allows) and delete the DM channel. Update existing coaching channels to include missing custom data properties and remove hardcoded name properties.",
-        "testStrategy": "Test migration script with sample data, verify message preservation, test rollback procedures, validate data integrity after migration",
-        "priority": "low",
-        "dependencies": [
-          "67"
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": "70",
-        "title": "Handle Program Enrollment State Changes",
-        "description": "Implement logic to handle coaching channel visibility when clients enroll or unenroll from 1:1 programs",
-        "details": "Create event handlers for program enrollment changes that update coaching channel visibility and tab placement. When a client enrolls in a 1:1 program, move their coaching chat to the Main tab with 'Work with me 1:1' branding. When they unenroll, move the chat to the Direct tab and update the display name to show the coach's name. Preserve all chat history during these transitions.",
-        "testStrategy": "Test enrollment/unenrollment scenarios, verify channel moves between tabs correctly, test display name updates, ensure chat history is preserved",
-        "priority": "medium",
-        "dependencies": [
-          "68"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T19:21:03.406Z"
-      },
-      {
-        "id": "71",
-        "title": "Comprehensive Integration Testing and Validation",
-        "description": "Perform end-to-end testing to validate all coaching chat consolidation requirements",
-        "details": "Execute comprehensive testing covering all success criteria: verify message icons from all locations open the same coaching chat, validate correct tab placement for different user types and enrollment states, test channel naming consistency, ensure no duplicate channels are created, verify channels don't disappear when clicked, and validate unread counts work correctly. Test edge cases including multiple coaches, enrollment changes, and coach-initiated contact scenarios.",
-        "testStrategy": "End-to-end testing scenarios for coaches and clients, automated tests for channel creation/retrieval, manual testing of UI interactions, performance testing for channel loading, validation of all success criteria from the PRD",
-        "priority": "high",
-        "dependencies": [
-          "65",
-          "66",
-          "68",
-          "70"
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": "72",
-        "title": "Fix Race Condition in StreamChatContext",
-        "description": "Remove the problematic event-based listener system causing race conditions and implement a simpler state synchronization approach",
-        "details": "Modify src/contexts/StreamChatContext.tsx to remove the broken listener system including connectionListeners, onStreamConnected, and notifyConnectionListeners functions. Replace with direct React state management where globalClient state updates trigger UI updates through the existing .then() chain. Remove the [isConnected] dependency that causes effect re-runs and listener subscription loss. Ensure StreamChat.getInstance() singleton connection state is properly handled without race conditions.",
-        "testStrategy": "Test chat loading consistency by refreshing the page multiple times and verifying chat loads every time without alternating between loading/not loading states. Verify no console errors related to connection listeners. Test on both mobile and desktop browsers.",
-        "priority": "high",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T19:37:46.524Z"
-      },
-      {
-        "id": "73",
-        "title": "Create Chat Cache Utility Module",
-        "description": "Implement localStorage-based caching system for chat channels with proper TTL and user-specific keying",
-        "details": "Create new file src/lib/chat-cache.ts with CachedChatData interface containing channels array, timestamp, and userId. Implement functions: getCachedChannels(userId) to retrieve cached data with TTL validation (24 hours), setCachedChannels(userId, channels) to store channel data with timestamp, and clearChannelCache() to remove all cached data. Use cache key format 'chat-channels-{userId}' for multi-user support. Handle localStorage errors gracefully with try-catch blocks.",
-        "testStrategy": "Unit test all cache functions with different scenarios: empty cache, valid cache, expired cache, invalid JSON, localStorage unavailable. Test cache isolation between different userIds. Verify TTL expiration works correctly after 24 hours.",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T19:38:46.967Z"
-      },
-      {
-        "id": "74",
-        "title": "Implement Instant Cache Loading in ChatChannelsContext",
-        "description": "Modify ChatChannelsContext to immediately load cached channels on mount for instant display",
-        "details": "Update src/contexts/ChatChannelsContext.tsx to implement cache-first loading strategy. On useEffect mount, immediately check for cached channels using getCachedChannels(userId). If cache exists and contains channels, set channels state and setIsInitialized(true) for instant display. Ensure this happens synchronously before any network requests. Handle edge cases where userId is not available yet. Maintain existing multi-tenancy filtering logic.",
-        "testStrategy": "Test that cached channels display within 100ms of page load. Verify setIsInitialized(true) is called immediately when cache exists. Test with empty cache to ensure no errors. Measure loading time with browser dev tools performance tab.",
-        "priority": "high",
-        "dependencies": [
-          "72",
-          "73"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T19:44:14.501Z"
-      },
-      {
-        "id": "75",
-        "title": "Implement Background Channel Refresh",
-        "description": "Add non-blocking background refresh of channels that updates cache without disrupting user experience",
-        "details": "Extend ChatChannelsContext to fetch fresh channels in background parallel to cache loading. After displaying cached channels, initiate client.queryChannels() call asynchronously. When fresh data arrives, update channels state seamlessly, call setCachedChannels() to update cache, and ensure setIsInitialized(true) is called for first-time users. Implement error handling for network failures without affecting cached display. Ensure background refresh doesn't cause loading states or UI flashing.",
-        "testStrategy": "Test that background refresh occurs without blocking cached display. Verify fresh data updates UI seamlessly. Test network failure scenarios to ensure cached data remains displayed. Monitor network tab to confirm queryChannels() call happens in background.",
-        "priority": "medium",
-        "dependencies": [
-          "74"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T19:44:14.504Z"
-      },
-      {
-        "id": "76",
-        "title": "Handle User Context Changes and Cache Invalidation",
-        "description": "Implement proper cache clearing and re-fetching when user context changes to prevent showing wrong user's channels",
-        "details": "Add user change detection in ChatChannelsContext by monitoring userId changes. When userId changes, immediately clear current channels state, call clearChannelCache() to remove stale data, and trigger fresh cache loading cycle for new user. Ensure no flash of previous user's channels occurs. Handle edge cases like user logout/login scenarios. Maintain proper cleanup of any ongoing background requests for previous user.",
-        "testStrategy": "Test user switching scenarios by logging out and logging in as different user. Verify no cross-user channel contamination occurs. Test rapid user switching to ensure proper cleanup. Verify cache isolation between users by checking localStorage keys.",
-        "priority": "high",
-        "dependencies": [
-          "75"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T19:44:14.508Z"
-      },
-      {
-        "id": "77",
-        "title": "Performance Optimization and Error Handling",
-        "description": "Add comprehensive error handling, performance monitoring, and edge case handling for the caching system",
-        "details": "Implement robust error handling for localStorage quota exceeded, JSON parsing errors, and network failures. Add performance logging to measure actual load times and cache hit rates. Handle edge cases like corrupted cache data, browser private mode, and disabled localStorage. Add fallback mechanisms when cache fails. Implement cache size monitoring and cleanup for large datasets. Add debug logging for development troubleshooting.",
-        "testStrategy": "Test localStorage quota exceeded scenarios by filling storage. Test with corrupted cache data and invalid JSON. Verify fallback to network-only mode works. Test in private browsing mode. Measure and verify <1 second load times on cached visits and <3 seconds on first visits. Test error scenarios don't break chat functionality.",
-        "priority": "medium",
-        "dependencies": [
-          "76"
+          "79",
+          "81",
+          "82"
         ],
         "status": "pending",
         "subtasks": []
@@ -251,9 +87,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-07T19:44:14.513Z",
-      "taskCount": 18,
-      "completedCount": 15,
+      "lastModified": "2026-01-07T20:50:45.330Z",
+      "taskCount": 6,
+      "completedCount": 5,
       "tags": [
         "master"
       ]

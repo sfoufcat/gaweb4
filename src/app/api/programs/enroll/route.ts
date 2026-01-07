@@ -14,6 +14,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getStreamServerClient } from '@/lib/stream-server';
+import { syncProgramV2TasksForToday } from '@/lib/program-engine';
 import Stripe from 'stripe';
 import type { 
   Program, 
@@ -951,13 +952,26 @@ async function createEnrollment(
     console.error(`[PROGRAM_ENROLL] Failed to auto-grant program content:`, contentError);
   }
 
+  // Sync program tasks immediately if enrollment is active
+  // This ensures Day 1 tasks appear right away
+  if (status === 'active') {
+    try {
+      console.log(`[PROGRAM_ENROLL] Syncing program tasks for user ${userId}`);
+      const syncResult = await syncProgramV2TasksForToday(userId);
+      console.log(`[PROGRAM_ENROLL] Task sync result:`, syncResult);
+    } catch (syncError) {
+      // Don't fail enrollment if task sync fails
+      console.error(`[PROGRAM_ENROLL] Failed to sync program tasks:`, syncError);
+    }
+  }
+
   return NextResponse.json({
     success: true,
     enrollmentId: enrollmentRef.id,
     squadId,
     status,
     startedAt,
-    message: status === 'upcoming' 
+    message: status === 'upcoming'
       ? `Enrolled! Program starts on ${cohort?.startDate}`
       : 'Enrolled! Your program starts now',
   }, { status: 201 });

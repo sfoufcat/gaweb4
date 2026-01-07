@@ -12,6 +12,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getStreamServerClient } from '@/lib/stream-server';
+import { syncProgramV2TasksForToday } from '@/lib/program-engine';
 import Stripe from 'stripe';
 import type {
   Program,
@@ -527,6 +528,19 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[COMPLETE_ENROLLMENT] Created enrollment ${enrollmentRef.id} for user ${userId} in program ${program.id}`);
+
+    // Sync program tasks immediately if enrollment is active
+    // This ensures Day 1 tasks appear right away
+    if (status === 'active') {
+      try {
+        console.log(`[COMPLETE_ENROLLMENT] Syncing program tasks for user ${userId}`);
+        const syncResult = await syncProgramV2TasksForToday(userId);
+        console.log(`[COMPLETE_ENROLLMENT] Task sync result:`, syncResult);
+      } catch (syncError) {
+        // Don't fail enrollment if task sync fails
+        console.error(`[COMPLETE_ENROLLMENT] Failed to sync program tasks:`, syncError);
+      }
+    }
 
     return NextResponse.json({
       success: true,

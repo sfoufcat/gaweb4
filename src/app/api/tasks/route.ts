@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { updateAlignmentForToday } from '@/lib/alignment';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { withDemoMode, isDemoRequest, demoNotAvailable } from '@/lib/demo-api';
+import { syncProgramV2TasksForToday } from '@/lib/program-engine';
 import type { Task, CreateTaskRequest, ClerkPublicMetadata } from '@/types';
 
 /**
@@ -54,6 +55,43 @@ export async function GET(request: NextRequest) {
     snapshot.forEach((doc) => {
       tasks.push({ id: doc.id, ...doc.data() } as Task);
     });
+
+    // LAZY SYNC: If fetching today's tasks and no program tasks exist, trigger sync
+    // This ensures users get program tasks when they open the app (timezone-aware)
+    const today = new Date().toISOString().split('T')[0];
+    if (date === today) {
+      const hasProgramTasks = tasks.some(t => t.source === 'program');
+
+      if (!hasProgramTasks) {
+        try {
+          // Check if user has active program enrollment
+          const enrollmentSnapshot = await adminDb
+            .collection('program_enrollments')
+            .where('userId', '==', userId)
+            .where('status', '==', 'active')
+            .limit(1)
+            .get();
+
+          if (!enrollmentSnapshot.empty) {
+            console.log(`[TASKS_GET] Lazy sync: No program tasks for ${userId} on ${date}, triggering sync`);
+            const syncResult = await syncProgramV2TasksForToday(userId);
+            console.log(`[TASKS_GET] Lazy sync result:`, syncResult);
+
+            // Re-fetch tasks to include newly synced program tasks
+            if (syncResult && (syncResult.synced > 0 || syncResult.created > 0)) {
+              const refreshSnapshot = await tasksRef.get();
+              tasks.length = 0; // Clear existing tasks
+              refreshSnapshot.forEach((doc) => {
+                tasks.push({ id: doc.id, ...doc.data() } as Task);
+              });
+            }
+          }
+        } catch (syncErr) {
+          // Don't fail the request if sync fails
+          console.error('[TASKS_GET] Lazy sync failed:', syncErr);
+        }
+      }
+    }
 
     // Try to migrate pending tasks from previous days (within same organization)
     // This is wrapped in try/catch so it doesn't break the API if index is missing

@@ -2676,7 +2676,21 @@ export function calculateDateForProgramDay(
   targetDayIndex: number
 ): string | null {
   const startDateStr = cohort?.startDate || enrollment.startedAt;
+
+  // Guard against missing start date
+  if (!startDateStr) {
+    console.warn(`[calculateDateForProgramDay] No start date for enrollment ${enrollment.id}`);
+    return null;
+  }
+
   let startDate = new Date(startDateStr + 'T00:00:00');
+
+  // Guard against invalid date
+  if (isNaN(startDate.getTime())) {
+    console.warn(`[calculateDateForProgramDay] Invalid start date: ${startDateStr}`);
+    return null;
+  }
+
   const includeWeekends = program.includeWeekends !== false;
   
   if (!includeWeekends) {
