@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, 
-  ArrowLeft, 
+import {
+  Plus,
+  ArrowLeft,
   Eye,
   EyeOff,
   Settings,
@@ -12,7 +12,8 @@ import {
   ClipboardList,
   Globe,
   Loader2,
-  Pencil
+  Pencil,
+  ExternalLink
 } from 'lucide-react';
 import type { OrgOnboardingFlow } from '@/types';
 import { OnboardingFlowEditor } from './OnboardingFlowEditor';
@@ -333,13 +334,27 @@ export function CoachOnboardingFlowTab() {
                   <Pencil className="w-4 h-4" />
                   Edit Steps
                 </button>
-                
+
                 <button
                   onClick={() => setViewMode('responses')}
                   className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] hover:border-brand-accent dark:hover:border-brand-accent transition-colors"
                 >
                   <Users className="w-4 h-4" />
                   View Responses ({responseCount})
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (isDemoMode) {
+                      openSignupModal();
+                      return;
+                    }
+                    window.open(`/onboarding/preview/${flow.id}`, '_blank');
+                  }}
+                  className="p-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:border-brand-accent dark:hover:border-brand-accent transition-colors"
+                  title="Preview onboarding flow in new tab"
+                >
+                  <ExternalLink className="w-4 h-4 text-text-secondary dark:text-[#b2b6c2]" />
                 </button>
               </div>
 

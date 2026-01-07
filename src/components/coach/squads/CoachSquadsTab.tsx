@@ -870,7 +870,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                   <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 mb-2">
                     {squad.name}
                   </h3>
-                  <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
+                  <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 min-h-[2.625rem] mb-4">
                     {squad.description || 'No description'}
                   </p>
 

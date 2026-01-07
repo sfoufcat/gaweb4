@@ -83,7 +83,7 @@ export function SquadCard({ squad, onJoin, isJoining, trackLabel }: SquadCardPro
             )}
           </div>
           {squad.description && (
-            <p className="font-albert text-[14px] text-text-secondary line-clamp-2">
+            <p className="font-albert text-[14px] text-text-secondary line-clamp-2 min-h-[2.85rem]">
               {squad.description}
             </p>
           )}

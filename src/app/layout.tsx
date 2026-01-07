@@ -26,6 +26,7 @@ import { DemoSessionProvider } from "@/contexts/DemoSessionContext";
 import { ChatSheetProvider } from "@/contexts/ChatSheetContext";
 import { ChatPreferencesProvider } from "@/contexts/ChatPreferencesContext";
 import { ChatChannelsProvider } from "@/contexts/ChatChannelsContext";
+import { getServerChatFilterData } from "@/lib/chat-server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -95,8 +96,11 @@ export default async function RootLayout({
   // Get layout mode from middleware (prevents layout shift by knowing during SSR)
   const layoutMode = headersList.get('x-layout-mode') || 'with-sidebar';
   
-  // Get SSR branding from middleware cookie - single fetch, no redundant calls
-  const ssrBranding = await getServerBranding();
+  // Get SSR branding and chat filter data in parallel - single fetch, no redundant calls
+  const [ssrBranding, ssrChatFilter] = await Promise.all([
+    getServerBranding(),
+    getServerChatFilterData(),
+  ]);
   
   return (
     <ClerkThemeProvider 
@@ -190,7 +194,11 @@ export default async function RootLayout({
               <CoachingProvider>
               <OrganizationProvider>
                 <StreamChatProvider>
-                  <ChatChannelsProvider>
+                  <ChatChannelsProvider
+                    initialOrgChannelIds={ssrChatFilter.orgChannelIds}
+                    initialSquadChannelIds={ssrChatFilter.squadChannelIds}
+                    initialIsPlatformMode={ssrChatFilter.isPlatformMode}
+                  >
                   <StreamVideoProvider>
                     <ChatPreferencesProvider>
                     <ChatSheetProvider>

@@ -39,9 +39,28 @@ export async function GET(
     }
 
     const cohortData = cohortDoc.data();
+    
+    // Calculate current status based on dates (not just stored value)
+    const calculateCohortStatus = (startDate: string, endDate: string, storedStatus: string): 'upcoming' | 'active' | 'completed' | 'archived' => {
+      if (storedStatus === 'archived') return 'archived';
+      const now = new Date();
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (end <= now) return 'completed';
+      if (start <= now && end > now) return 'active';
+      return 'upcoming';
+    };
+    
+    const calculatedStatus = calculateCohortStatus(
+      cohortData?.startDate,
+      cohortData?.endDate,
+      cohortData?.status
+    );
+    
     const cohort: ProgramCohort = {
       id: cohortDoc.id,
       ...cohortData,
+      status: calculatedStatus,
       createdAt: cohortData?.createdAt?.toDate?.()?.toISOString?.() || cohortData?.createdAt,
       updatedAt: cohortData?.updatedAt?.toDate?.()?.toISOString?.() || cohortData?.updatedAt,
     } as ProgramCohort;

@@ -7,7 +7,7 @@ import { Users, User, ChevronRight, Plus } from 'lucide-react';
 import type { ProgramEnrollmentWithDetails } from '@/hooks/useDashboard';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { MenuIcon } from '@/lib/menu-icons';
-import { TypeBadge, EnrolledBadge } from '@/components/ui/program-badges';
+import { TypeBadge, StatusBadge } from '@/components/ui/program-badges';
 
 interface ProgramCarouselProps {
   enrollments: ProgramEnrollmentWithDetails[];
@@ -173,21 +173,23 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                   <TypeBadge type={enrollment.program.type} />
                 </div>
 
-                {/* Status badge - top right */}
-                <div className="absolute top-3 right-3 z-20">
-                  <EnrolledBadge status={enrollment.status === 'active' ? 'active' : 'enrolled'} />
-                </div>
+                
               </div>
 
               {/* Content */}
               <div className="flex flex-col gap-2 p-4 flex-1">
-                {/* Title */}
-                <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2">
-                  {enrollment.program.name}
-                </h3>
+                {/* Title with status dot */}
+                <div className="flex items-center gap-2">
+                  <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-1">
+                    {enrollment.program.name}
+                  </h3>
+                  {enrollment.status === 'active' && (
+                    <StatusBadge isActive={true} size="sm" />
+                  )}
+                </div>
 
                 {/* Description - 2 lines max */}
-                <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2">
+                <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 min-h-[2.625rem]">
                   {enrollment.program.description || (enrollment.program.type === 'individual'
                     ? 'One-on-one coaching program'
                     : enrollment.cohort?.name || 'Group coaching program')}

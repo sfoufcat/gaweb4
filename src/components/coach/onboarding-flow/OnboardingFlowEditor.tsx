@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { 
-  Plus, 
-  GripVertical, 
-  Trash2, 
+import {
+  Plus,
+  GripVertical,
+  Trash2,
   Pencil,
   MessageSquare,
   Target,
@@ -14,7 +14,8 @@ import {
   Loader2,
   PlayCircle,
   CheckCircle,
-  X
+  X,
+  ExternalLink
 } from 'lucide-react';
 import type { OnboardingStep, OnboardingStepType, FunnelStepConfigQuestion, FunnelStepConfigGoal, FunnelStepConfigIdentity, FunnelStepConfigExplainer, FunnelStepConfigSuccess } from '@/types';
 import { StepConfigEditor } from '@/components/coach/funnels/StepConfigEditor';
@@ -333,6 +334,13 @@ export function OnboardingFlowEditor({ flowId, onBack }: OnboardingFlowEditorPro
               </span>
             )}
           </div>
+          <button
+            onClick={() => window.open(`/onboarding/preview/${flowId}`, '_blank')}
+            className="p-1.5 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+            title="Preview onboarding flow in new tab"
+          >
+            <ExternalLink className="w-4 h-4 text-text-secondary dark:text-[#b2b6c2]" />
+          </button>
         </div>
 
         {/* Steps (draggable) */}

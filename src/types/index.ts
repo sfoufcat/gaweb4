@@ -759,6 +759,7 @@ export interface Program {
   squadCapacity?: number; // Max members per squad (e.g., 10)
   coachInSquads?: boolean; // Whether coach joins each squad
   assignedCoachIds?: string[]; // Coach IDs for round-robin assignment (used when coachInSquads is false)
+  cohortCompletionThreshold?: number; // 0-100, default 50 - % of cohort members that must complete a task for it to show as "completed" to coach
   
   // Individual program settings (only applicable when type = 'individual')
   clientCommunityEnabled?: boolean; // Coach toggle to enable client community squad
@@ -911,6 +912,42 @@ export interface CohortWeekContent {
   manualNotes?: string;             // Coach notes specific to this cohort
   
   // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+
+/**
+ * CohortTaskState - Tracks aggregated task completion for cohort programs
+ * One document per task per date per cohort
+ * Firestore collection: cohort_task_states
+ */
+export interface CohortTaskStateMemberState {
+  status: 'pending' | 'completed';
+  completedAt?: string;        // ISO timestamp when completed
+  taskId?: string;             // FK to user's actual task document
+  removed?: boolean;           // True if member was removed from cohort
+}
+
+export interface CohortTaskState {
+  id: string;
+  cohortId: string;            // FK to program_cohorts
+  programId: string;           // FK to programs
+  organizationId: string;      // Denormalized for queries
+  programDayIndex: number;     // Which day in the program (1-based)
+  taskTemplateId: string;      // FK to program_day_tasks or program_week_tasks
+  taskTitle: string;           // Denormalized for display
+  date: string;                // ISO date YYYY-MM-DD
+  
+  // Aggregated metrics (updated on each member completion)
+  totalMembers: number;        // Total active members in cohort (excludes removed)
+  completedCount: number;      // How many members completed
+  completionRate: number;      // 0-100 percentage
+  isThresholdMet: boolean;     // completionRate >= cohortCompletionThreshold
+  
+  // Member breakdown
+  memberStates: Record<string, CohortTaskStateMemberState>;
+  
   createdAt: string;
   updatedAt: string;
 }
@@ -1200,7 +1237,7 @@ export type ClientViewContext =
  */
 export type CohortViewContext =
   | { mode: 'template' }
-  | { mode: 'cohort'; cohortId: string; cohortName: string };
+  | { mode: 'cohort'; cohortId: string; cohortName: string; cohortStartDate: string };
 
 /**
  * Options for syncing template content to client(s).

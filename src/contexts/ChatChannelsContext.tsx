@@ -57,6 +57,12 @@ const ChatChannelsContext = createContext<ChatChannelsContextValue | undefined>(
 
 interface ChatChannelsProviderProps {
   children: ReactNode;
+  /** SSR-provided org channel IDs for instant filtering */
+  initialOrgChannelIds?: string[];
+  /** SSR-provided squad channel IDs for instant filtering */
+  initialSquadChannelIds?: string[];
+  /** SSR-provided platform mode flag */
+  initialIsPlatformMode?: boolean;
 }
 
 /**
@@ -72,14 +78,23 @@ interface ChatChannelsProviderProps {
  * 4. Listens to Stream events to keep data fresh
  * 5. Exposes data to ChatSheet and other consumers
  */
-export function ChatChannelsProvider({ children }: ChatChannelsProviderProps) {
+export function ChatChannelsProvider({
+  children,
+  initialOrgChannelIds,
+  initialSquadChannelIds,
+  initialIsPlatformMode,
+}: ChatChannelsProviderProps) {
   const { client, isConnected } = useStreamChatClient();
   const { squads, isLoading: isSquadLoading } = useSquad();
 
-  // State
+  // State - use SSR data for instant filtering (no flash of wrong channels)
   const [channels, setChannels] = useState<ChannelPreview[]>([]);
-  const [orgChannelIds, setOrgChannelIds] = useState<Set<string>>(new Set());
-  const [isPlatformMode, setIsPlatformMode] = useState(false);
+  const [orgChannelIds, setOrgChannelIds] = useState<Set<string>>(
+    () => new Set(initialOrgChannelIds || [])
+  );
+  const [isPlatformMode, setIsPlatformMode] = useState(
+    initialIsPlatformMode ?? false
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,19 +103,28 @@ export function ChatChannelsProvider({ children }: ChatChannelsProviderProps) {
   const fetchingRef = useRef(false);
   const lastFetchTimeRef = useRef<number>(0);
 
-  // Compute user's squad channel IDs for filtering
+  // SSR squad channel IDs - ready immediately for filtering
+  const ssrSquadChannelIds = useMemo(
+    () => new Set(initialSquadChannelIds || []),
+    [initialSquadChannelIds]
+  );
+
+  // Merge SSR squad IDs with client-side squad hook (for real-time updates)
   const userSquadChannelIds = useMemo(() => {
-    const ids = new Set<string>();
+    const ids = new Set(ssrSquadChannelIds); // Start with SSR data
     for (const squad of squads) {
       if (squad.chatChannelId) {
         ids.add(squad.chatChannelId);
       }
     }
     return ids;
-  }, [squads]);
+  }, [squads, ssrSquadChannelIds]);
 
-  // Whether squad data has loaded (needed to avoid race condition in filtering)
+  // Whether squad data has loaded (for re-filtering after client data arrives)
   const squadChannelsLoaded = !isSquadLoading && squads.length >= 0;
+
+  // Whether we have SSR filter data (for immediate filtering)
+  const hasSSRFilterData = (initialOrgChannelIds?.length ?? 0) > 0 || (initialSquadChannelIds?.length ?? 0) > 0;
 
   /**
    * Process a Stream channel into a ChannelPreview
@@ -278,29 +302,41 @@ export function ChatChannelsProvider({ children }: ChatChannelsProviderProps) {
     setError(null);
 
     try {
-      // Fetch org channels and Stream channels in parallel
+      // Use SSR data if available, otherwise fetch org channels
+      // This skips the client-side fetch when we have SSR data
+      const orgDataPromise = hasSSRFilterData
+        ? Promise.resolve({ channelIds: orgChannelIds, platformMode: isPlatformMode })
+        : fetchOrgChannels();
+
+      // Fetch org channels (or use SSR) and Stream channels in parallel
+      // OPTIMIZATION: Reduced limit from 50 to 20, added state: false for faster query
       const [orgData, channelResponse] = await Promise.all([
-        fetchOrgChannels(),
+        orgDataPromise,
         client.queryChannels(
           { members: { $in: [client.userID!] } },
           { last_message_at: -1 },
-          { limit: 50, watch: true }
+          { limit: 20, watch: true, state: false }
         ),
       ]);
 
-      // Store org channel data
-      setOrgChannelIds(orgData.channelIds);
-      setIsPlatformMode(orgData.platformMode);
+      // Store org channel data (updates state if fetched fresh)
+      if (!hasSSRFilterData) {
+        setOrgChannelIds(orgData.channelIds);
+        setIsPlatformMode(orgData.platformMode);
+      }
 
-      // Process channels
+      // Process channels using current filter data (SSR or fetched)
+      const filterOrgIds = hasSSRFilterData ? orgChannelIds : orgData.channelIds;
+      const filterPlatformMode = hasSSRFilterData ? isPlatformMode : orgData.platformMode;
+
       const previews: ChannelPreview[] = [];
       for (const channel of channelResponse) {
         const preview = processChannel(
           channel,
-          orgData.channelIds,
+          filterOrgIds,
           userSquadChannelIds,
-          orgData.platformMode,
-          squadChannelsLoaded,
+          filterPlatformMode,
+          true, // With SSR data, we always have squad filter data ready
           client.userID!
         );
         if (preview) {
@@ -317,7 +353,7 @@ export function ChatChannelsProvider({ children }: ChatChannelsProviderProps) {
       setIsLoading(false);
       fetchingRef.current = false;
     }
-  }, [client, fetchOrgChannels, processChannel, userSquadChannelIds, squadChannelsLoaded]);
+  }, [client, fetchOrgChannels, processChannel, userSquadChannelIds, hasSSRFilterData, orgChannelIds, isPlatformMode]);
 
   /**
    * Update a single channel's preview (for real-time updates)
@@ -354,7 +390,7 @@ export function ChatChannelsProvider({ children }: ChatChannelsProviderProps) {
               orgChannelIds,
               userSquadChannelIds,
               isPlatformMode,
-              squadChannelsLoaded,
+              true, // With SSR data, we always have filter data ready
               client.userID!
             );
             if (preview) {
@@ -397,22 +433,28 @@ export function ChatChannelsProvider({ children }: ChatChannelsProviderProps) {
       orgChannelIds,
       userSquadChannelIds,
       isPlatformMode,
-      squadChannelsLoaded,
       processChannel,
     ]
   );
 
   // Pre-fetch channels after Stream Chat connects
+  // With SSR filter data, we don't need to wait for squad data - it's already available
   useEffect(() => {
-    // Need client to be connected and squad data loaded for proper filtering
     const actuallyConnected = !!(client?.user) || isConnected;
-    if (!actuallyConnected || !client || !squadChannelsLoaded) {
+
+    // With SSR data: only wait for Stream connection
+    // Without SSR data: also wait for squad data to load
+    const canFetch = hasSSRFilterData
+      ? actuallyConnected && client
+      : actuallyConnected && client && squadChannelsLoaded;
+
+    if (!canFetch) {
       return;
     }
 
     // Fetch channels
     fetchChannels();
-  }, [client, isConnected, squadChannelsLoaded, fetchChannels]);
+  }, [client, isConnected, squadChannelsLoaded, hasSSRFilterData, fetchChannels]);
 
   // Listen to Stream events for real-time updates
   useEffect(() => {

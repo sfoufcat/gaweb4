@@ -865,8 +865,8 @@ function ChatContent({
     unarchiveChannel,
   } = useChatPreferences();
 
-  // Archived view state
-  const [showArchivedView, setShowArchivedView] = useState(false);
+  // Archived view state - track which tab's archive to show
+  const [showArchivedView, setShowArchivedView] = useState<'main' | 'direct' | null>(null);
   const [archivedChannels, setArchivedChannels] = useState<StreamChannel[]>([]);
 
   // Coaching data from context (loaded at app startup - instant!)
@@ -937,6 +937,26 @@ function ChatContent({
 
     fetchArchivedChannels();
   }, [client, archivedChannelIds]);
+
+  // Split archived channels by tab type
+  const archivedMainChannels = useMemo(() => {
+    return archivedChannels.filter(ch => {
+      const channelId = ch.id;
+      // Main tab: squad channels and org channels
+      return channelId?.startsWith('squad-') ||
+             orgChannels.some(oc => oc.streamChannelId === channelId);
+    });
+  }, [archivedChannels, orgChannels]);
+
+  const archivedDirectChannels = useMemo(() => {
+    return archivedChannels.filter(ch => {
+      const channelId = ch.id;
+      // Direct tab: DMs and coaching channels (everything not in Main)
+      return channelId?.startsWith('coaching-') ||
+             (!channelId?.startsWith('squad-') &&
+              !orgChannels.some(oc => oc.streamChannelId === channelId));
+    });
+  }, [archivedChannels, orgChannels]);
 
   // Coaching promo data is now loaded from CoachingContext at app startup - no fetch needed!
 
@@ -1460,6 +1480,8 @@ function ChatContent({
               <>
                 {coachSquads.map((coachSquad) => {
                   if (!coachSquad.chatChannelId) return null;
+                  // Skip archived/deleted squad channels
+                  if (archivedChannelIds.has(coachSquad.chatChannelId) || deletedChannelIds.has(coachSquad.chatChannelId)) return null;
                   // Show star icon if user is the assigned coach of this squad
                   const isUserTheCoach = coachSquad.coachId === user.id;
                   return (
@@ -1507,6 +1529,8 @@ function ChatContent({
               <>
                 {squads.map((userSquad) => {
                   if (!userSquad.chatChannelId) return null;
+                  // Skip archived/deleted squad channels
+                  if (archivedChannelIds.has(userSquad.chatChannelId) || deletedChannelIds.has(userSquad.chatChannelId)) return null;
                   const isPremium = userSquad.hasCoach === true;
                   return (
                     <div key={userSquad.id} className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
@@ -1539,7 +1563,9 @@ function ChatContent({
 
             {/* Orphan Squad Channels - Previous squads with unread messages */}
             {/* Don't show on platform domain - these are tenant-specific */}
-            {!isPlatformMode && orphanSquadChannels.map((channel) => {
+            {!isPlatformMode && orphanSquadChannels
+              .filter((channel) => !archivedChannelIds.has(channel.id!) && !deletedChannelIds.has(channel.id!))
+              .map((channel) => {
               const channelData = channel.data as Record<string, unknown> | undefined;
               const channelName = (channelData?.name as string) || 'Previous Squad';
               const channelImage = channelData?.image as string | undefined;
@@ -1735,17 +1761,17 @@ function ChatContent({
               </div>
             )}
 
-            {/* Archived Chats Link */}
-            {archivedChannelIds.size > 0 && (
+            {/* Archived Chats Link - Main Tab */}
+            {archivedMainChannels.length > 0 && (
               <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
                 <ArchivedChatsLink
-                  count={archivedChannelIds.size}
-                  onClick={() => setShowArchivedView(true)}
+                  count={archivedMainChannels.length}
+                  onClick={() => setShowArchivedView('main')}
                 />
               </div>
             )}
           </div>
-          
+
           {/* Direct Tab Content - Always rendered to preserve state */}
           <div className={`absolute inset-0 overflow-y-auto ${activeTab === 'direct' ? 'block' : 'hidden'}`}>
             <MobileViewContext.Provider value={() => onMobileViewChange('channel')}>
@@ -1768,15 +1794,24 @@ function ChatContent({
                 )}
               />
             </MobileViewContext.Provider>
+            {/* Archived Chats Link - Direct Tab */}
+            {archivedDirectChannels.length > 0 && (
+              <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                <ArchivedChatsLink
+                  count={archivedDirectChannels.length}
+                  onClick={() => setShowArchivedView('direct')}
+                />
+              </div>
+            )}
           </div>
 
-          {/* Archived Channels View - Overlay that appears when showArchivedView is true */}
+          {/* Archived Channels View - Overlay that appears when showArchivedView is set */}
           {showArchivedView && (
             <div className="absolute inset-0 bg-[#faf8f6] dark:bg-[#05070b] z-10 flex flex-col animate-in slide-in-from-right-4 duration-200">
               {/* Header */}
               <div className="flex items-center gap-3 p-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
                 <button
-                  onClick={() => setShowArchivedView(false)}
+                  onClick={() => setShowArchivedView(null)}
                   className="w-8 h-8 flex items-center justify-center text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] rounded-full transition-colors"
                   aria-label="Go back"
                 >
@@ -1787,16 +1822,18 @@ function ChatContent({
                 </h3>
               </div>
 
-              {/* Archived Channels List */}
+              {/* Archived Channels List - show tab-specific channels */}
               <div className="flex-1 overflow-y-auto p-2">
-                {archivedChannels.length === 0 ? (
+                {(() => {
+                  const currentArchivedChannels = showArchivedView === 'main' ? archivedMainChannels : archivedDirectChannels;
+                  return currentArchivedChannels.length === 0 ? (
                   <div className="px-4 py-8 text-center">
                     <p className="font-albert text-[14px] text-[#8c8c8c] dark:text-[#7d8190]">
                       No archived chats
                     </p>
                   </div>
                 ) : (
-                  archivedChannels.map((channel) => {
+                  currentArchivedChannels.map((channel) => {
                     const channelData = channel.data as Record<string, unknown> | undefined;
                     const channelName = (channelData?.name as string) || channel.id || 'Chat';
                     const channelImage = channelData?.image as string | undefined;
@@ -1858,7 +1895,8 @@ function ChatContent({
                       </div>
                     );
                   })
-                )}
+                );
+                })()}
               </div>
             </div>
           )}

@@ -19,6 +19,7 @@ export { CoachReferralCard } from './CoachReferralCard';
 export { RecordingUpload } from './RecordingUpload';
 export { SendDMModal, type DMRecipient } from './SendDMModal';
 export { SuggestedTasksPanel } from './SuggestedTasksPanel';
+export { CohortTasksPanel } from './CohortTasksPanel';
 
 // Check-in flow management
 export { CoachCheckInsTab } from './checkins';

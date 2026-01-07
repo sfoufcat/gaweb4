@@ -157,6 +157,24 @@ export async function PATCH(
         console.error('[COACH_ORG_PROGRAM_WEEK_PATCH] Failed to sync tasks to clients:', syncErr);
         // Don't fail the whole request, just log the error
       }
+
+      // Cohort sync for group programs (async, don't block response)
+      const program = programDoc.data();
+      if (program?.type === 'group') {
+        import('@/lib/sync-cohort-tasks').then(({ syncProgramTasksToAllCohorts }) => {
+          const today = new Date().toISOString().split('T')[0];
+          syncProgramTasksToAllCohorts({
+            programId,
+            date: today,
+            mode: 'fill-empty',
+            syncHorizonDays: 7,
+          }).catch(err => {
+            console.error('[COHORT_SYNC] Background sync failed:', err);
+          });
+        }).catch(err => {
+          console.error('[COHORT_SYNC] Failed to import sync module:', err);
+        });
+      }
     }
 
     // Fetch the updated week

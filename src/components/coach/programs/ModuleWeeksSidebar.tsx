@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import type { Program, ProgramDay, ProgramModule, ProgramWeek, ClientViewContext } from '@/types';
+import type { Program, ProgramDay, ProgramModule, ProgramWeek, ClientViewContext, CohortViewContext } from '@/types';
 import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
 import {
   ChevronDown,
@@ -49,6 +49,8 @@ interface ModuleWeeksSidebarProps {
   isLoading?: boolean;
   /** Client view context - when in client mode, reordering is disabled */
   viewContext?: ClientViewContext;
+  /** Cohort view context - when in cohort mode, shows calendar-aligned weeks like client mode */
+  cohortViewContext?: CohortViewContext;
   /** Callback to create weeks that don't exist yet in database. Returns map of weekNumber to new weekId */
   onCreateMissingWeeks?: (weeks: Array<{ weekNumber: number; moduleId: string; startDayIndex: number; endDayIndex: number }>) => Promise<Map<number, string>>;
   /** Current day index for client (1-based) - enables "Jump to Today" button */
@@ -190,13 +192,16 @@ export function ModuleWeeksSidebar({
   onAutoDistributeWeeks,
   isLoading = false,
   viewContext,
+  cohortViewContext,
   onCreateMissingWeeks,
   currentDayIndex,
   onJumpToToday,
 }: ModuleWeeksSidebarProps) {
   // In client view mode, disable reordering (structure comes from template)
   const isClientView = viewContext?.mode === 'client';
-  const canReorderModules = !isClientView;
+  // In cohort view mode, show calendar-aligned weeks like client mode
+  const isCohortView = cohortViewContext?.mode === 'cohort';
+  const canReorderModules = !isClientView && !isCohortView;
   // Weeks are calendar-aligned and cannot be reordered (they represent fixed Mon-Fri slots)
   const canReorderWeeks = false;
   const [expandedModules, setExpandedModules] = useState<Set<string>>(
@@ -269,16 +274,25 @@ export function ModuleWeeksSidebar({
     });
   }, [program.lengthDays, program.includeWeekends, days, weeks]);
 
-  // Calculate calendar-aligned weeks when in client view mode
-  // These are based on the client's enrollment start date
+  // Calculate calendar-aligned weeks when in client view mode or cohort view mode
+  // These are based on the client's enrollment start date or cohort start date
   const calendarWeeks = useMemo((): CalendarWeek[] => {
-    if (!isClientView || viewContext?.mode !== 'client' || !viewContext.enrollmentStartedAt) {
+    let startDate: string | undefined;
+    
+    if (isClientView && viewContext?.mode === 'client' && viewContext.enrollmentStartedAt) {
+      startDate = viewContext.enrollmentStartedAt;
+    } else if (isCohortView && cohortViewContext?.mode === 'cohort' && cohortViewContext.cohortStartDate) {
+      startDate = cohortViewContext.cohortStartDate;
+    }
+    
+    if (!startDate) {
       return [];
     }
+    
     const totalDays = program.lengthDays || 30;
     const includeWeekends = program.includeWeekends !== false;
-    return calculateCalendarWeeks(viewContext.enrollmentStartedAt, totalDays, includeWeekends);
-  }, [isClientView, viewContext, program.lengthDays, program.includeWeekends]);
+    return calculateCalendarWeeks(startDate, totalDays, includeWeekends);
+  }, [isClientView, isCohortView, viewContext, cohortViewContext, program.lengthDays, program.includeWeekends]);
 
   // Convert calendar weeks to CalculatedWeek format for display in client view
   const calendarWeeksAsCalculated = useMemo((): CalculatedWeek[] => {
@@ -323,13 +337,13 @@ export function ModuleWeeksSidebar({
     });
   }, [calendarWeeks, days, weeks, program.includeWeekends]);
 
-  // Use calendar weeks in client view, template weeks otherwise
+  // Use calendar weeks in client view or cohort view, template weeks otherwise
   const displayWeeks = useMemo((): CalculatedWeek[] => {
-    if (isClientView && calendarWeeksAsCalculated.length > 0) {
+    if ((isClientView || isCohortView) && calendarWeeksAsCalculated.length > 0) {
       return calendarWeeksAsCalculated;
     }
     return calculatedWeeks;
-  }, [isClientView, calendarWeeksAsCalculated, calculatedWeeks]);
+  }, [isClientView, isCohortView, calendarWeeksAsCalculated, calculatedWeeks]);
 
   // Group weeks by module
   const weeksByModule = useMemo(() => {

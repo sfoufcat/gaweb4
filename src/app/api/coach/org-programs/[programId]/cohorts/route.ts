@@ -47,12 +47,35 @@ export async function GET(
 
     const cohortsSnapshot = await query.get();
 
-    let cohorts: (ProgramCohort | CohortWithSquads)[] = cohortsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
-      updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
-    })) as ProgramCohort[];
+    // Helper to calculate current status based on dates
+    const calculateCohortStatus = (startDate: string, endDate: string, storedStatus: string): 'upcoming' | 'active' | 'completed' | 'archived' => {
+      // If manually archived, keep it archived
+      if (storedStatus === 'archived') return 'archived';
+      
+      const now = new Date();
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      if (end <= now) return 'completed';
+      if (start <= now && end > now) return 'active';
+      return 'upcoming';
+    };
+
+    let cohorts: (ProgramCohort | CohortWithSquads)[] = cohortsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      const calculatedStatus = calculateCohortStatus(
+        data.startDate,
+        data.endDate,
+        data.status
+      );
+      return {
+        id: doc.id,
+        ...data,
+        status: calculatedStatus, // Use calculated status instead of stored
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+      };
+    }) as ProgramCohort[];
 
     // Sort by startDate descending (in memory to avoid composite index requirement)
     cohorts.sort((a, b) => 

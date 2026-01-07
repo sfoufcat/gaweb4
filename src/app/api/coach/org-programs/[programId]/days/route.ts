@@ -186,6 +186,25 @@ export async function POST(
       updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
     } as ProgramDay;
 
+    // Trigger cohort sync for group programs (async, don't block response)
+    const program = programDoc.data();
+    if (program?.type === 'group' && tasks.length > 0) {
+      // Import and trigger cohort sync asynchronously
+      import('@/lib/sync-cohort-tasks').then(({ syncProgramTasksToAllCohorts }) => {
+        const today = new Date().toISOString().split('T')[0];
+        syncProgramTasksToAllCohorts({
+          programId,
+          date: today,
+          mode: 'fill-empty',
+          syncHorizonDays: 7,
+        }).catch(err => {
+          console.error('[COHORT_SYNC] Background sync failed:', err);
+        });
+      }).catch(err => {
+        console.error('[COHORT_SYNC] Failed to import sync module:', err);
+      });
+    }
+
     return NextResponse.json({ 
       success: true, 
       day: savedDay,

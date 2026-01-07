@@ -173,7 +173,7 @@ export function ChatActionsMenu({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete conversation</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete this conversation? You can restore it from Archived Chats.
+              Delete this conversation? It will be removed permanently.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

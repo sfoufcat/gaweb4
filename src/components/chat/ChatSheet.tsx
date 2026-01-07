@@ -141,8 +141,8 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     canDelete,
   } = useChatPreferences();
 
-  // State for archived view
-  const [showArchivedView, setShowArchivedView] = useState(false);
+  // State for archived view - track which tab's archive to show
+  const [showArchivedView, setShowArchivedView] = useState<'main' | 'direct' | null>(null);
 
   // State for which swipe item is open (only one at a time)
   const [openSwipeItemId, setOpenSwipeItemId] = useState<string | null>(null);
@@ -188,7 +188,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       setView('list');
       setSelectedChannel(null);
       setIsAnimating(false);
-      setShowArchivedView(false);
+      setShowArchivedView(null);
       // Squad data is from context now - no state to reset
     }
   }, [isOpen]);
@@ -323,10 +323,20 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   // Get filtered channels based on active tab
   const filteredChannels = activeTab === 'main' ? mainChannels : directChannels;
 
-  // Get archived channels (for the archived view)
-  const archivedChannels = useMemo(() => {
-    return channels.filter(c => archivedChannelIds.has(c.id) || deletedChannelIds.has(c.id));
-  }, [channels, archivedChannelIds, deletedChannelIds]);
+  // Get archived channels split by tab type
+  const archivedMainChannels = useMemo(() => {
+    return channels.filter(c =>
+      (archivedChannelIds.has(c.id) || deletedChannelIds.has(c.id)) &&
+      c.type !== 'dm' && (c.type !== 'coaching' || !isCoach)
+    );
+  }, [channels, archivedChannelIds, deletedChannelIds, isCoach]);
+
+  const archivedDirectChannels = useMemo(() => {
+    return channels.filter(c =>
+      (archivedChannelIds.has(c.id) || deletedChannelIds.has(c.id)) &&
+      (c.type === 'dm' || (c.type === 'coaching' && isCoach))
+    );
+  }, [channels, archivedChannelIds, deletedChannelIds, isCoach]);
 
   // Build swipe actions for a channel
   const getSwipeActions = useCallback((channelPreview: ChannelPreview): SwipeAction[] => {
@@ -644,10 +654,10 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                         </a>
                       )}
 
-                      {/* Archived Chats Link */}
+                      {/* Archived Chats Link - tab-specific */}
                       <ArchivedChatsLink
-                        count={archivedChannels.length}
-                        onClick={() => setShowArchivedView(true)}
+                        count={activeTab === 'main' ? archivedMainChannels.length : archivedDirectChannels.length}
+                        onClick={() => setShowArchivedView(activeTab)}
                       />
                     </div>
                   )}
@@ -679,7 +689,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                 {/* Header */}
                 <div className="px-4 py-3 flex items-center gap-3 border-b border-[#e8e4df] dark:border-[#262b35] flex-shrink-0">
                   <button
-                    onClick={() => setShowArchivedView(false)}
+                    onClick={() => setShowArchivedView(null)}
                     className="p-1.5 -ml-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#272d38] transition-colors"
                     aria-label="Back to messages"
                   >
@@ -690,9 +700,11 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                   </h3>
                 </div>
 
-                {/* Archived Channel List */}
+                {/* Archived Channel List - show tab-specific channels */}
                 <div className="flex-1 overflow-y-auto pb-safe">
-                  {archivedChannels.length === 0 ? (
+                  {(() => {
+                    const currentArchivedChannels = showArchivedView === 'main' ? archivedMainChannels : archivedDirectChannels;
+                    return currentArchivedChannels.length === 0 ? (
                     <div className="py-12 px-5 text-center">
                       <div className="w-14 h-14 bg-[#f3f1ef] dark:bg-[#272d38] rounded-full flex items-center justify-center mx-auto mb-4">
                         <Archive className="w-7 h-7 text-text-muted" />
@@ -703,7 +715,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                     </div>
                   ) : (
                     <div>
-                      {archivedChannels.map((channelPreview) => {
+                      {currentArchivedChannels.map((channelPreview) => {
                         const channelType = toChatChannelType(channelPreview.type);
                         const isDeleted = deletedChannelIds.has(channelPreview.id);
 
@@ -764,7 +776,8 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                         );
                       })}
                     </div>
-                  )}
+                  );
+                })()}
                 </div>
               </div>
             </div>
@@ -778,7 +791,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
           <AlertDialogHeader>
             <AlertDialogTitle>Delete conversation</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete this conversation? You can restore it from Archived Chats.
+              Delete this conversation? It will be removed permanently.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

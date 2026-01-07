@@ -2358,7 +2358,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 mb-2">
                           {program.name}
                         </h3>
-                        <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
+                        <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 min-h-[2.625rem] mb-4">
                           {program.description || 'No description'}
                         </p>
 
@@ -2497,7 +2497,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 mb-2">
                           {program.name}
                         </h3>
-                        <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
+                        <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 min-h-[2.625rem] mb-4">
                           {program.description || 'No description'}
                         </p>
 
@@ -2972,8 +2972,40 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   alert('Failed to auto-distribute weeks. Check console for details.');
                 }
               }}
-              currentDayIndex={currentEnrollment?.currentDayIndex}
+              currentDayIndex={currentEnrollment?.currentDayIndex || (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortStartDate ? (() => {
+                // Calculate current day index for cohort based on start date
+                const startDate = new Date(cohortViewContext.cohortStartDate);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                startDate.setHours(0, 0, 0, 0);
+                
+                const diffTime = today.getTime() - startDate.getTime();
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                
+                // If cohort hasn't started yet or is in the past
+                if (diffDays < 0) return undefined;
+                if (diffDays >= (selectedProgram?.lengthDays || 30)) return undefined;
+                
+                // Convert to 1-based day index, accounting for weekends if not included
+                const includeWeekends = selectedProgram?.includeWeekends !== false;
+                if (includeWeekends) {
+                  return diffDays + 1;
+                } else {
+                  // Calculate business days (weekdays only)
+                  let businessDays = 0;
+                  const currentDate = new Date(startDate);
+                  while (currentDate <= today) {
+                    const dayOfWeek = currentDate.getDay();
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
+                      businessDays++;
+                    }
+                    currentDate.setDate(currentDate.getDate() + 1);
+                  }
+                  return businessDays > 0 ? businessDays : undefined;
+                }
+              })() : undefined)}
               onJumpToToday={handleJumpToToday}
+              cohortViewContext={cohortViewContext}
             />
                 </div>
 

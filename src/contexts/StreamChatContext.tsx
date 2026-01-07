@@ -166,13 +166,13 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
             data.token
           );
           
-          // After connecting, upsert the user to ensure Stream's server-side
-          // user record has the latest profile (prevents flickering)
-          await chatClient.upsertUser({
+          // Fire-and-forget: upsert user to ensure Stream's server-side
+          // user record has the latest profile (doesn't block connection)
+          chatClient.upsertUser({
             id: userId,
             name: expectedName,
             image: expectedImage,
-          });
+          }).catch(() => {});
           
           // Fire-and-forget: Join global channels in background
           // This ensures user is a member of global channels without blocking

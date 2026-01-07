@@ -79,7 +79,7 @@ export function SquadDiscoveryCard({ squad }: SquadDiscoveryCardProps) {
           
           {/* Description */}
           {squad.description && (
-            <p className="font-sans text-sm text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2">
+            <p className="font-sans text-sm text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 min-h-[2.85rem]">
               {squad.description}
             </p>
           )}

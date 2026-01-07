@@ -26,11 +26,12 @@ import {
   Moon,
   Mic,
   TrendingUp,
-  ExternalLink
+  ExternalLink,
+  RotateCcw
 } from 'lucide-react';
 import type { CheckInStep, CheckInStepType, OrgCheckInFlow } from '@/types';
 import { CheckInStepConfigEditor } from './CheckInStepConfigEditor';
-import { DeleteConfirmationModal } from '@/components/feed/ConfirmationModal';
+import { DeleteConfirmationModal, ConfirmationModal } from '@/components/feed/ConfirmationModal';
 
 interface CheckInFlowStepsEditorProps {
   flowId: string;
@@ -255,6 +256,10 @@ export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack
   
   // Delete confirmation modal
   const [stepToDelete, setStepToDelete] = useState<{id: string; type: CheckInStepType} | null>(null);
+  
+  // Restore defaults confirmation modal
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -436,6 +441,28 @@ export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack
     }
   };
 
+  const handleRestoreDefaults = async () => {
+    try {
+      setIsRestoring(true);
+      const response = await fetch(`/api/coach/org-checkin-flows/${flowId}/restore`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to restore defaults');
+      }
+
+      await fetchSteps();
+      await fetchFlow();
+      setShowRestoreConfirm(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to restore defaults');
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   const renderStepRow = (step: CheckInStep) => {
     const typeInfo = STEP_TYPE_INFO[step.type];
     const Icon = typeInfo?.icon || Info;
@@ -485,34 +512,13 @@ export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack
             >
               <Pencil className="w-4 h-4 text-text-secondary dark:text-[#b2b6c2]" />
             </button>
-            {isSystemDefault ? (
-              /* Enable/Disable Toggle for default flows */
-              <button
-                onClick={() => handleToggleStepEnabled(step.id, step.enabled !== false)}
-                className={`
-                  relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0
-                  ${step.enabled !== false
-                    ? 'bg-[#4CAF50]' 
-                    : 'bg-[#d1cec9] dark:bg-[#3d4351]'
-                  }
-                `}
-                title={step.enabled !== false ? 'Disable step' : 'Enable step'}
-              >
-                <span className={`
-                  absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
-                  ${step.enabled !== false ? 'left-[22px]' : 'left-0.5'}
-                `} />
-              </button>
-            ) : (
-              /* Delete button for custom flows */
-              <button
-                onClick={() => handleDeleteStep(step.id, step.type)}
-                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                title="Delete step"
-              >
-                <Trash2 className="w-4 h-4 text-red-500" />
-              </button>
-            )}
+            <button
+              onClick={() => handleDeleteStep(step.id, step.type)}
+              className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              title="Delete step"
+            >
+              <Trash2 className="w-4 h-4 text-red-500" />
+            </button>
           </div>
         </div>
       </div>
@@ -568,6 +574,13 @@ export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack
                   Saving...
                 </span>
               )}
+              <button
+                onClick={() => setShowRestoreConfirm(true)}
+                className="p-1.5 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                title="Restore default steps"
+              >
+                <RotateCcw className="w-4 h-4 text-text-secondary dark:text-[#b2b6c2]" />
+              </button>
               <button
                 onClick={() => {
                   const previewUrl = flow?.type && ['morning', 'evening', 'weekly'].includes(flow.type)
@@ -693,6 +706,18 @@ export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack
         onConfirm={executeDeleteStep}
         itemName="step"
         isLoading={isSaving}
+      />
+
+      {/* Restore Defaults Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showRestoreConfirm}
+        onClose={() => setShowRestoreConfirm(false)}
+        onConfirm={handleRestoreDefaults}
+        title="Restore Default Steps"
+        description="This will delete all current steps and restore the default template. This action cannot be undone."
+        confirmText="Restore Defaults"
+        variant="warning"
+        isLoading={isRestoring}
       />
     </div>
   );

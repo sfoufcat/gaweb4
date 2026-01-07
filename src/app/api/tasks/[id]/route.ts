@@ -127,6 +127,46 @@ export async function PATCH(
 
     const updatedTask: Task = { ...existingTask, ...updates } as Task;
 
+    // Cohort task state update: If a program-sourced task completion status changed
+    if (body.status !== undefined && isProgramSourced && existingTask.programEnrollmentId) {
+      const isCompleted = body.status === 'completed';
+      // Fire and forget - don't block the response
+      import('@/lib/cohort-task-state').then(async ({ findCohortTaskStateByTaskTitle, updateMemberTaskState, getProgramCompletionThreshold }) => {
+        try {
+          // Get the enrollment to check if it's a cohort enrollment
+          const enrollmentDoc = await adminDb.collection('program_enrollments').doc(existingTask.programEnrollmentId!).get();
+          if (!enrollmentDoc.exists) return;
+          
+          const enrollment = enrollmentDoc.data();
+          if (!enrollment?.cohortId) return; // Not a cohort enrollment
+          
+          // Find the CohortTaskState for this task
+          const cohortState = await findCohortTaskStateByTaskTitle(
+            enrollment.cohortId,
+            existingTask.title,
+            existingTask.date,
+            existingTask.programDayIndex || 0
+          );
+          
+          if (cohortState) {
+            const threshold = await getProgramCompletionThreshold(enrollment.programId);
+            await updateMemberTaskState(
+              cohortState.id,
+              userId,
+              isCompleted,
+              id,
+              threshold
+            );
+            console.log(`[COHORT_STATE] Updated member ${userId} task completion for cohort ${enrollment.cohortId}`);
+          }
+        } catch (err) {
+          console.error('[COHORT_STATE] Failed to update cohort task state:', err);
+        }
+      }).catch(err => {
+        console.error('[COHORT_STATE] Failed to import module:', err);
+      });
+    }
+
     // Update alignment when a task is moved to focus for today (org-scoped)
     const today = new Date().toISOString().split('T')[0];
     if (body.listType === 'focus' && existingTask.listType !== 'focus' && existingTask.date === today && organizationId) {

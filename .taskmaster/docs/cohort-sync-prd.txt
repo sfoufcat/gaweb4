@@ -1,0 +1,297 @@
+# Cohort-Program Task Sync: Coach → Cohort Members with Aggregated Completion
+
+## Overview
+Implement one-way task sync from coach programs to cohort members, with aggregated completion tracking back to the coach. Unlike individual client programs where tasks sync bidirectionally, cohort programs are coach-driven with group-level completion visibility.
+
+## Goals
+- Goal 1: Coach program task edits sync immediately to all cohort members' Daily Focus
+- Goal 2: Task completion is aggregated at cohort level (% of members completed)
+- Goal 3: Coach sees task as "completed" only when threshold % of members complete it
+- Goal 4: Configurable completion threshold per program (default 50%)
+- Goal 5: Client-added tasks remain private to client (no cohort sync)
+- Goal 6: Respect max Daily Focus tasks rule per member
+
+## Current State
+- Group programs exist with cohorts and squads
+- Tasks are generated per-user via morning check-in hydration
+- No cohort-level task completion aggregation
+- No immediate sync when coach edits program tasks
+- Squad alignment exists but tracks habits/goals, not program tasks
+
+## User Stories
+
+### As a Coach
+- I want my program task edits to appear immediately in all cohort members' Daily Focus
+- I want to see aggregated completion % for each task across the cohort
+- I want to configure what % completion means "done" for the cohort (e.g., 80% of members)
+- I want to see which specific members have/haven't completed each task
+- I want per-cohort task overrides to sync immediately to that specific cohort
+
+### As a Cohort Member (Client)
+- I want program tasks to appear in my Daily Focus immediately when my coach adds them
+- I want my personal tasks to remain private (not visible to cohort or coach)
+- I want to see my individual completion status for program tasks
+
+## Features & Requirements
+
+### Feature 1: Program Completion Threshold Setting
+**Description:**
+Add configurable completion threshold for group programs that determines when aggregated tasks show as "completed" to the coach.
+
+**Schema Extension:**
+```typescript
+// Extend Program interface
+interface Program {
+  // ... existing fields ...
+
+  // Group program completion settings
+  cohortCompletionThreshold?: number; // 0-100, default 50
+}
+```
+
+**Requirements:**
+- [ ] Add `cohortCompletionThreshold` field to Program type (default: 50)
+- [ ] Add threshold input to group program settings UI
+- [ ] Validate threshold is 0-100 in API
+- [ ] Show helper text: "Task shows as completed when X% of members complete it"
+
+**Acceptance Criteria:**
+- Coach can set threshold between 0-100%
+- Default is 50% if not set
+- Setting persists and displays correctly in settings
+
+### Feature 2: Cohort Task State Tracking Model
+**Description:**
+Create a model to track per-member task completion at the cohort level, enabling aggregation queries.
+
+**New Collection: `cohort_task_states`**
+```typescript
+interface CohortTaskState {
+  id: string;                    // Auto-generated
+  cohortId: string;              // FK to program_cohorts
+  programId: string;             // FK to programs
+  programDayIndex: number;       // Which day in the program (1-based)
+  taskTemplateId: string;        // FK to program_day_tasks or program_week_tasks
+  taskTitle: string;             // Denormalized for display
+  date: string;                  // ISO date YYYY-MM-DD
+
+  // Aggregated metrics (updated on each member completion)
+  totalMembers: number;          // Total members in cohort
+  completedCount: number;        // How many members completed
+  completionRate: number;        // 0-100 percentage
+  isThresholdMet: boolean;       // completionRate >= cohortCompletionThreshold
+
+  // Member breakdown
+  memberStates: Record<string, {
+    status: 'pending' | 'completed';
+    completedAt?: string;
+    taskId?: string;             // FK to user's actual task document
+  }>;
+
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+**Requirements:**
+- [ ] Create CohortTaskState type in types/index.ts
+- [ ] Create Firestore collection `cohort_task_states`
+- [ ] Index on: [cohortId, date], [cohortId, programDayIndex]
+- [ ] Create utility functions for state management
+
+**Acceptance Criteria:**
+- State document created when tasks sync to cohort
+- Member states updated on individual task completion
+- Aggregates recalculated on each update
+
+### Feature 3: Sync Program Tasks to Cohort Members
+**Description:**
+Create sync function that pushes program tasks to all active cohort members.
+
+**Function Signature:**
+```typescript
+async function syncProgramTasksToCohort(params: {
+  programId: string;
+  cohortId: string;
+  date: Date;
+  mode: 'fill-empty' | 'override-program-sourced';
+}): Promise<CohortSyncResult>
+```
+
+**Requirements:**
+- [ ] Get all active enrollments for the cohort
+- [ ] Calculate program day for each member (accounting for start date)
+- [ ] For each member: call existing `syncProgramTasksToClientDay` function
+- [ ] Create/update CohortTaskState document for each synced task
+- [ ] Initialize memberStates with all cohort members as 'pending'
+- [ ] Respect per-member max Daily Focus cap (excess to backlog)
+- [ ] Return summary: members synced, tasks created, errors
+
+**Acceptance Criteria:**
+- All active cohort members receive program tasks
+- CohortTaskState initialized with all members
+- Members with different start dates get correct day's tasks
+- No impact on members' personal tasks
+
+### Feature 4: Cohort Sync Triggers on Coach Edits
+**Description:**
+Wire sync function to coach program editor save actions for group programs.
+
+**Requirements:**
+- [ ] On Save Day (template) for group program: sync to all active cohorts
+- [ ] On Save Week (template) for group program: sync affected days to all active cohorts
+- [ ] On Save Cohort-specific override: sync to that specific cohort only
+- [ ] Sync horizon: today + 7 days (or configurable)
+- [ ] Use background processing for large cohorts (>50 members)
+
+**Acceptance Criteria:**
+- Template edits sync to all active cohorts
+- Cohort-specific edits only affect that cohort
+- Large cohorts don't block the save action
+
+### Feature 5: Member Completion → Cohort State Update
+**Description:**
+When a cohort member completes a program task, update the cohort-level state.
+
+**Requirements:**
+- [ ] Hook into task completion API (PATCH /api/tasks/[id])
+- [ ] If task has sourceType='program_day' or 'program_week':
+  - [ ] Find corresponding CohortTaskState document
+  - [ ] Update memberStates[userId] to 'completed'
+  - [ ] Recalculate completedCount and completionRate
+  - [ ] Update isThresholdMet based on program's cohortCompletionThreshold
+- [ ] Handle uncomplete (status back to pending): reverse the update
+
+**Acceptance Criteria:**
+- Completing a program task updates cohort state within seconds
+- Uncompleting a task decrements the count
+- Threshold flag updates correctly
+
+### Feature 6: Coach Cohort Task View
+**Description:**
+Display cohort-level task completion to coach with member breakdown.
+
+**API Endpoint: GET /api/coach/cohort-tasks/[cohortId]**
+```typescript
+interface CohortTasksResponse {
+  cohortId: string;
+  date: string;
+  threshold: number;             // Program's completion threshold
+  tasks: Array<{
+    taskTemplateId: string;
+    title: string;
+    programDayIndex: number;
+    completedCount: number;
+    totalMembers: number;
+    completionRate: number;
+    isThresholdMet: boolean;
+    memberBreakdown: Array<{
+      userId: string;
+      firstName: string;
+      lastName: string;
+      imageUrl: string;
+      status: 'pending' | 'completed';
+      completedAt?: string;
+    }>;
+  }>;
+  stats: {
+    totalTasks: number;
+    tasksAtThreshold: number;    // How many tasks met the threshold
+    overallCompletionRate: number;
+  };
+}
+```
+
+**Requirements:**
+- [ ] Create API endpoint for cohort task states
+- [ ] Include member breakdown with user info
+- [ ] Calculate overall stats for the day
+- [ ] Support date query param for historical views
+
+**Acceptance Criteria:**
+- Coach can see all program tasks for a cohort day
+- Each task shows completion % and threshold status
+- Member breakdown available for drilling down
+
+### Feature 7: Coach UI - Cohort Tasks Panel
+**Description:**
+Add UI component to coach dashboard showing cohort task completion.
+
+**Requirements:**
+- [ ] Create CohortTasksPanel component
+- [ ] Show task list with progress bars (completion %)
+- [ ] Color code: green if threshold met, yellow if close, gray if low
+- [ ] Expandable member list per task
+- [ ] Show checkmark/pending icon per member
+- [ ] Add to existing cohort management view
+
+**Acceptance Criteria:**
+- Visual progress bars show completion %
+- Clear indication when threshold is met
+- Can see which members haven't completed
+
+### Feature 8: Cohort Contribution Grid (Optional)
+**Description:**
+Similar to squad ContributionGrid, show cohort completion history over time.
+
+**Requirements:**
+- [ ] Track daily cohort completion in CohortTaskState or separate collection
+- [ ] Calculate daily "cohort alignment" = avg completion rate across all tasks
+- [ ] Display GitHub-style heatmap
+- [ ] Color based on % of tasks meeting threshold
+
+**Acceptance Criteria:**
+- Visual heatmap of cohort completion over time
+- Tooltip shows date and completion rate
+
+## Technical Considerations
+
+### Sync Timing & Performance
+- Use batch writes for multi-member updates
+- Background process for cohorts >50 members
+- Debounce rapid coach edits (save after 2s idle)
+- Index CohortTaskState for efficient queries
+
+### Day Calculation for Cohorts
+- All cohort members start on same date (cohort.startDate)
+- Unlike individual programs, no custom start dates
+- Still respect includeWeekends setting from program
+- Program day = days since cohort.startDate (adjusted for weekends)
+
+### Member Addition Mid-Cohort
+- New members joining active cohort get tasks from their join date
+- Don't backfill historical tasks
+- Add to memberStates for current day's tasks
+
+### Member Removal
+- Removed members excluded from future calculations
+- Historical data preserved for audit
+- memberStates entry remains but marked as removed
+
+## Out of Scope
+- Client task sync to cohort (one-way only)
+- Real-time WebSocket updates (use polling or SWR refresh)
+- Cohort vs cohort comparisons
+- Individual member coaching within cohort context
+- Historical backfill for existing cohorts
+
+## Testing Requirements
+- [ ] Sync creates tasks for all cohort members
+- [ ] Completion updates aggregate correctly
+- [ ] Threshold logic works at boundaries (49%, 50%, 51%)
+- [ ] Large cohort performance (100+ members)
+- [ ] Member join/leave handling
+- [ ] Weekend skipping works for cohort day calculation
+- [ ] Existing squad features unaffected
+
+## Migration Notes
+- Existing group programs get cohortCompletionThreshold=50 default
+- No data migration needed (new collection)
+- Existing program tasks continue working
+- Feature can be enabled per-program
+
+## Notes
+- Pattern follows squad alignment implementation
+- CohortTaskState is similar to how we'd track squad task completion
+- Coach sees aggregated view; members see individual view
+- Program engine largely unchanged except for sync triggers

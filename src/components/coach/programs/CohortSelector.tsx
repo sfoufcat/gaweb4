@@ -85,6 +85,7 @@ export function CohortSelector({
       mode: 'cohort',
       cohortId: cohort.id,
       cohortName: cohort.name,
+      cohortStartDate: cohort.startDate,
     });
     setOpen(false);
     setSearchTerm('');

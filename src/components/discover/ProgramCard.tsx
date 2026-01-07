@@ -110,7 +110,7 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
 
           {/* Description - 2 lines max */}
           {!isCompact && (
-            <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2">
+            <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 min-h-[2.625rem]">
               {program.description || '\u00A0'}
             </p>
           )}

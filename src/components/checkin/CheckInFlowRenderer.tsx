@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft } from 'lucide-react';
+import { mutate } from 'swr';
 import type { CheckInStep, CheckInStepCondition, EmotionalState } from '@/types';
 
 // Import extracted step components
@@ -651,6 +652,13 @@ function CompletionStep({ config, onComplete, isLastStep }: { config: Record<str
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         });
+
+        // Invalidate dashboard cache so "Day closed" state shows immediately
+        await mutate(
+          (key) => typeof key === 'string' && key.startsWith('/api/dashboard'),
+          undefined,
+          { revalidate: true }
+        );
       }
     } catch (error) {
       console.error('Failed to complete check-in:', error);
