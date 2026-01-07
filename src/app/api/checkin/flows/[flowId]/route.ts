@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { OrgCheckInFlow, CheckInStep } from '@/types';
 
 /**
  * GET /api/checkin/flows/[flowId]
  * Get a specific check-in flow with all its steps
- * 
+ *
  * Used by the end-user CheckInFlowRenderer to load and execute a flow
  */
 export async function GET(
@@ -15,10 +16,17 @@ export async function GET(
 ) {
   try {
     const { flowId } = await params;
-    const { userId, orgId } = await auth();
-    
-    if (!userId || !orgId) {
+    const { userId } = await auth();
+
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get org ID from tenant context (subdomain) for proper multi-tenancy
+    const orgId = await getEffectiveOrgId();
+
+    if (!orgId) {
+      return NextResponse.json({ error: 'No organization context' }, { status: 400 });
     }
 
     // Get flow

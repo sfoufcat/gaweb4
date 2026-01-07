@@ -135,10 +135,18 @@ export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: C
     }
   }, [onClose, router]);
 
+  // Flow disabled - auto-redirect to dashboard
+  // This happens when a coach has disabled this check-in type
+  useEffect(() => {
+    if (isDisabled) {
+      router.replace('/');
+    }
+  }, [isDisabled, router]);
+
   // Loading state
   if (isLoading) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center z-[9999]"
@@ -148,29 +156,15 @@ export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: C
     );
   }
 
-  // Flow disabled state
+  // Flow disabled state - show brief message while redirecting
   if (isDisabled) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] flex flex-col items-center justify-center z-[9999] p-6"
       >
-        <div className="text-center max-w-md">
-          <p className="text-6xl mb-6">🌙</p>
-          <h1 className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-4">
-            Check-in Not Available
-          </h1>
-          <p className="text-[#5f5a55] dark:text-[#b2b6c2] mb-8">
-            This check-in flow has been disabled by your coach.
-          </p>
-          <button
-            onClick={handleClose}
-            className="px-6 py-3 bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] rounded-full font-medium"
-          >
-            Go back
-          </button>
-        </div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a] dark:border-[#f5f5f8]" />
       </motion.div>
     );
   }

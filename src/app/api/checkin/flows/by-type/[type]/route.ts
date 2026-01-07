@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { OrgCheckInFlow, CheckInStep, CheckInFlowType } from '@/types';
 
 /**
  * GET /api/checkin/flows/by-type/[type]
  * Get the enabled check-in flow for a specific type (morning/evening/weekly)
- * 
+ *
  * This is the primary endpoint for the check-in pages to load their flow
  */
 export async function GET(
@@ -15,10 +16,17 @@ export async function GET(
 ) {
   try {
     const { type } = await params;
-    const { userId, orgId } = await auth();
-    
-    if (!userId || !orgId) {
+    const { userId } = await auth();
+
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get org ID from tenant context (subdomain) for proper multi-tenancy
+    const orgId = await getEffectiveOrgId();
+
+    if (!orgId) {
+      return NextResponse.json({ error: 'No organization context' }, { status: 400 });
     }
 
     // Validate type

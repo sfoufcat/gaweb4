@@ -835,8 +835,8 @@ export function DashboardPage() {
     
     // FIRST DAY LOGIC
     if (isFirstDay) {
-      // First day + Morning window still open (7am-12pm): Prompt - Goal - Track
-      if (isMorningWindow() && !isMorningCheckInCompleted) {
+      // First day + Morning window still open (7am-12pm) + Morning enabled: Prompt - Goal - Track
+      if (isMorningEnabled && isMorningWindow() && !isMorningCheckInCompleted) {
         return ['prompt', 'goal', 'track'];
       }
       // First day + Morning check-in completed: Goal - Track - Welcome
@@ -844,7 +844,8 @@ export function DashboardPage() {
         return ['goal', 'track', 'welcome'];
       }
       // First day + Morning window closed + NO check-in: Goal - Welcome - Track
-      if (isMorningWindowClosed && !isMorningCheckInCompleted) {
+      // OR First day + Morning disabled: Same order (skip the prompt)
+      if ((isMorningWindowClosed && !isMorningCheckInCompleted) || !isMorningEnabled) {
         return ['goal', 'welcome', 'track'];
       }
     }
@@ -857,7 +858,7 @@ export function DashboardPage() {
     
     // No check-in active: Goal - Track Prompt - Discover
     return ['goal', 'track', 'discover'];
-  }, [isDemoMode, hasProgramCheckIn, isFirstDay, isMorningWindow, isMorningCheckInCompleted, isMorningWindowClosed, hasActivePrompt]);
+  }, [isDemoMode, hasProgramCheckIn, isFirstDay, isMorningWindow, isMorningCheckInCompleted, isMorningWindowClosed, hasActivePrompt, isMorningEnabled]);
 
   if (!isLoaded || !mounted) {
     return null;
