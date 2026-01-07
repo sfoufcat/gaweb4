@@ -313,13 +313,6 @@ export function ModuleWeeksSidebar({
 
   // Use calendar weeks in client view, template weeks otherwise
   const displayWeeks = useMemo((): CalculatedWeek[] => {
-    console.log('[ModuleWeeksSidebar] displayWeeks:', {
-      isClientView,
-      calendarWeeksCount: calendarWeeksAsCalculated.length,
-      calculatedWeeksCount: calculatedWeeks.length,
-      calendarWeeksLabels: calendarWeeksAsCalculated.map(w => `${w.theme} (${w.startDay}-${w.endDay})`),
-      calculatedWeeksLabels: calculatedWeeks.map(w => `${w.theme || `Week ${w.weekNum}`} (${w.startDay}-${w.endDay})`),
-    });
     if (isClientView && calendarWeeksAsCalculated.length > 0) {
       return calendarWeeksAsCalculated;
     }
@@ -328,12 +321,6 @@ export function ModuleWeeksSidebar({
 
   // Group weeks by module
   const weeksByModule = useMemo(() => {
-    console.log('[ModuleWeeksSidebar] weeksByModule input:', {
-      modulesCount: modules.length,
-      moduleNames: modules.map(m => m.name),
-      displayWeeksCount: displayWeeks.length,
-      displayWeeksModuleIds: displayWeeks.map(w => w.moduleId),
-    });
     const map = new Map<string, CalculatedWeek[]>();
 
     // Initialize with empty arrays for each module
@@ -1074,7 +1061,7 @@ export function ModuleWeeksSidebar({
       </div>
 
       {/* Status Legend - only show when viewing client progress */}
-        {currentDayIndex && (
+        {currentDayIndex !== undefined && currentDayIndex > 0 && (
           <div className="px-4 py-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex-shrink-0">
             <div className="flex items-center justify-center gap-4 text-xs font-albert">
               <div className="flex items-center gap-1.5">

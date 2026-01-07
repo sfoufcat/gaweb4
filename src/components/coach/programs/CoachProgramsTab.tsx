@@ -362,8 +362,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     if (!enrollment || !selectedProgram) return null;
 
     // Calculate the current day index using proper weekday-aware calculation
+    // Calculate for active, completed, and stopped enrollments (not upcoming)
     let currentDayIndex = 0;
-    if (enrollment.startedAt && enrollment.status === 'active') {
+    const shouldCalculateDay = enrollment.startedAt && 
+      (enrollment.status === 'active' || enrollment.status === 'completed' || enrollment.status === 'stopped');
+    
+    if (shouldCalculateDay) {
       const cycleNumber = getActiveCycleNumber(enrollment);
       const result = calculateProgramDayIndex(
         enrollment.startedAt,
@@ -373,6 +377,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         enrollment.cycleStartedAt
       );
       currentDayIndex = result.dayIndex;
+      
+      // For completed enrollments, show the last day
+      if (enrollment.status === 'completed') {
+        currentDayIndex = selectedProgram.lengthDays;
+      }
     }
 
     return { ...enrollment, currentDayIndex };
@@ -2604,6 +2613,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 {/* Sidebar Navigation - glassmorphism style with constrained height */}
                 <div className="lg:w-96 lg:flex-shrink-0 lg:sticky lg:top-4 bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border-b lg:border-b-0 lg:border-r border-[#e1ddd8]/40 dark:border-[#262b35]/40">
                   <ModuleWeeksSidebar
+              key={clientViewContext.mode === 'client' ? `client-${clientViewContext.enrollmentId}` : 'template'}
               program={selectedProgram as Program}
               modules={programModules}
               weeks={clientViewContext.mode === 'client' ? clientWeeks.map(cw => ({

@@ -61,9 +61,10 @@ export function calculateProgramDayIndex(
   const today = todayDate || new Date().toISOString().split('T')[0];
 
   // Use cycle start date if available (for cycles > 1), otherwise use enrollment start
+  // Always normalize date strings by removing time component
   const effectiveStartDate = cycleNumber > 1 && cycleStartedAt
     ? cycleStartedAt.split('T')[0]
-    : enrollmentStartedAt;
+    : enrollmentStartedAt.split('T')[0];
 
   const startDate = new Date(effectiveStartDate + 'T00:00:00');
   const todayDateObj = new Date(today + 'T00:00:00');
