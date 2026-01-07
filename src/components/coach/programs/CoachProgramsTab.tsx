@@ -15,7 +15,7 @@ import type { DiscoverCourse } from '@/types/discover';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, List, CalendarDays, Check } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, List, CalendarDays, Check, PenLine } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -2272,132 +2272,271 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
         {/* Content */}
         {viewMode === 'list' && !tenantRequired ? (
-          // Programs List
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {displayPrograms.map((program) => (
-              <div
-                key={program.id}
-                className="glass-card overflow-hidden cursor-pointer group"
-                onClick={() => {
-                  setSelectedProgram(program);
-                  handleViewModeChange('days');
-                }}
-              >
-                {/* Cover Image */}
-                <div className="h-36 relative overflow-hidden">
-                  {program.coverImageUrl ? (
-                    <>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10" />
-                      <img
-                        src={program.coverImageUrl}
-                        alt={program.name}
-                        className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-                      />
-                    </>
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-brand-accent/15 via-brand-accent/8 to-[#8c6245]/5 dark:from-brand-accent/10 dark:via-brand-accent/5 dark:to-[#8c6245]/3 flex items-center justify-center">
-                      <div className="w-14 h-14 rounded-2xl bg-white/50 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center">
-                        {program.type === 'group' ? (
-                          <Users className="w-7 h-7 text-brand-accent/60" />
+          // Programs List - Separated by Active/Draft
+          <div className="space-y-8">
+            {/* Active Programs Section */}
+            {displayPrograms.filter(p => p.isActive).length > 0 && (
+              <div>
+                <h3 className="font-albert font-semibold text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8] mb-4">Active Programs</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {displayPrograms.filter(p => p.isActive).map((program) => (
+                    <div
+                      key={program.id}
+                      className="glass-card overflow-hidden cursor-pointer group"
+                      onClick={() => {
+                        setSelectedProgram(program);
+                        handleViewModeChange('days');
+                      }}
+                    >
+                      {/* Cover Image */}
+                      <div className="h-36 relative overflow-hidden">
+                        {program.coverImageUrl ? (
+                          <>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10" />
+                            <img
+                              src={program.coverImageUrl}
+                              alt={program.name}
+                              className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                            />
+                          </>
                         ) : (
-                          <User className="w-7 h-7 text-brand-accent/60" />
+                          <div className="w-full h-full bg-gradient-to-br from-brand-accent/15 via-brand-accent/8 to-[#8c6245]/5 dark:from-brand-accent/10 dark:via-brand-accent/5 dark:to-[#8c6245]/3 flex items-center justify-center">
+                            <div className="w-14 h-14 rounded-2xl bg-white/50 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                              {program.type === 'group' ? (
+                                <Users className="w-7 h-7 text-brand-accent/60" />
+                              ) : (
+                                <User className="w-7 h-7 text-brand-accent/60" />
+                              )}
+                            </div>
+                          </div>
                         )}
+
+                        {/* Type badge - top left */}
+                        <div className="absolute top-3 left-3 z-20">
+                          <TypeBadge type={program.type} />
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-5">
+                        <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 mb-2">
+                          {program.name}
+                        </h3>
+                        <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
+                          {program.description || 'No description'}
+                        </p>
+
+                        {/* Meta pills */}
+                        <div className="flex flex-wrap items-center gap-2 mb-4">
+                          <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
+                            <Clock className="w-3 h-3 text-brand-accent" />
+                            {program.durationType === 'evergreen' ? 'Continuous' : `${program.lengthDays} days`}
+                          </span>
+                          <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
+                            <DollarSign className="w-3 h-3 text-brand-accent" />
+                            {formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)}
+                          </span>
+                          {program.type === 'group' && (
+                            <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
+                              <Users className="w-3 h-3 text-brand-accent" />
+                              {program.squadCapacity}/squad
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Footer with stats and actions */}
+                        <div className="flex items-center justify-between pt-4 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+                          <div className="flex items-center gap-2 text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                            <StatusBadge isActive={true} size="sm" />
+                            <VisibilityBadge isPublic={program.isPublished} size="sm" />
+                            <span className="ml-1">
+                              <span className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{program.activeEnrollments}</span> active
+                              {program.cohortCount !== undefined && (
+                                <> · <span className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{program.cohortCount}</span> cohorts</>
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenProgramModal(program);
+                              }}
+                              className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent"
+                              title="Program settings"
+                            >
+                              <Settings className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDuplicateProgram(program);
+                              }}
+                              disabled={duplicatingProgram === program.id}
+                              className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent disabled:opacity-50"
+                              title="Duplicate program"
+                            >
+                              {duplicatingProgram === program.id ? (
+                                <div className="w-4 h-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirmProgram(program);
+                              }}
+                              className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                              title="Delete program"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <ChevronRight className="w-4 h-4 text-[#5f5a55]/50 dark:text-[#b2b6c2]/50 ml-1" />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  )}
-
-                  {/* Status badges - top right */}
-                  <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
-                    <StatusBadge isActive={program.isActive} />
-                    <VisibilityBadge isPublic={program.isPublished} />
-                  </div>
-
-                  {/* Type badge - top left */}
-                  <div className="absolute top-3 left-3 z-20">
-                    <TypeBadge type={program.type} />
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-5">
-                  <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 mb-2">
-                    {program.name}
-                  </h3>
-                  <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
-                    {program.description || 'No description'}
-                  </p>
-
-                  {/* Meta pills */}
-                  <div className="flex flex-wrap items-center gap-2 mb-4">
-                    <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
-                      <Clock className="w-3 h-3 text-brand-accent" />
-                      {program.durationType === 'evergreen' ? 'Continuous' : `${program.lengthDays} days`}
-                    </span>
-                    <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
-                      <DollarSign className="w-3 h-3 text-brand-accent" />
-                      {formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)}
-                    </span>
-                    {program.type === 'group' && (
-                      <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
-                        <Users className="w-3 h-3 text-brand-accent" />
-                        {program.squadCapacity}/squad
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Footer with stats and actions */}
-                  <div className="flex items-center justify-between pt-4 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
-                    <div className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                      <span className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{program.activeEnrollments}</span> active
-                      {program.cohortCount !== undefined && (
-                        <> · <span className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{program.cohortCount}</span> cohorts</>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenProgramModal(program);
-                        }}
-                        className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent"
-                        title="Program settings"
-                      >
-                        <Settings className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDuplicateProgram(program);
-                        }}
-                        disabled={duplicatingProgram === program.id}
-                        className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent disabled:opacity-50"
-                        title="Duplicate program"
-                      >
-                        {duplicatingProgram === program.id ? (
-                          <div className="w-4 h-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Copy className="w-4 h-4" />
-                        )}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirmProgram(program);
-                        }}
-                        className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        title="Delete program"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <ChevronRight className="w-4 h-4 text-[#5f5a55]/50 dark:text-[#b2b6c2]/50 ml-1" />
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* Draft Programs Section */}
+            {displayPrograms.filter(p => !p.isActive).length > 0 && (
+              <div>
+                {displayPrograms.filter(p => p.isActive).length > 0 && (
+                  <div className="border-t border-[#e1ddd8]/60 dark:border-[#262b35]/60 my-6" />
+                )}
+                <h3 className="font-albert font-semibold text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] mb-4">Draft Programs</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {displayPrograms.filter(p => !p.isActive).map((program) => (
+                    <div
+                      key={program.id}
+                      className="glass-card overflow-hidden cursor-pointer group opacity-80 hover:opacity-100 transition-opacity"
+                      onClick={() => {
+                        setSelectedProgram(program);
+                        handleViewModeChange('days');
+                      }}
+                    >
+                      {/* Cover Image */}
+                      <div className="h-36 relative overflow-hidden">
+                        {program.coverImageUrl ? (
+                          <>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10" />
+                            <img
+                              src={program.coverImageUrl}
+                              alt={program.name}
+                              className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                            />
+                          </>
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-brand-accent/15 via-brand-accent/8 to-[#8c6245]/5 dark:from-brand-accent/10 dark:via-brand-accent/5 dark:to-[#8c6245]/3 flex items-center justify-center">
+                            <div className="w-14 h-14 rounded-2xl bg-white/50 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                              {program.type === 'group' ? (
+                                <Users className="w-7 h-7 text-brand-accent/60" />
+                              ) : (
+                                <User className="w-7 h-7 text-brand-accent/60" />
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Type badge - top left */}
+                        <div className="absolute top-3 left-3 z-20">
+                          <TypeBadge type={program.type} />
+                        </div>
+
+                        {/* Draft badge - top right */}
+                        <div className="absolute top-3 right-3 z-20">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/80 dark:bg-white/10 backdrop-blur-md border border-white/50 dark:border-white/20 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                            <PenLine className="w-3 h-3" />
+                            Draft
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-5">
+                        <h3 className="font-albert font-semibold text-[17px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.3px] leading-tight line-clamp-2 mb-2">
+                          {program.name}
+                        </h3>
+                        <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
+                          {program.description || 'No description'}
+                        </p>
+
+                        {/* Meta pills */}
+                        <div className="flex flex-wrap items-center gap-2 mb-4">
+                          <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
+                            <Clock className="w-3 h-3 text-brand-accent" />
+                            {program.durationType === 'evergreen' ? 'Continuous' : `${program.lengthDays} days`}
+                          </span>
+                          <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
+                            <DollarSign className="w-3 h-3 text-brand-accent" />
+                            {formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)}
+                          </span>
+                          {program.type === 'group' && (
+                            <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
+                              <Users className="w-3 h-3 text-brand-accent" />
+                              {program.squadCapacity}/squad
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Footer with stats and actions */}
+                        <div className="flex items-center justify-between pt-4 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+                          <div className="flex items-center gap-2 text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                            <StatusBadge isActive={false} size="sm" />
+                            <VisibilityBadge isPublic={program.isPublished} size="sm" />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenProgramModal(program);
+                              }}
+                              className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent"
+                              title="Program settings"
+                            >
+                              <Settings className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDuplicateProgram(program);
+                              }}
+                              disabled={duplicatingProgram === program.id}
+                              className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent disabled:opacity-50"
+                              title="Duplicate program"
+                            >
+                              {duplicatingProgram === program.id ? (
+                                <div className="w-4 h-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirmProgram(program);
+                              }}
+                              className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                              title="Delete program"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <ChevronRight className="w-4 h-4 text-[#5f5a55]/50 dark:text-[#b2b6c2]/50 ml-1" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {displayPrograms.length === 0 && !isDemoMode && (
-              <div className="col-span-full text-center py-12">
+              <div className="text-center py-12">
                 <div className="w-16 h-16 bg-brand-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <LayoutTemplate className="w-8 h-8 text-brand-accent" />
                 </div>
@@ -2407,7 +2546,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
                   Choose from templates or build from scratch
                 </p>
-                <Button 
+                <Button
                   onClick={() => setIsNewProgramModalOpen(true)}
                   className="bg-brand-accent hover:bg-brand-accent/90 text-white"
                 >
@@ -4467,7 +4606,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           checked={programFormData.isPublished}
                           onChange={(checked) => setProgramFormData({ ...programFormData, isPublished: checked })}
                         />
-                        <span className="cursor-pointer" onClick={() => setProgramFormData({ ...programFormData, isPublished: !programFormData.isPublished })}>Published (visible in Discover)</span>
+                        <span className="cursor-pointer" onClick={() => setProgramFormData({ ...programFormData, isPublished: !programFormData.isPublished })}>Public (visible in Discover)</span>
                       </div>
                     </div>
 

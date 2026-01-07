@@ -1084,7 +1084,7 @@ export function DashboardPage() {
       return (
         <Link 
           key="prompt"
-          href="/checkin/morning/start" 
+          href="/checkin/flow/morning" 
           className={`${baseClasses} bg-gradient-to-br from-emerald-500 to-teal-600`}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
@@ -1110,7 +1110,7 @@ export function DashboardPage() {
       return (
         <Link 
           key="prompt"
-          href="/checkin/evening/start"
+          href="/checkin/flow/evening"
           className={`${baseClasses} bg-gradient-to-br from-indigo-500 to-purple-600`}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
@@ -1790,7 +1790,7 @@ export function DashboardPage() {
               </p>
 
               <Link
-                href="/checkin/morning/start"
+                href="/checkin/flow/morning"
                 className="inline-flex items-center gap-2 mt-6 px-7 py-3.5 bg-brand-accent text-brand-accent-foreground rounded-full font-sans text-[14px] font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
               >
                 Start Check-In

@@ -14,7 +14,8 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
     pathname === '/coach' ||
     pathname.startsWith('/onboarding') ||
     pathname?.startsWith('/join') ||
-    pathname.startsWith('/sign-in');
+    pathname.startsWith('/sign-in') ||
+    pathname.startsWith('/checkin');
 
   // For pages with fixed positioning, render without animation
   if (skipAnimation) {

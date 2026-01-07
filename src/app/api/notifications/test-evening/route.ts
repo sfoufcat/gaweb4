@@ -59,7 +59,7 @@ async function handleRequest(request: NextRequest) {
         type: 'evening_checkin_incomplete_tasks',
         title: 'Close your day with a quick check-in',
         body: "Not every day is a hit, and that's okay. Take a moment to reflect and close your day.",
-        actionRoute: '/checkin/evening/start',
+        actionRoute: '/checkin/flow/evening',
       });
 
       return NextResponse.json({

@@ -1841,7 +1841,7 @@ export interface Notification {
   body: string;
   createdAt: string; // ISO timestamp
   read: boolean;
-  actionRoute?: string; // e.g. "/checkin/morning/start"
+  actionRoute?: string; // e.g. "/checkin/flow/morning"
   // Optional metadata for specific notification types
   metadata?: {
     summaryId?: string;      // For call_summary_fill_week

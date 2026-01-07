@@ -24,6 +24,7 @@ import type {
   ProgramDay,
   ProgramEnrollment,
   ProgramCohort,
+  ClientProgramDay,
   // Programs v3 types (modules/weeks)
   ProgramWeek,
   CallSummary,
@@ -582,30 +583,19 @@ export async function syncProgramTasksForToday(
   // 3. Calculate current day index
   const dayIndex = calculateCurrentDayIndex(enrollment.startedAt, program.lengthDays, today);
   
-  // 4. Check if we need to generate tasks for this day
-  if (dayIndex <= enrollment.lastAssignedDayIndex) {
-    // Tasks already generated for this day
-    return {
-      success: true,
-      tasksCreated: 0,
-      focusTasksCreated: 0,
-      backlogTasksCreated: 0,
-      currentDayIndex: dayIndex,
-      enrollmentId: enrollment.id,
-      programId: program.id,
-      programName: program.name,
-      programCompleted: false,
-      message: `Tasks already generated for day ${dayIndex}`,
-    };
-  }
+  // 4. Track if this is a new day or re-sync of an existing day
+  // We still check for new tasks even if day was already processed (coach may have added new tasks)
+  const isResync = dayIndex <= enrollment.lastAssignedDayIndex;
   
   // 5. Get the program day template
   const programDay = await getProgramDay(enrollment.programId, dayIndex);
   
   if (!programDay || !programDay.tasks || programDay.tasks.length === 0) {
     console.log(`[PROGRAM_ENGINE] No tasks defined for day ${dayIndex} of program ${program.slug}`);
-    // Still update the lastAssignedDayIndex to prevent repeated checks
-    await updateEnrollmentDayIndex(enrollment.id, dayIndex);
+    // Only update lastAssignedDayIndex if this is a fresh sync (not a re-sync)
+    if (!isResync) {
+      await updateEnrollmentDayIndex(enrollment.id, dayIndex);
+    }
     return {
       success: true,
       tasksCreated: 0,
@@ -729,8 +719,10 @@ export async function syncProgramTasksForToday(
     backlogTasksCreated++;
   }
   
-  // 8. Update enrollment lastAssignedDayIndex
-  await updateEnrollmentDayIndex(enrollment.id, dayIndex);
+  // 8. Update enrollment lastAssignedDayIndex (only if this is a fresh sync, not a re-sync)
+  if (!isResync) {
+    await updateEnrollmentDayIndex(enrollment.id, dayIndex);
+  }
   
   // 9. Check if program is completed (today is the last day)
   let programCompleted = false;
@@ -1259,6 +1251,26 @@ export async function getProgramDayV2(
 }
 
 /**
+ * Get client-specific program day content for 1:1 programs.
+ * This takes precedence over template days for individual programs.
+ */
+export async function getClientProgramDay(
+  enrollmentId: string,
+  dayIndex: number
+): Promise<ClientProgramDay | null> {
+  const snapshot = await adminDb
+    .collection('client_program_days')
+    .where('enrollmentId', '==', enrollmentId)
+    .where('dayIndex', '==', dayIndex)
+    .limit(1)
+    .get();
+  
+  if (snapshot.empty) return null;
+  const doc = snapshot.docs[0];
+  return { id: doc.id, ...doc.data() } as ClientProgramDay;
+}
+
+/**
  * Get program week that contains a specific day index
  */
 export async function getProgramWeekForDay(
@@ -1540,47 +1552,51 @@ export async function syncProgramV2TasksForToday(
     };
   }
   
-  // 5. Check if we need to generate tasks for this day
-  if (dayIndex <= enrollment.lastAssignedDayIndex) {
-    // Tasks already generated for this day
-    return {
-      success: true,
-      tasksCreated: 0,
-      focusTasksCreated: 0,
-      backlogTasksCreated: 0,
-      currentDayIndex: dayIndex,
-      enrollmentId: enrollment.id,
-      programId: program.id,
-      programName: program.name,
-      programCompleted: false,
-      message: `Tasks already generated for day ${dayIndex}`,
-    };
-  }
+  // 5. Track if this is a new day or re-sync of an existing day
+  // We still check for new tasks even if day was already processed (coach may have added new tasks)
+  const isResync = dayIndex <= enrollment.lastAssignedDayIndex;
   
   // 6. Get tasks for this day
-  // First try week-level tasks (distributed based on taskDistribution setting)
-  // Then check day-level tasks (manual assignments always take precedence)
+  // For 1:1 programs, check client-specific days FIRST (takes precedence)
+  // Then try week-level tasks (distributed based on taskDistribution setting)
+  // Then check day-level template tasks
   let tasksForToday: ProgramTaskTemplate[] = [];
 
-  // Try week-level tasks first
-  const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
-  if (week) {
-    tasksForToday = getWeeklyTasksForDay(week, dayIndex);
-    console.log(`[PROGRAM_ENGINE_V2] Got ${tasksForToday.length} tasks from week ${week.weekNumber} for day ${dayIndex}`);
+  // For individual (1:1) programs, check client-specific day content first
+  if (program.type === 'individual') {
+    const clientDay = await getClientProgramDay(enrollment.id, dayIndex);
+    if (clientDay && clientDay.tasks && clientDay.tasks.length > 0) {
+      tasksForToday = [...clientDay.tasks];
+      console.log(`[PROGRAM_ENGINE_V2] Got ${clientDay.tasks.length} client-specific tasks for day ${dayIndex}`);
+    }
   }
 
-  // Also check program_days for manual day-level task assignments
+  // If no client-specific tasks (or not a 1:1 program), try week-level tasks
+  if (tasksForToday.length === 0) {
+    const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
+    if (week) {
+      tasksForToday = getWeeklyTasksForDay(week, dayIndex);
+      console.log(`[PROGRAM_ENGINE_V2] Got ${tasksForToday.length} tasks from week ${week.weekNumber} for day ${dayIndex}`);
+    }
+  }
+
+  // Also check program_days for manual day-level task assignments (template days)
+  // For non-1:1 programs, this is the primary source; for 1:1, this is fallback if no client day
   const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
   if (programDay && programDay.tasks && programDay.tasks.length > 0) {
-    // Merge day-level tasks with week-level tasks (day-level = manual overrides)
-    tasksForToday = [...tasksForToday, ...programDay.tasks];
-    console.log(`[PROGRAM_ENGINE_V2] Added ${programDay.tasks.length} day-level tasks for day ${dayIndex}`);
+    // Only add template tasks if we don't have client-specific tasks for 1:1 programs
+    if (program.type !== 'individual' || tasksForToday.length === 0) {
+      tasksForToday = [...tasksForToday, ...programDay.tasks];
+      console.log(`[PROGRAM_ENGINE_V2] Added ${programDay.tasks.length} day-level tasks for day ${dayIndex}`);
+    }
   }
   
   if (tasksForToday.length === 0) {
     console.log(`[PROGRAM_ENGINE_V2] No tasks defined for day ${dayIndex} of program ${program.name}`);
-    // Still update the lastAssignedDayIndex to prevent repeated checks
-    await updateEnrollmentDayIndexV2(enrollment.id, dayIndex);
+    // Only update lastAssignedDayIndex if this is a fresh sync (not a re-sync)
+    if (!isResync) {
+      await updateEnrollmentDayIndexV2(enrollment.id, dayIndex);
+    }
     return {
       success: true,
       tasksCreated: 0,
@@ -1703,8 +1719,10 @@ export async function syncProgramV2TasksForToday(
     backlogTasksCreated++;
   }
   
-  // 9. Update enrollment lastAssignedDayIndex
-  await updateEnrollmentDayIndexV2(enrollment.id, dayIndex);
+  // 9. Update enrollment lastAssignedDayIndex (only if this is a fresh sync, not a re-sync)
+  if (!isResync) {
+    await updateEnrollmentDayIndexV2(enrollment.id, dayIndex);
+  }
 
   // 10. Check if program is completed (today is the last day)
   let programCompleted = false;

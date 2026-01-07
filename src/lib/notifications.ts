@@ -675,7 +675,7 @@ export async function sendMorningCheckInNotification(userId: string): Promise<st
     type: 'morning_checkin',
     title: 'Your morning check-in is ready',
     body: "Start your day strong by checking in and setting today's focus.",
-    actionRoute: '/checkin/morning/start',
+    actionRoute: '/checkin/flow/morning',
     organizationId,
   });
 }
@@ -701,7 +701,7 @@ export async function sendTasksCompletedNotification(userId: string): Promise<st
     type: 'evening_checkin_complete_tasks',
     title: "Nice work! You completed today's focus",
     body: "You've finished your big three. Complete your evening check-in to close the day.",
-    actionRoute: '/checkin/evening/start',
+    actionRoute: '/checkin/flow/evening',
     organizationId,
   });
 }
@@ -728,7 +728,7 @@ export async function sendEveningReminderNotification(userId: string): Promise<s
     type: 'evening_checkin_incomplete_tasks',
     title: 'Close your day with a quick check-in',
     body: "Not every day is a hit, and that's okay. Take a moment to reflect and close your day.",
-    actionRoute: '/checkin/evening/start',
+    actionRoute: '/checkin/flow/evening',
     organizationId,
   });
 }

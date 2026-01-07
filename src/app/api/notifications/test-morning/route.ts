@@ -66,7 +66,7 @@ async function handleRequest(request: NextRequest) {
         type: 'morning_checkin',
         title: 'Your morning check-in is ready',
         body: "Start your day strong by checking in and setting today's focus.",
-        actionRoute: '/checkin/morning/start',
+        actionRoute: '/checkin/flow/morning',
         organizationId,
       });
 

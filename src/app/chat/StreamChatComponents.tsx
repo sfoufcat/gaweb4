@@ -22,8 +22,10 @@ import { CustomMessage } from '@/components/chat/CustomMessage';
 import { CustomMessageInput } from '@/components/chat/CustomMessageInput';
 import { SquadMemberStoryAvatar } from '@/components/chat/SquadMemberStoryAvatar';
 import { CallButtons } from '@/components/chat/CallButtons';
+import { ChatActionsMenu } from '@/components/chat/ChatActionsMenu';
 import { RequestCallModal } from '@/components/scheduling';
 import { Calendar } from 'lucide-react';
+import type { ChatChannelType } from '@/types/chat-preferences';
 import type { Channel as StreamChannel, ChannelSort, ChannelFilters, ChannelOptions, StreamChat } from 'stream-chat';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
 import { useSquad } from '@/hooks/useSquad';
@@ -447,6 +449,15 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
   // Get coach name for scheduling (the other member in a coaching channel)
   const coachName = isCoachingChannel && otherMember?.user?.name ? otherMember.user.name : 'Coach';
 
+  // Determine channel type for chat actions menu
+  const getChatChannelType = (): ChatChannelType => {
+    if (isDMChat || isCoachingChannel) return 'dm';
+    if (channelData?.squadId || channelData?.isSquadChannel) return 'squad';
+    if (isGlobalChannel || isOrgChannel) return 'org';
+    return 'dm'; // Default to dm for unknown types
+  };
+  const chatChannelType = getChatChannelType();
+
   return (
     <div className="str-chat__header-livestream bg-[#faf8f6] dark:bg-[#05070b]">
       {/* Single Row Header - matches Squad header structure */}
@@ -541,9 +552,13 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
             </button>
           )}
           <CallButtons channel={channel} />
+          <ChatActionsMenu
+            channelId={channelId || ''}
+            channelType={chatChannelType}
+          />
         </div>
       </div>
-      
+
       {/* Request Call Modal for coaching channels */}
       {isCoachingChannel && (
         <RequestCallModal
@@ -662,6 +677,10 @@ function SquadChannelHeader({ onBack }: { onBack?: () => void }) {
 
           {/* Call Buttons (Audio + Video) */}
           <CallButtons channel={channel} />
+          <ChatActionsMenu
+            channelId={channel?.id || ''}
+            channelType="squad"
+          />
         </div>
       </div>
     </div>
