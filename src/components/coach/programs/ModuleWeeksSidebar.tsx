@@ -442,6 +442,16 @@ export function ModuleWeeksSidebar({
   // Auto-expand to current week/day based on currentDayIndex and viewStatus
   // This runs once when displayWeeks are calculated and relevant data is available
   const hasInitializedExpansion = React.useRef(false);
+  const previousViewStatus = React.useRef(viewStatus);
+
+  // Reset expansion initialization when view mode changes (template <-> client <-> cohort)
+  React.useEffect(() => {
+    if (previousViewStatus.current !== viewStatus) {
+      hasInitializedExpansion.current = false;
+      previousViewStatus.current = viewStatus;
+    }
+  }, [viewStatus]);
+
   React.useEffect(() => {
     if (hasInitializedExpansion.current) return;
     if (displayWeeks.length === 0) return;

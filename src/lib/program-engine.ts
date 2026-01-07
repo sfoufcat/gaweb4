@@ -2439,7 +2439,10 @@ export async function syncProgramTasksToClientDay(
       if (t.sourceType === 'user' || !t.sourceType) return false;
       // Never delete client-locked tasks
       if (t.clientLocked) return false;
-      // Delete program and coach tasks
+      // CRITICAL: Only delete tasks from THIS program enrollment, not other programs
+      // This prevents Program B's sync from deleting Program A's tasks
+      if (t.programEnrollmentId && t.programEnrollmentId !== programEnrollmentId) return false;
+      // Delete program and coach tasks (only from this enrollment)
       return ['program', 'program_day', 'program_week', 'coach_manual'].includes(t.sourceType);
     });
     

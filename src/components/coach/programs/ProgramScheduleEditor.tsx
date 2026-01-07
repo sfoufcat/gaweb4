@@ -85,19 +85,19 @@ export function ProgramScheduleEditor({
     },
   };
 
-  // Module status colors (emerald for active module)
+  // Module status colors (orange for active module - matches row view)
   const moduleStatusColors = {
     past: {
-      bg: 'bg-yellow-50 dark:bg-yellow-950/30',
+      bg: 'bg-yellow-50/40 dark:bg-yellow-950/15',
       border: 'border-yellow-300 dark:border-yellow-700',
       text: 'text-yellow-700 dark:text-yellow-300',
-      accent: 'bg-yellow-200 dark:bg-yellow-800',
+      accent: 'bg-yellow-100 dark:bg-yellow-900/30',
     },
     active: {
-      bg: 'bg-emerald-50 dark:bg-emerald-950/30',
-      border: 'border-emerald-300 dark:border-emerald-700',
-      text: 'text-emerald-700 dark:text-emerald-300',
-      accent: 'bg-emerald-200 dark:bg-emerald-800',
+      bg: 'bg-orange-50/40 dark:bg-orange-950/15',
+      border: 'border-orange-300 dark:border-orange-700',
+      text: 'text-orange-700 dark:text-orange-300',
+      accent: 'bg-orange-100 dark:bg-orange-900/30',
     },
     future: null, // Use default module color
   };
@@ -238,11 +238,10 @@ export function ProgramScheduleEditor({
 
       if (day) {
         const status = getDayStatus(day.dayIndex);
-        const statusStyle = statusColors[status];
 
-        // Use status color if available, otherwise module color
-        const bgClass = statusStyle?.bg || moduleColor.bg;
-        const borderClass = statusStyle?.border || moduleColor.border;
+        // For past/active days use status colors, for future use module color
+        const bgClass = status === 'future' ? moduleColor.bg : statusColors[status].bg;
+        const borderClass = status === 'future' ? moduleColor.border : statusColors[status].border;
 
         cells.push(
           <div
