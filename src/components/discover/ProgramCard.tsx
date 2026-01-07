@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Users, User, Clock } from 'lucide-react';
+import { TypeBadge, EnrolledBadge, PriceBadge } from '@/components/ui/program-badges';
 
 interface ProgramCardProgram {
   id: string;
@@ -87,36 +88,15 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
 
           {/* Type badge - top left */}
           <div className="absolute top-3 left-3 z-20">
-            <span className={`glass-badge px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
-              program.type === 'group'
-                ? 'bg-blue-500/90 text-white'
-                : 'bg-purple-500/90 text-white'
-            }`}>
-              {program.type === 'group' ? (
-                <>
-                  <Users className="w-3 h-3" />
-                  Group
-                </>
-              ) : (
-                <>
-                  <User className="w-3 h-3" />
-                  1:1
-                </>
-              )}
-            </span>
+            <TypeBadge type={program.type} />
           </div>
 
           {/* Top right badges - Price and optionally Enrolled */}
           <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
             {isEnrolled && (
-              <span className="glass-badge px-2.5 py-1 bg-emerald-500/85 text-white text-[11px] font-semibold rounded-full flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                {program.userEnrollment?.status === 'active' ? 'Active' : 'Enrolled'}
-              </span>
+              <EnrolledBadge status={program.userEnrollment?.status === 'active' ? 'active' : 'enrolled'} />
             )}
-            <span className="glass-badge px-3 py-1.5 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-bold rounded-full border border-white/50 dark:border-[#ffffff]/[0.08]">
-              {formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)}
-            </span>
+            <PriceBadge price={formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)} />
           </div>
         </div>
 

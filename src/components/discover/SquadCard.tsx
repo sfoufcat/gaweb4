@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Users, User, Star } from 'lucide-react';
+import { Users, User } from 'lucide-react';
+import { SquadTypeBadge, PriceBadge } from '@/components/ui/program-badges';
 
 /**
  * SquadCard Component
@@ -74,30 +75,12 @@ export function SquadCard({ squad, variant = 'default', fullWidth = true }: Squa
 
           {/* Type badge - top left */}
           <div className="absolute top-3 left-3 z-20">
-            <span className={`glass-badge px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
-              isCoached
-                ? 'bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] text-white'
-                : 'bg-emerald-500/90 text-white'
-            }`}>
-              {isCoached ? (
-                <>
-                  <Star className="w-3 h-3 fill-white" />
-                  Coached
-                </>
-              ) : (
-                <>
-                  <Users className="w-3 h-3" />
-                  Community
-                </>
-              )}
-            </span>
+            <SquadTypeBadge isCoached={isCoached} />
           </div>
 
           {/* Price badge - top right */}
           <div className="absolute top-3 right-3 z-20">
-            <span className="glass-badge px-3 py-1.5 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-bold rounded-full border border-white/50 dark:border-[#ffffff]/[0.08]">
-              {formatPrice(squad.priceInCents || 0)}
-            </span>
+            <PriceBadge price={formatPrice(squad.priceInCents || 0)} />
           </div>
         </div>
 

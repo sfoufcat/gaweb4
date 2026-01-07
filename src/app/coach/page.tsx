@@ -288,9 +288,11 @@ export default function CoachPage() {
   const isAccessLoading = useMemo(() => {
     if (isDemoSite) return false;
     if (!isLoaded) return true;
-    if (!isDefault && (orgLoading || !clerkOrgsLoaded)) return true;
+    // On tenant domains, wait for both clerkOrgsLoaded AND userMemberships.data to be populated
+    // Clerk's isLoaded can be true before the actual membership data is fetched
+    if (!isDefault && (orgLoading || !clerkOrgsLoaded || !userMemberships?.data)) return true;
     return false;
-  }, [isDemoSite, isLoaded, isDefault, orgLoading, clerkOrgsLoaded]);
+  }, [isDemoSite, isLoaded, isDefault, orgLoading, clerkOrgsLoaded, userMemberships?.data]);
   
   // Determine access level for this tenant:
   // - Full access: super_admin, or super_coach in THIS tenant

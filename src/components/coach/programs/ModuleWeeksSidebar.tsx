@@ -497,6 +497,32 @@ export function ModuleWeeksSidebar({
   const hasExistingContent = days.some(d => d.tasks?.length > 0 || d.title) ||
     weeks.some(w => w.weeklyTasks?.length || w.theme);
 
+  // Helper to determine week status based on currentDayIndex
+  const getWeekStatus = useCallback((week: CalculatedWeek): 'past' | 'active' | 'future' => {
+    if (!currentDayIndex) return 'future';
+    if (currentDayIndex > week.endDay) return 'past';
+    if (currentDayIndex >= week.startDay && currentDayIndex <= week.endDay) return 'active';
+    return 'future';
+  }, [currentDayIndex]);
+
+  // Helper to determine day status based on currentDayIndex
+  const getDayStatus = useCallback((dayIndex: number): 'past' | 'active' | 'future' => {
+    if (!currentDayIndex) return 'future';
+    if (dayIndex < currentDayIndex) return 'past';
+    if (dayIndex === currentDayIndex) return 'active';
+    return 'future';
+  }, [currentDayIndex]);
+
+  // Helper to determine module status based on its weeks
+  const getModuleStatus = useCallback((moduleWeeks: CalculatedWeek[]): 'past' | 'active' | 'future' => {
+    if (!currentDayIndex || moduleWeeks.length === 0) return 'future';
+    const hasActiveWeek = moduleWeeks.some(w => currentDayIndex >= w.startDay && currentDayIndex <= w.endDay);
+    if (hasActiveWeek) return 'active';
+    const allPast = moduleWeeks.every(w => currentDayIndex > w.endDay);
+    if (allPast) return 'past';
+    return 'future';
+  }, [currentDayIndex]);
+
   if (isLoading) {
     return (
       <div className="w-80 flex-shrink-0 space-y-4 animate-pulse">
@@ -532,14 +558,24 @@ export function ModuleWeeksSidebar({
     const isWeekSelected = isSelected(weekSelection);
     const isWeekExpanded = expandedWeeks.has(week.weekNum);
     const hasWeeklyContent = week.weeklyTasks.length > 0 || week.theme;
+    const weekStatus = getWeekStatus(week);
+
+    // Status-based background colors (pastel)
+    const statusBgClass = weekStatus === 'past'
+      ? 'bg-amber-50/80 dark:bg-amber-900/20'
+      : weekStatus === 'active'
+      ? 'bg-emerald-50/80 dark:bg-emerald-900/20'
+      : '';
 
     return (
       <div className="group/week">
-        {/* Week row - FunnelStepsEditor style */}
+        {/* Week row - with status-based coloring */}
         <div
-          className={`p-4 bg-white dark:bg-[#171b22] hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors ${
+          className={`p-4 transition-colors ${statusBgClass} ${
+            !statusBgClass ? 'bg-white/60 dark:bg-[#171b22]/60' : ''
+          } ${
             canReorder ? 'cursor-grab active:cursor-grabbing' : ''
-          } ${isWeekSelected ? 'bg-brand-accent/5 dark:bg-brand-accent/10' : ''}`}
+          } ${isWeekSelected ? 'ring-2 ring-brand-accent ring-inset' : ''} hover:brightness-95 dark:hover:brightness-110`}
         >
           <div className="flex items-center gap-4">
             {/* Drag handle - only show in template mode */}
@@ -551,9 +587,21 @@ export function ModuleWeeksSidebar({
               <div className="w-5" /> /* Spacer to maintain alignment */
             )}
 
-            {/* Week icon */}
-            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-              <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            {/* Week icon - status-based coloring */}
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              weekStatus === 'past'
+                ? 'bg-amber-100 dark:bg-amber-800/30'
+                : weekStatus === 'active'
+                ? 'bg-emerald-100 dark:bg-emerald-800/30'
+                : 'bg-slate-100 dark:bg-slate-800/30'
+            }`}>
+              <Calendar className={`w-5 h-5 ${
+                weekStatus === 'past'
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : weekStatus === 'active'
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-slate-500 dark:text-slate-400'
+              }`} />
             </div>
 
             {/* Week info - clickable to select week */}
@@ -585,15 +633,9 @@ export function ModuleWeeksSidebar({
               </p>
             </button>
 
-            {/* Content indicator badges - show both day count and weekly content */}
-            {week.contentCount > 0 && (
-              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded flex-shrink-0">
-                {week.contentCount}/{week.totalDays}
-              </span>
-            )}
-
+            {/* Content indicator - only show checkmark if has weekly content */}
             {hasWeeklyContent && (
-              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded flex-shrink-0">
+              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded flex-shrink-0">
                 ✓
               </span>
             )}
@@ -643,20 +685,37 @@ export function ModuleWeeksSidebar({
               {week.daysInWeek.map((dayIndex) => {
                 const hasContent = dayHasContent(dayIndex);
                 const isDaySelected = isSelected({ type: 'day', dayIndex });
+                const dayStatus = getDayStatus(dayIndex);
+
+                // Status-based background colors for days
+                const dayStatusBgClass = dayStatus === 'past'
+                  ? 'bg-amber-50/60 dark:bg-amber-900/15'
+                  : dayStatus === 'active'
+                  ? 'bg-emerald-50/60 dark:bg-emerald-900/15'
+                  : '';
+
                 return (
                   <button
                     key={dayIndex}
                     onClick={() => onSelect({ type: 'day', dayIndex, moduleId })}
-                    className={`w-full text-left flex items-center gap-3 px-4 py-3 pl-[72px] transition-colors ${
+                    className={`w-full text-left flex items-center gap-3 px-4 py-3 pl-[72px] transition-colors ${dayStatusBgClass} ${
                       isDaySelected
-                        ? 'bg-brand-accent/10 text-brand-accent'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
-                    }`}
+                        ? 'ring-2 ring-brand-accent ring-inset text-brand-accent'
+                        : dayStatus === 'past'
+                        ? 'text-amber-700 dark:text-amber-400'
+                        : dayStatus === 'active'
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                    } hover:brightness-95 dark:hover:brightness-110`}
                   >
-                    <FileText className="w-4 h-4" />
+                    <FileText className={`w-4 h-4 ${
+                      dayStatus === 'past' ? 'text-amber-500 dark:text-amber-400' :
+                      dayStatus === 'active' ? 'text-emerald-500 dark:text-emerald-400' :
+                      ''
+                    }`} />
                     <span className="font-medium">Day {dayIndex}</span>
                     {hasContent && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
+                      <span className="px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded">
                         ✓
                       </span>
                     )}
@@ -677,23 +736,31 @@ export function ModuleWeeksSidebar({
     // Use local order if available (during drag), otherwise use computed order from props
     const propsWeeks = weeksByModule.get(module.id) || [];
     const localOrder = localWeekOrder.get(module.id);
-    
+
     // If we have a local order (stored as storedWeekIds), reorder the current weeks to match
     const moduleWeeks = localOrder
       ? localOrder.map(id => propsWeeks.find(w => (w.storedWeekId || `temp-${w.weekNum}`) === id)).filter((w): w is CalculatedWeek => w !== undefined)
       : propsWeeks;
     const weekCount = moduleWeeks.length;
+    const moduleStatus = getModuleStatus(moduleWeeks);
+
+    // Status-based background colors for modules
+    const moduleStatusBgClass = moduleStatus === 'past'
+      ? 'bg-amber-50/60 dark:bg-amber-900/15'
+      : moduleStatus === 'active'
+      ? 'bg-emerald-50/60 dark:bg-emerald-900/15'
+      : 'bg-white/40 dark:bg-[#171b22]/40';
 
     return (
       <div
         key={module.id}
-        className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden"
+        className="overflow-hidden"
       >
-        {/* Module Header */}
+        {/* Module Header - glassmorphism style with status coloring */}
         <div
-          className={`p-4 bg-[#faf8f6] dark:bg-[#1a1e25] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors ${
+          className={`p-4 backdrop-blur-sm transition-colors ${moduleStatusBgClass} ${
             canReorder ? 'cursor-grab active:cursor-grabbing' : ''
-          } group ${isModuleSelected ? 'bg-brand-accent/5 dark:bg-brand-accent/10' : ''}`}
+          } group ${isModuleSelected ? 'ring-2 ring-brand-accent ring-inset' : ''} hover:brightness-95 dark:hover:brightness-110`}
         >
           <div className="flex items-center gap-4">
             {/* Drag handle for module - only show in template mode */}
@@ -705,9 +772,21 @@ export function ModuleWeeksSidebar({
               <div className="w-5" /> /* Spacer to maintain alignment */
             )}
 
-            {/* Module icon */}
-            <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-              <Folder className="w-5 h-5 text-brand-accent" />
+            {/* Module icon - status-based coloring */}
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              moduleStatus === 'past'
+                ? 'bg-amber-100 dark:bg-amber-800/30'
+                : moduleStatus === 'active'
+                ? 'bg-emerald-100 dark:bg-emerald-800/30'
+                : 'bg-slate-100 dark:bg-slate-800/30'
+            }`}>
+              <Folder className={`w-5 h-5 ${
+                moduleStatus === 'past'
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : moduleStatus === 'active'
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-slate-500 dark:text-slate-400'
+              }`} />
             </div>
 
             {/* Module name - clickable to select */}
@@ -885,6 +964,26 @@ export function ModuleWeeksSidebar({
           </button>
         )}
         </div>
+
+        {/* Status Legend - only show when viewing client progress */}
+        {currentDayIndex && (
+          <div className="px-4 py-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+            <div className="flex items-center justify-center gap-4 text-xs font-albert">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded bg-amber-100 dark:bg-amber-800/40" />
+                <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Past</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded bg-emerald-100 dark:bg-emerald-800/40" />
+                <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Active</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded bg-slate-100 dark:bg-slate-800/40" />
+                <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Future</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Delete Module Modal */}

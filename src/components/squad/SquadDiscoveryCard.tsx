@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Users, User, Star, Repeat } from 'lucide-react';
+import { Users, User, Repeat } from 'lucide-react';
+import { SquadTypeBadge, PriceBadge } from '@/components/ui/program-badges';
 
 /**
  * SquadDiscoveryCard Component
@@ -62,31 +63,13 @@ export function SquadDiscoveryCard({ squad }: SquadDiscoveryCardProps) {
           )}
           
           {/* Type badge */}
-          <div className="absolute top-2 left-2">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 backdrop-blur-sm ${
-              isCoached 
-                ? 'bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] text-white'
-                : 'bg-emerald-500/90 text-white'
-            }`}>
-              {isCoached ? (
-                <>
-                  <Star className="w-3 h-3 fill-white" />
-                  Coached
-                </>
-              ) : (
-                <>
-                  <Users className="w-3 h-3" />
-                  Community
-                </>
-              )}
-            </span>
+          <div className="absolute top-3 left-3">
+            <SquadTypeBadge isCoached={isCoached} />
           </div>
 
           {/* Price badge */}
-          <div className="absolute bottom-2 right-2">
-            <span className="px-2 py-1 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-semibold rounded-full backdrop-blur-sm">
-              {formatPrice(squad.priceInCents || 0, squad.subscriptionEnabled ? squad.billingInterval : undefined)}
-            </span>
+          <div className="absolute top-3 right-3">
+            <PriceBadge price={formatPrice(squad.priceInCents || 0, squad.subscriptionEnabled ? squad.billingInterval : undefined)} />
           </div>
         </div>
         

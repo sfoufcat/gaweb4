@@ -30,6 +30,7 @@ import { ReferralConfigForm } from '@/components/coach/referrals';
 import { SquadFormDialog } from '@/components/admin/SquadFormDialog';
 import { SquadView } from '@/components/squad/SquadView';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SquadVisibilityBadge } from '@/components/ui/program-badges';
 import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
@@ -867,15 +868,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
 
                   {/* Visibility badge - top right */}
                   <div className="absolute top-3 right-3 z-20">
-                    {squad.visibility === 'private' ? (
-                      <span className="glass-badge px-2.5 py-1 bg-white/80 dark:bg-[#171b22]/80 text-[#5f5a55] dark:text-[#b2b6c2] text-[11px] font-medium rounded-full flex items-center gap-1.5 border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-                        <Lock className="w-3 h-3" /> Private
-                      </span>
-                    ) : (
-                      <span className="glass-badge px-2.5 py-1 bg-white/80 dark:bg-[#171b22]/80 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium rounded-full flex items-center gap-1.5 border border-emerald-200/50 dark:border-emerald-500/20">
-                        <Globe className="w-3 h-3" /> Public
-                      </span>
-                    )}
+                    <SquadVisibilityBadge isPublic={squad.visibility !== 'private'} />
                   </div>
                 </div>
 

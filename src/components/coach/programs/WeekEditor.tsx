@@ -612,11 +612,11 @@ export function WeekEditor({
         </div>
       )}
 
-      {/* Basic Info Section */}
+      {/* Basic Info Section - collapsed by default */}
       <CollapsibleSection
         title="Basic Info"
         icon={Info}
-        defaultOpen={true}
+        defaultOpen={false}
       >
         {/* Week Name */}
         <div>
@@ -763,11 +763,11 @@ export function WeekEditor({
           </div>
         </CollapsibleSection>
 
-      {/* Client Notes Section */}
+      {/* Client Notes Section - collapsed by default */}
       <CollapsibleSection
         title="Client Notes"
         icon={ClipboardList}
-        defaultOpen={true}
+        defaultOpen={false}
       >
         {/* Weekly Prompt */}
         <div className="mb-4">

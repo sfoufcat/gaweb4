@@ -1,8 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { Clock, Users, Star } from 'lucide-react';
+import { Clock, Users } from 'lucide-react';
 import type { Squad } from '@/types';
+import { SquadTypeBadge } from '@/components/ui/program-badges';
 
 /**
  * SquadCard Component
@@ -72,12 +73,7 @@ export function SquadCard({ squad, onJoin, isJoining, trackLabel }: SquadCardPro
             </h3>
             {/* Coached Badge */}
             {!!squad.coachId && (
-              <div className="flex items-center gap-1 bg-gradient-to-r from-[#FF8A65]/10 to-[#FF6B6B]/10 rounded-full px-2 py-0.5 flex-shrink-0">
-                <Star className="w-3 h-3 text-[#FF6B6B] fill-[#FF6B6B]" />
-                <span className="font-albert text-[11px] font-semibold bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">
-                  Coached
-                </span>
-              </div>
+              <SquadTypeBadge isCoached={true} size="sm" />
             )}
             {/* Track Badge */}
             {trackLabel && (

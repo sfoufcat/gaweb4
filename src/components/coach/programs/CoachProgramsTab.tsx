@@ -32,6 +32,7 @@ import { EnrollmentSettingsModal } from './EnrollmentSettingsModal';
 import type { OrgEnrollmentRules } from '@/types';
 import { DEFAULT_ENROLLMENT_RULES } from '@/types';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
+import { StatusBadge, TypeBadge, VisibilityBadge } from '@/components/ui/program-badges';
 import { CoachSelector } from '@/components/coach/CoachSelector';
 import { ClientSelector } from './ClientSelector';
 import { CohortSelector } from './CohortSelector';
@@ -2306,38 +2307,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   )}
 
                   {/* Status badges - top right */}
-                  <div className="absolute top-3 right-3 flex gap-1.5 z-20">
-                    {program.isActive ? (
-                      <span className="glass-badge px-2.5 py-1 bg-emerald-500/85 text-white text-[11px] font-semibold rounded-full flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                        Active
-                      </span>
-                    ) : (
-                      <span className="glass-badge px-2.5 py-1 bg-amber-500/85 text-white text-[11px] font-semibold rounded-full flex items-center gap-1.5">
-                        Draft
-                      </span>
-                    )}
-                    {program.isPublished ? (
-                      <span className="glass-badge px-2.5 py-1 bg-white/80 dark:bg-[#171b22]/80 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium rounded-full flex items-center gap-1.5 border border-emerald-200/50 dark:border-emerald-500/20">
-                        <Eye className="w-3 h-3" /> Public
-                      </span>
-                    ) : (
-                      <span className="glass-badge px-2.5 py-1 bg-white/80 dark:bg-[#171b22]/80 text-[#5f5a55] dark:text-[#b2b6c2] text-[11px] font-medium rounded-full flex items-center gap-1.5 border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-                        <EyeOff className="w-3 h-3" /> Private
-                      </span>
-                    )}
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
+                    <StatusBadge isActive={program.isActive} />
+                    <VisibilityBadge isPublic={program.isPublished} />
                   </div>
 
                   {/* Type badge - top left */}
                   <div className="absolute top-3 left-3 z-20">
-                    <span className={`glass-badge px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
-                      program.type === 'group'
-                        ? 'bg-blue-500/90 text-white'
-                        : 'bg-purple-500/90 text-white'
-                    }`}>
-                      {program.type === 'group' ? <Users className="w-3 h-3" /> : <User className="w-3 h-3" />}
-                      {program.type === 'group' ? 'Group' : '1:1'}
-                    </span>
+                    <TypeBadge type={program.type} />
                   </div>
                 </div>
 
@@ -2487,8 +2464,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             {/* Content area - Unified Sidebar + Editor Card */}
             <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
               <div className="flex flex-col lg:flex-row">
-                {/* Sidebar Navigation */}
-                <div className="lg:w-80 lg:flex-shrink-0 lg:border-r border-b lg:border-b-0 border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#11141b]">
+                {/* Sidebar Navigation - glassmorphism style */}
+                <div className="lg:w-96 lg:flex-shrink-0 bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm">
                   <ModuleWeeksSidebar
               program={selectedProgram as Program}
               modules={programModules}
