@@ -16,7 +16,6 @@ export interface UseChatPreferencesReturn {
   // Computed sets for quick lookups
   pinnedChannelIds: Set<string>;
   archivedChannelIds: Set<string>;
-  deletedChannelIds: Set<string>;
 
   // Actions
   pinChannel: (channelId: string, channelType: ChatChannelType) => Promise<void>;
@@ -57,7 +56,6 @@ export function useChatPreferences(_enabled: boolean = true): UseChatPreferences
     error: context.error,
     pinnedChannelIds: context.pinnedChannelIds,
     archivedChannelIds: context.archivedChannelIds,
-    deletedChannelIds: context.deletedChannelIds,
     pinChannel: context.pinChannel,
     unpinChannel: context.unpinChannel,
     archiveChannel: context.archiveChannel,

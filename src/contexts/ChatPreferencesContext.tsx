@@ -103,7 +103,6 @@ export interface ChatPreferencesContextValue {
   // Computed sets for quick lookups
   pinnedChannelIds: Set<string>;
   archivedChannelIds: Set<string>;
-  deletedChannelIds: Set<string>;
 
   // Actions
   pinChannel: (channelId: string, channelType: ChatChannelType) => Promise<void>;
@@ -127,7 +126,6 @@ const defaultContextValue: ChatPreferencesContextValue = {
   error: null,
   pinnedChannelIds: new Set(),
   archivedChannelIds: new Set(),
-  deletedChannelIds: new Set(),
   pinChannel: async () => {},
   unpinChannel: async () => {},
   archiveChannel: async () => {},
@@ -307,14 +305,6 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
     return ids;
   }, [preferences]);
 
-  const deletedChannelIds = useMemo(() => {
-    const ids = new Set<string>();
-    preferences.forEach((pref, id) => {
-      if (pref.isDeleted) ids.add(id);
-    });
-    return ids;
-  }, [preferences]);
-
   // Permission helpers
   const canPin = useCallback((_channelType: ChatChannelType) => true, []);
   const canArchive = useCallback(
@@ -423,7 +413,6 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
       error,
       pinnedChannelIds,
       archivedChannelIds,
-      deletedChannelIds,
       pinChannel,
       unpinChannel,
       archiveChannel,
@@ -441,7 +430,6 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
       error,
       pinnedChannelIds,
       archivedChannelIds,
-      deletedChannelIds,
       pinChannel,
       unpinChannel,
       archiveChannel,

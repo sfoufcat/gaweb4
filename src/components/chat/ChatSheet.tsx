@@ -130,7 +130,6 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   const {
     pinnedChannelIds,
     archivedChannelIds,
-    deletedChannelIds,
     pinChannel,
     unpinChannel,
     archiveChannel,
@@ -265,9 +264,9 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
 
   // Sort channels: user-pinned first, then coaching for clients, then unread, then by last message time
   const sortedChannels = useMemo(() => {
-    // First filter out archived and deleted channels
+    // First filter out archived channels
     const visibleChannels = channels.filter(c =>
-      !archivedChannelIds.has(c.id) && !deletedChannelIds.has(c.id)
+      !archivedChannelIds.has(c.id)
     );
 
     return visibleChannels.sort((a, b) => {
@@ -291,7 +290,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       }
       return 0;
     });
-  }, [channels, isCoach, pinnedChannelIds, archivedChannelIds, deletedChannelIds]);
+  }, [channels, isCoach, pinnedChannelIds, archivedChannelIds]);
 
   // Filter channels into main vs direct
   // For coaches: coaching channels go in Direct tab (like DMs with clients)
@@ -329,17 +328,17 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   // Get archived channels split by tab type
   const archivedMainChannels = useMemo(() => {
     return channels.filter(c =>
-      (archivedChannelIds.has(c.id) || deletedChannelIds.has(c.id)) &&
+      archivedChannelIds.has(c.id) &&
       c.type !== 'dm' && (c.type !== 'coaching' || !isCoach)
     );
-  }, [channels, archivedChannelIds, deletedChannelIds, isCoach]);
+  }, [channels, archivedChannelIds, isCoach]);
 
   const archivedDirectChannels = useMemo(() => {
     return channels.filter(c =>
-      (archivedChannelIds.has(c.id) || deletedChannelIds.has(c.id)) &&
+      archivedChannelIds.has(c.id) &&
       (c.type === 'dm' || (c.type === 'coaching' && isCoach))
     );
-  }, [channels, archivedChannelIds, deletedChannelIds, isCoach]);
+  }, [channels, archivedChannelIds, isCoach]);
 
   // Build swipe actions for a channel
   const getSwipeActions = useCallback((channelPreview: ChannelPreview): SwipeAction[] => {
@@ -720,7 +719,6 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                     <div>
                       {currentArchivedChannels.map((channelPreview) => {
                         const channelType = toChatChannelType(channelPreview.type);
-                        const isDeleted = deletedChannelIds.has(channelPreview.id);
 
                         return (
                           <div
@@ -747,29 +745,14 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                                 {channelPreview.name}
                               </span>
                               <span className="font-sans text-[12px] text-text-muted">
-                                {isDeleted ? 'Deleted' : 'Archived'}
+                                Archived
                               </span>
                             </div>
 
                             {/* Restore button */}
                             <button
                               onClick={async () => {
-                                if (isDeleted) {
-                                  // Undelete (which also unarchives)
-                                  await fetch('/api/user/chat-preferences', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                      channelId: channelPreview.id,
-                                      channelType,
-                                      action: 'undelete',
-                                    }),
-                                  });
-                                  // Also unarchive if it was archived
-                                  await unarchiveChannel(channelPreview.id, channelType);
-                                } else {
-                                  await unarchiveChannel(channelPreview.id, channelType);
-                                }
+                                await unarchiveChannel(channelPreview.id, channelType);
                               }}
                               className="px-3 py-1.5 text-[13px] font-medium text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#272d38] rounded-lg transition-colors"
                             >

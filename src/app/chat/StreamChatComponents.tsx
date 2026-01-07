@@ -861,7 +861,6 @@ function ChatContent({
   const {
     pinnedChannelIds,
     archivedChannelIds,
-    deletedChannelIds,
     unarchiveChannel,
   } = useChatPreferences();
 
@@ -1015,11 +1014,6 @@ function ChatContent({
     const channels = Object.values(client.activeChannels);
     for (const channel of channels) {
       const channelId = channel.id;
-
-      // Skip deleted channels - don't count their unreads
-      if (channelId && deletedChannelIds.has(channelId)) {
-        continue;
-      }
 
       const unread = channel.countUnread();
 
@@ -1368,11 +1362,8 @@ function ChatContent({
     return channels.filter(ch => {
       const channelId = ch.id;
 
-      // Filter out archived and deleted channels
+      // Filter out archived channels
       if (channelId && archivedChannelIds.has(channelId)) {
-        return false;
-      }
-      if (channelId && deletedChannelIds.has(channelId)) {
         return false;
       }
 
@@ -1399,7 +1390,7 @@ function ChatContent({
       }
       return true;
     });
-  }, [orgChannels, isCoach, archivedChannelIds, deletedChannelIds]);
+  }, [orgChannels, isCoach, archivedChannelIds]);
 
   // Determine whether to show message input
   const showMessageInput = !isAnnouncementsChannel || canPostInAnnouncements;
@@ -1496,8 +1487,8 @@ function ChatContent({
               <>
                 {coachSquads.map((coachSquad) => {
                   if (!coachSquad.chatChannelId) return null;
-                  // Skip archived/deleted squad channels
-                  if (archivedChannelIds.has(coachSquad.chatChannelId) || deletedChannelIds.has(coachSquad.chatChannelId)) return null;
+                  // Skip archived squad channels
+                  if (archivedChannelIds.has(coachSquad.chatChannelId)) return null;
                   // Show star icon if user is the assigned coach of this squad
                   const isUserTheCoach = coachSquad.coachId === user.id;
                   return (
@@ -1545,8 +1536,8 @@ function ChatContent({
               <>
                 {squads.map((userSquad) => {
                   if (!userSquad.chatChannelId) return null;
-                  // Skip archived/deleted squad channels
-                  if (archivedChannelIds.has(userSquad.chatChannelId) || deletedChannelIds.has(userSquad.chatChannelId)) return null;
+                  // Skip archived squad channels
+                  if (archivedChannelIds.has(userSquad.chatChannelId)) return null;
                   const isPremium = userSquad.hasCoach === true;
                   return (
                     <div key={userSquad.id} className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
@@ -1580,7 +1571,7 @@ function ChatContent({
             {/* Orphan Squad Channels - Previous squads with unread messages */}
             {/* Don't show on platform domain - these are tenant-specific */}
             {!isPlatformMode && orphanSquadChannels
-              .filter((channel) => !archivedChannelIds.has(channel.id!) && !deletedChannelIds.has(channel.id!))
+              .filter((channel) => !archivedChannelIds.has(channel.id!))
               .map((channel) => {
               const channelData = channel.data as Record<string, unknown> | undefined;
               const channelName = (channelData?.name as string) || 'Previous Squad';

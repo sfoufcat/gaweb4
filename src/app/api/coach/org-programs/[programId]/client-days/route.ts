@@ -15,7 +15,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { syncProgramTasksToClientDay, calculateDateForProgramDay, getProgramV2 } from '@/lib/program-engine';
-import type { ClientProgramDay, ProgramDay, ProgramEnrollment, ProgramCohort } from '@/types';
+import type { ClientProgramDay, ProgramEnrollment, ProgramCohort } from '@/types';
 
 export async function GET(
   request: NextRequest,
@@ -182,14 +182,16 @@ export async function POST(
             );
 
             if (dateForDay) {
+              console.log(`[COACH_CLIENT_DAYS_POST] Syncing dayIndex=${dayIndex} to date=${dateForDay} for user=${enrollment.userId}`);
               syncResult = await syncProgramTasksToClientDay({
                 userId: enrollment.userId,
                 programEnrollmentId: enrollmentId,
                 date: dateForDay,
                 mode: 'override-program-sourced',
                 coachUserId,
+                forceDayIndex: dayIndex,
               });
-              console.log(`[COACH_CLIENT_DAYS_POST] Synced tasks to client: ${JSON.stringify(syncResult)}`);
+              console.log(`[COACH_CLIENT_DAYS_POST] Sync result: ${JSON.stringify(syncResult)}`);
             }
           }
         } catch (syncErr) {
@@ -280,14 +282,16 @@ export async function POST(
           );
 
           if (dateForDay) {
+            console.log(`[COACH_CLIENT_DAYS_POST] Syncing new dayIndex=${dayIndex} to date=${dateForDay} for user=${enrollment.userId}`);
             syncResult = await syncProgramTasksToClientDay({
               userId: enrollment.userId,
               programEnrollmentId: enrollmentId,
               date: dateForDay,
               mode: 'override-program-sourced',
               coachUserId,
+              forceDayIndex: dayIndex,
             });
-            console.log(`[COACH_CLIENT_DAYS_POST] Synced tasks to client: ${JSON.stringify(syncResult)}`);
+            console.log(`[COACH_CLIENT_DAYS_POST] Sync result: ${JSON.stringify(syncResult)}`);
           }
         }
       } catch (syncErr) {
