@@ -123,7 +123,7 @@ export function useAlignment(): UseAlignmentReturn {
       // Optimistically update cache with flag changes
       // Score will be corrected by server response
       await mutate(
-        { alignment: updatedAlignment, summary: summary! },
+        { alignment: updatedAlignment, summary: summary!, alignmentConfig },
         { revalidate: false }
       );
 
@@ -142,7 +142,7 @@ export function useAlignment(): UseAlignmentReturn {
 
       // Update with server response (includes correct score based on org config)
       await mutate(
-        { alignment: responseData.alignment, summary: responseData.summary },
+        { alignment: responseData.alignment, summary: responseData.summary, alignmentConfig: responseData.alignmentConfig || alignmentConfig },
         { revalidate: false }
       );
     } catch (err) {
