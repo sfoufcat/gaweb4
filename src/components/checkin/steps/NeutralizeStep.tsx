@@ -28,6 +28,10 @@ export function NeutralizeStep({ data, onComplete }: NeutralizeStepProps) {
         return;
       }
 
+      // Clear previous error and reset loading when thought becomes available
+      setError(null);
+      setIsLoading(true);
+
       try {
         const response = await fetch('/api/checkin/reframe', {
           method: 'POST',

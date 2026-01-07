@@ -1404,6 +1404,59 @@ function calculateCurrentDayIndexV2(
   return Math.min(dayIndex, program.lengthDays);
 }
 
+
+/**
+ * Reverse of calculateCurrentDayIndexV2 - given a dayIndex, returns the calendar date
+ * that corresponds to that program day for a specific cohort.
+ * 
+ * @returns ISO date string (YYYY-MM-DD) or null if dayIndex is invalid
+ */
+export function calculateDateForDayIndex(
+  cohort: ProgramCohort,
+  program: Program,
+  dayIndex: number
+): string | null {
+  if (dayIndex <= 0 || dayIndex > program.lengthDays) {
+    return null;
+  }
+
+  const startDateStr = cohort.startDate;
+  if (!startDateStr) {
+    return null;
+  }
+
+  let startDate = new Date(startDateStr + 'T00:00:00');
+  const includeWeekends = program.includeWeekends !== false;
+
+  if (!includeWeekends) {
+    // If program starts on weekend, adjust to next Monday
+    if (isWeekend(startDate)) {
+      startDate = getNextWeekday(startDate);
+    }
+
+    // Find the date that is `dayIndex` weekdays from start
+    let currentDate = new Date(startDate);
+    let weekdayCount = 1; // Start date is day 1
+
+    while (weekdayCount < dayIndex) {
+      currentDate.setDate(currentDate.getDate() + 1);
+      if (!isWeekend(currentDate)) {
+        weekdayCount++;
+      }
+    }
+
+    return currentDate.toISOString().split('T')[0];
+  }
+
+  // For programs that include weekends: simple date arithmetic
+  // dayIndex 1 = start date, dayIndex 2 = start + 1 day, etc.
+  const elapsedDays = dayIndex - 1;
+  const targetDate = new Date(startDate);
+  targetDate.setDate(targetDate.getDate() + elapsedDays);
+
+  return targetDate.toISOString().split('T')[0];
+}
+
 /**
  * Main function: Sync program tasks for today (Programs v2)
  * 
@@ -2169,6 +2222,7 @@ export interface SyncProgramTasksToClientDayParams {
   date: string; // ISO date string YYYY-MM-DD
   mode: SyncMode;
   coachUserId?: string; // For tracking who triggered the sync
+  forceDayIndex?: number; // If provided, use this dayIndex instead of calculating from date
 }
 
 export interface SyncProgramTasksToClientDayResult {

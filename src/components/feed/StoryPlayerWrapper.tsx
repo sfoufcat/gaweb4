@@ -62,6 +62,9 @@ export function StoryPlayerWrapper({
   // Track if we've triggered initial prefetch
   const hasPrefetchedRef = useRef(false);
 
+  // Track if we've ever had a valid story user (to distinguish initial mount from data race)
+  const hadValidUserRef = useRef(false);
+
   // Get all user IDs for the story queue
   const userIds = useMemo(() => storyUsers.map(u => u.id), [storyUsers]);
 
@@ -172,13 +175,19 @@ export function StoryPlayerWrapper({
     onClose();
   }, [currentStoryUser, markStoryAsViewed, onClose]);
 
-  // Handle case where current user disappears from queue (data race/refetch)
+  // Track when we have a valid story user
+  useEffect(() => {
+    if (currentStoryUser) {
+      hadValidUserRef.current = true;
+    }
+  }, [currentStoryUser]);
+
+  // Handle case where current user disappears from queue AFTER we had one (data race/refetch)
   // This can happen when fullStoryQueue recalculates and the index becomes invalid
   // Without this, the parent stays in "story open" state but nothing renders
+  // IMPORTANT: Only close if we HAD a valid user and lost it - not on initial render
   useEffect(() => {
-    // If we don't have a current story user but the queue isn't empty,
-    // the index is likely out of bounds - close gracefully
-    if (!currentStoryUser && storyUsers.length > 0) {
+    if (hadValidUserRef.current && !currentStoryUser && storyUsers.length > 0) {
       onClose();
     }
   }, [currentStoryUser, storyUsers.length, onClose]);
