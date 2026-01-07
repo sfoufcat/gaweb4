@@ -14,7 +14,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { ClientProgramDay, ProgramDay, ProgramEnrollment } from '@/types';
+import { syncProgramTasksToClientDay, calculateDateForProgramDay, getProgramV2 } from '@/lib/program-engine';
+import type { ClientProgramDay, ProgramDay, ProgramEnrollment, ProgramCohort } from '@/types';
 
 export async function GET(
   request: NextRequest,
@@ -90,7 +91,7 @@ export async function POST(
   { params }: { params: Promise<{ programId: string }> }
 ) {
   try {
-    const { organizationId } = await requireCoachWithOrg();
+    const { organizationId, userId: coachUserId } = await requireCoachWithOrg();
     const { programId } = await params;
     const body = await request.json();
     const { enrollmentId, dayIndex, ...dayData } = body;
@@ -157,10 +158,51 @@ export async function POST(
 
       console.log(`[COACH_CLIENT_DAYS_POST] Updated client day for enrollment ${enrollmentId}, dayIndex ${dayIndex}`);
 
+      // 2-way sync: If tasks were updated, immediately sync to client's Daily Focus
+      let syncResult = null;
+      if (dayData.tasks !== undefined) {
+        try {
+          const programData = await getProgramV2(programId);
+          if (programData) {
+            // Get cohort if applicable
+            let cohort: ProgramCohort | null = null;
+            if (enrollment.cohortId) {
+              const cohortDoc = await adminDb.collection('program_cohorts').doc(enrollment.cohortId).get();
+              if (cohortDoc.exists) {
+                cohort = { id: cohortDoc.id, ...cohortDoc.data() } as ProgramCohort;
+              }
+            }
+
+            // Calculate the date for this day index
+            const dateForDay = calculateDateForProgramDay(
+              { ...enrollment, id: enrollmentId } as ProgramEnrollment,
+              programData,
+              cohort,
+              dayIndex
+            );
+
+            if (dateForDay) {
+              syncResult = await syncProgramTasksToClientDay({
+                userId: enrollment.userId,
+                programEnrollmentId: enrollmentId,
+                date: dateForDay,
+                mode: 'override-program-sourced',
+                coachUserId,
+              });
+              console.log(`[COACH_CLIENT_DAYS_POST] Synced tasks to client: ${JSON.stringify(syncResult)}`);
+            }
+          }
+        } catch (syncErr) {
+          console.error('[COACH_CLIENT_DAYS_POST] Failed to sync tasks to client:', syncErr);
+          // Don't fail the whole request, just log the error
+        }
+      }
+
       return NextResponse.json({
         success: true,
         clientDay: updatedDay,
         created: false,
+        ...(syncResult && { clientSync: syncResult }),
       });
     }
 
@@ -214,10 +256,51 @@ export async function POST(
 
     console.log(`[COACH_CLIENT_DAYS_POST] Created client day ${clientDayRef.id} for enrollment ${enrollmentId}, dayIndex ${dayIndex}`);
 
+    // 2-way sync: If tasks were created, immediately sync to client's Daily Focus
+    let syncResult = null;
+    if (dayData.tasks !== undefined && dayData.tasks.length > 0) {
+      try {
+        const programData = await getProgramV2(programId);
+        if (programData) {
+          // Get cohort if applicable
+          let cohort: ProgramCohort | null = null;
+          if (enrollment.cohortId) {
+            const cohortDoc = await adminDb.collection('program_cohorts').doc(enrollment.cohortId).get();
+            if (cohortDoc.exists) {
+              cohort = { id: cohortDoc.id, ...cohortDoc.data() } as ProgramCohort;
+            }
+          }
+
+          // Calculate the date for this day index
+          const dateForDay = calculateDateForProgramDay(
+            { ...enrollment, id: enrollmentId } as ProgramEnrollment,
+            programData,
+            cohort,
+            dayIndex
+          );
+
+          if (dateForDay) {
+            syncResult = await syncProgramTasksToClientDay({
+              userId: enrollment.userId,
+              programEnrollmentId: enrollmentId,
+              date: dateForDay,
+              mode: 'override-program-sourced',
+              coachUserId,
+            });
+            console.log(`[COACH_CLIENT_DAYS_POST] Synced tasks to client: ${JSON.stringify(syncResult)}`);
+          }
+        }
+      } catch (syncErr) {
+        console.error('[COACH_CLIENT_DAYS_POST] Failed to sync tasks to client:', syncErr);
+        // Don't fail the whole request, just log the error
+      }
+    }
+
     return NextResponse.json({
       success: true,
       clientDay: createdDay,
       created: true,
+      ...(syncResult && { clientSync: syncResult }),
     });
   } catch (error) {
     console.error('[COACH_CLIENT_DAYS_POST] Error:', error);

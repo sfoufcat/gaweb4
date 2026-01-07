@@ -207,7 +207,7 @@ export function ModuleWeeksSidebar({
   const [expandedModules, setExpandedModules] = useState<Set<string>>(
     new Set(modules.map(m => m.id))
   );
-  const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1]));
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
   const [moduleToDelete, setModuleToDelete] = useState<ProgramModule | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreatingWeeks, setIsCreatingWeeks] = useState(false);
@@ -236,6 +236,8 @@ export function ModuleWeeksSidebar({
   React.useEffect(() => {
     setExpandedModules(new Set(modules.map(m => m.id)));
   }, [modules.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  
 
   // Auto-calculate weeks based on program length
   const calculatedWeeks = useMemo((): CalculatedWeek[] => {
@@ -409,6 +411,56 @@ export function ModuleWeeksSidebar({
       setLocalWeekOrder(new Map());
     }
   }, [weeksByModule, localWeekOrder]);
+
+  // Auto-expand to current week/day based on currentDayIndex
+  // This runs once when displayWeeks are calculated and currentDayIndex is available
+  const hasInitializedExpansion = React.useRef(false);
+  React.useEffect(() => {
+    if (hasInitializedExpansion.current) return;
+    if (displayWeeks.length === 0) return;
+
+    if (!currentDayIndex) {
+      // No currentDayIndex means template editing - default to week 1
+      if (expandedWeeks.size === 0) {
+        setExpandedWeeks(new Set([1]));
+        hasInitializedExpansion.current = true;
+      }
+      return;
+    }
+
+    // Find the week containing the current day
+    const currentWeek = displayWeeks.find(
+      w => currentDayIndex >= w.startDay && currentDayIndex <= w.endDay
+    );
+    
+    if (currentWeek) {
+      // Expand the current week
+      setExpandedWeeks(new Set([currentWeek.weekNum]));
+      
+      // Ensure the module containing this week is expanded
+      if (currentWeek.moduleId) {
+        setExpandedModules(prev => {
+          const next = new Set(prev);
+          next.add(currentWeek.moduleId!);
+          return next;
+        });
+      }
+      
+      // Auto-select the current day
+      onSelect({
+        type: 'day',
+        dayIndex: currentDayIndex,
+        weekId: currentWeek.storedWeekId,
+        moduleId: currentWeek.moduleId,
+      });
+      
+      hasInitializedExpansion.current = true;
+    } else {
+      // currentDayIndex is outside program range - default to week 1
+      setExpandedWeeks(new Set([1]));
+      hasInitializedExpansion.current = true;
+    }
+  }, [currentDayIndex, displayWeeks, expandedWeeks.size, onSelect]);
 
   // Sorted modules for rendering
   const sortedModules = useMemo(() =>
