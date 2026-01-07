@@ -2683,11 +2683,14 @@ export function calculateDateForProgramDay(
     return null;
   }
 
-  let startDate = new Date(startDateStr + 'T00:00:00');
+  // Handle both date-only strings (2026-01-03) and full ISO timestamps (2026-01-03T13:10:47.267Z)
+  // Extract just the date part if it's a full timestamp
+  const dateOnly = startDateStr.includes('T') ? startDateStr.split('T')[0] : startDateStr;
+  let startDate = new Date(dateOnly + 'T00:00:00');
 
   // Guard against invalid date
   if (isNaN(startDate.getTime())) {
-    console.warn(`[calculateDateForProgramDay] Invalid start date: ${startDateStr}`);
+    console.warn(`[calculateDateForProgramDay] Invalid start date: ${startDateStr} (parsed as: ${dateOnly})`);
     return null;
   }
 
