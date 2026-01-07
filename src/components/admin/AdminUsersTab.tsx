@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import { UserPlus, RefreshCw, Eye, MessageCircle, Send, Trash2 } from 'lucide-react';
+import { UserPlus, RefreshCw, Eye, MessageCircle, Send, Trash2, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { SquadManagerPopover } from './SquadManagerPopover';
 import { ProgramManagerPopover } from './ProgramManagerPopover';
 import { useDemoMode } from '@/contexts/DemoModeContext';
@@ -759,6 +761,69 @@ export function AdminUsersTab({
     }
   };
 
+  // Export selected users to PDF
+  const handleExportPDF = useCallback(() => {
+    const selectedUsers = filteredUsers.filter(u => selectedUserIds.has(u.id));
+    if (selectedUsers.length === 0) {
+      alert('Please select users to export');
+      return;
+    }
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Title
+    doc.setFontSize(18);
+    doc.text(headerTitle || 'Clients', pageWidth / 2, 20, { align: 'center' });
+
+    // Subtitle with date
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Exported on ${new Date().toLocaleDateString()}`, pageWidth / 2, 28, { align: 'center' });
+    doc.text(`${selectedUsers.length} user${selectedUsers.length !== 1 ? 's' : ''}`, pageWidth / 2, 34, { align: 'center' });
+
+    // Table data
+    const tableData = selectedUsers.map(user => [
+      user.name || 'Unnamed',
+      user.email || '-',
+      formatOrgRoleName(user.orgRoleForOrg || user.orgRole || 'member'),
+      user.squadNames?.join(', ') || '-',
+      user.programNames?.join(', ') || '-',
+      new Date(user.createdAt).toLocaleDateString(),
+    ]);
+
+    // Generate table
+    autoTable(doc, {
+      startY: 42,
+      head: [['Name', 'Email', 'Role', 'Squad', 'Programs', 'Joined']],
+      body: tableData,
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      headStyles: {
+        fillColor: [180, 140, 100],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: {
+        fillColor: [250, 248, 246],
+      },
+      columnStyles: {
+        0: { cellWidth: 30 },
+        1: { cellWidth: 45 },
+        2: { cellWidth: 22 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 35 },
+        5: { cellWidth: 22 },
+      },
+    });
+
+    // Save PDF
+    const filename = `${(headerTitle || 'clients').toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
+  }, [filteredUsers, selectedUserIds, headerTitle]);
+
   if (loading) {
     return (
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl p-6 animate-pulse">
@@ -963,10 +1028,20 @@ export function AdminUsersTab({
                 </SelectContent>
               </Select>
             </div>
-            
+
+            {/* Export PDF button */}
+            <button
+              onClick={handleExportPDF}
+              className="ml-auto inline-flex items-center gap-1.5 font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
+              title="Export selected users to PDF"
+            >
+              <Download className="w-4 h-4" />
+              Export PDF
+            </button>
+
             <button
               onClick={() => setSelectedUserIds(new Set())}
-              className="ml-auto font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
+              className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
             >
               Clear selection
             </button>
