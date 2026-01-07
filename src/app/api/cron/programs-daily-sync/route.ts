@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 
     const enrollments = enrollmentsSnapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data(),
+      ...doc.data() as { userId: string },
     }));
 
     console.log(`[CRON_PROGRAMS_SYNC] Found ${enrollments.length} active enrollments`);
