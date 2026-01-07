@@ -416,8 +416,8 @@ export default function SquadDetailPage() {
 
   return (
     <div className="min-h-[100dvh] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col">
-      {/* Hero Section - Full Width */}
-      <div className="relative overflow-hidden">
+      {/* Hero Section - Rounded Card Style */}
+      <div className="relative pt-4 px-4 sm:px-6 lg:px-10">
         {/* Decorative blur elements */}
         <div 
           className="absolute -top-20 -right-20 w-64 h-64 rounded-full blur-3xl opacity-40"
@@ -428,7 +428,7 @@ export default function SquadDetailPage() {
           style={{ background: `radial-gradient(circle, ${hexToRgba(accentDark, 0.5)}, transparent)` }}
         />
         <div 
-          className="h-[200px] sm:h-[260px] w-full relative"
+          className="h-[200px] sm:h-[260px] w-full relative rounded-[40px] overflow-hidden"
           style={{ background: `linear-gradient(135deg, ${hexToRgba(accentLight, 0.25)}, ${hexToRgba(accentLightHover, 0.08)}, ${hexToRgba(accentDark, 0.15)})` }}
         >
           {squad.avatarUrl ? (
@@ -452,22 +452,22 @@ export default function SquadDetailPage() {
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-        </div>
 
-        {/* Back button */}
-        <div className="absolute top-4 left-4">
-          <BackButton />
-        </div>
+          {/* Back button - inside cover */}
+          <div className="absolute top-4 left-4">
+            <BackButton />
+          </div>
 
-        {/* Type badge */}
-        <div className="absolute top-4 right-4">
-          <span 
-            className="px-3 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1.5 backdrop-blur-md shadow-lg text-white"
-            style={{ backgroundColor: hexToRgba(accentLight, 0.9) }}
-          >
-            <Users className="w-3.5 h-3.5" />
-            Squad
-          </span>
+          {/* Type badge - inside cover */}
+          <div className="absolute top-4 right-4">
+            <span 
+              className="px-3 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1.5 backdrop-blur-md shadow-lg text-white"
+              style={{ backgroundColor: hexToRgba(accentLight, 0.9) }}
+            >
+              <Users className="w-3.5 h-3.5" />
+              Squad
+            </span>
+          </div>
         </div>
       </div>
 

@@ -24,6 +24,7 @@ export function ManifestStep({ config, onComplete }: ManifestStepProps) {
   const [identity, setIdentity] = useState<string | null>(null);
   const [hasIdentity, setHasIdentity] = useState(false);
   const [goal, setGoal] = useState<{ goal: string; targetDate: string } | null>(null);
+  const [hasGoal, setHasGoal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Identity timer state
@@ -86,28 +87,7 @@ export function ManifestStep({ config, onComplete }: ManifestStepProps) {
     return fadeInterval;
   }, []);
 
-  // Move to goal slide - NO audio changes here
-  const goToGoalSlide = useCallback(async () => {
-    if (currentSlide === 'goal' || hasAutoAdvancedIdentity.current) return;
-
-    hasAutoAdvancedIdentity.current = true;
-
-    // Update check-in
-    try {
-      await fetch('/api/checkin/morning', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ manifestIdentityCompleted: true }),
-      });
-    } catch (error) {
-      console.error('Error updating check-in:', error);
-    }
-
-    setCurrentSlide('goal');
-    goalStartTime.current = Date.now();
-  }, [currentSlide]);
-
-  // Finish and complete step
+  // Finish and complete step (defined before goToGoalSlide since it may call this)
   const finishManifest = useCallback(async () => {
     if (isNavigating) return;
 
@@ -132,6 +112,37 @@ export function ManifestStep({ config, onComplete }: ManifestStepProps) {
     onComplete();
   }, [isNavigating, fadeOutAudio, onComplete]);
 
+  // Move to goal slide - NO audio changes here
+  const goToGoalSlide = useCallback(async () => {
+    if (currentSlide === 'goal' || hasAutoAdvancedIdentity.current) return;
+
+    hasAutoAdvancedIdentity.current = true;
+
+    // Update check-in
+    try {
+      await fetch('/api/checkin/morning', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manifestIdentityCompleted: true }),
+      });
+    } catch (error) {
+      console.error('Error updating check-in:', error);
+    }
+
+    // If goal shouldn't be shown, complete the step instead
+    if (!hasGoal) {
+      finishManifest();
+      return;
+    }
+
+    setCurrentSlide('goal');
+    goalStartTime.current = Date.now();
+  }, [currentSlide, hasGoal, finishManifest]);
+
+  // Config settings (default to true for backwards compatibility)
+  const showIdentityConfig = config.showIdentity !== false;
+  const showGoalConfig = config.showGoal !== false;
+
   // Fetch user data
   useEffect(() => {
     const fetchData = async () => {
@@ -139,43 +150,69 @@ export function ManifestStep({ config, onComplete }: ManifestStepProps) {
         const response = await fetch('/api/user/me');
         const data = await response.json();
 
-        // Only set identity if user actually has one - no fallback
-        if (data.user?.identity) {
+        // Check if user has identity AND config allows showing it
+        const userHasIdentity = !!data.user?.identity;
+        const shouldShowIdentity = showIdentityConfig && userHasIdentity;
+        
+        if (shouldShowIdentity) {
           setIdentity(data.user.identity);
           setHasIdentity(true);
         } else {
-          // No identity - skip identity slide, go straight to goal
+          // Either config disabled identity or user doesn't have one
           setHasIdentity(false);
+        }
+
+        // Check if user has goal
+        let userGoal = null;
+        if (data.goal) {
+          userGoal = {
+            goal: data.goal.goal,
+            targetDate: data.goal.targetDate,
+          };
+        } else if (data.user?.goal) {
+          userGoal = {
+            goal: data.user.goal,
+            targetDate: data.user.goalTargetDate || '',
+          };
+        }
+
+        const shouldShowGoal = showGoalConfig && !!userGoal;
+
+        if (shouldShowGoal && userGoal) {
+          setGoal(userGoal);
+          setHasGoal(true);
+        } else {
+          setHasGoal(false);
+        }
+
+        // Determine what to show
+        if (!shouldShowIdentity && !shouldShowGoal) {
+          // Nothing to show - complete immediately
+          setIsLoading(false);
+          onComplete();
+          return;
+        } else if (!shouldShowIdentity) {
+          // Skip identity, go to goal
           setCurrentSlide('goal');
           goalStartTime.current = Date.now();
           hasAutoAdvancedIdentity.current = true;
+        } else if (!shouldShowGoal) {
+          // Show identity only, will complete after identity
+          // Goal slide will complete immediately when reached
         }
-
-        if (data.goal) {
-          setGoal({
-            goal: data.goal.goal,
-            targetDate: data.goal.targetDate,
-          });
-        } else if (data.user?.goal) {
-          setGoal({
-            goal: data.user.goal,
-            targetDate: data.user.goalTargetDate || '',
-          });
-        }
+        // else: show both (identity first, then goal)
       } catch (error) {
         console.error('Error fetching data:', error);
-        // On error, skip identity slide
-        setHasIdentity(false);
-        setCurrentSlide('goal');
-        goalStartTime.current = Date.now();
-        hasAutoAdvancedIdentity.current = true;
+        // On error, complete immediately
+        onComplete();
+        return;
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [showIdentityConfig, showGoalConfig, onComplete]);
 
   // Audio playback - separate effect, runs ONCE when loaded
   useEffect(() => {
@@ -315,15 +352,17 @@ export function ManifestStep({ config, onComplete }: ManifestStepProps) {
                 />
               </div>
             )}
-            {/* Goal progress bar */}
-            <div className="flex-1 h-[3px] bg-white/20 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-white/70"
-                initial={{ width: 0 }}
-                animate={{ width: currentSlide === 'goal' ? `${goalProgress}%` : '0%' }}
-                transition={{ duration: 0.1 }}
-              />
-            </div>
+            {/* Goal progress bar - only show if goal should be shown */}
+            {hasGoal && (
+              <div className="flex-1 h-[3px] bg-white/20 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-white/70"
+                  initial={{ width: 0 }}
+                  animate={{ width: currentSlide === 'goal' ? `${goalProgress}%` : '0%' }}
+                  transition={{ duration: 0.1 }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Animated background gradient */}

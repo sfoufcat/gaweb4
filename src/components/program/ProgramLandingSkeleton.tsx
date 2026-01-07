@@ -12,20 +12,20 @@ export function ProgramLandingSkeleton() {
   return (
     <div className="min-h-[100dvh] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col">
       {/* Hero Section */}
-      <div className="relative">
-        <div className="h-[200px] sm:h-[260px] w-full bg-gradient-to-br from-[#e1ddd8]/40 to-[#d4cfc9]/30 dark:from-[#262b35]/60 dark:to-[#1d222b]/40 animate-pulse">
+      <div className="relative pt-4 px-4 sm:px-6 lg:px-10">
+        <div className="h-[200px] sm:h-[260px] w-full relative rounded-[40px] overflow-hidden bg-gradient-to-br from-[#e1ddd8]/40 to-[#d4cfc9]/30 dark:from-[#262b35]/60 dark:to-[#1d222b]/40 animate-pulse">
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
-        </div>
 
-        {/* Back button placeholder */}
-        <div className="absolute top-4 left-4">
-          <div className="w-10 h-10 rounded-full bg-white/20 dark:bg-black/20 backdrop-blur-md animate-pulse" />
-        </div>
+          {/* Back button placeholder - inside cover */}
+          <div className="absolute top-4 left-4">
+            <div className="w-10 h-10 rounded-full bg-white/20 dark:bg-black/20 backdrop-blur-md animate-pulse" />
+          </div>
 
-        {/* Type badge placeholder */}
-        <div className="absolute top-4 right-4">
-          <div className="w-20 h-7 rounded-full bg-brand-accent/30 backdrop-blur-md animate-pulse" />
+          {/* Type badge placeholder - inside cover */}
+          <div className="absolute top-4 right-4">
+            <div className="w-20 h-7 rounded-full bg-brand-accent/30 backdrop-blur-md animate-pulse" />
+          </div>
         </div>
       </div>
 

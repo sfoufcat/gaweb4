@@ -1,0 +1,817 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from '@stripe/react-stripe-js';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Lock, X, Loader2, CheckCircle, AlertCircle, CreditCard, Plus, CircleCheck, Shield } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+
+// Saved payment method type
+interface SavedPaymentMethod {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
+}
+
+// Initialize Stripe promise outside component
+let stripePromise: Promise<Stripe | null> | null = null;
+
+function getStripePromise(connectedAccountId?: string) {
+  const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  if (!key) return null;
+
+  // For connected accounts, we need to pass stripeAccount option
+  if (connectedAccountId) {
+    return loadStripe(key, { stripeAccount: connectedAccountId });
+  }
+
+  if (!stripePromise) {
+    stripePromise = loadStripe(key);
+  }
+  return stripePromise;
+}
+
+/**
+ * Get card brand display name
+ */
+function getCardBrandName(brand: string): string {
+  const brands: Record<string, string> = {
+    visa: 'Visa',
+    mastercard: 'Mastercard',
+    amex: 'American Express',
+    discover: 'Discover',
+    diners: 'Diners Club',
+    jcb: 'JCB',
+    unionpay: 'UnionPay',
+  };
+  return brands[brand.toLowerCase()] || brand.charAt(0).toUpperCase() + brand.slice(1);
+}
+
+/**
+ * Format price for display
+ */
+function formatPrice(cents: number, curr: string) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: curr.toUpperCase(),
+  }).format(cents / 100);
+}
+
+/**
+ * Saved Cards Selection for Program
+ */
+function SavedCardsSelection({
+  savedMethods,
+  selectedMethodId,
+  onSelect,
+  onAddNew,
+  onPay,
+  isProcessing,
+  programName,
+  priceInCents,
+  currency,
+  onCancel,
+}: {
+  savedMethods: SavedPaymentMethod[];
+  selectedMethodId: string | null;
+  onSelect: (id: string) => void;
+  onAddNew: () => void;
+  onPay: () => void;
+  isProcessing: boolean;
+  programName: string;
+  priceInCents: number;
+  currency: string;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+        <div>
+          <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+            Enroll in {programName}
+          </h2>
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+            {formatPrice(priceInCents, currency)} one-time payment
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+        >
+          <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+        </button>
+      </div>
+
+      {/* Saved cards */}
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+          Choose payment method
+        </p>
+
+        {savedMethods.map((method) => (
+          <button
+            key={method.id}
+            type="button"
+            onClick={() => onSelect(method.id)}
+            className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 text-left ${
+              selectedMethodId === method.id
+                ? 'border-brand-accent bg-brand-accent/5'
+                : 'border-[#e1ddd8] dark:border-[#313746] hover:border-brand-accent/50'
+            }`}
+          >
+            {/* Card icon */}
+            <div className="w-12 h-8 bg-gradient-to-br from-gray-600 to-gray-800 rounded-md flex items-center justify-center">
+              <CreditCard className="w-5 h-5 text-white" />
+            </div>
+
+            {/* Card info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  {getCardBrandName(method.brand)} •••• {method.last4}
+                </span>
+                {method.isDefault && (
+                  <span className="text-xs px-2 py-0.5 bg-[#e1ddd8] dark:bg-[#313746] rounded-full text-[#5f5a55] dark:text-[#b2b6c2]">
+                    Default
+                  </span>
+                )}
+              </div>
+              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                Expires {method.expMonth.toString().padStart(2, '0')}/{method.expYear.toString().slice(-2)}
+              </span>
+            </div>
+
+            {/* Selection indicator */}
+            {selectedMethodId === method.id && (
+              <CircleCheck className="w-6 h-6 flex-shrink-0 text-brand-accent" />
+            )}
+          </button>
+        ))}
+
+        {/* Add new card option */}
+        <button
+          type="button"
+          onClick={onAddNew}
+          className="w-full p-4 rounded-xl border-2 border-dashed border-[#e1ddd8] dark:border-[#313746] hover:border-brand-accent/50 transition-all flex items-center gap-4 text-left"
+        >
+          <div className="w-12 h-8 rounded-md flex items-center justify-center bg-brand-accent/10">
+            <Plus className="w-5 h-5 text-brand-accent" />
+          </div>
+          <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">Add new card</span>
+        </button>
+      </div>
+
+      {/* Order summary */}
+      <div className="p-4 bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Program</span>
+          <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">{programName}</span>
+        </div>
+        <div className="flex justify-between text-sm pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
+          <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">Total</span>
+          <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-semibold">
+            {formatPrice(priceInCents, currency)}
+          </span>
+        </div>
+      </div>
+
+      {/* Pay button */}
+      <button
+        type="button"
+        onClick={onPay}
+        disabled={!selectedMethodId || isProcessing}
+        className="w-full py-4 px-6 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+      >
+        {isProcessing ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Processing...
+          </>
+        ) : (
+          <>
+            <Lock className="w-4 h-4" />
+            Pay {formatPrice(priceInCents, currency)}
+          </>
+        )}
+      </button>
+
+      {/* Security note */}
+      <p className="text-center text-xs text-[#a7a39e] dark:text-[#7d8190] flex items-center justify-center gap-1">
+        <Shield className="w-3 h-3" />
+        Secure payment powered by Stripe
+      </p>
+    </div>
+  );
+}
+
+interface PaymentFormProps {
+  onSuccess: (paymentIntentId: string) => void;
+  onCancel: () => void;
+  programName: string;
+  priceInCents: number;
+  currency: string;
+}
+
+function PaymentForm({ onSuccess, onCancel, programName, priceInCents, currency }: PaymentFormProps) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
+    const { error: submitError, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: window.location.href,
+      },
+      redirect: 'if_required',
+    });
+
+    if (submitError) {
+      setError(submitError.message || 'Payment failed. Please try again.');
+      setIsProcessing(false);
+    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      onSuccess(paymentIntent.id);
+    } else if (paymentIntent && paymentIntent.status === 'processing') {
+      onSuccess(paymentIntent.id);
+    } else {
+      setError('Something went wrong. Please try again.');
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+        <div>
+          <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+            Enroll in {programName}
+          </h2>
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+            {formatPrice(priceInCents, currency)} one-time payment
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+        >
+          <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+        </button>
+      </div>
+
+      {/* Payment Element */}
+      <div className="bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl p-4">
+        <PaymentElement
+          options={{
+            layout: 'tabs',
+            wallets: {
+              applePay: 'auto',
+              googlePay: 'auto',
+            },
+          }}
+        />
+      </div>
+
+      {/* Error */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3"
+          >
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Order summary */}
+      <div className="p-4 bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Program</span>
+          <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">{programName}</span>
+        </div>
+        <div className="flex justify-between text-sm pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
+          <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">Total</span>
+          <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-semibold">
+            {formatPrice(priceInCents, currency)}
+          </span>
+        </div>
+      </div>
+
+      {/* Submit */}
+      <button
+        type="submit"
+        disabled={!stripe || isProcessing}
+        className="w-full py-4 px-6 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+      >
+        {isProcessing ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Processing...
+          </>
+        ) : (
+          <>
+            <Lock className="w-4 h-4" />
+            Pay {formatPrice(priceInCents, currency)}
+          </>
+        )}
+      </button>
+
+      {/* Security note */}
+      <p className="text-center text-xs text-[#a7a39e] dark:text-[#7d8190] flex items-center justify-center gap-1">
+        <Shield className="w-3 h-3" />
+        Secure payment powered by Stripe
+      </p>
+    </form>
+  );
+}
+
+interface OrderBumpSelection {
+  productType: 'content';
+  productId: string;
+  contentType?: string;
+  discountPercent?: number;
+}
+
+export interface ProgramPaymentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  programId: string;
+  programName: string;
+  priceInCents: number;
+  currency: string;
+  cohortId?: string;
+  cohortName?: string;
+  joinCommunity?: boolean;
+  startDate?: string;
+  organizationId?: string;
+  orderBumps?: OrderBumpSelection[];
+  orderBumpTotal?: number;
+}
+
+export function ProgramPaymentModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  programId,
+  programName,
+  priceInCents,
+  currency,
+  cohortId,
+  cohortName,
+  joinCommunity = true,
+  startDate,
+  organizationId,
+  orderBumps,
+  orderBumpTotal = 0,
+}: ProgramPaymentModalProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  // Payment intent state (for new card flow)
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
+
+  // Saved payment methods state
+  const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
+  const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
+  const [showSavedCards, setShowSavedCards] = useState(true);
+  const [isProcessingSaved, setIsProcessingSaved] = useState(false);
+
+  // UI state
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [completing, setCompleting] = useState(false);
+
+  const totalAmount = priceInCents + orderBumpTotal;
+
+  // Fetch saved payment methods
+  const fetchSavedMethods = useCallback(async () => {
+    if (!organizationId) {
+      setSavedMethods([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/payment-methods?organizationId=${organizationId}`);
+      if (response.ok) {
+        const result = await response.json();
+        const methods = result.paymentMethods || [];
+        setSavedMethods(methods);
+
+        // Pre-select default method
+        if (methods.length > 0) {
+          const defaultMethod = methods.find((m: SavedPaymentMethod) => m.isDefault);
+          setSelectedMethodId(defaultMethod?.id || methods[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching saved payment methods:', err);
+    }
+  }, [organizationId]);
+
+  // Initialize when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Reset state
+      setClientSecret(null);
+      setConnectedAccountId(null);
+      setError(null);
+      setSuccess(false);
+      setCompleting(false);
+      setShowSavedCards(true);
+      setIsProcessingSaved(false);
+
+      // Fetch saved methods
+      fetchSavedMethods();
+    }
+  }, [isOpen, fetchSavedMethods]);
+
+  // After fetching saved methods, decide what to show
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // If we have saved methods, show them
+    if (savedMethods.length > 0) {
+      setShowSavedCards(true);
+      setLoading(false);
+    } else if (savedMethods.length === 0 && organizationId) {
+      // No saved methods and we've tried to fetch - show new card form
+      setShowSavedCards(false);
+      createPaymentIntent();
+    }
+  }, [savedMethods, isOpen, organizationId]);
+
+  // If no organizationId provided, go straight to new card flow
+  useEffect(() => {
+    if (isOpen && !organizationId) {
+      setShowSavedCards(false);
+      createPaymentIntent();
+    }
+  }, [isOpen, organizationId]);
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setClientSecret(null);
+      setConnectedAccountId(null);
+      setSavedMethods([]);
+      setSelectedMethodId(null);
+      setError(null);
+      setSuccess(false);
+      setCompleting(false);
+      setShowSavedCards(true);
+      setIsProcessingSaved(false);
+    }
+  }, [isOpen]);
+
+  const createPaymentIntent = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/programs/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          programId,
+          cohortId,
+          joinCommunity,
+          startDate,
+          orderBumps,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create payment intent');
+      }
+
+      // Handle free programs
+      if (data.free) {
+        await completeEnrollment('free');
+        return;
+      }
+
+      setClientSecret(data.clientSecret);
+      setConnectedAccountId(data.connectedAccountId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePayWithSavedMethod = async () => {
+    if (!selectedMethodId) return;
+
+    setIsProcessingSaved(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/programs/charge-saved-method', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          programId,
+          cohortId,
+          paymentMethodId: selectedMethodId,
+          joinCommunity,
+          startDate,
+          orderBumps,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // If card requires action, fall back to full payment form
+        if (data.requiresAction) {
+          setShowSavedCards(false);
+          createPaymentIntent();
+          return;
+        }
+        throw new Error(data.error || 'Payment failed');
+      }
+
+      // Success! Show success state
+      setSuccess(true);
+
+      // Wait a moment to show success, then close and trigger callback
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+      }, 1500);
+    } catch (err) {
+      console.error('Saved method payment error:', err);
+      setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
+    } finally {
+      setIsProcessingSaved(false);
+    }
+  };
+
+  const handleAddNewCard = () => {
+    setShowSavedCards(false);
+    createPaymentIntent();
+  };
+
+  const completeEnrollment = async (paymentIntentId: string) => {
+    setCompleting(true);
+
+    try {
+      const response = await fetch('/api/programs/complete-enrollment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          programId,
+          paymentIntentId,
+          cohortId,
+          joinCommunity,
+          startDate,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to complete enrollment');
+      }
+
+      setSuccess(true);
+
+      // Wait a moment to show success, then close and trigger callback
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+      }, 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to complete enrollment');
+      setCompleting(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
+    await completeEnrollment(paymentIntentId);
+  };
+
+  if (!isOpen) return null;
+
+  const stripeInstance = connectedAccountId ? getStripePromise(connectedAccountId) : null;
+
+  const appearance: import('@stripe/stripe-js').Appearance = {
+    theme: isDark ? 'night' : 'stripe',
+    variables: {
+      colorPrimary: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
+      colorBackground: isDark ? '#1a1e26' : '#ffffff',
+      colorText: isDark ? '#e8e6e3' : '#2c2520',
+      colorTextSecondary: isDark ? '#9ca3af' : '#6b6560',
+      colorDanger: '#ef4444',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontSizeBase: '15px',
+      borderRadius: '12px',
+      spacingUnit: '4px',
+    },
+    rules: {
+      '.Input': {
+        borderColor: isDark ? '#313746' : '#e1ddd8',
+        boxShadow: 'none',
+        padding: '12px 14px',
+      },
+      '.Input:focus': {
+        borderColor: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
+        boxShadow: isDark
+          ? '0 0 0 1px var(--brand-accent-dark)'
+          : '0 0 0 1px var(--brand-accent-light)',
+      },
+      '.Label': {
+        fontWeight: '500',
+        marginBottom: '6px',
+        ...(isDark && { color: '#e8e6e3' }),
+      },
+      '.Tab': {
+        borderColor: isDark ? '#313746' : '#e1ddd8',
+      },
+      '.Tab--selected': {
+        borderColor: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
+        backgroundColor: isDark ? '#262b35' : '#faf8f6',
+      },
+    },
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+          />
+
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          >
+            <div className="bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                {/* Loading state */}
+                {loading && (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
+                    <p className="mt-4 text-[#5f5a55] dark:text-[#b2b6c2]">Setting up payment...</p>
+                  </div>
+                )}
+
+                {/* Error state */}
+                {error && !loading && !showSavedCards && (
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+                      <AlertCircle className="w-8 h-8 text-red-500" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                      Something went wrong
+                    </h3>
+                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] text-center mb-6">
+                      {error}
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={createPaymentIntent}
+                        className="px-4 py-2 text-sm font-medium text-white bg-brand-accent hover:bg-brand-accent/90 rounded-lg transition-colors"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Success state */}
+                {success && (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4"
+                    >
+                      <CheckCircle className="w-8 h-8 text-green-500" />
+                    </motion.div>
+                    <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                      You&apos;re enrolled!
+                    </h3>
+                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                      Welcome to {programName}
+                    </p>
+                  </div>
+                )}
+
+                {/* Completing state */}
+                {completing && !success && (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
+                    <p className="mt-4 text-[#5f5a55] dark:text-[#b2b6c2]">
+                      Completing enrollment...
+                    </p>
+                  </div>
+                )}
+
+                {/* Saved cards selection */}
+                {showSavedCards && savedMethods.length > 0 && !loading && !success && !completing && (
+                  <>
+                    {/* Error message for saved cards */}
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3"
+                      >
+                        <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+                      </motion.div>
+                    )}
+                    <SavedCardsSelection
+                      savedMethods={savedMethods}
+                      selectedMethodId={selectedMethodId}
+                      onSelect={setSelectedMethodId}
+                      onAddNew={handleAddNewCard}
+                      onPay={handlePayWithSavedMethod}
+                      isProcessing={isProcessingSaved}
+                      programName={programName}
+                      priceInCents={totalAmount}
+                      currency={currency}
+                      onCancel={onClose}
+                    />
+                  </>
+                )}
+
+                {/* Payment form */}
+                {!showSavedCards &&
+                  clientSecret &&
+                  stripeInstance &&
+                  !loading &&
+                  !error &&
+                  !success &&
+                  !completing && (
+                    <Elements
+                      stripe={stripeInstance}
+                      options={{
+                        clientSecret,
+                        appearance,
+                      }}
+                    >
+                      <PaymentForm
+                        onSuccess={handlePaymentSuccess}
+                        onCancel={onClose}
+                        programName={programName}
+                        priceInCents={totalAmount}
+                        currency={currency}
+                      />
+                    </Elements>
+                  )}
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}

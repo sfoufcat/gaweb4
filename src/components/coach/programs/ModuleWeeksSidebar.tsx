@@ -261,12 +261,26 @@ export function ModuleWeeksSidebar({
   // Calculate calendar-aligned weeks when in client view mode
   // These are based on the client's enrollment start date
   const calendarWeeks = useMemo((): CalendarWeek[] => {
+    // DEBUG: Log what we're receiving
+    console.log('[ModuleWeeksSidebar] Calendar weeks check:', {
+      isClientView,
+      mode: viewContext?.mode,
+      enrollmentStartedAt: viewContext?.mode === 'client' ? viewContext.enrollmentStartedAt : undefined,
+    });
+
     if (!isClientView || viewContext?.mode !== 'client' || !viewContext.enrollmentStartedAt) {
+      console.log('[ModuleWeeksSidebar] Falling back to template weeks');
       return [];
     }
     const totalDays = program.lengthDays || 30;
     const includeWeekends = program.includeWeekends !== false;
-    return calculateCalendarWeeks(viewContext.enrollmentStartedAt, totalDays, includeWeekends);
+    const weeks = calculateCalendarWeeks(viewContext.enrollmentStartedAt, totalDays, includeWeekends);
+    console.log('[ModuleWeeksSidebar] Calendar weeks calculated:', weeks.slice(0, 3).map(w => ({
+      label: w.label,
+      days: `${w.startDayIndex}-${w.endDayIndex}`,
+      dayCount: w.dayCount,
+    })));
+    return weeks;
   }, [isClientView, viewContext, program.lengthDays, program.includeWeekends]);
 
   // Convert calendar weeks to CalculatedWeek format for display in client view
@@ -645,16 +659,16 @@ export function ModuleWeeksSidebar({
 
     // Status-based background colors (very light pastel)
     const statusBgClass = weekStatus === 'past'
-      ? 'bg-amber-50/50 dark:bg-amber-950/20'
+      ? 'bg-yellow-50/50 dark:bg-yellow-950/20'
       : weekStatus === 'active'
       ? 'bg-emerald-50/50 dark:bg-emerald-950/20'
       : '';
 
     return (
       <div className="group/week">
-        {/* Week row - with status-based coloring and modern selection, indented on desktop */}
+        {/* Week row - with status-based coloring and modern selection */}
         <div
-          className={`p-4 md:pl-6 transition-all duration-150 ${statusBgClass} ${
+          className={`p-4 transition-all duration-150 ${statusBgClass} ${
             !statusBgClass ? 'bg-white/40 dark:bg-[#171b22]/40' : ''
           } ${
             canReorderWeeks ? 'cursor-grab active:cursor-grabbing' : ''
@@ -673,14 +687,14 @@ export function ModuleWeeksSidebar({
             {/* Week icon - status-based coloring (lighter) */}
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
               weekStatus === 'past'
-                ? 'bg-amber-100/70 dark:bg-amber-900/25'
+                ? 'bg-yellow-100/70 dark:bg-yellow-900/25'
                 : weekStatus === 'active'
                 ? 'bg-emerald-100/70 dark:bg-emerald-900/25'
                 : 'bg-slate-100/70 dark:bg-slate-800/30'
             }`}>
               <Calendar className={`w-5 h-5 ${
                 weekStatus === 'past'
-                  ? 'text-amber-500 dark:text-amber-400'
+                  ? 'text-yellow-500 dark:text-yellow-400'
                   : weekStatus === 'active'
                   ? 'text-emerald-500 dark:text-emerald-400'
                   : 'text-slate-400 dark:text-slate-500'
@@ -772,7 +786,7 @@ export function ModuleWeeksSidebar({
 
                 // Status-based background colors for days (lighter)
                 const dayStatusBgClass = dayStatus === 'past'
-                  ? 'bg-amber-50/40 dark:bg-amber-950/15'
+                  ? 'bg-yellow-50/40 dark:bg-yellow-950/15'
                   : dayStatus === 'active'
                   ? 'bg-emerald-50/40 dark:bg-emerald-950/15'
                   : '';
@@ -785,7 +799,7 @@ export function ModuleWeeksSidebar({
                       isDaySelected
                         ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)] text-brand-accent'
                         : dayStatus === 'past'
-                        ? 'text-amber-600 dark:text-amber-400'
+                        ? 'text-yellow-600 dark:text-yellow-400'
                         : dayStatus === 'active'
                         ? 'text-emerald-600 dark:text-emerald-400'
                         : 'text-[#5f5a55] dark:text-[#b2b6c2]'
@@ -793,7 +807,7 @@ export function ModuleWeeksSidebar({
                   >
                     <FileText className={`w-4 h-4 flex-shrink-0 ${
                       isDaySelected ? 'text-brand-accent' :
-                      dayStatus === 'past' ? 'text-amber-400 dark:text-amber-500' :
+                      dayStatus === 'past' ? 'text-yellow-500 dark:text-yellow-400' :
                       dayStatus === 'active' ? 'text-emerald-400 dark:text-emerald-500' :
                       'text-[#a7a39e] dark:text-[#7d8190]'
                     }`} />
@@ -841,9 +855,9 @@ export function ModuleWeeksSidebar({
     const weekCount = moduleWeeks.length;
     const moduleStatus = getModuleStatus(moduleWeeks);
 
-    // Status-based background colors for modules (lighter) - active uses orange/amber for warmth
+    // Status-based background colors for modules (lighter) - active uses orange for warmth
     const moduleStatusBgClass = moduleStatus === 'past'
-      ? 'bg-amber-50/40 dark:bg-amber-950/15'
+      ? 'bg-yellow-50/40 dark:bg-yellow-950/15'
       : moduleStatus === 'active'
       ? 'bg-orange-50/40 dark:bg-orange-950/15'
       : 'bg-white/30 dark:bg-[#171b22]/30';
@@ -853,17 +867,11 @@ export function ModuleWeeksSidebar({
         key={module.id}
         className="overflow-hidden rounded-xl"
       >
-        {/* Module Header - distinct from weeks with left accent border */}
+        {/* Module Header - less left padding on desktop to sit further left than weeks */}
         <div
-          className={`p-4 backdrop-blur-sm transition-all duration-150 ${moduleStatusBgClass} ${
+          className={`p-4 md:pl-2 backdrop-blur-sm transition-all duration-150 ${moduleStatusBgClass} ${
             canReorderModules ? 'cursor-grab active:cursor-grabbing' : ''
-          } group ${isModuleSelected ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)]' : ''} hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a] border-l-[3px] ${
-            moduleStatus === 'past'
-              ? 'border-l-amber-400 dark:border-l-amber-500'
-              : moduleStatus === 'active'
-              ? 'border-l-orange-400 dark:border-l-orange-500'
-              : 'border-l-slate-300 dark:border-l-slate-600'
-          }`}
+          } group ${isModuleSelected ? 'bg-brand-accent/8 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.3)]' : ''} hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a]`}
         >
           <div className="flex items-center gap-4">
             {/* Drag handle for module - only show in template mode */}
@@ -878,14 +886,14 @@ export function ModuleWeeksSidebar({
             {/* Module icon - larger than week icons, status-based coloring */}
             <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
               moduleStatus === 'past'
-                ? 'bg-amber-100 dark:bg-amber-900/30'
+                ? 'bg-yellow-100 dark:bg-yellow-900/30'
                 : moduleStatus === 'active'
                 ? 'bg-orange-100 dark:bg-orange-900/30'
                 : 'bg-slate-100 dark:bg-slate-800/40'
             }`}>
               <Folder className={`w-5 h-5 ${
                 moduleStatus === 'past'
-                  ? 'text-amber-500 dark:text-amber-400'
+                  ? 'text-yellow-500 dark:text-yellow-400'
                   : moduleStatus === 'active'
                   ? 'text-orange-500 dark:text-orange-400'
                   : 'text-slate-400 dark:text-slate-500'

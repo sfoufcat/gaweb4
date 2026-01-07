@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import type { Program, ProgramCohort, ProgramDay, ProgramFeature, ProgramTestimonial, ProgramFAQ, OrderBumpConfig } from '@/types';
 import { ProgramLandingSkeleton } from '@/components/program/ProgramLandingSkeleton';
+import { ProgramPaymentModal } from '@/components/program/ProgramPaymentModal';
 import { OrderBumpList, calculateBumpTotal } from '@/components/checkout';
 
 interface CohortWithAvailability extends ProgramCohort {
@@ -226,6 +227,7 @@ export default function ProgramDetailPage() {
   const [joinCommunity, setJoinCommunity] = useState(true); // Default to opt-in for client community
   const [selectedStartDate, setSelectedStartDate] = useState<string>('');
   const [selectedBumpIds, setSelectedBumpIds] = useState<string[]>([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
     const fetchProgram = async () => {
@@ -279,6 +281,18 @@ export default function ProgramDetailPage() {
       return;
     }
 
+    // Calculate total price with order bumps
+    const basePrice = data?.program.priceInCents || 0;
+    const bumpsTotal = orderBumpTotal;
+    const totalPrice = basePrice + bumpsTotal;
+
+    // For paid programs, open the payment modal
+    if (totalPrice > 0) {
+      setShowPaymentModal(true);
+      return;
+    }
+
+    // For free programs, enroll directly
     try {
       setEnrolling(true);
       
@@ -300,9 +314,9 @@ export default function ProgramDetailPage() {
         body: JSON.stringify({
           programId,
           cohortId: selectedCohortId,
-          joinCommunity: joinCommunity, // For individual programs with client community
-          startDate: selectedStartDate || undefined, // For individual programs with custom start date
-          orderBumps: orderBumpsToSend, // Order bump products to add
+          joinCommunity: joinCommunity,
+          startDate: selectedStartDate || undefined,
+          orderBumps: orderBumpsToSend,
         }),
       });
 
@@ -310,11 +324,6 @@ export default function ProgramDetailPage() {
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to enroll');
-      }
-
-      if (result.checkoutUrl) {
-        window.location.href = result.checkoutUrl;
-        return;
       }
 
       setSuccessModal({ open: true, message: result.message || 'Successfully enrolled!' });
@@ -402,31 +411,31 @@ export default function ProgramDetailPage() {
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-        </div>
+          
+          {/* Back button - inside cover */}
+          <div className="absolute top-4 left-4">
+            <BackButton />
+          </div>
 
-        {/* Back button */}
-        <div className="absolute top-4 left-4">
-          <BackButton />
-        </div>
-
-        {/* Type badge */}
-        <div className="absolute top-4 right-4">
-          <span 
-            className="px-3 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1.5 backdrop-blur-md shadow-lg text-white"
-            style={{ backgroundColor: hexToRgba(accentLight, 0.9) }}
-          >
-            {program.type === 'group' ? (
-              <>
-                <Users className="w-3.5 h-3.5" />
-                Group
-              </>
-            ) : (
-              <>
-                <User className="w-3.5 h-3.5" />
-                1:1 Coaching
-              </>
-            )}
-          </span>
+          {/* Type badge - inside cover */}
+          <div className="absolute top-4 right-4">
+            <span 
+              className="px-3 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1.5 backdrop-blur-md shadow-lg text-white"
+              style={{ backgroundColor: hexToRgba(accentLight, 0.9) }}
+            >
+              {program.type === 'group' ? (
+                <>
+                  <Users className="w-3.5 h-3.5" />
+                  Group
+                </>
+              ) : (
+                <>
+                  <User className="w-3.5 h-3.5" />
+                  1:1 Coaching
+                </>
+              )}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -1219,6 +1228,40 @@ export default function ProgramDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Payment Modal */}
+      {data?.program && (
+        <ProgramPaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={() => {
+            setShowPaymentModal(false);
+            setSuccessModal({ open: true, message: 'Successfully enrolled! Welcome to the program.' });
+          }}
+          programId={programId}
+          programName={data.program.name}
+          priceInCents={data.program.priceInCents}
+          currency={data.program.currency || 'usd'}
+          cohortId={selectedCohortId || undefined}
+          cohortName={data.cohorts?.find(c => c.id === selectedCohortId)?.name}
+          joinCommunity={joinCommunity}
+          startDate={selectedStartDate || undefined}
+          organizationId={data.program.organizationId}
+          orderBumps={
+            data.program.orderBumps?.enabled && selectedBumpIds.length > 0
+              ? data.program.orderBumps.bumps
+                  .filter(bump => selectedBumpIds.includes(bump.id))
+                  .map(bump => ({
+                    productType: bump.productType as 'content',
+                    productId: bump.productId,
+                    contentType: bump.contentType,
+                    discountPercent: bump.discountPercent,
+                  }))
+              : undefined
+          }
+          orderBumpTotal={orderBumpTotal}
+        />
+      )}
     </div>
   );
 }
