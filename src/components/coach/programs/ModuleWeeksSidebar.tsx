@@ -654,11 +654,11 @@ export function ModuleWeeksSidebar({
     const weekStatus = getWeekStatus(week);
     const moduleColor = moduleColors[moduleIndex % moduleColors.length];
 
-    // Status-based background colors - orange for active, yellow for past, gray for future
+    // Status-based background colors - pastel green for active, yellow for past, gray for future
     const statusBgClass = weekStatus === 'past'
       ? 'bg-yellow-50/50 dark:bg-yellow-950/20'
       : weekStatus === 'active'
-      ? 'bg-orange-50/50 dark:bg-orange-950/20'
+      ? 'bg-emerald-50/50 dark:bg-emerald-950/20'
       : 'bg-gray-50/50 dark:bg-gray-900/20';
 
     return (
@@ -684,14 +684,14 @@ export function ModuleWeeksSidebar({
               weekStatus === 'past'
                 ? 'bg-yellow-100/70 dark:bg-yellow-900/25'
                 : weekStatus === 'active'
-                ? 'bg-orange-100/70 dark:bg-orange-900/25'
+                ? 'bg-emerald-100/70 dark:bg-emerald-900/25'
                 : 'bg-gray-100/70 dark:bg-gray-900/25'
             }`}>
               <Calendar className={`w-5 h-5 ${
                 weekStatus === 'past'
                   ? 'text-yellow-500 dark:text-yellow-400'
                   : weekStatus === 'active'
-                  ? 'text-orange-500 dark:text-orange-400'
+                  ? 'text-emerald-500 dark:text-emerald-400'
                   : 'text-gray-500 dark:text-gray-400'
               }`} />
             </div>
@@ -947,11 +947,11 @@ export function ModuleWeeksSidebar({
 
         {/* Module-to-weeks divider - solid status-colored line */}
         {isModuleExpanded && moduleWeeks.length > 0 && (
-          <div className={`h-0.5 rounded-full ${
+          <div className={`h-px ${
             moduleStatus === 'past'
-              ? 'bg-yellow-300 dark:bg-yellow-700'
+              ? 'bg-yellow-200 dark:bg-yellow-800'
               : moduleStatus === 'active'
-              ? 'bg-orange-300 dark:bg-orange-700'
+              ? 'bg-emerald-200 dark:bg-emerald-800'
               : 'bg-gray-200 dark:bg-gray-700'
           }`} />
         )}
@@ -1000,11 +1000,11 @@ export function ModuleWeeksSidebar({
 
         {/* Module-ending divider - slim elegant separator */}
         {isModuleExpanded && moduleWeeks.length > 0 && (
-          <div className={`h-0.5 rounded-full ${
+          <div className={`h-px ${
             moduleStatus === 'past'
-              ? 'bg-yellow-300 dark:bg-yellow-700'
+              ? 'bg-yellow-200 dark:bg-yellow-800'
               : moduleStatus === 'active'
-              ? 'bg-orange-300 dark:bg-orange-700'
+              ? 'bg-emerald-200 dark:bg-emerald-800'
               : 'bg-gray-200 dark:bg-gray-700'
           }`} />
         )}

@@ -105,7 +105,7 @@ export async function POST(
     }
     
     // Validate: cannot add steps at or after completion step position (except if it's a completion-type step)
-    if (completionOrder !== null && type !== 'completion' && type !== 'goal_achieved' && order >= completionOrder) {
+    if (completionOrder !== null && type !== 'completion' && type !== 'goal_achieved' && order > completionOrder) {
       return NextResponse.json({ error: 'Cannot add steps after the completion step' }, { status: 400 });
     }
 

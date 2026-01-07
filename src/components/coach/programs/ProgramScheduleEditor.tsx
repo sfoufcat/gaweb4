@@ -76,8 +76,8 @@ export function ProgramScheduleEditor({
       border: 'border-yellow-300 dark:border-yellow-800',
     },
     active: {
-      bg: 'bg-orange-50/70 dark:bg-orange-950/30',
-      border: 'border-orange-300 dark:border-orange-700',
+      bg: 'bg-emerald-50/70 dark:bg-emerald-950/30',
+      border: 'border-emerald-300 dark:border-emerald-700',
     },
     future: {
       bg: 'bg-gray-50/70 dark:bg-gray-900/30',
@@ -85,7 +85,7 @@ export function ProgramScheduleEditor({
     },
   };
 
-  // Module status colors (orange for active module)
+  // Module status colors (emerald for active module)
   const moduleStatusColors = {
     past: {
       bg: 'bg-yellow-50 dark:bg-yellow-950/30',
@@ -94,10 +94,10 @@ export function ProgramScheduleEditor({
       accent: 'bg-yellow-200 dark:bg-yellow-800',
     },
     active: {
-      bg: 'bg-orange-50 dark:bg-orange-950/30',
-      border: 'border-orange-300 dark:border-orange-700',
-      text: 'text-orange-700 dark:text-orange-300',
-      accent: 'bg-orange-200 dark:bg-orange-800',
+      bg: 'bg-emerald-50 dark:bg-emerald-950/30',
+      border: 'border-emerald-300 dark:border-emerald-700',
+      text: 'text-emerald-700 dark:text-emerald-300',
+      accent: 'bg-emerald-200 dark:bg-emerald-800',
     },
     future: null, // Use default module color
   };
@@ -253,7 +253,7 @@ export function ProgramScheduleEditor({
             <div className="flex items-center justify-between mb-1">
               <span className={`text-xs font-medium font-albert ${
                 status === 'active'
-                  ? 'text-orange-700 dark:text-orange-300'
+                  ? 'text-emerald-700 dark:text-emerald-300'
                   : status === 'past'
                     ? 'text-yellow-700 dark:text-yellow-300'
                     : 'text-[#1a1a1a] dark:text-[#f5f5f8]'

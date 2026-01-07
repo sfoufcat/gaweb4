@@ -168,21 +168,7 @@ const MORNING_TEMPLATE_STEPS: Omit<CheckInStep, 'id' | 'flowId' | 'createdAt' | 
       },
     },
   },
-  {
-    order: 7,
-    type: 'completion',
-    name: 'Ready to Go',
-    config: {
-      type: 'completion',
-      config: {
-        heading: 'You\'re ready! 🚀',
-        subheading: 'Go make today count.',
-        showConfetti: true,
-        buttonText: 'Start my day',
-        variant: 'great_job',
-      },
-    },
-  },
+  // Note: No completion step - PlanDayStep has rocket animation and navigates home directly
 ];
 
 const EVENING_TEMPLATE_STEPS: Omit<CheckInStep, 'id' | 'flowId' | 'createdAt' | 'updatedAt'>[] = [
@@ -410,8 +396,16 @@ const TEMPLATES: { key: 'morning' | 'evening' | 'weekly'; name: string; descript
 // MAIN SCRIPT
 // =============================================================================
 
+// Parse command line arguments
+const args = process.argv.slice(2);
+const shouldUpdateTemplates = args.includes('--update-templates');
+
 async function seedTemplates() {
   console.log('🌱 Seeding check-in flow templates...\n');
+
+  if (shouldUpdateTemplates) {
+    console.log('⚠️  UPDATE MODE - Will update existing templates with latest step definitions\n');
+  }
 
   const now = new Date().toISOString();
   const templatesCreated: string[] = [];
@@ -425,8 +419,27 @@ async function seedTemplates() {
       .get();
 
     if (!existingQuery.empty) {
-      console.log(`  ⏭️  Template "${template.name}" already exists, skipping...`);
-      templatesCreated.push(existingQuery.docs[0].id);
+      const existingDoc = existingQuery.docs[0];
+      
+      if (shouldUpdateTemplates) {
+        // Update existing template with latest steps
+        const existingData = existingDoc.data();
+        const newVersion = (existingData.version || 1) + 1;
+        
+        await existingDoc.ref.update({
+          name: template.name,
+          description: template.description,
+          defaultSteps: template.steps,
+          version: newVersion,
+          updatedAt: now,
+        });
+        
+        console.log(`  🔄 Updated template "${template.name}" to v${newVersion} (${existingDoc.id})`);
+        templatesCreated.push(existingDoc.id);
+      } else {
+        console.log(`  ⏭️  Template "${template.name}" already exists, skipping... (use --update-templates to update)`);
+        templatesCreated.push(existingDoc.id);
+      }
       continue;
     }
 
