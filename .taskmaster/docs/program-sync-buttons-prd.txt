@@ -1,0 +1,148 @@
+# PRD: Program Task Sync Improvements
+
+## Overview
+Ensure program tasks sync reliably across all scenarios: new enrollments, template changes, and manual coach operations. Add UI controls for coaches to manually sync or clear tasks.
+
+## Problem Statement
+
+### Current Issues
+1. **New enrollments don't get tasks automatically:**
+   - Individual programs: Only sync "today's" tasks on enrollment, not future days
+   - Group programs: NO task sync on enrollment at all
+   - Result: Clients must view each day individually for tasks to appear
+
+2. **No manual sync controls:**
+   - Coaches cannot trigger a full sync for a client or cohort
+   - Coaches cannot clear future tasks without manual deletion
+
+## Goals
+- Goal 1: New enrollees receive ALL program tasks immediately upon enrollment
+- Goal 2: Coaches can manually sync tasks from template to client/cohort
+- Goal 3: Coaches can clear future tasks for a client/cohort
+- Goal 4: Works for both individual (1:1) and group (cohort) programs
+- Goal 5: Background processing to not block enrollment response
+
+## User Stories
+
+### As a Coach
+- I want new clients to receive all program tasks immediately when enrolled
+- I want to manually sync tasks to a client if they're missing
+- I want to clear future tasks for a client to reset their program
+- I want to do the same for entire cohorts in group programs
+
+### As a Client
+- I want to see all my program tasks immediately after enrolling
+- I don't want to have to visit each day individually for tasks to appear
+
+## Features & Requirements
+
+### Feature 1: Automatic Full Sync on Enrollment
+**Description:**
+When a client enrolls in a program (individual or group), sync ALL tasks for the entire program duration immediately. Run in background to not block enrollment response.
+
+**Requirements:**
+- [ ] Create `syncAllProgramTasks(userId, enrollmentId)` function in program-engine.ts
+- [ ] Function syncs tasks from Day 1 to program.lengthDays
+- [ ] Uses 'fill-empty' mode to not overwrite existing tasks
+- [ ] Batches large programs (50+ days) in chunks of 10
+- [ ] Update enroll route to call sync in background (fire-and-forget)
+- [ ] Update complete-enrollment route for paid programs
+- [ ] Add sync call for group program enrollments in enrollUser.ts
+
+**Acceptance Criteria:**
+- New individual program enrollees have tasks for entire program within 10 seconds
+- New group program enrollees have tasks for entire program within 10 seconds
+- Enrollment response is not delayed by sync operation
+- Existing lazy sync continues to work as fallback
+
+### Feature 2: Manual Sync Button for Coaches
+**Description:**
+Add a "Sync Tasks from Template" button in the structure sidebar that appears when a client or cohort is selected.
+
+**Requirements:**
+- [ ] Create POST /api/coach/org-programs/[programId]/sync-tasks endpoint
+- [ ] Endpoint accepts `enrollmentId` OR `cohortId` parameter
+- [ ] For individual: syncs all remaining program days to client's Daily Focus
+- [ ] For cohort: syncs all remaining program days to all cohort members
+- [ ] Only syncs from today onwards (skips past days)
+- [ ] Uses 'fill-empty' mode
+- [ ] Add tools dropdown to ModuleWeeksSidebar component
+- [ ] Show "Client Tools" when individual client selected
+- [ ] Show "Cohort Tools" when cohort selected
+- [ ] Add loading state during sync operation
+- [ ] Show toast notification with count of synced tasks
+
+**Acceptance Criteria:**
+- Dropdown only visible when client/cohort is selected
+- Clicking sync triggers API call
+- Loading indicator shown during sync
+- Success toast shows count of tasks created
+- Error toast on failure
+
+### Feature 3: Clear Future Tasks Button for Coaches
+**Description:**
+Add a "Clear Future Tasks" button in the tools dropdown that clears all program-sourced tasks for future days.
+
+**Requirements:**
+- [ ] Create POST /api/coach/org-programs/[programId]/clear-tasks endpoint
+- [ ] Endpoint accepts `enrollmentId` OR `cohortId` parameter
+- [ ] Query tasks matching:
+  - `sourceType` in ['program', 'program_day', 'program_week']
+  - `programEnrollmentId` matches (or cohort member enrollments)
+  - `date` > today
+  - `status` !== 'done' (preserve completed tasks)
+  - `clientLocked` !== true
+- [ ] Delete matching tasks in batch
+- [ ] Return count of deleted tasks
+- [ ] Add to tools dropdown in ModuleWeeksSidebar
+- [ ] Show confirmation dialog before clearing
+- [ ] Show toast notification with count of deleted tasks
+
+**Acceptance Criteria:**
+- Confirmation dialog prevents accidental clearing
+- Only future incomplete tasks are deleted
+- Completed tasks are preserved
+- Client-created tasks are preserved
+- ClientLocked tasks are preserved
+- Success toast shows count of deleted tasks
+
+## Technical Considerations
+
+### Existing Functions to Reuse
+- `syncProgramTasksToClientDay()` - Single day sync for individual
+- `syncProgramTasksToCohort()` - Cohort sync already exists
+- `calculateDateForDayIndex()` - Convert day index to calendar date
+
+### Performance Considerations
+- Background sync on enrollment to not block response
+- Batch syncing for programs with 50+ days
+- Loading indicator for manual sync operations
+
+### UI Components to Modify
+- ModuleWeeksSidebar.tsx - Add tools dropdown
+- CoachProgramsTab.tsx - Pass additional props to sidebar
+
+## Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| src/lib/program-engine.ts | MODIFY | Add syncAllProgramTasks() |
+| src/app/api/programs/enroll/route.ts | MODIFY | Call full sync on enrollment |
+| src/app/api/programs/complete-enrollment/route.ts | MODIFY | Call full sync |
+| src/lib/enrollments/enrollUser.ts | MODIFY | Add sync for group enrollments |
+| src/app/api/coach/org-programs/[programId]/sync-tasks/route.ts | CREATE | Manual sync endpoint |
+| src/app/api/coach/org-programs/[programId]/clear-tasks/route.ts | CREATE | Clear tasks endpoint |
+| src/components/coach/programs/ModuleWeeksSidebar.tsx | MODIFY | Add tools dropdown |
+| src/components/coach/programs/CoachProgramsTab.tsx | MODIFY | Pass props to sidebar |
+
+## Out of Scope
+- Real-time sync on template edit (already implemented via specificDayIndex)
+- Undo for clear tasks
+- Selective day range sync
+- Dry-run mode for preview
+
+## Success Metrics
+- New enrollees have all tasks within 10 seconds
+- Manual sync completes within 30 seconds for programs up to 90 days
+- Clear operation completes within 10 seconds
+- Zero regression in existing sync functionality

@@ -3392,9 +3392,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           key={index} 
                           className="group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
                         >
-                          {/* Task Icon */}
-                          <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
-                          
+                          {/* Task Icon - Show checkmark when completed in client view */}
+                          {clientViewContext.mode === 'client' && task.completed ? (
+                            <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                              <Check className="w-3 h-3 text-white" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
+                          )}
+
                           {/* Input */}
                           <input
                             type="text"

@@ -2,84 +2,134 @@
   "master": {
     "tasks": [
       {
-        "id": "78",
-        "title": "Fix calculateDateForProgramDay Bug",
-        "description": "Fix the critical RangeError in calculateDateForProgramDay function that crashes when enrollment.startedAt is undefined, blocking coach-to-client sync",
-        "details": "In src/lib/program-engine.ts at line 2671, add null/undefined checks for startDateStr parameter at the beginning of the calculateDateForProgramDay function. Add validation using isNaN(startDate.getTime()) to detect invalid Date objects. Return null instead of crashing when date is invalid. Add console.warn logging for debugging purposes. This fix will unblock the already deployed coach-to-client sync code that currently fails silently.",
-        "testStrategy": "Unit tests with undefined startDateStr, invalid date strings, and valid dates. Verify function returns null for invalid inputs and correct dates for valid inputs. Test coach program edits to ensure sync no longer crashes.",
+        "id": "84",
+        "title": "Create syncAllProgramTasks function in program-engine.ts",
+        "description": "Implement core function to sync all program tasks for entire program duration with batching support",
+        "details": "Add syncAllProgramTasks(userId, enrollmentId) function to program-engine.ts that:\n- Syncs tasks from Day 1 to program.lengthDays\n- Uses 'fill-empty' mode to not overwrite existing tasks\n- Batches large programs (50+ days) in chunks of 10\n- Leverages existing calculateDateForDayIndex() and syncProgramTasksToClientDay() functions\n- Returns count of synced tasks\n- Handles error cases gracefully\n\nPseudo-code:\n```typescript\nexport async function syncAllProgramTasks(userId: string, enrollmentId: string) {\n  const enrollment = await getEnrollment(enrollmentId)\n  const program = enrollment.program\n  let syncedCount = 0\n  \n  for (let dayIndex = 1; dayIndex <= program.lengthDays; dayIndex++) {\n    const date = calculateDateForDayIndex(dayIndex, enrollment.startDate)\n    await syncProgramTasksToClientDay(userId, enrollmentId, dayIndex, date, 'fill-empty')\n    syncedCount++\n    \n    // Batch processing for large programs\n    if (dayIndex % 10 === 0 && program.lengthDays > 50) {\n      await new Promise(resolve => setTimeout(resolve, 100))\n    }\n  }\n  \n  return syncedCount\n}\n```",
+        "testStrategy": "Unit tests: Test with small programs (5 days), large programs (90+ days), edge cases (0 days, invalid enrollment). Integration tests: Verify tasks are created correctly, existing tasks not overwritten, batching works for large programs. Performance tests: Ensure 90-day program syncs within 30 seconds.",
         "priority": "high",
         "dependencies": [],
-        "status": "done",
+        "status": "in-progress",
         "subtasks": [],
-        "updatedAt": "2026-01-07T20:47:15.410Z"
+        "updatedAt": "2026-01-08T09:21:19.731Z"
       },
       {
-        "id": "79",
-        "title": "Implement Lazy Sync on Task Fetch",
-        "description": "Add automatic program task sync when users fetch their tasks, ensuring timezone-aware delivery without manual intervention",
-        "details": "Modify src/app/api/tasks/route.ts GET endpoint to check if user has active program enrollment and existing program tasks for today. If no program tasks exist with source: 'program' for today, call syncProgramV2TasksForToday(userId) in background. Implement error handling to ensure task fetch succeeds even if sync fails. Use existing programTaskExistsV2() function to prevent duplicates. This provides natural timezone handling as tasks sync when user needs them.",
-        "testStrategy": "Test with users in different timezones opening app. Verify program tasks appear automatically. Test error scenarios where sync fails but task fetch still works. Verify no duplicate tasks are created.",
+        "id": "85",
+        "title": "Update individual program enrollment route for background sync",
+        "description": "Modify enroll route to call syncAllProgramTasks in background without blocking response",
+        "details": "Update src/app/api/programs/enroll/route.ts to:\n- Import syncAllProgramTasks from program-engine.ts\n- Call sync function in fire-and-forget manner after successful enrollment\n- Ensure enrollment response is not delayed by sync operation\n- Add error handling for sync failures (log but don't fail enrollment)\n\nImplementation:\n```typescript\n// After successful enrollment creation\nconst enrollmentResponse = await createEnrollment(data)\n\n// Fire-and-forget background sync\nsetImmediate(async () => {\n  try {\n    await syncAllProgramTasks(userId, enrollmentResponse.id)\n    console.log(`Background sync completed for enrollment ${enrollmentResponse.id}`)\n  } catch (error) {\n    console.error(`Background sync failed for enrollment ${enrollmentResponse.id}:`, error)\n  }\n})\n\nreturn NextResponse.json(enrollmentResponse)\n```",
+        "testStrategy": "Integration tests: Verify enrollment response time unchanged, tasks appear within 10 seconds post-enrollment. Test sync failures don't affect enrollment success. Load tests: Ensure multiple concurrent enrollments handle background sync properly.",
         "priority": "high",
         "dependencies": [
-          "78"
+          "84"
         ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T20:48:31.134Z"
+        "status": "pending",
+        "subtasks": []
       },
       {
-        "id": "80",
-        "title": "Create Backup Cron Job for Program Sync",
-        "description": "Implement a backup cron job running every 6 hours to ensure users who don't open the app still receive program tasks for push notifications",
-        "details": "Create new file src/app/api/cron/programs-daily-sync/route.ts with POST handler. Fetch all active enrollments where status === 'active'. For each enrollment, check if user has program tasks for today using programTaskExistsV2(). If not, call syncProgramV2TasksForToday(userId). Implement batching for >1000 enrollments to avoid overwhelming Firestore. Add rate limiting and comprehensive logging. Update vercel.json with cron schedule '0 */6 * * *' for 0:00, 6:00, 12:00, 18:00 UTC.",
-        "testStrategy": "Test cron execution with mock enrollments. Verify batching works with large datasets. Test error handling for individual user sync failures. Monitor logs for successful execution and performance metrics.",
-        "priority": "medium",
-        "dependencies": [
-          "78"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T20:49:27.590Z"
-      },
-      {
-        "id": "81",
-        "title": "Add Program Sync on Enrollment",
-        "description": "Automatically sync program tasks when users enroll in programs, ensuring Day 1 tasks appear immediately",
-        "details": "Modify src/app/api/programs/enroll/route.ts and src/app/api/programs/complete-enrollment/route.ts to trigger sync after creating active enrollment. Check if start date (cohort.startDate or enrollment.startedAt) is today or in the past. If so, call syncProgramV2TasksForToday(userId). Implement graceful error handling - enrollment should succeed even if sync fails. Add logging for sync success/failure during enrollment process.",
-        "testStrategy": "Test enrollment flow with immediate task sync. Verify Day 1 tasks appear for new enrollees. Test error scenarios where sync fails but enrollment completes successfully. Test both direct enrollment and post-payment enrollment paths.",
+        "id": "86",
+        "title": "Update complete-enrollment route for paid programs",
+        "description": "Add background sync call to complete-enrollment route for paid program enrollments",
+        "details": "Update src/app/api/programs/complete-enrollment/route.ts to:\n- Import syncAllProgramTasks from program-engine.ts\n- Call sync function after payment completion and enrollment finalization\n- Use same fire-and-forget pattern as enroll route\n- Handle both individual and group program completions\n\nImplementation:\n```typescript\n// After enrollment completion\nconst completedEnrollment = await finalizeEnrollment(enrollmentId)\n\n// Background sync for completed enrollment\nsetImmediate(async () => {\n  try {\n    await syncAllProgramTasks(userId, enrollmentId)\n    console.log(`Post-payment sync completed for enrollment ${enrollmentId}`)\n  } catch (error) {\n    console.error(`Post-payment sync failed for enrollment ${enrollmentId}:`, error)\n  }\n})\n\nreturn NextResponse.json({ success: true })\n```",
+        "testStrategy": "Integration tests: Test paid enrollment flow with task sync, verify tasks appear after payment completion. Test both individual and group paid programs. Verify sync failures don't affect payment completion.",
         "priority": "high",
         "dependencies": [
-          "78"
+          "84"
         ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T20:50:45.330Z"
+        "status": "pending",
+        "subtasks": []
       },
       {
-        "id": "82",
-        "title": "Update Vercel Configuration for Cron",
-        "description": "Configure Vercel cron jobs to enable the backup program sync functionality",
-        "details": "Update vercel.json file to include cron configuration for the programs-daily-sync endpoint. Add cron object with path '/api/cron/programs-daily-sync' and schedule '0 */6 * * *' to run every 6 hours at 0:00, 6:00, 12:00, and 18:00 UTC. Ensure proper formatting and syntax for Vercel cron jobs. This enables the backup sync mechanism for users who don't actively open the app.",
-        "testStrategy": "Deploy configuration and verify cron job appears in Vercel dashboard. Monitor cron execution logs. Test manual trigger of cron endpoint to ensure it works before automated scheduling.",
-        "priority": "medium",
+        "id": "87",
+        "title": "Add group program enrollment sync in enrollUser.ts",
+        "description": "Update enrollUser.ts to include full program sync for group program enrollments",
+        "details": "Update src/lib/enrollments/enrollUser.ts to:\n- Import syncAllProgramTasks function\n- Add sync call for group program enrollments\n- Use existing syncProgramTasksToCohort if available, otherwise use individual sync\n- Ensure sync happens after user is added to cohort\n\nImplementation:\n```typescript\n// After successful group enrollment\nif (program.type === 'group') {\n  // Add user to cohort first\n  await addUserToCohort(userId, cohortId)\n  \n  // Then sync all program tasks\n  setImmediate(async () => {\n    try {\n      await syncAllProgramTasks(userId, enrollmentId)\n      console.log(`Group enrollment sync completed for user ${userId}`)\n    } catch (error) {\n      console.error(`Group enrollment sync failed for user ${userId}:`, error)\n    }\n  })\n}\n```",
+        "testStrategy": "Integration tests: Test group program enrollment with task sync, verify all cohort members receive tasks. Test mixed scenarios with existing and new cohort members. Verify sync works with cohort-specific task variations.",
+        "priority": "high",
         "dependencies": [
-          "80"
+          "84"
         ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-07T20:49:27.593Z"
+        "status": "pending",
+        "subtasks": []
       },
       {
-        "id": "83",
-        "title": "Integration Testing and Monitoring Setup",
-        "description": "Implement comprehensive testing and monitoring for the complete program task sync architecture",
-        "details": "Create end-to-end tests covering all sync scenarios: lazy sync on app open, enrollment sync, cron backup sync, and coach edit sync. Set up monitoring and alerting for sync failures. Add metrics tracking for sync success rates, performance, and user coverage. Test timezone edge cases and high-load scenarios. Verify the complete architecture works as designed with no task duplication and proper error handling.",
-        "testStrategy": "End-to-end testing with real user scenarios across different timezones. Load testing with multiple concurrent syncs. Monitor sync success rates and performance metrics. Test failure scenarios and recovery mechanisms.",
+        "id": "88",
+        "title": "Create manual sync tasks API endpoint",
+        "description": "Implement POST endpoint for coaches to manually sync tasks from template to client or cohort",
+        "details": "Create src/app/api/coach/org-programs/[programId]/sync-tasks/route.ts:\n- Accept enrollmentId OR cohortId parameter\n- For individual: sync remaining program days to client's Daily Focus\n- For cohort: sync remaining program days to all cohort members\n- Only sync from today onwards (skip past days)\n- Use 'fill-empty' mode\n- Return count of synced tasks\n\nImplementation:\n```typescript\nexport async function POST(request: Request, { params }: { params: { programId: string } }) {\n  const { enrollmentId, cohortId } = await request.json()\n  const today = new Date()\n  let syncedCount = 0\n  \n  if (enrollmentId) {\n    // Individual sync\n    const enrollment = await getEnrollment(enrollmentId)\n    const currentDayIndex = calculateCurrentDayIndex(enrollment.startDate, today)\n    \n    for (let dayIndex = currentDayIndex; dayIndex <= enrollment.program.lengthDays; dayIndex++) {\n      const date = calculateDateForDayIndex(dayIndex, enrollment.startDate)\n      await syncProgramTasksToClientDay(enrollment.userId, enrollmentId, dayIndex, date, 'fill-empty')\n      syncedCount++\n    }\n  } else if (cohortId) {\n    // Cohort sync\n    syncedCount = await syncProgramTasksToCohort(cohortId, 'fill-empty', today)\n  }\n  \n  return NextResponse.json({ syncedCount })\n}\n```",
+        "testStrategy": "API tests: Test with valid enrollmentId and cohortId, test error cases. Verify only future tasks are synced, existing tasks not overwritten. Test with different program lengths and start dates. Load tests for large cohorts.",
         "priority": "medium",
         "dependencies": [
-          "79",
-          "81",
-          "82"
+          "84"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "89",
+        "title": "Create clear future tasks API endpoint",
+        "description": "Implement POST endpoint for coaches to clear future program tasks for client or cohort",
+        "details": "Create src/app/api/coach/org-programs/[programId]/clear-tasks/route.ts:\n- Accept enrollmentId OR cohortId parameter\n- Query tasks matching specific criteria\n- Delete matching tasks in batch\n- Return count of deleted tasks\n\nImplementation:\n```typescript\nexport async function POST(request: Request, { params }: { params: { programId: string } }) {\n  const { enrollmentId, cohortId } = await request.json()\n  const today = new Date()\n  \n  let whereClause = {\n    sourceType: { in: ['program', 'program_day', 'program_week'] },\n    date: { gt: today },\n    status: { not: 'done' },\n    clientLocked: { not: true }\n  }\n  \n  if (enrollmentId) {\n    whereClause.programEnrollmentId = enrollmentId\n  } else if (cohortId) {\n    const cohortEnrollments = await getCohortEnrollments(cohortId)\n    whereClause.programEnrollmentId = { in: cohortEnrollments.map(e => e.id) }\n  }\n  \n  const deletedTasks = await prisma.task.deleteMany({ where: whereClause })\n  \n  return NextResponse.json({ deletedCount: deletedTasks.count })\n}\n```",
+        "testStrategy": "API tests: Verify only future incomplete program tasks are deleted. Test preservation of completed tasks, client-created tasks, and clientLocked tasks. Test with individual enrollments and cohorts. Verify correct task filtering by sourceType and date.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "90",
+        "title": "Add tools dropdown to ModuleWeeksSidebar component",
+        "description": "Modify ModuleWeeksSidebar to include tools dropdown with sync and clear options when client/cohort is selected",
+        "details": "Update src/components/coach/programs/ModuleWeeksSidebar.tsx:\n- Add tools dropdown that appears when client or cohort is selected\n- Show 'Client Tools' when individual client selected\n- Show 'Cohort Tools' when cohort selected\n- Include 'Sync Tasks from Template' and 'Clear Future Tasks' options\n- Add loading states and toast notifications\n\nImplementation:\n```tsx\nconst [isLoading, setIsLoading] = useState(false)\n\nconst handleSyncTasks = async () => {\n  setIsLoading(true)\n  try {\n    const response = await fetch(`/api/coach/org-programs/${programId}/sync-tasks`, {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({ \n        enrollmentId: selectedEnrollment?.id,\n        cohortId: selectedCohort?.id \n      })\n    })\n    const { syncedCount } = await response.json()\n    toast.success(`Synced ${syncedCount} tasks successfully`)\n  } catch (error) {\n    toast.error('Failed to sync tasks')\n  } finally {\n    setIsLoading(false)\n  }\n}\n\n// Similar implementation for handleClearTasks with confirmation dialog\n```",
+        "testStrategy": "Component tests: Test dropdown visibility based on selection state. Test API calls with correct parameters. Test loading states and toast notifications. Integration tests: Verify end-to-end sync and clear operations from UI.",
+        "priority": "medium",
+        "dependencies": [
+          "88",
+          "89"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "91",
+        "title": "Add confirmation dialog for clear future tasks",
+        "description": "Implement confirmation dialog component to prevent accidental task clearing",
+        "details": "Create confirmation dialog for clear tasks operation:\n- Show warning about permanent deletion\n- Display count of tasks to be deleted (if possible)\n- Require explicit confirmation\n- Use existing dialog/modal components from UI library\n\nImplementation:\n```tsx\nconst [showClearConfirm, setShowClearConfirm] = useState(false)\n\nconst handleClearTasks = async () => {\n  const confirmed = await showConfirmDialog({\n    title: 'Clear Future Tasks',\n    message: 'This will permanently delete all future program tasks that are not completed or locked. This action cannot be undone.',\n    confirmText: 'Clear Tasks',\n    cancelText: 'Cancel',\n    variant: 'destructive'\n  })\n  \n  if (!confirmed) return\n  \n  // Proceed with clear operation\n  setIsLoading(true)\n  try {\n    const response = await fetch(`/api/coach/org-programs/${programId}/clear-tasks`, {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({ \n        enrollmentId: selectedEnrollment?.id,\n        cohortId: selectedCohort?.id \n      })\n    })\n    const { deletedCount } = await response.json()\n    toast.success(`Cleared ${deletedCount} future tasks`)\n  } catch (error) {\n    toast.error('Failed to clear tasks')\n  } finally {\n    setIsLoading(false)\n  }\n}\n```",
+        "testStrategy": "Component tests: Test dialog appears on clear action, test confirmation and cancellation flows. Test dialog content and styling. Integration tests: Verify tasks are only cleared after confirmation, cancellation prevents deletion.",
+        "priority": "medium",
+        "dependencies": [
+          "90"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "92",
+        "title": "Update CoachProgramsTab to pass additional props to sidebar",
+        "description": "Modify CoachProgramsTab component to pass necessary props for tools dropdown functionality",
+        "details": "Update src/components/coach/programs/CoachProgramsTab.tsx:\n- Pass programId to ModuleWeeksSidebar\n- Pass selected enrollment/cohort state\n- Ensure proper prop drilling for tools functionality\n- Add any missing state management for selection\n\nImplementation:\n```tsx\n<ModuleWeeksSidebar\n  programId={program.id}\n  selectedEnrollment={selectedEnrollment}\n  selectedCohort={selectedCohort}\n  onEnrollmentSelect={setSelectedEnrollment}\n  onCohortSelect={setSelectedCohort}\n  // ... existing props\n/>\n```",
+        "testStrategy": "Component tests: Verify props are passed correctly to sidebar. Test selection state management. Integration tests: Ensure tools dropdown works with proper program and selection context.",
+        "priority": "low",
+        "dependencies": [
+          "90"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "93",
+        "title": "Add comprehensive error handling and logging",
+        "description": "Implement robust error handling and logging across all sync operations for monitoring and debugging",
+        "details": "Add comprehensive error handling and logging:\n- Structured logging for all sync operations\n- Error categorization (network, database, validation)\n- Retry logic for transient failures\n- Monitoring hooks for sync success/failure rates\n- User-friendly error messages in UI\n\nImplementation:\n```typescript\n// Enhanced error handling in sync functions\ntry {\n  const result = await syncAllProgramTasks(userId, enrollmentId)\n  logger.info('Sync completed', { \n    userId, \n    enrollmentId, \n    syncedCount: result,\n    duration: Date.now() - startTime \n  })\n} catch (error) {\n  logger.error('Sync failed', { \n    userId, \n    enrollmentId, \n    error: error.message,\n    stack: error.stack \n  })\n  \n  // Retry logic for transient failures\n  if (isRetryableError(error) && retryCount < 3) {\n    await delay(1000 * Math.pow(2, retryCount))\n    return syncWithRetry(userId, enrollmentId, retryCount + 1)\n  }\n  \n  throw error\n}\n```",
+        "testStrategy": "Error simulation tests: Test various failure scenarios (database timeout, network issues, invalid data). Test retry logic with transient failures. Monitor logs for proper error categorization and structured data. Test user experience with error states.",
+        "priority": "low",
+        "dependencies": [
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89"
         ],
         "status": "pending",
         "subtasks": []
@@ -87,9 +137,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-07T20:50:45.330Z",
-      "taskCount": 6,
-      "completedCount": 5,
+      "lastModified": "2026-01-08T09:21:19.732Z",
+      "taskCount": 10,
+      "completedCount": 0,
       "tags": [
         "master"
       ]

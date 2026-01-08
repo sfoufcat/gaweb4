@@ -2734,3 +2734,158 @@ export function calculateDateForProgramDay(
   return targetDate.toISOString().split('T')[0];
 }
 
+
+// ============================================================================
+// Sync All Program Tasks - Full program sync for new enrollments
+// ============================================================================
+
+export interface SyncAllProgramTasksParams {
+  userId: string;
+  enrollmentId: string;
+  mode?: SyncMode;
+  coachUserId?: string;
+  batchSize?: number; // Default 10 - process this many days before yielding
+}
+
+export interface SyncAllProgramTasksResult {
+  success: boolean;
+  tasksCreated: number;
+  tasksSkipped: number;
+  daysProcessed: number;
+  totalDays: number;
+  errors: string[];
+}
+
+/**
+ * Sync ALL program tasks for an entire program enrollment.
+ * 
+ * Used when:
+ * - A new client is enrolled (sync all days upfront)
+ * - Coach manually triggers a full sync
+ * 
+ * This function syncs tasks for all days from Day 1 to program.lengthDays.
+ * It uses 'fill-empty' mode by default to not overwrite existing tasks.
+ * 
+ * For large programs (50+ days), it batches operations to avoid blocking.
+ */
+export async function syncAllProgramTasks(
+  params: SyncAllProgramTasksParams
+): Promise<SyncAllProgramTasksResult> {
+  const { 
+    userId, 
+    enrollmentId, 
+    mode = 'fill-empty', 
+    coachUserId,
+    batchSize = 10 
+  } = params;
+  
+  const errors: string[] = [];
+  let tasksCreated = 0;
+  let tasksSkipped = 0;
+  let daysProcessed = 0;
+
+  console.log(`[SYNC_ALL] Starting full sync for enrollment ${enrollmentId}`);
+
+  // 1. Get the enrollment
+  const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
+  if (!enrollmentDoc.exists) {
+    return {
+      success: false,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      daysProcessed: 0,
+      totalDays: 0,
+      errors: ['Enrollment not found'],
+    };
+  }
+
+  const enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
+
+  // Verify ownership
+  if (enrollment.userId !== userId) {
+    return {
+      success: false,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      daysProcessed: 0,
+      totalDays: 0,
+      errors: ['Enrollment does not belong to user'],
+    };
+  }
+
+  // 2. Get the program
+  const program = await getProgramV2(enrollment.programId);
+  if (!program) {
+    return {
+      success: false,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      daysProcessed: 0,
+      totalDays: 0,
+      errors: ['Program not found'],
+    };
+  }
+
+  // 3. Get cohort if applicable
+  let cohort: ProgramCohort | null = null;
+  if (enrollment.cohortId) {
+    const cohortDoc = await adminDb.collection('program_cohorts').doc(enrollment.cohortId).get();
+    if (cohortDoc.exists) {
+      cohort = { id: cohortDoc.id, ...cohortDoc.data() } as ProgramCohort;
+    }
+  }
+
+  const totalDays = program.lengthDays;
+  console.log(`[SYNC_ALL] Syncing ${totalDays} days for program "${program.name}"`);
+
+  // 4. Loop through all program days
+  for (let dayIndex = 1; dayIndex <= totalDays; dayIndex++) {
+    try {
+      // Calculate the date for this day index
+      const dateStr = calculateDateForProgramDay(enrollment, program, cohort, dayIndex);
+      
+      if (!dateStr) {
+        errors.push(`Could not calculate date for day ${dayIndex}`);
+        continue;
+      }
+
+      // Sync this day's tasks
+      const result = await syncProgramTasksToClientDay({
+        userId,
+        programEnrollmentId: enrollmentId,
+        date: dateStr,
+        mode,
+        coachUserId,
+        forceDayIndex: dayIndex, // Use forceDayIndex to ensure correct day is synced
+      });
+
+      tasksCreated += result.tasksCreated;
+      tasksSkipped += result.tasksSkipped;
+      daysProcessed++;
+
+      if (result.errors && result.errors.length > 0) {
+        errors.push(...result.errors);
+      }
+
+      // Batch processing - yield to event loop periodically for large programs
+      if (totalDays > 50 && dayIndex % batchSize === 0) {
+        await new Promise(resolve => setImmediate(resolve));
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      errors.push(`Day ${dayIndex}: ${errorMsg}`);
+    }
+  }
+
+  console.log(`[SYNC_ALL] Completed: ${daysProcessed}/${totalDays} days, ${tasksCreated} tasks created, ${tasksSkipped} skipped`);
+
+  return {
+    success: errors.length === 0,
+    tasksCreated,
+    tasksSkipped,
+    daysProcessed,
+    totalDays,
+    errors,
+  };
+}
+
