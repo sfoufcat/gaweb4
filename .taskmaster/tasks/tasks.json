@@ -9,9 +9,9 @@
         "testStrategy": "Unit tests: Test with small programs (5 days), large programs (90+ days), edge cases (0 days, invalid enrollment). Integration tests: Verify tasks are created correctly, existing tasks not overwritten, batching works for large programs. Performance tests: Ensure 90-day program syncs within 30 seconds.",
         "priority": "high",
         "dependencies": [],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T09:21:19.731Z"
+        "updatedAt": "2026-01-08T09:23:35.367Z"
       },
       {
         "id": "85",
@@ -23,8 +23,9 @@
         "dependencies": [
           "84"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T09:23:53.526Z"
       },
       {
         "id": "86",
@@ -36,8 +37,9 @@
         "dependencies": [
           "84"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T09:23:53.526Z"
       },
       {
         "id": "87",
@@ -49,8 +51,9 @@
         "dependencies": [
           "84"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T09:23:53.527Z"
       },
       {
         "id": "88",
@@ -137,9 +140,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-08T09:21:19.732Z",
+      "lastModified": "2026-01-08T09:23:53.527Z",
       "taskCount": 10,
-      "completedCount": 0,
+      "completedCount": 1,
       "tags": [
         "master"
       ]

@@ -21,8 +21,18 @@ import {
   Phone,
   BookOpen,
   CheckSquare,
-  LayoutList
+  LayoutList,
+  Settings2,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // Selection types (same as ProgramSidebarNav for compatibility)
 export type SidebarSelection =
@@ -57,6 +67,10 @@ interface ModuleWeeksSidebarProps {
   currentDayIndex?: number;
   /** Callback when "Jump to Today" button is clicked */
   onJumpToToday?: () => void;
+  /** Enrollment ID when viewing a specific client (for sync/clear operations) */
+  enrollmentId?: string;
+  /** Cohort ID when viewing a specific cohort (for sync/clear operations) */
+  cohortId?: string;
 }
 
 interface CalculatedWeek {
@@ -196,6 +210,8 @@ export function ModuleWeeksSidebar({
   onCreateMissingWeeks,
   currentDayIndex,
   onJumpToToday,
+  enrollmentId,
+  cohortId,
 }: ModuleWeeksSidebarProps) {
   // In client view mode, disable reordering (structure comes from template)
   const isClientView = viewContext?.mode === 'client';
@@ -212,6 +228,9 @@ export function ModuleWeeksSidebar({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreatingWeeks, setIsCreatingWeeks] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isSyncingTasks, setIsSyncingTasks] = useState(false);
+  const [isClearingTasks, setIsClearingTasks] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   
   // Local state to track week order during drag operations
   // Stores storedWeekIds in the desired order (stable IDs that don't change after backend recalculation)
@@ -698,6 +717,61 @@ export function ModuleWeeksSidebar({
     if (idx < sortedModules.length - 1) return sortedModules[idx + 1].name;
     return null;
   }, [moduleToDelete, sortedModules]);
+
+  // Handler for syncing tasks from template
+  const handleSyncTasks = useCallback(async () => {
+    if (!program.id || (!enrollmentId && !cohortId)) return;
+
+    setIsSyncingTasks(true);
+    try {
+      const body = cohortId ? { cohortId } : { enrollmentId };
+      const res = await fetch(`/api/coach/org-programs/${program.id}/sync-tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to sync tasks');
+      }
+
+      const count = data.tasksCreated || data.totalTasksCreated || 0;
+      alert(`Success: Synced ${count} tasks for entire program`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to sync tasks');
+    } finally {
+      setIsSyncingTasks(false);
+    }
+  }, [program.id, enrollmentId, cohortId]);
+
+  // Handler for clearing future tasks
+  const handleClearTasks = useCallback(async () => {
+    if (!program.id || (!enrollmentId && !cohortId)) return;
+
+    setIsClearingTasks(true);
+    try {
+      const body = cohortId ? { cohortId } : { enrollmentId };
+      const res = await fetch(`/api/coach/org-programs/${program.id}/clear-tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to clear tasks');
+      }
+
+      const count = data.tasksDeleted || data.totalTasksDeleted || 0;
+      alert(`Success: Cleared ${count} future tasks`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to clear tasks');
+    } finally {
+      setIsClearingTasks(false);
+      setShowClearConfirm(false);
+    }
+  }, [program.id, enrollmentId, cohortId]);
 
   const hasExistingContent = days.some(d => d.tasks?.length > 0 || d.title) ||
     weeks.some(w => w.weeklyTasks?.length || w.theme);
@@ -1245,6 +1319,97 @@ export function ModuleWeeksSidebar({
             </div>
           </div>
         )}
+
+      {/* Client/Cohort Tools Dropdown - only show when client or cohort is selected */}
+      {(isClientView || isCohortView) && (enrollmentId || cohortId) && (
+        <div className="px-3 py-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex-shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg
+                  bg-white/60 dark:bg-[#1e2430]/60 border border-[#e1ddd8]/50 dark:border-[#262b35]/50
+                  hover:bg-white/80 dark:hover:bg-[#1e2430]/80 transition-colors"
+                disabled={isSyncingTasks || isClearingTasks}
+              >
+                <span className="flex items-center gap-2 text-[#3d3a37] dark:text-[#e8e6e3]">
+                  <Settings2 className="h-4 w-4" />
+                  {isClientView ? 'Client Tools' : 'Cohort Tools'}
+                </span>
+                <ChevronDown className="h-4 w-4 text-[#5f5a55] dark:text-[#8a8f9c]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem
+                onClick={handleSyncTasks}
+                disabled={isSyncingTasks}
+                className="cursor-pointer"
+              >
+                {isSyncingTasks ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Sync Tasks from Template
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setShowClearConfirm(true)}
+                disabled={isClearingTasks}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                {isClearingTasks ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                Clear Future Tasks
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
+      {/* Clear Tasks Confirmation Dialog */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-[#1e2430] rounded-xl p-6 max-w-md mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-[#3d3a37] dark:text-[#e8e6e3] mb-2">
+              Clear Future Tasks
+            </h3>
+            <p className="text-sm text-[#5f5a55] dark:text-[#8a8f9c] mb-4">
+              This will delete all incomplete program-sourced tasks for future days.
+              Today&apos;s tasks and completed tasks will be preserved.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="px-4 py-2 text-sm font-medium rounded-lg
+                  bg-slate-100 dark:bg-slate-800 text-[#3d3a37] dark:text-[#e8e6e3]
+                  hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                disabled={isClearingTasks}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearTasks}
+                className="px-4 py-2 text-sm font-medium rounded-lg
+                  bg-red-500 text-white hover:bg-red-600 transition-colors
+                  disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isClearingTasks}
+              >
+                {isClearingTasks ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Clearing...
+                  </span>
+                ) : (
+                  'Clear Tasks'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Module Modal */}
       {mounted && moduleToDelete && (

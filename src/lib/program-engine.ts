@@ -2889,3 +2889,139 @@ export async function syncAllProgramTasks(
   };
 }
 
+
+/**
+ * Sync program tasks from a specific day index onwards.
+ * 
+ * Used for manual sync when coach wants to sync only remaining days.
+ * Calculates which day the enrollment is currently on and syncs from there.
+ */
+export async function syncProgramTasksFromCurrentDay(
+  params: SyncAllProgramTasksParams
+): Promise<SyncAllProgramTasksResult> {
+  const { 
+    userId, 
+    enrollmentId, 
+    mode = 'fill-empty', 
+    coachUserId,
+    batchSize = 10 
+  } = params;
+  
+  const errors: string[] = [];
+  let tasksCreated = 0;
+  let tasksSkipped = 0;
+  let daysProcessed = 0;
+
+  console.log(`[SYNC_FROM_CURRENT] Starting sync from current day for enrollment ${enrollmentId}`);
+
+  // 1. Get the enrollment
+  const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
+  if (!enrollmentDoc.exists) {
+    return {
+      success: false,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      daysProcessed: 0,
+      totalDays: 0,
+      errors: ['Enrollment not found'],
+    };
+  }
+
+  const enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
+
+  // Verify ownership
+  if (enrollment.userId !== userId) {
+    return {
+      success: false,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      daysProcessed: 0,
+      totalDays: 0,
+      errors: ['Enrollment does not belong to user'],
+    };
+  }
+
+  // 2. Get the program
+  const program = await getProgramV2(enrollment.programId);
+  if (!program) {
+    return {
+      success: false,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      daysProcessed: 0,
+      totalDays: 0,
+      errors: ['Program not found'],
+    };
+  }
+
+  // 3. Get cohort if applicable
+  let cohort: ProgramCohort | null = null;
+  if (enrollment.cohortId) {
+    const cohortDoc = await adminDb.collection('program_cohorts').doc(enrollment.cohortId).get();
+    if (cohortDoc.exists) {
+      cohort = { id: cohortDoc.id, ...cohortDoc.data() } as ProgramCohort;
+    }
+  }
+
+  // 4. Calculate current day index
+  const today = new Date().toISOString().split('T')[0];
+  const currentDayIndex = calculateCurrentDayIndexV2(enrollment, program, cohort, today);
+  
+  // If enrollment hasn't started yet (currentDayIndex === 0), start from day 1
+  const startDayIndex = currentDayIndex === 0 ? 1 : currentDayIndex;
+  const totalDays = program.lengthDays;
+  const daysToSync = totalDays - startDayIndex + 1;
+
+  console.log(`[SYNC_FROM_CURRENT] Syncing days ${startDayIndex}-${totalDays} (${daysToSync} days)`);
+
+  // 5. Loop through remaining program days
+  for (let dayIndex = startDayIndex; dayIndex <= totalDays; dayIndex++) {
+    try {
+      // Calculate the date for this day index
+      const dateStr = calculateDateForProgramDay(enrollment, program, cohort, dayIndex);
+      
+      if (!dateStr) {
+        errors.push(`Could not calculate date for day ${dayIndex}`);
+        continue;
+      }
+
+      // Sync this day's tasks
+      const result = await syncProgramTasksToClientDay({
+        userId,
+        programEnrollmentId: enrollmentId,
+        date: dateStr,
+        mode,
+        coachUserId,
+        forceDayIndex: dayIndex,
+      });
+
+      tasksCreated += result.tasksCreated;
+      tasksSkipped += result.tasksSkipped;
+      daysProcessed++;
+
+      if (result.errors && result.errors.length > 0) {
+        errors.push(...result.errors);
+      }
+
+      // Batch processing
+      if (daysToSync > 50 && (dayIndex - startDayIndex + 1) % batchSize === 0) {
+        await new Promise(resolve => setImmediate(resolve));
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      errors.push(`Day ${dayIndex}: ${errorMsg}`);
+    }
+  }
+
+  console.log(`[SYNC_FROM_CURRENT] Completed: ${daysProcessed} days, ${tasksCreated} tasks created`);
+
+  return {
+    success: errors.length === 0,
+    tasksCreated,
+    tasksSkipped,
+    daysProcessed,
+    totalDays: daysToSync,
+    errors,
+  };
+}
+

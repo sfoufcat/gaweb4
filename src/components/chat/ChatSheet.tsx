@@ -89,6 +89,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     isPlatformMode,
     isLoading: isChannelsLoading,
     isInitialized: channelsInitialized,
+    removeChannel,
   } = useChatChannels();
 
   // Show loading only if channels haven't been initialized yet
@@ -427,8 +428,11 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   // Handle delete confirmation
   const handleConfirmDelete = async () => {
     if (!deleteDialogChannel) return;
+    const channelId = deleteDialogChannel.id;
     try {
-      await deleteChannel(deleteDialogChannel.id, deleteDialogChannel.type);
+      await deleteChannel(channelId, deleteDialogChannel.type);
+      // Optimistically remove from UI immediately
+      removeChannel(channelId);
     } catch (error) {
       console.error('[ChatSheet] Delete action failed:', error);
     }
@@ -773,18 +777,20 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     </Drawer>
 
       <AlertDialog open={!!deleteDialogChannel} onOpenChange={(open) => !open && setDeleteDialogChannel(null)}>
-        <AlertDialogContent className="max-w-sm z-[10001]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete conversation</AlertDialogTitle>
-            <AlertDialogDescription>
-              Delete this conversation? This will permanently delete it for everyone.
+        <AlertDialogContent className="max-w-[280px] z-[10001] rounded-3xl p-5 gap-3">
+          <AlertDialogHeader className="pb-2 border-b-0">
+            <AlertDialogTitle className="text-base text-center">Delete conversation</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-center">
+              This will permanently delete it for everyone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-row gap-3 pt-2">
+            <AlertDialogCancel className="flex-1 m-0 rounded-xl h-11">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
-              className="bg-red-500 hover:bg-red-600 text-white"
+              className="flex-1 rounded-xl h-11 bg-red-500 hover:bg-red-600 text-white"
             >
               Delete
             </AlertDialogAction>

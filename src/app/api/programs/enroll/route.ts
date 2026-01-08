@@ -14,7 +14,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getStreamServerClient } from '@/lib/stream-server';
-import { syncProgramV2TasksForToday } from '@/lib/program-engine';
+import { syncAllProgramTasks } from '@/lib/program-engine';
 import Stripe from 'stripe';
 import type { 
   Program, 
@@ -991,17 +991,29 @@ async function createEnrollment(
     console.error(`[PROGRAM_ENROLL] Failed to auto-grant program content:`, contentError);
   }
 
-  // Sync program tasks immediately if enrollment is active
-  // This ensures Day 1 tasks appear right away
+  // Sync ALL program tasks in background if enrollment is active
+  // This ensures all tasks appear right away without requiring client to visit each day
   if (status === 'active') {
-    try {
-      console.log(`[PROGRAM_ENROLL] Syncing program tasks for user ${userId}`);
-      const syncResult = await syncProgramV2TasksForToday(userId);
-      console.log(`[PROGRAM_ENROLL] Task sync result:`, syncResult);
-    } catch (syncError) {
-      // Don't fail enrollment if task sync fails
-      console.error(`[PROGRAM_ENROLL] Failed to sync program tasks:`, syncError);
-    }
+    // Fire-and-forget: run sync in background without blocking response
+    setImmediate(async () => {
+      try {
+        console.log(`[PROGRAM_ENROLL] Starting background sync of all tasks for enrollment ${enrollmentRef.id}`);
+        const syncResult = await syncAllProgramTasks({
+          userId,
+          enrollmentId: enrollmentRef.id,
+          mode: 'fill-empty',
+        });
+        console.log(`[PROGRAM_ENROLL] Background sync completed:`, {
+          enrollmentId: enrollmentRef.id,
+          tasksCreated: syncResult.tasksCreated,
+          daysProcessed: syncResult.daysProcessed,
+          totalDays: syncResult.totalDays,
+        });
+      } catch (syncError) {
+        // Log but don't fail - enrollment already succeeded
+        console.error(`[PROGRAM_ENROLL] Background sync failed for enrollment ${enrollmentRef.id}:`, syncError);
+      }
+    });
   }
 
   return NextResponse.json({

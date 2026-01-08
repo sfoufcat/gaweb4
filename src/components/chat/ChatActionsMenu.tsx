@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useChatPreferences } from '@/hooks/useChatPreferences';
+import { useChatChannels } from '@/contexts/ChatChannelsContext';
 import type { ChatChannelType } from '@/types/chat-preferences';
 
 interface ChatActionsMenuProps {
@@ -46,6 +47,7 @@ export function ChatActionsMenu({
     canArchive,
     canDelete,
   } = useChatPreferences();
+  const { removeChannel } = useChatChannels();
 
   const preference = getPreference(channelId);
   const isPinned = preference?.isPinned ?? false;
@@ -95,7 +97,11 @@ export function ChatActionsMenu({
   };
 
   const confirmDelete = async () => {
-    await handleAction('delete', () => deleteChannel(channelId, channelType));
+    await handleAction('delete', async () => {
+      await deleteChannel(channelId, channelType);
+      // Optimistically remove from UI
+      removeChannel(channelId);
+    });
     setShowDeleteDialog(false);
   };
 

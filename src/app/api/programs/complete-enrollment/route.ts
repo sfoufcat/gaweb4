@@ -12,7 +12,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getStreamServerClient } from '@/lib/stream-server';
-import { syncProgramV2TasksForToday } from '@/lib/program-engine';
+import { syncAllProgramTasks } from '@/lib/program-engine';
 import Stripe from 'stripe';
 import type {
   Program,
@@ -529,17 +529,28 @@ export async function POST(request: NextRequest) {
 
     console.log(`[COMPLETE_ENROLLMENT] Created enrollment ${enrollmentRef.id} for user ${userId} in program ${program.id}`);
 
-    // Sync program tasks immediately if enrollment is active
-    // This ensures Day 1 tasks appear right away
+    // Sync ALL program tasks in background if enrollment is active
+    // This ensures entire program tasks are synced immediately without blocking response
     if (status === 'active') {
-      try {
-        console.log(`[COMPLETE_ENROLLMENT] Syncing program tasks for user ${userId}`);
-        const syncResult = await syncProgramV2TasksForToday(userId);
-        console.log(`[COMPLETE_ENROLLMENT] Task sync result:`, syncResult);
-      } catch (syncError) {
-        // Don't fail enrollment if task sync fails
-        console.error(`[COMPLETE_ENROLLMENT] Failed to sync program tasks:`, syncError);
-      }
+      // Fire-and-forget: run sync in background without blocking response
+      setImmediate(async () => {
+        try {
+          console.log(`[COMPLETE_ENROLLMENT] Starting background sync of all tasks for enrollment ${enrollmentRef.id}`);
+          const syncResult = await syncAllProgramTasks({
+            userId,
+            enrollmentId: enrollmentRef.id,
+            mode: 'fill-empty',
+          });
+          console.log(`[COMPLETE_ENROLLMENT] Background sync completed:`, {
+            enrollmentId: enrollmentRef.id,
+            tasksCreated: syncResult.tasksCreated,
+            daysProcessed: syncResult.daysProcessed,
+            totalDays: syncResult.totalDays,
+          });
+        } catch (syncError) {
+          console.error(`[COMPLETE_ENROLLMENT] Background sync failed for enrollment ${enrollmentRef.id}:`, syncError);
+        }
+      });
     }
 
     return NextResponse.json({

@@ -10,6 +10,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { FieldValue } from 'firebase-admin/firestore';
+import { syncAllProgramTasks } from '@/lib/program-engine';
 import type { 
   UpsellProductType, 
   ProgramEnrollment, 
@@ -227,7 +228,31 @@ async function enrollInProgram(
   }, { merge: true });
 
   console.log(`[ENROLL_USER] Enrolled user ${userId} in program ${programId}, enrollment ${enrollmentRef.id}`);
-  
+
+  // Sync ALL program tasks in background if enrollment is active
+  // This ensures entire program tasks are synced immediately without blocking response
+  if (status === 'active') {
+    // Fire-and-forget: run sync in background without blocking response
+    setImmediate(async () => {
+      try {
+        console.log(`[ENROLL_USER] Starting background sync of all tasks for enrollment ${enrollmentRef.id}`);
+        const syncResult = await syncAllProgramTasks({
+          userId,
+          enrollmentId: enrollmentRef.id,
+          mode: 'fill-empty',
+        });
+        console.log(`[ENROLL_USER] Background sync completed:`, {
+          enrollmentId: enrollmentRef.id,
+          tasksCreated: syncResult.tasksCreated,
+          daysProcessed: syncResult.daysProcessed,
+          totalDays: syncResult.totalDays,
+        });
+      } catch (syncError) {
+        console.error(`[ENROLL_USER] Background sync failed for enrollment ${enrollmentRef.id}:`, syncError);
+      }
+    });
+  }
+
   return { success: true, enrollmentId: enrollmentRef.id };
 }
 

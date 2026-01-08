@@ -90,7 +90,7 @@ Add a "Clear Future Tasks" button in the tools dropdown that clears all program-
   - `sourceType` in ['program', 'program_day', 'program_week']
   - `programEnrollmentId` matches (or cohort member enrollments)
   - `date` > today
-  - `status` !== 'done' (preserve completed tasks)
+  - `status` !== 'completed' (preserve completed tasks)
   - `clientLocked` !== true
 - [ ] Delete matching tasks in batch
 - [ ] Return count of deleted tasks

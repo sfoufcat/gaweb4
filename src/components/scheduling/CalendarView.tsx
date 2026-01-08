@@ -549,10 +549,10 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
   const handleEventClick = useCallback((event: UnifiedEvent, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedEvent(event);
-    // Get position for desktop popup
+    // Get position for desktop popup - use center of event element
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setPopupPosition({ x: rect.left, y: rect.bottom + 8 });
-  }, []);
+    setPopupPosition({ x: rect.left + rect.width / 2, y: rect.bottom + 8 });
+  }, []);;
 
   // Handle respond to proposal
   const handleRespond = useCallback(async (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => {

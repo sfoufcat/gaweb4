@@ -58,6 +58,8 @@ interface ChatChannelsContextValue {
   refresh: () => Promise<void>;
   /** Update a single channel's preview data (for real-time updates) */
   updateChannelPreview: (channelId: string, updates: Partial<ChannelPreview>) => void;
+  /** Remove a channel from the list (for deletion) */
+  removeChannel: (channelId: string) => void;
 }
 
 const ChatChannelsContext = createContext<ChatChannelsContextValue | undefined>(undefined);
@@ -430,6 +432,20 @@ export function ChatChannelsProvider({
   );
 
   /**
+   * Remove a channel from the list (for deletion)
+   */
+  const removeChannel = useCallback(
+    (channelId: string) => {
+      setChannels((prev) => prev.filter((ch) => ch.id !== channelId));
+      // Also clear cache so it rebuilds correctly
+      if (client?.userID) {
+        clearUserChannelCache(client.userID);
+      }
+    },
+    [client?.userID]
+  );
+
+  /**
    * Handle real-time Stream events to keep channel data fresh
    */
   const handleChannelEvent = useCallback(
@@ -584,6 +600,7 @@ export function ChatChannelsProvider({
       error,
       refresh: fetchChannels,
       updateChannelPreview,
+      removeChannel,
     }),
     [
       channels,
@@ -594,6 +611,7 @@ export function ChatChannelsProvider({
       error,
       fetchChannels,
       updateChannelPreview,
+      removeChannel,
     ]
   );
 

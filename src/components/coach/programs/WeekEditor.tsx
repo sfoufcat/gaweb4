@@ -2,7 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
-import { Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList } from 'lucide-react';
+import { Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2 } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { MediaUpload } from '@/components/admin/MediaUpload';
@@ -43,6 +46,81 @@ interface WeekEditorProps {
   enrollments?: EnrollmentWithUser[];
   // Callback when a new summary is generated
   onSummaryGenerated?: (summaryId: string) => void;
+}
+
+// Sortable task component for drag-and-drop weekly tasks
+interface SortableWeeklyTaskProps {
+  task: ProgramTaskTemplate;
+  index: number;
+  id: string;
+  showCompletionStatus: boolean;
+  onTogglePrimary: (index: number) => void;
+  onRemove: (index: number) => void;
+}
+
+function SortableWeeklyTask({ task, index, id, showCompletionStatus, onTogglePrimary, onRemove }: SortableWeeklyTaskProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const isCompleted = task.completed || false;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
+    >
+      {/* Drag Handle */}
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+        <GripVertical className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+      </div>
+
+      {/* Completion Checkbox */}
+      {showCompletionStatus && isCompleted ? (
+        <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+          <Check className="w-3 h-3 text-white" />
+        </div>
+      ) : (
+        <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
+      )}
+
+      {/* Task Label */}
+      <span className="flex-1 font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8]">
+        {task.label}
+      </span>
+
+      {/* Focus/Backlog Toggle */}
+      <button
+        type="button"
+        onClick={() => onTogglePrimary(index)}
+        className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200"
+      >
+        <ArrowLeftRight className="w-3.5 h-3.5" />
+        <span>{task.isPrimary ? 'Focus' : 'Backlog'}</span>
+      </button>
+
+      {/* Delete Button */}
+      <button
+        type="button"
+        onClick={() => onRemove(index)}
+        className="p-1.5 rounded-lg text-[#a7a39e] dark:text-[#7d8190] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
 }
 
 /**
@@ -107,6 +185,26 @@ export function WeekEditor({
   const trackFieldEdit = useCallback((syncFieldKey: string) => {
     setEditedFields(prev => new Set(prev).add(syncFieldKey));
   }, []);
+
+  // DnD sensors for weekly tasks
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end for reordering weekly tasks
+  const handleTaskDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = formData.weeklyTasks.findIndex((_, i) => `task-${i}` === active.id);
+      const newIndex = formData.weeklyTasks.findIndex((_, i) => `task-${i}` === over.id);
+      const newTasks = arrayMove(formData.weeklyTasks, oldIndex, newIndex);
+      setFormData(prev => ({ ...prev, weeklyTasks: newTasks }));
+      trackFieldEdit('syncTasks');
+    }
+  }, [formData.weeklyTasks, trackFieldEdit]);
 
   // Get days in this week
   const weekDays = days.filter(
@@ -659,34 +757,28 @@ export function WeekEditor({
               Weekly Tasks
             </label>
             <div className="space-y-2 mb-3">
-              {formData.weeklyTasks.map((task, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleTaskDragEnd}
+              >
+                <SortableContext
+                  items={formData.weeklyTasks.map((_, i) => `task-${i}`)}
+                  strategy={verticalListSortingStrategy}
                 >
-                  <GripVertical className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190] cursor-grab" />
-                  <button
-                    onClick={() => toggleTaskPrimary(index)}
-                    className={`p-1 rounded ${
-                      task.isPrimary
-                        ? 'bg-brand-accent/20 text-brand-accent'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
-                    }`}
-                    title={task.isPrimary ? 'Primary (Daily Focus)' : 'Secondary (Backlog)'}
-                  >
-                    <Target className="w-3 h-3" />
-                  </button>
-                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                    {task.label}
-                  </span>
-                  <button
-                    onClick={() => removeTask(index)}
-                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                  {formData.weeklyTasks.map((task, index) => (
+                    <SortableWeeklyTask
+                      key={`task-${index}`}
+                      id={`task-${index}`}
+                      task={task}
+                      index={index}
+                      showCompletionStatus={isClientView || !!cohortId}
+                      onTogglePrimary={toggleTaskPrimary}
+                      onRemove={removeTask}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
             </div>
             <div className="flex gap-2">
               <input
@@ -695,7 +787,7 @@ export function WeekEditor({
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addTask()}
                 placeholder="Add a task..."
-                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+                className="flex-1 px-3 py-2 text-sm bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
               />
               <Button onClick={addTask} variant="outline" size="sm">
                 <Plus className="w-4 h-4" />

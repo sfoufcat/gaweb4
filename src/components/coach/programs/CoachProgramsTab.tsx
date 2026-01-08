@@ -15,7 +15,7 @@ import type { DiscoverCourse } from '@/types/discover';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, List, CalendarDays, Check, PenLine } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -171,6 +171,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [cohortViewContext, setCohortViewContext] = useState<CohortViewContext>({ mode: 'template' });
   const [cohortWeekContent, setCohortWeekContent] = useState<CohortWeekContent | null>(null);
   const [loadingCohortContent, setLoadingCohortContent] = useState(false);
+
+  // Cohort task completion state (for showing completion in day editor)
+  const [cohortTaskCompletion, setCohortTaskCompletion] = useState<Map<string, { completed: boolean; completionRate: number }>>(new Map());
 
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
@@ -1120,6 +1123,44 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   }, [selectedDayIndex, programDays, clientDays, clientViewContext, selectedProgram, loadedEnrollmentId]);
 
+  // Fetch cohort task completion when viewing a cohort's day
+  useEffect(() => {
+    if (!selectedProgram || selectedProgram.type !== 'group') return;
+    if (cohortViewContext.mode !== 'cohort') return;
+    if (!cohortViewContext.cohortId || !cohortViewContext.cohortStartDate) return;
+    if (!selectedDayIndex) return;
+
+    // Calculate the date for this day index
+    const startDate = new Date(cohortViewContext.cohortStartDate);
+    startDate.setHours(0, 0, 0, 0);
+    const targetDate = new Date(startDate);
+    targetDate.setDate(startDate.getDate() + selectedDayIndex - 1);
+    const dateStr = targetDate.toISOString().split('T')[0];
+
+    // Fetch cohort task states for this date
+    const fetchCohortCompletion = async () => {
+      try {
+        const response = await fetch(`/api/coach/cohort-tasks/${cohortViewContext.cohortId}?date=${dateStr}`);
+        if (response.ok) {
+          const data = await response.json();
+          const completionMap = new Map<string, { completed: boolean; completionRate: number }>();
+          for (const task of data.tasks || []) {
+            // Map by task title for matching with template tasks
+            completionMap.set(task.title, {
+              completed: task.isThresholdMet,
+              completionRate: task.completionRate,
+            });
+          }
+          setCohortTaskCompletion(completionMap);
+        }
+      } catch (err) {
+        console.error('[COHORT_COMPLETION] Failed to fetch:', err);
+      }
+    };
+
+    fetchCohortCompletion();
+  }, [selectedProgram, cohortViewContext, selectedDayIndex]);
+
   // Auto-expand the week containing the selected day
   useEffect(() => {
     if (!selectedProgram) return;
@@ -1543,6 +1584,37 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       await fetchPrograms();
     } catch (err) {
       console.error('Error updating task distribution:', err);
+      setSaveError(err instanceof Error ? err.message : 'Failed to update settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Update program cohort completion threshold
+  const handleCohortCompletionThresholdChange = async (threshold: number) => {
+    if (!selectedProgram) return;
+
+    try {
+      setSaving(true);
+      setSaveError(null);
+
+      const response = await fetch(`${apiBasePath}/${selectedProgram.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cohortCompletionThreshold: threshold }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update completion threshold');
+      }
+
+      // Update local state
+      setSelectedProgram({ ...selectedProgram, cohortCompletionThreshold: threshold });
+      // Refresh programs list
+      await fetchPrograms();
+    } catch (err) {
+      console.error('Error updating completion threshold:', err);
       setSaveError(err instanceof Error ? err.message : 'Failed to update settings');
     } finally {
       setSaving(false);
@@ -3037,6 +3109,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               })() : undefined)}
               onJumpToToday={handleJumpToToday}
               cohortViewContext={cohortViewContext}
+              enrollmentId={clientViewContext.mode === 'client' ? clientViewContext.enrollmentId : undefined}
+              cohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined}
             />
                 </div>
 
@@ -3392,14 +3466,40 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           key={index} 
                           className="group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
                         >
-                          {/* Task Icon - Show checkmark when completed in client view */}
-                          {clientViewContext.mode === 'client' && task.completed ? (
-                            <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                              <Check className="w-3 h-3 text-white" />
-                            </div>
-                          ) : (
-                            <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
-                          )}
+                          {/* Task Icon - Show checkmark when completed in client/cohort view */}
+                          {(() => {
+                            // Check for 1:1 client completion
+                            const isClientCompleted = clientViewContext.mode === 'client' && task.completed;
+                            // Check for cohort completion (threshold met)
+                            const cohortCompletion = cohortViewContext.mode === 'cohort' ? cohortTaskCompletion.get(task.label) : undefined;
+                            const isCohortCompleted = cohortCompletion?.completed;
+                            const completionRate = cohortCompletion?.completionRate;
+
+                            if (isClientCompleted || isCohortCompleted) {
+                              return (
+                                <div
+                                  className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0"
+                                  title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : 'Completed'}
+                                >
+                                  <Check className="w-3 h-3 text-white" />
+                                </div>
+                              );
+                            }
+                            // Show partial completion for cohorts (below threshold)
+                            if (cohortCompletion && !isCohortCompleted && completionRate && completionRate > 0) {
+                              return (
+                                <div
+                                  className="w-5 h-5 rounded-full border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0"
+                                  title={`${completionRate}% completed (threshold not met)`}
+                                >
+                                  <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400">{completionRate}</span>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
+                            );
+                          })()}
 
                           {/* Input */}
                           <input
@@ -3410,27 +3510,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             className="flex-1 bg-transparent border-none outline-none font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
                           />
                           
-                          {/* Focus Toggle */}
+                          {/* Focus/Backlog Toggle */}
                           <button
                             type="button"
                             onClick={() => updateTask(index, { isPrimary: !task.isPrimary })}
-                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-                              task.isPrimary 
-                                ? 'bg-brand-accent/15 text-brand-accent' 
-                                : 'bg-[#f3f1ef] dark:bg-[#1d222b] text-[#5f5a55] dark:text-[#7d8190] hover:bg-[#eae7e3] dark:hover:bg-[#262b35]'
-                            }`}
+                            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200"
                           >
-                            <Target className="w-3.5 h-3.5" />
-                            Focus
+                            <ArrowLeftRight className="w-3.5 h-3.5" />
+                            <span>{task.isPrimary ? 'Focus' : 'Backlog'}</span>
                           </button>
-                          
+
                           {/* Delete Button */}
                           <button
                             type="button"
                             onClick={() => removeTask(index)}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[#a7a39e] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
+                            className="p-1.5 rounded-lg text-[#a7a39e] dark:text-[#7d8190] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
                           >
-                            <X className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       ))}
@@ -5300,6 +5396,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         taskDistribution={selectedProgram?.taskDistribution || 'spread'}
         onTaskDistributionChange={handleTaskDistributionChange}
         isSaving={saving}
+        programType={selectedProgram?.type}
+        cohortCompletionThreshold={selectedProgram?.cohortCompletionThreshold}
+        onCohortCompletionThresholdChange={handleCohortCompletionThresholdChange}
       />
 
     </>

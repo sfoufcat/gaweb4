@@ -25,6 +25,10 @@ interface ProgramSettingsModalProps {
   taskDistribution: TaskDistribution;
   onTaskDistributionChange: (value: TaskDistribution) => void;
   isSaving?: boolean;
+  // For cohort completion threshold (group programs only)
+  programType?: 'individual' | 'group';
+  cohortCompletionThreshold?: number;
+  onCohortCompletionThresholdChange?: (value: number) => void;
 }
 
 const distributionOptions: Array<{
@@ -53,6 +57,9 @@ export function ProgramSettingsModal({
   taskDistribution,
   onTaskDistributionChange,
   isSaving = false,
+  programType,
+  cohortCompletionThreshold,
+  onCohortCompletionThresholdChange,
 }: ProgramSettingsModalProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
@@ -130,6 +137,53 @@ export function ProgramSettingsModal({
           </p>
         </div>
       </div>
+
+      {/* Cohort Completion Threshold Section - Only for group programs */}
+      {programType === 'group' && (
+        <div className="pt-6 border-t border-[#e1ddd8] dark:border-[#262b35]">
+          <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+            Cohort Completion Threshold
+          </h3>
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
+            What percentage of cohort members must complete a task for it to show as &quot;completed&quot; to you?
+          </p>
+
+          {/* Slider with value display */}
+          <div className="flex items-center gap-4 mb-3">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={cohortCompletionThreshold ?? 50}
+              onChange={(e) => onCohortCompletionThresholdChange?.(Number(e.target.value))}
+              disabled={isSaving}
+              className="flex-1 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg appearance-none cursor-pointer accent-brand-accent disabled:opacity-50"
+            />
+            <span className="w-12 text-center text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+              {cohortCompletionThreshold ?? 50}%
+            </span>
+          </div>
+
+          {/* Quick select buttons */}
+          <div className="flex gap-2 flex-wrap">
+            {[0, 25, 50, 75, 100].map((value) => (
+              <button
+                key={value}
+                onClick={() => onCohortCompletionThresholdChange?.(value)}
+                disabled={isSaving}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  (cohortCompletionThreshold ?? 50) === value
+                    ? 'bg-brand-accent text-white'
+                    : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e1ddd8] dark:hover:bg-[#3a4150]'
+                } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {value === 0 ? 'Any' : `${value}%`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 
