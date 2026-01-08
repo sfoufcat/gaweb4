@@ -606,3 +606,166 @@ export async function distributeCohortWeeklyTasksToDays(
 
   return { created, updated, skipped };
 }
+
+
+/**
+ * Distributes weekly tasks from a client-specific week to client-specific days.
+ * This is for 1:1 programs where a coach has customized content for a specific client.
+ *
+ * @param programId - The program ID
+ * @param clientWeekId - The client week ID (client_program_weeks doc)
+ * @param enrollmentId - The enrollment ID
+ * @param options - Distribution options
+ * @returns Counts of created, updated, and skipped days
+ */
+export async function distributeClientWeeklyTasksToDays(
+  programId: string,
+  clientWeekId: string,
+  enrollmentId: string,
+  options: {
+    overwriteExisting?: boolean;
+    programTaskDistribution?: TaskDistribution;
+  } = {}
+): Promise<{ created: number; updated: number; skipped: number }> {
+  const { overwriteExisting = false, programTaskDistribution } = options;
+
+  // Fetch client week data
+  const clientWeekDoc = await adminDb.collection('client_program_weeks').doc(clientWeekId).get();
+  if (!clientWeekDoc.exists) {
+    throw new Error('Client week not found');
+  }
+
+  const clientWeekData = clientWeekDoc.data();
+  if (!clientWeekData || clientWeekData.programId !== programId) {
+    throw new Error('Client week does not belong to this program');
+  }
+  if (clientWeekData.enrollmentId !== enrollmentId) {
+    throw new Error('Client week does not belong to this enrollment');
+  }
+
+  const weeklyTasks = clientWeekData.weeklyTasks || [];
+  if (weeklyTasks.length === 0) {
+    return { created: 0, updated: 0, skipped: 0 };
+  }
+
+  // Use client week setting, fall back to program setting, then default to 'spread'
+  const distribution = clientWeekData.distribution || programTaskDistribution || 'spread';
+  const startDay = clientWeekData.startDayIndex;
+  const endDay = clientWeekData.endDayIndex;
+  
+  if (startDay === undefined || endDay === undefined) {
+    console.error('[PROGRAM_UTILS] Client week missing startDayIndex or endDayIndex');
+    return { created: 0, updated: 0, skipped: 0 };
+  }
+  
+  const daysInWeek = endDay - startDay + 1;
+
+  // Get existing client days in this range
+  const existingDaysSnapshot = await adminDb
+    .collection('client_program_days')
+    .where('enrollmentId', '==', enrollmentId)
+    .where('programId', '==', programId)
+    .where('dayIndex', '>=', startDay)
+    .where('dayIndex', '<=', endDay)
+    .get();
+
+  const existingDays = new Map(
+    existingDaysSnapshot.docs.map(doc => [doc.data().dayIndex as number, { id: doc.id, ...doc.data() }])
+  );
+
+  // Get organizationId and userId from enrollment
+  const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
+  const enrollment = enrollmentDoc.data();
+  const organizationId = enrollment?.organizationId || '';
+  const userId = enrollment?.userId || '';
+
+  const batch = adminDb.batch();
+  let created = 0,
+    updated = 0,
+    skipped = 0;
+
+  if (distribution === 'repeat-daily') {
+    // Copy all tasks to each day
+    for (let d = startDay; d <= endDay; d++) {
+      const existing = existingDays.get(d);
+
+      if (existing && !overwriteExisting && (existing as { tasks?: unknown[] }).tasks?.length) {
+        skipped++;
+        continue;
+      }
+
+      const dayRef = existing
+        ? adminDb.collection('client_program_days').doc((existing as { id: string }).id)
+        : adminDb.collection('client_program_days').doc();
+
+      const dayData = {
+        enrollmentId,
+        programId,
+        organizationId,
+        userId,
+        dayIndex: d,
+        tasks: weeklyTasks,
+        clientWeekId,
+        updatedAt: FieldValue.serverTimestamp(),
+        ...(existing ? {} : { createdAt: FieldValue.serverTimestamp() }),
+      };
+
+      if (existing) {
+        batch.update(dayRef, dayData);
+        updated++;
+      } else {
+        batch.set(dayRef, dayData);
+        created++;
+      }
+    }
+  } else {
+    // Spread: distribute tasks across days
+    const tasksPerDay = Math.ceil(weeklyTasks.length / daysInWeek);
+    let taskIndex = 0;
+
+    for (let d = startDay; d <= endDay && taskIndex < weeklyTasks.length; d++) {
+      const dayTasks = weeklyTasks.slice(taskIndex, taskIndex + tasksPerDay);
+      taskIndex += tasksPerDay;
+
+      if (dayTasks.length === 0) continue;
+
+      const existing = existingDays.get(d);
+
+      if (existing && !overwriteExisting && (existing as { tasks?: unknown[] }).tasks?.length) {
+        skipped++;
+        continue;
+      }
+
+      const dayRef = existing
+        ? adminDb.collection('client_program_days').doc((existing as { id: string }).id)
+        : adminDb.collection('client_program_days').doc();
+
+      const dayData = {
+        enrollmentId,
+        programId,
+        organizationId,
+        userId,
+        dayIndex: d,
+        tasks: dayTasks,
+        clientWeekId,
+        updatedAt: FieldValue.serverTimestamp(),
+        ...(existing ? {} : { createdAt: FieldValue.serverTimestamp() }),
+      };
+
+      if (existing) {
+        batch.update(dayRef, dayData);
+        updated++;
+      } else {
+        batch.set(dayRef, dayData);
+        created++;
+      }
+    }
+  }
+
+  await batch.commit();
+  console.log(
+    `[PROGRAM_UTILS] Distributed client tasks for enrollment ${enrollmentId}, week ${clientWeekId}: ${created} created, ${updated} updated, ${skipped} skipped`
+  );
+
+  return { created, updated, skipped };
+}

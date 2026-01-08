@@ -10,6 +10,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { ProgramWeek } from '@/types';
+import { distributeWeeklyTasksToDays } from '@/lib/program-utils';
+import { syncProgramTasksForDateRange } from '@/lib/program-engine';
 
 export async function GET(
   request: NextRequest,
@@ -154,10 +156,11 @@ export async function POST(
     };
 
     const docRef = await adminDb.collection('program_weeks').add(weekData);
+    const weekId = docRef.id;
     console.log(`[COACH_ORG_PROGRAM_WEEKS_POST] Created week ${nextWeekNumber} for program ${programId}`);
 
     // Fetch the created week
-    const savedDoc = await adminDb.collection('program_weeks').doc(docRef.id).get();
+    const savedDoc = await adminDb.collection('program_weeks').doc(weekId).get();
     const savedWeek = {
       id: savedDoc.id,
       ...savedDoc.data(),
@@ -165,10 +168,61 @@ export async function POST(
       updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
     } as ProgramWeek;
 
+    // Distribute tasks to days if requested and week has tasks
+    let distributionResult = null;
+    if (body.distributeTasksNow === true && body.weeklyTasks?.length > 0) {
+      try {
+        const programData = programDoc.data();
+        distributionResult = await distributeWeeklyTasksToDays(programId, weekId, {
+          overwriteExisting: body.overwriteExisting || false,
+          programTaskDistribution: programData?.taskDistribution,
+        });
+        console.log(`[COACH_ORG_PROGRAM_WEEKS_POST] Distributed tasks: ${JSON.stringify(distributionResult)}`);
+      } catch (distErr) {
+        console.error('[COACH_ORG_PROGRAM_WEEKS_POST] Failed to distribute tasks:', distErr);
+      }
+    }
+
+    // Sync tasks to enrolled clients
+    let syncResult = null;
+    if (body.weeklyTasks?.length > 0 && body.syncToClients !== false) {
+      try {
+        const { userId } = await requireCoachWithOrg();
+        syncResult = await syncProgramTasksForDateRange(programId, {
+          mode: 'fill-empty',
+          horizonDays: 7,
+          coachUserId: userId,
+        });
+        console.log(`[COACH_ORG_PROGRAM_WEEKS_POST] Synced tasks to clients: ${JSON.stringify(syncResult)}`);
+      } catch (syncErr) {
+        console.error('[COACH_ORG_PROGRAM_WEEKS_POST] Failed to sync tasks to clients:', syncErr);
+      }
+
+      // Cohort sync for group programs
+      const program = programDoc.data();
+      if (program?.type === 'group') {
+        import('@/lib/sync-cohort-tasks').then(({ syncProgramTasksToAllCohorts }) => {
+          const today = new Date().toISOString().split('T')[0];
+          syncProgramTasksToAllCohorts({
+            programId,
+            date: today,
+            mode: 'fill-empty',
+            syncHorizonDays: 7,
+          }).catch(err => {
+            console.error('[COHORT_SYNC] Background sync failed:', err);
+          });
+        }).catch(err => {
+          console.error('[COHORT_SYNC] Failed to import sync module:', err);
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       week: savedWeek,
       message: 'Program week created successfully',
+      ...(distributionResult && { distribution: distributionResult }),
+      ...(syncResult && { sync: syncResult }),
     });
   } catch (error) {
     console.error('[COACH_ORG_PROGRAM_WEEKS_POST] Error:', error);

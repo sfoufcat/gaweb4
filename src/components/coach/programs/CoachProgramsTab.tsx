@@ -1147,6 +1147,28 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     }
   }, [cohortViewContext, selectedProgram, fetchCohortDays]);
 
+  // Fetch cohort week content when a week is selected in cohort mode
+  useEffect(() => {
+    if (
+      cohortViewContext.mode === 'cohort' &&
+      cohortViewContext.cohortId &&
+      selectedProgram?.type === 'group' &&
+      sidebarSelection?.type === 'week'
+    ) {
+      // Find the template week for this week number
+      const templateWeek = programWeeks.find(w => w.weekNumber === sidebarSelection.weekNumber);
+      if (templateWeek?.id) {
+        fetchCohortWeekContent(selectedProgram.id, cohortViewContext.cohortId, templateWeek.id);
+      } else {
+        // No template week yet - clear cohort content
+        setCohortWeekContent(null);
+      }
+    } else if (cohortViewContext.mode !== 'cohort') {
+      // Clear cohort content when leaving cohort mode
+      setCohortWeekContent(null);
+    }
+  }, [cohortViewContext, selectedProgram, sidebarSelection, programWeeks, fetchCohortWeekContent]);
+
   // Reset client/cohort view context when switching programs
   useEffect(() => {
     setClientViewContext({ mode: 'template' });
@@ -3542,17 +3564,28 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         try {
                           if (isClientMode && clientWeek) {
                             // Update existing client-specific week
+                            const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/client-weeks/${clientWeek.id}`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify(updates),
+                              body: JSON.stringify({
+                                ...updates,
+                                startDayIndex: selectedWeek.startDayIndex,
+                                endDayIndex: selectedWeek.endDayIndex,
+                                ...(hasWeeklyTasks && { distributeTasksNow: true }),
+                              }),
                             });
                             if (res.ok) {
                               const data = await res.json();
                               setClientWeeks(prev => prev.map(w => w.id === clientWeek.id ? data.clientWeek : w));
+                              // Refresh client days if distribution happened
+                              if (hasWeeklyTasks && clientViewContext.enrollmentId) {
+                                fetchClientDays(selectedProgram!.id, clientViewContext.enrollmentId);
+                              }
                             }
                           } else if (isClientMode && !clientWeek && clientViewContext.enrollmentId) {
                             // Create new client-specific week (client mode but week doesn't exist yet)
+                            const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/client-weeks`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
@@ -3563,6 +3596,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 endDayIndex: endDay,
                                 moduleId: templateWeek?.moduleId || programModules[0]?.id,
                                 ...updates,
+                                ...(hasWeeklyTasks && { distributeTasksNow: true }),
                               }),
                             });
                             if (res.ok) {
@@ -3576,31 +3610,61 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                   }
                                   return [...prev, data.clientWeek];
                                 });
+                                // Refresh client days if distribution happened
+                                if (hasWeeklyTasks && clientViewContext.enrollmentId) {
+                                  fetchClientDays(selectedProgram!.id, clientViewContext.enrollmentId);
+                                }
                               }
                             }
-                          } else if (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId && templateWeek) {
+                          } else if (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId) {
                             // Save cohort-specific week content + optionally distribute to cohort days
-                            const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
-                            const res = await fetch(
-                              `${apiBasePath}/${selectedProgram?.id}/cohorts/${cohortViewContext.cohortId}/week-content/${templateWeek.id}`,
-                              {
-                                method: 'PUT',
+                            let weekIdForCohort = templateWeek?.id;
+                            
+                            // If template week doesn't exist, create it first (without tasks - they go to cohort content)
+                            if (!weekIdForCohort) {
+                              const createWeekRes = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks`, {
+                                method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
-                                  weeklyTasks: updates.weeklyTasks,
-                                  weeklyHabits: updates.weeklyHabits,
-                                  weeklyPrompt: updates.weeklyPrompt,
-                                  distribution: updates.distribution,
-                                  ...(hasWeeklyTasks && { distributeTasksNow: true }),
+                                  weekNumber,
+                                  startDayIndex: startDay,
+                                  endDayIndex: endDay,
+                                  // Don't include tasks - they go to cohort content
+                                  name: updates.name,
+                                  theme: updates.theme,
+                                  description: updates.description,
                                 }),
+                              });
+                              if (createWeekRes.ok) {
+                                const weekData = await createWeekRes.json();
+                                weekIdForCohort = weekData.week?.id;
+                                setProgramWeeks(prev => [...prev, weekData.week]);
                               }
-                            );
-                            if (res.ok) {
-                              const data = await res.json();
-                              setCohortWeekContent(data.content || null);
-                              // Refresh cohort days if distribution happened
-                              if (hasWeeklyTasks && cohortViewContext.cohortId) {
-                                fetchCohortDays(selectedProgram!.id, cohortViewContext.cohortId);
+                            }
+                            
+                            if (weekIdForCohort) {
+                              const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
+                              const res = await fetch(
+                                `${apiBasePath}/${selectedProgram?.id}/cohorts/${cohortViewContext.cohortId}/week-content/${weekIdForCohort}`,
+                                {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    weeklyTasks: updates.weeklyTasks,
+                                    weeklyHabits: updates.weeklyHabits,
+                                    weeklyPrompt: updates.weeklyPrompt,
+                                    distribution: updates.distribution,
+                                    ...(hasWeeklyTasks && { distributeTasksNow: true }),
+                                  }),
+                                }
+                              );
+                              if (res.ok) {
+                                const data = await res.json();
+                                setCohortWeekContent(data.content || null);
+                                // Refresh cohort days if distribution happened
+                                if (hasWeeklyTasks && cohortViewContext.cohortId) {
+                                  fetchCohortDays(selectedProgram!.id, cohortViewContext.cohortId);
+                                }
                               }
                             }
                           } else if (templateWeek) {
@@ -3631,6 +3695,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             }
                           } else {
                             // Create new template week record
+                            const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
@@ -3639,11 +3704,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 startDayIndex: startDay,
                                 endDayIndex: endDay,
                                 ...updates,
+                                ...(hasWeeklyTasks && { distributeTasksNow: true }),
                               }),
                             });
                             if (res.ok) {
                               const data = await res.json();
                               setProgramWeeks(prev => [...prev, data.week]);
+                              // Refresh days if distribution happened
+                              if (hasWeeklyTasks) {
+                                const daysRes = await fetch(`${apiBasePath}/${selectedProgram?.id}/days`);
+                                if (daysRes.ok) {
+                                  const daysData = await daysRes.json();
+                                  setProgramDays(daysData.days || []);
+                                }
+                              }
                             }
                           }
                         } catch (err) {

@@ -14,6 +14,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
+import { distributeClientWeeklyTasksToDays } from '@/lib/program-utils';
+import { syncProgramTasksForDateRange } from '@/lib/program-engine';
 import type { ClientProgramWeek, ProgramWeek, ProgramEnrollment } from '@/types';
 
 export async function GET(
@@ -210,6 +212,7 @@ export async function POST(
       };
 
       await clientWeekRef.set(clientWeekData);
+      const clientWeekId = clientWeekRef.id;
       console.log(`[COACH_CLIENT_WEEKS_POST] Created single client week ${weekNumber} for enrollment ${enrollmentId}`);
 
       const savedDoc = await clientWeekRef.get();
@@ -221,10 +224,48 @@ export async function POST(
         lastSyncedAt: savedDoc.data()?.lastSyncedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.lastSyncedAt,
       } as ClientProgramWeek;
 
+      // Distribute tasks to client days if requested and week has tasks
+      let distributionResult = null;
+      if (body.distributeTasksNow === true && weekContent.weeklyTasks?.length > 0) {
+        try {
+          distributionResult = await distributeClientWeeklyTasksToDays(
+            programId,
+            clientWeekId,
+            enrollmentId,
+            {
+              overwriteExisting: body.overwriteExisting || false,
+              programTaskDistribution: program?.taskDistribution,
+            }
+          );
+          console.log(`[COACH_CLIENT_WEEKS_POST] Distributed tasks: ${JSON.stringify(distributionResult)}`);
+        } catch (distErr) {
+          console.error('[COACH_CLIENT_WEEKS_POST] Failed to distribute tasks:', distErr);
+        }
+      }
+
+      // Sync tasks to client's Daily Focus
+      let syncResult = null;
+      if (weekContent.weeklyTasks?.length > 0 && body.syncToClient !== false) {
+        try {
+          const { userId: coachUserId } = await requireCoachWithOrg();
+          syncResult = await syncProgramTasksForDateRange(programId, {
+            mode: 'override-program-sourced',
+            horizonDays: 7,
+            coachUserId,
+            specificEnrollmentId: enrollmentId,
+          });
+          console.log(`[COACH_CLIENT_WEEKS_POST] Synced tasks to client: ${JSON.stringify(syncResult)}`);
+        } catch (syncErr) {
+          console.error('[COACH_CLIENT_WEEKS_POST] Failed to sync tasks:', syncErr);
+        }
+      }
+
       return NextResponse.json({
         success: true,
         clientWeek: savedWeek,
         created: true,
+        ...(distributionResult && { distribution: distributionResult }),
+        ...(syncResult && { clientSync: syncResult }),
       });
     }
 

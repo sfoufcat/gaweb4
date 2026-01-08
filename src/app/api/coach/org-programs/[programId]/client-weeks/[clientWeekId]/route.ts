@@ -11,6 +11,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { syncProgramTasksForDateRange } from '@/lib/program-engine';
+import { distributeClientWeeklyTasksToDays } from '@/lib/program-utils';
 import type { ClientProgramWeek } from '@/types';
 
 export async function GET(
@@ -117,6 +118,31 @@ export async function PATCH(
       lastSyncedAt: savedDoc.data()?.lastSyncedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.lastSyncedAt,
     } as ClientProgramWeek;
 
+    // Distribute tasks to client days if requested
+    let distributionResult = null;
+    if (body.distributeTasksNow === true && body.weeklyTasks?.length > 0) {
+      try {
+        const clientWeekData = savedDoc.data() as ClientProgramWeek;
+        const enrollmentId = clientWeekData.enrollmentId;
+        
+        if (enrollmentId) {
+          const programData = (await adminDb.collection('programs').doc(programId).get()).data();
+          distributionResult = await distributeClientWeeklyTasksToDays(
+            programId,
+            clientWeekId,
+            enrollmentId,
+            {
+              overwriteExisting: body.overwriteExisting || false,
+              programTaskDistribution: programData?.taskDistribution,
+            }
+          );
+          console.log(`[COACH_CLIENT_WEEK_PATCH] Distributed tasks: ${JSON.stringify(distributionResult)}`);
+        }
+      } catch (distErr) {
+        console.error('[COACH_CLIENT_WEEK_PATCH] Failed to distribute tasks:', distErr);
+      }
+    }
+
     // 2-way sync: If weekly tasks were updated, sync to this client's Daily Focus
     let syncResult = null;
     if (body.weeklyTasks !== undefined && body.syncToClient !== false) {
@@ -144,6 +170,7 @@ export async function PATCH(
       success: true,
       clientWeek: savedWeek,
       message: 'Client week updated successfully',
+      ...(distributionResult && { distribution: distributionResult }),
       ...(syncResult && { clientSync: syncResult }),
     });
   } catch (error) {

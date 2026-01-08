@@ -150,8 +150,8 @@ export async function GET(
                 const actualTitle = (actualTask as { title?: string }).title;
                 const clientLocked = (actualTask as { clientLocked?: boolean }).clientLocked;
                 const isDeleted = taskStatus === 'deleted';
-                // Client edited if: locked, title changed, and not deleted
-                const isEdited = clientLocked && actualTitle && actualTitle !== template.label && !isDeleted;
+                // Client edited if: locked and not deleted (clientLocked is set when client modifies a program task)
+                const isEdited = clientLocked && !isDeleted;
                 return {
                   ...template,
                   // Show client's edited title if they changed it (clientLocked indicates client edited the task)
