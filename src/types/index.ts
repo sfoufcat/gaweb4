@@ -468,6 +468,7 @@ export interface Task {
   programEnrollmentId?: string | null; // FK to program_enrollments
   programDayIndex?: number | null;     // Which program day this task came from
   programTaskId?: string;              // Unique ID linking to template task for robust matching
+  cycleNumber?: number;                // Which cycle this task belongs to (evergreen programs only)
   // Call summary fields (when sourceType === 'call_suggestion')
   callSummaryId?: string;              // FK to call_summaries
   suggestedTaskId?: string;            // FK to suggested_tasks

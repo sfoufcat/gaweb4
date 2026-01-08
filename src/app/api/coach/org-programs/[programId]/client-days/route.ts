@@ -55,6 +55,7 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const enrollmentId = searchParams.get('enrollmentId');
     const dayIndex = searchParams.get('dayIndex');
+    const cycleNumber = searchParams.get('cycleNumber'); // Optional: filter tasks by cycle for evergreen programs
 
     if (!enrollmentId) {
       return NextResponse.json({ error: 'enrollmentId query parameter is required' }, { status: 400 });
@@ -107,7 +108,17 @@ export async function GET(
             .where('date', '==', dateForDay)
             .get();
 
-          const userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          let userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          // Filter by cycleNumber if provided (for evergreen programs)
+          // Tasks without cycleNumber are treated as cycle 1
+          if (cycleNumber) {
+            const targetCycle = parseInt(cycleNumber, 10);
+            userTasks = userTasks.filter(t => {
+              const taskCycle = (t as { cycleNumber?: number }).cycleNumber;
+              return taskCycle === targetCycle || (!taskCycle && targetCycle === 1);
+            });
+          }
 
           // Merge completion status into template tasks
           if (day.tasks && Array.isArray(day.tasks)) {

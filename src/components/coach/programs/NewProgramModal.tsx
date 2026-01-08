@@ -207,6 +207,8 @@ export function NewProgramModal({
           visibility: wizardData.visibility,
           price: wizardData.pricing === 'paid' ? wizardData.price : 0,
           status: wizardData.status,
+          recurring: wizardData.recurring,
+          recurringCadence: wizardData.recurringCadence,
         }),
       });
 
@@ -926,6 +928,61 @@ function SettingsStep({ data, onChange }: SettingsStepProps) {
             />
           </div>
         )}
+      </div>
+
+      {/* Recurring */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+          Recurring Billing
+        </label>
+        <div className={`p-4 rounded-xl border ${
+          !isEvergreen
+            ? 'bg-[#f5f3f0] dark:bg-[#1d222b]/50 border-[#e1ddd8] dark:border-[#262b35] opacity-60'
+            : 'bg-[#faf8f6] dark:bg-[#1d222b]/50 border-[#e1ddd8] dark:border-[#262b35]'
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <RefreshCw className={`w-5 h-5 ${data.recurring && isEvergreen ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+              <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                Auto-renew subscription
+              </span>
+            </div>
+            <Switch
+              checked={data.recurring}
+              onCheckedChange={(checked) => onChange({ recurring: checked })}
+              disabled={!isEvergreen}
+            />
+          </div>
+
+          {!isEvergreen && (
+            <p className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
+              Recurring billing is only available for evergreen programs
+            </p>
+          )}
+
+          {isEvergreen && data.recurring && (
+            <div className="mt-3 pt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
+              <label className="block text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                Billing Cadence
+              </label>
+              <Select
+                value={data.recurringCadence}
+                onValueChange={(value) => onChange({ recurringCadence: value as ProgramWizardData['recurringCadence'] })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Status */}

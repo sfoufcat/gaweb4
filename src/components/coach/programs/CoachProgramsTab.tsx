@@ -172,6 +172,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [cohortWeekContent, setCohortWeekContent] = useState<CohortWeekContent | null>(null);
   const [loadingCohortContent, setLoadingCohortContent] = useState(false);
 
+  // Cycle selection state (for evergreen programs)
+  const [selectedCycle, setSelectedCycle] = useState<number | undefined>(undefined);
+
   // Cohort task completion state (for showing completion in day editor)
   const [cohortTaskCompletion, setCohortTaskCompletion] = useState<Map<string, { completed: boolean; completionRate: number }>>(new Map());
 
@@ -858,10 +861,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   }, [apiBasePath, fetchClientWeeks]);
 
   // Fetch client-specific days for 1:1 programs
-  const fetchClientDays = useCallback(async (programId: string, enrollmentId: string) => {
+  const fetchClientDays = useCallback(async (programId: string, enrollmentId: string, cycleNumber?: number) => {
     try {
       setLoadingClientDays(true);
-      const response = await fetch(`${apiBasePath}/${programId}/client-days?enrollmentId=${enrollmentId}`);
+      let url = `${apiBasePath}/${programId}/client-days?enrollmentId=${enrollmentId}`;
+      if (cycleNumber !== undefined) {
+        url += `&cycleNumber=${cycleNumber}`;
+      }
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setClientDays(data.clientDays || []);
@@ -875,7 +882,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     } finally {
       setLoadingClientDays(false);
     }
-  }, [apiBasePath]);
+  }, [apiBasePath]);;
 
   // Fetch cohort-specific week content for group programs
   const fetchCohortWeekContent = useCallback(async (programId: string, cohortId: string, weekId: string) => {
@@ -1038,14 +1045,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       // Clear tracking immediately to prevent showing stale data during fetch
       setLoadedEnrollmentId(null);
       fetchClientWeeks(selectedProgram.id, clientViewContext.enrollmentId);
-      fetchClientDays(selectedProgram.id, clientViewContext.enrollmentId);
+      fetchClientDays(selectedProgram.id, clientViewContext.enrollmentId, selectedCycle);
     } else {
       // Reset client content when switching to template mode
       setClientWeeks([]);
       setClientDays([]);
       setLoadedEnrollmentId(null);
     }
-  }, [clientViewContext, selectedProgram, fetchClientWeeks, fetchClientDays]);
+  }, [clientViewContext, selectedProgram, fetchClientWeeks, fetchClientDays, selectedCycle]);
 
   // Reset client/cohort view context when switching programs
   useEffect(() => {
@@ -1055,6 +1062,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     setLoadedEnrollmentId(null);
     setCohortViewContext({ mode: 'template' });
     setCohortWeekContent(null);
+    setSelectedCycle(undefined); // Reset cycle selection
     // Also reset sidebar selection to null - it will be set by the next useEffect once weeks load
     setSidebarSelection(null);
   }, [selectedProgram?.id]);
@@ -2130,6 +2138,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     onChange={async (context) => {
                       setClientViewContext(context);
                       if (context.mode === 'client' && selectedProgram) {
+                        // For evergreen programs, set selectedCycle to enrollment's current cycle
+                        if (selectedProgram.durationType === 'evergreen') {
+                          const enrollment = programEnrollments.find(e => e.id === context.enrollmentId);
+                          setSelectedCycle(enrollment?.currentCycleNumber || 1);
+                        } else {
+                          setSelectedCycle(undefined);
+                        }
+
                         const existingWeeks = await fetch(
                           `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
                         ).then(r => r.ok ? r.json() : { clientWeeks: [] });
@@ -2138,10 +2154,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
                         }
                         await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
-                        await fetchClientDays(selectedProgram.id, context.enrollmentId!);
+                        // Use the enrollment's current cycle for initial fetch
+                        const enrollment = programEnrollments.find(e => e.id === context.enrollmentId);
+                        const initialCycle = selectedProgram.durationType === 'evergreen'
+                          ? (enrollment?.currentCycleNumber || 1)
+                          : undefined;
+                        await fetchClientDays(selectedProgram.id, context.enrollmentId!, initialCycle);
                       } else {
                         setClientWeeks([]);
                         setClientDays([]);
+                        setSelectedCycle(undefined);
                       }
                     }}
                     loading={loadingEnrollments}
@@ -3122,6 +3144,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               cohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined}
               currentEnrollment={currentEnrollment || undefined}
               currentCohort={cohortViewContext.mode === 'cohort' ? programCohorts.find(c => c.id === cohortViewContext.cohortId) : undefined}
+              selectedCycle={selectedCycle}
+              onCycleSelect={(cycle) => setSelectedCycle(cycle)}
             />
                 </div>
 

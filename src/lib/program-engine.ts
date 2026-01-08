@@ -1316,7 +1316,8 @@ async function createProgramTaskV2(
   template: ProgramTaskTemplate,
   listType: 'focus' | 'backlog',
   order: number,
-  date: string
+  date: string,
+  cycleNumber?: number
 ): Promise<Task> {
   const now = new Date().toISOString();
   
@@ -1332,12 +1333,13 @@ async function createProgramTaskV2(
     sourceType: 'program',
     programEnrollmentId: enrollmentId,
     programDayIndex: dayIndex,
+    ...(cycleNumber !== undefined && { cycleNumber }),
     createdAt: now,
     updatedAt: now,
   } as Omit<Task, 'id'>;
   
   const docRef = await adminDb.collection('tasks').add(taskData);
-  console.log(`[PROGRAM_ENGINE_V2] Created program task: "${template.label}" (${listType}) for day ${dayIndex}`);
+  console.log(`[PROGRAM_ENGINE_V2] Created program task: "${template.label}" (${listType}) for day ${dayIndex}${cycleNumber ? ` cycle ${cycleNumber}` : ''}`);
   
   return { id: docRef.id, ...taskData };
 }
@@ -1632,7 +1634,12 @@ export async function syncProgramV2TasksForToday(
   let tasksCreated = 0;
   let focusTasksCreated = 0;
   let backlogTasksCreated = 0;
-  
+
+  // Calculate cycleNumber for evergreen programs only
+  const cycleNumberForTasks = program.durationType === 'evergreen'
+    ? getActiveCycleNumber(enrollment)
+    : undefined;
+
   // 8. Create tasks from templates
   // First, handle primary tasks (try to put in Focus)
   const primaryTasks = tasksForToday.filter(t => t.isPrimary);
@@ -1676,12 +1683,13 @@ export async function syncProgramV2TasksForToday(
       template,
       listType,
       order,
-      today
+      today,
+      cycleNumberForTasks
     );
-    
+
     tasksCreated++;
   }
-  
+
   // Then, handle non-primary tasks (always go to Backlog)
   for (const template of nonPrimaryTasks) {
     // Check if task already exists
@@ -1706,13 +1714,14 @@ export async function syncProgramV2TasksForToday(
       template,
       'backlog',
       nextBacklogOrder++,
-      today
+      today,
+      cycleNumberForTasks
     );
-    
+
     tasksCreated++;
     backlogTasksCreated++;
   }
-  
+
   // 9. Update enrollment lastAssignedDayIndex (only if this is a fresh sync, not a re-sync)
   if (!isResync) {
     await updateEnrollmentDayIndexV2(enrollment.id, dayIndex);
@@ -2062,6 +2071,11 @@ export async function syncWeeklyTasks(
     ? Math.max(...existingBacklogTasks.map(t => t.order)) + 1
     : 0;
 
+  // Calculate cycleNumber for evergreen programs only
+  const cycleNumberForTasks = program.durationType === 'evergreen'
+    ? getActiveCycleNumber(enrollment)
+    : undefined;
+
   for (let i = 0; i < weeklyTasks.length; i++) {
     const template = weeklyTasks[i];
     const taskDate = taskDates[i];
@@ -2103,7 +2117,8 @@ export async function syncWeeklyTasks(
       template,
       listType,
       order,
-      taskDate
+      taskDate,
+      cycleNumberForTasks
     );
 
     tasksCreated++;
@@ -2431,7 +2446,12 @@ export async function syncProgramTasksToClientDay(
   let tasksToBacklog = 0;
   
   const now = new Date().toISOString();
-  
+
+  // Calculate cycleNumber for evergreen programs only
+  const cycleNumberForTasks = program.durationType === 'evergreen'
+    ? getActiveCycleNumber(enrollment)
+    : undefined;
+
   // In override mode, first delete existing program-sourced tasks
   if (mode === 'override-program-sourced') {
     const tasksToDelete = existingTasks.filter(t => {
@@ -2558,6 +2578,8 @@ export async function syncProgramTasksToClientDay(
       assignedByCoachId: coachUserId || null,
       // Link to template task for robust matching on renames
       programTaskId: template.id || undefined,
+      // Cycle tracking for evergreen programs
+      ...(cycleNumberForTasks !== undefined && { cycleNumber: cycleNumberForTasks }),
     };
     
     try {

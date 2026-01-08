@@ -2,261 +2,219 @@
   "master": {
     "tasks": [
       {
-        "id": "84",
-        "title": "Create syncAllProgramTasks function in program-engine.ts",
-        "description": "Implement core function to sync all program tasks for entire program duration with batching support",
-        "details": "Add syncAllProgramTasks(userId, enrollmentId) function to program-engine.ts that:\n- Syncs tasks from Day 1 to program.lengthDays\n- Uses 'fill-empty' mode to not overwrite existing tasks\n- Batches large programs (50+ days) in chunks of 10\n- Leverages existing calculateDateForDayIndex() and syncProgramTasksToClientDay() functions\n- Returns count of synced tasks\n- Handles error cases gracefully\n\nPseudo-code:\n```typescript\nexport async function syncAllProgramTasks(userId: string, enrollmentId: string) {\n  const enrollment = await getEnrollment(enrollmentId)\n  const program = enrollment.program\n  let syncedCount = 0\n  \n  for (let dayIndex = 1; dayIndex <= program.lengthDays; dayIndex++) {\n    const date = calculateDateForDayIndex(dayIndex, enrollment.startDate)\n    await syncProgramTasksToClientDay(userId, enrollmentId, dayIndex, date, 'fill-empty')\n    syncedCount++\n    \n    // Batch processing for large programs\n    if (dayIndex % 10 === 0 && program.lengthDays > 50) {\n      await new Promise(resolve => setTimeout(resolve, 100))\n    }\n  }\n  \n  return syncedCount\n}\n```",
-        "testStrategy": "Unit tests: Test with small programs (5 days), large programs (90+ days), edge cases (0 days, invalid enrollment). Integration tests: Verify tasks are created correctly, existing tasks not overwritten, batching works for large programs. Performance tests: Ensure 90-day program syncs within 30 seconds.",
+        "id": "102",
+        "title": "Fix calculateDateForProgramDay null check bug",
+        "description": "Fix the critical RangeError crash in calculateDateForProgramDay when enrollment.startedAt is undefined",
+        "details": "In src/lib/program-engine.ts line 2671, add null/undefined checks for startDateStr parameter. Add validation using isNaN(startDate.getTime()) for invalid Date objects. Return null instead of crashing and add console.warn logging for debugging. This is blocking coach-to-client sync functionality.",
+        "testStrategy": "Test with enrollments that have undefined/null startedAt values. Verify function returns null instead of throwing RangeError. Confirm coach sync no longer fails silently.",
         "priority": "high",
         "dependencies": [],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T09:23:35.367Z"
+        "updatedAt": "2026-01-08T12:45:17.406Z"
       },
       {
-        "id": "85",
-        "title": "Update individual program enrollment route for background sync",
-        "description": "Modify enroll route to call syncAllProgramTasks in background without blocking response",
-        "details": "Update src/app/api/programs/enroll/route.ts to:\n- Import syncAllProgramTasks from program-engine.ts\n- Call sync function in fire-and-forget manner after successful enrollment\n- Ensure enrollment response is not delayed by sync operation\n- Add error handling for sync failures (log but don't fail enrollment)\n\nImplementation:\n```typescript\n// After successful enrollment creation\nconst enrollmentResponse = await createEnrollment(data)\n\n// Fire-and-forget background sync\nsetImmediate(async () => {\n  try {\n    await syncAllProgramTasks(userId, enrollmentResponse.id)\n    console.log(`Background sync completed for enrollment ${enrollmentResponse.id}`)\n  } catch (error) {\n    console.error(`Background sync failed for enrollment ${enrollmentResponse.id}:`, error)\n  }\n})\n\nreturn NextResponse.json(enrollmentResponse)\n```",
-        "testStrategy": "Integration tests: Verify enrollment response time unchanged, tasks appear within 10 seconds post-enrollment. Test sync failures don't affect enrollment success. Load tests: Ensure multiple concurrent enrollments handle background sync properly.",
+        "id": "103",
+        "title": "Implement lazy sync on app task fetch",
+        "description": "Add automatic program task sync when users fetch their tasks if no program tasks exist for today",
+        "details": "Modify src/app/api/tasks/route.ts GET endpoint. Check if user has active program enrollment and if tasks for today exist with source: 'program'. If no program tasks exist, call syncProgramV2TasksForToday(userId) in background. Handle errors gracefully without breaking task fetch response. This provides timezone-aware sync when users actually need tasks.",
+        "testStrategy": "Test with users who have active enrollments but no tasks for today. Verify tasks are created automatically on first app open. Confirm no duplicate tasks are created on subsequent fetches.",
         "priority": "high",
         "dependencies": [
-          "84"
+          "102"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T09:23:53.526Z"
+        "updatedAt": "2026-01-08T12:45:17.407Z"
       },
       {
-        "id": "86",
-        "title": "Update complete-enrollment route for paid programs",
-        "description": "Add background sync call to complete-enrollment route for paid program enrollments",
-        "details": "Update src/app/api/programs/complete-enrollment/route.ts to:\n- Import syncAllProgramTasks from program-engine.ts\n- Call sync function after payment completion and enrollment finalization\n- Use same fire-and-forget pattern as enroll route\n- Handle both individual and group program completions\n\nImplementation:\n```typescript\n// After enrollment completion\nconst completedEnrollment = await finalizeEnrollment(enrollmentId)\n\n// Background sync for completed enrollment\nsetImmediate(async () => {\n  try {\n    await syncAllProgramTasks(userId, enrollmentId)\n    console.log(`Post-payment sync completed for enrollment ${enrollmentId}`)\n  } catch (error) {\n    console.error(`Post-payment sync failed for enrollment ${enrollmentId}:`, error)\n  }\n})\n\nreturn NextResponse.json({ success: true })\n```",
-        "testStrategy": "Integration tests: Test paid enrollment flow with task sync, verify tasks appear after payment completion. Test both individual and group paid programs. Verify sync failures don't affect payment completion.",
+        "id": "104",
+        "title": "Create backup cron job for program sync",
+        "description": "Implement a backup cron job that runs every 6 hours to sync program tasks for users who haven't opened the app",
+        "details": "Create src/app/api/cron/programs-daily-sync/route.ts with POST handler. Fetch all active enrollments, check if users have program tasks for today, sync if missing using syncProgramV2TasksForToday(userId). Implement batching for scale (process in chunks of 100). Add rate limiting and comprehensive logging. Update vercel.json with schedule '0 */6 * * *'.",
+        "testStrategy": "Test cron endpoint manually with various enrollment states. Verify batching works with large datasets. Confirm only users without today's tasks are processed. Test error handling doesn't stop processing other users.",
+        "priority": "medium",
+        "dependencies": [
+          "102"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:45:17.409Z"
+      },
+      {
+        "id": "105",
+        "title": "Add sync on program enrollment",
+        "description": "Automatically sync Day 1 tasks when users enroll in programs with start dates today or in the past",
+        "details": "Modify src/app/api/programs/enroll/route.ts and src/app/api/programs/complete-enrollment/route.ts. After creating enrollment with status === 'active', check if start date (cohort.startDate or enrollment.startedAt) is today or past. If so, call syncProgramV2TasksForToday(userId). Handle errors gracefully - enrollment should succeed even if sync fails.",
+        "testStrategy": "Test enrollment flow with programs starting today, in past, and future. Verify Day 1 tasks appear immediately for eligible enrollments. Confirm enrollment succeeds even if sync fails.",
         "priority": "high",
         "dependencies": [
-          "84"
+          "102"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T09:23:53.526Z"
+        "updatedAt": "2026-01-08T12:45:17.410Z"
       },
       {
-        "id": "87",
-        "title": "Add group program enrollment sync in enrollUser.ts",
-        "description": "Update enrollUser.ts to include full program sync for group program enrollments",
-        "details": "Update src/lib/enrollments/enrollUser.ts to:\n- Import syncAllProgramTasks function\n- Add sync call for group program enrollments\n- Use existing syncProgramTasksToCohort if available, otherwise use individual sync\n- Ensure sync happens after user is added to cohort\n\nImplementation:\n```typescript\n// After successful group enrollment\nif (program.type === 'group') {\n  // Add user to cohort first\n  await addUserToCohort(userId, cohortId)\n  \n  // Then sync all program tasks\n  setImmediate(async () => {\n    try {\n      await syncAllProgramTasks(userId, enrollmentId)\n      console.log(`Group enrollment sync completed for user ${userId}`)\n    } catch (error) {\n      console.error(`Group enrollment sync failed for user ${userId}:`, error)\n    }\n  })\n}\n```",
-        "testStrategy": "Integration tests: Test group program enrollment with task sync, verify all cohort members receive tasks. Test mixed scenarios with existing and new cohort members. Verify sync works with cohort-specific task variations.",
-        "priority": "high",
+        "id": "106",
+        "title": "Fix cross-program task interference",
+        "description": "Prevent Program B sync from deleting Program A tasks by adding programEnrollmentId filter",
+        "details": "In src/lib/program-engine.ts syncProgramTasksToClientDay() lines 2436-2454, modify the task deletion filter to include programEnrollmentId. Only delete tasks from the current program enrollment, not all program-sourced tasks. Add fallback for legacy tasks without programEnrollmentId.",
+        "testStrategy": "Test with user enrolled in multiple programs. Sync Program B and verify Program A tasks remain intact. Test with legacy tasks without programEnrollmentId to ensure backward compatibility.",
+        "priority": "medium",
         "dependencies": [
-          "84"
+          "102"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T09:23:53.527Z"
+        "updatedAt": "2026-01-08T12:45:17.413Z"
       },
       {
-        "id": "88",
-        "title": "Create manual sync tasks API endpoint",
-        "description": "Implement POST endpoint for coaches to manually sync tasks from template to client or cohort",
-        "details": "Create src/app/api/coach/org-programs/[programId]/sync-tasks/route.ts:\n- Accept enrollmentId OR cohortId parameter\n- For individual: sync remaining program days to client's Daily Focus\n- For cohort: sync remaining program days to all cohort members\n- Only sync from today onwards (skip past days)\n- Use 'fill-empty' mode\n- Return count of synced tasks\n\nImplementation:\n```typescript\nexport async function POST(request: Request, { params }: { params: { programId: string } }) {\n  const { enrollmentId, cohortId } = await request.json()\n  const today = new Date()\n  let syncedCount = 0\n  \n  if (enrollmentId) {\n    // Individual sync\n    const enrollment = await getEnrollment(enrollmentId)\n    const currentDayIndex = calculateCurrentDayIndex(enrollment.startDate, today)\n    \n    for (let dayIndex = currentDayIndex; dayIndex <= enrollment.program.lengthDays; dayIndex++) {\n      const date = calculateDateForDayIndex(dayIndex, enrollment.startDate)\n      await syncProgramTasksToClientDay(enrollment.userId, enrollmentId, dayIndex, date, 'fill-empty')\n      syncedCount++\n    }\n  } else if (cohortId) {\n    // Cohort sync\n    syncedCount = await syncProgramTasksToCohort(cohortId, 'fill-empty', today)\n  }\n  \n  return NextResponse.json({ syncedCount })\n}\n```",
-        "testStrategy": "API tests: Test with valid enrollmentId and cohortId, test error cases. Verify only future tasks are synced, existing tasks not overwritten. Test with different program lengths and start dates. Load tests for large cohorts.",
+        "id": "107",
+        "title": "Implement client-to-coach completion sync",
+        "description": "Show client task completion status to coaches in 1:1 program view",
+        "details": "Modify src/app/api/coach/org-programs/[programId]/client-days/route.ts to fetch user's tasks for each day's date. Match user tasks by title === template.label and merge completion status (completed, completedAt, taskId) into template tasks. Add optional completion fields to ProgramTaskTemplate type in src/types/index.ts. Update CoachProgramsTab.tsx UI to show checkmarks for completed tasks.",
+        "testStrategy": "Test with 1:1 program where client has completed some tasks. Verify coach sees checkmarks on completed tasks. Test completion status updates on refresh.",
         "priority": "medium",
         "dependencies": [
-          "84"
+          "102"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:45:17.413Z"
       },
       {
-        "id": "89",
-        "title": "Create clear future tasks API endpoint",
-        "description": "Implement POST endpoint for coaches to clear future program tasks for client or cohort",
-        "details": "Create src/app/api/coach/org-programs/[programId]/clear-tasks/route.ts:\n- Accept enrollmentId OR cohortId parameter\n- Query tasks matching specific criteria\n- Delete matching tasks in batch\n- Return count of deleted tasks\n\nImplementation:\n```typescript\nexport async function POST(request: Request, { params }: { params: { programId: string } }) {\n  const { enrollmentId, cohortId } = await request.json()\n  const today = new Date()\n  \n  let whereClause = {\n    sourceType: { in: ['program', 'program_day', 'program_week'] },\n    date: { gt: today },\n    status: { not: 'done' },\n    clientLocked: { not: true }\n  }\n  \n  if (enrollmentId) {\n    whereClause.programEnrollmentId = enrollmentId\n  } else if (cohortId) {\n    const cohortEnrollments = await getCohortEnrollments(cohortId)\n    whereClause.programEnrollmentId = { in: cohortEnrollments.map(e => e.id) }\n  }\n  \n  const deletedTasks = await prisma.task.deleteMany({ where: whereClause })\n  \n  return NextResponse.json({ deletedCount: deletedTasks.count })\n}\n```",
-        "testStrategy": "API tests: Verify only future incomplete program tasks are deleted. Test preservation of completed tasks, client-created tasks, and clientLocked tasks. Test with individual enrollments and cohorts. Verify correct task filtering by sourceType and date.",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": "90",
-        "title": "Add tools dropdown to ModuleWeeksSidebar component",
-        "description": "Modify ModuleWeeksSidebar to include tools dropdown with sync and clear options when client/cohort is selected",
-        "details": "Update src/components/coach/programs/ModuleWeeksSidebar.tsx:\n- Add tools dropdown that appears when client or cohort is selected\n- Show 'Client Tools' when individual client selected\n- Show 'Cohort Tools' when cohort selected\n- Include 'Sync Tasks from Template' and 'Clear Future Tasks' options\n- Add loading states and toast notifications\n\nImplementation:\n```tsx\nconst [isLoading, setIsLoading] = useState(false)\n\nconst handleSyncTasks = async () => {\n  setIsLoading(true)\n  try {\n    const response = await fetch(`/api/coach/org-programs/${programId}/sync-tasks`, {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({ \n        enrollmentId: selectedEnrollment?.id,\n        cohortId: selectedCohort?.id \n      })\n    })\n    const { syncedCount } = await response.json()\n    toast.success(`Synced ${syncedCount} tasks successfully`)\n  } catch (error) {\n    toast.error('Failed to sync tasks')\n  } finally {\n    setIsLoading(false)\n  }\n}\n\n// Similar implementation for handleClearTasks with confirmation dialog\n```",
-        "testStrategy": "Component tests: Test dropdown visibility based on selection state. Test API calls with correct parameters. Test loading states and toast notifications. Integration tests: Verify end-to-end sync and clear operations from UI.",
-        "priority": "medium",
-        "dependencies": [
-          "88",
-          "89"
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": "91",
-        "title": "Add confirmation dialog for clear future tasks",
-        "description": "Implement confirmation dialog component to prevent accidental task clearing",
-        "details": "Create confirmation dialog for clear tasks operation:\n- Show warning about permanent deletion\n- Display count of tasks to be deleted (if possible)\n- Require explicit confirmation\n- Use existing dialog/modal components from UI library\n\nImplementation:\n```tsx\nconst [showClearConfirm, setShowClearConfirm] = useState(false)\n\nconst handleClearTasks = async () => {\n  const confirmed = await showConfirmDialog({\n    title: 'Clear Future Tasks',\n    message: 'This will permanently delete all future program tasks that are not completed or locked. This action cannot be undone.',\n    confirmText: 'Clear Tasks',\n    cancelText: 'Cancel',\n    variant: 'destructive'\n  })\n  \n  if (!confirmed) return\n  \n  // Proceed with clear operation\n  setIsLoading(true)\n  try {\n    const response = await fetch(`/api/coach/org-programs/${programId}/clear-tasks`, {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({ \n        enrollmentId: selectedEnrollment?.id,\n        cohortId: selectedCohort?.id \n      })\n    })\n    const { deletedCount } = await response.json()\n    toast.success(`Cleared ${deletedCount} future tasks`)\n  } catch (error) {\n    toast.error('Failed to clear tasks')\n  } finally {\n    setIsLoading(false)\n  }\n}\n```",
-        "testStrategy": "Component tests: Test dialog appears on clear action, test confirmation and cancellation flows. Test dialog content and styling. Integration tests: Verify tasks are only cleared after confirmation, cancellation prevents deletion.",
-        "priority": "medium",
-        "dependencies": [
-          "90"
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": "92",
-        "title": "Update CoachProgramsTab to pass additional props to sidebar",
-        "description": "Modify CoachProgramsTab component to pass necessary props for tools dropdown functionality",
-        "details": "Update src/components/coach/programs/CoachProgramsTab.tsx:\n- Pass programId to ModuleWeeksSidebar\n- Pass selected enrollment/cohort state\n- Ensure proper prop drilling for tools functionality\n- Add any missing state management for selection\n\nImplementation:\n```tsx\n<ModuleWeeksSidebar\n  programId={program.id}\n  selectedEnrollment={selectedEnrollment}\n  selectedCohort={selectedCohort}\n  onEnrollmentSelect={setSelectedEnrollment}\n  onCohortSelect={setSelectedCohort}\n  // ... existing props\n/>\n```",
-        "testStrategy": "Component tests: Verify props are passed correctly to sidebar. Test selection state management. Integration tests: Ensure tools dropdown works with proper program and selection context.",
+        "id": "108",
+        "title": "Add cohort completion threshold UI",
+        "description": "Create UI for coaches to configure cohortCompletionThreshold percentage for group programs",
+        "details": "Add threshold slider (0-100%, step 5) in src/components/coach/programs/ProgramSettingsModal.tsx for group programs only. Include quick select buttons for 0%, 25%, 50%, 75%, 100%. Add handler in CoachProgramsTab.tsx to save threshold via PUT /api/coach/org-programs/[programId]. Only save on slider release, not on every drag.",
+        "testStrategy": "Test slider appears only for group programs. Verify threshold persists after save. Test quick select buttons set correct values. Confirm slider doesn't trigger saves during drag.",
         "priority": "low",
-        "dependencies": [
-          "90"
-        ],
-        "status": "pending",
-        "subtasks": []
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:45:17.414Z"
       },
       {
-        "id": "93",
+        "id": "109",
+        "title": "Add evergreen program cycle indicator UI",
+        "description": "Display evergreen badge and current cycle number for evergreen programs",
+        "details": "Add evergreen badge (green cycle icon) in program header after Group/1:1 badge in CoachProgramsTab.tsx. Add cycle indicator below weeks sidebar showing 'Cycle X' in ModuleWeeksSidebar.tsx. Create calculateCyclesSinceDate() helper in program-client-utils.ts. Use different cycle sources: template (createdAt), client (enrollment.currentCycleNumber), cohort (cohort.startDate).",
+        "testStrategy": "Test badge appears for all evergreen programs. Verify cycle number displays correctly in template, client, and cohort modes. Test with both weekday-only and include-weekends programs.",
+        "priority": "low",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:45:17.415Z"
+      },
+      {
+        "id": "110",
+        "title": "Add cycleNumber field to Task interface and sync logic",
+        "description": "Add cycleNumber field to tasks for evergreen programs to enable cycle-based filtering",
+        "details": "Add cycleNumber?: number field to Task interface in src/types/index.ts. In syncProgramV2TasksForToday() and syncProgramTasksToClientDay(), set cycleNumber ONLY for program-sourced tasks (sourceType is 'program', 'program_day', 'program_week', 'coach_manual') AND durationType is 'evergreen'. Use enrollment.currentCycleNumber as value. Do NOT add to user-created tasks or fixed-duration programs.",
+        "testStrategy": "Test new evergreen program tasks have cycleNumber field. Verify user-created tasks and fixed-duration program tasks are unaffected. Confirm legacy tasks without cycleNumber are treated as cycle 1.",
+        "priority": "medium",
+        "dependencies": [
+          "102"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:48:33.263Z"
+      },
+      {
+        "id": "111",
+        "title": "Convert cycle indicator to dropdown with pagination",
+        "description": "Replace static cycle indicator with dropdown for selecting and viewing different cycles",
+        "details": "In ModuleWeeksSidebar.tsx, replace static 'Cycle X' button with dropdown trigger. Show cycles 1 through currentCycleNumber (newest first) with 5-cycle pagination. Add '↑ Newer cycles' / '↓ Older cycles' buttons. Highlight selected cycle with checkmark, mark current cycle with '(current)' label. Use emerald background with RefreshCw + ChevronDown icons. Only show for durationType: 'evergreen' programs.",
+        "testStrategy": "Test dropdown appears for evergreen programs only. Verify pagination works with more than 5 cycles. Confirm selected cycle is highlighted and current cycle is marked. Test dropdown styling matches specifications.",
+        "priority": "medium",
+        "dependencies": [
+          "109",
+          "110"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:50:36.796Z"
+      },
+      {
+        "id": "112",
+        "title": "Implement cycle state management",
+        "description": "Add selectedCycle state management and prop passing for cycle selection functionality",
+        "details": "Add selectedCycle state in CoachProgramsTab.tsx (defaults to currentCycleNumber). Reset selectedCycle when enrollment changes. Pass selectedCycle, onCycleSelect, and maxCycleNumber (from enrollment.currentCycleNumber) to ModuleWeeksSidebar. Implement cycle selection handler that updates state and triggers view refresh.",
+        "testStrategy": "Test selectedCycle defaults to current cycle. Verify state resets when switching between enrollments. Confirm cycle selection updates the state and triggers appropriate view changes.",
+        "priority": "medium",
+        "dependencies": [
+          "111"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:52:28.071Z"
+      },
+      {
+        "id": "113",
+        "title": "Implement cycle-based task filtering",
+        "description": "Filter displayed tasks based on selected cycle for evergreen programs",
+        "details": "When displaying client tasks in CoachProgramsTab.tsx, filter by selectedCycle. Tasks without cycleNumber are treated as cycle 1. Apply cycle filter only in client/cohort mode, not template mode. Ensure filtering works with existing task display logic and doesn't break other functionality.",
+        "testStrategy": "Test cycle filtering shows only tasks from selected cycle. Verify tasks without cycleNumber appear in cycle 1. Confirm template mode is unaffected by cycle filtering. Test switching between cycles updates task display correctly.",
+        "priority": "medium",
+        "dependencies": [
+          "112"
+        ],
+        "status": "in-progress",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:52:28.081Z"
+      },
+      {
+        "id": "114",
+        "title": "Update vercel.json with cron configuration",
+        "description": "Add cron job schedule configuration to vercel.json for the backup program sync",
+        "details": "Add cron configuration to vercel.json with schedule '0 */6 * * *' pointing to /api/cron/programs-daily-sync endpoint. Ensure proper cron syntax and verify the schedule runs every 6 hours (0:00, 6:00, 12:00, 18:00 UTC). Include any necessary environment variable configurations.",
+        "testStrategy": "Verify vercel.json syntax is correct. Test cron schedule triggers at expected intervals in staging environment. Confirm endpoint is accessible and responds correctly to cron requests.",
+        "priority": "medium",
+        "dependencies": [
+          "104"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:45:17.415Z"
+      },
+      {
+        "id": "115",
         "title": "Add comprehensive error handling and logging",
-        "description": "Implement robust error handling and logging across all sync operations for monitoring and debugging",
-        "details": "Add comprehensive error handling and logging:\n- Structured logging for all sync operations\n- Error categorization (network, database, validation)\n- Retry logic for transient failures\n- Monitoring hooks for sync success/failure rates\n- User-friendly error messages in UI\n\nImplementation:\n```typescript\n// Enhanced error handling in sync functions\ntry {\n  const result = await syncAllProgramTasks(userId, enrollmentId)\n  logger.info('Sync completed', { \n    userId, \n    enrollmentId, \n    syncedCount: result,\n    duration: Date.now() - startTime \n  })\n} catch (error) {\n  logger.error('Sync failed', { \n    userId, \n    enrollmentId, \n    error: error.message,\n    stack: error.stack \n  })\n  \n  // Retry logic for transient failures\n  if (isRetryableError(error) && retryCount < 3) {\n    await delay(1000 * Math.pow(2, retryCount))\n    return syncWithRetry(userId, enrollmentId, retryCount + 1)\n  }\n  \n  throw error\n}\n```",
-        "testStrategy": "Error simulation tests: Test various failure scenarios (database timeout, network issues, invalid data). Test retry logic with transient failures. Monitor logs for proper error categorization and structured data. Test user experience with error states.",
-        "priority": "low",
+        "description": "Implement robust error handling and logging across all sync mechanisms for monitoring and debugging",
+        "details": "Add comprehensive error handling to all sync functions with appropriate fallbacks. Implement structured logging for sync operations including success/failure counts, timing metrics, and error details. Add monitoring for sync failures and performance. Ensure errors in one user's sync don't affect others in batch operations.",
+        "testStrategy": "Test error scenarios like network failures, invalid data, and rate limiting. Verify logs provide sufficient detail for debugging. Confirm batch operations continue processing after individual failures. Test monitoring alerts trigger appropriately.",
+        "priority": "medium",
         "dependencies": [
-          "84",
-          "85",
-          "86",
-          "87",
-          "88",
-          "89"
+          "103",
+          "104",
+          "105"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": "94",
-        "title": "Add Type Definitions for programTaskId",
-        "description": "Update TypeScript interfaces to include programTaskId and id fields for Task, ProgramTaskTemplate, and CohortTaskState",
-        "details": "Modify src/types/index.ts to add:\n- `programTaskId?: string` to Task interface\n- `id?: string` to ProgramTaskTemplate interface\n- `programTaskId?: string` to CohortTaskState interface\n\nThis ensures type safety across the application and enables proper TypeScript checking for the new fields.",
-        "testStrategy": "Run `npx tsc --noEmit` to verify no TypeScript errors. Check that all interfaces compile correctly and IDE provides proper autocomplete for new fields.",
-        "priority": "high",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:21:32.423Z"
-      },
-      {
-        "id": "95",
-        "title": "Add ID Generation to Program Days Route",
-        "description": "Update the PUT handler in program days route to generate unique IDs for tasks in the tasks array",
-        "details": "Modify src/app/api/coach/org-programs/[programId]/days/route.ts:\n- Import crypto.randomUUID()\n- In PUT handler, iterate through tasks array\n- For each task: if task.id exists, preserve it; if missing, generate new UUID\n- Pseudo-code:\n```javascript\nconst tasksWithIds = tasks.map(task => ({\n  ...task,\n  id: task.id || crypto.randomUUID()\n}));\n```\n- Update the database save operation to use tasksWithIds",
-        "testStrategy": "Create automated test that saves program day with tasks, verify each task gets an id field. Test that existing IDs are preserved on subsequent saves. Verify UUIDs are valid format.",
-        "priority": "high",
+        "id": "116",
+        "title": "Create integration tests for complete sync flow",
+        "description": "Develop comprehensive integration tests covering all sync mechanisms and edge cases",
+        "details": "Create integration tests covering: lazy sync on app open, cron job execution, enrollment sync, cross-program interference prevention, and cycle-based functionality. Test timezone handling, duplicate prevention, error scenarios, and backward compatibility. Include performance tests for batch operations and large datasets.",
+        "testStrategy": "Run full integration test suite covering all sync scenarios. Test with multiple timezones, large user bases, and various program configurations. Verify no regressions in existing functionality. Confirm performance meets requirements under load.",
+        "priority": "low",
         "dependencies": [
-          "94"
+          "103",
+          "104",
+          "105",
+          "106"
         ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:22:40.038Z"
-      },
-      {
-        "id": "96",
-        "title": "Add ID Generation to Client Days Route",
-        "description": "Update the POST handler in client-days route to generate unique IDs for client-specific task customizations",
-        "details": "Modify src/app/api/coach/org-programs/[programId]/client-days/route.ts:\n- Import crypto.randomUUID()\n- In POST handler, iterate through tasks array\n- For each task: if task.id exists, preserve it; if missing, generate new UUID\n- Same logic as program days route:\n```javascript\nconst tasksWithIds = tasks.map(task => ({\n  ...task,\n  id: task.id || crypto.randomUUID()\n}));\n```\n- Ensure client-specific customizations maintain unique IDs",
-        "testStrategy": "Test client-specific task creation, verify IDs are generated. Test that client customizations preserve template task IDs when applicable. Verify no ID conflicts between template and client-specific tasks.",
-        "priority": "high",
-        "dependencies": [
-          "94"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:30:06.388Z"
-      },
-      {
-        "id": "97",
-        "title": "Update Task Sync to Use programTaskId Matching",
-        "description": "Modify syncProgramTasksToClientDay function to match tasks by programTaskId instead of title",
-        "details": "Modify src/lib/program-engine.ts around line 2400 in syncProgramTasksToClientDay:\n- Change task matching logic from title-based to programTaskId-based\n- Implement fallback to title matching for backward compatibility\n- Pseudo-code:\n```javascript\nconst existingTask = clientTasks.find(task => \n  task.programTaskId === templateTask.id || \n  (!task.programTaskId && task.title === templateTask.title)\n);\n```\n- Set programTaskId on newly created/updated tasks\n- Ensure works for both 1:1 and cohort sync paths",
-        "testStrategy": "Test task rename scenario: create task, sync, rename, re-sync - should update existing task not create duplicate. Test backward compatibility with tasks lacking programTaskId. Verify both 1:1 and cohort programs work correctly.",
-        "priority": "high",
-        "dependencies": [
-          "94",
-          "95",
-          "96"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:30:06.389Z"
-      },
-      {
-        "id": "98",
-        "title": "Fix CohortTaskState Creation Logic",
-        "description": "Remove conditional that prevents CohortTaskState creation when no new tasks are created",
-        "details": "Modify src/lib/sync-cohort-tasks.ts around line 226:\n- Remove the `if (totalTasksCreated > 0)` conditional\n- Always call createCohortTaskStatesForSyncedTasks regardless of task creation count\n- Add programTaskId field to CohortTaskState documents when creating them\n- Pseudo-code:\n```javascript\n// Remove this conditional:\n// if (totalTasksCreated > 0) {\n  await createCohortTaskStatesForSyncedTasks(cohortId, syncedTasks);\n// }\n```\n- Ensure programTaskId is included in CohortTaskState creation",
-        "testStrategy": "Test cohort with existing tasks - verify CohortTaskState is created even when no new tasks added. Test that programTaskId is properly stored in CohortTaskState documents. Verify completion tracking works after task edits.",
-        "priority": "medium",
-        "dependencies": [
-          "94"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:30:06.390Z"
-      },
-      {
-        "id": "99",
-        "title": "Add programTaskId Lookup Function for CohortTaskState",
-        "description": "Create findCohortTaskStateByProgramTaskId function for robust CohortTaskState matching",
-        "details": "Modify src/lib/cohort-task-state.ts:\n- Add new function findCohortTaskStateByProgramTaskId(cohortId, programTaskId, date)\n- Query CohortTaskState collection by cohortId, programTaskId, and date\n- Implement fallback to title-based lookup for backward compatibility\n- Pseudo-code:\n```javascript\nexport async function findCohortTaskStateByProgramTaskId(cohortId: string, programTaskId: string, date: string, fallbackTitle?: string) {\n  let state = await CohortTaskState.findOne({ cohortId, programTaskId, date });\n  if (!state && fallbackTitle) {\n    state = await CohortTaskState.findOne({ cohortId, taskTitle: fallbackTitle, date });\n  }\n  return state;\n}\n```",
-        "testStrategy": "Test programTaskId-based lookup returns correct CohortTaskState. Test fallback to title-based lookup for backward compatibility. Verify function handles edge cases like missing programTaskId gracefully.",
-        "priority": "medium",
-        "dependencies": [
-          "94",
-          "98"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:30:06.390Z"
-      },
-      {
-        "id": "100",
-        "title": "Update Task Completion Handler to Use programTaskId",
-        "description": "Modify task completion API to use programTaskId for CohortTaskState lookup",
-        "details": "Modify src/app/api/tasks/[id]/route.ts:\n- Update task completion handler to use findCohortTaskStateByProgramTaskId\n- Replace existing title-based CohortTaskState lookup\n- Maintain backward compatibility with title fallback\n- Pseudo-code:\n```javascript\nif (task.programTaskId) {\n  cohortTaskState = await findCohortTaskStateByProgramTaskId(\n    cohortId, \n    task.programTaskId, \n    task.date, \n    task.title // fallback\n  );\n} else {\n  // existing title-based lookup for backward compatibility\n  cohortTaskState = await findCohortTaskStateByTitle(cohortId, task.title, task.date);\n}\n```",
-        "testStrategy": "Test task completion with programTaskId - verify correct CohortTaskState is found and updated. Test completion tracking after task rename. Test backward compatibility with tasks lacking programTaskId. Verify completion shows correctly in coach dashboard.",
-        "priority": "medium",
-        "dependencies": [
-          "99"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:30:06.391Z"
-      },
-      {
-        "id": "101",
-        "title": "Integration Testing and Validation",
-        "description": "Comprehensive end-to-end testing of the programTaskId implementation across all scenarios",
-        "details": "Perform comprehensive testing:\n1. Test Task Rename Scenario (1:1 and Cohort):\n   - Create task 'Test A', sync to client\n   - Rename to 'Test B', re-sync\n   - Verify only ONE task exists with updated title\n2. Test Cohort Completion Tracking:\n   - Create task in cohort, client completes it\n   - Coach renames task, verify completion still shows\n3. Test Backward Compatibility:\n   - Verify existing tasks without programTaskId still work\n   - Test migration path when tasks get programTaskId on next sync\n4. Run TypeScript validation: `npx tsc --noEmit`\n5. Performance testing to ensure no regression",
-        "testStrategy": "Execute all acceptance criteria from PRD. Create automated test suite covering task rename, cohort completion, and backward compatibility scenarios. Monitor for performance regressions. Verify zero duplicate tasks and 100% completion tracking accuracy.",
-        "priority": "high",
-        "dependencies": [
-          "97",
-          "100"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:30:06.392Z"
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-08T12:30:06.392Z",
-      "taskCount": 18,
-      "completedCount": 9,
+      "lastModified": "2026-01-08T12:52:28.082Z",
+      "taskCount": 15,
+      "completedCount": 12,
       "tags": [
         "master"
       ]
