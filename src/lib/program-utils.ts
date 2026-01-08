@@ -6,7 +6,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { TaskDistribution } from '@/types';
+import type { TaskDistribution, ProgramTaskTemplate } from '@/types';
 
 interface ModuleData {
   id: string;
@@ -343,7 +343,23 @@ export async function distributeWeeklyTasksToDays(
   const distribution = weekData.distribution || programTaskDistribution || 'spread';
   const startDay = weekData.startDayIndex;
   const endDay = weekData.endDayIndex;
+
+  // Validate day indices exist
+  if (startDay === undefined || endDay === undefined) {
+    console.error('[PROGRAM_UTILS] Week missing startDayIndex or endDayIndex:', { weekId, startDay, endDay });
+    return { created: 0, updated: 0, skipped: 0 };
+  }
+
   const daysInWeek = endDay - startDay + 1;
+
+  console.log('[PROGRAM_UTILS] distributeWeeklyTasksToDays:', {
+    weekId,
+    distribution,
+    startDay,
+    endDay,
+    daysInWeek,
+    tasksCount: weeklyTasks.length,
+  });
 
   // Get existing days in this range
   const existingDaysSnapshot = await adminDb
@@ -363,23 +379,34 @@ export async function distributeWeeklyTasksToDays(
     skipped = 0;
 
   if (distribution === 'repeat-daily') {
-    // Copy all tasks to each day
+    // Copy all tasks to each day (with smart merging)
     for (let d = startDay; d <= endDay; d++) {
       const existing = existingDays.get(d);
+      const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
-      if (existing && !overwriteExisting && (existing as { tasks?: unknown[] }).tasks?.length) {
-        skipped++;
-        continue;
-      }
+      // Get existing tasks and filter out week-sourced ones (they'll be replaced)
+      const existingTasks = existingData?.tasks || [];
+      const manualTasks = existingTasks.filter(t => t.source !== 'week');
+
+      // Tag new tasks with source: 'week'
+      const weekSourcedTasks = weeklyTasks.map((task: ProgramTaskTemplate) => ({
+        ...task,
+        source: 'week' as const,
+      }));
+
+      // Merge: manual tasks + new week tasks
+      const mergedTasks = [...manualTasks, ...weekSourcedTasks];
+
+      console.log(`[PROGRAM_UTILS] Day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week`);
 
       const dayRef = existing
-        ? adminDb.collection('program_days').doc((existing as { id: string }).id)
+        ? adminDb.collection('program_days').doc(existingData!.id)
         : adminDb.collection('program_days').doc();
 
       const dayData = {
         programId,
         dayIndex: d,
-        tasks: weeklyTasks,
+        tasks: mergedTasks,
         weekId,
         updatedAt: FieldValue.serverTimestamp(),
         ...(existing ? {} : { createdAt: FieldValue.serverTimestamp() }),
@@ -394,7 +421,7 @@ export async function distributeWeeklyTasksToDays(
       }
     }
   } else {
-    // Spread: distribute tasks across days
+    // Spread: distribute tasks across days (with smart merging)
     const tasksPerDay = Math.ceil(weeklyTasks.length / daysInWeek);
     let taskIndex = 0;
 
@@ -405,20 +432,31 @@ export async function distributeWeeklyTasksToDays(
       if (dayTasks.length === 0) continue;
 
       const existing = existingDays.get(d);
+      const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
-      if (existing && !overwriteExisting && (existing as { tasks?: unknown[] }).tasks?.length) {
-        skipped++;
-        continue;
-      }
+      // Get existing tasks and filter out week-sourced ones (they'll be replaced)
+      const existingTasks = existingData?.tasks || [];
+      const manualTasks = existingTasks.filter(t => t.source !== 'week');
+
+      // Tag new tasks with source: 'week'
+      const weekSourcedTasks = dayTasks.map((task: ProgramTaskTemplate) => ({
+        ...task,
+        source: 'week' as const,
+      }));
+
+      // Merge: manual tasks + new week tasks
+      const mergedTasks = [...manualTasks, ...weekSourcedTasks];
+
+      console.log(`[PROGRAM_UTILS] Day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week`);
 
       const dayRef = existing
-        ? adminDb.collection('program_days').doc((existing as { id: string }).id)
+        ? adminDb.collection('program_days').doc(existingData!.id)
         : adminDb.collection('program_days').doc();
 
       const dayData = {
         programId,
         dayIndex: d,
-        tasks: dayTasks,
+        tasks: mergedTasks,
         weekId,
         updatedAt: FieldValue.serverTimestamp(),
         ...(existing ? {} : { createdAt: FieldValue.serverTimestamp() }),
@@ -524,17 +562,28 @@ export async function distributeCohortWeeklyTasksToDays(
     skipped = 0;
 
   if (distribution === 'repeat-daily') {
-    // Copy all tasks to each day
+    // Copy all tasks to each day (with smart merging)
     for (let d = startDay; d <= endDay; d++) {
       const existing = existingDays.get(d);
+      const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
-      if (existing && !overwriteExisting && (existing as { tasks?: unknown[] }).tasks?.length) {
-        skipped++;
-        continue;
-      }
+      // Get existing tasks and filter out week-sourced ones (they'll be replaced)
+      const existingTasks = existingData?.tasks || [];
+      const manualTasks = existingTasks.filter(t => t.source !== 'week');
+
+      // Tag new tasks with source: 'week'
+      const weekSourcedTasks = weeklyTasks.map((task: ProgramTaskTemplate) => ({
+        ...task,
+        source: 'week' as const,
+      }));
+
+      // Merge: manual tasks + new week tasks
+      const mergedTasks = [...manualTasks, ...weekSourcedTasks];
+
+      console.log(`[PROGRAM_UTILS] Cohort day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week`);
 
       const dayRef = existing
-        ? adminDb.collection('cohort_program_days').doc((existing as { id: string }).id)
+        ? adminDb.collection('cohort_program_days').doc(existingData!.id)
         : adminDb.collection('cohort_program_days').doc();
 
       const dayData = {
@@ -542,7 +591,7 @@ export async function distributeCohortWeeklyTasksToDays(
         programId,
         organizationId,
         dayIndex: d,
-        tasks: weeklyTasks,
+        tasks: mergedTasks,
         weekId,
         updatedAt: FieldValue.serverTimestamp(),
         ...(existing ? {} : { createdAt: FieldValue.serverTimestamp() }),
@@ -557,7 +606,7 @@ export async function distributeCohortWeeklyTasksToDays(
       }
     }
   } else {
-    // Spread: distribute tasks across days
+    // Spread: distribute tasks across days (with smart merging)
     const tasksPerDay = Math.ceil(weeklyTasks.length / daysInWeek);
     let taskIndex = 0;
 
@@ -568,14 +617,25 @@ export async function distributeCohortWeeklyTasksToDays(
       if (dayTasks.length === 0) continue;
 
       const existing = existingDays.get(d);
+      const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
-      if (existing && !overwriteExisting && (existing as { tasks?: unknown[] }).tasks?.length) {
-        skipped++;
-        continue;
-      }
+      // Get existing tasks and filter out week-sourced ones (they'll be replaced)
+      const existingTasks = existingData?.tasks || [];
+      const manualTasks = existingTasks.filter(t => t.source !== 'week');
+
+      // Tag new tasks with source: 'week'
+      const weekSourcedTasks = dayTasks.map((task: ProgramTaskTemplate) => ({
+        ...task,
+        source: 'week' as const,
+      }));
+
+      // Merge: manual tasks + new week tasks
+      const mergedTasks = [...manualTasks, ...weekSourcedTasks];
+
+      console.log(`[PROGRAM_UTILS] Cohort day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week`);
 
       const dayRef = existing
-        ? adminDb.collection('cohort_program_days').doc((existing as { id: string }).id)
+        ? adminDb.collection('cohort_program_days').doc(existingData!.id)
         : adminDb.collection('cohort_program_days').doc();
 
       const dayData = {
@@ -583,7 +643,7 @@ export async function distributeCohortWeeklyTasksToDays(
         programId,
         organizationId,
         dayIndex: d,
-        tasks: dayTasks,
+        tasks: mergedTasks,
         weekId,
         updatedAt: FieldValue.serverTimestamp(),
         ...(existing ? {} : { createdAt: FieldValue.serverTimestamp() }),
@@ -685,17 +745,28 @@ export async function distributeClientWeeklyTasksToDays(
     skipped = 0;
 
   if (distribution === 'repeat-daily') {
-    // Copy all tasks to each day
+    // Copy all tasks to each day (with smart merging)
     for (let d = startDay; d <= endDay; d++) {
       const existing = existingDays.get(d);
+      const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
-      if (existing && !overwriteExisting && (existing as { tasks?: unknown[] }).tasks?.length) {
-        skipped++;
-        continue;
-      }
+      // Get existing tasks and filter out week-sourced ones (they'll be replaced)
+      const existingTasks = existingData?.tasks || [];
+      const manualTasks = existingTasks.filter(t => t.source !== 'week');
+
+      // Tag new tasks with source: 'week'
+      const weekSourcedTasks = weeklyTasks.map((task: ProgramTaskTemplate) => ({
+        ...task,
+        source: 'week' as const,
+      }));
+
+      // Merge: manual tasks + new week tasks
+      const mergedTasks = [...manualTasks, ...weekSourcedTasks];
+
+      console.log(`[PROGRAM_UTILS] Client day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week`);
 
       const dayRef = existing
-        ? adminDb.collection('client_program_days').doc((existing as { id: string }).id)
+        ? adminDb.collection('client_program_days').doc(existingData!.id)
         : adminDb.collection('client_program_days').doc();
 
       const dayData = {
@@ -704,7 +775,7 @@ export async function distributeClientWeeklyTasksToDays(
         organizationId,
         userId,
         dayIndex: d,
-        tasks: weeklyTasks,
+        tasks: mergedTasks,
         clientWeekId,
         updatedAt: FieldValue.serverTimestamp(),
         ...(existing ? {} : { createdAt: FieldValue.serverTimestamp() }),
@@ -719,7 +790,7 @@ export async function distributeClientWeeklyTasksToDays(
       }
     }
   } else {
-    // Spread: distribute tasks across days
+    // Spread: distribute tasks across days (with smart merging)
     const tasksPerDay = Math.ceil(weeklyTasks.length / daysInWeek);
     let taskIndex = 0;
 
@@ -730,14 +801,25 @@ export async function distributeClientWeeklyTasksToDays(
       if (dayTasks.length === 0) continue;
 
       const existing = existingDays.get(d);
+      const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
-      if (existing && !overwriteExisting && (existing as { tasks?: unknown[] }).tasks?.length) {
-        skipped++;
-        continue;
-      }
+      // Get existing tasks and filter out week-sourced ones (they'll be replaced)
+      const existingTasks = existingData?.tasks || [];
+      const manualTasks = existingTasks.filter(t => t.source !== 'week');
+
+      // Tag new tasks with source: 'week'
+      const weekSourcedTasks = dayTasks.map((task: ProgramTaskTemplate) => ({
+        ...task,
+        source: 'week' as const,
+      }));
+
+      // Merge: manual tasks + new week tasks
+      const mergedTasks = [...manualTasks, ...weekSourcedTasks];
+
+      console.log(`[PROGRAM_UTILS] Client day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week`);
 
       const dayRef = existing
-        ? adminDb.collection('client_program_days').doc((existing as { id: string }).id)
+        ? adminDb.collection('client_program_days').doc(existingData!.id)
         : adminDb.collection('client_program_days').doc();
 
       const dayData = {
@@ -746,7 +828,7 @@ export async function distributeClientWeeklyTasksToDays(
         organizationId,
         userId,
         dayIndex: d,
-        tasks: dayTasks,
+        tasks: mergedTasks,
         clientWeekId,
         updatedAt: FieldValue.serverTimestamp(),
         ...(existing ? {} : { createdAt: FieldValue.serverTimestamp() }),

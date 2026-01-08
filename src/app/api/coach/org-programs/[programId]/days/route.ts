@@ -110,6 +110,7 @@ export async function POST(
           estimatedMinutes: task.estimatedMinutes || undefined,
           notes: task.notes || undefined,
           tag: task.tag || undefined,
+          source: task.source || 'day', // Preserve existing source or mark as day-level
         });
       }
     }

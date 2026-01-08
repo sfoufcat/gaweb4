@@ -21,6 +21,7 @@ import type { ClientProgramDay, ProgramEnrollment, ProgramCohort, ProgramTaskTem
  * Process tasks to ensure each has a unique ID for robust matching.
  * Preserves existing IDs, generates new UUIDs for tasks without IDs.
  * Also strips runtime completion data that should never be stored in templates.
+ * Preserves source field if set, otherwise defaults to 'day' for direct saves.
  */
 function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramTaskTemplate[] {
   if (!tasks || !Array.isArray(tasks)) return [];
@@ -37,6 +38,7 @@ function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramT
     return {
       ...cleanTask,
       id: task.id || crypto.randomUUID(),
+      source: task.source || 'day', // Preserve existing source or mark as day-level
     };
   });
 }

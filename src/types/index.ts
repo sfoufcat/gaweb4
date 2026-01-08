@@ -522,6 +522,15 @@ export interface UpdateTaskRequest {
 // ============================================================================
 
 /**
+ * Where a task template originated from
+ * - 'week': Distributed from weekly tasks
+ * - 'day': Added directly to a specific day
+ * - 'manual': Manually added by coach
+ * - 'sync': Created during sync process
+ */
+export type TaskSource = 'week' | 'day' | 'manual' | 'sync';
+
+/**
  * Task template within a program day
  * These are templates that get instantiated as real Task records
  * @deprecated Use ProgramDay.tasks with the new Program system
@@ -534,6 +543,7 @@ export interface ProgramTaskTemplate {
   estimatedMinutes?: number; // Optional time estimate
   notes?: string; // Optional guidance/context
   tag?: string; // Optional tag (e.g., "content", "mindset", "systems")
+  source?: TaskSource; // Where this task originated from (for smart merging)
   // Optional completion status (populated when viewing client-specific days)
   completed?: boolean; // Whether the client has completed this task
   completedAt?: string; // ISO timestamp of when the client completed it

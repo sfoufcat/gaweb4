@@ -3632,7 +3632,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 ...updates,
                                 startDayIndex: selectedWeek.startDayIndex,
                                 endDayIndex: selectedWeek.endDayIndex,
-                                ...(hasWeeklyTasks && { distributeTasksNow: true }),
+                                // Distribute tasks to client days, overwriting existing
+                                ...(hasWeeklyTasks && { distributeTasksNow: true, overwriteExisting: true }),
                               }),
                             });
                             if (res.ok) {
@@ -3656,7 +3657,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 endDayIndex: endDay,
                                 moduleId: templateWeek?.moduleId || programModules[0]?.id,
                                 ...updates,
-                                ...(hasWeeklyTasks && { distributeTasksNow: true }),
+                                // Distribute tasks to client days, overwriting existing
+                                ...(hasWeeklyTasks && { distributeTasksNow: true, overwriteExisting: true }),
                               }),
                             });
                             if (res.ok) {
@@ -3721,7 +3723,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                     weeklyHabits: updates.weeklyHabits,
                                     weeklyPrompt: updates.weeklyPrompt,
                                     distribution: updates.distribution,
-                                    ...(hasWeeklyTasks && { distributeTasksNow: true }),
+                                    // Distribute tasks to cohort days, overwriting existing
+                                    ...(hasWeeklyTasks && { distributeTasksNow: true, overwriteExistingTasks: true }),
                                   }),
                                 }
                               );
@@ -3753,7 +3756,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 // Always include day indices to ensure distribution works
                                 startDayIndex: selectedWeek.startDayIndex,
                                 endDayIndex: selectedWeek.endDayIndex,
-                                ...(hasWeeklyTasks && { distributeTasksNow: true }),
+                                // Distribute tasks to days, overwriting existing day tasks
+                                ...(hasWeeklyTasks && { distributeTasksNow: true, overwriteExisting: true }),
                               }),
                             });
                             if (res.ok) {
@@ -3780,7 +3784,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 startDayIndex: startDay,
                                 endDayIndex: endDay,
                                 ...updates,
-                                ...(hasWeeklyTasks && { distributeTasksNow: true }),
+                                // Distribute tasks to days, overwriting existing
+                                ...(hasWeeklyTasks && { distributeTasksNow: true, overwriteExisting: true }),
                               }),
                             });
                             if (res.ok) {
