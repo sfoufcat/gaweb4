@@ -92,11 +92,13 @@ interface OrgCoach {
 
 interface CoachProgramsTabProps {
   apiBasePath?: string;
+  initialProgramId?: string | null;
+  onProgramSelect?: (programId: string | null) => void;
 }
 
 type ProgramType = 'group' | 'individual';
 
-export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: CoachProgramsTabProps) {
+export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', initialProgramId, onProgramSelect }: CoachProgramsTabProps) {
   const { isDemoMode, openSignupModal } = useDemoMode();
   const demoSession = useDemoSession();
   
@@ -1020,6 +1022,22 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   useEffect(() => {
     fetchPrograms();
   }, [fetchPrograms]);
+
+  // Restore selection from URL param on mount
+  useEffect(() => {
+    if (initialProgramId && allPrograms.length > 0 && !selectedProgram) {
+      const program = allPrograms.find(p => p.id === initialProgramId);
+      if (program) {
+        setSelectedProgram(program);
+        setViewMode('days');
+      }
+    }
+  }, [initialProgramId, allPrograms, selectedProgram]);
+
+  // Notify parent when selection changes (for URL persistence)
+  useEffect(() => {
+    onProgramSelect?.(selectedProgram?.id ?? null);
+  }, [selectedProgram?.id, onProgramSelect]);
 
   // Fetch current tier for limit checking
   useEffect(() => {
@@ -2307,14 +2325,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
                 {/* Page Navigation - Desktop: Horizontal tabs, Mobile: Dropdown */}
                 {/* Desktop Tabs */}
-                <div className="hidden md:flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-0.5">
+                <div className="hidden md:flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => handleViewModeChange('days')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
                       viewMode === 'days'
-                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                        ? 'bg-[#ebe8e4] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                        : 'text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                     }`}
                   >
                     <LayoutTemplate className="w-4 h-4" />
@@ -2326,8 +2344,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       onClick={() => handleViewModeChange('cohorts')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
                         viewMode === 'cohorts'
-                          ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                          ? 'bg-[#ebe8e4] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                          : 'text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                       }`}
                     >
                       <Users className="w-4 h-4" />
@@ -2339,8 +2357,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     onClick={() => handleViewModeChange('enrollments')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
                       viewMode === 'enrollments'
-                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                        ? 'bg-[#ebe8e4] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                        : 'text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                     }`}
                   >
                     <Users className="w-4 h-4" />
@@ -2351,8 +2369,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     onClick={() => handleViewModeChange('landing')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
                       viewMode === 'landing'
-                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                        ? 'bg-[#ebe8e4] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                        : 'text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                     }`}
                   >
                     <FileText className="w-4 h-4" />
@@ -2363,8 +2381,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     onClick={() => handleViewModeChange('referrals')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
                       viewMode === 'referrals'
-                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                        ? 'bg-[#ebe8e4] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                        : 'text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                     }`}
                   >
                     <Gift className="w-4 h-4" />

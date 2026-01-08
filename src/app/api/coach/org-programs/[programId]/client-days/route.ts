@@ -20,13 +20,23 @@ import type { ClientProgramDay, ProgramEnrollment, ProgramCohort, ProgramTaskTem
 /**
  * Process tasks to ensure each has a unique ID for robust matching.
  * Preserves existing IDs, generates new UUIDs for tasks without IDs.
+ * Also strips runtime completion data that should never be stored in templates.
  */
 function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramTaskTemplate[] {
   if (!tasks || !Array.isArray(tasks)) return [];
-  return tasks.map((task) => ({
-    ...task,
-    id: task.id || crypto.randomUUID(),
-  }));
+  return tasks.map((task) => {
+    // Strip runtime completion data - should never be stored in templates
+    // These fields are populated at read time by merging with actual task status
+    const { completed, completedAt, taskId, ...cleanTask } = task as ProgramTaskTemplate & {
+      completed?: boolean;
+      completedAt?: string;
+      taskId?: string;
+    };
+    return {
+      ...cleanTask,
+      id: task.id || crypto.randomUUID(),
+    };
+  });
 }
 
 export async function GET(
@@ -121,9 +131,18 @@ export async function GET(
           }
 
           // Merge completion status into template tasks
+          // Use programTaskId for robust matching (survives task renames), fallback to title
           if (day.tasks && Array.isArray(day.tasks)) {
             day.tasks = day.tasks.map(template => {
-              const actualTask = userTasks.find(t => (t as { title?: string }).title === template.label);
+              const actualTask = userTasks.find(t => {
+                const task = t as { title?: string; programTaskId?: string };
+                // Prefer programTaskId matching (robust, survives renames)
+                if (template.id && task.programTaskId) {
+                  return task.programTaskId === template.id;
+                }
+                // Fallback to title matching for backward compatibility
+                return task.title === template.label;
+              });
               if (actualTask) {
                 return {
                   ...template,
@@ -132,7 +151,14 @@ export async function GET(
                   taskId: actualTask.id,
                 };
               }
-              return template;
+              // No matching task found - return template without completion data
+              // This ensures stale completion data doesn't persist
+              const { completed, completedAt, taskId, ...cleanTemplate } = template as typeof template & {
+                completed?: boolean;
+                completedAt?: string;
+                taskId?: string;
+              };
+              return cleanTemplate;
             });
           }
         }

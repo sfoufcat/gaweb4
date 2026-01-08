@@ -113,6 +113,7 @@ export function CoachSidebar({ activeTab, onTabChange, isLimitedOrgCoach = false
             return (
               <button
                 key={item.value}
+                data-tour-tab={item.value}
                 onClick={() => onTabChange(item.value)}
                 className={cn(
                   "w-full text-left px-3 py-2 rounded-lg text-sm font-medium font-albert",

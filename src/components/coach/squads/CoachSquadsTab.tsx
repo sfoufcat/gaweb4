@@ -55,6 +55,8 @@ interface MemberWithUser extends SquadMember {
 
 interface CoachSquadsTabProps {
   apiBasePath?: string;
+  initialSquadId?: string | null;
+  onSquadSelect?: (squadId: string | null) => void;
 }
 
 // Landing page form data type matching ProgramLandingPageEditor
@@ -77,7 +79,7 @@ interface LandingPageFormData {
   showCurriculum: boolean; // Hidden for squads
 }
 
-export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachSquadsTabProps) {
+export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialSquadId, onSquadSelect }: CoachSquadsTabProps) {
   const { isDemoMode, openSignupModal } = useDemoMode();
   const demoSession = useDemoSession();
   
@@ -199,6 +201,22 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
     }
     return squads;
   }, [isDemoMode, demoSession.squads, squads]);
+
+  // Restore selection from URL param on mount
+  useEffect(() => {
+    if (initialSquadId && displaySquads.length > 0 && !selectedSquad) {
+      const squad = displaySquads.find(s => s.id === initialSquadId);
+      if (squad) {
+        setSelectedSquad(squad);
+        setViewMode('members');
+      }
+    }
+  }, [initialSquadId, displaySquads, selectedSquad]);
+
+  // Notify parent when selection changes (for URL persistence)
+  useEffect(() => {
+    onSquadSelect?.(selectedSquad?.id ?? null);
+  }, [selectedSquad?.id, onSquadSelect]);
 
   // Fetch current tier for limit checking
   useEffect(() => {

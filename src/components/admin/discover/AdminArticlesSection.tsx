@@ -20,6 +20,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { MediaUpload } from '@/components/admin/MediaUpload';
@@ -28,6 +30,7 @@ import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { AuthorSelector } from '@/components/admin/AuthorSelector';
 import { CategorySelector } from '@/components/admin/CategorySelector';
 import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 // Article Form Dialog
 function ArticleFormDialog({
@@ -170,208 +173,224 @@ function ArticleFormDialog({
     }
   };
 
-  if (!isOpen) return null;
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-      <div className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-2xl mx-4 shadow-2xl shadow-black/10 dark:shadow-black/30 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
-            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              {isEditing ? 'Edit Article' : 'Create Article'}
-            </h2>
-          </div>
+  const content = (
+    <form onSubmit={handleSubmit}>
+      <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
+        <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+          {isEditing ? 'Edit Article' : 'Create Article'}
+        </h2>
+      </div>
 
-          <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-            {/* Title */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Title *</label>
-              <input
-                type="text"
-                required
-                value={formData.title}
-                onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-              />
-            </div>
+      <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+        {/* Title */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Title *</label>
+          <input
+            type="text"
+            required
+            value={formData.title}
+            onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+          />
+        </div>
 
-            {/* Content - Moved right after Title */}
-            <RichTextEditor
-              value={formData.content}
-              onChange={(content) => setFormData(prev => ({ ...prev, content }))}
-              label="Content *"
-              required
-              rows={12}
-              placeholder="Write your article content here..."
-              showMediaToolbar={true}
-              mediaFolder="articles"
-              uploadEndpoint={uploadEndpoint}
-            />
+        {/* Content - Moved right after Title */}
+        <RichTextEditor
+          value={formData.content}
+          onChange={(content) => setFormData(prev => ({ ...prev, content }))}
+          label="Content *"
+          required
+          rows={12}
+          placeholder="Write your article content here..."
+          showMediaToolbar={true}
+          mediaFolder="articles"
+          uploadEndpoint={uploadEndpoint}
+        />
 
-            {/* Cover Image */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                Cover Image <span className="text-text-muted text-xs font-normal">(1600 x 800px)</span> *
+        {/* Cover Image */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+            Cover Image <span className="text-text-muted text-xs font-normal">(1600 x 800px)</span> *
+          </label>
+          <MediaUpload
+            value={formData.coverImageUrl}
+            onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
+            folder="articles"
+            type="image"
+            required
+            uploadEndpoint={uploadEndpoint}
+            hideLabel
+            previewSize="thumbnail"
+          />
+        </div>
+
+        {/* Thumbnail - Collapsible */}
+        {!showThumbnail ? (
+          <button
+            type="button"
+            onClick={() => setShowThumbnail(true)}
+            className="flex items-center gap-2 text-sm text-brand-accent hover:text-brand-accent/90 font-albert font-medium transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Thumbnail
+          </button>
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Thumbnail <span className="text-text-muted text-xs font-normal">(1200 x 675px)</span>
               </label>
-              <MediaUpload
-                value={formData.coverImageUrl}
-                onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
-                folder="articles"
-                type="image"
-                required
-                uploadEndpoint={uploadEndpoint}
-                hideLabel
-                previewSize="thumbnail"
-              />
-            </div>
-
-            {/* Thumbnail - Collapsible */}
-            {!showThumbnail ? (
               <button
                 type="button"
-                onClick={() => setShowThumbnail(true)}
-                className="flex items-center gap-2 text-sm text-brand-accent hover:text-brand-accent/90 font-albert font-medium transition-colors"
+                onClick={() => {
+                  setShowThumbnail(false);
+                  setFormData(prev => ({ ...prev, thumbnailUrl: '' }));
+                }}
+                className="text-xs text-[#5f5a55] hover:text-red-500 font-albert transition-colors"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Thumbnail
+                Remove
               </button>
-            ) : (
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                    Thumbnail <span className="text-text-muted text-xs font-normal">(1200 x 675px)</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowThumbnail(false);
-                      setFormData(prev => ({ ...prev, thumbnailUrl: '' }));
-                    }}
-                    className="text-xs text-[#5f5a55] hover:text-red-500 font-albert transition-colors"
-                  >
-                    Remove
-                  </button>
-                </div>
-                <MediaUpload
-                  value={formData.thumbnailUrl}
-                  onChange={(url) => setFormData(prev => ({ ...prev, thumbnailUrl: url }))}
-                  folder="articles"
-                  type="image"
-                  uploadEndpoint={uploadEndpoint}
-                  hideLabel
-                  previewSize="thumbnail"
-                />
-              </div>
-            )}
-
-            {/* Author Selection */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Author *</label>
-              <AuthorSelector
-                value={formData.authorId}
-                onChange={({ authorId, authorName }) => 
-                  setFormData(prev => ({ ...prev, authorId, authorName }))
-                }
-                placeholder="Select author..."
-                coachesApiEndpoint={coachesApiEndpoint}
-              />
             </div>
-
-            {/* Author Title - Now Optional */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Author Title</label>
-              <input
-                type="text"
-                value={formData.authorTitle}
-                onChange={e => setFormData(prev => ({ ...prev, authorTitle: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-                placeholder="e.g., Life Coach, CEO (optional)"
-              />
-            </div>
-
-            {/* Published Date */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Published Date</label>
-              <input
-                type="date"
-                value={formData.publishedAt}
-                onChange={e => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-              />
-            </div>
-
-            {/* Category - New CategorySelector */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Category</label>
-              <CategorySelector
-                value={formData.category}
-                onChange={(category) => setFormData(prev => ({ ...prev, category }))}
-                placeholder="Select or create category..."
-                categoriesApiEndpoint={categoriesApiEndpoint}
-              />
-            </div>
-
-            {/* Program Association */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                Programs
-              </label>
-              <ProgramSelector
-                value={formData.programIds}
-                onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
-                placeholder="Select programs for this article..."
-                programsApiEndpoint={programsApiEndpoint}
-              />
-            </div>
-
-            {/* Pricing & Access */}
-            <ContentPricingFields
-              value={formData.pricing}
-              onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
+            <MediaUpload
+              value={formData.thumbnailUrl}
+              onChange={(url) => setFormData(prev => ({ ...prev, thumbnailUrl: url }))}
+              folder="articles"
+              type="image"
+              uploadEndpoint={uploadEndpoint}
+              hideLabel
+              previewSize="thumbnail"
             />
-
-            {/* Featured & Trending - Removed "Recommended" from Featured */}
-            <div className="flex gap-6">
-              <div className="flex items-center gap-2">
-                <BrandedCheckbox
-                  checked={formData.featured}
-                  onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
-                />
-                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, featured: !prev.featured }))}>Featured</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <BrandedCheckbox
-                  checked={formData.trending}
-                  onChange={(checked) => setFormData(prev => ({ ...prev, trending: checked }))}
-                />
-                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, trending: !prev.trending }))}>Trending</span>
-              </div>
-            </div>
           </div>
+        )}
 
-          <div className="p-6 border-t border-[#e1ddd8] dark:border-[#262b35] flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={saving}
-              className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 font-albert"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={saving || !formData.title.trim() || !formData.content.trim() || !formData.coverImageUrl.trim()}
-              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
-            >
-              {saving ? 'Saving...' : isEditing ? 'Update Article' : 'Create Article'}
-            </Button>
+        {/* Author Selection */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Author *</label>
+          <AuthorSelector
+            value={formData.authorId}
+            onChange={({ authorId, authorName }) =>
+              setFormData(prev => ({ ...prev, authorId, authorName }))
+            }
+            placeholder="Select author..."
+            coachesApiEndpoint={coachesApiEndpoint}
+          />
+        </div>
+
+        {/* Author Title - Now Optional */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Author Title</label>
+          <input
+            type="text"
+            value={formData.authorTitle}
+            onChange={e => setFormData(prev => ({ ...prev, authorTitle: e.target.value }))}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+            placeholder="e.g., Life Coach, CEO (optional)"
+          />
+        </div>
+
+        {/* Published Date */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Published Date</label>
+          <input
+            type="date"
+            value={formData.publishedAt}
+            onChange={e => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+          />
+        </div>
+
+        {/* Category - New CategorySelector */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Category</label>
+          <CategorySelector
+            value={formData.category}
+            onChange={(category) => setFormData(prev => ({ ...prev, category }))}
+            placeholder="Select or create category..."
+            categoriesApiEndpoint={categoriesApiEndpoint}
+          />
+        </div>
+
+        {/* Program Association */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+            Programs
+          </label>
+          <ProgramSelector
+            value={formData.programIds}
+            onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
+            placeholder="Select programs for this article..."
+            programsApiEndpoint={programsApiEndpoint}
+          />
+        </div>
+
+        {/* Pricing & Access */}
+        <ContentPricingFields
+          value={formData.pricing}
+          onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
+        />
+
+        {/* Featured & Trending - Removed "Recommended" from Featured */}
+        <div className="flex gap-6">
+          <div className="flex items-center gap-2">
+            <BrandedCheckbox
+              checked={formData.featured}
+              onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
+            />
+            <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, featured: !prev.featured }))}>Featured</span>
           </div>
-        </form>
+          <div className="flex items-center gap-2">
+            <BrandedCheckbox
+              checked={formData.trending}
+              onChange={(checked) => setFormData(prev => ({ ...prev, trending: checked }))}
+            />
+            <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, trending: !prev.trending }))}>Trending</span>
+          </div>
+        </div>
       </div>
-    </div>
+
+      <div className="p-6 border-t border-[#e1ddd8] dark:border-[#262b35] flex justify-end gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+          disabled={saving}
+          className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 font-albert"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={saving || !formData.title.trim() || !formData.content.trim() || !formData.coverImageUrl.trim()}
+          className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
+        >
+          {saving ? 'Saving...' : isEditing ? 'Update Article' : 'Create Article'}
+        </Button>
+      </div>
+    </form>
+  );
+
+  // Desktop: Use Dialog (centered modal)
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-2xl p-0" hideCloseButton>
+          {content}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Use Drawer (slide-up)
+  return (
+    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()} shouldScaleBackground={false}>
+      <DrawerContent className="max-h-[85dvh]">
+        {content}
+      </DrawerContent>
+    </Drawer>
   );
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AdminEventsSection } from './AdminEventsSection';
 import { AdminArticlesSection } from './AdminArticlesSection';
 import { AdminCoursesSection } from './AdminCoursesSection';
@@ -12,10 +12,26 @@ type DiscoverSubTab = 'events' | 'articles' | 'courses' | 'downloads' | 'links';
 interface AdminDiscoverTabProps {
   /** Base API path for multi-tenancy (e.g., '/api/coach/org-discover' for coaches) */
   apiBasePath?: string;
+  /** Optional sub-tab to restore selection from URL */
+  initialSubTab?: string | null;
+  /** Callback when sub-tab selection changes (for URL persistence) */
+  onSubTabChange?: (subTab: string | null) => void;
 }
 
-export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover' }: AdminDiscoverTabProps) {
+export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover', initialSubTab, onSubTabChange }: AdminDiscoverTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<DiscoverSubTab>('events');
+  
+  // Restore sub-tab selection from URL param on mount
+  useEffect(() => {
+    if (initialSubTab && ['events', 'articles', 'courses', 'downloads', 'links'].includes(initialSubTab)) {
+      setActiveSubTab(initialSubTab as DiscoverSubTab);
+    }
+  }, [initialSubTab]);
+
+  // Notify parent when sub-tab selection changes (for URL persistence)
+  useEffect(() => {
+    onSubTabChange?.(activeSubTab);
+  }, [activeSubTab, onSubTabChange]);
 
   const tabs: { id: DiscoverSubTab; label: string; icon: React.ReactNode }[] = [
     {

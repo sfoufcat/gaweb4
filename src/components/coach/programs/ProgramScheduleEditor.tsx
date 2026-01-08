@@ -239,9 +239,9 @@ export function ProgramScheduleEditor({
       if (day) {
         const status = getDayStatus(day.dayIndex);
 
-        // For past/active days use status colors, for future use module color
-        const bgClass = status === 'future' ? moduleColor.bg : statusColors[status].bg;
-        const borderClass = status === 'future' ? moduleColor.border : statusColors[status].border;
+        // All days use status colors: past=yellow, active=green, future=gray
+        const bgClass = statusColors[status].bg;
+        const borderClass = statusColors[status].border;
 
         cells.push(
           <div

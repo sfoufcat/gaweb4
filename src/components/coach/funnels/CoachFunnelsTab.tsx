@@ -65,6 +65,10 @@ interface ContentItem {
 interface CoachFunnelsTabProps {
   /** Optional program ID to filter funnels by */
   programId?: string;
+  /** Optional funnel ID to restore selection from URL */
+  initialFunnelId?: string | null;
+  /** Callback when funnel selection changes (for URL persistence) */
+  onFunnelSelect?: (funnelId: string | null) => void;
 }
 
 const CONTENT_TYPE_OPTIONS: { value: FunnelContentType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -75,7 +79,7 @@ const CONTENT_TYPE_OPTIONS: { value: FunnelContentType; label: string; icon: Rea
   { value: 'link', label: 'Links', icon: LinkIcon },
 ];
 
-export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
+export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: CoachFunnelsTabProps) {
   const { isDemoMode, openSignupModal } = useDemoMode();
   const demoSession = useDemoSession();
   
@@ -289,6 +293,22 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
       fetchContentItems(selectedContentType);
     }
   }, [activeTab, selectedContentType, fetchContentItems]);
+
+  // Restore funnel selection from URL param on mount
+  useEffect(() => {
+    if (initialFunnelId && displayFunnels.length > 0 && !editingFunnelId) {
+      const funnel = displayFunnels.find(f => f.id === initialFunnelId);
+      if (funnel) {
+        setEditingFunnelId(funnel.id);
+        setViewMode('editing');
+      }
+    }
+  }, [initialFunnelId, displayFunnels, editingFunnelId]);
+
+  // Notify parent when funnel selection changes (for URL persistence)
+  useEffect(() => {
+    onFunnelSelect?.(editingFunnelId);
+  }, [editingFunnelId, onFunnelSelect]);
 
   const handleToggleActive = async (funnel: Funnel) => {
     if (isDemoMode) {

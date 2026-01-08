@@ -16,16 +16,20 @@ interface CommunitySummary {
 
 interface AnalyticsTabProps {
   apiBasePath?: string;
+  /** Optional squad ID to restore selection from URL */
+  initialSquadId?: string | null;
+  /** Callback when squad selection changes (for URL persistence) */
+  onSquadSelect?: (squadId: string | null) => void;
 }
 
-export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: AnalyticsTabProps) {
+export function AnalyticsTab({ apiBasePath = '/api/coach/analytics', initialSquadId, onSquadSelect }: AnalyticsTabProps) {
   const { isDemoMode } = useDemoMode();
   
   const [communities, setCommunities] = useState<SquadAnalyticsSummary[]>([]);
   const [summary, setSummary] = useState<CommunitySummary>({ thriving: 0, active: 0, inactive: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSquadId, setSelectedSquadId] = useState<string | null>(null);
+  const [selectedSquadId, setSelectedSquadId] = useState<string | null>(initialSquadId ?? null);
   const [squadDetail, setSquadDetail] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [excludeAdmins, setExcludeAdmins] = useState(false);
@@ -115,6 +119,11 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
       fetchSquadDetail(selectedSquadId);
     }
   }, [selectedSquadId, fetchSquadDetail]);
+
+  // Notify parent when squad selection changes (for URL persistence)
+  useEffect(() => {
+    onSquadSelect?.(selectedSquadId);
+  }, [selectedSquadId, onSquadSelect]);
 
   const getHealthColor = (status: SquadHealthStatus) => {
     switch (status) {

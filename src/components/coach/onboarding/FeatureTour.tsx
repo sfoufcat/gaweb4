@@ -76,13 +76,20 @@ interface FeatureTourProps {
 
 // Helper to find tab element with multiple selector strategies
 function findTabElement(tabValue: string, tabText: string): HTMLElement | null {
-  // Strategy 1: Try value attribute selectors
+  // Strategy 0: Sidebar buttons (desktop) - check data-tour-tab attribute
+  const sidebarBtn = document.querySelector(`[data-tour-tab="${tabValue}"]`) as HTMLElement;
+  if (sidebarBtn) {
+    console.log(`[FeatureTour] Found tab "${tabValue}" via data-tour-tab`);
+    return sidebarBtn;
+  }
+
+  // Strategy 1: Try value attribute selectors (mobile tabs)
   const selectors = [
     `button[data-state][value="${tabValue}"]`,
     `[data-radix-collection-item][value="${tabValue}"]`,
     `[role="tab"][value="${tabValue}"]`,
   ];
-  
+
   for (const selector of selectors) {
     const tab = document.querySelector(selector) as HTMLElement;
     if (tab) {

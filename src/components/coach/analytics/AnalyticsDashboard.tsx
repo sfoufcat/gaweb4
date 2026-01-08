@@ -14,10 +14,23 @@ type TabType = 'clients' | 'community' | 'feed' | 'chats' | 'products' | 'funnel
 
 interface AnalyticsDashboardProps {
   apiBasePath?: string;
+  /** Optional sub-tab to restore selection from URL */
+  initialSubTab?: string | null;
+  /** Callback when sub-tab selection changes (for URL persistence) */
+  onSubTabChange?: (subTab: string | null) => void;
+  /** Optional squad ID for community health tab */
+  initialSquadId?: string | null;
+  /** Callback when squad selection changes in community health tab */
+  onSquadSelect?: (squadId: string | null) => void;
 }
 
-export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics' }: AnalyticsDashboardProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('clients');
+export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics', initialSubTab, onSubTabChange, initialSquadId, onSquadSelect }: AnalyticsDashboardProps) {
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (initialSubTab && ['clients', 'community', 'feed', 'chats', 'products', 'funnels'].includes(initialSubTab)) {
+      return initialSubTab as TabType;
+    }
+    return 'clients';
+  });
   const [isAnimating, setIsAnimating] = useState(false);
   const [displayedTab, setDisplayedTab] = useState<TabType>('clients');
   const prevTabRef = useRef<TabType>('clients');
@@ -33,6 +46,11 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics' }: Ana
 
   // Get tab index for direction calculation
   const getTabIndex = (tab: TabType) => tabs.findIndex(t => t.id === tab);
+
+  // Notify parent when sub-tab selection changes (for URL persistence)
+  useEffect(() => {
+    onSubTabChange?.(activeTab);
+  }, [activeTab, onSubTabChange]);
 
   useEffect(() => {
     if (activeTab !== displayedTab) {
@@ -103,7 +121,7 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics' }: Ana
           className={`transition-all duration-200 ease-out ${getAnimationClass()}`}
         >
           {displayedTab === 'clients' && <ClientActivityTab apiBasePath={apiBasePath} />}
-          {displayedTab === 'community' && <AnalyticsTab apiBasePath={apiBasePath} />}
+          {displayedTab === 'community' && <AnalyticsTab apiBasePath={apiBasePath} initialSquadId={initialSquadId} onSquadSelect={onSquadSelect} />}
           {displayedTab === 'feed' && <FeedAnalyticsTab apiBasePath={apiBasePath} />}
           {displayedTab === 'chats' && <ChatAnalyticsTab apiBasePath={apiBasePath} />}
           {displayedTab === 'products' && <ProductAnalyticsTab apiBasePath={apiBasePath} />}

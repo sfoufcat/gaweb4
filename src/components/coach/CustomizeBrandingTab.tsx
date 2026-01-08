@@ -152,6 +152,13 @@ function getDnsRecordNames(domain: string): { routing: string; clerk: string } {
 // Subtab type definition
 type CustomizeSubtab = 'branding' | 'navigation' | 'features' | 'marketplace' | 'domains' | 'communications';
 
+interface CustomizeBrandingTabProps {
+  /** Optional sub-tab to restore selection from URL */
+  initialSubtab?: string | null;
+  /** Callback when sub-tab selection changes (for URL persistence) */
+  onSubtabChange?: (subtab: string | null) => void;
+}
+
 const SUBTABS: { id: CustomizeSubtab; label: string; icon: React.ReactNode }[] = [
   { id: 'branding', label: 'Branding', icon: <Palette className="w-4 h-4" /> },
   { id: 'navigation', label: 'Navigation', icon: <Menu className="w-4 h-4" /> },
@@ -161,12 +168,24 @@ const SUBTABS: { id: CustomizeSubtab; label: string; icon: React.ReactNode }[] =
   { id: 'communications', label: 'Communications', icon: <Mail className="w-4 h-4" /> },
 ];
 
-export function CustomizeBrandingTab() {
+export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: CustomizeBrandingTabProps = {}) {
   const { setPreviewMode, isPreviewMode, refetch } = useBranding();
   const { isDemoMode, openSignupModal } = useDemoMode();
   
   // Subtab state
   const [activeSubtab, setActiveSubtab] = useState<CustomizeSubtab>('branding');
+  
+  // Restore subtab selection from URL param on mount
+  useEffect(() => {
+    if (initialSubtab && ['branding', 'navigation', 'features', 'marketplace', 'domains', 'communications'].includes(initialSubtab)) {
+      setActiveSubtab(initialSubtab as CustomizeSubtab);
+    }
+  }, [initialSubtab]);
+
+  // Notify parent when subtab selection changes (for URL persistence)
+  useEffect(() => {
+    onSubtabChange?.(activeSubtab);
+  }, [activeSubtab, onSubtabChange]);
   
   // Form state
   const [logoUrl, setLogoUrl] = useState<string | null>(null);

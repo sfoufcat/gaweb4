@@ -19,9 +19,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface ProgramLink {
   id: string;
@@ -131,112 +134,128 @@ function LinkFormDialog({
     }
   };
 
-  if (!isOpen) return null;
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-      <div className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-2xl mx-4 shadow-2xl shadow-black/10 dark:shadow-black/30 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
-            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              {isEditing ? 'Edit Link' : 'Create Link'}
-            </h2>
-          </div>
-
-          <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-            {/* Title */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Title *</label>
-              <input
-                type="text"
-                required
-                value={formData.title}
-                onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-                placeholder="e.g., Program Community"
-              />
-            </div>
-
-            {/* URL */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">URL *</label>
-              <input
-                type="url"
-                required
-                value={formData.url}
-                onChange={e => setFormData(prev => ({ ...prev, url: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-                placeholder="https://..."
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Description</label>
-              <textarea
-                value={formData.description}
-                onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                rows={3}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-                placeholder="Brief description of the link..."
-              />
-            </div>
-
-            {/* Programs */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                Programs
-              </label>
-              <ProgramSelector
-                value={formData.programIds}
-                onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
-                placeholder="Select programs for this link..."
-                programsApiEndpoint={programsApiEndpoint}
-              />
-            </div>
-
-            {/* Pricing & Access */}
-            <ContentPricingFields
-              value={formData.pricing}
-              onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
-            />
-
-            {/* Order */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Display Order</label>
-              <input
-                type="number"
-                value={formData.order}
-                onChange={e => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 0 }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-              />
-              <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                Lower numbers appear first.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-6 border-t border-[#e1ddd8] dark:border-[#262b35] flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={saving}
-              className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 font-albert"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={saving}
-              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
-            >
-              {saving ? 'Saving...' : isEditing ? 'Update Link' : 'Create Link'}
-            </Button>
-          </div>
-        </form>
+  const content = (
+    <form onSubmit={handleSubmit}>
+      <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
+        <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+          {isEditing ? 'Edit Link' : 'Create Link'}
+        </h2>
       </div>
-    </div>
+
+      <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+        {/* Title */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Title *</label>
+          <input
+            type="text"
+            required
+            value={formData.title}
+            onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+            placeholder="e.g., Program Community"
+          />
+        </div>
+
+        {/* URL */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">URL *</label>
+          <input
+            type="url"
+            required
+            value={formData.url}
+            onChange={e => setFormData(prev => ({ ...prev, url: e.target.value }))}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+            placeholder="https://..."
+          />
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Description</label>
+          <textarea
+            value={formData.description}
+            onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            rows={3}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+            placeholder="Brief description of the link..."
+          />
+        </div>
+
+        {/* Programs */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+            Programs
+          </label>
+          <ProgramSelector
+            value={formData.programIds}
+            onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
+            placeholder="Select programs for this link..."
+            programsApiEndpoint={programsApiEndpoint}
+          />
+        </div>
+
+        {/* Pricing & Access */}
+        <ContentPricingFields
+          value={formData.pricing}
+          onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
+        />
+
+        {/* Order */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Display Order</label>
+          <input
+            type="number"
+            value={formData.order}
+            onChange={e => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 0 }))}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+          />
+          <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+            Lower numbers appear first.
+          </p>
+        </div>
+      </div>
+
+      <div className="p-6 border-t border-[#e1ddd8] dark:border-[#262b35] flex justify-end gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+          disabled={saving}
+          className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 font-albert"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={saving}
+          className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
+        >
+          {saving ? 'Saving...' : isEditing ? 'Update Link' : 'Create Link'}
+        </Button>
+      </div>
+    </form>
+  );
+
+  // Desktop: Use Dialog (centered modal)
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-2xl p-0" hideCloseButton>
+          {content}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Use Drawer (slide-up)
+  return (
+    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()} shouldScaleBackground={false}>
+      <DrawerContent className="max-h-[85dvh]">
+        {content}
+      </DrawerContent>
+    </Drawer>
   );
 }
 

@@ -153,6 +153,113 @@ export default function CoachPage() {
     } else {
       url.searchParams.set('tab', newTab);
     }
+    // Clear selection params when switching tabs
+    url.searchParams.delete('programId');
+    url.searchParams.delete('squadId');
+    url.searchParams.delete('funnelId');
+    url.searchParams.delete('flowId');
+    url.searchParams.delete('discoverSubTab');
+    url.searchParams.delete('customizeSubtab');
+    url.searchParams.delete('analyticsSubTab');
+    url.searchParams.delete('analyticsSquadId');
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
+  // Read initial selection IDs from URL
+  const initialProgramId = searchParams.get('programId');
+  const initialSquadId = searchParams.get('squadId');
+  const initialFunnelId = searchParams.get('funnelId');
+  const initialFlowId = searchParams.get('flowId');
+  const initialDiscoverSubTab = searchParams.get('discoverSubTab');
+  const initialCustomizeSubtab = searchParams.get('customizeSubtab');
+  const initialAnalyticsSubTab = searchParams.get('analyticsSubTab');
+  const initialAnalyticsSquadId = searchParams.get('analyticsSquadId');
+
+  // Handler for program selection changes - updates URL
+  const handleProgramSelect = useCallback((programId: string | null) => {
+    const url = new URL(window.location.href);
+    if (programId) {
+      url.searchParams.set('programId', programId);
+    } else {
+      url.searchParams.delete('programId');
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
+  // Handler for squad selection changes - updates URL
+  const handleSquadSelect = useCallback((squadId: string | null) => {
+    const url = new URL(window.location.href);
+    if (squadId) {
+      url.searchParams.set('squadId', squadId);
+    } else {
+      url.searchParams.delete('squadId');
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
+  // Handler for funnel selection changes - updates URL
+  const handleFunnelSelect = useCallback((funnelId: string | null) => {
+    const url = new URL(window.location.href);
+    if (funnelId) {
+      url.searchParams.set('funnelId', funnelId);
+    } else {
+      url.searchParams.delete('funnelId');
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
+  // Handler for check-in flow selection changes - updates URL
+  const handleFlowSelect = useCallback((flowId: string | null) => {
+    const url = new URL(window.location.href);
+    if (flowId) {
+      url.searchParams.set('flowId', flowId);
+    } else {
+      url.searchParams.delete('flowId');
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
+  // Handler for discover sub-tab changes - updates URL
+  const handleDiscoverSubTabChange = useCallback((subTab: string | null) => {
+    const url = new URL(window.location.href);
+    if (subTab && subTab !== 'events') {
+      url.searchParams.set('discoverSubTab', subTab);
+    } else {
+      url.searchParams.delete('discoverSubTab');
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
+  // Handler for customize sub-tab changes - updates URL
+  const handleCustomizeSubtabChange = useCallback((subtab: string | null) => {
+    const url = new URL(window.location.href);
+    if (subtab && subtab !== 'branding') {
+      url.searchParams.set('customizeSubtab', subtab);
+    } else {
+      url.searchParams.delete('customizeSubtab');
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
+  // Handler for analytics sub-tab changes - updates URL
+  const handleAnalyticsSubTabChange = useCallback((subTab: string | null) => {
+    const url = new URL(window.location.href);
+    if (subTab && subTab !== 'clients') {
+      url.searchParams.set('analyticsSubTab', subTab);
+    } else {
+      url.searchParams.delete('analyticsSubTab');
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
+  // Handler for analytics squad selection changes - updates URL
+  const handleAnalyticsSquadSelect = useCallback((squadId: string | null) => {
+    const url = new URL(window.location.href);
+    if (squadId) {
+      url.searchParams.set('analyticsSquadId', squadId);
+    } else {
+      url.searchParams.delete('analyticsSquadId');
+    }
     router.replace(url.pathname + url.search, { scroll: false });
   }, [router]);
 
@@ -856,7 +963,7 @@ export default function CoachPage() {
           {/* Squads Tab */}
           <TabsContent value="squads">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
-              <CoachSquadsTab apiBasePath="/api/coach/org-squads" />
+              <CoachSquadsTab apiBasePath="/api/coach/org-squads" initialSquadId={initialSquadId} onSquadSelect={handleSquadSelect} />
             </div>
           </TabsContent>
 
@@ -864,6 +971,8 @@ export default function CoachPage() {
           <TabsContent value="discover">
             <AdminDiscoverTab 
               apiBasePath={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-discover' : '/api/admin/discover'}
+              initialSubTab={initialDiscoverSubTab}
+              onSubTabChange={handleDiscoverSubTabChange}
             />
           </TabsContent>
 
@@ -884,14 +993,14 @@ export default function CoachPage() {
           {/* Funnels Tab */}
           <TabsContent value="funnels">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
-              <CoachFunnelsTab />
+              <CoachFunnelsTab initialFunnelId={initialFunnelId} onFunnelSelect={handleFunnelSelect} />
             </div>
           </TabsContent>
 
           {/* Check-ins Tab */}
           <TabsContent value="checkins">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
-              <CoachCheckInsTab />
+              <CoachCheckInsTab initialFlowId={initialFlowId} onFlowSelect={handleFlowSelect} />
             </div>
           </TabsContent>
 
@@ -912,14 +1021,19 @@ export default function CoachPage() {
           {/* Programs Tab - New system */}
           <TabsContent value="programs">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
-              <CoachProgramsTab apiBasePath="/api/coach/org-programs" />
+              <CoachProgramsTab apiBasePath="/api/coach/org-programs" initialProgramId={initialProgramId} onProgramSelect={handleProgramSelect} />
             </div>
           </TabsContent>
 
           {/* Analytics Tab */}
           <TabsContent value="analytics">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
-              <AnalyticsDashboard />
+              <AnalyticsDashboard 
+                initialSubTab={initialAnalyticsSubTab}
+                onSubTabChange={handleAnalyticsSubTabChange}
+                initialSquadId={initialAnalyticsSquadId}
+                onSquadSelect={handleAnalyticsSquadSelect}
+              />
             </div>
           </TabsContent>
 
@@ -949,7 +1063,7 @@ export default function CoachPage() {
 
           {/* Customize Branding Tab */}
           <TabsContent value="customize">
-            <CustomizeBrandingTab />
+            <CustomizeBrandingTab initialSubtab={initialCustomizeSubtab} onSubtabChange={handleCustomizeSubtabChange} />
           </TabsContent>
 
           {/* Plan & Billing Tab */}

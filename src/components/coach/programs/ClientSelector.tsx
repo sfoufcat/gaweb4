@@ -61,7 +61,7 @@ export function ClientSelector({
   // Get display info for current selection
   const currentDisplay = useMemo(() => {
     if (value.mode === 'template') {
-      return { name: 'Template', subtitle: 'Master content', imageUrl: null, isTemplate: true };
+      return { name: 'Template', subtitle: '', imageUrl: null, isTemplate: true };
     }
     const enrollment = enrollments.find(e => e.id === value.enrollmentId);
     if (enrollment) {

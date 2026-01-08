@@ -22,6 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import {
@@ -36,6 +38,7 @@ import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { CategorySelector } from '@/components/admin/CategorySelector';
 import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 // Common timezones (same as SquadCallEditForm)
 const COMMON_TIMEZONES = [
@@ -384,18 +387,16 @@ function EventFormDialog({
     }));
   };
 
-  if (!isOpen) return null;
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-      <div className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-2xl mx-4 shadow-2xl shadow-black/10 dark:shadow-black/30 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-brand-accent" />
-              {isEditing ? 'Edit Event' : 'Create Event'}
-            </h2>
-          </div>
+  const formContent = (
+    <form onSubmit={handleSubmit}>
+      <div className="p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+        <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-brand-accent" />
+          {isEditing ? 'Edit Event' : 'Create Event'}
+        </h2>
+      </div>
 
           <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
             {/* Title */}
@@ -782,45 +783,71 @@ function EventFormDialog({
             </div>
           </div>
 
-          <div className="p-6 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={saving}
-              className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 font-albert"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={saving}
-              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
-            >
-              {saving ? 'Saving...' : isEditing ? 'Update Event' : 'Create Event'}
-            </Button>
-          </div>
-        </form>
+      <div className="p-6 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex justify-end gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+          disabled={saving}
+          className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 font-albert"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={saving}
+          className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
+        >
+          {saving ? 'Saving...' : isEditing ? 'Update Event' : 'Create Event'}
+        </Button>
       </div>
+    </form>
+  );
 
-      {/* Error Alert Dialog */}
-      <AlertDialog open={!!errorMessage} onOpenChange={(open) => !open && setErrorMessage(null)}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-albert flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-500" />
-              Unable to Save
-            </AlertDialogTitle>
-            <AlertDialogDescription className="font-albert">
-              {errorMessage}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction className="font-albert bg-brand-accent hover:bg-brand-accent/90">OK</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+  // Error Alert Dialog (rendered outside the main modal)
+  const errorDialog = (
+    <AlertDialog open={!!errorMessage} onOpenChange={(open) => !open && setErrorMessage(null)}>
+      <AlertDialogContent className="max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="font-albert flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-red-500" />
+            Unable to Save
+          </AlertDialogTitle>
+          <AlertDialogDescription className="font-albert">
+            {errorMessage}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction className="font-albert bg-brand-accent hover:bg-brand-accent/90">OK</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
+  // Desktop: Use Dialog (centered modal)
+  if (isDesktop) {
+    return (
+      <>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+          <DialogContent className="max-w-2xl p-0" hideCloseButton>
+            {formContent}
+          </DialogContent>
+        </Dialog>
+        {errorDialog}
+      </>
+    );
+  }
+
+  // Mobile: Use Drawer (slide-up)
+  return (
+    <>
+      <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()} shouldScaleBackground={false}>
+        <DrawerContent className="max-h-[85dvh]">
+          {formContent}
+        </DrawerContent>
+      </Drawer>
+      {errorDialog}
+    </>
   );
 }
 

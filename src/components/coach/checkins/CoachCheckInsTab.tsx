@@ -65,7 +65,14 @@ const FLOW_TYPE_LABELS: Record<CheckInFlowType, string> = {
   custom: 'Custom',
 };
 
-export function CoachCheckInsTab() {
+interface CoachCheckInsTabProps {
+  /** Optional flow ID to restore selection from URL */
+  initialFlowId?: string | null;
+  /** Callback when flow selection changes (for URL persistence) */
+  onFlowSelect?: (flowId: string | null) => void;
+}
+
+export function CoachCheckInsTab({ initialFlowId, onFlowSelect }: CoachCheckInsTabProps = {}) {
   const { isDemoMode, openSignupModal } = useDemoMode();
   const [flows, setFlows] = useState<OrgCheckInFlow[]>([]);
   const [templates, setTemplates] = useState<CheckInFlowTemplate[]>([]);
@@ -182,6 +189,22 @@ export function CoachCheckInsTab() {
     fetchFlows();
     fetchTemplates();
   }, [fetchFlows, fetchTemplates]);
+
+  // Restore flow selection from URL param on mount
+  useEffect(() => {
+    if (initialFlowId && flows.length > 0 && !editingFlowId) {
+      const flow = flows.find(f => f.id === initialFlowId);
+      if (flow) {
+        setEditingFlowId(flow.id);
+        setViewMode('editing');
+      }
+    }
+  }, [initialFlowId, flows, editingFlowId]);
+
+  // Notify parent when flow selection changes (for URL persistence)
+  useEffect(() => {
+    onFlowSelect?.(editingFlowId);
+  }, [editingFlowId, onFlowSelect]);
 
   const handleToggleEnabled = async (flow: OrgCheckInFlow) => {
     if (isDemoMode) {
