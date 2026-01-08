@@ -1095,14 +1095,28 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     setIsRefreshing(true);
     try {
       if (selectedProgram.type === 'individual' && clientViewContext.mode === 'client') {
+        // Client mode: refresh client weeks AND days
+        await fetchClientWeeks(selectedProgram.id, clientViewContext.enrollmentId);
         await fetchClientDays(selectedProgram.id, clientViewContext.enrollmentId, selectedCycle);
       } else if (selectedProgram.type === 'group' && cohortViewContext.mode === 'cohort') {
+        // Cohort mode: refresh program details, cohort days, and week content
+        await fetchProgramDetails(selectedProgram.id);
         await fetchCohortDays(selectedProgram.id, cohortViewContext.cohortId);
+        // Also refresh cohort week content if a week is selected
+        if (sidebarSelection?.type === 'week') {
+          const templateWeek = programWeeks.find(w => w.weekNumber === sidebarSelection.weekNumber);
+          if (templateWeek?.id) {
+            await fetchCohortWeekContent(selectedProgram.id, cohortViewContext.cohortId, templateWeek.id);
+          }
+        }
+      } else {
+        // Template mode: refresh program details
+        await fetchProgramDetails(selectedProgram.id);
       }
     } finally {
       setIsRefreshing(false);
     }
-  }, [selectedProgram, clientViewContext, cohortViewContext, selectedCycle, fetchClientDays, fetchCohortDays]);
+  }, [selectedProgram, clientViewContext, cohortViewContext, selectedCycle, sidebarSelection, programWeeks, fetchClientWeeks, fetchClientDays, fetchProgramDetails, fetchCohortDays, fetchCohortWeekContent]);
 
   const handleRemoveEnrollment = async () => {
     if (!removeConfirmEnrollment || !selectedProgram) return;
