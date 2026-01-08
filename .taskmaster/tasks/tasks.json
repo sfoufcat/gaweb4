@@ -142,15 +142,16 @@
           "132",
           "133"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T14:12:18.981Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-08T14:05:53.284Z",
+      "lastModified": "2026-01-08T14:12:18.981Z",
       "taskCount": 10,
-      "completedCount": 8,
+      "completedCount": 9,
       "tags": [
         "master"
       ]
