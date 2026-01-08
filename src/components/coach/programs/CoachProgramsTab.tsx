@@ -7,6 +7,7 @@ import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { ModuleWeeksSidebar, type SidebarSelection } from './ModuleWeeksSidebar';
 import { ModuleEditor } from './ModuleEditor';
 import { WeekEditor } from './WeekEditor';
+import { DayEditor } from './DayEditor';
 import { WeekFillModal } from './WeekFillModal';
 import { ProgramSettingsModal, ProgramSettingsButton } from './ProgramSettingsModal';
 import { DayCourseSelector } from './DayCourseSelector';
@@ -3566,6 +3567,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       module={selectedModule}
                       weeks={programWeeks.filter(w => w.moduleId === selectedModule.id)}
                       readOnly={isClientMode}
+                      programId={selectedProgram?.id}
                       onSave={async (updates) => {
                         try {
                           const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/modules/${selectedModule.id}`, {
@@ -3943,7 +3945,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   );
                 })()
               ) : (
-                // Day Editor (default)
+                // Day Editor (default) - Now uses the centralized DayEditor component
                 (() => {
                   // Check if we're in client mode and data is loading
                   const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
@@ -3963,295 +3965,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     );
                   }
 
+                  // Find the current day data
+                  const currentDay = daysToUse.find(d => d.dayIndex === selectedDayIndex) || null;
+
                   return (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                      Day {selectedDayIndex}
-                    </h3>
-                  </div>
-
-                  {/* Day Title */}
-                  <div>
-                    <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                      Day Theme (optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={dayFormData.title}
-                      onChange={(e) => setDayFormData({ ...dayFormData, title: e.target.value })}
-                      placeholder="e.g., Clarify your niche"
-                      className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                    <DayEditor
+                      dayIndex={selectedDayIndex}
+                      day={currentDay}
+                      programId={selectedProgram?.id}
+                      programType={selectedProgram?.type}
+                      dailyFocusSlots={selectedProgram?.dailyFocusSlots}
+                      clientViewContext={clientViewContext}
+                      cohortViewContext={cohortViewContext}
+                      cohortTaskCompletion={cohortTaskCompletion}
+                      apiBasePath={apiBasePath}
+                      saveError={saveError}
+                      saving={saving}
                     />
-                  </div>
-
-                  {/* Daily Prompt */}
-                  <div>
-                    <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                      Daily Prompt
-                    </label>
-                    <textarea
-                      value={dayFormData.dailyPrompt}
-                      onChange={(e) => setDayFormData({ ...dayFormData, dailyPrompt: e.target.value })}
-                      placeholder="Enter a motivational message or tip for this day..."
-                      rows={3}
-                      className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-                    />
-                    <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mt-1">
-                      This message will appear as a card on the user&apos;s home page for this day
-                    </p>
-                  </div>
-
-                  {/* Tasks */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                        Tasks
-                      </label>
-                    </div>
-                    {/* Warning if too many focus tasks */}
-                    {(() => {
-                      const focusCount = dayFormData.tasks.filter(t => t.isPrimary).length;
-                      const programSlots = selectedProgram?.dailyFocusSlots ?? 2;
-                      if (focusCount > programSlots) {
-                        return (
-                          <div className="mb-3 flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl">
-                            <Target className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                            <p className="text-sm text-amber-800 dark:text-amber-300 font-albert">
-                              This day has {focusCount} focus tasks, but your program contributes {programSlots}. Extra tasks will go to users&apos; backlog.
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
-                    <div className="space-y-2">
-                      {dayFormData.tasks.map((task, index) => (
-                        <div 
-                          key={index} 
-                          className="group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
-                        >
-                          {/* Task Icon - Show checkmark when completed in client/cohort view */}
-                          {(() => {
-                            // Check for 1:1 client completion
-                            const isClientCompleted = clientViewContext.mode === 'client' && task.completed;
-                            // Check for cohort completion (threshold met)
-                            const cohortCompletion = cohortViewContext.mode === 'cohort' ? cohortTaskCompletion.get(task.label) : undefined;
-                            const isCohortCompleted = cohortCompletion?.completed;
-                            const completionRate = cohortCompletion?.completionRate;
-
-                            if (isClientCompleted || isCohortCompleted) {
-                              return (
-                                <div
-                                  className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0"
-                                  title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : 'Completed'}
-                                >
-                                  <Check className="w-3 h-3 text-white" />
-                                </div>
-                              );
-                            }
-                            // Show partial completion for cohorts (below threshold)
-                            if (cohortCompletion && !isCohortCompleted && completionRate && completionRate > 0) {
-                              return (
-                                <div
-                                  className="w-5 h-5 rounded-full border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0"
-                                  title={`${completionRate}% completed (threshold not met)`}
-                                >
-                                  <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400">{completionRate}</span>
-                                </div>
-                              );
-                            }
-                            return (
-                              <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
-                            );
-                          })()}
-
-                          {/* Input */}
-                          <input
-                            type="text"
-                            value={task.label}
-                            onChange={(e) => updateTask(index, { label: e.target.value })}
-                            placeholder="What should they accomplish?"
-                            className="flex-1 bg-transparent border-none outline-none font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
-                          />
-                          
-                          {/* Focus/Backlog Toggle */}
-                          <button
-                            type="button"
-                            onClick={() => updateTask(index, { isPrimary: !task.isPrimary })}
-                            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200 group"
-                          >
-                            <ArrowLeftRight className={`w-3.5 h-3.5 transition-transform duration-300 ease-out ${task.isPrimary ? 'rotate-0' : 'rotate-180'}`} />
-                            <span className="relative w-[52px] h-4 overflow-hidden">
-                              <span
-                                className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
-                                  task.isPrimary
-                                    ? 'opacity-100 translate-y-0'
-                                    : 'opacity-0 -translate-y-full'
-                                }`}
-                              >
-                                Focus
-                              </span>
-                              <span
-                                className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
-                                  !task.isPrimary
-                                    ? 'opacity-100 translate-y-0'
-                                    : 'opacity-0 translate-y-full'
-                                }`}
-                              >
-                                Backlog
-                              </span>
-                            </span>
-                          </button>
-
-                          {/* Delete Button */}
-                          <button
-                            type="button"
-                            onClick={() => removeTask(index)}
-                            className="p-1.5 rounded-lg text-[#a7a39e] dark:text-[#7d8190] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                      
-                      {/* Empty State */}
-                      {dayFormData.tasks.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
-                          <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#1d222b] flex items-center justify-center mb-3">
-                            <ListTodo className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
-                          </div>
-                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">No tasks yet</p>
-                          <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
-                            Add tasks to guide users through this day
-                          </p>
-                        </div>
-                      )}
-                      
-                      {/* Add Task Button */}
-                      <button
-                        type="button"
-                        onClick={addTask}
-                        className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-brand-accent hover:border-brand-accent/50 hover:bg-brand-accent/5 dark:hover:bg-brand-accent/90/10 transition-all duration-200 font-albert font-medium text-sm"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Task
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Habits (Day 1) */}
-                  {(selectedDayIndex === 1 || dayFormData.habits.length > 0) && (
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <label className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                            Default Habits
-                          </label>
-                          {selectedDayIndex === 1 && (
-                            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">
-                              Day 1 sets program defaults
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        {dayFormData.habits.map((habit, index) => (
-                          <div 
-                            key={index} 
-                            className="group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
-                          >
-                            {/* Habit Icon - Dashed Ring */}
-                            <div className="w-5 h-5 rounded-full border-2 border-dashed border-brand-accent/40 dark:border-brand-accent/40 flex-shrink-0" />
-                            
-                            {/* Input */}
-                            <input
-                              type="text"
-                              value={habit.title}
-                              onChange={(e) => updateHabit(index, { title: e.target.value })}
-                              placeholder="What habit should they build?"
-                              className="flex-1 bg-transparent border-none outline-none font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
-                            />
-                            
-                            {/* Frequency Dropdown */}
-                            <div className="relative">
-                              <select
-                                value={habit.frequency}
-                                onChange={(e) => updateHabit(index, { frequency: e.target.value as 'daily' | 'weekday' | 'custom' })}
-                                className="appearance-none pl-3 pr-8 py-1.5 bg-[#f3f1ef] dark:bg-[#1d222b] border-none rounded-lg text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
-                              >
-                                <option value="daily">Daily</option>
-                                <option value="weekday">Weekday</option>
-                              </select>
-                              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#a7a39e] dark:text-[#7d8190] pointer-events-none" />
-                            </div>
-                            
-                            {/* Delete Button */}
-                            <button
-                              type="button"
-                              onClick={() => removeHabit(index)}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[#a7a39e] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                        
-                        {/* Empty State */}
-                        {dayFormData.habits.length === 0 && selectedDayIndex === 1 && (
-                          <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
-                            <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#1d222b] flex items-center justify-center mb-3">
-                              <Repeat className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
-                            </div>
-                            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">No habits yet</p>
-                            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
-                              Add default habits for this program
-                            </p>
-                          </div>
-                        )}
-                        
-                        {/* Add Habit Button */}
-                        <button
-                          type="button"
-                          onClick={addHabit}
-                          className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-brand-accent hover:border-brand-accent/50 hover:bg-brand-accent/5 dark:hover:bg-brand-accent/90/10 transition-all duration-200 font-albert font-medium text-sm"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add Habit
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Course Assignments */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                        Assigned Courses
-                      </label>
-                    </div>
-                    <DayCourseSelector
-                      currentAssignments={dayFormData.courseAssignments}
-                      onChange={(assignments) => setDayFormData({ ...dayFormData, courseAssignments: assignments })}
-                    />
-                  </div>
-
-                  {saveError && (
-                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                      <p className="text-sm text-red-600 dark:text-red-400 font-albert">{saveError}</p>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={handleSaveDay}
-                      disabled={saving}
-                      className="bg-brand-accent hover:bg-brand-accent/90 text-white"
-                    >
-                      {saving ? 'Saving...' : 'Save Day'}
-                    </Button>
-                  </div>
-                </div>
                   );
                 })()
               )}

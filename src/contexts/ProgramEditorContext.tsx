@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 
 /**
  * ProgramEditorContext
@@ -58,6 +58,9 @@ interface ProgramEditorContextType {
   isSaving: boolean;
   saveError: string | null;
 
+  // Version counter - increments on discard/save to signal editors to reset
+  resetVersion: number;
+
   // Actions
   registerChange: (change: PendingChange) => void;
   updateChange: (key: string, data: Record<string, unknown>, editedFields?: string[]) => void;
@@ -72,6 +75,9 @@ interface ProgramEditorContextType {
 
   // Get all pending data for an entity (for restoring on navigation)
   getPendingData: (entityType: PendingEntityType, entityId: string, clientContextId?: string) => Record<string, unknown> | undefined;
+
+  // Get original data for an entity (for resetting on discard)
+  getOriginalData: (entityType: PendingEntityType, entityId: string, clientContextId?: string) => Record<string, unknown> | undefined;
 }
 
 const ProgramEditorContext = createContext<ProgramEditorContextType | null>(null);
@@ -100,6 +106,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
   const [pendingChanges, setPendingChanges] = useState<Map<string, PendingChange>>(new Map());
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [resetVersion, setResetVersion] = useState(0);
 
   // Update programId when prop changes
   useEffect(() => {
@@ -165,6 +172,15 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     return change?.pendingData;
   }, [getChangeForEntity]);
 
+  const getOriginalData = useCallback((
+    entityType: PendingEntityType,
+    entityId: string,
+    clientContextId?: string
+  ): Record<string, unknown> | undefined => {
+    const change = getChangeForEntity(entityType, entityId, clientContextId);
+    return change?.originalData;
+  }, [getChangeForEntity]);
+
   const registerChange = useCallback((change: PendingChange) => {
     const key = generateChangeKey(change.entityType, change.entityId, change.clientContextId);
     setPendingChanges(prev => {
@@ -208,6 +224,8 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
   const discardAllChanges = useCallback(() => {
     setPendingChanges(new Map());
     setSaveError(null);
+    // Increment reset version to signal editors to reset their local state
+    setResetVersion(v => v + 1);
   }, []);
 
   const saveAllChanges = useCallback(async (): Promise<SaveResult> => {
@@ -282,14 +300,23 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     for (const change of weekChanges) {
       try {
         const hasTaskChanges = weeklyTasksChanged(change.originalData, change.pendingData);
-        const body = {
+        
+        // Build the body with proper properties for the API
+        const body: Record<string, unknown> = {
           ...change.pendingData,
-          // Only distribute if weekly tasks actually changed
-          ...(hasTaskChanges && {
-            distributeTasksNow: true,
-            overwriteExisting: false, // Preserve day-sourced tasks
-          }),
         };
+        
+        // Only include distribution flags if weekly tasks actually changed
+        if (hasTaskChanges) {
+          body.distributeTasksNow = true;
+          body.overwriteExisting = true; // Overwrite for user-initiated saves
+        }
+
+        console.log(`[ProgramEditor] Saving week ${change.entityId} to ${change.apiEndpoint}`, {
+          method: change.httpMethod,
+          hasTaskChanges,
+          viewContext: change.viewContext,
+        });
 
         const response = await fetch(change.apiEndpoint, {
           method: change.httpMethod,
@@ -298,12 +325,22 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || `HTTP ${response.status}`);
+          let errorMessage = `HTTP ${response.status}`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.message || errorMessage;
+          } catch {
+            const errorText = await response.text();
+            if (errorText) errorMessage = errorText;
+          }
+          throw new Error(errorMessage);
         }
 
+        const responseData = await response.json();
+        console.log(`[ProgramEditor] Week ${change.entityId} saved successfully`, responseData);
         result.savedCount++;
       } catch (err) {
+        console.error(`[ProgramEditor] Failed to save week ${change.entityId}:`, err);
         result.success = false;
         result.errors.push({
           entityType: 'week',
@@ -315,8 +352,16 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
 
     // 3. Save days (can parallelize, after weeks complete)
     if (dayChanges.length > 0) {
+      console.log(`[ProgramEditor] Saving ${dayChanges.length} day changes`);
+      
       const dayResults = await Promise.allSettled(
         dayChanges.map(async (change) => {
+          console.log(`[ProgramEditor] Saving day ${change.entityId} to ${change.apiEndpoint}`, {
+            method: change.httpMethod,
+            viewContext: change.viewContext,
+            dayIndex: change.dayIndex,
+          });
+
           const response = await fetch(change.apiEndpoint, {
             method: change.httpMethod,
             headers: { 'Content-Type': 'application/json' },
@@ -324,10 +369,19 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
           });
 
           if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText || `HTTP ${response.status}`);
+            let errorMessage = `HTTP ${response.status}`;
+            try {
+              const errorData = await response.json();
+              errorMessage = errorData.error || errorData.message || errorMessage;
+            } catch {
+              const errorText = await response.text();
+              if (errorText) errorMessage = errorText;
+            }
+            throw new Error(errorMessage);
           }
 
+          const responseData = await response.json();
+          console.log(`[ProgramEditor] Day ${change.entityId} saved successfully`, responseData);
           return change;
         })
       );
@@ -336,6 +390,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
         if (r.status === 'fulfilled') {
           result.savedCount++;
         } else {
+          console.error(`[ProgramEditor] Failed to save day ${dayChanges[i].entityId}:`, r.reason);
           result.success = false;
           result.errors.push({
             entityType: 'day',
@@ -349,6 +404,8 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     // Clear successful changes
     if (result.success) {
       setPendingChanges(new Map());
+      // Increment reset version to signal editors they can reset to saved state
+      setResetVersion(v => v + 1);
     } else {
       // Keep only failed changes
       const failedKeys = new Set(
@@ -380,6 +437,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     unsavedCount,
     isSaving,
     saveError,
+    resetVersion,
     registerChange,
     updateChange,
     discardChange,
@@ -389,6 +447,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     hasChangeForEntity,
     getChangeForEntity,
     getPendingData,
+    getOriginalData,
   }), [
     currentProgramId,
     pendingChanges,
@@ -396,6 +455,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     unsavedCount,
     isSaving,
     saveError,
+    resetVersion,
     registerChange,
     updateChange,
     discardChange,
@@ -405,6 +465,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     hasChangeForEntity,
     getChangeForEntity,
     getPendingData,
+    getOriginalData,
   ]);
 
   return (
@@ -426,4 +487,123 @@ export function useProgramEditor(): ProgramEditorContextType {
 // Optional hook that returns null if not in provider (for optional usage)
 export function useProgramEditorOptional(): ProgramEditorContextType | null {
   return useContext(ProgramEditorContext);
+}
+
+// Day editor state type
+export interface DayEditorState {
+  title: string;
+  summary: string;
+  dailyPrompt: string;
+  tasks: Array<{
+    label: string;
+    type?: string;
+    isPrimary: boolean;
+    estimatedMinutes?: number;
+    notes?: string;
+    completed?: boolean;
+  }>;
+  habits: Array<{
+    title: string;
+    description?: string;
+    frequency: 'daily' | 'weekday' | 'custom';
+  }>;
+  courseAssignments: Array<{
+    courseId: string;
+    moduleIds?: string[];
+    lessonIds?: string[];
+  }>;
+}
+
+// Custom hook for day editing that integrates with the context
+export function useDayEditorWithContext(
+  dayIndex: number,
+  initialData: DayEditorState,
+  options: {
+    programId?: string;
+    viewContext: PendingViewContext;
+    clientContextId?: string; // enrollmentId or cohortId
+    apiEndpoint: string;
+  }
+) {
+  const context = useProgramEditorOptional();
+  const [formData, setFormDataInternal] = useState<DayEditorState>(initialData);
+  const [hasChanges, setHasChanges] = useState(false);
+  const lastResetVersion = useRef(context?.resetVersion ?? 0);
+  const lastDayIndex = useRef(dayIndex);
+
+  // Check for pending data from context on mount
+  useEffect(() => {
+    const entityId = `day-${dayIndex}`;
+    const pendingData = context?.getPendingData('day', entityId, options.clientContextId);
+    if (pendingData) {
+      setFormDataInternal(pendingData as unknown as DayEditorState);
+      setHasChanges(true);
+    }
+  }, [dayIndex, context, options.clientContextId]);
+
+  // Reset when resetVersion changes (discard/save)
+  useEffect(() => {
+    if (context && context.resetVersion !== lastResetVersion.current) {
+      lastResetVersion.current = context.resetVersion;
+      // Reset to initial data
+      setFormDataInternal(initialData);
+      setHasChanges(false);
+    }
+  }, [context?.resetVersion, initialData, context]);
+
+  // Reset when day index changes
+  useEffect(() => {
+    if (dayIndex !== lastDayIndex.current) {
+      lastDayIndex.current = dayIndex;
+      // Check for pending data for the new day
+      const entityId = `day-${dayIndex}`;
+      const pendingData = context?.getPendingData('day', entityId, options.clientContextId);
+      if (pendingData) {
+        setFormDataInternal(pendingData as unknown as DayEditorState);
+        setHasChanges(true);
+      } else {
+        setFormDataInternal(initialData);
+        setHasChanges(false);
+      }
+    }
+  }, [dayIndex, initialData, context, options.clientContextId]);
+
+  // Check for changes and register with context
+  useEffect(() => {
+    const changed = JSON.stringify(formData) !== JSON.stringify(initialData);
+    setHasChanges(changed);
+
+    if (context && options.programId) {
+      const entityId = `day-${dayIndex}`;
+
+      if (changed) {
+        context.registerChange({
+          entityType: 'day',
+          entityId,
+          dayIndex,
+          viewContext: options.viewContext,
+          clientContextId: options.clientContextId,
+          originalData: initialData as unknown as Record<string, unknown>,
+          pendingData: formData as unknown as Record<string, unknown>,
+          apiEndpoint: options.apiEndpoint,
+          httpMethod: 'POST',
+        });
+      } else {
+        // Remove from pending changes if no longer changed
+        const changeKey = context.getChangeKey('day', entityId, options.clientContextId);
+        context.discardChange(changeKey);
+      }
+    }
+  }, [formData, initialData, context, options.programId, options.viewContext, options.clientContextId, options.apiEndpoint, dayIndex]);
+
+  // Wrapper to update form data
+  const setFormData = useCallback((updater: DayEditorState | ((prev: DayEditorState) => DayEditorState)) => {
+    setFormDataInternal(updater);
+  }, []);
+
+  return {
+    formData,
+    setFormData,
+    hasChanges,
+  };
 }

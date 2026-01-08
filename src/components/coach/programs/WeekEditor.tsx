@@ -209,6 +209,8 @@ export function WeekEditor({
 
   // Track if we've initialized from pending data
   const initializedFromPending = useRef(false);
+  // Track last reset version to detect discard/save
+  const lastResetVersion = useRef(editorContext?.resetVersion ?? 0);
 
   // Form data type
   type WeekFormData = {
@@ -320,6 +322,19 @@ export function WeekEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [week.id]); // Only depend on week.id to detect week changes
 
+  // Watch for reset version changes (discard/save from global buttons)
+  useEffect(() => {
+    if (editorContext && editorContext.resetVersion !== lastResetVersion.current) {
+      lastResetVersion.current = editorContext.resetVersion;
+      // Reset to original week data
+      setFormData(getDefaultFormData());
+      setHasChanges(false);
+      setShowSyncButton(false);
+      setSaveStatus('idle');
+      setEditedFields(new Set());
+    }
+  }, [editorContext?.resetVersion, getDefaultFormData]);
+
   // Check for changes and register with context
   useEffect(() => {
     const changed =
@@ -340,6 +355,45 @@ export function WeekEditor({
 
     // Register changes with context if available
     if (editorContext && changed && programId) {
+      // Build the pending data with context-specific fields
+      let pendingDataForContext: Record<string, unknown> = { ...formData };
+      let httpMethod: 'PATCH' | 'POST' | 'PUT' = 'PATCH';
+      let endpoint = getApiEndpoint();
+
+      if (viewContext === 'client' && enrollmentId) {
+        // Client week requires POST with enrollmentId and weekNumber
+        pendingDataForContext = {
+          ...formData,
+          enrollmentId,
+          weekNumber: week.weekNumber,
+          startDayIndex: week.startDayIndex,
+          endDayIndex: week.endDayIndex,
+          moduleId: week.moduleId,
+        };
+        httpMethod = 'POST';
+      } else if (viewContext === 'cohort' && cohortId) {
+        // Cohort week content uses PUT
+        pendingDataForContext = {
+          weeklyTasks: formData.weeklyTasks,
+          weeklyHabits: week.weeklyHabits, // Preserve existing
+          weeklyPrompt: formData.weeklyPrompt,
+          distribution: formData.distribution,
+          manualNotes: formData.manualNotes,
+          coachRecordingUrl: formData.coachRecordingUrl,
+          coachRecordingNotes: formData.coachRecordingNotes,
+          linkedSummaryIds: formData.linkedSummaryIds,
+          linkedCallEventIds: formData.linkedCallEventIds,
+        };
+        httpMethod = 'PUT';
+      } else {
+        // Template week - add day indices for distribution
+        pendingDataForContext = {
+          ...formData,
+          startDayIndex: week.startDayIndex,
+          endDayIndex: week.endDayIndex,
+        };
+      }
+
       editorContext.registerChange({
         entityType: 'week',
         entityId: week.id,
@@ -361,9 +415,9 @@ export function WeekEditor({
           linkedSummaryIds: week.linkedSummaryIds,
           linkedCallEventIds: week.linkedCallEventIds,
         },
-        pendingData: formData,
-        apiEndpoint: getApiEndpoint(),
-        httpMethod: viewContext === 'cohort' ? 'PUT' : 'PATCH',
+        pendingData: pendingDataForContext,
+        apiEndpoint: endpoint,
+        httpMethod,
         editedFields: Array.from(editedFields),
       });
     } else if (editorContext && !changed) {

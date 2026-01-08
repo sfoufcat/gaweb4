@@ -38,6 +38,9 @@ export function ModuleEditor({
   // Check for pending data from context
   const pendingData = editorContext?.getPendingData('module', module.id);
 
+  // Track last reset version to detect discard/save
+  const lastResetVersion = React.useRef(editorContext?.resetVersion ?? 0);
+
   // Form data type
   type ModuleFormData = {
     name: string;
@@ -82,6 +85,16 @@ export function ModuleEditor({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [module.id]);
+
+  // Watch for reset version changes (discard/save from global buttons)
+  useEffect(() => {
+    if (editorContext && editorContext.resetVersion !== lastResetVersion.current) {
+      lastResetVersion.current = editorContext.resetVersion;
+      // Reset to original module data
+      setFormData(getDefaultFormData());
+      setHasChanges(false);
+    }
+  }, [editorContext?.resetVersion, getDefaultFormData]);
 
   // Check for changes and register with context
   useEffect(() => {
