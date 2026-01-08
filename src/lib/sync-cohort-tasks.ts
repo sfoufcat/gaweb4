@@ -220,23 +220,22 @@ export async function syncProgramTasksToCohort(
   }
 
   // 5. Create/update CohortTaskState documents
-  // Get the tasks that were just synced to track in cohort state
+  // Always ensure CohortTaskStates exist for synced tasks, even when no new tasks were created
+  // (e.g., when fill-empty mode matches existing tasks by programTaskId)
   let cohortTaskStatesCreated = 0;
 
-  if (totalTasksCreated > 0) {
-    try {
-      cohortTaskStatesCreated = await createCohortTaskStatesForSyncedTasks(
-        cohortId,
-        programId,
-        cohort.organizationId || program.organizationId,
-        date,
-        enrollments.map(e => e.userId)
-      );
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      errors.push(`Failed to create CohortTaskStates: ${errorMsg}`);
-      console.error('[COHORT_SYNC] Error creating CohortTaskStates:', err);
-    }
+  try {
+    cohortTaskStatesCreated = await createCohortTaskStatesForSyncedTasks(
+      cohortId,
+      programId,
+      cohort.organizationId || program.organizationId,
+      date,
+      enrollments.map(e => e.userId)
+    );
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    errors.push(`Failed to create CohortTaskStates: ${errorMsg}`);
+    console.error('[COHORT_SYNC] Error creating CohortTaskStates:', err);
   }
 
   console.log(
@@ -286,7 +285,13 @@ async function createCohortTaskStatesForSyncedTasks(
     .get();
 
   // If we have more than 10 members, we need multiple queries
-  const allTasks: Array<{ title: string; programDayIndex: number; sourceWeekId?: string; sourceProgramDayId?: string }> = [];
+  const allTasks: Array<{
+    title: string;
+    programDayIndex: number;
+    sourceWeekId?: string;
+    sourceProgramDayId?: string;
+    programTaskId?: string;
+  }> = [];
 
   tasksSnapshot.docs.forEach(doc => {
     const data = doc.data();
@@ -295,6 +300,7 @@ async function createCohortTaskStatesForSyncedTasks(
       programDayIndex: data.programDayIndex || 0,
       sourceWeekId: data.sourceWeekId,
       sourceProgramDayId: data.sourceProgramDayId,
+      programTaskId: data.programTaskId,
     });
   });
 
@@ -316,15 +322,17 @@ async function createCohortTaskStatesForSyncedTasks(
           programDayIndex: data.programDayIndex || 0,
           sourceWeekId: data.sourceWeekId,
           sourceProgramDayId: data.sourceProgramDayId,
+          programTaskId: data.programTaskId,
         });
       });
     }
   }
 
-  // Deduplicate by title + day index (same task template)
+  // Deduplicate by programTaskId (preferred) or title:dayIndex (fallback for backward compat)
   const uniqueTasks = new Map<string, typeof allTasks[0]>();
   for (const task of allTasks) {
-    const key = `${task.title}:${task.programDayIndex}`;
+    // Use programTaskId as key if available, otherwise fall back to title:dayIndex
+    const key = task.programTaskId || `${task.title}:${task.programDayIndex}`;
     if (!uniqueTasks.has(key)) {
       uniqueTasks.set(key, task);
     }
@@ -343,6 +351,7 @@ async function createCohortTaskStatesForSyncedTasks(
       programDayIndex: task.programDayIndex,
       taskTemplateId: templateId,
       taskTitle: task.title,
+      programTaskId: task.programTaskId,
       date,
       memberIds: memberUserIds,
     });

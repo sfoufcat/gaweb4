@@ -131,23 +131,37 @@ export async function PATCH(
     if (body.status !== undefined && isProgramSourced && existingTask.programEnrollmentId) {
       const isCompleted = body.status === 'completed';
       // Fire and forget - don't block the response
-      import('@/lib/cohort-task-state').then(async ({ findCohortTaskStateByTaskTitle, updateMemberTaskState, getProgramCompletionThreshold }) => {
+      import('@/lib/cohort-task-state').then(async ({ findCohortTaskStateByProgramTaskId, findCohortTaskStateByTaskTitle, updateMemberTaskState, getProgramCompletionThreshold }) => {
         try {
           // Get the enrollment to check if it's a cohort enrollment
           const enrollmentDoc = await adminDb.collection('program_enrollments').doc(existingTask.programEnrollmentId!).get();
           if (!enrollmentDoc.exists) return;
-          
+
           const enrollment = enrollmentDoc.data();
           if (!enrollment?.cohortId) return; // Not a cohort enrollment
-          
+
           // Find the CohortTaskState for this task
-          const cohortState = await findCohortTaskStateByTaskTitle(
-            enrollment.cohortId,
-            existingTask.title,
-            existingTask.date,
-            existingTask.programDayIndex || 0
-          );
-          
+          // Prefer programTaskId (robust) with title fallback (backward compat)
+          let cohortState = null;
+
+          if (existingTask.programTaskId) {
+            cohortState = await findCohortTaskStateByProgramTaskId(
+              enrollment.cohortId,
+              existingTask.programTaskId,
+              existingTask.date
+            );
+          }
+
+          // Fallback to title-based matching for tasks without programTaskId
+          if (!cohortState) {
+            cohortState = await findCohortTaskStateByTaskTitle(
+              enrollment.cohortId,
+              existingTask.title,
+              existingTask.date,
+              existingTask.programDayIndex || 0
+            );
+          }
+
           if (cohortState) {
             const threshold = await getProgramCompletionThreshold(enrollment.programId);
             await updateMemberTaskState(

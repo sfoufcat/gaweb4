@@ -103,6 +103,7 @@ export async function POST(
       for (const task of body.tasks) {
         if (!task.label) continue;
         tasks.push({
+          id: task.id || crypto.randomUUID(), // Unique ID for robust task matching
           label: task.label,
           type: task.type || 'task',
           isPrimary: task.isPrimary !== false, // Default to true

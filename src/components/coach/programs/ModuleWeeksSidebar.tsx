@@ -1304,43 +1304,44 @@ export function ModuleWeeksSidebar({
           </button>
         )}
 
-        {/* Cycle Indicator - for evergreen programs */}
-        {program.durationType === 'evergreen' && (
-          <div className="mt-3 mx-1 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
-            <div className="flex items-center gap-2 text-sm">
-              <RefreshCw className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-emerald-700 dark:text-emerald-300 font-medium font-albert">
-                Cycle {(() => {
-                  // Client mode: use actual cycle from enrollment
-                  if (isClientView && currentEnrollment) {
-                    return getActiveCycleNumber(currentEnrollment);
-                  }
-                  // Cohort mode: calculate from cohort start date
-                  if (isCohortView && currentCohort?.startDate) {
-                    return calculateCyclesSinceDate(
-                      currentCohort.startDate,
-                      program.lengthDays,
-                      program.includeWeekends !== false
-                    );
-                  }
-                  // Template mode: calculate from program creation
-                  if (program.createdAt) {
-                    return calculateCyclesSinceDate(
-                      program.createdAt,
-                      program.lengthDays,
-                      program.includeWeekends !== false
-                    );
-                  }
-                  return 1;
-                })()}
-              </span>
-            </div>
-          </div>
-        )}
         </div>
         {/* Fade gradient at bottom to indicate more content */}
         <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white/80 dark:from-[#171b22]/80 to-transparent pointer-events-none" />
       </div>
+
+      {/* Cycle Indicator - for evergreen programs, always visible below scroll area */}
+      {program.durationType === 'evergreen' && (
+        <div className="mx-3 my-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800/30 flex-shrink-0">
+          <div className="flex items-center gap-2 text-sm">
+            <RefreshCw className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-emerald-700 dark:text-emerald-300 font-medium font-albert">
+              Cycle {(() => {
+                // Client mode: use actual cycle from enrollment
+                if (isClientView && currentEnrollment) {
+                  return getActiveCycleNumber(currentEnrollment);
+                }
+                // Cohort mode: calculate from cohort start date
+                if (isCohortView && currentCohort?.startDate) {
+                  return calculateCyclesSinceDate(
+                    currentCohort.startDate,
+                    program.lengthDays,
+                    program.includeWeekends !== false
+                  );
+                }
+                // Template mode: calculate from program creation
+                if (program.createdAt) {
+                  return calculateCyclesSinceDate(
+                    program.createdAt,
+                    program.lengthDays,
+                    program.includeWeekends !== false
+                  );
+                }
+                return 1;
+              })()}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Status Legend + Tools Row - show when viewing client/cohort progress */}
       {currentDayIndex !== undefined && currentDayIndex > 0 && (

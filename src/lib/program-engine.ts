@@ -2487,21 +2487,27 @@ export async function syncProgramTasksToClientDay(
   
   // 9. Create new tasks from templates
   for (const template of tasksForDay) {
-    // Check if task with same title already exists (avoid duplicates)
-    const existingWithSameTitle = remainingTasks.find(
-      t => t.title === template.label && t.programEnrollmentId === programEnrollmentId
-    );
-    
-    if (existingWithSameTitle) {
+    // Match existing task by programTaskId (robust) or fallback to title (backward compat)
+    const existingTask = remainingTasks.find(t => {
+      if (t.programEnrollmentId !== programEnrollmentId) return false;
+      // Prefer programTaskId matching if template has an id
+      if (template.id && t.programTaskId) {
+        return t.programTaskId === template.id;
+      }
+      // Fallback to title matching for backward compatibility
+      return t.title === template.label;
+    });
+
+    if (existingTask) {
       // In fill-empty mode, skip if task exists
       if (mode === 'fill-empty') {
         tasksSkipped++;
-        console.log(`[SYNC_TO_CLIENT] Skipped existing task: "${template.label}"`);
+        console.log(`[SYNC_TO_CLIENT] Skipped existing task: "${template.label}" (matched by ${existingTask.programTaskId ? 'programTaskId' : 'title'})`);
         continue;
       }
       // In override mode, we already deleted replaceable tasks, so if it still exists
       // it means it's client-locked or client-created - skip it
-      if (existingWithSameTitle.clientLocked || existingWithSameTitle.sourceType === 'user') {
+      if (existingTask.clientLocked || existingTask.sourceType === 'user') {
         tasksSkipped++;
         console.log(`[SYNC_TO_CLIENT] Skipped client-protected task: "${template.label}"`);
         continue;
@@ -2550,6 +2556,8 @@ export async function syncProgramTasksToClientDay(
       sourceProgramDayId,
       sourceWeekId,
       assignedByCoachId: coachUserId || null,
+      // Link to template task for robust matching on renames
+      programTaskId: template.id || undefined,
     };
     
     try {

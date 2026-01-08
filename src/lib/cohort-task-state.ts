@@ -19,6 +19,7 @@ export interface CreateCohortTaskStateParams {
   programDayIndex: number;
   taskTemplateId: string;
   taskTitle: string;
+  programTaskId?: string; // Links to template task for robust matching
   date: string;
   memberIds: string[];
 }
@@ -45,7 +46,7 @@ export interface CohortTaskStateWithThreshold extends CohortTaskState {
 export async function createCohortTaskState(
   params: CreateCohortTaskStateParams
 ): Promise<CohortTaskState> {
-  const { cohortId, programId, organizationId, programDayIndex, taskTemplateId, taskTitle, date, memberIds } = params;
+  const { cohortId, programId, organizationId, programDayIndex, taskTemplateId, taskTitle, programTaskId, date, memberIds } = params;
 
   const now = new Date().toISOString();
 
@@ -62,6 +63,7 @@ export async function createCohortTaskState(
     programDayIndex,
     taskTemplateId,
     taskTitle,
+    programTaskId: programTaskId || undefined,
     date,
     totalMembers: memberIds.length,
     completedCount: 0,
@@ -147,6 +149,28 @@ export async function findCohortTaskStateByTaskTitle(
     .where('taskTitle', '==', taskTitle)
     .where('date', '==', date)
     .where('programDayIndex', '==', programDayIndex)
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) return null;
+  const doc = snapshot.docs[0];
+  return { id: doc.id, ...doc.data() } as CohortTaskState;
+}
+
+/**
+ * Find CohortTaskState by programTaskId (robust matching)
+ * Preferred method for finding CohortTaskState as it survives task renames
+ */
+export async function findCohortTaskStateByProgramTaskId(
+  cohortId: string,
+  programTaskId: string,
+  date: string
+): Promise<CohortTaskState | null> {
+  const snapshot = await adminDb
+    .collection('cohort_task_states')
+    .where('cohortId', '==', cohortId)
+    .where('programTaskId', '==', programTaskId)
+    .where('date', '==', date)
     .limit(1)
     .get();
 

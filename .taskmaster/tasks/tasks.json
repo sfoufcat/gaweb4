@@ -159,9 +159,9 @@
         "dependencies": [
           "94"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T12:21:45.588Z"
+        "updatedAt": "2026-01-08T12:22:40.038Z"
       },
       {
         "id": "96",
@@ -173,8 +173,9 @@
         "dependencies": [
           "94"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:30:06.388Z"
       },
       {
         "id": "97",
@@ -188,8 +189,9 @@
           "95",
           "96"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:30:06.389Z"
       },
       {
         "id": "98",
@@ -201,8 +203,9 @@
         "dependencies": [
           "94"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:30:06.390Z"
       },
       {
         "id": "99",
@@ -215,8 +218,9 @@
           "94",
           "98"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:30:06.390Z"
       },
       {
         "id": "100",
@@ -228,8 +232,9 @@
         "dependencies": [
           "99"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:30:06.391Z"
       },
       {
         "id": "101",
@@ -242,15 +247,16 @@
           "97",
           "100"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:30:06.392Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-08T12:21:45.588Z",
+      "lastModified": "2026-01-08T12:30:06.392Z",
       "taskCount": 18,
-      "completedCount": 2,
+      "completedCount": 9,
       "tags": [
         "master"
       ]

@@ -15,7 +15,19 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { syncProgramTasksToClientDay, calculateDateForProgramDay, getProgramV2 } from '@/lib/program-engine';
-import type { ClientProgramDay, ProgramEnrollment, ProgramCohort } from '@/types';
+import type { ClientProgramDay, ProgramEnrollment, ProgramCohort, ProgramTaskTemplate } from '@/types';
+
+/**
+ * Process tasks to ensure each has a unique ID for robust matching.
+ * Preserves existing IDs, generates new UUIDs for tasks without IDs.
+ */
+function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramTaskTemplate[] {
+  if (!tasks || !Array.isArray(tasks)) return [];
+  return tasks.map((task) => ({
+    ...task,
+    id: task.id || crypto.randomUUID(),
+  }));
+}
 
 export async function GET(
   request: NextRequest,
@@ -188,8 +200,15 @@ export async function POST(
     if (!existingDaySnapshot.empty) {
       // Update existing client day
       const existingDoc = existingDaySnapshot.docs[0];
+
+      // Ensure tasks have IDs for robust matching
+      const processedTasks = dayData.tasks !== undefined
+        ? processTasksWithIds(dayData.tasks)
+        : undefined;
+
       const updateData = {
         ...dayData,
+        ...(processedTasks !== undefined && { tasks: processedTasks }),
         hasLocalChanges: true,
         updatedAt: now,
       };
@@ -277,11 +296,11 @@ export async function POST(
       userId: enrollment.userId,
       dayIndex,
 
-      // Content from request
+      // Content from request - ensure tasks have IDs for robust matching
       title: dayData.title || undefined,
       summary: dayData.summary || undefined,
       dailyPrompt: dayData.dailyPrompt || undefined,
-      tasks: dayData.tasks || [],
+      tasks: processTasksWithIds(dayData.tasks),
       habits: dayData.habits || [],
       courseAssignments: dayData.courseAssignments || [],
       fillSource: dayData.fillSource || undefined,
