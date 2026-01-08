@@ -355,6 +355,9 @@ export function WeekEditor({
 
     // Register changes with context if available
     if (editorContext && changed && programId) {
+      // Check if this is a temp week (doesn't exist in DB yet)
+      const isTempWeek = week.id.startsWith('temp-');
+      
       // Build the pending data with context-specific fields
       let pendingDataForContext: Record<string, unknown> = { ...formData };
       let httpMethod: 'PATCH' | 'POST' | 'PUT' = 'PATCH';
@@ -372,19 +375,48 @@ export function WeekEditor({
         };
         httpMethod = 'POST';
       } else if (viewContext === 'cohort' && cohortId) {
-        // Cohort week content uses PUT
+        // Cohort week content - handle temp weeks differently
+        if (isTempWeek) {
+          // For temp weeks in cohort mode, we need to create the template week first
+          // Use the template weeks POST endpoint
+          endpoint = `/api/coach/org-programs/${programId}/weeks`;
+          pendingDataForContext = {
+            ...formData,
+            weekNumber: week.weekNumber,
+            startDayIndex: week.startDayIndex,
+            endDayIndex: week.endDayIndex,
+            moduleId: week.moduleId || undefined, // Will be assigned by API if not set
+            // Mark that this needs cohort content creation after
+            _createCohortContentAfter: true,
+            _cohortId: cohortId,
+          };
+          httpMethod = 'POST';
+        } else {
+          // Existing template week - use PUT to update cohort content
+          pendingDataForContext = {
+            weeklyTasks: formData.weeklyTasks,
+            weeklyHabits: week.weeklyHabits, // Preserve existing
+            weeklyPrompt: formData.weeklyPrompt,
+            distribution: formData.distribution,
+            manualNotes: formData.manualNotes,
+            coachRecordingUrl: formData.coachRecordingUrl,
+            coachRecordingNotes: formData.coachRecordingNotes,
+            linkedSummaryIds: formData.linkedSummaryIds,
+            linkedCallEventIds: formData.linkedCallEventIds,
+          };
+          httpMethod = 'PUT';
+        }
+      } else if (isTempWeek) {
+        // Template mode with temp week - needs POST to create
+        endpoint = `/api/coach/org-programs/${programId}/weeks`;
         pendingDataForContext = {
-          weeklyTasks: formData.weeklyTasks,
-          weeklyHabits: week.weeklyHabits, // Preserve existing
-          weeklyPrompt: formData.weeklyPrompt,
-          distribution: formData.distribution,
-          manualNotes: formData.manualNotes,
-          coachRecordingUrl: formData.coachRecordingUrl,
-          coachRecordingNotes: formData.coachRecordingNotes,
-          linkedSummaryIds: formData.linkedSummaryIds,
-          linkedCallEventIds: formData.linkedCallEventIds,
+          ...formData,
+          weekNumber: week.weekNumber,
+          startDayIndex: week.startDayIndex,
+          endDayIndex: week.endDayIndex,
+          moduleId: week.moduleId || undefined, // Will be assigned by API if not set
         };
-        httpMethod = 'PUT';
+        httpMethod = 'POST';
       } else {
         // Template week - add day indices for distribution
         pendingDataForContext = {
