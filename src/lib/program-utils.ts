@@ -6,6 +6,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import type { TaskDistribution } from '@/types';
 
 interface ModuleData {
   id: string;
