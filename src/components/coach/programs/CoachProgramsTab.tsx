@@ -15,7 +15,7 @@ import type { DiscoverCourse } from '@/types/discover';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine, RefreshCw } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine, RefreshCw, UserPlus } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -29,6 +29,7 @@ import { ReferralConfigForm } from '@/components/coach/referrals';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { NewProgramModal } from './NewProgramModal';
 import { EnrollmentSettingsModal } from './EnrollmentSettingsModal';
+import { EnrollClientsModal } from './EnrollClientsModal';
 import type { OrgEnrollmentRules } from '@/types';
 import { DEFAULT_ENROLLMENT_RULES } from '@/types';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
@@ -225,6 +226,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   // Enrollment settings modal state
   const [isEnrollmentSettingsOpen, setIsEnrollmentSettingsOpen] = useState(false);
   const [enrollmentRules, setEnrollmentRules] = useState<OrgEnrollmentRules>(DEFAULT_ENROLLMENT_RULES);
+  const [showEnrollClientsModal, setShowEnrollClientsModal] = useState(false);
 
   // Plan tier for limit checking
   const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
@@ -2307,91 +2309,160 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   )
                 )}
 
-                {/* Page Dropdown */}
-                <Popover open={isPageDropdownOpen} onOpenChange={setIsPageDropdownOpen}>
-                  <PopoverTrigger asChild>
+                {/* Page Navigation - Desktop: Horizontal tabs, Mobile: Dropdown */}
+                {/* Desktop Tabs */}
+                <div className="hidden md:flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleViewModeChange('days')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                      viewMode === 'days'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                    }`}
+                  >
+                    <LayoutTemplate className="w-4 h-4" />
+                    Content
+                  </button>
+                  {selectedProgram?.type === 'group' && (
                     <button
                       type="button"
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] rounded-lg transition-colors"
-                    >
-                      {viewMode === 'days' && <><LayoutTemplate className="w-4 h-4" />Content</>}
-                      {viewMode === 'cohorts' && <><Users className="w-4 h-4" />Cohorts</>}
-                      {viewMode === 'enrollments' && <><Users className="w-4 h-4" />Enrollments</>}
-                      {viewMode === 'landing' && <><FileText className="w-4 h-4" />Landing Page</>}
-                      {viewMode === 'referrals' && <><Gift className="w-4 h-4" />Referrals</>}
-                      <ChevronDown className="w-4 h-4 ml-1" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48 p-1" align="end">
-                    <button
-                      type="button"
-                      onClick={() => { handleViewModeChange('days'); setIsPageDropdownOpen(false); }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
-                        viewMode === 'days'
-                          ? 'bg-brand-accent/10 text-brand-accent'
-                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                      onClick={() => handleViewModeChange('cohorts')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                        viewMode === 'cohorts'
+                          ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                       }`}
                     >
-                      <LayoutTemplate className="w-4 h-4" />
-                      Content
-                      {viewMode === 'days' && <Check className="w-4 h-4 ml-auto" />}
+                      <Users className="w-4 h-4" />
+                      Cohorts
                     </button>
-                    {selectedProgram?.type === 'group' && (
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleViewModeChange('enrollments')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                      viewMode === 'enrollments'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    Enrollments
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleViewModeChange('landing')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                      viewMode === 'landing'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    Landing Page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleViewModeChange('referrals')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                      viewMode === 'referrals'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                    }`}
+                  >
+                    <Gift className="w-4 h-4" />
+                    Referrals
+                  </button>
+                </div>
+
+                {/* Mobile Dropdown */}
+                <div className="md:hidden">
+                  <Popover open={isPageDropdownOpen} onOpenChange={setIsPageDropdownOpen}>
+                    <PopoverTrigger asChild>
                       <button
                         type="button"
-                        onClick={() => { handleViewModeChange('cohorts'); setIsPageDropdownOpen(false); }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] rounded-lg transition-colors"
+                      >
+                        {viewMode === 'days' && <><LayoutTemplate className="w-4 h-4" />Content</>}
+                        {viewMode === 'cohorts' && <><Users className="w-4 h-4" />Cohorts</>}
+                        {viewMode === 'enrollments' && <><Users className="w-4 h-4" />Enrollments</>}
+                        {viewMode === 'landing' && <><FileText className="w-4 h-4" />Landing Page</>}
+                        {viewMode === 'referrals' && <><Gift className="w-4 h-4" />Referrals</>}
+                        <ChevronDown className="w-4 h-4 ml-1" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-1" align="end">
+                      <button
+                        type="button"
+                        onClick={() => { handleViewModeChange('days'); setIsPageDropdownOpen(false); }}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
-                          viewMode === 'cohorts'
+                          viewMode === 'days'
+                            ? 'bg-brand-accent/10 text-brand-accent'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                        }`}
+                      >
+                        <LayoutTemplate className="w-4 h-4" />
+                        Content
+                        {viewMode === 'days' && <Check className="w-4 h-4 ml-auto" />}
+                      </button>
+                      {selectedProgram?.type === 'group' && (
+                        <button
+                          type="button"
+                          onClick={() => { handleViewModeChange('cohorts'); setIsPageDropdownOpen(false); }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                            viewMode === 'cohorts'
+                              ? 'bg-brand-accent/10 text-brand-accent'
+                              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                          }`}
+                        >
+                          <Users className="w-4 h-4" />
+                          Cohorts
+                          {viewMode === 'cohorts' && <Check className="w-4 h-4 ml-auto" />}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { handleViewModeChange('enrollments'); setIsPageDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                          viewMode === 'enrollments'
                             ? 'bg-brand-accent/10 text-brand-accent'
                             : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
                         }`}
                       >
                         <Users className="w-4 h-4" />
-                        Cohorts
-                        {viewMode === 'cohorts' && <Check className="w-4 h-4 ml-auto" />}
+                        Enrollments
+                        {viewMode === 'enrollments' && <Check className="w-4 h-4 ml-auto" />}
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => { handleViewModeChange('enrollments'); setIsPageDropdownOpen(false); }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
-                        viewMode === 'enrollments'
-                          ? 'bg-brand-accent/10 text-brand-accent'
-                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
-                      }`}
-                    >
-                      <Users className="w-4 h-4" />
-                      Enrollments
-                      {viewMode === 'enrollments' && <Check className="w-4 h-4 ml-auto" />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { handleViewModeChange('landing'); setIsPageDropdownOpen(false); }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
-                        viewMode === 'landing'
-                          ? 'bg-brand-accent/10 text-brand-accent'
-                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
-                      }`}
-                    >
-                      <FileText className="w-4 h-4" />
-                      Landing Page
-                      {viewMode === 'landing' && <Check className="w-4 h-4 ml-auto" />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { handleViewModeChange('referrals'); setIsPageDropdownOpen(false); }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
-                        viewMode === 'referrals'
-                          ? 'bg-brand-accent/10 text-brand-accent'
-                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
-                      }`}
-                    >
-                      <Gift className="w-4 h-4" />
-                      Referrals
-                      {viewMode === 'referrals' && <Check className="w-4 h-4 ml-auto" />}
-                    </button>
-                  </PopoverContent>
-                </Popover>
+                      <button
+                        type="button"
+                        onClick={() => { handleViewModeChange('landing'); setIsPageDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                          viewMode === 'landing'
+                            ? 'bg-brand-accent/10 text-brand-accent'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                        }`}
+                      >
+                        <FileText className="w-4 h-4" />
+                        Landing Page
+                        {viewMode === 'landing' && <Check className="w-4 h-4 ml-auto" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { handleViewModeChange('referrals'); setIsPageDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                          viewMode === 'referrals'
+                            ? 'bg-brand-accent/10 text-brand-accent'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                        }`}
+                      >
+                        <Gift className="w-4 h-4" />
+                        Referrals
+                        {viewMode === 'referrals' && <Check className="w-4 h-4 ml-auto" />}
+                      </button>
+                    </PopoverContent>
+                  </Popover>
+                </div>
 
                 {/* Row/Calendar Toggle - only show on Content view */}
                 {viewMode === 'days' && (
@@ -2438,7 +2509,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         </div>
 
         {/* Warning: No cohorts for group program */}
-        {viewMode === 'days' && selectedProgram?.type === 'group' && programCohorts.length === 0 && (
+        {viewMode === 'days' && selectedProgram?.type === 'group' && !loadingDetails && programCohorts.length === 0 && (
           <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-2xl">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
@@ -3976,7 +4047,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 </div>
               ))}
 
-              {programCohorts.length === 0 && (
+              {!loadingDetails && programCohorts.length === 0 && (
                 <div className="text-center py-8 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
                   <Calendar className="w-12 h-12 text-[#5f5a55] mx-auto mb-3" />
                   <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
@@ -4002,9 +4073,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                 View and manage enrolled users
               </p>
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                {programEnrollments.filter(e => e.status === 'active' || e.status === 'upcoming').length} active
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  {programEnrollments.filter(e => e.status === 'active' || e.status === 'upcoming').length} active
+                </span>
+                <Button
+                  onClick={() => setShowEnrollClientsModal(true)}
+                  className="flex items-center gap-2 bg-brand-accent hover:bg-brand-accent/90 text-white font-albert text-sm h-9 px-3"
+                  size="sm"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Enroll Clients
+                </Button>
+              </div>
             </div>
 
             {loadingEnrollments ? (
@@ -5472,7 +5553,27 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         currentRules={enrollmentRules}
         onSave={(rules) => setEnrollmentRules(rules)}
       />
-      
+
+      {/* Enroll Clients Modal */}
+      <EnrollClientsModal
+        isOpen={showEnrollClientsModal}
+        onClose={() => setShowEnrollClientsModal(false)}
+        onEnrollComplete={() => {
+          setShowEnrollClientsModal(false);
+          if (selectedProgram) {
+            fetchProgramEnrollments(selectedProgram.id);
+          }
+        }}
+        program={selectedProgram ? {
+          id: selectedProgram.id,
+          name: selectedProgram.name,
+          type: selectedProgram.type,
+          priceInCents: selectedProgram.priceInCents || 0,
+          currency: selectedProgram.currency,
+        } : null}
+        existingEnrollmentUserIds={programEnrollments.map(e => e.userId)}
+      />
+
       {/* AI Program Content Modal */}
       <AIHelperModal
         isOpen={isAIProgramContentModalOpen}

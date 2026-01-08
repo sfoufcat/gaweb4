@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { UserPlus, RefreshCw, Eye, MessageCircle, Send, Trash2, Download } from 'lucide-react';
 import { SquadManagerPopover } from './SquadManagerPopover';
 import { ProgramManagerPopover } from './ProgramManagerPopover';
+import { ComplimentaryAccessConfirmation } from './ComplimentaryAccessConfirmation';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { generateDemoUsers, getDemoSquads } from '@/lib/demo-data';
 import { SendDMModal, type DMRecipient } from '@/components/coach/SendDMModal';
@@ -188,6 +189,30 @@ export function AdminUsersTab({
   // Squad state for org-scoped mode
   const [squads, setSquads] = useState<SquadOption[]>([]);
   const [updatingSquadUserId, setUpdatingSquadUserId] = useState<string | null>(null);
+
+  // Program state for org-scoped mode
+  const [availablePrograms, setAvailablePrograms] = useState<Array<{
+    id: string;
+    name: string;
+    type: ProgramType;
+    priceInCents: number;
+    currency?: string;
+  }>>([]);
+  const [cohortsByProgram, setCohortsByProgram] = useState<Record<string, Array<{
+    id: string;
+    name: string;
+    programId: string;
+    status: 'upcoming' | 'active' | 'completed' | 'archived';
+    startDate: string;
+  }>>>({});
+  const [enrollingUserId, setEnrollingUserId] = useState<string | null>(null);
+  const [pendingEnrollment, setPendingEnrollment] = useState<{
+    userId: string;
+    userName: string;
+    programId: string;
+    cohortId?: string;
+  } | null>(null);
+  const [showPaidConfirmation, setShowPaidConfirmation] = useState(false);
   
   // Multi-select state for bulk operations
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
@@ -316,6 +341,44 @@ export function AdminUsersTab({
     
     fetchSquads();
   }, [isOrgScopedApi, showDemoData]);
+
+  // Fetch programs for org-scoped mode
+  useEffect(() => {
+    if (!isOrgScopedApi || showDemoData) return;
+
+    const fetchPrograms = async () => {
+      try {
+        const res = await fetch('/api/coach/org-programs');
+        if (res.ok) {
+          const data = await res.json();
+          setAvailablePrograms((data.programs || []).map((p: { id: string; name: string; type: ProgramType; priceInCents?: number; currency?: string }) => ({
+            id: p.id,
+            name: p.name,
+            type: p.type,
+            priceInCents: p.priceInCents || 0,
+            currency: p.currency,
+          })));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch programs:', err);
+      }
+    };
+
+    fetchPrograms();
+  }, [isOrgScopedApi, showDemoData]);
+
+  // Check for openInvite query param to auto-open invite dialog
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('openInvite') === 'true' && showInviteButton) {
+      setShowInviteDialog(true);
+      // Clean up URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [showInviteButton]);
 
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
@@ -601,6 +664,110 @@ export function AdminUsersTab({
     } finally {
       setUpdatingSquadUserId(null);
     }
+  };
+
+  // Load cohorts for a group program
+  const loadCohortsForProgram = async (programId: string) => {
+    if (cohortsByProgram[programId]) return; // Already loaded
+
+    try {
+      const res = await fetch(`/api/coach/org-programs/${programId}/cohorts`);
+      if (res.ok) {
+        const data = await res.json();
+        setCohortsByProgram(prev => ({
+          ...prev,
+          [programId]: (data.cohorts || []).map((c: { id: string; name: string; status: string; startDate: string }) => ({
+            id: c.id,
+            name: c.name,
+            programId,
+            status: c.status as 'upcoming' | 'active' | 'completed' | 'archived',
+            startDate: c.startDate,
+          })),
+        }));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch cohorts:', err);
+    }
+  };
+
+  // Handle adding user to a program
+  const handleAddToProgram = async (userId: string, userName: string, programId: string, cohortId?: string) => {
+    const program = availablePrograms.find(p => p.id === programId);
+    if (!program) return;
+
+    // For paid programs, show confirmation dialog first
+    if (program.priceInCents > 0) {
+      setPendingEnrollment({ userId, userName, programId, cohortId });
+      setShowPaidConfirmation(true);
+      return;
+    }
+
+    // For free programs, enroll directly
+    await executeEnrollment(userId, programId, cohortId);
+  };
+
+  // Execute the actual enrollment
+  const executeEnrollment = async (userId: string, programId: string, cohortId?: string) => {
+    try {
+      setEnrollingUserId(userId);
+
+      const response = await fetch('/api/programs/enroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          programId,
+          cohortId,
+          targetUserId: userId, // Coach-initiated enrollment
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to enroll in program');
+      }
+
+      // Update local state to show new enrollment
+      const program = availablePrograms.find(p => p.id === programId);
+      if (program) {
+        setUsers((prev) =>
+          prev.map((user) => {
+            if (user.id !== userId) return user;
+            const currentPrograms = user.programs || [];
+            return {
+              ...user,
+              programs: [
+                ...currentPrograms,
+                {
+                  programId,
+                  programName: program.name,
+                  programType: program.type,
+                  status: 'active' as const,
+                },
+              ],
+            };
+          })
+        );
+      }
+
+      alert('Client enrolled in program successfully');
+    } catch (err) {
+      console.error('Error enrolling in program:', err);
+      alert(err instanceof Error ? err.message : 'Failed to enroll in program');
+    } finally {
+      setEnrollingUserId(null);
+      setPendingEnrollment(null);
+      setShowPaidConfirmation(false);
+    }
+  };
+
+  // Handle paid program confirmation
+  const handleConfirmPaidEnrollment = async () => {
+    if (!pendingEnrollment) return;
+    await executeEnrollment(
+      pendingEnrollment.userId,
+      pendingEnrollment.programId,
+      pendingEnrollment.cohortId
+    );
   };
 
   // Selection handlers
@@ -1270,7 +1437,22 @@ export function AdminUsersTab({
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <ProgramManagerPopover
                           programs={user.programs || []}
+                          userId={user.id}
+                          availablePrograms={
+                            isOrgScopedApi && !showDemoData
+                              ? availablePrograms.filter(p =>
+                                  !(user.programs || []).some(up => up.programId === p.id)
+                                )
+                              : []
+                          }
+                          cohortsByProgram={cohortsByProgram}
+                          onAddToProgram={async (programId, cohortId) => {
+                            await handleAddToProgram(user.id, user.name, programId, cohortId);
+                          }}
+                          onLoadCohorts={loadCohortsForProgram}
                           disabled={showDemoData}
+                          readOnly={!isOrgScopedApi || showDemoData}
+                          isEnrolling={enrollingUserId === user.id}
                         />
                       </TableCell>
                     )}
@@ -1614,6 +1796,19 @@ export function AdminUsersTab({
           }}
         />
       )}
+
+      {/* Complimentary Access Confirmation */}
+      <ComplimentaryAccessConfirmation
+        isOpen={showPaidConfirmation}
+        onClose={() => {
+          setShowPaidConfirmation(false);
+          setPendingEnrollment(null);
+        }}
+        onConfirm={handleConfirmPaidEnrollment}
+        program={pendingEnrollment ? availablePrograms.find(p => p.id === pendingEnrollment.programId) || null : null}
+        clientName={pendingEnrollment?.userName}
+        isLoading={enrollingUserId !== null}
+      />
     </>
   );
 }

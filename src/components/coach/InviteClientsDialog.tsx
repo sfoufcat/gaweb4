@@ -20,6 +20,9 @@ import {
   Link2,
   AlertCircle
 } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { Funnel, Program, ProgramInvite } from '@/types';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 
@@ -31,6 +34,7 @@ interface InviteClientsDialogProps {
 }
 
 export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -420,363 +424,440 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
     }
   };
 
-  if (!isOpen) return null;
-
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-        onClick={(e) => e.target === e.currentTarget && onClose()}
-      >
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-white/95 dark:bg-[#1a1f2b]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-h-[90vh] overflow-hidden flex flex-col"
-        >
-          {/* Header */}
-          <div className="p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-3">
-              {currentView !== 'list' && (
-                <button
-                  onClick={() => {
-                    setCurrentView('list');
-                    setBulkResult(null);
-                  }}
-                  className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors -ml-2"
-                >
-                  <ChevronLeft className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                </button>
-              )}
-              <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center">
-                <UserPlus className="w-5 h-5 text-brand-accent" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  {getHeaderTitle()}
-                </h2>
-                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  {getHeaderSubtitle()}
-                </p>
-              </div>
-            </div>
+  // Shared content for both Dialog and Drawer
+  const content = (
+    <>
+      {/* Header */}
+      <div className="p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          {currentView !== 'list' && (
             <button
-              onClick={onClose}
-              className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+              onClick={() => {
+                setCurrentView('list');
+                setBulkResult(null);
+              }}
+              className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors -ml-2"
             >
-              <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              <ChevronLeft className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+            </button>
+          )}
+          <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center">
+            <UserPlus className="w-5 h-5 text-brand-accent" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              {getHeaderTitle()}
+            </h2>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              {getHeaderSubtitle()}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+        >
+          <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        {/* Loading */}
+        {isLoading && (
+          <div className="space-y-4 animate-pulse">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-[#faf8f6] dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                    <div className="h-4 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              </div>
+                  <div className="h-8 w-8 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Error */}
+        {error && !isLoading && (
+          <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 mb-4">
+            {error}
+          </div>
+        )}
+
+        {/* No funnels - offer to create one */}
+        {!isLoading && !error && funnels.length === 0 && (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 rounded-2xl bg-[#faf8f6] dark:bg-[#11141b] flex items-center justify-center mx-auto mb-4">
+              <Layers className="w-8 h-8 text-brand-accent" />
+            </div>
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+              No Funnels Yet
+            </h3>
+            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-6 max-w-sm mx-auto">
+              Create a signup funnel to start inviting clients. We&apos;ll set up a simple signup flow for you.
+            </p>
+            <button
+              onClick={autoCreateFunnel}
+              disabled={isAutoCreating}
+              className="px-6 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 disabled:opacity-50 transition-colors flex items-center gap-2 mx-auto"
+            >
+              {isAutoCreating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  Create Signup Funnel
+                </>
+              )}
             </button>
           </div>
+        )}
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {/* Loading */}
-            {isLoading && (
-              <div className="space-y-4 animate-pulse">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-[#faf8f6] dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                        <div className="h-4 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                </div>
-                      <div className="h-8 w-8 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Error */}
-            {error && !isLoading && (
-              <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 mb-4">
-                {error}
-              </div>
-            )}
-
-            {/* No funnels - offer to create one */}
-            {!isLoading && !error && funnels.length === 0 && (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 rounded-2xl bg-[#faf8f6] dark:bg-[#11141b] flex items-center justify-center mx-auto mb-4">
-                  <Layers className="w-8 h-8 text-brand-accent" />
-                </div>
-                <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                  No Funnels Yet
-                </h3>
-                <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-6 max-w-sm mx-auto">
-                  Create a signup funnel to start inviting clients. We&apos;ll set up a simple signup flow for you.
-                </p>
-                <button
-                  onClick={autoCreateFunnel}
-                  disabled={isAutoCreating}
-                  className="px-6 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 disabled:opacity-50 transition-colors flex items-center gap-2 mx-auto"
-                >
-                  {isAutoCreating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-4 h-4" />
-                      Create Signup Funnel
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-
-            {/* Main content when funnels exist */}
-            {!isLoading && !error && funnels.length > 0 && (
-              <>
-                {/* LIST VIEW */}
-                {currentView === 'list' && (
-                  <div className="space-y-6">
-                    {/* Success Message Banner */}
-                    <AnimatePresence>
-                      {successMessage && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className={`p-4 rounded-xl flex items-center gap-3 ${
-                            successMessage.type === 'success'
-                              ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                              : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
-                          }`}
-                        >
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                            successMessage.type === 'success'
-                              ? 'bg-green-100 dark:bg-green-900/30'
-                              : 'bg-amber-100 dark:bg-amber-900/30'
-                          }`}>
-                            {successMessage.type === 'success' ? (
-                              <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
-                            ) : (
-                              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                            )}
-                          </div>
-                          <p className={`text-sm font-albert flex-1 ${
-                            successMessage.type === 'success'
-                              ? 'text-green-700 dark:text-green-300'
-                              : 'text-amber-700 dark:text-amber-300'
-                          }`}>
-                            {successMessage.message}
-                          </p>
-                          <button
-                            onClick={() => setSuccessMessage(null)}
-                            className={`p-1 rounded-lg transition-colors ${
-                              successMessage.type === 'success'
-                                ? 'hover:bg-green-100 dark:hover:bg-green-900/30'
-                                : 'hover:bg-amber-100 dark:hover:bg-amber-900/30'
-                            }`}
-                          >
-                            <X className={`w-4 h-4 ${
-                              successMessage.type === 'success'
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-amber-600 dark:text-amber-400'
-                            }`} />
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    {/* Funnel Selector */}
-                    <div>
-                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                        Select Funnel
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={selectedFunnelId || ''}
-                          onChange={(e) => setSelectedFunnelId(e.target.value)}
-                          className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent appearance-none cursor-pointer"
-                        >
-                          {funnels.map(funnel => (
-                            <option key={funnel.id} value={funnel.id}>
-                              {funnel.name} ({getProgramName(funnel.programId)})
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] pointer-events-none" />
+        {/* Main content when funnels exist */}
+        {!isLoading && !error && funnels.length > 0 && (
+          <>
+            {/* LIST VIEW */}
+            {currentView === 'list' && (
+              <div className="space-y-6">
+                {/* Success Message Banner */}
+                <AnimatePresence>
+                  {successMessage && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className={`p-4 rounded-xl flex items-center gap-3 ${
+                        successMessage.type === 'success'
+                          ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                          : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                        successMessage.type === 'success'
+                          ? 'bg-green-100 dark:bg-green-900/30'
+                          : 'bg-amber-100 dark:bg-amber-900/30'
+                      }`}>
+                        {successMessage.type === 'success' ? (
+                          <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        )}
                       </div>
-                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1.5">
-                        Invites will direct users through this funnel
+                      <p className={`text-sm font-albert flex-1 ${
+                        successMessage.type === 'success'
+                          ? 'text-green-700 dark:text-green-300'
+                          : 'text-amber-700 dark:text-amber-300'
+                      }`}>
+                        {successMessage.message}
                       </p>
-                    </div>
+                      <button
+                        onClick={() => setSuccessMessage(null)}
+                        className={`p-1 rounded-lg transition-colors ${
+                          successMessage.type === 'success'
+                            ? 'hover:bg-green-100 dark:hover:bg-green-900/30'
+                            : 'hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                        }`}
+                      >
+                        <X className={`w-4 h-4 ${
+                          successMessage.type === 'success'
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-amber-600 dark:text-amber-400'
+                        }`} />
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-                    {/* Invite Codes Header */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Invite Codes</h3>
-                        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                          Create and manage invite codes for this funnel
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setCurrentView('bulk')}
-                          className="flex items-center gap-2 px-3 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                        >
-                          <Upload className="w-4 h-4" />
-                          Bulk Import
-                        </button>
-                        <button
-                          onClick={() => setCurrentView('create')}
-                          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors font-albert"
-                        >
-                          <Plus className="w-4 h-4" />
-                          New Invite
-                        </button>
-                      </div>
-                    </div>
+                {/* Funnel Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                    Select Funnel
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedFunnelId || ''}
+                      onChange={(e) => setSelectedFunnelId(e.target.value)}
+                      className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent appearance-none cursor-pointer"
+                    >
+                      {funnels.map(funnel => (
+                        <option key={funnel.id} value={funnel.id}>
+                          {funnel.name} ({getProgramName(funnel.programId)})
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] pointer-events-none" />
+                  </div>
+                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1.5">
+                    Invites will direct users through this funnel
+                  </p>
+                </div>
 
-                    {/* Invites Loading */}
-                    {invitesLoading && (
-                      <div className="flex justify-center py-8">
-                        <Loader2 className="w-6 h-6 text-brand-accent animate-spin" />
-                      </div>
-                    )}
+                {/* Invite Codes Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Invite Codes</h3>
+                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                      Create and manage invite codes for this funnel
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCurrentView('bulk')}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Bulk Import
+                    </button>
+                    <button
+                      onClick={() => setCurrentView('create')}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors font-albert"
+                    >
+                      <Plus className="w-4 h-4" />
+                      New Invite
+                    </button>
+                  </div>
+                </div>
 
-                    {/* Invites Error */}
-                    {invitesError && (
-                      <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400">
-                        {invitesError}
-                      </div>
-                    )}
-
-                    {/* Empty state */}
-                    {!invitesLoading && !invitesError && invites.length === 0 && (
-                      <div className="text-center py-8 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
-                        <Mail className="w-10 h-10 text-brand-accent/50 dark:text-brand-accent/50 mx-auto mb-3" />
-                        <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No invites yet</p>
-                        <p className="text-sm text-[#5f5a55]/70 dark:text-[#b2b6c2]/70 font-albert mt-1">
-                          Create your first invite to get started
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Invites list */}
-                    {!invitesLoading && !invitesError && invites.length > 0 && (
-                      <div className="space-y-2">
-                        {invites.map(invite => (
-                          <div
-                            key={invite.id}
-                            className="flex items-center justify-between p-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl"
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-lg bg-[#faf8f6] dark:bg-[#262b35] flex items-center justify-center">
-                                {invite.email ? (
-                                  <Mail className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                                ) : (
-                                  <Link2 className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                                )}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-mono text-sm">
-                                    {invite.id}
-                                  </p>
-                                  {getStatusBadge(invite)}
-                                  {invite.paymentStatus === 'pre_paid' && (
-                                    <span className="px-2 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full">
-                                      Pre-paid
-                                    </span>
-                                  )}
-                                  {invite.paymentStatus === 'free' && (
-                                    <span className="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full">
-                                      Free
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                                  {invite.email || invite.name || 'General invite'}
-                                  {invite.maxUses && ` · ${invite.useCount}/${invite.maxUses} uses`}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => copyInviteLink(invite)}
-                                className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                                title={copiedInviteId === invite.id ? "Copied!" : "Copy invite link"}
-                              >
-                                {copiedInviteId === invite.id ? (
-                                  <motion.div
-                                    initial={{ scale: 0.5 }}
-                                    animate={{ scale: 1 }}
-                                    transition={{ type: "spring", stiffness: 500, damping: 15 }}
-                                  >
-                                    <Check className="w-4 h-4 text-green-500" />
-                                  </motion.div>
-                                ) : (
-                                  <Copy className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                                )}
-                              </button>
-                              {!invite.usedBy && (
-                                <button
-                                  onClick={() => handleDeleteInvite(invite.id)}
-                                  className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
-                                  title="Delete invite"
-                                >
-                                  <Trash2 className="w-4 h-4 text-red-500" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                {/* Invites Loading */}
+                {invitesLoading && (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 text-brand-accent animate-spin" />
                   </div>
                 )}
 
-                {/* CREATE VIEW */}
-                {currentView === 'create' && (
-                  <form onSubmit={handleCreateInvite} className="space-y-4">
+                {/* Invites Error */}
+                {invitesError && (
+                  <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400">
+                    {invitesError}
+                  </div>
+                )}
+
+                {/* Empty state */}
+                {!invitesLoading && !invitesError && invites.length === 0 && (
+                  <div className="text-center py-8 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+                    <Mail className="w-10 h-10 text-brand-accent/50 dark:text-brand-accent/50 mx-auto mb-3" />
+                    <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No invites yet</p>
+                    <p className="text-sm text-[#5f5a55]/70 dark:text-[#b2b6c2]/70 font-albert mt-1">
+                      Create your first invite to get started
+                    </p>
+                  </div>
+                )}
+
+                {/* Invites list */}
+                {!invitesLoading && !invitesError && invites.length > 0 && (
+                  <div className="space-y-2">
+                    {invites.map(invite => (
+                      <div
+                        key={invite.id}
+                        className="flex items-center justify-between p-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-lg bg-[#faf8f6] dark:bg-[#262b35] flex items-center justify-center">
+                            {invite.email ? (
+                              <Mail className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                            ) : (
+                              <Link2 className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-mono text-sm">
+                                {invite.id}
+                              </p>
+                              {getStatusBadge(invite)}
+                              {invite.paymentStatus === 'pre_paid' && (
+                                <span className="px-2 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full">
+                                  Pre-paid
+                                </span>
+                              )}
+                              {invite.paymentStatus === 'free' && (
+                                <span className="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full">
+                                  Free
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                              {invite.email || invite.name || 'General invite'}
+                              {invite.maxUses && ` · ${invite.useCount}/${invite.maxUses} uses`}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => copyInviteLink(invite)}
+                            className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                            title={copiedInviteId === invite.id ? "Copied!" : "Copy invite link"}
+                          >
+                            {copiedInviteId === invite.id ? (
+                              <motion.div
+                                initial={{ scale: 0.5 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                              >
+                                <Check className="w-4 h-4 text-green-500" />
+                              </motion.div>
+                            ) : (
+                              <Copy className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                            )}
+                          </button>
+                          {!invite.usedBy && (
+                            <button
+                              onClick={() => handleDeleteInvite(invite.id)}
+                              className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                              title="Delete invite"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CREATE VIEW */}
+            {currentView === 'create' && (
+              <form onSubmit={handleCreateInvite} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                    Email (optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={createForm.email}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                    placeholder="user@example.com"
+                  />
+                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+                    Leave empty to create a general invite link
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                    Name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.name}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                    placeholder="John Doe"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                    Payment Status
+                  </label>
+                  <select
+                    value={createForm.paymentStatus}
+                    onChange={(e) => setCreateForm(prev => ({ 
+                      ...prev, 
+                      paymentStatus: e.target.value as 'required' | 'pre_paid' | 'free' 
+                    }))}
+                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                  >
+                    <option value="required">Payment Required</option>
+                    <option value="pre_paid">Pre-paid (skip payment)</option>
+                    <option value="free">Free Access</option>
+                  </select>
+                </div>
+
+                {createForm.paymentStatus === 'pre_paid' && (
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                      Pre-paid Note
+                    </label>
+                    <input
+                      type="text"
+                      value={createForm.prePaidNote}
+                      onChange={(e) => setCreateForm(prev => ({ ...prev, prePaidNote: e.target.value }))}
+                      className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                      placeholder="e.g., Invoice #123"
+                    />
+                  </div>
+                )}
+
+                {/* Send Email Toggle */}
+                {createForm.email && (
+                  <div className="flex items-center gap-3 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+                    <BrandedCheckbox
+                      checked={createForm.sendEmail}
+                      onChange={(checked) => setCreateForm(prev => ({ ...prev, sendEmail: checked }))}
+                    />
+                    <span className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setCreateForm(prev => ({ ...prev, sendEmail: !prev.sendEmail }))}>
+                      <Send className="w-4 h-4 text-brand-accent" />
+                      Send invite email to {createForm.email}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentView('list')}
+                    className="flex-1 py-2.5 px-4 text-[#5f5a55] dark:text-[#b2b6c2] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors font-albert"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreating}
+                    className="flex-1 py-2.5 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors font-albert flex items-center justify-center gap-2"
+                  >
+                    {isCreating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create Invite'
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* BULK VIEW */}
+            {currentView === 'bulk' && (
+              <div className="space-y-4">
+                {!bulkResult ? (
+                  <>
                     <div>
                       <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                        Email (optional)
+                        CSV Data
                       </label>
-                      <input
-                        type="email"
-                        value={createForm.email}
-                        onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                        placeholder="user@example.com"
+                      <textarea
+                        value={bulkCsv}
+                        onChange={(e) => setBulkCsv(e.target.value)}
+                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] resize-none font-mono text-sm"
+                        rows={8}
+                        placeholder={`email@example.com, John Doe\nanother@example.com, Jane Doe\n...`}
                       />
                       <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-                        Leave empty to create a general invite link
+                        One entry per line: email, name (name is optional)
                       </p>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                        Name (optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={createForm.name}
-                        onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                        placeholder="John Doe"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                        Payment Status
+                        Payment Status (for all)
                       </label>
                       <select
-                        value={createForm.paymentStatus}
-                        onChange={(e) => setCreateForm(prev => ({ 
-                          ...prev, 
-                          paymentStatus: e.target.value as 'required' | 'pre_paid' | 'free' 
-                        }))}
+                        value={bulkPaymentStatus}
+                        onChange={(e) => setBulkPaymentStatus(e.target.value as 'required' | 'pre_paid' | 'free')}
                         className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                       >
                         <option value="required">Payment Required</option>
@@ -785,34 +866,17 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                       </select>
                     </div>
 
-                    {createForm.paymentStatus === 'pre_paid' && (
-                      <div>
-                        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                          Pre-paid Note
-                        </label>
-                        <input
-                          type="text"
-                          value={createForm.prePaidNote}
-                          onChange={(e) => setCreateForm(prev => ({ ...prev, prePaidNote: e.target.value }))}
-                          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                          placeholder="e.g., Invoice #123"
-                        />
-                      </div>
-                    )}
-
-                    {/* Send Email Toggle */}
-                    {createForm.email && (
-                      <div className="flex items-center gap-3 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
-                        <BrandedCheckbox
-                          checked={createForm.sendEmail}
-                          onChange={(checked) => setCreateForm(prev => ({ ...prev, sendEmail: checked }))}
-                        />
-                        <span className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setCreateForm(prev => ({ ...prev, sendEmail: !prev.sendEmail }))}>
-                          <Send className="w-4 h-4 text-brand-accent" />
-                          Send invite email to {createForm.email}
-                        </span>
-                      </div>
-                    )}
+                    {/* Send Emails Toggle */}
+                    <div className="flex items-center gap-3 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+                      <BrandedCheckbox
+                        checked={bulkSendEmails}
+                        onChange={(checked) => setBulkSendEmails(checked)}
+                      />
+                      <span className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setBulkSendEmails(!bulkSendEmails)}>
+                        <Send className="w-4 h-4 text-brand-accent" />
+                        Send invite emails to all addresses
+                      </span>
+                    </div>
 
                     <div className="flex gap-3 pt-4">
                       <button
@@ -823,151 +887,99 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                         Cancel
                       </button>
                       <button
-                        type="submit"
-                        disabled={isCreating}
+                        onClick={handleBulkImport}
+                        disabled={isBulkImporting || !bulkCsv.trim()}
                         className="flex-1 py-2.5 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors font-albert flex items-center justify-center gap-2"
                       >
-                        {isCreating ? (
+                        {isBulkImporting ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            Creating...
+                            Importing...
                           </>
                         ) : (
-                          'Create Invite'
+                          'Import'
                         )}
                       </button>
                     </div>
-                  </form>
-                )}
+                  </>
+                ) : (
+                  <>
+                    <div className="text-center py-4">
+                      <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
+                        <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
+                      </div>
+                      <h4 className="text-lg font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                        Import Complete
+                      </h4>
+                      <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                        Created {bulkResult.created} invites
+                        {bulkResult.skipped > 0 && `, skipped ${bulkResult.skipped} duplicates`}
+                      </p>
+                      {bulkResult.emailsSent > 0 && (
+                        <p className="text-sm text-brand-accent font-albert mt-1">
+                          {bulkResult.emailsSent} invite emails sent
+                        </p>
+                      )}
+                    </div>
 
-                {/* BULK VIEW */}
-                {currentView === 'bulk' && (
-                  <div className="space-y-4">
-                    {!bulkResult ? (
-                      <>
-                        <div>
-                          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                            CSV Data
-                          </label>
-                          <textarea
-                            value={bulkCsv}
-                            onChange={(e) => setBulkCsv(e.target.value)}
-                            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] resize-none font-mono text-sm"
-                            rows={8}
-                            placeholder={`email@example.com, John Doe\nanother@example.com, Jane Doe\n...`}
-                          />
-                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-                            One entry per line: email, name (name is optional)
-                          </p>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                            Payment Status (for all)
-                          </label>
-                          <select
-                            value={bulkPaymentStatus}
-                            onChange={(e) => setBulkPaymentStatus(e.target.value as 'required' | 'pre_paid' | 'free')}
-                            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                          >
-                            <option value="required">Payment Required</option>
-                            <option value="pre_paid">Pre-paid (skip payment)</option>
-                            <option value="free">Free Access</option>
-                          </select>
-                        </div>
-
-                        {/* Send Emails Toggle */}
-                        <div className="flex items-center gap-3 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
-                          <BrandedCheckbox
-                            checked={bulkSendEmails}
-                            onChange={(checked) => setBulkSendEmails(checked)}
-                          />
-                          <span className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setBulkSendEmails(!bulkSendEmails)}>
-                            <Send className="w-4 h-4 text-brand-accent" />
-                            Send invite emails to all addresses
-                          </span>
-                        </div>
-
-                        <div className="flex gap-3 pt-4">
-                          <button
-                            type="button"
-                            onClick={() => setCurrentView('list')}
-                            className="flex-1 py-2.5 px-4 text-[#5f5a55] dark:text-[#b2b6c2] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors font-albert"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={handleBulkImport}
-                            disabled={isBulkImporting || !bulkCsv.trim()}
-                            className="flex-1 py-2.5 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors font-albert flex items-center justify-center gap-2"
-                          >
-                            {isBulkImporting ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Importing...
-                              </>
-                            ) : (
-                              'Import'
-                            )}
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="text-center py-4">
-                          <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
-                            <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
-                          </div>
-                          <h4 className="text-lg font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                            Import Complete
-                          </h4>
-                          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                            Created {bulkResult.created} invites
-                            {bulkResult.skipped > 0 && `, skipped ${bulkResult.skipped} duplicates`}
-                          </p>
-                          {bulkResult.emailsSent > 0 && (
-                            <p className="text-sm text-brand-accent font-albert mt-1">
-                              {bulkResult.emailsSent} invite emails sent
-                            </p>
+                    {bulkResult.errors.length > 0 && (
+                      <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-400 flex items-center gap-2 font-albert">
+                          <AlertCircle className="w-4 h-4" />
+                          {bulkResult.errors.length} errors
+                        </p>
+                        <ul className="mt-2 text-sm text-amber-700 dark:text-amber-300 font-albert">
+                          {bulkResult.errors.slice(0, 5).map((err, i) => (
+                            <li key={i}>Line {err.index + 1}: {err.error}</li>
+                          ))}
+                          {bulkResult.errors.length > 5 && (
+                            <li>... and {bulkResult.errors.length - 5} more</li>
                           )}
-                        </div>
-
-                        {bulkResult.errors.length > 0 && (
-                          <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                            <p className="text-sm font-medium text-amber-800 dark:text-amber-400 flex items-center gap-2 font-albert">
-                              <AlertCircle className="w-4 h-4" />
-                              {bulkResult.errors.length} errors
-                            </p>
-                            <ul className="mt-2 text-sm text-amber-700 dark:text-amber-300 font-albert">
-                              {bulkResult.errors.slice(0, 5).map((err, i) => (
-                                <li key={i}>Line {err.index + 1}: {err.error}</li>
-                              ))}
-                              {bulkResult.errors.length > 5 && (
-                                <li>... and {bulkResult.errors.length - 5} more</li>
-                              )}
-                            </ul>
-                          </div>
-                        )}
-
-                        <button
-                          onClick={() => {
-                            setCurrentView('list');
-                            setBulkResult(null);
-                            setBulkCsv('');
-                          }}
-                          className="w-full py-2.5 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors font-albert"
-                        >
-                          Done
-                        </button>
-                      </>
+                        </ul>
+                      </div>
                     )}
-                  </div>
+
+                    <button
+                      onClick={() => {
+                        setCurrentView('list');
+                        setBulkResult(null);
+                        setBulkCsv('');
+                      }}
+                      className="w-full py-2.5 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors font-albert"
+                    >
+                      Done
+                    </button>
+                  </>
                 )}
-              </>
+              </div>
             )}
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+          </>
+        )}
+      </div>
+    </>
+  );
+
+  // Desktop: Use Dialog (centered modal)
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-2xl p-0 max-h-[90vh] overflow-hidden flex flex-col" hideCloseButton>
+          {content}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Use Drawer (slide-up)
+  return (
+    <Drawer
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="max-h-[90vh] overflow-hidden flex flex-col">
+        {content}
+      </DrawerContent>
+    </Drawer>
   );
 }

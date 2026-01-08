@@ -409,20 +409,43 @@ async function createCoachingRelationship(
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const { userId: authUserId, sessionClaims } = await auth();
+    if (!authUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { programId, cohortId, discountCode, joinCommunity, startDate, orderBumps } = body as { 
+    const { programId, cohortId, discountCode, joinCommunity, startDate, orderBumps, targetUserId } = body as { 
       programId: string; 
       cohortId?: string;
       discountCode?: string;
       joinCommunity?: boolean;
       startDate?: string; // ISO date string (YYYY-MM-DD) for individual programs
       orderBumps?: OrderBumpSelection[]; // Order bump products to add
+      targetUserId?: string; // For coach-initiated enrollment (enrolling a client)
     };
+
+    // Determine if this is coach-initiated enrollment
+    const isCoachEnrollment = targetUserId && targetUserId !== authUserId;
+    let userId = authUserId; // Default to self-enrollment
+
+    if (isCoachEnrollment) {
+      // Verify the authenticated user is a coach/admin
+      const publicMetadata = sessionClaims?.publicMetadata as { role?: string; orgRole?: string } | undefined;
+      const role = publicMetadata?.role || 'user';
+      const orgRole = publicMetadata?.orgRole;
+      
+      const hasGlobalAccess = role === 'coach' || role === 'admin' || role === 'super_admin';
+      const hasOrgAccess = orgRole === 'super_coach' || orgRole === 'coach';
+      
+      if (!hasGlobalAccess && !hasOrgAccess) {
+        return NextResponse.json({ error: 'Only coaches can enroll clients' }, { status: 403 });
+      }
+      
+      // Use the target user for enrollment
+      userId = targetUserId;
+      console.log(`[PROGRAM_ENROLL] Coach ${authUserId} enrolling client ${targetUserId} in program ${programId}`);
+    }
 
     if (!programId) {
       return NextResponse.json({ error: 'Program ID is required' }, { status: 400 });
@@ -435,6 +458,17 @@ export async function POST(request: NextRequest) {
     }
 
     const program = { id: programDoc.id, ...programDoc.data() } as Program;
+
+    // For coach-initiated enrollment, verify program belongs to their organization
+    if (isCoachEnrollment) {
+      // Get coach's organization from session claims or headers
+      const publicMetadata = sessionClaims?.publicMetadata as { organizationId?: string; primaryOrganizationId?: string } | undefined;
+      const coachOrgId = publicMetadata?.primaryOrganizationId || publicMetadata?.organizationId;
+      
+      if (program.organizationId !== coachOrgId) {
+        return NextResponse.json({ error: 'You can only enroll clients in your organization\'s programs' }, { status: 403 });
+      }
+    }
 
     if (!program.isActive || !program.isPublished) {
       return NextResponse.json({ error: 'Program is not available' }, { status: 400 });
@@ -586,7 +620,8 @@ export async function POST(request: NextRequest) {
     }
 
     // If program is free (or fully discounted), create enrollment directly
-    if (finalPrice === 0) {
+    // Also bypass Stripe for coach-initiated enrollment (complimentary access)
+    if (finalPrice === 0 || isCoachEnrollment) {
       // Record discount usage if a code was applied
       if (appliedDiscountCode) {
         await recordDiscountUsage(
@@ -600,6 +635,11 @@ export async function POST(request: NextRequest) {
           finalPrice
         );
       }
+      
+      if (isCoachEnrollment && program.priceInCents > 0) {
+        console.log(`[PROGRAM_ENROLL] Coach granting complimentary access to ${userId} for paid program ${programId} (${program.priceInCents / 100} ${program.currency || 'USD'})`);
+      }
+      
       return await createEnrollment(userId, program, cohort, clerkUser, joinCommunity, validatedStartDate);
     }
 
