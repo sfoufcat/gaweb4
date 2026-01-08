@@ -45,14 +45,14 @@ export function CohortSelector({
     }
     const cohort = cohorts.find(c => c.id === value.cohortId);
     if (cohort) {
-      const dateRange = `${new Date(cohort.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(cohort.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
       return {
         name: cohort.name,
-        subtitle: dateRange,
+        subtitle: '',
+        enrollmentCount: cohort.currentEnrollment,
         isTemplate: false,
       };
     }
-    return { name: 'Select view...', subtitle: '', isTemplate: false };
+    return { name: 'Select view...', subtitle: '', enrollmentCount: undefined, isTemplate: false };
   }, [value, cohorts]);
 
   // Filter cohorts by search term
@@ -129,12 +129,10 @@ export function CohortSelector({
               <div className="flex flex-col min-w-0">
                 <span className="text-xs sm:text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
                   {loading ? 'Loading...' : currentDisplay.name}
+                  {!currentDisplay.isTemplate && currentDisplay.enrollmentCount !== undefined && (
+                    <span className="text-brand-accent ml-1">({currentDisplay.enrollmentCount})</span>
+                  )}
                 </span>
-                {currentDisplay.subtitle && (
-                  <span className="text-[10px] sm:text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate">
-                    {currentDisplay.subtitle}
-                  </span>
-                )}
               </div>
             </div>
             <ChevronDown className="ml-1.5 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 opacity-50" />

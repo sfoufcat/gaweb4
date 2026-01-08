@@ -67,7 +67,7 @@ export function ClientSelector({
     if (enrollment) {
       return {
         name: getClientName(enrollment),
-        subtitle: enrollment.user?.email || enrollment.status,
+        subtitle: '',
         imageUrl: enrollment.user?.imageUrl,
         isTemplate: false,
       };

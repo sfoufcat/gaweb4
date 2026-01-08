@@ -1168,19 +1168,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   }, [clientViewContext.mode, cohortViewContext.mode, currentEnrollment?.currentDayIndex, selectedProgram?.type, programWeeks]);
 
-  // Load day data when day index changes (use client days when in client mode)
+  // Load day data when day index changes (use client days when in client mode, cohort days when in cohort mode)
   useEffect(() => {
     if (!selectedProgram) return;
 
-    const isClientMode = clientViewContext.mode === 'client' && selectedProgram.type === 'individual';
-    // Only use client data if it matches the current context (prevents stale data)
-    const dataMatchesContext = clientViewContext.mode === 'client' && loadedEnrollmentId === clientViewContext.enrollmentId;
-    const daysToUse = (isClientMode && dataMatchesContext) ? clientDays : programDays;
-
-    // In client mode, we might not have days yet (they're created on first save)
-    // In that case, fall back to template days for initial display
+    // daysToUse already handles all modes correctly (client, cohort, template)
     let day = daysToUse.find(d => d.dayIndex === selectedDayIndex);
-    if (!day && isClientMode && programDays.length > 0) {
+
+    // Fallback to template if in client/cohort mode but no override exists yet
+    if (!day && programDays.length > 0) {
       day = programDays.find(d => d.dayIndex === selectedDayIndex);
     }
 
@@ -1196,7 +1192,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     } else {
       setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
     }
-  }, [selectedDayIndex, programDays, clientDays, clientViewContext, selectedProgram, loadedEnrollmentId]);
+  }, [selectedDayIndex, daysToUse, programDays, selectedProgram]);
 
   // Fetch cohort task completion when viewing a cohort's day
   useEffect(() => {
