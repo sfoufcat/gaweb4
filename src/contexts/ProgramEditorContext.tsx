@@ -299,10 +299,12 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     // 2. Save weeks (sequential to avoid race conditions with task distribution)
     for (const change of weekChanges) {
       try {
-        const hasTaskChanges = weeklyTasksChanged(change.originalData, change.pendingData);
+        // More robust task change detection
+        const originalTasks = (change.originalData.weeklyTasks as unknown[]) || [];
+        const pendingTasks = (change.pendingData.weeklyTasks as unknown[]) || [];
+        const hasTaskChanges = JSON.stringify(originalTasks) !== JSON.stringify(pendingTasks);
         const isNewWeek = change.httpMethod === 'POST';
-        const pendingTasks = change.pendingData.weeklyTasks as unknown[];
-        const hasTasks = Array.isArray(pendingTasks) && pendingTasks.length > 0;
+        const hasTasks = pendingTasks.length > 0;
         
         // Extract cohort-specific flags
         const createCohortContentAfter = change.pendingData._createCohortContentAfter as boolean;
@@ -317,10 +319,11 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
         delete body._createCohortContentAfter;
         delete body._cohortId;
         
-        // Include distribution flags if:
+        // Include distribution flags if there are tasks AND:
         // - Weekly tasks changed, OR
-        // - It's a new week with tasks (POST)
-        if (hasTaskChanges || (isNewWeek && hasTasks)) {
+        // - It's a new week (POST)
+        // This ensures distribution happens for all saves where tasks exist and might have changed
+        if (hasTasks && (hasTaskChanges || isNewWeek)) {
           body.distributeTasksNow = true;
           // Different APIs use different flag names for overwrite
           body.overwriteExisting = true; // Used by client weeks API
@@ -332,6 +335,9 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
           hasTaskChanges,
           isNewWeek,
           hasTasks,
+          distributeTasksNow: body.distributeTasksNow,
+          originalTasksCount: originalTasks.length,
+          pendingTasksCount: pendingTasks.length,
           viewContext: change.viewContext,
           createCohortContentAfter,
         });

@@ -211,6 +211,8 @@ export function WeekEditor({
   const initializedFromPending = useRef(false);
   // Track last reset version to detect discard/save
   const lastResetVersion = useRef(editorContext?.resetVersion ?? 0);
+  // Track if we just reset (to skip re-registration during save->refresh cycle)
+  const recentlyReset = useRef(false);
 
   // Form data type
   type WeekFormData = {
@@ -362,8 +364,9 @@ export function WeekEditor({
   useEffect(() => {
     if (editorContext && editorContext.resetVersion !== lastResetVersion.current) {
       lastResetVersion.current = editorContext.resetVersion;
-      // Clear UI state - form data will be reset by the weekDataFingerprint effect
-      // when fresh data arrives from the API after save
+      // Mark as recently reset to prevent re-registration during save->refresh cycle
+      recentlyReset.current = true;
+      // Clear UI state
       setHasChanges(false);
       setShowSyncButton(false);
       setSaveStatus('idle');
@@ -373,6 +376,20 @@ export function WeekEditor({
 
   // Check for changes and register with context
   useEffect(() => {
+    // Skip registration if we just reset (waiting for fresh data from API)
+    if (recentlyReset.current) {
+      recentlyReset.current = false;
+      // Reset formData to match current week data
+      setFormData(getDefaultFormData());
+      setHasChanges(false);
+      return; // Don't register changes this cycle
+    }
+    
+    // Skip registration while context is currently saving
+    if (editorContext?.isSaving) {
+      return;
+    }
+    
     const changed =
       formData.name !== (week.name || '') ||
       formData.theme !== (week.theme || '') ||
@@ -493,7 +510,7 @@ export function WeekEditor({
       const changeKey = editorContext.getChangeKey('week', week.id, clientContextId);
       editorContext.discardChange(changeKey);
     }
-  }, [formData, week, editorContext, programId, viewContext, clientContextId, getApiEndpoint, editedFields]);
+  }, [formData, week, editorContext, programId, viewContext, clientContextId, getApiEndpoint, editedFields, getDefaultFormData]);
 
   // handleSave is only used by the SyncToClientsDialog now
   const handleSave = async () => {
