@@ -1300,72 +1300,64 @@ export function ModuleWeeksSidebar({
         <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white/80 dark:from-[#171b22]/80 to-transparent pointer-events-none" />
       </div>
 
-      {/* Status Legend - only show when viewing client progress */}
-        {currentDayIndex !== undefined && currentDayIndex > 0 && (
-          <div className="px-4 py-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex-shrink-0">
-            <div className="flex items-center justify-center gap-4 text-xs font-albert">
+      {/* Status Legend + Tools Row - show when viewing client/cohort progress */}
+      {currentDayIndex !== undefined && currentDayIndex > 0 && (
+        <div className="px-4 py-2.5 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            {/* Status Legend - left side */}
+            <div className="flex items-center gap-3 text-xs font-albert">
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-amber-100/70 dark:bg-amber-900/30" />
+                <div className="w-2.5 h-2.5 rounded bg-amber-100/70 dark:bg-amber-900/30" />
                 <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Past</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-emerald-100/70 dark:bg-emerald-900/30" />
+                <div className="w-2.5 h-2.5 rounded bg-emerald-100/70 dark:bg-emerald-900/30" />
                 <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Active</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-slate-100/70 dark:bg-slate-800/30" />
+                <div className="w-2.5 h-2.5 rounded bg-slate-100/70 dark:bg-slate-800/30" />
                 <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Future</span>
               </div>
             </div>
-          </div>
-        )}
 
-      {/* Client/Cohort Tools Dropdown - only show when client or cohort is selected */}
-      {(isClientView || isCohortView) && (enrollmentId || cohortId) && (
-        <div className="px-3 py-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex-shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg
-                  bg-white/60 dark:bg-[#1e2430]/60 border border-[#e1ddd8]/50 dark:border-[#262b35]/50
-                  hover:bg-white/80 dark:hover:bg-[#1e2430]/80 transition-colors"
-                disabled={isSyncingTasks || isClearingTasks}
-              >
-                <span className="flex items-center gap-2 text-[#3d3a37] dark:text-[#e8e6e3]">
-                  <Settings2 className="h-4 w-4" />
-                  {isClientView ? 'Client Tools' : 'Cohort Tools'}
-                </span>
-                <ChevronDown className="h-4 w-4 text-[#5f5a55] dark:text-[#8a8f9c]" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem
-                onClick={handleSyncTasks}
-                disabled={isSyncingTasks}
-                className="cursor-pointer"
-              >
-                {isSyncingTasks ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Sync Tasks from Template
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setShowClearConfirm(true)}
-                disabled={isClearingTasks}
-                className="cursor-pointer text-destructive focus:text-destructive"
-              >
-                {isClearingTasks ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4 mr-2" />
-                )}
-                Clear Future Tasks
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            {/* Tools Dropdown - right side, only when client/cohort selected */}
+            {(isClientView || isCohortView) && (enrollmentId || cohortId) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="flex items-center gap-1 text-xs text-[#5f5a55] dark:text-[#8a8f9c] hover:text-[#3d3a37] dark:hover:text-[#e8e6e3] transition-colors"
+                    disabled={isSyncingTasks || isClearingTasks}
+                  >
+                    {isSyncingTasks || isClearingTasks ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Settings2 className="h-3 w-3" />
+                    )}
+                    <span>Tools</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem
+                    onClick={handleSyncTasks}
+                    disabled={isSyncingTasks}
+                    className="cursor-pointer text-xs"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                    Sync from Template
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setShowClearConfirm(true)}
+                    disabled={isClearingTasks}
+                    className="cursor-pointer text-xs text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                    Clear Future Tasks
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
       )}
 

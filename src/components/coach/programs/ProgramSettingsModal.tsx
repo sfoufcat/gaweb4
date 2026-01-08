@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Settings, RefreshCw, Layers, X, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,9 +64,24 @@ export function ProgramSettingsModal({
 }: ProgramSettingsModalProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
+  // Local state for threshold slider to prevent API calls on every drag
+  const [localThreshold, setLocalThreshold] = useState(cohortCompletionThreshold ?? 50);
+
+  // Sync local state when prop changes (e.g., after save completes)
+  useEffect(() => {
+    setLocalThreshold(cohortCompletionThreshold ?? 50);
+  }, [cohortCompletionThreshold]);
+
   const handleSelect = (value: TaskDistribution) => {
     if (value !== taskDistribution) {
       onTaskDistributionChange(value);
+    }
+  };
+
+  // Only save when slider is released
+  const handleThresholdCommit = () => {
+    if (localThreshold !== cohortCompletionThreshold) {
+      onCohortCompletionThresholdChange?.(localThreshold);
     }
   };
 
@@ -155,13 +171,15 @@ export function ProgramSettingsModal({
               min={0}
               max={100}
               step={5}
-              value={cohortCompletionThreshold ?? 50}
-              onChange={(e) => onCohortCompletionThresholdChange?.(Number(e.target.value))}
+              value={localThreshold}
+              onChange={(e) => setLocalThreshold(Number(e.target.value))}
+              onPointerUp={handleThresholdCommit}
+              onTouchEnd={handleThresholdCommit}
               disabled={isSaving}
               className="flex-1 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg appearance-none cursor-pointer accent-brand-accent disabled:opacity-50"
             />
             <span className="w-12 text-center text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-              {cohortCompletionThreshold ?? 50}%
+              {localThreshold}%
             </span>
           </div>
 
@@ -170,10 +188,13 @@ export function ProgramSettingsModal({
             {[0, 25, 50, 75, 100].map((value) => (
               <button
                 key={value}
-                onClick={() => onCohortCompletionThresholdChange?.(value)}
+                onClick={() => {
+                  setLocalThreshold(value);
+                  onCohortCompletionThresholdChange?.(value);
+                }}
                 disabled={isSaving}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  (cohortCompletionThreshold ?? 50) === value
+                  localThreshold === value
                     ? 'bg-brand-accent text-white'
                     : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e1ddd8] dark:hover:bg-[#3a4150]'
                 } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}

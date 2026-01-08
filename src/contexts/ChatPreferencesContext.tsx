@@ -18,7 +18,6 @@ import type {
   ChatPreferenceAction,
 } from '@/types/chat-preferences';
 import { CHAT_PREFERENCES_COLLECTION } from '@/types/chat-preferences';
-import { useStreamChatClient } from '@/contexts/StreamChatContext';
 
 // Cache configuration
 const CACHE_KEY_PREFIX = 'chat_preferences_v1_';
@@ -174,7 +173,6 @@ interface ChatPreferencesProviderProps {
  */
 export function ChatPreferencesProvider({ children }: ChatPreferencesProviderProps) {
   const { user, isLoaded } = useUser();
-  const { client } = useStreamChatClient();
   const [preferences, setPreferences] = useState<Map<string, ChatPreference>>(() => {
     // Initialize from localStorage synchronously for instant access
     if (typeof window !== 'undefined' && user?.id) {
@@ -401,18 +399,32 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
 
   const deleteChannel = useCallback(
     async (channelId: string, channelType: ChatChannelType) => {
-      // For DMs, permanently delete the channel for everyone on Stream
-      // No need for Firestore tracking - Stream handles the deletion
-      if (channelType === 'dm' && client) {
+      // For DMs, use the server-side API to delete the channel
+      // The server has admin privileges to delete channels
+      if (channelType === 'dm') {
+        console.log('[ChatPreferences] Deleting channel via API:', { channelId, channelType });
         try {
-          const channel = client.channel('messaging', channelId);
-          await channel.delete(); // Permanently deletes for all users
+          const response = await fetch('/api/chat/delete-channel', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channelId }),
+          });
+
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to delete channel');
+          }
+
+          console.log('[ChatPreferences] Channel deleted successfully:', channelId);
         } catch (error) {
-          console.error('Failed to delete channel on Stream:', error);
+          console.error('[ChatPreferences] Failed to delete channel:', error);
+          throw error; // Re-throw so caller knows it failed
         }
+      } else {
+        console.warn('[ChatPreferences] Cannot delete - not a DM:', { channelId, channelType });
       }
     },
-    [client]
+    []
   );
 
   const undeleteChannel = useCallback(
