@@ -1160,20 +1160,9 @@ export function ModuleWeeksSidebar({
           </div>
         </div>
 
-        {/* Module-to-weeks divider - solid status-colored line */}
-        {isModuleExpanded && moduleWeeks.length > 0 && (
-          <div className={`h-px ${
-            moduleStatus === 'past'
-              ? 'bg-yellow-200 dark:bg-yellow-800'
-              : moduleStatus === 'active'
-              ? 'bg-orange-200 dark:bg-orange-800'
-              : 'bg-gray-200 dark:bg-gray-700'
-          }`} />
-        )}
-
-        {/* Weeks inside module - static (calendar-aligned weeks cannot be reordered) */}
+        {/* Animated expandable content - dividers, weeks, and empty state all animate together */}
         <AnimatePresence initial={false}>
-          {isModuleExpanded && moduleWeeks.length > 0 && (
+          {isModuleExpanded && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
@@ -1181,57 +1170,67 @@ export function ModuleWeeksSidebar({
               transition={{ duration: 0.25, ease: "easeInOut" }}
               style={{ overflow: "hidden" }}
             >
-              {canReorderWeeks ? (
-                <Reorder.Group
-                  as="div"
-                  axis="y"
-                  values={moduleWeeks}
-                  onReorder={(newWeeks) => handleWeeksReorder(module.id, newWeeks)}
-                  className="divide-y divide-[#e8e5e1] dark:divide-[#2a303d]"
-                >
-                  {moduleWeeks.map((week, idx) => (
-                    <Reorder.Item
+              {moduleWeeks.length > 0 ? (
+                <>
+                  {/* Module-to-weeks divider - solid status-colored line */}
+                  <div className={`h-px ${
+                    moduleStatus === 'past'
+                      ? 'bg-yellow-200 dark:bg-yellow-800'
+                      : moduleStatus === 'active'
+                      ? 'bg-orange-200 dark:bg-orange-800'
+                      : 'bg-gray-200 dark:bg-gray-700'
+                  }`} />
+
+                  {/* Weeks inside module */}
+                  {canReorderWeeks ? (
+                    <Reorder.Group
                       as="div"
-                      key={week.storedWeekId || `temp-${week.weekNum}`}
-                      value={week}
-                      className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}
+                      axis="y"
+                      values={moduleWeeks}
+                      onReorder={(newWeeks) => handleWeeksReorder(module.id, newWeeks)}
+                      className="divide-y divide-[#e8e5e1] dark:divide-[#2a303d]"
                     >
-                      {renderWeekRow(week, module.id, moduleIndex)}
-                    </Reorder.Item>
-                  ))}
-                </Reorder.Group>
-              ) : (
-                <div className="divide-y divide-[#e8e5e1] dark:divide-[#2a303d]">
-                  {moduleWeeks.map((week, idx) => (
-                    <div key={week.storedWeekId || `temp-${week.weekNum}`} className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}>
-                      {renderWeekRow(week, module.id, moduleIndex)}
+                      {moduleWeeks.map((week, idx) => (
+                        <Reorder.Item
+                          as="div"
+                          key={week.storedWeekId || `temp-${week.weekNum}`}
+                          value={week}
+                          className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}
+                        >
+                          {renderWeekRow(week, module.id, moduleIndex)}
+                        </Reorder.Item>
+                      ))}
+                    </Reorder.Group>
+                  ) : (
+                    <div className="divide-y divide-[#e8e5e1] dark:divide-[#2a303d]">
+                      {moduleWeeks.map((week, idx) => (
+                        <div key={week.storedWeekId || `temp-${week.weekNum}`} className={idx === moduleWeeks.length - 1 ? 'rounded-b-xl' : ''}>
+                          {renderWeekRow(week, module.id, moduleIndex)}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+
+                  {/* Module-ending divider - slim elegant separator */}
+                  <div className={`h-px ${
+                    moduleStatus === 'past'
+                      ? 'bg-yellow-200 dark:bg-yellow-800'
+                      : moduleStatus === 'active'
+                      ? 'bg-orange-200 dark:bg-orange-800'
+                      : 'bg-gray-200 dark:bg-gray-700'
+                  }`} />
+                </>
+              ) : (
+                /* Empty state for module with no weeks */
+                <div className="p-6 text-center border-t border-[#e1ddd8] dark:border-[#262b35]">
+                  <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                    No weeks in this module
+                  </p>
                 </div>
               )}
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Module-ending divider - slim elegant separator */}
-        {isModuleExpanded && moduleWeeks.length > 0 && (
-          <div className={`h-px ${
-            moduleStatus === 'past'
-              ? 'bg-yellow-200 dark:bg-yellow-800'
-              : moduleStatus === 'active'
-              ? 'bg-orange-200 dark:bg-orange-800'
-              : 'bg-gray-200 dark:bg-gray-700'
-          }`} />
-        )}
-
-        {/* Empty state for module with no weeks */}
-        {isModuleExpanded && moduleWeeks.length === 0 && (
-          <div className="p-6 text-center border-t border-[#e1ddd8] dark:border-[#262b35]">
-            <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
-              No weeks in this module
-            </p>
-          </div>
-        )}
       </div>
     );
   };

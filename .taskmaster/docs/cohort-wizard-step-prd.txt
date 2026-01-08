@@ -1,0 +1,143 @@
+# PRD: Add Cohort Creation Step to Program Wizard
+
+## Overview
+
+After a coach creates a new program in the wizard, the modal should remain open and present a new step allowing them to optionally create their first cohort. This streamlines the onboarding experience by letting coaches set up a cohort immediately after program creation.
+
+## User Flow
+
+1. Coach completes the existing 4-step program wizard (Type → Structure → Details → Final Settings)
+2. Coach clicks "Create Program"
+3. Program is created via API (existing behavior)
+4. **NEW**: Modal transitions to "Create First Cohort" step instead of closing
+5. Coach can either:
+   - Fill out cohort details and create the cohort
+   - Skip this step to create cohorts later
+
+## Requirements
+
+### Step Transition
+- After successful program creation, the wizard should NOT close
+- Instead, show a new step: "Create First Cohort"
+- The programId from the just-created program is used to create the cohort
+- The wizard step indicator should show this as step 5
+
+### Cohort Creation Form Fields
+
+1. **Cohort Name** (required)
+   - Text input
+   - Placeholder: "e.g., Spring 2025, March Cohort"
+
+2. **Start Date** (required)
+   - Date picker
+   - Default to tomorrow
+   - Dynamic end date display based on program duration type:
+     - For **fixed duration programs**: Show "Ends on [calculated date]" next to start date
+     - For **evergreen programs**: Show "Continues until closed" next to start date
+
+3. **Max Enrollment** (optional)
+   - Number input
+   - Placeholder: "No limit"
+   - Allows coach to cap the number of clients in this cohort
+
+4. **After Program Ends** (required for fixed duration only)
+   - Radio/segmented control with two options:
+     - "Close squad" - Squad is archived when program ends
+     - "Convert to community" - Squad becomes a standalone community
+   - Hidden for evergreen programs (not applicable)
+
+### UI/UX Design Requirements
+
+- Modern 2026 design aesthetic matching the existing wizard
+- Mobile responsive - slides up from bottom on mobile (consistent with existing drawer behavior)
+- Use existing app design tokens and components:
+  - Input, Label components from @/components/ui
+  - Custom date picker styling
+  - Brand colors and typography (font-albert)
+- Clear visual feedback for the end date calculation
+- Smooth transitions between states
+
+### Actions
+
+1. **Create Cohort** button
+   - Creates cohort via POST /api/coach/org-programs/[programId]/cohorts
+   - On success: Close modal, navigate to program editor or show success toast
+   - On error: Show error message, allow retry
+
+2. **Skip** button/link
+   - Closes the modal
+   - Navigates to program editor (existing behavior)
+   - Subtle styling (not primary action)
+
+### API Integration
+
+Use existing cohort creation endpoint:
+- `POST /api/coach/org-programs/[programId]/cohorts`
+- Payload:
+  ```json
+  {
+    "name": "Cohort Name",
+    "startDate": "2025-03-01",
+    "maxEnrollment": 25,
+    "convertSquadsToCommunity": false
+  }
+  ```
+- End date is calculated server-side based on program's lengthDays
+
+### Data Dependencies
+
+From the just-created program, we need:
+- `programId` - to create cohort under this program
+- `durationType` - 'fixed' or 'evergreen' to determine UI behavior
+- `durationWeeks` - to calculate and display end date for fixed programs
+- `includeWeekends` - to calculate accurate end date
+
+### Step Indicator Update
+
+The wizard steps should be updated to show:
+1. Type
+2. Structure
+3. Details
+4. Final Settings
+5. First Cohort (new)
+
+### Success State
+
+After successful cohort creation:
+- Modal closes
+- Program editor opens (or existing onProgramCreated behavior)
+- Optional: Success toast "Program and cohort created successfully"
+
+## Technical Implementation Notes
+
+### Files to Modify
+- `src/components/coach/programs/NewProgramModal.tsx`
+  - Add new step type to WizardStep
+  - Store created programId in state after program creation
+  - Add CohortStep component
+  - Update handleCreateProgram to transition to cohort step instead of closing
+
+### New Component
+Create CohortStep component with:
+- Form state for cohort fields
+- End date calculation logic
+- API integration
+- Skip functionality
+
+### State Management
+- Add `createdProgramId: string | null` to track the newly created program
+- Add `createdProgramData` to store program details needed for cohort step
+- Update step logic to handle the new cohort step
+
+## Acceptance Criteria
+
+1. After clicking "Create Program", the modal stays open and shows cohort step
+2. Cohort name and start date are required fields
+3. End date display is correct for both fixed and evergreen programs
+4. Max enrollment is optional
+5. "After Program Ends" setting only shows for fixed duration programs
+6. Creating a cohort successfully closes modal
+7. Skipping the step closes modal
+8. Mobile view shows as slide-up drawer
+9. Design matches existing wizard aesthetic
+10. All form elements are accessible

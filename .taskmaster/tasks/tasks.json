@@ -208,13 +208,127 @@
         ],
         "status": "pending",
         "subtasks": []
+      },
+      {
+        "id": "117",
+        "title": "Update NewProgramModal state management for cohort step",
+        "description": "Modify the NewProgramModal component to support a 5th step and store created program data for cohort creation",
+        "details": "Update src/components/coach/programs/NewProgramModal.tsx to:\n1. Add new WizardStep type for 'cohort'\n2. Add state variables: createdProgramId (string | null), createdProgramData (object)\n3. Update step indicator to show 5 steps instead of 4\n4. Modify handleCreateProgram to store program response data and transition to cohort step instead of closing modal\n5. Update step navigation logic to handle the new cohort step\n\nPseudo-code:\n```typescript\ntype WizardStep = 'type' | 'structure' | 'details' | 'settings' | 'cohort';\n\nconst [createdProgramId, setCreatedProgramId] = useState<string | null>(null);\nconst [createdProgramData, setCreatedProgramData] = useState<any>(null);\n\nconst handleCreateProgram = async () => {\n  const response = await createProgram(programData);\n  setCreatedProgramId(response.id);\n  setCreatedProgramData(response);\n  setCurrentStep('cohort');\n};\n```",
+        "testStrategy": "Unit tests to verify state updates correctly after program creation, step transitions work properly, and modal doesn't close prematurely. Test both success and error scenarios for program creation.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T13:15:57.703Z"
+      },
+      {
+        "id": "118",
+        "title": "Create CohortStep component with form fields",
+        "description": "Build the cohort creation form component with all required and optional fields as specified in the PRD",
+        "details": "Create new component CohortStep.tsx with:\n1. Form fields: cohortName (required), startDate (required, default tomorrow), maxEnrollment (optional), afterProgramEnds (conditional)\n2. Use existing UI components: Input, Label from @/components/ui\n3. Implement date picker with custom styling\n4. Conditional rendering of 'After Program Ends' field only for fixed duration programs\n5. Form validation using react-hook-form or similar\n6. Mobile responsive design with slide-up drawer behavior\n\nPseudo-code:\n```typescript\ninterface CohortStepProps {\n  programData: ProgramData;\n  onCreateCohort: (data: CohortData) => void;\n  onSkip: () => void;\n}\n\nconst CohortStep = ({ programData, onCreateCohort, onSkip }) => {\n  const { register, handleSubmit, watch } = useForm();\n  const startDate = watch('startDate');\n  \n  const endDate = calculateEndDate(startDate, programData);\n  \n  return (\n    <form onSubmit={handleSubmit(onCreateCohort)}>\n      {/* Form fields implementation */}\n    </form>\n  );\n};\n```",
+        "testStrategy": "Component testing for form validation, conditional field rendering based on program type, date calculations, and responsive behavior. Test form submission and skip functionality.",
+        "priority": "high",
+        "dependencies": [
+          "117"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T13:15:57.704Z"
+      },
+      {
+        "id": "119",
+        "title": "Implement end date calculation logic",
+        "description": "Create utility functions to calculate and display cohort end dates based on program duration settings",
+        "details": "Create utility functions for end date calculation:\n1. calculateEndDate function that takes startDate, durationWeeks, includeWeekends\n2. Handle fixed vs evergreen program types\n3. Display logic for 'Ends on [date]' vs 'Continues until closed'\n4. Account for weekend inclusion in date calculations\n\nPseudo-code:\n```typescript\nconst calculateEndDate = (startDate: Date, programData: ProgramData): Date | null => {\n  if (programData.durationType === 'evergreen') return null;\n  \n  const endDate = new Date(startDate);\n  const daysToAdd = programData.includeWeekends \n    ? programData.durationWeeks * 7\n    : programData.durationWeeks * 5; // weekdays only\n  \n  endDate.setDate(endDate.getDate() + daysToAdd);\n  return endDate;\n};\n\nconst formatEndDateDisplay = (endDate: Date | null): string => {\n  return endDate \n    ? `Ends on ${endDate.toLocaleDateString()}`\n    : 'Continues until closed';\n};\n```",
+        "testStrategy": "Unit tests for date calculations with various scenarios: weekends included/excluded, different duration lengths, edge cases like month boundaries. Test display formatting for both fixed and evergreen programs.",
+        "priority": "medium",
+        "dependencies": [
+          "118"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T13:15:57.705Z"
+      },
+      {
+        "id": "120",
+        "title": "Integrate cohort creation API endpoint",
+        "description": "Implement API integration for creating cohorts using the existing POST endpoint",
+        "details": "Implement API integration in CohortStep component:\n1. Create cohort creation function using POST /api/coach/org-programs/[programId]/cohorts\n2. Handle API request/response with proper error handling\n3. Transform form data to match API payload structure\n4. Implement loading states during API calls\n5. Handle success and error scenarios\n\nPseudo-code:\n```typescript\nconst createCohort = async (programId: string, cohortData: CohortFormData) => {\n  const payload = {\n    name: cohortData.cohortName,\n    startDate: cohortData.startDate,\n    maxEnrollment: cohortData.maxEnrollment || null,\n    convertSquadsToCommunity: cohortData.afterProgramEnds === 'community'\n  };\n  \n  const response = await fetch(`/api/coach/org-programs/${programId}/cohorts`, {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify(payload)\n  });\n  \n  if (!response.ok) throw new Error('Failed to create cohort');\n  return response.json();\n};\n```",
+        "testStrategy": "Integration tests for API calls, mock API responses for success/error scenarios, test payload transformation, and verify proper error handling and loading states.",
+        "priority": "high",
+        "dependencies": [
+          "118"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T13:15:57.706Z"
+      },
+      {
+        "id": "121",
+        "title": "Update wizard step indicator for 5 steps",
+        "description": "Modify the step indicator component to display 5 steps including the new cohort step",
+        "details": "Update the wizard step indicator:\n1. Add 'First Cohort' as step 5 in the step labels\n2. Update step progression logic to handle 5 steps\n3. Ensure proper highlighting of current step\n4. Maintain existing styling and responsive behavior\n5. Update step validation to allow progression to cohort step\n\nPseudo-code:\n```typescript\nconst WIZARD_STEPS = [\n  { key: 'type', label: 'Type' },\n  { key: 'structure', label: 'Structure' },\n  { key: 'details', label: 'Details' },\n  { key: 'settings', label: 'Final Settings' },\n  { key: 'cohort', label: 'First Cohort' }\n];\n\nconst StepIndicator = ({ currentStep, completedSteps }) => {\n  return (\n    <div className=\"step-indicator\">\n      {WIZARD_STEPS.map((step, index) => (\n        <StepItem \n          key={step.key}\n          step={step}\n          isActive={currentStep === step.key}\n          isCompleted={completedSteps.includes(step.key)}\n          stepNumber={index + 1}\n        />\n      ))}\n    </div>\n  );\n};\n```",
+        "testStrategy": "Visual testing of step indicator with 5 steps, test step highlighting and progression, verify responsive behavior on mobile devices, and test accessibility features.",
+        "priority": "medium",
+        "dependencies": [
+          "117"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T13:15:57.707Z"
+      },
+      {
+        "id": "122",
+        "title": "Implement skip functionality and modal closure logic",
+        "description": "Add skip button functionality and proper modal closure behavior for both create and skip actions",
+        "details": "Implement skip and completion logic:\n1. Add skip button with subtle styling (not primary action)\n2. Handle modal closure after successful cohort creation\n3. Navigate to program editor on both skip and success\n4. Implement success toast notification\n5. Reset modal state when closing\n\nPseudo-code:\n```typescript\nconst handleSkip = () => {\n  onClose();\n  navigateToProgramEditor(createdProgramId);\n};\n\nconst handleCohortCreated = async (cohortData: CohortFormData) => {\n  try {\n    await createCohort(createdProgramId, cohortData);\n    showSuccessToast('Program and cohort created successfully');\n    onClose();\n    navigateToProgramEditor(createdProgramId);\n  } catch (error) {\n    setError('Failed to create cohort. Please try again.');\n  }\n};\n\nconst resetModalState = () => {\n  setCreatedProgramId(null);\n  setCreatedProgramData(null);\n  setCurrentStep('type');\n};\n```",
+        "testStrategy": "Test skip functionality, modal closure behavior, navigation to program editor, success toast display, error handling, and proper state reset when modal closes.",
+        "priority": "medium",
+        "dependencies": [
+          "118",
+          "120"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T13:15:57.707Z"
+      },
+      {
+        "id": "123",
+        "title": "Apply modern 2026 design aesthetic and mobile responsiveness",
+        "description": "Style the cohort step component with modern design tokens and ensure mobile responsive behavior",
+        "details": "Apply styling and responsive design:\n1. Use existing design tokens and components from @/components/ui\n2. Implement font-albert typography\n3. Apply brand colors and spacing\n4. Ensure mobile slide-up drawer behavior matches existing wizard\n5. Add smooth transitions between states\n6. Style form elements consistently with existing wizard steps\n7. Implement proper focus states and accessibility\n\nCSS/Styling approach:\n```typescript\nconst cohortStepStyles = {\n  container: 'space-y-6 p-6',\n  formGroup: 'space-y-2',\n  input: 'w-full rounded-lg border border-gray-300 px-3 py-2 font-albert',\n  label: 'text-sm font-medium text-gray-700 font-albert',\n  button: 'rounded-lg px-4 py-2 font-medium transition-colors',\n  skipButton: 'text-gray-500 hover:text-gray-700 underline',\n  endDateDisplay: 'text-sm text-gray-600 mt-1'\n};\n```",
+        "testStrategy": "Visual regression testing, mobile responsive testing on various screen sizes, accessibility testing with screen readers, and design consistency verification against existing wizard steps.",
+        "priority": "medium",
+        "dependencies": [
+          "118",
+          "121"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T13:15:57.709Z"
+      },
+      {
+        "id": "124",
+        "title": "Add comprehensive error handling and form validation",
+        "description": "Implement robust error handling, form validation, and user feedback throughout the cohort creation process",
+        "details": "Implement comprehensive validation and error handling:\n1. Client-side form validation for required fields\n2. Date validation (start date not in past)\n3. API error handling with user-friendly messages\n4. Loading states during cohort creation\n5. Retry functionality for failed requests\n6. Form field error states and messages\n\nValidation logic:\n```typescript\nconst validateCohortForm = (data: CohortFormData) => {\n  const errors: Record<string, string> = {};\n  \n  if (!data.cohortName?.trim()) {\n    errors.cohortName = 'Cohort name is required';\n  }\n  \n  if (!data.startDate) {\n    errors.startDate = 'Start date is required';\n  } else if (new Date(data.startDate) < new Date()) {\n    errors.startDate = 'Start date cannot be in the past';\n  }\n  \n  if (data.maxEnrollment && data.maxEnrollment < 1) {\n    errors.maxEnrollment = 'Max enrollment must be at least 1';\n  }\n  \n  return errors;\n};\n```",
+        "testStrategy": "Test all validation scenarios, error message display, API error handling, loading states, retry functionality, and accessibility of error states. Test edge cases like network failures and invalid responses.",
+        "priority": "medium",
+        "dependencies": [
+          "118",
+          "120",
+          "122"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T13:15:57.716Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-08T12:52:28.082Z",
-      "taskCount": 15,
-      "completedCount": 12,
+      "lastModified": "2026-01-08T13:15:57.716Z",
+      "taskCount": 23,
+      "completedCount": 20,
       "tags": [
         "master"
       ]

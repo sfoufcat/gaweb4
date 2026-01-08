@@ -11,6 +11,7 @@ import {
   User,
   Users,
   Calendar,
+  CalendarDays,
   Layers,
   Globe,
   Lock,
@@ -20,7 +21,11 @@ import {
   Upload,
   Loader2,
   RefreshCw,
-  Clock
+  Clock,
+  UserPlus,
+  Sparkles,
+  Archive,
+  MessageCircle
 } from 'lucide-react';
 import {
   Drawer,
@@ -37,7 +42,15 @@ import {
 } from '@/components/ui/select';
 
 // Wizard step types
-type WizardStep = 'type' | 'structure' | 'details' | 'settings';
+type WizardStep = 'type' | 'structure' | 'details' | 'settings' | 'cohort';
+
+// Cohort form data
+interface CohortFormData {
+  name: string;
+  startDate: string;
+  maxEnrollment: string;
+  afterProgramEnds: 'close' | 'community';
+}
 
 // Wizard data collected across steps
 interface ProgramWizardData {
@@ -102,6 +115,17 @@ export function NewProgramModal({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [showCloseWarning, setShowCloseWarning] = useState(false);
 
+  // Cohort step state
+  const [createdProgramId, setCreatedProgramId] = useState<string | null>(null);
+  const [cohortData, setCohortData] = useState<CohortFormData>({
+    name: '',
+    startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
+    maxEnrollment: '',
+    afterProgramEnds: 'close',
+  });
+  const [isCreatingCohort, setIsCreatingCohort] = useState(false);
+  const [cohortError, setCohortError] = useState<string | null>(null);
+
   const isMobile = useMediaQuery('(max-width: 768px)');
   
   // Track if this is the initial mount to skip animation on first open
@@ -140,10 +164,25 @@ export function NewProgramModal({
       setIsCreating(false);
       setUploadError(null);
       setShowCloseWarning(false);
+      // Reset cohort state
+      setCreatedProgramId(null);
+      setCohortData({
+        name: '',
+        startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        maxEnrollment: '',
+        afterProgramEnds: 'close',
+      });
+      setIsCreatingCohort(false);
+      setCohortError(null);
     }
   }, [isOpen]);
 
   const handleCloseAttempt = () => {
+    // On cohort step, program is already created - just skip to program editor
+    if (step === 'cohort') {
+      handleSkipCohort();
+      return;
+    }
     // If past step 1, show warning
     if (step !== 'type') {
       setShowCloseWarning(true);
@@ -163,7 +202,7 @@ export function NewProgramModal({
   }, []);
 
   const goToNextStep = () => {
-    const steps: WizardStep[] = ['type', 'structure', 'details', 'settings'];
+    const steps: WizardStep[] = ['type', 'structure', 'details', 'settings', 'cohort'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex < steps.length - 1) {
       setStep(steps[currentIndex + 1]);
@@ -171,6 +210,9 @@ export function NewProgramModal({
   };
 
   const goToPreviousStep = () => {
+    // Don't allow going back from cohort step (program already created)
+    if (step === 'cohort') return;
+
     const steps: WizardStep[] = ['type', 'structure', 'details', 'settings'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex > 0) {
@@ -217,13 +259,65 @@ export function NewProgramModal({
       }
 
       const data = await response.json();
-      handleClose();
-      onProgramCreated(data.id);
+
+      // Only show cohort step for group programs
+      if (wizardData.type === 'group') {
+        // Store the created program ID and transition to cohort step
+        setCreatedProgramId(data.id);
+        setStep('cohort');
+      } else {
+        // For 1:1 programs, close and navigate directly
+        handleClose();
+        onProgramCreated(data.id);
+      }
     } catch (error) {
       console.error('Error creating program:', error);
       // Could show error toast here
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleCreateCohort = async () => {
+    if (!createdProgramId || !cohortData.name.trim() || !cohortData.startDate) {
+      setCohortError('Please fill in all required fields');
+      return;
+    }
+
+    setIsCreatingCohort(true);
+    setCohortError(null);
+
+    try {
+      const response = await fetch(`/api/coach/org-programs/${createdProgramId}/cohorts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: cohortData.name.trim(),
+          startDate: cohortData.startDate,
+          maxEnrollment: cohortData.maxEnrollment ? parseInt(cohortData.maxEnrollment) : undefined,
+          convertSquadsToCommunity: cohortData.afterProgramEnds === 'community',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create cohort');
+      }
+
+      handleClose();
+      onProgramCreated(createdProgramId);
+    } catch (error) {
+      console.error('Error creating cohort:', error);
+      setCohortError(error instanceof Error ? error.message : 'Failed to create cohort. Please try again.');
+    } finally {
+      setIsCreatingCohort(false);
+    }
+  };
+
+  const handleSkipCohort = () => {
+    if (createdProgramId) {
+      handleClose();
+      onProgramCreated(createdProgramId);
     }
   };
 
@@ -261,8 +355,28 @@ export function NewProgramModal({
 
   // Get step index for progress indicator
   const getStepIndex = () => {
-    const steps: WizardStep[] = ['type', 'structure', 'details', 'settings'];
+    const steps: WizardStep[] = ['type', 'structure', 'details', 'settings', 'cohort'];
     return steps.indexOf(step);
+  };
+
+  // Calculate end date for cohort based on program duration
+  const calculateEndDate = (startDate: string): Date | null => {
+    if (wizardData.durationType === 'evergreen') return null;
+
+    const start = new Date(startDate);
+    const totalDays = wizardData.durationWeeks * 7;
+    const end = new Date(start);
+    end.setDate(end.getDate() + totalDays - 1);
+    return end;
+  };
+
+  const formatEndDateDisplay = (): string => {
+    if (wizardData.durationType === 'evergreen') {
+      return 'Continues until closed';
+    }
+    const endDate = calculateEndDate(cohortData.startDate);
+    if (!endDate) return '';
+    return `Ends on ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   };
 
   // Validation for each step
@@ -304,12 +418,14 @@ export function NewProgramModal({
               {step === 'structure' && 'Program Structure'}
               {step === 'details' && 'Program Details'}
               {step === 'settings' && 'Final Settings'}
+              {step === 'cohort' && 'Create First Cohort'}
             </h2>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
               {step === 'type' && 'Choose your program type'}
               {step === 'structure' && 'Configure how your program is organized'}
               {step === 'details' && 'Give your program a name and description'}
               {step === 'settings' && 'Set visibility, pricing, and status'}
+              {step === 'cohort' && 'Set up your first cohort to get started'}
             </p>
           </div>
         </div>
@@ -424,15 +540,34 @@ export function NewProgramModal({
               />
             </motion.div>
           )}
+
+          {step === 'cohort' && (
+            <motion.div
+              key="cohort"
+              variants={fadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <CohortStep
+                data={cohortData}
+                onChange={(updates) => setCohortData(prev => ({ ...prev, ...updates }))}
+                programData={wizardData}
+                endDateDisplay={formatEndDateDisplay()}
+                error={cohortError}
+              />
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
       {/* Footer */}
       <div className="px-6 py-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <div className="flex items-center justify-between">
-          {/* Progress Indicator */}
+          {/* Progress Indicator - 5 dots for group programs, 4 for 1:1 */}
           <div className="flex items-center gap-2">
-            {[0, 1, 2, 3].map((i) => (
+            {(wizardData.type === 'group' ? [0, 1, 2, 3, 4] : [0, 1, 2, 3]).map((i) => (
               <div
                 key={i}
                 className={`w-2 h-2 rounded-full transition-colors ${
@@ -444,8 +579,8 @@ export function NewProgramModal({
             ))}
           </div>
 
-          {/* Action Button */}
-          {step !== 'type' && (
+          {/* Action Buttons */}
+          {step !== 'type' && step !== 'cohort' && (
             <button
               onClick={step === 'settings' ? handleCreateProgram : goToNextStep}
               disabled={!canProceed() || isCreating}
@@ -468,6 +603,35 @@ export function NewProgramModal({
                 </>
               )}
             </button>
+          )}
+
+          {/* Cohort Step Actions */}
+          {step === 'cohort' && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSkipCohort}
+                className="px-4 py-2.5 text-[#5f5a55] dark:text-[#b2b6c2] font-albert font-medium hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
+              >
+                Skip for now
+              </button>
+              <button
+                onClick={handleCreateCohort}
+                disabled={!cohortData.name.trim() || !cohortData.startDate || isCreatingCohort}
+                className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCreatingCohort ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    Create Cohort
+                    <Sparkles className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -1015,6 +1179,187 @@ function SettingsStep({ data, onChange }: SettingsStepProps) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STEP 5: Cohort Creation (Group Programs Only)
+// ============================================================================
+interface CohortStepProps {
+  data: CohortFormData;
+  onChange: (updates: Partial<CohortFormData>) => void;
+  programData: ProgramWizardData;
+  endDateDisplay: string;
+  error: string | null;
+}
+
+function CohortStep({ data, onChange, programData, endDateDisplay, error }: CohortStepProps) {
+  const isFixed = programData.durationType === 'fixed';
+
+  return (
+    <div className="space-y-6">
+      {/* Success Banner */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 dark:border-emerald-400/20">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <p className="font-albert font-medium text-emerald-700 dark:text-emerald-300">
+              Program created successfully!
+            </p>
+            <p className="text-sm text-emerald-600/80 dark:text-emerald-400/80 font-albert">
+              Now let&apos;s set up your first cohort
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Cohort Name */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          Cohort Name <span className="text-red-500">*</span>
+        </label>
+        <div className="relative">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2">
+            <Users className="w-5 h-5 text-[#8c8a87] dark:text-[#8b8f9a]" />
+          </div>
+          <input
+            type="text"
+            value={data.name}
+            onChange={(e) => onChange({ name: e.target.value })}
+            placeholder='e.g., "Spring 2025", "March Cohort"'
+            className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
+          />
+        </div>
+      </div>
+
+      {/* Start Date with End Date Display */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          Start Date <span className="text-red-500">*</span>
+        </label>
+        <div className="relative">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2">
+            <CalendarDays className="w-5 h-5 text-[#8c8a87] dark:text-[#8b8f9a]" />
+          </div>
+          <input
+            type="date"
+            value={data.startDate}
+            onChange={(e) => onChange({ startDate: e.target.value })}
+            min={new Date().toISOString().split('T')[0]}
+            className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
+          />
+        </div>
+        {/* End Date Display */}
+        <div className="mt-2 flex items-center gap-2">
+          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-albert ${
+            isFixed
+              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+              : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+          }`}>
+            {isFixed ? (
+              <Clock className="w-4 h-4" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+            <span>{endDateDisplay}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Max Enrollment */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          Max Enrollment
+          <span className="text-[#8c8a87] dark:text-[#8b8f9a] font-normal ml-2">(optional)</span>
+        </label>
+        <div className="relative">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2">
+            <UserPlus className="w-5 h-5 text-[#8c8a87] dark:text-[#8b8f9a]" />
+          </div>
+          <input
+            type="number"
+            value={data.maxEnrollment}
+            onChange={(e) => onChange({ maxEnrollment: e.target.value })}
+            placeholder="No limit"
+            min="1"
+            className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
+          />
+        </div>
+        <p className="mt-1.5 text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
+          Leave empty for unlimited enrollment
+        </p>
+      </div>
+
+      {/* After Program Ends - Only for fixed duration */}
+      {isFixed && (
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+            After Program Ends
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => onChange({ afterProgramEnds: 'close' })}
+              className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                data.afterProgramEnds === 'close'
+                  ? 'border-brand-accent bg-brand-accent/5'
+                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                data.afterProgramEnds === 'close'
+                  ? 'bg-brand-accent/20'
+                  : 'bg-[#f3f1ef] dark:bg-[#262b35]'
+              }`}>
+                <Archive className={`w-5 h-5 ${data.afterProgramEnds === 'close' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+              </div>
+              <div>
+                <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] block">
+                  Close Squad
+                </span>
+                <span className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
+                  Squad is archived when program ends
+                </span>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange({ afterProgramEnds: 'community' })}
+              className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                data.afterProgramEnds === 'community'
+                  ? 'border-brand-accent bg-brand-accent/5'
+                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                data.afterProgramEnds === 'community'
+                  ? 'bg-brand-accent/20'
+                  : 'bg-[#f3f1ef] dark:bg-[#262b35]'
+              }`}>
+                <MessageCircle className={`w-5 h-5 ${data.afterProgramEnds === 'community' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+              </div>
+              <div>
+                <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] block">
+                  Convert to Community
+                </span>
+                <span className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
+                  Squad becomes standalone community
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+          <p className="text-sm text-red-600 dark:text-red-400 font-albert">{error}</p>
+        </div>
+      )}
     </div>
   );
 }

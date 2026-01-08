@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Clock,
@@ -169,7 +170,10 @@ export function EventDetailPopup({
 
   if (!isOpen) return null;
 
-  return (
+  // Use portal to render outside any backdrop-blur containers that break fixed positioning
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       {/* Backdrop - only visible on mobile */}
       <div
@@ -389,6 +393,7 @@ export function EventDetailPopup({
           </div>
         )}
       </div>
-    </>
+    </>,
+    document.body
   );
 }
