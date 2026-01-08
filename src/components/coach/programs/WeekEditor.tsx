@@ -108,7 +108,7 @@ function SortableWeeklyTask({ task, index, id, showCompletionStatus, onTogglePri
         className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200 group"
       >
         <ArrowLeftRight className={`w-3.5 h-3.5 transition-transform duration-300 ease-out ${task.isPrimary ? 'rotate-0' : 'rotate-180'}`} />
-        <span className="relative w-[42px] h-4 overflow-hidden">
+        <span className="relative w-[52px] h-4 overflow-hidden">
           <span
             className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
               task.isPrimary

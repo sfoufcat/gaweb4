@@ -11,7 +11,23 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { syncProgramTasksToClientDay, calculateDateForProgramDay, getProgramV2 } from '@/lib/program-engine';
-import type { ClientProgramDay, ProgramEnrollment, ProgramCohort } from '@/types';
+import type { ClientProgramDay, ProgramEnrollment, ProgramCohort, ProgramTaskTemplate } from '@/types';
+
+function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramTaskTemplate[] {
+  if (!tasks || !Array.isArray(tasks)) return [];
+  return tasks.map((task) => {
+    const { completed, completedAt, taskId, deletedByClient, ...cleanTask } = task as ProgramTaskTemplate & {
+      completed?: boolean;
+      completedAt?: string;
+      taskId?: string;
+      deletedByClient?: boolean;
+    };
+    return {
+      ...cleanTask,
+      id: task.id || crypto.randomUUID(),
+    };
+  });
+}
 
 export async function GET(
   request: NextRequest,
@@ -86,7 +102,7 @@ export async function PATCH(
     if (body.title !== undefined) updateData.title = body.title?.trim() || null;
     if (body.summary !== undefined) updateData.summary = body.summary?.trim() || null;
     if (body.dailyPrompt !== undefined) updateData.dailyPrompt = body.dailyPrompt?.trim() || null;
-    if (body.tasks !== undefined) updateData.tasks = body.tasks || [];
+    if (body.tasks !== undefined) updateData.tasks = processTasksWithIds(body.tasks);
     if (body.habits !== undefined) updateData.habits = body.habits || [];
     if (body.courseAssignments !== undefined) updateData.courseAssignments = body.courseAssignments || [];
     if (body.fillSource !== undefined) updateData.fillSource = body.fillSource || null;

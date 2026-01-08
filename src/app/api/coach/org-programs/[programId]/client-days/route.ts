@@ -112,11 +112,11 @@ export async function GET(
           const dateForDay = calculateDateForProgramDay(enrollment, programData, cohort, day.dayIndex);
           if (!dateForDay) continue;
 
-          // Fetch user's tasks for this date
+          // Fetch user's tasks for this day using enrollment + dayIndex (more robust than date-based lookup)
           const userTasksSnapshot = await adminDb
             .collection('tasks')
-            .where('userId', '==', enrollment.userId)
-            .where('date', '==', dateForDay)
+            .where('programEnrollmentId', '==', enrollmentId)
+            .where('programDayIndex', '==', day.dayIndex)
             .get();
 
           let userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -146,8 +146,12 @@ export async function GET(
               });
               if (actualTask) {
                 const taskStatus = (actualTask as { status?: string }).status;
+                const actualTitle = (actualTask as { title?: string }).title;
+                const clientLocked = (actualTask as { clientLocked?: boolean }).clientLocked;
                 return {
                   ...template,
+                  // Show client's edited title if they changed it (clientLocked indicates client edited the task)
+                  ...(actualTitle && clientLocked && { label: actualTitle }),
                   completed: taskStatus === 'completed',
                   completedAt: (actualTask as { completedAt?: string }).completedAt,
                   taskId: actualTask.id,

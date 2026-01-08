@@ -117,7 +117,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
+  // Track if we've attempted to restore selection from URL to prevent race condition
+  const hasRestoredInitialSelection = useRef(false);
+
   // Demo data (memoized)
   const demoPrograms = useMemo(() => generateDemoProgramsWithStats(), []);
   
@@ -1031,13 +1034,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         setSelectedProgram(program);
         setViewMode('days');
       }
+      // Mark that we've attempted restoration (whether found or not)
+      hasRestoredInitialSelection.current = true;
     }
   }, [initialProgramId, allPrograms, selectedProgram]);
 
   // Notify parent when selection changes (for URL persistence)
+  // Skip notifying null on initial mount if we're waiting for initial restore
   useEffect(() => {
+    // Don't clear URL if we have an initialProgramId but haven't restored yet
+    if (!selectedProgram && initialProgramId && !hasRestoredInitialSelection.current) {
+      return; // Skip - waiting for restore from URL
+    }
     onProgramSelect?.(selectedProgram?.id ?? null);
-  }, [selectedProgram?.id, onProgramSelect]);
+  }, [selectedProgram?.id, onProgramSelect, initialProgramId]);
 
   // Fetch current tier for limit checking
   useEffect(() => {
@@ -2241,8 +2251,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
 
               {/* Client/Cohort Selector - right after divider */}
-              {viewMode === 'days' && (
-                selectedProgram?.type === 'individual' ? (
+              <div className={viewMode !== 'days' ? 'invisible' : ''}>
+                {selectedProgram?.type === 'individual' ? (
                   <ClientSelector
                     enrollments={programEnrollments}
                     value={clientViewContext}
@@ -2294,8 +2304,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     loading={loadingDetails}
                     className="max-w-[200px] flex-shrink-0"
                   />
-                ) : null
-              )}
+                ) : null}
+              </div>
 
               {/* Right side controls */}
               <div className="flex-shrink-0 ml-auto flex items-center gap-2">
@@ -2321,6 +2331,40 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       Enrollment: {currentEnrollment.status.charAt(0).toUpperCase() + currentEnrollment.status.slice(1)}
                     </span>
                   )
+                )}
+
+                {/* Row/Calendar Toggle - only show on Content view */}
+                {viewMode === 'days' && (
+                  <div className="hidden md:flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => { setContentDirection(-1); setContentDisplayMode('row'); }}
+                      className={`p-1.5 rounded-md transition-colors ${
+                        isRowMode
+                          ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                      }`}
+                      title="Row view"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setContentDirection(1);
+                        setContentDisplayMode('calendar');
+                        fetchOrganizationCourses();
+                      }}
+                      className={`p-1.5 rounded-md transition-colors ${
+                        isCalendarMode
+                          ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                      }`}
+                      title="Calendar view"
+                    >
+                      <CalendarDays className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
 
                 {/* Page Navigation - Desktop: Horizontal tabs, Mobile: Dropdown */}
@@ -2477,40 +2521,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     </PopoverContent>
                   </Popover>
                 </div>
-
-                {/* Row/Calendar Toggle - only show on Content view */}
-                {viewMode === 'days' && (
-                  <div className="flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => { setContentDirection(-1); setContentDisplayMode('row'); }}
-                      className={`p-1.5 rounded-md transition-colors ${
-                        isRowMode
-                          ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                      }`}
-                      title="Row view"
-                    >
-                      <List className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setContentDirection(1);
-                        setContentDisplayMode('calendar');
-                        fetchOrganizationCourses();
-                      }}
-                      className={`p-1.5 rounded-md transition-colors ${
-                        isCalendarMode
-                          ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                      }`}
-                      title="Calendar view"
-                    >
-                      <CalendarDays className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
 
                 {/* Settings */}
                 <ProgramSettingsButton
@@ -3783,7 +3793,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200 group"
                           >
                             <ArrowLeftRight className={`w-3.5 h-3.5 transition-transform duration-300 ease-out ${task.isPrimary ? 'rotate-0' : 'rotate-180'}`} />
-                            <span className="relative w-[42px] h-4 overflow-hidden">
+                            <span className="relative w-[52px] h-4 overflow-hidden">
                               <span
                                 className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
                                   task.isPrimary

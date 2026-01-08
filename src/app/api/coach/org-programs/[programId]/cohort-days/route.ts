@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
+import { syncProgramTasksToAllCohorts } from '@/lib/sync-cohort-tasks';
 import type { CohortProgramDay, ProgramTaskTemplate } from '@/types';
 
 /**
@@ -193,6 +194,21 @@ export async function POST(
 
       console.log(`[COACH_COHORT_DAYS_POST] Updated cohort day for cohort ${cohortId}, dayIndex ${dayIndex}`);
 
+      // Trigger sync to cohort members - must await to complete before response
+      if (processedTasks && processedTasks.length > 0) {
+        try {
+          const syncResult = await syncProgramTasksToAllCohorts({
+            programId,
+            specificDayIndex: dayIndex,
+            mode: 'override-program-sourced',
+          });
+          console.log(`[COACH_COHORT_DAYS_POST] Sync completed:`, JSON.stringify(syncResult));
+        } catch (err) {
+          console.error('[COACH_COHORT_DAYS_POST] Sync failed:', err);
+          // Don't fail the request if sync fails
+        }
+      }
+
       return NextResponse.json({
         success: true,
         cohortDay: updatedDay,
@@ -243,6 +259,21 @@ export async function POST(
     } as CohortProgramDay;
 
     console.log(`[COACH_COHORT_DAYS_POST] Created cohort day ${cohortDayRef.id} for cohort ${cohortId}, dayIndex ${dayIndex}`);
+
+    // Trigger sync to cohort members - must await to complete before response
+    if (cohortDayData.tasks && cohortDayData.tasks.length > 0) {
+      try {
+        const syncResult = await syncProgramTasksToAllCohorts({
+          programId,
+          specificDayIndex: dayIndex,
+          mode: 'override-program-sourced',
+        });
+        console.log(`[COACH_COHORT_DAYS_POST] Sync completed:`, JSON.stringify(syncResult));
+      } catch (err) {
+        console.error('[COACH_COHORT_DAYS_POST] Sync failed:', err);
+        // Don't fail the request if sync fails
+      }
+    }
 
     return NextResponse.json({
       success: true,

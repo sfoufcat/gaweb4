@@ -172,12 +172,13 @@ export default function CoachPage() {
     } else {
       url.searchParams.set('tab', newTab);
     }
-    // Clear selection params when switching tabs
-    url.searchParams.delete('programId');
-    url.searchParams.delete('squadId');
-    url.searchParams.delete('funnelId');
-    url.searchParams.delete('flowId');
-    url.searchParams.delete('clientId');
+    // Only clear selection params that don't belong to the new tab
+    if (newTab !== 'programs') url.searchParams.delete('programId');
+    if (newTab !== 'squads') url.searchParams.delete('squadId');
+    if (newTab !== 'funnels') url.searchParams.delete('funnelId');
+    if (newTab !== 'checkins') url.searchParams.delete('flowId');
+    if (newTab !== 'clients') url.searchParams.delete('clientId');
+    // Always clear sub-tab params on any tab change
     url.searchParams.delete('discoverSubTab');
     url.searchParams.delete('customizeSubtab');
     url.searchParams.delete('analyticsSubTab');
@@ -188,6 +189,8 @@ export default function CoachPage() {
   // Handler for program selection changes - updates URL
   const handleProgramSelect = useCallback((programId: string | null) => {
     const url = new URL(window.location.href);
+    // Ensure tab is set to programs for URL persistence on refresh
+    url.searchParams.set('tab', 'programs');
     if (programId) {
       url.searchParams.set('programId', programId);
     } else {
@@ -199,6 +202,8 @@ export default function CoachPage() {
   // Handler for squad selection changes - updates URL
   const handleSquadSelect = useCallback((squadId: string | null) => {
     const url = new URL(window.location.href);
+    // Ensure tab is set to squads for URL persistence on refresh
+    url.searchParams.set('tab', 'squads');
     if (squadId) {
       url.searchParams.set('squadId', squadId);
     } else {
@@ -222,6 +227,8 @@ export default function CoachPage() {
   // Handler for funnel selection changes - updates URL
   const handleFunnelSelect = useCallback((funnelId: string | null) => {
     const url = new URL(window.location.href);
+    // Ensure tab is set to funnels for URL persistence on refresh
+    url.searchParams.set('tab', 'funnels');
     if (funnelId) {
       url.searchParams.set('funnelId', funnelId);
     } else {
@@ -233,6 +240,8 @@ export default function CoachPage() {
   // Handler for check-in flow selection changes - updates URL
   const handleFlowSelect = useCallback((flowId: string | null) => {
     const url = new URL(window.location.href);
+    // Ensure tab is set to checkins for URL persistence on refresh
+    url.searchParams.set('tab', 'checkins');
     if (flowId) {
       url.searchParams.set('flowId', flowId);
     } else {
