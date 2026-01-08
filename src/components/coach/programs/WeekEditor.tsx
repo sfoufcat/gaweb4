@@ -191,7 +191,7 @@ export function WeekEditor({
     currentFocus: week.currentFocus || [],
     notes: week.notes || [],
     manualNotes: week.manualNotes || '',
-    distribution: (week.distribution || 'repeat-daily') as TaskDistribution,
+    distribution: (week.distribution || 'spread') as TaskDistribution,
     coachRecordingUrl: week.coachRecordingUrl || '',
     coachRecordingNotes: week.coachRecordingNotes || '',
     linkedSummaryIds: week.linkedSummaryIds || [] as string[],
@@ -257,7 +257,7 @@ export function WeekEditor({
       currentFocus: week.currentFocus || [],
       notes: week.notes || [],
       manualNotes: week.manualNotes || '',
-      distribution: (week.distribution || 'repeat-daily') as TaskDistribution,
+      distribution: (week.distribution || 'spread') as TaskDistribution,
       coachRecordingUrl: week.coachRecordingUrl || '',
       coachRecordingNotes: week.coachRecordingNotes || '',
       linkedSummaryIds: week.linkedSummaryIds || [],
@@ -277,7 +277,7 @@ export function WeekEditor({
       formData.description !== (week.description || '') ||
       formData.weeklyPrompt !== (week.weeklyPrompt || '') ||
       formData.manualNotes !== (week.manualNotes || '') ||
-      formData.distribution !== (week.distribution || 'repeat-daily') ||
+      formData.distribution !== (week.distribution || 'spread') ||
       formData.coachRecordingUrl !== (week.coachRecordingUrl || '') ||
       formData.coachRecordingNotes !== (week.coachRecordingNotes || '') ||
       JSON.stringify(formData.weeklyTasks) !== JSON.stringify(week.weeklyTasks || []) ||

@@ -99,7 +99,7 @@ export async function PATCH(
     if (body.linkedCallEventIds !== undefined) updateData.linkedCallEventIds = body.linkedCallEventIds || null;
     if (body.manualNotes !== undefined) updateData.manualNotes = body.manualNotes?.trim() || null;
     if (body.fillSource !== undefined) updateData.fillSource = body.fillSource || null;
-    if (body.distribution !== undefined) updateData.distribution = body.distribution || 'repeat-daily';
+    if (body.distribution !== undefined) updateData.distribution = body.distribution || 'spread';
     if (body.coachRecordingUrl !== undefined) updateData.coachRecordingUrl = body.coachRecordingUrl?.trim() || null;
     if (body.coachRecordingNotes !== undefined) updateData.coachRecordingNotes = body.coachRecordingNotes?.trim() || null;
 
@@ -144,9 +144,12 @@ export async function PATCH(
       }
     }
 
-    // 2-way sync: If weekly tasks were updated, sync to all active enrollments
+    // 2-way sync: If weekly tasks were updated OR distribution happened, sync to all active enrollments
     let syncResult = null;
-    if (body.weeklyTasks !== undefined && body.syncToClients !== false) {
+    // Sync triggers when: weeklyTasks explicitly updated OR distribution ran
+    const shouldSync = (body.weeklyTasks !== undefined || distributionResult) && body.syncToClients !== false;
+
+    if (shouldSync) {
       try {
         const { userId } = await requireCoachWithOrg();
         syncResult = await syncProgramTasksForDateRange(programId, {
@@ -160,22 +163,22 @@ export async function PATCH(
         // Don't fail the whole request, just log the error
       }
 
-      // Cohort sync for group programs (async, don't block response)
+      // Cohort sync for group programs (await to ensure completion before response)
       const program = programDoc.data();
       if (program?.type === 'group') {
-        import('@/lib/sync-cohort-tasks').then(({ syncProgramTasksToAllCohorts }) => {
+        try {
+          const { syncProgramTasksToAllCohorts } = await import('@/lib/sync-cohort-tasks');
           const today = new Date().toISOString().split('T')[0];
-          syncProgramTasksToAllCohorts({
+          const cohortSync = await syncProgramTasksToAllCohorts({
             programId,
             date: today,
             mode: 'fill-empty',
             syncHorizonDays: 7,
-          }).catch(err => {
-            console.error('[COHORT_SYNC] Background sync failed:', err);
           });
-        }).catch(err => {
-          console.error('[COHORT_SYNC] Failed to import sync module:', err);
-        });
+          console.log(`[COHORT_SYNC] Synced to cohort members: ${JSON.stringify(cohortSync)}`);
+        } catch (err) {
+          console.error('[COHORT_SYNC] Sync failed:', err);
+        }
       }
     }
 

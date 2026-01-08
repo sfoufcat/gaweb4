@@ -143,7 +143,7 @@ export async function POST(
       weeklyTasks: body.weeklyTasks || undefined,
       weeklyHabits: body.weeklyHabits || undefined,
       weeklyPrompt: body.weeklyPrompt?.trim() || undefined,
-      distribution: body.distribution || 'repeat-daily', // Default: repeat tasks daily
+      distribution: body.distribution || 'spread', // Default: spread tasks evenly across days
       currentFocus: body.currentFocus || undefined,
       notes: body.notes || undefined,
       scheduledCallEventId: body.scheduledCallEventId || undefined,

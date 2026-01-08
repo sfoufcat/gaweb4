@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
                 weeklyHabits: templateWeek.weeklyHabits,
                 currentFocus: templateWeek.currentFocus,
                 notes: templateWeek.notes,
-                distribution: templateWeek.distribution || 'repeat-daily',
+                distribution: templateWeek.distribution || 'spread',
 
                 // Client-specific (start empty, will be populated later)
                 linkedSummaryIds: [],

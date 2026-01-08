@@ -304,7 +304,7 @@ export function ModuleWeeksSidebar({
         totalDays: daysInWeek.length,
         label: `Week ${weekNum}`,
         theme: storedWeek?.theme,
-        distribution: storedWeek?.distribution || 'repeat-daily',
+        distribution: storedWeek?.distribution || 'spread',
         weeklyTasks: storedWeek?.weeklyTasks || [],
         storedWeekId: storedWeek?.id,
         moduleId: storedWeek?.moduleId,
@@ -367,7 +367,7 @@ export function ModuleWeeksSidebar({
         totalDays: daysInWeek.length,
         label: cw.label, // Calendar week label (Onboarding, Week 1, etc.)
         theme: storedWeek?.theme, // Actual theme from stored week
-        distribution: storedWeek?.distribution || 'repeat-daily',
+        distribution: storedWeek?.distribution || 'spread',
         weeklyTasks: storedWeek?.weeklyTasks || [],
         storedWeekId: storedWeek?.id,
         moduleId: storedWeek?.moduleId,

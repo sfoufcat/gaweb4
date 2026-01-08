@@ -196,7 +196,7 @@ export async function POST(
         weeklyHabits: weekContent.weeklyHabits ?? template?.weeklyHabits ?? undefined,
         currentFocus: weekContent.currentFocus ?? template?.currentFocus ?? undefined,
         notes: weekContent.notes ?? template?.notes ?? undefined,
-        distribution: weekContent.distribution ?? template?.distribution ?? 'repeat-daily',
+        distribution: weekContent.distribution ?? template?.distribution ?? 'spread',
         manualNotes: weekContent.manualNotes ?? undefined,
         coachRecordingUrl: weekContent.coachRecordingUrl ?? undefined,
         coachRecordingNotes: weekContent.coachRecordingNotes ?? undefined,
@@ -334,7 +334,7 @@ export async function POST(
         weeklyHabits: template.weeklyHabits || undefined,
         currentFocus: template.currentFocus || undefined,
         notes: template.notes || undefined,
-        distribution: template.distribution || 'repeat-daily',
+        distribution: template.distribution || 'spread',
 
         // Client-specific fields (start empty)
         linkedSummaryIds: [],

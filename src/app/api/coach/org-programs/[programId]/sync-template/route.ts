@@ -192,7 +192,7 @@ export async function POST(
               updateData.theme = templateWeek.theme || null;
             }
             // Always sync distribution
-            updateData.distribution = templateWeek.distribution || 'repeat-daily';
+            updateData.distribution = templateWeek.distribution || 'spread';
 
             // Preserve client-specific content if requested
             if (syncOptions.preserveClientLinks) {
@@ -238,7 +238,7 @@ export async function POST(
               weeklyHabits: templateWeek.weeklyHabits || null,
               currentFocus: templateWeek.currentFocus || null,
               notes: templateWeek.notes || null,
-              distribution: templateWeek.distribution || 'repeat-daily',
+              distribution: templateWeek.distribution || 'spread',
 
               // Client-specific (start empty)
               linkedSummaryIds: [],

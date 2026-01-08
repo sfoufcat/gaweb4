@@ -1239,7 +1239,7 @@ export function getWeeklyTasksForDay(
   const weeklyTasks = week.weeklyTasks || [];
   if (weeklyTasks.length === 0) return [];
   
-  const distribution = week.distribution || 'repeat-daily';
+  const distribution = week.distribution || 'spread';
   
   if (distribution === 'repeat-daily') {
     // All tasks appear every day

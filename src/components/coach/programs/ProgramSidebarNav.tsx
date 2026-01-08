@@ -81,7 +81,7 @@ export function ProgramSidebarNav({
         totalDays: daysInWeek.length,
         // Include stored week data
         theme: storedWeek?.theme,
-        distribution: storedWeek?.distribution || 'repeat-daily',
+        distribution: storedWeek?.distribution || 'spread',
         weeklyTasks: storedWeek?.weeklyTasks || [],
         storedWeekId: storedWeek?.id,
       };

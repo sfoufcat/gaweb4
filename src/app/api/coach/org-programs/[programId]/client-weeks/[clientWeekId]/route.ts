@@ -92,7 +92,7 @@ export async function PATCH(
     if (body.weeklyHabits !== undefined) updateData.weeklyHabits = body.weeklyHabits || null;
     if (body.currentFocus !== undefined) updateData.currentFocus = body.currentFocus || null;
     if (body.notes !== undefined) updateData.notes = body.notes || null;
-    if (body.distribution !== undefined) updateData.distribution = body.distribution || 'repeat-daily';
+    if (body.distribution !== undefined) updateData.distribution = body.distribution || 'spread';
 
     // Client-specific fields
     if (body.linkedSummaryIds !== undefined) updateData.linkedSummaryIds = body.linkedSummaryIds || [];

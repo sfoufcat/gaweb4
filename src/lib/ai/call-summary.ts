@@ -553,7 +553,7 @@ async function notifyCoachToFillWeek(
             weeklyHabits: templateWeek.weeklyHabits,
             currentFocus: templateWeek.currentFocus,
             notes: templateWeek.notes,
-            distribution: templateWeek.distribution || 'repeat-daily',
+            distribution: templateWeek.distribution || 'spread',
             linkedSummaryIds: [summaryId], // Link the summary
             linkedCallEventIds: [],
             hasLocalChanges: false,

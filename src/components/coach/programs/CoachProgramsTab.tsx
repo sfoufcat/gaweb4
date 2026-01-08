@@ -720,7 +720,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       order: orderInModule,
                       startDayIndex: startDay,
                       endDayIndex: endDay,
-                      distribution: 'repeat-daily',
+                      distribution: 'spread',
                     }),
                   }).then(res => res.ok ? res.json() : null)
                 );
@@ -3170,7 +3170,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     order: weekNumber,
                     startDayIndex: startDay,
                     endDayIndex: endDay,
-                    distribution: 'repeat-daily',
+                    distribution: 'spread',
                   } as ProgramWeek);
                 }
                 setIsWeekFillModalOpen(true);
@@ -3544,7 +3544,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     weeklyPrompt: cohortWeekContent?.weeklyPrompt ?? templateWeek.weeklyPrompt,
                     weeklyTasks: cohortWeekContent?.weeklyTasks ?? templateWeek.weeklyTasks,
                     weeklyHabits: cohortWeekContent?.weeklyHabits ?? templateWeek.weeklyHabits,
-                    distribution: cohortWeekContent?.distribution ?? templateWeek.distribution ?? 'repeat-daily',
+                    distribution: cohortWeekContent?.distribution ?? templateWeek.distribution ?? 'spread',
                     coachRecordingUrl: cohortWeekContent?.coachRecordingUrl ?? templateWeek.coachRecordingUrl,
                     coachRecordingNotes: cohortWeekContent?.coachRecordingNotes ?? templateWeek.coachRecordingNotes,
                     manualNotes: cohortWeekContent?.manualNotes ?? templateWeek.manualNotes,
@@ -3568,7 +3568,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     weeklyHabits: existingWeek.weeklyHabits,
                     currentFocus: existingWeek.currentFocus,
                     notes: existingWeek.notes,
-                    distribution: existingWeek.distribution || 'repeat-daily',
+                    distribution: existingWeek.distribution || 'spread',
                     linkedSummaryIds: existingWeek.linkedSummaryIds,
                     linkedCallEventIds: existingWeek.linkedCallEventIds,
                     manualNotes: existingWeek.manualNotes,
@@ -3586,7 +3586,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     order: weekNumber,
                     startDayIndex: startDay,
                     endDayIndex: endDay,
-                    distribution: 'repeat-daily' as const,
+                    distribution: 'spread' as const,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                   };

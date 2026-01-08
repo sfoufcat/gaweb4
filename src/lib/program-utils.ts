@@ -264,7 +264,7 @@ export async function syncProgramWeeks(
         weekNumber: weekNum,
         startDayIndex: startDay,
         endDayIndex: endDay,
-        distribution: 'repeat-daily',
+        distribution: 'spread',
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
@@ -327,7 +327,7 @@ export async function createInitialWeeksForModule(
       weekNumber: weekNum,
       startDayIndex: startDay,
       endDayIndex: endDay,
-      distribution: 'repeat-daily',
+      distribution: 'spread',
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
