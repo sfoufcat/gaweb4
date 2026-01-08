@@ -65,16 +65,28 @@ const fadeVariants = {
 };
 
 // Wrapper component that connects ModuleWeeksSidebar to ProgramEditorContext
-interface ConnectedModuleWeeksSidebarProps extends React.ComponentProps<typeof ModuleWeeksSidebar> {}
+interface ConnectedModuleWeeksSidebarProps extends React.ComponentProps<typeof ModuleWeeksSidebar> {
+  onSaveSuccess?: () => Promise<void>;
+}
 
-function ConnectedModuleWeeksSidebar(props: ConnectedModuleWeeksSidebarProps) {
+function ConnectedModuleWeeksSidebar({ onSaveSuccess, ...props }: ConnectedModuleWeeksSidebarProps) {
   const context = useProgramEditorOptional();
+  
+  const handleSaveAll = React.useCallback(async () => {
+    if (!context?.saveAllChanges) return;
+    const result = await context.saveAllChanges();
+    // Refresh data after successful save
+    if (result.success && onSaveSuccess) {
+      await onSaveSuccess();
+    }
+  }, [context, onSaveSuccess]);
+  
   return (
     <ModuleWeeksSidebar
       {...props}
       hasUnsavedChanges={context?.hasUnsavedChanges ?? false}
       isSaving={context?.isSaving ?? false}
-      onSaveAll={context?.saveAllChanges ? async () => { await context.saveAllChanges(); } : undefined}
+      onSaveAll={context?.saveAllChanges ? handleSaveAll : undefined}
       onDiscardAll={context?.discardAllChanges}
     />
   );
@@ -87,18 +99,24 @@ interface ContextStateSyncProps {
     saveAllChanges: () => Promise<void>;
     discardAllChanges: () => void;
   }>;
+  onSaveSuccess?: () => Promise<void>;
 }
 
-function ContextStateSync({ stateRef }: ContextStateSyncProps) {
+function ContextStateSync({ stateRef, onSaveSuccess }: ContextStateSyncProps) {
   const context = useProgramEditorOptional();
 
   React.useEffect(() => {
     stateRef.current = {
       hasUnsavedChanges: context?.hasUnsavedChanges ?? false,
-      saveAllChanges: context?.saveAllChanges ? async () => { await context.saveAllChanges(); } : async () => {},
+      saveAllChanges: context?.saveAllChanges ? async () => { 
+        const result = await context.saveAllChanges(); 
+        if (result.success && onSaveSuccess) {
+          await onSaveSuccess();
+        }
+      } : async () => {},
       discardAllChanges: context?.discardAllChanges ?? (() => {}),
     };
-  }, [context?.hasUnsavedChanges, context?.saveAllChanges, context?.discardAllChanges, stateRef]);
+  }, [context?.hasUnsavedChanges, context?.saveAllChanges, context?.discardAllChanges, stateRef, onSaveSuccess]);
 
   return null;
 }
@@ -1430,6 +1448,38 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       return next;
     });
   }, [selectedDayIndex, selectedProgram]);
+
+  // Callback to refresh data after successful save from global save button
+  const handleSaveSuccess = useCallback(async () => {
+    if (!selectedProgram) return;
+    
+    console.log('[handleSaveSuccess] Refreshing data...', {
+      programId: selectedProgram.id,
+      clientMode: clientViewContext.mode,
+      cohortMode: cohortViewContext.mode,
+    });
+    
+    // Refresh based on current view mode
+    if (clientViewContext.mode === 'client' && clientViewContext.enrollmentId) {
+      // Client mode: refresh client weeks and days
+      await fetchClientWeeks(selectedProgram.id, clientViewContext.enrollmentId);
+      await fetchClientDays(selectedProgram.id, clientViewContext.enrollmentId);
+    } else if (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId) {
+      // Cohort mode: refresh program details (for template weeks) and cohort days
+      await fetchProgramDetails(selectedProgram.id);
+      await fetchCohortDays(selectedProgram.id, cohortViewContext.cohortId);
+      // Also refresh cohort week content if a week is selected
+      if (sidebarSelection?.type === 'week') {
+        const templateWeek = programWeeks.find(w => w.weekNumber === sidebarSelection.weekNumber);
+        if (templateWeek?.id) {
+          await fetchCohortWeekContent(selectedProgram.id, cohortViewContext.cohortId, templateWeek.id);
+        }
+      }
+    } else {
+      // Template mode: refresh program details
+      await fetchProgramDetails(selectedProgram.id);
+    }
+  }, [selectedProgram, clientViewContext, cohortViewContext, sidebarSelection, programWeeks, fetchClientWeeks, fetchClientDays, fetchProgramDetails, fetchCohortDays, fetchCohortWeekContent]);
 
   const handleOpenProgramModal = (program?: Program) => {
     // In demo mode, show signup modal instead of allowing edit for existing programs
@@ -3164,7 +3214,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           >
             {/* Content area - Unified Sidebar + Editor Card */}
             <ProgramEditorProvider programId={selectedProgram?.id}>
-              <ContextStateSync stateRef={editorContextRef} />
+              <ContextStateSync stateRef={editorContextRef} onSaveSuccess={handleSaveSuccess} />
               <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
                 <div className="flex flex-col lg:flex-row lg:items-start">
                   {/* Sidebar Navigation - glassmorphism style with constrained height */}
@@ -3185,11 +3235,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 theme: cw.theme,
                 description: cw.description,
                 weeklyPrompt: cw.weeklyPrompt,
-                weeklyTasks: cw.weeklyTasks,
-                weeklyHabits: cw.weeklyHabits,
-                currentFocus: cw.currentFocus,
-                notes: cw.notes,
-                distribution: cw.distribution,
+                weeklyTasks: cw.weeklyTasks || [],
+                weeklyHabits: cw.weeklyHabits || [],
+                currentFocus: cw.currentFocus || [],
+                notes: cw.notes || [],
+                distribution: cw.distribution || 'spread',
+                linkedSummaryIds: cw.linkedSummaryIds || [],
+                linkedCallEventIds: cw.linkedCallEventIds || [],
                 createdAt: cw.createdAt,
                 updatedAt: cw.updatedAt,
               } as ProgramWeek)) : programWeeks}
@@ -3537,6 +3589,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               currentCohort={cohortViewContext.mode === 'cohort' ? programCohorts.find(c => c.id === cohortViewContext.cohortId) : undefined}
               selectedCycle={selectedCycle}
               onCycleSelect={(cycle) => setSelectedCycle(cycle)}
+              onSaveSuccess={handleSaveSuccess}
             />
                 </div>
 

@@ -322,7 +322,9 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
         // - It's a new week with tasks (POST)
         if (hasTaskChanges || (isNewWeek && hasTasks)) {
           body.distributeTasksNow = true;
-          body.overwriteExisting = true; // Overwrite for user-initiated saves
+          // Different APIs use different flag names for overwrite
+          body.overwriteExisting = true; // Used by client weeks API
+          body.overwriteExistingTasks = true; // Used by cohort weeks API
         }
 
         console.log(`[ProgramEditor] Saving week ${change.entityId} to ${change.apiEndpoint}`, {
@@ -379,7 +381,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
                 linkedSummaryIds: body.linkedSummaryIds,
                 linkedCallEventIds: body.linkedCallEventIds,
                 distributeTasksNow: hasTasks,
-                overwriteExisting: true,
+                overwriteExistingTasks: true, // Cohort API uses this flag name
               };
               
               const cohortResponse = await fetch(cohortContentEndpoint, {
