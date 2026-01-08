@@ -27,11 +27,12 @@ function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramT
   return tasks.map((task) => {
     // Strip runtime completion data - should never be stored in templates
     // These fields are populated at read time by merging with actual task status
-    const { completed, completedAt, taskId, deletedByClient, ...cleanTask } = task as ProgramTaskTemplate & {
+    const { completed, completedAt, taskId, deletedByClient, editedByClient, ...cleanTask } = task as ProgramTaskTemplate & {
       completed?: boolean;
       completedAt?: string;
       taskId?: string;
       deletedByClient?: boolean;
+      editedByClient?: boolean;
     };
     return {
       ...cleanTask,
@@ -148,6 +149,9 @@ export async function GET(
                 const taskStatus = (actualTask as { status?: string }).status;
                 const actualTitle = (actualTask as { title?: string }).title;
                 const clientLocked = (actualTask as { clientLocked?: boolean }).clientLocked;
+                const isDeleted = taskStatus === 'deleted';
+                // Client edited if: locked, title changed, and not deleted
+                const isEdited = clientLocked && actualTitle && actualTitle !== template.label && !isDeleted;
                 return {
                   ...template,
                   // Show client's edited title if they changed it (clientLocked indicates client edited the task)
@@ -155,16 +159,18 @@ export async function GET(
                   completed: taskStatus === 'completed',
                   completedAt: (actualTask as { completedAt?: string }).completedAt,
                   taskId: actualTask.id,
-                  deletedByClient: taskStatus === 'deleted',
+                  deletedByClient: isDeleted,
+                  editedByClient: isEdited || undefined,
                 };
               }
               // No matching task found - return template without completion data
               // This ensures stale completion data doesn't persist
-              const { completed, completedAt, taskId, deletedByClient, ...cleanTemplate } = template as typeof template & {
+              const { completed, completedAt, taskId, deletedByClient, editedByClient, ...cleanTemplate } = template as typeof template & {
                 completed?: boolean;
                 completedAt?: string;
                 taskId?: string;
                 deletedByClient?: boolean;
+                editedByClient?: boolean;
               };
               return cleanTemplate;
             });

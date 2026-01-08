@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
-import { Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2 } from 'lucide-react';
+import { Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -135,6 +135,14 @@ function SortableWeeklyTask({ task, index, id, showCompletionStatus, onTogglePri
         <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full border border-red-200 dark:border-red-800">
           <Trash2 className="w-3 h-3" />
           Deleted
+        </span>
+      )}
+
+      {/* Edited by Client Indicator */}
+      {task.editedByClient && (
+        <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full border border-amber-200 dark:border-amber-800">
+          <Pencil className="w-3 h-3" />
+          Edited
         </span>
       )}
 
@@ -696,7 +704,7 @@ export function WeekEditor({
                       className="flex items-center gap-1.5 w-full justify-center h-8 sm:h-9 text-xs sm:text-sm"
                     >
                       <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      Save
+                    Save & Sync
                     </Button>
                   </motion.div>
                 )}

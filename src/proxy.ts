@@ -245,6 +245,7 @@ function canAccessAdminSection(role?: UserRole): boolean {
 
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
+  '/lander(.*)',   // Enterprise landing page - public
   '/join(.*)',     // Unified funnel system (replaces /begin)
   '/sign-in(.*)',
   '/sign-up(.*)',
@@ -899,8 +900,9 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     searchParams.get('edit') === 'true' && 
     searchParams.get('fromOnboarding') === 'true';
   
-  const isFullscreenPage = 
+  const isFullscreenPage =
     (pathname === '/' && isMarketingDomain(hostname)) || // Only fullscreen on marketing domain root
+    pathname.startsWith('/lander') ||
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/start') ||
     pathname.startsWith('/checkin') ||

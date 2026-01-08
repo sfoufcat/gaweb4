@@ -132,8 +132,10 @@ export async function PATCH(
     let distributionResult = null;
     if (body.distributeTasksNow === true) {
       try {
+        const programData = programDoc.data();
         distributionResult = await distributeWeeklyTasksToDays(programId, weekId, {
           overwriteExisting: body.overwriteExisting || false,
+          programTaskDistribution: programData?.taskDistribution, // Use program's distribution setting as fallback
         });
         console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Distributed tasks: ${JSON.stringify(distributionResult)}`);
       } catch (distErr) {

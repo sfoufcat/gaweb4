@@ -317,9 +317,10 @@ export async function distributeWeeklyTasksToDays(
   weekId: string,
   options: {
     overwriteExisting?: boolean; // If true, replaces existing day tasks. Default: false (skip)
+    programTaskDistribution?: TaskDistribution; // Fallback if week doesn't have distribution set
   } = {}
 ): Promise<{ created: number; updated: number; skipped: number }> {
-  const { overwriteExisting = false } = options;
+  const { overwriteExisting = false, programTaskDistribution } = options;
 
   // Fetch week data
   const weekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
@@ -337,7 +338,8 @@ export async function distributeWeeklyTasksToDays(
     return { created: 0, updated: 0, skipped: 0 };
   }
 
-  const distribution = weekData.distribution || 'repeat-daily';
+  // Use week setting, fall back to program setting, then default to 'spread'
+  const distribution = weekData.distribution || programTaskDistribution || 'spread';
   const startDay = weekData.startDayIndex;
   const endDay = weekData.endDayIndex;
   const daysInWeek = endDay - startDay + 1;
@@ -456,9 +458,10 @@ export async function distributeCohortWeeklyTasksToDays(
   cohortId: string,
   options: {
     overwriteExisting?: boolean; // If true, replaces existing day tasks. Default: false (skip)
+    programTaskDistribution?: TaskDistribution; // Fallback if cohort week doesn't have distribution set
   } = {}
 ): Promise<{ created: number; updated: number; skipped: number }> {
-  const { overwriteExisting = false } = options;
+  const { overwriteExisting = false, programTaskDistribution } = options;
 
   // Fetch week data to get day range
   const weekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
@@ -491,7 +494,8 @@ export async function distributeCohortWeeklyTasksToDays(
     return { created: 0, updated: 0, skipped: 0 };
   }
 
-  const distribution = cohortWeekContent.distribution || 'repeat-daily';
+  // Use cohort week setting, fall back to program setting, then default to 'spread'
+  const distribution = cohortWeekContent.distribution || programTaskDistribution || 'spread';
   const startDay = weekData.startDayIndex;
   const endDay = weekData.endDayIndex;
   const daysInWeek = endDay - startDay + 1;

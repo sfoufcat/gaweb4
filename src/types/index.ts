@@ -539,6 +539,7 @@ export interface ProgramTaskTemplate {
   completedAt?: string; // ISO timestamp of when the client completed it
   taskId?: string; // Reference to the actual task document in the tasks collection
   deletedByClient?: boolean; // Whether the client has soft-deleted this task
+  editedByClient?: boolean; // Whether the client has edited this task's title
 }
 
 /**

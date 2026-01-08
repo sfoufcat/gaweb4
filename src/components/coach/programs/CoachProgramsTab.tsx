@@ -3444,10 +3444,40 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   const endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
 
                   // Determine which week data to use
+                  const isCohortMode = selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort';
                   const existingWeek = isClientMode ? clientWeek : templateWeek;
 
                   // Use existing week data or create a default
-                  const selectedWeek: ProgramWeek = existingWeek ? {
+                  // For cohort mode, merge cohortWeekContent with templateWeek
+                  const selectedWeek: ProgramWeek = isCohortMode && templateWeek ? {
+                    // Base structure from template
+                    id: templateWeek.id,
+                    programId: templateWeek.programId,
+                    moduleId: templateWeek.moduleId || '',
+                    organizationId: templateWeek.organizationId,
+                    weekNumber: templateWeek.weekNumber,
+                    order: templateWeek.order || templateWeek.weekNumber,
+                    startDayIndex: templateWeek.startDayIndex || startDay,
+                    endDayIndex: templateWeek.endDayIndex || endDay,
+                    name: templateWeek.name,
+                    description: templateWeek.description,
+                    theme: templateWeek.theme,
+                    createdAt: templateWeek.createdAt,
+                    updatedAt: templateWeek.updatedAt,
+                    fillSource: templateWeek.fillSource,
+                    notes: templateWeek.notes,
+                    currentFocus: templateWeek.currentFocus,
+                    // Override with cohort-specific content (if exists):
+                    weeklyPrompt: cohortWeekContent?.weeklyPrompt ?? templateWeek.weeklyPrompt,
+                    weeklyTasks: cohortWeekContent?.weeklyTasks ?? templateWeek.weeklyTasks,
+                    weeklyHabits: cohortWeekContent?.weeklyHabits ?? templateWeek.weeklyHabits,
+                    distribution: cohortWeekContent?.distribution ?? templateWeek.distribution ?? 'repeat-daily',
+                    coachRecordingUrl: cohortWeekContent?.coachRecordingUrl ?? templateWeek.coachRecordingUrl,
+                    coachRecordingNotes: cohortWeekContent?.coachRecordingNotes ?? templateWeek.coachRecordingNotes,
+                    manualNotes: cohortWeekContent?.manualNotes ?? templateWeek.manualNotes,
+                    linkedSummaryIds: cohortWeekContent?.linkedSummaryIds ?? templateWeek.linkedSummaryIds,
+                    linkedCallEventIds: cohortWeekContent?.linkedCallEventIds ?? templateWeek.linkedCallEventIds,
+                  } : existingWeek ? {
                     // For client weeks, map to ProgramWeek structure
                     id: existingWeek.id,
                     programId: existingWeek.programId,
@@ -3581,6 +3611,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({
                                 ...updates,
+                                // Always include day indices to ensure distribution works
+                                startDayIndex: selectedWeek.startDayIndex,
+                                endDayIndex: selectedWeek.endDayIndex,
                                 ...(hasWeeklyTasks && { distributeTasksNow: true }),
                               }),
                             });

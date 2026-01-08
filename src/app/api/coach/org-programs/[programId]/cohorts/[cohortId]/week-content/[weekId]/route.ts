@@ -207,19 +207,35 @@ export async function PUT(
 
     // Trigger task distribution to cohort days if requested
     let distributionResult = null;
+    let syncResult = null;
     if (body.distributeTasksNow === true && body.weeklyTasks?.length > 0) {
       try {
         // Import dynamically to avoid circular dependency issues
         const { distributeCohortWeeklyTasksToDays } = await import('@/lib/program-utils');
+        const programData = programDoc.data();
         distributionResult = await distributeCohortWeeklyTasksToDays(
           programId,
           weekId,
           cohortId,
-          { overwriteExisting: body.overwriteExistingTasks ?? false }
+          { 
+            overwriteExisting: body.overwriteExistingTasks ?? false,
+            programTaskDistribution: programData?.taskDistribution,
+          }
         );
         console.log(`[COHORT_WEEK_CONTENT_PUT] Distributed tasks: ${JSON.stringify(distributionResult)}`);
+
+        // Sync to cohort members
+        const { syncProgramTasksToCohort } = await import('@/lib/sync-cohort-tasks');
+        const today = new Date().toISOString().split('T')[0];
+        syncResult = await syncProgramTasksToCohort({
+          programId,
+          cohortId,
+          date: today,
+          mode: 'fill-empty',
+        });
+        console.log(`[COHORT_WEEK_CONTENT_PUT] Synced to members: ${syncResult.totalTasksCreated} tasks created`);
       } catch (distErr) {
-        console.error('[COHORT_WEEK_CONTENT_PUT] Distribution failed:', distErr);
+        console.error('[COHORT_WEEK_CONTENT_PUT] Distribution/sync failed:', distErr);
         // Don't fail the whole request, just log the error
       }
     }
@@ -229,6 +245,7 @@ export async function PUT(
       content: savedContent,
       created: isNew,
       ...(distributionResult && { distribution: distributionResult }),
+      ...(syncResult && { memberSync: { tasksCreated: syncResult.totalTasksCreated, membersProcessed: syncResult.membersProcessed } }),
     });
   } catch (error) {
     console.error('[COHORT_WEEK_CONTENT_PUT] Error:', error);
@@ -360,10 +377,46 @@ export async function PATCH(
       updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
     } as CohortWeekContent;
 
+    // Trigger task distribution and sync to cohort members if requested
+    let distributionResult = null;
+    let syncResult = null;
+    const hasWeeklyTasks = (updateData.weeklyTasks as ProgramTaskTemplate[] | undefined)?.length ?? 0 > 0;
+    if (body.distributeTasksNow === true && hasWeeklyTasks) {
+      try {
+        const { distributeCohortWeeklyTasksToDays } = await import('@/lib/program-utils');
+        const programData = programDoc.data();
+        distributionResult = await distributeCohortWeeklyTasksToDays(
+          programId,
+          weekId,
+          cohortId,
+          { 
+            overwriteExisting: body.overwriteExistingTasks ?? false,
+            programTaskDistribution: programData?.taskDistribution,
+          }
+        );
+        console.log(`[COHORT_WEEK_CONTENT_PATCH] Distributed tasks: ${JSON.stringify(distributionResult)}`);
+
+        // Sync to cohort members
+        const { syncProgramTasksToCohort } = await import('@/lib/sync-cohort-tasks');
+        const today = new Date().toISOString().split('T')[0];
+        syncResult = await syncProgramTasksToCohort({
+          programId,
+          cohortId,
+          date: today,
+          mode: 'fill-empty',
+        });
+        console.log(`[COHORT_WEEK_CONTENT_PATCH] Synced to members: ${syncResult.totalTasksCreated} tasks created`);
+      } catch (distErr) {
+        console.error('[COHORT_WEEK_CONTENT_PATCH] Distribution/sync failed:', distErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       content: savedContent,
       created: isNew,
+      ...(distributionResult && { distribution: distributionResult }),
+      ...(syncResult && { memberSync: { tasksCreated: syncResult.totalTasksCreated, membersProcessed: syncResult.membersProcessed } }),
     });
   } catch (error) {
     console.error('[COHORT_WEEK_CONTENT_PATCH] Error:', error);
