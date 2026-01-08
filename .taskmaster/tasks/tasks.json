@@ -136,13 +136,121 @@
         ],
         "status": "pending",
         "subtasks": []
+      },
+      {
+        "id": "94",
+        "title": "Add Type Definitions for programTaskId",
+        "description": "Update TypeScript interfaces to include programTaskId and id fields for Task, ProgramTaskTemplate, and CohortTaskState",
+        "details": "Modify src/types/index.ts to add:\n- `programTaskId?: string` to Task interface\n- `id?: string` to ProgramTaskTemplate interface\n- `programTaskId?: string` to CohortTaskState interface\n\nThis ensures type safety across the application and enables proper TypeScript checking for the new fields.",
+        "testStrategy": "Run `npx tsc --noEmit` to verify no TypeScript errors. Check that all interfaces compile correctly and IDE provides proper autocomplete for new fields.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:21:32.423Z"
+      },
+      {
+        "id": "95",
+        "title": "Add ID Generation to Program Days Route",
+        "description": "Update the PUT handler in program days route to generate unique IDs for tasks in the tasks array",
+        "details": "Modify src/app/api/coach/org-programs/[programId]/days/route.ts:\n- Import crypto.randomUUID()\n- In PUT handler, iterate through tasks array\n- For each task: if task.id exists, preserve it; if missing, generate new UUID\n- Pseudo-code:\n```javascript\nconst tasksWithIds = tasks.map(task => ({\n  ...task,\n  id: task.id || crypto.randomUUID()\n}));\n```\n- Update the database save operation to use tasksWithIds",
+        "testStrategy": "Create automated test that saves program day with tasks, verify each task gets an id field. Test that existing IDs are preserved on subsequent saves. Verify UUIDs are valid format.",
+        "priority": "high",
+        "dependencies": [
+          "94"
+        ],
+        "status": "in-progress",
+        "subtasks": [],
+        "updatedAt": "2026-01-08T12:21:45.588Z"
+      },
+      {
+        "id": "96",
+        "title": "Add ID Generation to Client Days Route",
+        "description": "Update the POST handler in client-days route to generate unique IDs for client-specific task customizations",
+        "details": "Modify src/app/api/coach/org-programs/[programId]/client-days/route.ts:\n- Import crypto.randomUUID()\n- In POST handler, iterate through tasks array\n- For each task: if task.id exists, preserve it; if missing, generate new UUID\n- Same logic as program days route:\n```javascript\nconst tasksWithIds = tasks.map(task => ({\n  ...task,\n  id: task.id || crypto.randomUUID()\n}));\n```\n- Ensure client-specific customizations maintain unique IDs",
+        "testStrategy": "Test client-specific task creation, verify IDs are generated. Test that client customizations preserve template task IDs when applicable. Verify no ID conflicts between template and client-specific tasks.",
+        "priority": "high",
+        "dependencies": [
+          "94"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "97",
+        "title": "Update Task Sync to Use programTaskId Matching",
+        "description": "Modify syncProgramTasksToClientDay function to match tasks by programTaskId instead of title",
+        "details": "Modify src/lib/program-engine.ts around line 2400 in syncProgramTasksToClientDay:\n- Change task matching logic from title-based to programTaskId-based\n- Implement fallback to title matching for backward compatibility\n- Pseudo-code:\n```javascript\nconst existingTask = clientTasks.find(task => \n  task.programTaskId === templateTask.id || \n  (!task.programTaskId && task.title === templateTask.title)\n);\n```\n- Set programTaskId on newly created/updated tasks\n- Ensure works for both 1:1 and cohort sync paths",
+        "testStrategy": "Test task rename scenario: create task, sync, rename, re-sync - should update existing task not create duplicate. Test backward compatibility with tasks lacking programTaskId. Verify both 1:1 and cohort programs work correctly.",
+        "priority": "high",
+        "dependencies": [
+          "94",
+          "95",
+          "96"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "98",
+        "title": "Fix CohortTaskState Creation Logic",
+        "description": "Remove conditional that prevents CohortTaskState creation when no new tasks are created",
+        "details": "Modify src/lib/sync-cohort-tasks.ts around line 226:\n- Remove the `if (totalTasksCreated > 0)` conditional\n- Always call createCohortTaskStatesForSyncedTasks regardless of task creation count\n- Add programTaskId field to CohortTaskState documents when creating them\n- Pseudo-code:\n```javascript\n// Remove this conditional:\n// if (totalTasksCreated > 0) {\n  await createCohortTaskStatesForSyncedTasks(cohortId, syncedTasks);\n// }\n```\n- Ensure programTaskId is included in CohortTaskState creation",
+        "testStrategy": "Test cohort with existing tasks - verify CohortTaskState is created even when no new tasks added. Test that programTaskId is properly stored in CohortTaskState documents. Verify completion tracking works after task edits.",
+        "priority": "medium",
+        "dependencies": [
+          "94"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "99",
+        "title": "Add programTaskId Lookup Function for CohortTaskState",
+        "description": "Create findCohortTaskStateByProgramTaskId function for robust CohortTaskState matching",
+        "details": "Modify src/lib/cohort-task-state.ts:\n- Add new function findCohortTaskStateByProgramTaskId(cohortId, programTaskId, date)\n- Query CohortTaskState collection by cohortId, programTaskId, and date\n- Implement fallback to title-based lookup for backward compatibility\n- Pseudo-code:\n```javascript\nexport async function findCohortTaskStateByProgramTaskId(cohortId: string, programTaskId: string, date: string, fallbackTitle?: string) {\n  let state = await CohortTaskState.findOne({ cohortId, programTaskId, date });\n  if (!state && fallbackTitle) {\n    state = await CohortTaskState.findOne({ cohortId, taskTitle: fallbackTitle, date });\n  }\n  return state;\n}\n```",
+        "testStrategy": "Test programTaskId-based lookup returns correct CohortTaskState. Test fallback to title-based lookup for backward compatibility. Verify function handles edge cases like missing programTaskId gracefully.",
+        "priority": "medium",
+        "dependencies": [
+          "94",
+          "98"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "100",
+        "title": "Update Task Completion Handler to Use programTaskId",
+        "description": "Modify task completion API to use programTaskId for CohortTaskState lookup",
+        "details": "Modify src/app/api/tasks/[id]/route.ts:\n- Update task completion handler to use findCohortTaskStateByProgramTaskId\n- Replace existing title-based CohortTaskState lookup\n- Maintain backward compatibility with title fallback\n- Pseudo-code:\n```javascript\nif (task.programTaskId) {\n  cohortTaskState = await findCohortTaskStateByProgramTaskId(\n    cohortId, \n    task.programTaskId, \n    task.date, \n    task.title // fallback\n  );\n} else {\n  // existing title-based lookup for backward compatibility\n  cohortTaskState = await findCohortTaskStateByTitle(cohortId, task.title, task.date);\n}\n```",
+        "testStrategy": "Test task completion with programTaskId - verify correct CohortTaskState is found and updated. Test completion tracking after task rename. Test backward compatibility with tasks lacking programTaskId. Verify completion shows correctly in coach dashboard.",
+        "priority": "medium",
+        "dependencies": [
+          "99"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "101",
+        "title": "Integration Testing and Validation",
+        "description": "Comprehensive end-to-end testing of the programTaskId implementation across all scenarios",
+        "details": "Perform comprehensive testing:\n1. Test Task Rename Scenario (1:1 and Cohort):\n   - Create task 'Test A', sync to client\n   - Rename to 'Test B', re-sync\n   - Verify only ONE task exists with updated title\n2. Test Cohort Completion Tracking:\n   - Create task in cohort, client completes it\n   - Coach renames task, verify completion still shows\n3. Test Backward Compatibility:\n   - Verify existing tasks without programTaskId still work\n   - Test migration path when tasks get programTaskId on next sync\n4. Run TypeScript validation: `npx tsc --noEmit`\n5. Performance testing to ensure no regression",
+        "testStrategy": "Execute all acceptance criteria from PRD. Create automated test suite covering task rename, cohort completion, and backward compatibility scenarios. Monitor for performance regressions. Verify zero duplicate tasks and 100% completion tracking accuracy.",
+        "priority": "high",
+        "dependencies": [
+          "97",
+          "100"
+        ],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-08T09:23:53.527Z",
-      "taskCount": 10,
-      "completedCount": 1,
+      "lastModified": "2026-01-08T12:21:45.588Z",
+      "taskCount": 18,
+      "completedCount": 2,
       "tags": [
         "master"
       ]

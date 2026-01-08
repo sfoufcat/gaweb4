@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import type { Program, ProgramDay, ProgramModule, ProgramWeek, ClientViewContext, CohortViewContext } from '@/types';
 import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
+import { calculateCyclesSinceDate, getActiveCycleNumber } from '@/lib/program-client-utils';
+import type { ProgramEnrollment, ProgramCohort } from '@/types';
 import {
   ChevronDown,
   ChevronRight,
@@ -71,6 +73,10 @@ interface ModuleWeeksSidebarProps {
   enrollmentId?: string;
   /** Cohort ID when viewing a specific cohort (for sync/clear operations) */
   cohortId?: string;
+  /** Current enrollment data (for cycle display in client mode) */
+  currentEnrollment?: ProgramEnrollment & { currentDayIndex?: number };
+  /** Current cohort data (for cycle display in cohort mode) */
+  currentCohort?: ProgramCohort;
 }
 
 interface CalculatedWeek {
@@ -212,6 +218,8 @@ export function ModuleWeeksSidebar({
   onJumpToToday,
   enrollmentId,
   cohortId,
+  currentEnrollment,
+  currentCohort,
 }: ModuleWeeksSidebarProps) {
   // In client view mode, disable reordering (structure comes from template)
   const isClientView = viewContext?.mode === 'client';
@@ -1278,7 +1286,7 @@ export function ModuleWeeksSidebar({
         {canReorderModules && sortedModules.length > 0 && (
           <button
             onClick={onAddModule}
-            className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent hover:text-brand-accent transition-colors text-sm font-albert"
+            className="mt-4 w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent hover:text-brand-accent transition-colors text-sm font-albert"
           >
             <Plus className="w-4 h-4" />
             Add Module
@@ -1294,6 +1302,40 @@ export function ModuleWeeksSidebar({
             <Shuffle className="w-4 h-4" />
             Auto-Distribute Weeks
           </button>
+        )}
+
+        {/* Cycle Indicator - for evergreen programs */}
+        {program.durationType === 'evergreen' && (
+          <div className="mt-3 mx-1 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+            <div className="flex items-center gap-2 text-sm">
+              <RefreshCw className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-emerald-700 dark:text-emerald-300 font-medium font-albert">
+                Cycle {(() => {
+                  // Client mode: use actual cycle from enrollment
+                  if (isClientView && currentEnrollment) {
+                    return getActiveCycleNumber(currentEnrollment);
+                  }
+                  // Cohort mode: calculate from cohort start date
+                  if (isCohortView && currentCohort?.startDate) {
+                    return calculateCyclesSinceDate(
+                      currentCohort.startDate,
+                      program.lengthDays,
+                      program.includeWeekends !== false
+                    );
+                  }
+                  // Template mode: calculate from program creation
+                  if (program.createdAt) {
+                    return calculateCyclesSinceDate(
+                      program.createdAt,
+                      program.lengthDays,
+                      program.includeWeekends !== false
+                    );
+                  }
+                  return 1;
+                })()}
+              </span>
+            </div>
+          </div>
         )}
         </div>
         {/* Fade gradient at bottom to indicate more content */}

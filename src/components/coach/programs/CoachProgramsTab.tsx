@@ -15,7 +15,7 @@ import type { DiscoverCourse } from '@/types/discover';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine, RefreshCw } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -42,7 +42,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 
 import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
-import { calculateProgramDayIndex, getActiveCycleNumber } from '@/lib/program-client-utils';
+import { calculateProgramDayIndex, getActiveCycleNumber, calculateCyclesSinceDate } from '@/lib/program-client-utils';
 
 // Animation variants for subtle fade transitions (calendar/row switching)
 const fadeVariants = {
@@ -2107,6 +2107,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 }`}>
                   {selectedProgram?.type === 'group' ? 'Group' : '1:1'}
                 </span>
+                {/* Evergreen badge */}
+                {selectedProgram?.durationType === 'evergreen' && (
+                  <div
+                    className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0"
+                    title="Evergreen Program"
+                  >
+                    <RefreshCw className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                )}
               </div>
 
               {/* Divider */}
@@ -3111,6 +3120,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               cohortViewContext={cohortViewContext}
               enrollmentId={clientViewContext.mode === 'client' ? clientViewContext.enrollmentId : undefined}
               cohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined}
+              currentEnrollment={currentEnrollment || undefined}
+              currentCohort={cohortViewContext.mode === 'cohort' ? programCohorts.find(c => c.id === cohortViewContext.cohortId) : undefined}
             />
                 </div>
 
@@ -3514,10 +3525,29 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           <button
                             type="button"
                             onClick={() => updateTask(index, { isPrimary: !task.isPrimary })}
-                            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200"
+                            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200 group"
                           >
-                            <ArrowLeftRight className="w-3.5 h-3.5" />
-                            <span>{task.isPrimary ? 'Focus' : 'Backlog'}</span>
+                            <ArrowLeftRight className={`w-3.5 h-3.5 transition-transform duration-300 ease-out ${task.isPrimary ? 'rotate-0' : 'rotate-180'}`} />
+                            <span className="relative w-[42px] h-4 overflow-hidden">
+                              <span
+                                className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
+                                  task.isPrimary
+                                    ? 'opacity-100 translate-y-0'
+                                    : 'opacity-0 -translate-y-full'
+                                }`}
+                              >
+                                Focus
+                              </span>
+                              <span
+                                className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
+                                  !task.isPrimary
+                                    ? 'opacity-100 translate-y-0'
+                                    : 'opacity-0 translate-y-full'
+                                }`}
+                              >
+                                Backlog
+                              </span>
+                            </span>
                           </button>
 
                           {/* Delete Button */}

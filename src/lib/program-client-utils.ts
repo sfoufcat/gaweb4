@@ -90,3 +90,45 @@ export function calculateProgramDayIndex(
     shouldRollover,
   };
 }
+
+/**
+ * Calculate how many cycles have elapsed since a start date
+ * Used to show "Cycle X" in the UI for evergreen programs
+ *
+ * @param startDate - ISO string of the reference start date
+ * @param lengthDays - Program duration in days
+ * @param includeWeekends - Whether weekends count as program days (default: true)
+ * @returns The current cycle number (1-based)
+ */
+export function calculateCyclesSinceDate(
+  startDate: string,
+  lengthDays: number,
+  includeWeekends: boolean = true
+): number {
+  // Handle both date-only strings and full ISO timestamps
+  const startDateOnly = startDate.includes('T') ? startDate.split('T')[0] : startDate;
+  const start = new Date(startDateOnly + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // If start date is in the future, we're in cycle 1
+  if (start > today) {
+    return 1;
+  }
+
+  let daysSinceStart: number;
+
+  if (includeWeekends) {
+    // Simple day count
+    daysSinceStart = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  } else {
+    // Count only weekdays
+    daysSinceStart = countWeekdaysBetween(start, today) - 1; // -1 because we count from day 1, not day 0
+  }
+
+  // Calculate cycle (0-indexed, then +1 for 1-based)
+  const cycleNumber = Math.floor(daysSinceStart / lengthDays) + 1;
+
+  // Always return at least 1
+  return Math.max(1, cycleNumber);
+}

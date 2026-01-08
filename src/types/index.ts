@@ -467,6 +467,7 @@ export interface Task {
   sourceType?: TaskSourceType;         // Source of the task - defaults to 'user'
   programEnrollmentId?: string | null; // FK to program_enrollments
   programDayIndex?: number | null;     // Which program day this task came from
+  programTaskId?: string;              // Unique ID linking to template task for robust matching
   // Call summary fields (when sourceType === 'call_suggestion')
   callSummaryId?: string;              // FK to call_summaries
   suggestedTaskId?: string;            // FK to suggested_tasks
@@ -521,6 +522,7 @@ export interface UpdateTaskRequest {
  * @deprecated Use ProgramDay.tasks with the new Program system
  */
 export interface ProgramTaskTemplate {
+  id?: string; // Unique ID for this template task (persists through edits)
   label: string; // Task title that shows in the app
   type?: 'task' | 'habit' | 'learning' | 'admin'; // Optional categorization
   isPrimary: boolean; // If true, pushed to Daily Focus (if room); otherwise Backlog
@@ -939,7 +941,8 @@ export interface CohortTaskState {
   programId: string;           // FK to programs
   organizationId: string;      // Denormalized for queries
   programDayIndex: number;     // Which day in the program (1-based)
-  taskTemplateId: string;      // FK to program_day_tasks or program_week_tasks
+  taskTemplateId: string;      // FK to program_day_tasks or program_week_tasks (deprecated, use programTaskId)
+  programTaskId?: string;      // Unique ID linking to template task for robust matching
   taskTitle: string;           // Denormalized for display
   date: string;                // ISO date YYYY-MM-DD
   

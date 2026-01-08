@@ -53,6 +53,7 @@ export function RichTextEditor({
   readOnly = false,
 }: RichTextEditorProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
@@ -116,11 +117,13 @@ export function RichTextEditor({
     if (!editor || !onUploadImage) return;
 
     setIsUploading(true);
+    setUploadError(null);
     try {
       const url = await onUploadImage(file);
       editor.chain().focus().setImage({ src: url }).run();
     } catch (error) {
       console.error('Failed to upload image:', error);
+      setUploadError(error instanceof Error ? error.message : 'Failed to upload image');
     } finally {
       setIsUploading(false);
     }
@@ -253,12 +256,25 @@ export function RichTextEditor({
       {isUploading && (
         <div className="absolute inset-0 bg-white/50 dark:bg-black/50 flex items-center justify-center rounded-xl backdrop-blur-sm">
           <div className="flex items-center gap-2 text-[14px] text-[#8a857f]">
-            <div 
+            <div
               className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"
               style={{ borderColor: accentColor }}
             />
             Uploading...
           </div>
+        </div>
+      )}
+
+      {/* Upload error */}
+      {uploadError && !isUploading && (
+        <div className="absolute bottom-2 left-2 right-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2 flex items-center justify-between">
+          <span className="text-sm text-red-600 dark:text-red-400">{uploadError}</span>
+          <button
+            onClick={() => setUploadError(null)}
+            className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300 ml-2"
+          >
+            ✕
+          </button>
         </div>
       )}
 

@@ -859,8 +859,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                     </div>
                   )}
 
-                  {/* Visibility badge - top right */}
-                  <div className="absolute top-3 right-3 z-20">
+                  {/* Visibility badge - top left */}
+                  <div className="absolute top-3 left-3 z-20">
                     <SquadVisibilityBadge isPublic={squad.visibility !== 'private'} />
                   </div>
                 </div>

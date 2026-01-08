@@ -1,0 +1,182 @@
+# PRD: programTaskId for Robust Task Tracking
+
+## Overview
+
+Implement `programTaskId` on Task documents to enable robust task tracking for both 1:1 and cohort programs. This fixes task renames creating duplicates and cohort completion tracking breaking after task edits.
+
+## Problem Statement
+
+### Current Issues
+
+1. **Task renames create duplicates:**
+   - Coach creates task "Nour test 9", syncs to client
+   - Client completes it, shows in dashboard
+   - Coach renames to "Nour test 10"
+   - Sync runs, looks for task titled "Nour test 10" - not found
+   - Creates NEW task instead of updating existing
+   - Old task orphaned (still completed but doesn't match template)
+
+2. **Cohort completion tracking fails after renames:**
+   - CohortTaskState uses title-based matching
+   - When task title changes, lookup fails
+   - Completion doesn't show in coach dashboard
+
+3. **CohortTaskState creation skipped:**
+   - Bug: Only created when `tasksCreated > 0`
+   - If tasks already exist, CohortTaskState never created
+
+**Affects BOTH:**
+- 1:1 programs (individual clients)
+- Cohort programs (group programs)
+
+## Goals
+
+- Goal 1: Task renames update existing tasks instead of creating duplicates
+- Goal 2: Cohort completion tracking works after task edits
+- Goal 3: Works for both program_days (cohorts + 1:1 default) and client_program_days (1:1 specific)
+- Goal 4: Backward compatible with existing tasks
+
+## Architecture Context
+
+Task sources that need programTaskId:
+- `program_days` - Template tasks for cohorts AND default for 1:1
+- `client_program_days` - Client-specific customizations for 1:1 ONLY
+
+Existing fields remain unchanged:
+- `date`, `programDayIndex`, `sourceProgramDayId`, `sourceWeekId`, `sourceType`
+
+## Solution
+
+Generate a unique UUID for each task in the source's `tasks[]` array. This ID:
+- Stays the same when coach edits the task title
+- Gets synced to client tasks as `programTaskId`
+- Enables matching by ID instead of title
+
+## Features & Requirements
+
+### Feature 1: Add `id` to Template Tasks
+
+**Description:**
+When saving tasks in program day editor, ensure each task has a unique ID that persists through edits.
+
+**Requirements:**
+- [ ] Update days/route.ts PUT handler to add id to each task
+- [ ] Update client-days/route.ts POST handler to add id to each task
+- [ ] Preserve existing id if present, generate new if missing
+- [ ] Use crypto.randomUUID() for ID generation
+
+**Files to modify:**
+- src/app/api/coach/org-programs/[programId]/days/route.ts
+- src/app/api/coach/org-programs/[programId]/client-days/route.ts
+
+### Feature 2: Update Task Sync to Use programTaskId
+
+**Description:**
+Modify task sync to match by programTaskId instead of title when syncing template tasks to client's Daily Focus.
+
+**Requirements:**
+- [ ] When syncing, find existing task by programTaskId first
+- [ ] Fall back to title matching for backward compatibility
+- [ ] Set programTaskId on newly created/updated tasks
+- [ ] Works for both 1:1 and cohort sync paths
+
+**Files to modify:**
+- src/lib/program-engine.ts (syncProgramTasksToClientDay function ~line 2400)
+
+### Feature 3: Fix CohortTaskState Creation
+
+**Description:**
+Remove the conditional that skips CohortTaskState creation when no new tasks are created.
+
+**Requirements:**
+- [ ] Remove `if (totalTasksCreated > 0)` conditional
+- [ ] Always call createCohortTaskStatesForSyncedTasks
+- [ ] Add programTaskId to CohortTaskState documents
+
+**Files to modify:**
+- src/lib/sync-cohort-tasks.ts (~line 226)
+
+### Feature 4: Add programTaskId Lookup for CohortTaskState
+
+**Description:**
+Add function to find CohortTaskState by programTaskId for robust matching.
+
+**Requirements:**
+- [ ] Create findCohortTaskStateByProgramTaskId function
+- [ ] Query by cohortId, programTaskId, and date
+- [ ] Update task completion handler to use new function
+- [ ] Fall back to title-based lookup for backward compatibility
+
+**Files to modify:**
+- src/lib/cohort-task-state.ts
+- src/app/api/tasks/[id]/route.ts
+
+### Feature 5: Type Definitions
+
+**Description:**
+Add programTaskId to relevant type definitions.
+
+**Requirements:**
+- [ ] Add programTaskId to Task interface
+- [ ] Add id to ProgramTaskTemplate interface
+- [ ] Add programTaskId to CohortTaskState interface
+
+**Files to modify:**
+- src/types/index.ts
+
+## Technical Considerations
+
+### Backward Compatibility
+- Existing template tasks without `id` get one generated on next save
+- Existing synced tasks without `programTaskId` use title fallback
+- CohortTaskState matching uses programTaskId first, then title fallback
+
+### Performance
+- No additional queries needed - just uses existing fields
+- UUID generation is fast (crypto.randomUUID)
+
+## Files Summary
+
+| File | Action | Purpose |
+|------|--------|---------|
+| src/app/api/coach/org-programs/[programId]/days/route.ts | MODIFY | Add id to tasks on save |
+| src/app/api/coach/org-programs/[programId]/client-days/route.ts | MODIFY | Add id to tasks on save |
+| src/lib/program-engine.ts | MODIFY | Match by programTaskId during sync |
+| src/lib/sync-cohort-tasks.ts | MODIFY | Fix conditional + add programTaskId |
+| src/lib/cohort-task-state.ts | MODIFY | Add findCohortTaskStateByProgramTaskId |
+| src/app/api/tasks/[id]/route.ts | MODIFY | Use programTaskId for lookup |
+| src/types/index.ts | MODIFY | Add type definitions |
+
+## Acceptance Criteria
+
+### Test 1: Task Rename (1:1 or Cohort)
+1. Create task "Test A" in program day
+2. Sync to client
+3. Rename to "Test B" in program day
+4. Re-sync
+5. Client should have ONE task "Test B" (not two tasks)
+
+### Test 2: Cohort Completion Tracking
+1. Create task in cohort program day
+2. As client: complete task
+3. As coach: rename task in editor
+4. Completion should still show in dashboard
+
+### Test 3: TypeScript Check
+```bash
+npx tsc --noEmit
+```
+Should pass with no errors.
+
+## Out of Scope
+
+- Migrating existing tasks to have programTaskId (will happen organically on next sync)
+- UI changes to show programTaskId
+- Analytics on task tracking
+
+## Success Metrics
+
+- Zero duplicate tasks after rename operations
+- 100% cohort completion tracking after task edits
+- No TypeScript errors
+- Backward compatible with existing data

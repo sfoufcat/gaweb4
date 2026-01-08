@@ -99,6 +99,7 @@ export function NewProgramModal({
   const [wizardData, setWizardData] = useState<ProgramWizardData>(DEFAULT_WIZARD_DATA);
   const [isCreating, setIsCreating] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [showCloseWarning, setShowCloseWarning] = useState(false);
 
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -137,6 +138,7 @@ export function NewProgramModal({
       setStep('type');
       setWizardData(DEFAULT_WIZARD_DATA);
       setIsCreating(false);
+      setUploadError(null);
       setShowCloseWarning(false);
     }
   }, [isOpen]);
@@ -228,6 +230,8 @@ export function NewProgramModal({
     if (!file) return;
 
     setUploadingImage(true);
+    setUploadError(null);
+
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -238,12 +242,16 @@ export function NewProgramModal({
         body: formData,
       });
 
-      if (!response.ok) throw new Error('Upload failed');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Upload failed');
+      }
 
       const data = await response.json();
       updateWizardData({ coverImage: data.url });
     } catch (error) {
       console.error('Error uploading image:', error);
+      setUploadError(error instanceof Error ? error.message : 'Failed to upload image. Please try again.');
     } finally {
       setUploadingImage(false);
     }
@@ -394,6 +402,7 @@ export function NewProgramModal({
                 onChange={updateWizardData}
                 onImageUpload={handleImageUpload}
                 uploadingImage={uploadingImage}
+                uploadError={uploadError}
               />
             </motion.div>
           )}
@@ -745,9 +754,10 @@ interface DetailsStepProps {
   onChange: (updates: Partial<ProgramWizardData>) => void;
   onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   uploadingImage: boolean;
+  uploadError: string | null;
 }
 
-function DetailsStep({ data, onChange, onImageUpload, uploadingImage }: DetailsStepProps) {
+function DetailsStep({ data, onChange, onImageUpload, uploadingImage, uploadError }: DetailsStepProps) {
   return (
     <div className="space-y-5">
       {/* Program Name */}
@@ -819,6 +829,12 @@ function DetailsStep({ data, onChange, onImageUpload, uploadingImage }: DetailsS
               </>
             )}
           </label>
+        )}
+
+        {uploadError && (
+          <p className="text-sm text-red-500 dark:text-red-400 mt-2 font-albert">
+            {uploadError}
+          </p>
         )}
       </div>
     </div>
