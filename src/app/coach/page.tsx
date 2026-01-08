@@ -120,8 +120,20 @@ export default function CoachPage() {
   const { isDemoSite } = useDemoMode();
   const [mounted, setMounted] = useState(false);
   
-  // Clients tab state - selected client ID for viewing details
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  // Read initial selection IDs from URL (must be before state that depends on them)
+  const tabFromUrl = searchParams.get('tab') as CoachTab | null;
+  const initialProgramId = searchParams.get('programId');
+  const initialSquadId = searchParams.get('squadId');
+  const initialFunnelId = searchParams.get('funnelId');
+  const initialFlowId = searchParams.get('flowId');
+  const initialClientId = searchParams.get('clientId');
+  const initialDiscoverSubTab = searchParams.get('discoverSubTab');
+  const initialCustomizeSubtab = searchParams.get('customizeSubtab');
+  const initialAnalyticsSubTab = searchParams.get('analyticsSubTab');
+  const initialAnalyticsSquadId = searchParams.get('analyticsSquadId');
+  
+  // Clients tab state - selected client ID for viewing details (initialized from URL)
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(initialClientId);
   
   // Ending cohorts banner state
   interface EndingCohortData {
@@ -136,11 +148,18 @@ export default function CoachPage() {
   
   // Payment failed banner state
   const [subscription, setSubscription] = useState<CoachSubscription | null>(null);
-  
-  // Get initial tab from URL query param, default to 'clients'
-  const tabFromUrl = searchParams.get('tab') as CoachTab | null;
-  const initialTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'clients';
-  const [activeTab, setActiveTab] = useState<CoachTab>(initialTab);
+
+  // Auto-detect initial tab from URL params - if selection param exists, switch to that tab
+  const getInitialTab = (): CoachTab => {
+    if (tabFromUrl && VALID_TABS.includes(tabFromUrl)) return tabFromUrl;
+    if (initialProgramId) return 'programs';
+    if (initialSquadId) return 'squads';
+    if (initialFunnelId) return 'funnels';
+    if (initialFlowId) return 'checkins';
+    // clientId stays on clients tab (default)
+    return 'clients';
+  };
+  const [activeTab, setActiveTab] = useState<CoachTab>(getInitialTab());
 
   // Handler for tab changes - updates URL without navigation
   const handleTabChange = useCallback((newTab: CoachTab) => {
@@ -158,22 +177,13 @@ export default function CoachPage() {
     url.searchParams.delete('squadId');
     url.searchParams.delete('funnelId');
     url.searchParams.delete('flowId');
+    url.searchParams.delete('clientId');
     url.searchParams.delete('discoverSubTab');
     url.searchParams.delete('customizeSubtab');
     url.searchParams.delete('analyticsSubTab');
     url.searchParams.delete('analyticsSquadId');
     router.replace(url.pathname + url.search, { scroll: false });
   }, [router]);
-
-  // Read initial selection IDs from URL
-  const initialProgramId = searchParams.get('programId');
-  const initialSquadId = searchParams.get('squadId');
-  const initialFunnelId = searchParams.get('funnelId');
-  const initialFlowId = searchParams.get('flowId');
-  const initialDiscoverSubTab = searchParams.get('discoverSubTab');
-  const initialCustomizeSubtab = searchParams.get('customizeSubtab');
-  const initialAnalyticsSubTab = searchParams.get('analyticsSubTab');
-  const initialAnalyticsSquadId = searchParams.get('analyticsSquadId');
 
   // Handler for program selection changes - updates URL
   const handleProgramSelect = useCallback((programId: string | null) => {
@@ -193,6 +203,18 @@ export default function CoachPage() {
       url.searchParams.set('squadId', squadId);
     } else {
       url.searchParams.delete('squadId');
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
+  // Handler for client selection changes - updates URL
+  const handleClientSelect = useCallback((clientId: string | null) => {
+    setSelectedClientId(clientId);
+    const url = new URL(window.location.href);
+    if (clientId) {
+      url.searchParams.set('clientId', clientId);
+    } else {
+      url.searchParams.delete('clientId');
     }
     router.replace(url.pathname + url.search, { scroll: false });
   }, [router]);
@@ -928,7 +950,7 @@ export default function CoachPage() {
               <>
                 {/* Back Button */}
                 <button
-                  onClick={() => setSelectedClientId(null)}
+                  onClick={() => handleClientSelect(null)}
                   className="inline-flex items-center gap-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert transition-colors mb-6"
                 >
                   <ArrowLeft className="w-5 h-5" />
@@ -936,7 +958,7 @@ export default function CoachPage() {
                 </button>
                 <ClientDetailView
                   clientId={selectedClientId}
-                  onBack={() => setSelectedClientId(null)}
+                  onBack={() => handleClientSelect(null)}
                 />
               </>
             ) : (
@@ -949,7 +971,7 @@ export default function CoachPage() {
                       ? '/api/coach/org-users'  // Full access: all org users
                       : '/api/admin/users'      // Admin: all users
                 }
-                onSelectUser={(userId) => setSelectedClientId(userId)}
+                onSelectUser={(userId) => handleClientSelect(userId)}
                 headerTitle="Clients"
                 showOrgRole={hasFullAccess && (role === 'coach' || orgRole === 'super_coach')}
                 currentUserOrgRole={orgRole}

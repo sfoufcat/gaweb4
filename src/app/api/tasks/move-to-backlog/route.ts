@@ -71,11 +71,15 @@ export async function POST(_request: NextRequest) {
     let movedCount = 0;
 
     focusTasksSnapshot.forEach((doc) => {
+      const task = doc.data() as Task;
       maxBacklogOrder++;
       batch.update(doc.ref, {
         listType: 'backlog',
         order: maxBacklogOrder,
         updatedAt: now,
+        // Track when task first moved to backlog (for archive lifecycle)
+        // Only set if not already set (preserves original backlog entry time)
+        ...(task.movedToBacklogAt ? {} : { movedToBacklogAt: now }),
       });
       movedCount++;
     });

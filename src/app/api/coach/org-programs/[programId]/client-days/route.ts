@@ -27,10 +27,11 @@ function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramT
   return tasks.map((task) => {
     // Strip runtime completion data - should never be stored in templates
     // These fields are populated at read time by merging with actual task status
-    const { completed, completedAt, taskId, ...cleanTask } = task as ProgramTaskTemplate & {
+    const { completed, completedAt, taskId, deletedByClient, ...cleanTask } = task as ProgramTaskTemplate & {
       completed?: boolean;
       completedAt?: string;
       taskId?: string;
+      deletedByClient?: boolean;
     };
     return {
       ...cleanTask,
@@ -144,19 +145,22 @@ export async function GET(
                 return task.title === template.label;
               });
               if (actualTask) {
+                const taskStatus = (actualTask as { status?: string }).status;
                 return {
                   ...template,
-                  completed: (actualTask as { status?: string }).status === 'completed',
+                  completed: taskStatus === 'completed',
                   completedAt: (actualTask as { completedAt?: string }).completedAt,
                   taskId: actualTask.id,
+                  deletedByClient: taskStatus === 'deleted',
                 };
               }
               // No matching task found - return template without completion data
               // This ensures stale completion data doesn't persist
-              const { completed, completedAt, taskId, ...cleanTemplate } = template as typeof template & {
+              const { completed, completedAt, taskId, deletedByClient, ...cleanTemplate } = template as typeof template & {
                 completed?: boolean;
                 completedAt?: string;
                 taskId?: string;
+                deletedByClient?: boolean;
               };
               return cleanTemplate;
             });

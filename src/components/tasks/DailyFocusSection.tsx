@@ -21,10 +21,11 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { ChevronDown, Sparkles, ListPlus, Loader2 } from 'lucide-react';
+import { ChevronDown, Sparkles, ListPlus, Loader2, Archive } from 'lucide-react';
 import { TaskItem } from './TaskItem';
 import { TaskSheetDefine } from './TaskSheetDefine';
 import { TaskSheetManage } from './TaskSheetManage';
+import { TaskArchiveModal } from './TaskArchiveModal';
 import { useTasks } from '@/hooks/useTasks';
 import { useActiveEnrollment } from '@/hooks/useActiveEnrollment';
 import { useDailyFocusLimit } from '@/hooks/useDailyFocusLimit';
@@ -111,6 +112,7 @@ export function DailyFocusSection({
   const [showBacklog, setShowBacklog] = useState(false); // Start with backlog hidden
   const [showDefineSheet, setShowDefineSheet] = useState(false);
   const [showManageSheet, setShowManageSheet] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [forceBacklog, setForceBacklog] = useState(false); // When true, new task goes to backlog
@@ -539,6 +541,14 @@ export function DailyFocusSection({
                         Backlog
                       </span>
                       <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-[#262b35]" />
+                      {/* Archive Link */}
+                      <button
+                        onClick={() => setShowArchiveModal(true)}
+                        className="font-sans text-[12px] text-brand-accent leading-[1.2] hover:opacity-80 transition-opacity flex items-center gap-1"
+                      >
+                        <Archive className="w-3 h-3" />
+                        Archive
+                      </button>
                     </div>
 
                     {/* Backlog Tasks (now draggable!) */}
@@ -643,6 +653,13 @@ export function DailyFocusSection({
           task={selectedTask}
         />
       )}
+
+      {/* Archive Modal */}
+      <TaskArchiveModal
+        isOpen={showArchiveModal}
+        onClose={() => setShowArchiveModal(false)}
+        onRestore={fetchTasks}
+      />
     </>
   );
 }

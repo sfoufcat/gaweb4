@@ -2,8 +2,9 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, AlertTriangle } from 'lucide-react';
 import { AITaskHelpButton } from '@/components/ai-support/AITaskHelpButton';
+import { getTaskArchiveStatus, getArchiveWarningText } from '@/lib/task-archive-status';
 import type { Task } from '@/types';
 
 interface TaskItemProps {
@@ -37,6 +38,8 @@ export function TaskItem({ task, onClick, isDraggable = true, trackDisplayName, 
 
   const isCompleted = task.status === 'completed';
   const isProgramTask = task.sourceType === 'program';
+  const archiveStatus = getTaskArchiveStatus(task);
+  const showStaleWarning = task.listType === 'backlog' && archiveStatus.isStale && !isCompleted;
 
   return (
     <div
@@ -97,12 +100,22 @@ export function TaskItem({ task, onClick, isDraggable = true, trackDisplayName, 
           )}
         </div>
 
+        {/* Stale Task Warning - shows when task has been in backlog 5+ days */}
+        {showStaleWarning && (
+          <div
+            className="flex items-center text-amber-600 dark:text-amber-400 flex-shrink-0"
+            title={getArchiveWarningText(archiveStatus)}
+          >
+            <AlertTriangle className="w-4 h-4" />
+          </div>
+        )}
+
         {/* AI Help Button - only show for incomplete tasks */}
         {!isCompleted && (
           <AITaskHelpButton task={{ id: task.id, title: task.title }} onTaskUpdate={onTaskUpdate} />
         )}
       </div>
-      
+
       {/* Program Task Tag - "Pre-filled from your X Starter Program" */}
       {isProgramTask && trackDisplayName && (
         <p className="mt-2 ml-10 font-sans text-[11px] text-text-muted dark:text-[#7d8190] leading-[1.2]">
@@ -117,6 +130,8 @@ export function TaskItem({ task, onClick, isDraggable = true, trackDisplayName, 
 export function TaskItemStatic({ task, onClick, trackDisplayName, onTaskUpdate }: Omit<TaskItemProps, 'isDraggable'>) {
   const isCompleted = task.status === 'completed';
   const isProgramTask = task.sourceType === 'program';
+  const archiveStatus = getTaskArchiveStatus(task);
+  const showStaleWarning = task.listType === 'backlog' && archiveStatus.isStale && !isCompleted;
 
   return (
     <div
@@ -163,12 +178,22 @@ export function TaskItemStatic({ task, onClick, trackDisplayName, onTaskUpdate }
           )}
         </div>
 
+        {/* Stale Task Warning - shows when task has been in backlog 5+ days */}
+        {showStaleWarning && (
+          <div
+            className="flex items-center text-amber-600 dark:text-amber-400 flex-shrink-0"
+            title={getArchiveWarningText(archiveStatus)}
+          >
+            <AlertTriangle className="w-4 h-4" />
+          </div>
+        )}
+
         {/* AI Help Button - only show for incomplete tasks */}
         {!isCompleted && (
           <AITaskHelpButton task={{ id: task.id, title: task.title }} onTaskUpdate={onTaskUpdate} />
         )}
       </div>
-      
+
       {/* Program Task Tag - "Pre-filled from your X Starter Program" */}
       {isProgramTask && trackDisplayName && (
         <p className="mt-2 ml-8 font-sans text-[11px] text-text-muted dark:text-[#7d8190] leading-[1.2]">

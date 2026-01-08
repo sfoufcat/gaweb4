@@ -121,6 +121,11 @@ export async function PATCH(
       }
 
       updates.listType = body.listType;
+
+      // Track when task first moves to backlog (for archive lifecycle)
+      if (body.listType === 'backlog' && !existingTask.movedToBacklogAt) {
+        updates.movedToBacklogAt = new Date().toISOString();
+      }
     }
 
     await taskRef.update(updates);

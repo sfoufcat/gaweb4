@@ -130,6 +130,14 @@ function SortableWeeklyTask({ task, index, id, showCompletionStatus, onTogglePri
         </span>
       </button>
 
+      {/* Deleted by Client Indicator */}
+      {task.deletedByClient && (
+        <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full border border-red-200 dark:border-red-800">
+          <Trash2 className="w-3 h-3" />
+          Deleted
+        </span>
+      )}
+
       {/* Delete Button */}
       <button
         type="button"

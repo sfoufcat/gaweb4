@@ -53,7 +53,10 @@ export async function GET(request: NextRequest) {
     const tasks: Task[] = [];
 
     snapshot.forEach((doc) => {
-      tasks.push({ id: doc.id, ...doc.data() } as Task);
+      const data = doc.data();
+      // Skip soft-deleted and archived tasks
+      if (data.status === 'deleted' || data.status === 'archived') return;
+      tasks.push({ id: doc.id, ...data } as Task);
     });
 
     // LAZY SYNC: If fetching today's tasks and no program tasks exist, trigger sync
@@ -82,7 +85,10 @@ export async function GET(request: NextRequest) {
               const refreshSnapshot = await tasksRef.get();
               tasks.length = 0; // Clear existing tasks
               refreshSnapshot.forEach((doc) => {
-                tasks.push({ id: doc.id, ...doc.data() } as Task);
+                const data = doc.data();
+                // Skip soft-deleted and archived tasks
+                if (data.status === 'deleted' || data.status === 'archived') return;
+                tasks.push({ id: doc.id, ...data } as Task);
               });
             }
           }
@@ -112,7 +118,10 @@ export async function GET(request: NextRequest) {
       // Migration attempted
       const tasksToMigrate: Task[] = [];
       previousTasksSnapshot.forEach((doc) => {
-        tasksToMigrate.push({ id: doc.id, ...doc.data() } as Task);
+        const data = doc.data();
+        // Skip soft-deleted and archived tasks
+        if (data.status === 'deleted' || data.status === 'archived') return;
+        tasksToMigrate.push({ id: doc.id, ...data } as Task);
       });
 
       // Migrate previous pending tasks to today's backlog
@@ -125,12 +134,15 @@ export async function GET(request: NextRequest) {
 
         for (const task of tasksToMigrate) {
           maxBacklogOrder++;
+          // Only set movedToBacklogAt if not already set (preserves original backlog entry time)
+          const movedToBacklogAt = task.movedToBacklogAt || now;
           const updatedTask: Task = {
             ...task,
             date, // Update to today
             listType: 'backlog', // Move to backlog
             order: maxBacklogOrder,
             updatedAt: now,
+            movedToBacklogAt,
           };
 
           const taskRef = adminDb.collection('tasks').doc(task.id);
@@ -139,6 +151,8 @@ export async function GET(request: NextRequest) {
             listType: 'backlog',
             order: maxBacklogOrder,
             updatedAt: now,
+            // Track when task first moved to backlog (for archive lifecycle)
+            ...(task.movedToBacklogAt ? {} : { movedToBacklogAt: now }),
           });
 
           // Add to our tasks array for the response
@@ -285,7 +299,10 @@ export async function POST(request: NextRequest) {
 
     const existingTasks: Task[] = [];
     existingTasksSnapshot.forEach((doc) => {
-      existingTasks.push({ id: doc.id, ...doc.data() } as Task);
+      const data = doc.data();
+      // Skip soft-deleted tasks when counting
+      if (data.status === 'deleted') return;
+      existingTasks.push({ id: doc.id, ...data } as Task);
     });
 
     // Count tasks in focus list

@@ -438,7 +438,7 @@ export interface GoalSaveResponse {
 }
 
 // Task Types
-export type TaskStatus = 'pending' | 'completed' | 'deleted';
+export type TaskStatus = 'pending' | 'completed' | 'deleted' | 'archived';
 export type TaskListType = 'focus' | 'backlog';
 // Extended source types for 2-way coach-client sync
 export type TaskSourceType = 
@@ -463,6 +463,10 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
+  // Archive lifecycle fields
+  movedToBacklogAt?: string | null;    // ISO timestamp - when task FIRST entered backlog
+  archivedAt?: string | null;          // ISO timestamp - when archived
+  scheduledDeleteAt?: string | null;   // ISO timestamp - 30 days after archivedAt
   // Program-related fields
   sourceType?: TaskSourceType;         // Source of the task - defaults to 'user'
   programEnrollmentId?: string | null; // FK to program_enrollments
@@ -534,6 +538,7 @@ export interface ProgramTaskTemplate {
   completed?: boolean; // Whether the client has completed this task
   completedAt?: string; // ISO timestamp of when the client completed it
   taskId?: string; // Reference to the actual task document in the tasks collection
+  deletedByClient?: boolean; // Whether the client has soft-deleted this task
 }
 
 /**
