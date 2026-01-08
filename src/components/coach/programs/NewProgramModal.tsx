@@ -178,12 +178,7 @@ export function NewProgramModal({
   }, [isOpen]);
 
   const handleCloseAttempt = () => {
-    // On cohort step, program is already created - just skip to program editor
-    if (step === 'cohort') {
-      handleSkipCohort();
-      return;
-    }
-    // If past step 1, show warning
+    // On cohort step or past step 1, show warning
     if (step !== 'type') {
       setShowCloseWarning(true);
       return;
@@ -314,13 +309,6 @@ export function NewProgramModal({
     }
   };
 
-  const handleSkipCohort = () => {
-    if (createdProgramId) {
-      handleClose();
-      onProgramCreated(createdProgramId);
-    }
-  };
-
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -401,7 +389,7 @@ export function NewProgramModal({
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <div className="flex items-center gap-3">
-          {step !== 'type' && (
+          {step !== 'type' && step !== 'cohort' && (
             <button
               onClick={() => {
                 setShowCloseWarning(false);
@@ -441,28 +429,49 @@ export function NewProgramModal({
       {showCloseWarning && (
         <div className="mx-6 mt-4 p-3 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b] border border-[#e1ddd8] dark:border-[#262b35]">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                Discard progress?
-              </p>
-              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
-                Your progress will be lost if you close now.
-              </p>
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={handleClose}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
-                >
-                  Discard
-                </button>
-                <button
-                  onClick={() => setShowCloseWarning(false)}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
-                >
-                  Continue Editing
-                </button>
-              </div>
+              {step === 'cohort' ? (
+                <>
+                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    A cohort is required
+                  </p>
+                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                    Please create a cohort to add clients to your program.
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => setShowCloseWarning(false)}
+                      className="px-3 py-1.5 text-sm font-medium rounded-lg bg-brand-accent text-white hover:bg-brand-accent/90 transition-colors"
+                    >
+                      Create Cohort
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    Discard progress?
+                  </p>
+                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                    Your progress will be lost if you close now.
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={handleClose}
+                      className="px-3 py-1.5 text-sm font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+                    >
+                      Discard
+                    </button>
+                    <button
+                      onClick={() => setShowCloseWarning(false)}
+                      className="px-3 py-1.5 text-sm font-medium rounded-lg border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+                    >
+                      Continue Editing
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -607,31 +616,23 @@ export function NewProgramModal({
 
           {/* Cohort Step Actions */}
           {step === 'cohort' && (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleSkipCohort}
-                className="px-4 py-2.5 text-[#5f5a55] dark:text-[#b2b6c2] font-albert font-medium hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
-              >
-                Skip for now
-              </button>
-              <button
-                onClick={handleCreateCohort}
-                disabled={!cohortData.name.trim() || !cohortData.startDate || isCreatingCohort}
-                className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isCreatingCohort ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    Create Cohort
-                    <Sparkles className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              onClick={handleCreateCohort}
+              disabled={!cohortData.name.trim() || !cohortData.startDate || isCreatingCohort}
+              className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isCreatingCohort ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  Create Cohort
+                  <Sparkles className="w-4 h-4" />
+                </>
+              )}
+            </button>
           )}
         </div>
       </div>
@@ -832,28 +833,28 @@ function StructureStep({ data, onChange }: StructureStepProps) {
       </div>
 
       {/* Duration + Modules Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
         {/* Duration Card */}
-        <div className="p-4 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 border border-[#e1ddd8]/60 dark:border-[#262b35]/60 text-center">
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+        <div className="p-4 md:p-8 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 border border-[#e1ddd8]/60 dark:border-[#262b35]/60 text-center">
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2 md:mb-3">
             {data.durationType === 'evergreen' ? 'Cycle Length' : 'Duration'}
           </label>
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-3 md:gap-5">
             <button
               onClick={() => onChange({ durationWeeks: Math.max(1, data.durationWeeks - 1) })}
               disabled={data.durationWeeks <= 1}
-              className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
+              className="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg md:text-xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
             >
               −
             </button>
             <div className="flex flex-col items-center">
-              <span className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums">{data.durationWeeks}</span>
-              <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">weeks</span>
+              <span className="text-2xl md:text-5xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums">{data.durationWeeks}</span>
+              <span className="text-xs md:text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">weeks</span>
             </div>
             <button
               onClick={() => onChange({ durationWeeks: Math.min(52, data.durationWeeks + 1) })}
               disabled={data.durationWeeks >= 52}
-              className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
+              className="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg md:text-xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
             >
               +
             </button>
@@ -861,26 +862,26 @@ function StructureStep({ data, onChange }: StructureStepProps) {
         </div>
 
         {/* Modules Card */}
-        <div className="p-4 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 border border-[#e1ddd8]/60 dark:border-[#262b35]/60 text-center">
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+        <div className="p-4 md:p-8 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 border border-[#e1ddd8]/60 dark:border-[#262b35]/60 text-center">
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2 md:mb-3">
             Modules
           </label>
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-3 md:gap-5">
             <button
               onClick={() => onChange({ numModules: Math.max(1, data.numModules - 1) })}
               disabled={data.numModules <= 1}
-              className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
+              className="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg md:text-xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
             >
               −
             </button>
             <div className="flex flex-col items-center">
-              <span className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums">{data.numModules}</span>
-              <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">modules</span>
+              <span className="text-2xl md:text-5xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums">{data.numModules}</span>
+              <span className="text-xs md:text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">modules</span>
             </div>
             <button
               onClick={() => onChange({ numModules: Math.min(12, data.numModules + 1) })}
               disabled={data.numModules >= 12}
-              className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
+              className="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg md:text-xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] transition-colors"
             >
               +
             </button>

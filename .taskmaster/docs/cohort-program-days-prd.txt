@@ -1,0 +1,154 @@
+# Product Requirements Document: Cohort Program Day Task Persistence
+
+## Overview
+
+Fix week-level task persistence and distribution for group programs (cohorts) by creating a new `cohort_program_days` Firestore collection that mirrors the existing `client_program_days` pattern used for 1:1 programs.
+
+## Problem Statement
+
+Two critical issues exist with week-level tasks in the program editor:
+
+1. **Group Programs (Cohorts)**: Week/day tasks don't persist for cohorts - they save to the template (`program_days`) instead of cohort-specific storage, affecting ALL cohorts unintentionally.
+
+2. **Task Distribution**: Weekly tasks need to distribute to individual days before syncing to user's daily focus. The distribution logic exists but isn't properly integrated for cohorts.
+
+## Goals
+
+- Cohort-specific tasks persist separately from template tasks
+- Weekly tasks distribute correctly to cohort days using existing distribution logic (repeat-daily vs spread)
+- Template remains the baseline; cohort overrides take precedence
+- Sync to user's daily focus reads cohort-specific days first, falls back to template
+- Manual sync only (no auto-sync on save)
+
+## Technical Architecture
+
+### Data Model
+
+Create new `cohort_program_days` collection mirroring `client_program_days`:
+
+| Program Type | Template Storage | Override Storage |
+|--------------|------------------|------------------|
+| Group | `program_days` | `cohort_program_days` (NEW) |
+| Individual | `program_days` | `client_program_days` |
+
+### New Types Required
+
+**CohortProgramDay Interface:**
+- id: string
+- cohortId: string (FK to program_cohorts)
+- programDayId?: string (FK to program_days template if overriding)
+- programId: string
+- organizationId: string
+- dayIndex: number
+- weekId?: string
+- title?: string
+- summary?: string
+- dailyPrompt?: string
+- tasks: ProgramTaskTemplate[]
+- habits?: ProgramHabitTemplate[]
+- courseAssignments?: DayCourseAssignment[]
+- createdAt: string
+- updatedAt: string
+
+**Extend CohortWeekContent:**
+- weeklyTasks?: ProgramTaskTemplate[]
+- weeklyHabits?: ProgramHabitTemplate[]
+- weeklyPrompt?: string
+- distribution?: TaskDistribution
+
+## Requirements
+
+### Requirement 1: Create CohortProgramDay Type
+Add new TypeScript interface in src/types/index.ts similar to ClientProgramDay but with cohortId instead of enrollmentId.
+
+### Requirement 2: Extend CohortWeekContent Interface
+Add weeklyTasks, weeklyHabits, weeklyPrompt, and distribution fields to existing CohortWeekContent interface.
+
+### Requirement 3: Create Cohort Days API Endpoint (List/Create)
+Create new API endpoint at src/app/api/coach/org-programs/[programId]/cohort-days/route.ts with:
+- GET: List cohort days for a program+cohort (filter by cohortId query param)
+- POST: Create or update a cohort day (upsert by cohortId + dayIndex)
+
+### Requirement 4: Create Single Cohort Day API Endpoint
+Create new API endpoint at src/app/api/coach/org-programs/[programId]/cohort-days/[cohortDayId]/route.ts with:
+- GET: Get single cohort day by ID
+- PATCH: Update cohort day
+- DELETE: Delete cohort day
+
+### Requirement 5: Add Cohort Branch in handleSaveDay
+Update handleSaveDay function in CoachProgramsTab.tsx to detect cohort mode and save to cohort-days endpoint instead of template days endpoint. Order: isClientMode -> isCohortMode -> template.
+
+### Requirement 6: Add Cohort Branch in Week Save (onSave)
+Update the week onSave callback in CoachProgramsTab.tsx to save cohort-specific week content when in cohort mode. Should call the existing week-content API with new fields.
+
+### Requirement 7: Update Cohort Week Content API
+Modify src/app/api/coach/org-programs/[programId]/cohorts/[cohortId]/week-content/[weekId]/route.ts to:
+- Accept weeklyTasks, weeklyHabits, weeklyPrompt, distribution fields
+- Ensure each task has unique programTaskId
+- Support distributeTasksNow flag to trigger distribution
+
+### Requirement 8: Create distributeCohortWeeklyTasksToDays Function
+Add new function in src/lib/program-utils.ts that:
+- Fetches week data (startDayIndex, endDayIndex)
+- Fetches cohort week content (weeklyTasks, distribution)
+- Applies distribution logic (repeat-daily or spread)
+- Creates/updates cohort_program_days documents
+- Returns counts: { created, updated, skipped }
+
+### Requirement 9: Update Sync Logic to Read Cohort Days
+Modify syncProgramTasksToClientDay in src/lib/program-engine.ts to:
+- Check if enrollment is in a group program with cohortId
+- Query cohort_program_days collection first for the specific cohort+dayIndex
+- Use cohort-specific tasks if found, otherwise fall back to template
+- Log source type for debugging
+
+### Requirement 10: Update UI to Load Cohort Days
+Update CoachProgramsTab.tsx to:
+- Fetch cohort-specific days when in cohort mode
+- Merge with template days (cohort overrides template for same dayIndex)
+- Display merged days in the editor
+
+## Files to Modify
+
+1. src/types/index.ts - Add CohortProgramDay, extend CohortWeekContent
+2. src/app/api/coach/org-programs/[programId]/cohort-days/route.ts (NEW)
+3. src/app/api/coach/org-programs/[programId]/cohort-days/[cohortDayId]/route.ts (NEW)
+4. src/app/api/coach/org-programs/[programId]/cohorts/[cohortId]/week-content/[weekId]/route.ts
+5. src/lib/program-utils.ts - Add distributeCohortWeeklyTasksToDays
+6. src/lib/program-engine.ts - Update syncProgramTasksToClientDay
+7. src/components/coach/programs/CoachProgramsTab.tsx - Add cohort branches, load cohort days
+
+## Acceptance Criteria
+
+### Test 1: Cohort Day Tasks Persistence
+- Open group program, select a cohort (not template)
+- Navigate to a day, add a task
+- Save Day
+- Refresh page
+- Task persists in cohort view
+- Template does NOT have the task
+
+### Test 2: Cohort Week Tasks Distribution
+- In cohort view, navigate to a week
+- Add weekly tasks with "Spread Across Week" distribution
+- Save the week
+- Navigate to individual days
+- Tasks are distributed across days in cohort_program_days
+
+### Test 3: Cohort Sync to Members
+- Enroll a test user in the cohort
+- Trigger manual sync
+- User's daily focus shows cohort-specific tasks
+- Tasks have correct programTaskId
+
+### Test 4: Template Baseline Works
+- Edit template days (no cohort selected)
+- Saves to program_days as before
+- Cohorts without overrides still use template
+
+## Dependencies
+
+- Existing client_program_days pattern to mirror
+- Existing distributeWeeklyTasksToDays function for reference
+- Existing syncProgramTasksToClientDay function
+- Existing CohortWeekContent and cohort week-content API

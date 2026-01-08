@@ -918,6 +918,12 @@ export interface CohortWeekContent {
   // Cohort-specific notes
   manualNotes?: string;             // Coach notes specific to this cohort
   
+  // Cohort-specific weekly tasks and distribution
+  weeklyTasks?: ProgramTaskTemplate[];
+  weeklyHabits?: ProgramHabitTemplate[];
+  weeklyPrompt?: string;
+  distribution?: TaskDistribution;
+  
   // Metadata
   createdAt: string;
   updatedAt: string;
@@ -1225,6 +1231,33 @@ export interface ClientProgramDay {
   // Sync tracking
   lastSyncedAt?: string;
   hasLocalChanges?: boolean;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+
+/**
+ * Cohort-specific program day - overrides template day for a specific cohort
+ * Mirrors ClientProgramDay but uses cohortId instead of enrollmentId
+ * Stored in 'cohort_program_days' Firestore collection
+ */
+export interface CohortProgramDay {
+  id: string;
+  cohortId: string;             // FK to program_cohorts
+  programDayId?: string;        // FK to program_days (template) if overriding
+  programId: string;            // Denormalized for queries
+  organizationId: string;       // Denormalized for queries
+  dayIndex: number;
+  weekId?: string;              // FK to program_weeks
+
+  // Content (same as ProgramDay)
+  title?: string;
+  summary?: string;
+  dailyPrompt?: string;
+  tasks: ProgramTaskTemplate[];
+  habits?: ProgramHabitTemplate[];
+  courseAssignments?: DayCourseAssignment[];
 
   createdAt: string;
   updatedAt: string;

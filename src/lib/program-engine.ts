@@ -2377,8 +2377,29 @@ export async function syncProgramTasksToClientDay(
       console.log(`[SYNC_TO_CLIENT] Got ${clientDay.tasks.length} client-specific tasks for day ${dayIndex}`);
     }
   }
-  
-  // If no client-specific tasks, try week-level tasks
+
+  // For group programs with cohortId, check cohort-specific day first
+  if (program.type === 'group' && enrollment.cohortId && tasksForDay.length === 0) {
+    const cohortDaySnapshot = await adminDb
+      .collection('cohort_program_days')
+      .where('cohortId', '==', enrollment.cohortId)
+      .where('programId', '==', enrollment.programId)
+      .where('dayIndex', '==', dayIndex)
+      .limit(1)
+      .get();
+
+    if (!cohortDaySnapshot.empty) {
+      const cohortDay = cohortDaySnapshot.docs[0].data();
+      if (cohortDay.tasks && cohortDay.tasks.length > 0) {
+        tasksForDay = [...cohortDay.tasks];
+        sourceType = 'program_day';
+        sourceProgramDayId = cohortDaySnapshot.docs[0].id;
+        console.log(`[SYNC_TO_CLIENT] Got ${cohortDay.tasks.length} cohort-specific tasks from cohort_program_days for day ${dayIndex}`);
+      }
+    }
+  }
+
+  // If no client/cohort-specific tasks, try week-level tasks
   if (tasksForDay.length === 0) {
     const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
     if (week && week.weeklyTasks && week.weeklyTasks.length > 0) {

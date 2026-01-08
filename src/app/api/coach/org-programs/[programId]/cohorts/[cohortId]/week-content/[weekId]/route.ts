@@ -11,7 +11,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { CohortWeekContent } from '@/types';
+import type { CohortWeekContent, ProgramTaskTemplate } from '@/types';
+
+/**
+ * Process tasks to ensure each has a unique ID for robust matching.
+ * Preserves existing IDs, generates new UUIDs for tasks without IDs.
+ */
+function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramTaskTemplate[] {
+  if (!tasks || !Array.isArray(tasks)) return [];
+  return tasks.map((task) => ({
+    ...task,
+    id: task.id || crypto.randomUUID(),
+  }));
+}
 
 type RouteParams = { params: Promise<{ programId: string; cohortId: string; weekId: string }> };
 
@@ -76,6 +88,10 @@ export async function GET(
       linkedSummaryIds: [],
       linkedCallEventIds: [],
       manualNotes: undefined,
+      weeklyTasks: [],
+      weeklyHabits: [],
+      weeklyPrompt: undefined,
+      distribution: undefined,
     };
 
     return NextResponse.json({ content: emptyContent, exists: false });
@@ -143,6 +159,11 @@ export async function PUT(
       linkedSummaryIds: body.linkedSummaryIds || [],
       linkedCallEventIds: body.linkedCallEventIds || [],
       manualNotes: body.manualNotes?.trim() || null,
+      // Weekly tasks and distribution
+      weeklyTasks: processTasksWithIds(body.weeklyTasks),
+      weeklyHabits: body.weeklyHabits || [],
+      weeklyPrompt: body.weeklyPrompt?.trim() || null,
+      distribution: body.distribution || null,
       updatedAt: FieldValue.serverTimestamp(),
     };
 
@@ -174,10 +195,30 @@ export async function PUT(
       updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
     } as CohortWeekContent;
 
+    // Trigger task distribution to cohort days if requested
+    let distributionResult = null;
+    if (body.distributeTasksNow === true && body.weeklyTasks?.length > 0) {
+      try {
+        // Import dynamically to avoid circular dependency issues
+        const { distributeCohortWeeklyTasksToDays } = await import('@/lib/program-utils');
+        distributionResult = await distributeCohortWeeklyTasksToDays(
+          programId,
+          weekId,
+          cohortId,
+          { overwriteExisting: body.overwriteExistingTasks ?? false }
+        );
+        console.log(`[COHORT_WEEK_CONTENT_PUT] Distributed tasks: ${JSON.stringify(distributionResult)}`);
+      } catch (distErr) {
+        console.error('[COHORT_WEEK_CONTENT_PUT] Distribution failed:', distErr);
+        // Don't fail the whole request, just log the error
+      }
+    }
+
     return NextResponse.json({
       success: true,
       content: savedContent,
       created: isNew,
+      ...(distributionResult && { distribution: distributionResult }),
     });
   } catch (error) {
     console.error('[COHORT_WEEK_CONTENT_PUT] Error:', error);
@@ -253,6 +294,19 @@ export async function PATCH(
     if (body.manualNotes !== undefined) {
       updateData.manualNotes = body.manualNotes?.trim() || null;
     }
+    // Weekly tasks and distribution
+    if (body.weeklyTasks !== undefined) {
+      updateData.weeklyTasks = processTasksWithIds(body.weeklyTasks);
+    }
+    if (body.weeklyHabits !== undefined) {
+      updateData.weeklyHabits = body.weeklyHabits || [];
+    }
+    if (body.weeklyPrompt !== undefined) {
+      updateData.weeklyPrompt = body.weeklyPrompt?.trim() || null;
+    }
+    if (body.distribution !== undefined) {
+      updateData.distribution = body.distribution || null;
+    }
 
     let contentId: string;
     let isNew = false;
@@ -274,6 +328,10 @@ export async function PATCH(
         linkedSummaryIds: [],
         linkedCallEventIds: [],
         manualNotes: null,
+        weeklyTasks: [],
+        weeklyHabits: [],
+        weeklyPrompt: null,
+        distribution: null,
         ...updateData,
         createdAt: FieldValue.serverTimestamp(),
       };

@@ -438,3 +438,166 @@ export async function distributeWeeklyTasksToDays(
 
   return { created, updated, skipped };
 }
+
+
+/**
+ * Distribute cohort-specific weekly tasks to individual cohort program days.
+ * Creates or updates cohort_program_days documents based on distribution settings.
+ * 
+ * @param programId - The program ID
+ * @param weekId - The week ID (program_weeks doc)
+ * @param cohortId - The cohort ID (program_cohorts doc)
+ * @param options - Distribution options
+ * @returns Counts of created, updated, and skipped days
+ */
+export async function distributeCohortWeeklyTasksToDays(
+  programId: string,
+  weekId: string,
+  cohortId: string,
+  options: {
+    overwriteExisting?: boolean; // If true, replaces existing day tasks. Default: false (skip)
+  } = {}
+): Promise<{ created: number; updated: number; skipped: number }> {
+  const { overwriteExisting = false } = options;
+
+  // Fetch week data to get day range
+  const weekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
+  if (!weekDoc.exists) {
+    throw new Error('Week not found');
+  }
+
+  const weekData = weekDoc.data();
+  if (!weekData || weekData.programId !== programId) {
+    throw new Error('Week does not belong to this program');
+  }
+
+  // Fetch cohort week content for the weekly tasks
+  const cohortWeekContentSnapshot = await adminDb
+    .collection('cohort_week_content')
+    .where('cohortId', '==', cohortId)
+    .where('programWeekId', '==', weekId)
+    .limit(1)
+    .get();
+
+  if (cohortWeekContentSnapshot.empty) {
+    console.log(`[PROGRAM_UTILS] No cohort week content found for cohort ${cohortId}, week ${weekId}`);
+    return { created: 0, updated: 0, skipped: 0 };
+  }
+
+  const cohortWeekContent = cohortWeekContentSnapshot.docs[0].data();
+  const weeklyTasks = cohortWeekContent.weeklyTasks || [];
+  
+  if (weeklyTasks.length === 0) {
+    return { created: 0, updated: 0, skipped: 0 };
+  }
+
+  const distribution = cohortWeekContent.distribution || 'repeat-daily';
+  const startDay = weekData.startDayIndex;
+  const endDay = weekData.endDayIndex;
+  const daysInWeek = endDay - startDay + 1;
+
+  // Get existing cohort days in this range
+  const existingDaysSnapshot = await adminDb
+    .collection('cohort_program_days')
+    .where('cohortId', '==', cohortId)
+    .where('programId', '==', programId)
+    .where('dayIndex', '>=', startDay)
+    .where('dayIndex', '<=', endDay)
+    .get();
+
+  const existingDays = new Map(
+    existingDaysSnapshot.docs.map(doc => [doc.data().dayIndex as number, { id: doc.id, ...doc.data() }])
+  );
+
+  // Get program's organizationId for new documents
+  const programDoc = await adminDb.collection('programs').doc(programId).get();
+  const organizationId = programDoc.data()?.organizationId || '';
+
+  const batch = adminDb.batch();
+  let created = 0,
+    updated = 0,
+    skipped = 0;
+
+  if (distribution === 'repeat-daily') {
+    // Copy all tasks to each day
+    for (let d = startDay; d <= endDay; d++) {
+      const existing = existingDays.get(d);
+
+      if (existing && !overwriteExisting && (existing as { tasks?: unknown[] }).tasks?.length) {
+        skipped++;
+        continue;
+      }
+
+      const dayRef = existing
+        ? adminDb.collection('cohort_program_days').doc((existing as { id: string }).id)
+        : adminDb.collection('cohort_program_days').doc();
+
+      const dayData = {
+        cohortId,
+        programId,
+        organizationId,
+        dayIndex: d,
+        tasks: weeklyTasks,
+        weekId,
+        updatedAt: FieldValue.serverTimestamp(),
+        ...(existing ? {} : { createdAt: FieldValue.serverTimestamp() }),
+      };
+
+      if (existing) {
+        batch.update(dayRef, dayData);
+        updated++;
+      } else {
+        batch.set(dayRef, dayData);
+        created++;
+      }
+    }
+  } else {
+    // Spread: distribute tasks across days
+    const tasksPerDay = Math.ceil(weeklyTasks.length / daysInWeek);
+    let taskIndex = 0;
+
+    for (let d = startDay; d <= endDay && taskIndex < weeklyTasks.length; d++) {
+      const dayTasks = weeklyTasks.slice(taskIndex, taskIndex + tasksPerDay);
+      taskIndex += tasksPerDay;
+
+      if (dayTasks.length === 0) continue;
+
+      const existing = existingDays.get(d);
+
+      if (existing && !overwriteExisting && (existing as { tasks?: unknown[] }).tasks?.length) {
+        skipped++;
+        continue;
+      }
+
+      const dayRef = existing
+        ? adminDb.collection('cohort_program_days').doc((existing as { id: string }).id)
+        : adminDb.collection('cohort_program_days').doc();
+
+      const dayData = {
+        cohortId,
+        programId,
+        organizationId,
+        dayIndex: d,
+        tasks: dayTasks,
+        weekId,
+        updatedAt: FieldValue.serverTimestamp(),
+        ...(existing ? {} : { createdAt: FieldValue.serverTimestamp() }),
+      };
+
+      if (existing) {
+        batch.update(dayRef, dayData);
+        updated++;
+      } else {
+        batch.set(dayRef, dayData);
+        created++;
+      }
+    }
+  }
+
+  await batch.commit();
+  console.log(
+    `[PROGRAM_UTILS] Distributed cohort tasks for cohort ${cohortId}, week ${weekId}: ${created} created, ${updated} updated, ${skipped} skipped`
+  );
+
+  return { created, updated, skipped };
+}

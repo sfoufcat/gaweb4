@@ -2,333 +2,155 @@
   "master": {
     "tasks": [
       {
-        "id": "102",
-        "title": "Fix calculateDateForProgramDay null check bug",
-        "description": "Fix the critical RangeError crash in calculateDateForProgramDay when enrollment.startedAt is undefined",
-        "details": "In src/lib/program-engine.ts line 2671, add null/undefined checks for startDateStr parameter. Add validation using isNaN(startDate.getTime()) for invalid Date objects. Return null instead of crashing and add console.warn logging for debugging. This is blocking coach-to-client sync functionality.",
-        "testStrategy": "Test with enrollments that have undefined/null startedAt values. Verify function returns null instead of throwing RangeError. Confirm coach sync no longer fails silently.",
+        "id": "125",
+        "title": "Create CohortProgramDay TypeScript Interface",
+        "description": "Add new CohortProgramDay interface and extend CohortWeekContent interface in types definition file",
+        "details": "In src/types/index.ts, create CohortProgramDay interface with fields: id (string), cohortId (string), programDayId (optional string), programId (string), organizationId (string), dayIndex (number), weekId (optional string), title (optional string), summary (optional string), dailyPrompt (optional string), tasks (ProgramTaskTemplate[]), habits (optional ProgramHabitTemplate[]), courseAssignments (optional DayCourseAssignment[]), createdAt (string), updatedAt (string). Also extend existing CohortWeekContent interface to include weeklyTasks (optional ProgramTaskTemplate[]), weeklyHabits (optional ProgramHabitTemplate[]), weeklyPrompt (optional string), and distribution (optional TaskDistribution).",
+        "testStrategy": "Verify TypeScript compilation passes without errors. Check that the new interface follows the same pattern as ClientProgramDay but with cohortId instead of enrollmentId. Validate that CohortWeekContent extension includes all required weekly fields.",
         "priority": "high",
         "dependencies": [],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T12:45:17.406Z"
+        "updatedAt": "2026-01-08T13:54:31.499Z"
       },
       {
-        "id": "103",
-        "title": "Implement lazy sync on app task fetch",
-        "description": "Add automatic program task sync when users fetch their tasks if no program tasks exist for today",
-        "details": "Modify src/app/api/tasks/route.ts GET endpoint. Check if user has active program enrollment and if tasks for today exist with source: 'program'. If no program tasks exist, call syncProgramV2TasksForToday(userId) in background. Handle errors gracefully without breaking task fetch response. This provides timezone-aware sync when users actually need tasks.",
-        "testStrategy": "Test with users who have active enrollments but no tasks for today. Verify tasks are created automatically on first app open. Confirm no duplicate tasks are created on subsequent fetches.",
+        "id": "126",
+        "title": "Create Cohort Days API Endpoints (List/Create)",
+        "description": "Implement new API route for listing and creating cohort program days",
+        "details": "Create src/app/api/coach/org-programs/[programId]/cohort-days/route.ts with GET and POST handlers. GET should filter by cohortId query parameter and return cohort days for the specified program+cohort. POST should create or update (upsert) a cohort day based on cohortId + dayIndex combination. Use Firestore collection 'cohort_program_days'. Include proper error handling, authentication checks, and validation of required fields. Follow existing API patterns from client-days endpoints.",
+        "testStrategy": "Test GET endpoint returns correct cohort days filtered by cohortId. Test POST endpoint creates new cohort days and updates existing ones. Verify proper error responses for invalid data. Test authentication and authorization.",
         "priority": "high",
         "dependencies": [
-          "102"
+          "125"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T12:45:17.407Z"
+        "updatedAt": "2026-01-08T13:55:58.120Z"
       },
       {
-        "id": "104",
-        "title": "Create backup cron job for program sync",
-        "description": "Implement a backup cron job that runs every 6 hours to sync program tasks for users who haven't opened the app",
-        "details": "Create src/app/api/cron/programs-daily-sync/route.ts with POST handler. Fetch all active enrollments, check if users have program tasks for today, sync if missing using syncProgramV2TasksForToday(userId). Implement batching for scale (process in chunks of 100). Add rate limiting and comprehensive logging. Update vercel.json with schedule '0 */6 * * *'.",
-        "testStrategy": "Test cron endpoint manually with various enrollment states. Verify batching works with large datasets. Confirm only users without today's tasks are processed. Test error handling doesn't stop processing other users.",
-        "priority": "medium",
-        "dependencies": [
-          "102"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:45:17.409Z"
-      },
-      {
-        "id": "105",
-        "title": "Add sync on program enrollment",
-        "description": "Automatically sync Day 1 tasks when users enroll in programs with start dates today or in the past",
-        "details": "Modify src/app/api/programs/enroll/route.ts and src/app/api/programs/complete-enrollment/route.ts. After creating enrollment with status === 'active', check if start date (cohort.startDate or enrollment.startedAt) is today or past. If so, call syncProgramV2TasksForToday(userId). Handle errors gracefully - enrollment should succeed even if sync fails.",
-        "testStrategy": "Test enrollment flow with programs starting today, in past, and future. Verify Day 1 tasks appear immediately for eligible enrollments. Confirm enrollment succeeds even if sync fails.",
+        "id": "127",
+        "title": "Create Single Cohort Day API Endpoint (Get/Update/Delete)",
+        "description": "Implement API route for individual cohort day operations",
+        "details": "Create src/app/api/coach/org-programs/[programId]/cohort-days/[cohortDayId]/route.ts with GET, PATCH, and DELETE handlers. GET retrieves single cohort day by ID. PATCH updates specific fields of a cohort day. DELETE removes the cohort day document. Include validation, error handling, and proper HTTP status codes. Follow RESTful conventions and existing API patterns.",
+        "testStrategy": "Test GET returns correct cohort day by ID. Test PATCH updates only specified fields. Test DELETE removes document from Firestore. Verify 404 responses for non-existent IDs. Test validation of update data.",
         "priority": "high",
         "dependencies": [
-          "102"
+          "125"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T12:45:17.410Z"
+        "updatedAt": "2026-01-08T13:57:24.587Z"
       },
       {
-        "id": "106",
-        "title": "Fix cross-program task interference",
-        "description": "Prevent Program B sync from deleting Program A tasks by adding programEnrollmentId filter",
-        "details": "In src/lib/program-engine.ts syncProgramTasksToClientDay() lines 2436-2454, modify the task deletion filter to include programEnrollmentId. Only delete tasks from the current program enrollment, not all program-sourced tasks. Add fallback for legacy tasks without programEnrollmentId.",
-        "testStrategy": "Test with user enrolled in multiple programs. Sync Program B and verify Program A tasks remain intact. Test with legacy tasks without programEnrollmentId to ensure backward compatibility.",
-        "priority": "medium",
+        "id": "128",
+        "title": "Update Cohort Week Content API",
+        "description": "Extend existing cohort week content API to handle weekly tasks and distribution",
+        "details": "Modify src/app/api/coach/org-programs/[programId]/cohorts/[cohortId]/week-content/[weekId]/route.ts to accept new fields: weeklyTasks, weeklyHabits, weeklyPrompt, and distribution. Ensure each task gets a unique programTaskId if not provided. Add support for distributeTasksNow flag that triggers immediate distribution of weekly tasks to days. Maintain backward compatibility with existing week content structure.",
+        "testStrategy": "Test API accepts and saves new weekly fields. Verify programTaskId generation for tasks without IDs. Test distributeTasksNow flag triggers distribution. Ensure existing week content functionality remains intact.",
+        "priority": "high",
         "dependencies": [
-          "102"
+          "125"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T12:45:17.413Z"
+        "updatedAt": "2026-01-08T13:59:26.406Z"
       },
       {
-        "id": "107",
-        "title": "Implement client-to-coach completion sync",
-        "description": "Show client task completion status to coaches in 1:1 program view",
-        "details": "Modify src/app/api/coach/org-programs/[programId]/client-days/route.ts to fetch user's tasks for each day's date. Match user tasks by title === template.label and merge completion status (completed, completedAt, taskId) into template tasks. Add optional completion fields to ProgramTaskTemplate type in src/types/index.ts. Update CoachProgramsTab.tsx UI to show checkmarks for completed tasks.",
-        "testStrategy": "Test with 1:1 program where client has completed some tasks. Verify coach sees checkmarks on completed tasks. Test completion status updates on refresh.",
+        "id": "129",
+        "title": "Create distributeCohortWeeklyTasksToDays Function",
+        "description": "Implement task distribution logic for cohort weekly tasks",
+        "details": "Add distributeCohortWeeklyTasksToDays function in src/lib/program-utils.ts. Function should: 1) Fetch week data to get startDayIndex and endDayIndex, 2) Fetch cohort week content including weeklyTasks and distribution settings, 3) Apply distribution logic (repeat-daily copies tasks to each day, spread distributes tasks across days), 4) Create or update cohort_program_days documents in Firestore, 5) Return object with counts: {created, updated, skipped}. Use existing distributeWeeklyTasksToDays as reference but target cohort_program_days collection.",
+        "testStrategy": "Test function correctly distributes tasks based on repeat-daily vs spread distribution. Verify correct dayIndex calculations. Test creation and updating of cohort_program_days documents. Validate return counts match actual operations performed.",
         "priority": "medium",
         "dependencies": [
-          "102"
+          "125",
+          "126"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T12:45:17.413Z"
+        "updatedAt": "2026-01-08T14:00:15.900Z"
       },
       {
-        "id": "108",
-        "title": "Add cohort completion threshold UI",
-        "description": "Create UI for coaches to configure cohortCompletionThreshold percentage for group programs",
-        "details": "Add threshold slider (0-100%, step 5) in src/components/coach/programs/ProgramSettingsModal.tsx for group programs only. Include quick select buttons for 0%, 25%, 50%, 75%, 100%. Add handler in CoachProgramsTab.tsx to save threshold via PUT /api/coach/org-programs/[programId]. Only save on slider release, not on every drag.",
-        "testStrategy": "Test slider appears only for group programs. Verify threshold persists after save. Test quick select buttons set correct values. Confirm slider doesn't trigger saves during drag.",
-        "priority": "low",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:45:17.414Z"
-      },
-      {
-        "id": "109",
-        "title": "Add evergreen program cycle indicator UI",
-        "description": "Display evergreen badge and current cycle number for evergreen programs",
-        "details": "Add evergreen badge (green cycle icon) in program header after Group/1:1 badge in CoachProgramsTab.tsx. Add cycle indicator below weeks sidebar showing 'Cycle X' in ModuleWeeksSidebar.tsx. Create calculateCyclesSinceDate() helper in program-client-utils.ts. Use different cycle sources: template (createdAt), client (enrollment.currentCycleNumber), cohort (cohort.startDate).",
-        "testStrategy": "Test badge appears for all evergreen programs. Verify cycle number displays correctly in template, client, and cohort modes. Test with both weekday-only and include-weekends programs.",
-        "priority": "low",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:45:17.415Z"
-      },
-      {
-        "id": "110",
-        "title": "Add cycleNumber field to Task interface and sync logic",
-        "description": "Add cycleNumber field to tasks for evergreen programs to enable cycle-based filtering",
-        "details": "Add cycleNumber?: number field to Task interface in src/types/index.ts. In syncProgramV2TasksForToday() and syncProgramTasksToClientDay(), set cycleNumber ONLY for program-sourced tasks (sourceType is 'program', 'program_day', 'program_week', 'coach_manual') AND durationType is 'evergreen'. Use enrollment.currentCycleNumber as value. Do NOT add to user-created tasks or fixed-duration programs.",
-        "testStrategy": "Test new evergreen program tasks have cycleNumber field. Verify user-created tasks and fixed-duration program tasks are unaffected. Confirm legacy tasks without cycleNumber are treated as cycle 1.",
+        "id": "130",
+        "title": "Add Cohort Branch in handleSaveDay Function",
+        "description": "Update day save logic to detect cohort mode and save to appropriate endpoint",
+        "details": "In src/components/coach/programs/CoachProgramsTab.tsx, modify handleSaveDay function to include cohort detection logic. Add conditional branch: if isClientMode -> save to client-days endpoint, else if isCohortMode -> save to cohort-days endpoint, else save to template days endpoint. Determine cohort mode by checking if selectedCohort exists and is not null. Use the new cohort-days API endpoints created in previous tasks.",
+        "testStrategy": "Test day saves go to correct endpoint based on mode. Verify isClientMode takes precedence over isCohortMode. Test template mode works when no cohort is selected. Validate proper error handling for each save path.",
         "priority": "medium",
         "dependencies": [
-          "102"
+          "126",
+          "127"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T12:48:33.263Z"
+        "updatedAt": "2026-01-08T14:03:24.882Z"
       },
       {
-        "id": "111",
-        "title": "Convert cycle indicator to dropdown with pagination",
-        "description": "Replace static cycle indicator with dropdown for selecting and viewing different cycles",
-        "details": "In ModuleWeeksSidebar.tsx, replace static 'Cycle X' button with dropdown trigger. Show cycles 1 through currentCycleNumber (newest first) with 5-cycle pagination. Add '↑ Newer cycles' / '↓ Older cycles' buttons. Highlight selected cycle with checkmark, mark current cycle with '(current)' label. Use emerald background with RefreshCw + ChevronDown icons. Only show for durationType: 'evergreen' programs.",
-        "testStrategy": "Test dropdown appears for evergreen programs only. Verify pagination works with more than 5 cycles. Confirm selected cycle is highlighted and current cycle is marked. Test dropdown styling matches specifications.",
+        "id": "131",
+        "title": "Add Cohort Branch in Week Save Logic",
+        "description": "Update week save callback to handle cohort-specific week content",
+        "details": "In src/components/coach/programs/CoachProgramsTab.tsx, update the week onSave callback to detect cohort mode and save cohort-specific week content. When in cohort mode (selectedCohort exists), call the cohort week-content API with the new weekly fields (weeklyTasks, weeklyHabits, weeklyPrompt, distribution). Include logic to handle distributeTasksNow flag if user requests immediate distribution.",
+        "testStrategy": "Test week saves include weekly task fields when in cohort mode. Verify distribution flag triggers task distribution. Test fallback to template week save when not in cohort mode. Validate proper error handling and user feedback.",
         "priority": "medium",
         "dependencies": [
-          "109",
-          "110"
+          "128"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T12:50:36.796Z"
+        "updatedAt": "2026-01-08T14:04:49.601Z"
       },
       {
-        "id": "112",
-        "title": "Implement cycle state management",
-        "description": "Add selectedCycle state management and prop passing for cycle selection functionality",
-        "details": "Add selectedCycle state in CoachProgramsTab.tsx (defaults to currentCycleNumber). Reset selectedCycle when enrollment changes. Pass selectedCycle, onCycleSelect, and maxCycleNumber (from enrollment.currentCycleNumber) to ModuleWeeksSidebar. Implement cycle selection handler that updates state and triggers view refresh.",
-        "testStrategy": "Test selectedCycle defaults to current cycle. Verify state resets when switching between enrollments. Confirm cycle selection updates the state and triggers appropriate view changes.",
-        "priority": "medium",
+        "id": "132",
+        "title": "Update Sync Logic to Read Cohort Days",
+        "description": "Modify program sync engine to prioritize cohort-specific days over template days",
+        "details": "In src/lib/program-engine.ts, update syncProgramTasksToClientDay function to: 1) Check if enrollment is in a group program with cohortId, 2) Query cohort_program_days collection first for the specific cohort+dayIndex combination, 3) Use cohort-specific tasks if found, otherwise fall back to template program_days, 4) Add logging to indicate source type (cohort vs template) for debugging. Maintain existing sync logic but change data source priority.",
+        "testStrategy": "Test sync reads cohort days when enrollment has cohortId. Verify fallback to template days when no cohort override exists. Test logging shows correct source type. Validate sync behavior for non-cohort enrollments remains unchanged.",
+        "priority": "high",
         "dependencies": [
-          "111"
+          "125",
+          "126"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-08T12:52:28.071Z"
+        "updatedAt": "2026-01-08T14:05:53.284Z"
       },
       {
-        "id": "113",
-        "title": "Implement cycle-based task filtering",
-        "description": "Filter displayed tasks based on selected cycle for evergreen programs",
-        "details": "When displaying client tasks in CoachProgramsTab.tsx, filter by selectedCycle. Tasks without cycleNumber are treated as cycle 1. Apply cycle filter only in client/cohort mode, not template mode. Ensure filtering works with existing task display logic and doesn't break other functionality.",
-        "testStrategy": "Test cycle filtering shows only tasks from selected cycle. Verify tasks without cycleNumber appear in cycle 1. Confirm template mode is unaffected by cycle filtering. Test switching between cycles updates task display correctly.",
+        "id": "133",
+        "title": "Update UI to Load and Display Cohort Days",
+        "description": "Modify program editor UI to fetch and display cohort-specific days when in cohort mode",
+        "details": "In src/components/coach/programs/CoachProgramsTab.tsx, add logic to: 1) Fetch cohort-specific days when selectedCohort exists, 2) Merge cohort days with template days (cohort overrides template for same dayIndex), 3) Display merged days in the program editor, 4) Show visual indicators when viewing cohort-specific content vs template. Update data loading hooks and state management to handle cohort days alongside template days.",
+        "testStrategy": "Test UI loads cohort days when cohort is selected. Verify merge logic prioritizes cohort overrides. Test visual indicators show cohort vs template content. Validate performance with large numbers of days.",
         "priority": "medium",
         "dependencies": [
-          "112"
-        ],
-        "status": "in-progress",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:52:28.081Z"
-      },
-      {
-        "id": "114",
-        "title": "Update vercel.json with cron configuration",
-        "description": "Add cron job schedule configuration to vercel.json for the backup program sync",
-        "details": "Add cron configuration to vercel.json with schedule '0 */6 * * *' pointing to /api/cron/programs-daily-sync endpoint. Ensure proper cron syntax and verify the schedule runs every 6 hours (0:00, 6:00, 12:00, 18:00 UTC). Include any necessary environment variable configurations.",
-        "testStrategy": "Verify vercel.json syntax is correct. Test cron schedule triggers at expected intervals in staging environment. Confirm endpoint is accessible and responds correctly to cron requests.",
-        "priority": "medium",
-        "dependencies": [
-          "104"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T12:45:17.415Z"
-      },
-      {
-        "id": "115",
-        "title": "Add comprehensive error handling and logging",
-        "description": "Implement robust error handling and logging across all sync mechanisms for monitoring and debugging",
-        "details": "Add comprehensive error handling to all sync functions with appropriate fallbacks. Implement structured logging for sync operations including success/failure counts, timing metrics, and error details. Add monitoring for sync failures and performance. Ensure errors in one user's sync don't affect others in batch operations.",
-        "testStrategy": "Test error scenarios like network failures, invalid data, and rate limiting. Verify logs provide sufficient detail for debugging. Confirm batch operations continue processing after individual failures. Test monitoring alerts trigger appropriately.",
-        "priority": "medium",
-        "dependencies": [
-          "103",
-          "104",
-          "105"
+          "126",
+          "127"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": "116",
-        "title": "Create integration tests for complete sync flow",
-        "description": "Develop comprehensive integration tests covering all sync mechanisms and edge cases",
-        "details": "Create integration tests covering: lazy sync on app open, cron job execution, enrollment sync, cross-program interference prevention, and cycle-based functionality. Test timezone handling, duplicate prevention, error scenarios, and backward compatibility. Include performance tests for batch operations and large datasets.",
-        "testStrategy": "Run full integration test suite covering all sync scenarios. Test with multiple timezones, large user bases, and various program configurations. Verify no regressions in existing functionality. Confirm performance meets requirements under load.",
-        "priority": "low",
+        "id": "134",
+        "title": "Integration Testing and Acceptance Criteria Validation",
+        "description": "Comprehensive testing of cohort task persistence and distribution workflow",
+        "details": "Execute full integration testing covering all acceptance criteria: 1) Test cohort day task persistence (add task to cohort day, verify it persists and doesn't affect template), 2) Test cohort week task distribution (add weekly tasks, verify distribution to individual days), 3) Test cohort sync to members (enroll user, trigger sync, verify daily focus shows cohort tasks), 4) Test template baseline functionality (verify template editing still works for cohorts without overrides). Include end-to-end testing of the complete workflow from task creation to user sync.",
+        "testStrategy": "Execute all acceptance criteria test cases. Verify no regression in existing functionality. Test edge cases like empty cohorts, missing templates, and concurrent edits. Validate performance impact and error handling across the entire workflow.",
+        "priority": "high",
         "dependencies": [
-          "103",
-          "104",
-          "105",
-          "106"
+          "129",
+          "130",
+          "131",
+          "132",
+          "133"
         ],
         "status": "pending",
         "subtasks": []
-      },
-      {
-        "id": "117",
-        "title": "Update NewProgramModal state management for cohort step",
-        "description": "Modify the NewProgramModal component to support a 5th step and store created program data for cohort creation",
-        "details": "Update src/components/coach/programs/NewProgramModal.tsx to:\n1. Add new WizardStep type for 'cohort'\n2. Add state variables: createdProgramId (string | null), createdProgramData (object)\n3. Update step indicator to show 5 steps instead of 4\n4. Modify handleCreateProgram to store program response data and transition to cohort step instead of closing modal\n5. Update step navigation logic to handle the new cohort step\n\nPseudo-code:\n```typescript\ntype WizardStep = 'type' | 'structure' | 'details' | 'settings' | 'cohort';\n\nconst [createdProgramId, setCreatedProgramId] = useState<string | null>(null);\nconst [createdProgramData, setCreatedProgramData] = useState<any>(null);\n\nconst handleCreateProgram = async () => {\n  const response = await createProgram(programData);\n  setCreatedProgramId(response.id);\n  setCreatedProgramData(response);\n  setCurrentStep('cohort');\n};\n```",
-        "testStrategy": "Unit tests to verify state updates correctly after program creation, step transitions work properly, and modal doesn't close prematurely. Test both success and error scenarios for program creation.",
-        "priority": "high",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T13:15:57.703Z"
-      },
-      {
-        "id": "118",
-        "title": "Create CohortStep component with form fields",
-        "description": "Build the cohort creation form component with all required and optional fields as specified in the PRD",
-        "details": "Create new component CohortStep.tsx with:\n1. Form fields: cohortName (required), startDate (required, default tomorrow), maxEnrollment (optional), afterProgramEnds (conditional)\n2. Use existing UI components: Input, Label from @/components/ui\n3. Implement date picker with custom styling\n4. Conditional rendering of 'After Program Ends' field only for fixed duration programs\n5. Form validation using react-hook-form or similar\n6. Mobile responsive design with slide-up drawer behavior\n\nPseudo-code:\n```typescript\ninterface CohortStepProps {\n  programData: ProgramData;\n  onCreateCohort: (data: CohortData) => void;\n  onSkip: () => void;\n}\n\nconst CohortStep = ({ programData, onCreateCohort, onSkip }) => {\n  const { register, handleSubmit, watch } = useForm();\n  const startDate = watch('startDate');\n  \n  const endDate = calculateEndDate(startDate, programData);\n  \n  return (\n    <form onSubmit={handleSubmit(onCreateCohort)}>\n      {/* Form fields implementation */}\n    </form>\n  );\n};\n```",
-        "testStrategy": "Component testing for form validation, conditional field rendering based on program type, date calculations, and responsive behavior. Test form submission and skip functionality.",
-        "priority": "high",
-        "dependencies": [
-          "117"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T13:15:57.704Z"
-      },
-      {
-        "id": "119",
-        "title": "Implement end date calculation logic",
-        "description": "Create utility functions to calculate and display cohort end dates based on program duration settings",
-        "details": "Create utility functions for end date calculation:\n1. calculateEndDate function that takes startDate, durationWeeks, includeWeekends\n2. Handle fixed vs evergreen program types\n3. Display logic for 'Ends on [date]' vs 'Continues until closed'\n4. Account for weekend inclusion in date calculations\n\nPseudo-code:\n```typescript\nconst calculateEndDate = (startDate: Date, programData: ProgramData): Date | null => {\n  if (programData.durationType === 'evergreen') return null;\n  \n  const endDate = new Date(startDate);\n  const daysToAdd = programData.includeWeekends \n    ? programData.durationWeeks * 7\n    : programData.durationWeeks * 5; // weekdays only\n  \n  endDate.setDate(endDate.getDate() + daysToAdd);\n  return endDate;\n};\n\nconst formatEndDateDisplay = (endDate: Date | null): string => {\n  return endDate \n    ? `Ends on ${endDate.toLocaleDateString()}`\n    : 'Continues until closed';\n};\n```",
-        "testStrategy": "Unit tests for date calculations with various scenarios: weekends included/excluded, different duration lengths, edge cases like month boundaries. Test display formatting for both fixed and evergreen programs.",
-        "priority": "medium",
-        "dependencies": [
-          "118"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T13:15:57.705Z"
-      },
-      {
-        "id": "120",
-        "title": "Integrate cohort creation API endpoint",
-        "description": "Implement API integration for creating cohorts using the existing POST endpoint",
-        "details": "Implement API integration in CohortStep component:\n1. Create cohort creation function using POST /api/coach/org-programs/[programId]/cohorts\n2. Handle API request/response with proper error handling\n3. Transform form data to match API payload structure\n4. Implement loading states during API calls\n5. Handle success and error scenarios\n\nPseudo-code:\n```typescript\nconst createCohort = async (programId: string, cohortData: CohortFormData) => {\n  const payload = {\n    name: cohortData.cohortName,\n    startDate: cohortData.startDate,\n    maxEnrollment: cohortData.maxEnrollment || null,\n    convertSquadsToCommunity: cohortData.afterProgramEnds === 'community'\n  };\n  \n  const response = await fetch(`/api/coach/org-programs/${programId}/cohorts`, {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify(payload)\n  });\n  \n  if (!response.ok) throw new Error('Failed to create cohort');\n  return response.json();\n};\n```",
-        "testStrategy": "Integration tests for API calls, mock API responses for success/error scenarios, test payload transformation, and verify proper error handling and loading states.",
-        "priority": "high",
-        "dependencies": [
-          "118"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T13:15:57.706Z"
-      },
-      {
-        "id": "121",
-        "title": "Update wizard step indicator for 5 steps",
-        "description": "Modify the step indicator component to display 5 steps including the new cohort step",
-        "details": "Update the wizard step indicator:\n1. Add 'First Cohort' as step 5 in the step labels\n2. Update step progression logic to handle 5 steps\n3. Ensure proper highlighting of current step\n4. Maintain existing styling and responsive behavior\n5. Update step validation to allow progression to cohort step\n\nPseudo-code:\n```typescript\nconst WIZARD_STEPS = [\n  { key: 'type', label: 'Type' },\n  { key: 'structure', label: 'Structure' },\n  { key: 'details', label: 'Details' },\n  { key: 'settings', label: 'Final Settings' },\n  { key: 'cohort', label: 'First Cohort' }\n];\n\nconst StepIndicator = ({ currentStep, completedSteps }) => {\n  return (\n    <div className=\"step-indicator\">\n      {WIZARD_STEPS.map((step, index) => (\n        <StepItem \n          key={step.key}\n          step={step}\n          isActive={currentStep === step.key}\n          isCompleted={completedSteps.includes(step.key)}\n          stepNumber={index + 1}\n        />\n      ))}\n    </div>\n  );\n};\n```",
-        "testStrategy": "Visual testing of step indicator with 5 steps, test step highlighting and progression, verify responsive behavior on mobile devices, and test accessibility features.",
-        "priority": "medium",
-        "dependencies": [
-          "117"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T13:15:57.707Z"
-      },
-      {
-        "id": "122",
-        "title": "Implement skip functionality and modal closure logic",
-        "description": "Add skip button functionality and proper modal closure behavior for both create and skip actions",
-        "details": "Implement skip and completion logic:\n1. Add skip button with subtle styling (not primary action)\n2. Handle modal closure after successful cohort creation\n3. Navigate to program editor on both skip and success\n4. Implement success toast notification\n5. Reset modal state when closing\n\nPseudo-code:\n```typescript\nconst handleSkip = () => {\n  onClose();\n  navigateToProgramEditor(createdProgramId);\n};\n\nconst handleCohortCreated = async (cohortData: CohortFormData) => {\n  try {\n    await createCohort(createdProgramId, cohortData);\n    showSuccessToast('Program and cohort created successfully');\n    onClose();\n    navigateToProgramEditor(createdProgramId);\n  } catch (error) {\n    setError('Failed to create cohort. Please try again.');\n  }\n};\n\nconst resetModalState = () => {\n  setCreatedProgramId(null);\n  setCreatedProgramData(null);\n  setCurrentStep('type');\n};\n```",
-        "testStrategy": "Test skip functionality, modal closure behavior, navigation to program editor, success toast display, error handling, and proper state reset when modal closes.",
-        "priority": "medium",
-        "dependencies": [
-          "118",
-          "120"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T13:15:57.707Z"
-      },
-      {
-        "id": "123",
-        "title": "Apply modern 2026 design aesthetic and mobile responsiveness",
-        "description": "Style the cohort step component with modern design tokens and ensure mobile responsive behavior",
-        "details": "Apply styling and responsive design:\n1. Use existing design tokens and components from @/components/ui\n2. Implement font-albert typography\n3. Apply brand colors and spacing\n4. Ensure mobile slide-up drawer behavior matches existing wizard\n5. Add smooth transitions between states\n6. Style form elements consistently with existing wizard steps\n7. Implement proper focus states and accessibility\n\nCSS/Styling approach:\n```typescript\nconst cohortStepStyles = {\n  container: 'space-y-6 p-6',\n  formGroup: 'space-y-2',\n  input: 'w-full rounded-lg border border-gray-300 px-3 py-2 font-albert',\n  label: 'text-sm font-medium text-gray-700 font-albert',\n  button: 'rounded-lg px-4 py-2 font-medium transition-colors',\n  skipButton: 'text-gray-500 hover:text-gray-700 underline',\n  endDateDisplay: 'text-sm text-gray-600 mt-1'\n};\n```",
-        "testStrategy": "Visual regression testing, mobile responsive testing on various screen sizes, accessibility testing with screen readers, and design consistency verification against existing wizard steps.",
-        "priority": "medium",
-        "dependencies": [
-          "118",
-          "121"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T13:15:57.709Z"
-      },
-      {
-        "id": "124",
-        "title": "Add comprehensive error handling and form validation",
-        "description": "Implement robust error handling, form validation, and user feedback throughout the cohort creation process",
-        "details": "Implement comprehensive validation and error handling:\n1. Client-side form validation for required fields\n2. Date validation (start date not in past)\n3. API error handling with user-friendly messages\n4. Loading states during cohort creation\n5. Retry functionality for failed requests\n6. Form field error states and messages\n\nValidation logic:\n```typescript\nconst validateCohortForm = (data: CohortFormData) => {\n  const errors: Record<string, string> = {};\n  \n  if (!data.cohortName?.trim()) {\n    errors.cohortName = 'Cohort name is required';\n  }\n  \n  if (!data.startDate) {\n    errors.startDate = 'Start date is required';\n  } else if (new Date(data.startDate) < new Date()) {\n    errors.startDate = 'Start date cannot be in the past';\n  }\n  \n  if (data.maxEnrollment && data.maxEnrollment < 1) {\n    errors.maxEnrollment = 'Max enrollment must be at least 1';\n  }\n  \n  return errors;\n};\n```",
-        "testStrategy": "Test all validation scenarios, error message display, API error handling, loading states, retry functionality, and accessibility of error states. Test edge cases like network failures and invalid responses.",
-        "priority": "medium",
-        "dependencies": [
-          "118",
-          "120",
-          "122"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-08T13:15:57.716Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-08T13:15:57.716Z",
-      "taskCount": 23,
-      "completedCount": 20,
+      "lastModified": "2026-01-08T14:05:53.284Z",
+      "taskCount": 10,
+      "completedCount": 8,
       "tags": [
         "master"
       ]
