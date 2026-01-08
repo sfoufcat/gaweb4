@@ -105,18 +105,19 @@ interface ContextStateSyncProps {
 function ContextStateSync({ stateRef, onSaveSuccess }: ContextStateSyncProps) {
   const context = useProgramEditorOptional();
 
-  React.useEffect(() => {
-    stateRef.current = {
-      hasUnsavedChanges: context?.hasUnsavedChanges ?? false,
-      saveAllChanges: context?.saveAllChanges ? async () => { 
-        const result = await context.saveAllChanges(); 
-        if (result.success && onSaveSuccess) {
-          await onSaveSuccess();
-        }
-      } : async () => {},
-      discardAllChanges: context?.discardAllChanges ?? (() => {}),
-    };
-  }, [context?.hasUnsavedChanges, context?.saveAllChanges, context?.discardAllChanges, stateRef, onSaveSuccess]);
+  // Update ref synchronously during render to ensure it's always current
+  // This prevents race conditions where event handlers read stale values
+  // (useEffect runs AFTER render, which caused the dialog to reappear after discard)
+  stateRef.current = {
+    hasUnsavedChanges: context?.hasUnsavedChanges ?? false,
+    saveAllChanges: context?.saveAllChanges ? async () => { 
+      const result = await context.saveAllChanges(); 
+      if (result.success && onSaveSuccess) {
+        await onSaveSuccess();
+      }
+    } : async () => {},
+    discardAllChanges: context?.discardAllChanges ?? (() => {}),
+  };
 
   return null;
 }

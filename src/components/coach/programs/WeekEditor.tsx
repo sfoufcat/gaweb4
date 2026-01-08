@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
 import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
@@ -245,11 +245,47 @@ export function WeekEditor({
     linkedCallEventIds: week.linkedCallEventIds || [],
   }), [week]);
 
+  // Merge pending data with defaults to ensure all fields exist
+  const mergePendingWithDefaults = useCallback((pending: Record<string, unknown>): WeekFormData => {
+    const defaults = getDefaultFormData();
+    return {
+      ...defaults,
+      ...pending,
+      // Ensure arrays are never undefined
+      weeklyTasks: (pending.weeklyTasks as ProgramTaskTemplate[]) || defaults.weeklyTasks,
+      currentFocus: (pending.currentFocus as string[]) || defaults.currentFocus,
+      notes: (pending.notes as string[]) || defaults.notes,
+      linkedSummaryIds: (pending.linkedSummaryIds as string[]) || defaults.linkedSummaryIds,
+      linkedCallEventIds: (pending.linkedCallEventIds as string[]) || defaults.linkedCallEventIds,
+    };
+  }, [getDefaultFormData]);
+
+
+  // Create a fingerprint of week data that changes when content changes from API refresh
+  // This allows the reset effect to detect when fresh data arrives after a save
+  const weekDataFingerprint = useMemo(() => {
+    return JSON.stringify({
+      name: week.name,
+      theme: week.theme,
+      description: week.description,
+      weeklyTasks: week.weeklyTasks,
+      currentFocus: week.currentFocus,
+      notes: week.notes,
+      manualNotes: week.manualNotes,
+      weeklyPrompt: week.weeklyPrompt,
+      distribution: week.distribution,
+      coachRecordingUrl: week.coachRecordingUrl,
+      coachRecordingNotes: week.coachRecordingNotes,
+      linkedSummaryIds: week.linkedSummaryIds,
+      linkedCallEventIds: week.linkedCallEventIds,
+    });
+  }, [week.name, week.theme, week.description, week.weeklyTasks, week.currentFocus, week.notes, week.manualNotes, week.weeklyPrompt, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.linkedSummaryIds, week.linkedCallEventIds]);
+
   const [formData, setFormData] = useState<WeekFormData>(() => {
     // Initialize from pending data if available
     if (pendingData && !initializedFromPending.current) {
       initializedFromPending.current = true;
-      return pendingData as WeekFormData;
+      return mergePendingWithDefaults(pendingData);
     }
     return getDefaultFormData();
   });
@@ -308,8 +344,8 @@ export function WeekEditor({
     const contextPendingData = editorContext?.getPendingData('week', week.id, clientContextId);
 
     if (contextPendingData) {
-      // Restore from pending data
-      setFormData(contextPendingData as WeekFormData);
+      // Restore from pending data, merged with defaults to ensure all fields exist
+      setFormData(mergePendingWithDefaults(contextPendingData));
       setHasChanges(true);
     } else {
       // Reset to week data
@@ -320,20 +356,20 @@ export function WeekEditor({
     setSaveStatus('idle');
     setEditedFields(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [week.id]); // Only depend on week.id to detect week changes
+  }, [week.id, weekDataFingerprint]); // Include fingerprint to detect data refreshes after save
 
   // Watch for reset version changes (discard/save from global buttons)
   useEffect(() => {
     if (editorContext && editorContext.resetVersion !== lastResetVersion.current) {
       lastResetVersion.current = editorContext.resetVersion;
-      // Reset to original week data
-      setFormData(getDefaultFormData());
+      // Clear UI state - form data will be reset by the weekDataFingerprint effect
+      // when fresh data arrives from the API after save
       setHasChanges(false);
       setShowSyncButton(false);
       setSaveStatus('idle');
       setEditedFields(new Set());
     }
-  }, [editorContext?.resetVersion, getDefaultFormData]);
+  }, [editorContext?.resetVersion]);
 
   // Check for changes and register with context
   useEffect(() => {
