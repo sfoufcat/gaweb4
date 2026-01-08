@@ -527,6 +527,10 @@ export interface ProgramTaskTemplate {
   estimatedMinutes?: number; // Optional time estimate
   notes?: string; // Optional guidance/context
   tag?: string; // Optional tag (e.g., "content", "mindset", "systems")
+  // Optional completion status (populated when viewing client-specific days)
+  completed?: boolean; // Whether the client has completed this task
+  completedAt?: string; // ISO timestamp of when the client completed it
+  taskId?: string; // Reference to the actual task document in the tasks collection
 }
 
 /**

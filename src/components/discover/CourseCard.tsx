@@ -11,6 +11,11 @@ interface CourseCardProps {
   course: DiscoverCourse;
 }
 
+// Strip HTML tags from text
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').trim();
+}
+
 // Format price from cents
 function formatPrice(cents: number, currency = 'usd') {
   const amount = cents / 100;
@@ -92,7 +97,7 @@ export function CourseCard({ course }: CourseCardProps) {
         {/* Description - 1 line */}
         {course.shortDescription && (
           <p className="text-xs text-text-muted dark:text-[#7d8190] leading-relaxed line-clamp-1">
-            {course.shortDescription}
+            {stripHtml(course.shortDescription)}
           </p>
         )}
       </div>

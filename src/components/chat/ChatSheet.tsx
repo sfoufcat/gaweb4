@@ -773,7 +773,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     </Drawer>
 
       <AlertDialog open={!!deleteDialogChannel} onOpenChange={(open) => !open && setDeleteDialogChannel(null)}>
-        <AlertDialogContent className="max-w-sm">
+        <AlertDialogContent className="max-w-sm z-[10001]">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete conversation</AlertDialogTitle>
             <AlertDialogDescription>

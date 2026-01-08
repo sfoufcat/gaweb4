@@ -84,6 +84,28 @@ export async function POST(request: NextRequest) {
     const orgData = orgDoc.data();
     let stripeCustomerId = orgData?.stripeCustomerId;
 
+    // If no customer on organization, check coach_subscriptions (for coaches who subscribed first)
+    if (!stripeCustomerId) {
+      const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+      const orgSettings = orgSettingsDoc.data();
+      const coachSubscriptionId = orgSettings?.coachSubscriptionId;
+      
+      if (coachSubscriptionId) {
+        const subDoc = await adminDb.collection('coach_subscriptions').doc(coachSubscriptionId).get();
+        if (subDoc.exists) {
+          stripeCustomerId = subDoc.data()?.stripeCustomerId;
+          
+          // Sync the customer ID to organizations for future use
+          if (stripeCustomerId) {
+            await adminDb.collection('organizations').doc(organizationId).update({
+              stripeCustomerId,
+            });
+            console.log(`[COACH_CREDITS] Synced stripeCustomerId from coach_subscriptions to organizations for org ${organizationId}`);
+          }
+        }
+      }
+    }
+
     if (!stripeCustomerId) {
       // Get coach info from Clerk for customer creation
       const clerk = await clerkClient();

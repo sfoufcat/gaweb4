@@ -439,6 +439,16 @@ export function ChatChannelsProvider({
       const channel = event.channel as StreamChannel | undefined;
       if (!channel?.id) return;
 
+      // Handle channel deletion - remove from list
+      if (event.type === 'channel.deleted') {
+        setChannels((prev) => prev.filter((ch) => ch.id !== channel.id));
+        // Clear cache so it rebuilds on next fetch
+        if (client.userID) {
+          clearUserChannelCache(client.userID);
+        }
+        return;
+      }
+
       // Find and update the affected channel
       setChannels((prev) => {
         const existingIndex = prev.findIndex((ch) => ch.id === channel.id);
@@ -535,6 +545,7 @@ export function ChatChannelsProvider({
       'message.updated',
       'message.deleted',
       'channel.updated',
+      'channel.deleted',
       'notification.message_new',
       'notification.mark_read',
     ];

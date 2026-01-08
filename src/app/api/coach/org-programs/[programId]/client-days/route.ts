@@ -67,6 +67,55 @@ export async function GET(
       lastSyncedAt: doc.data().lastSyncedAt?.toDate?.()?.toISOString?.() || doc.data().lastSyncedAt,
     })) as ClientProgramDay[];
 
+    // Fetch enrollment and program data to calculate dates and get completion status
+    const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
+    if (enrollmentDoc.exists && days.length > 0) {
+      const enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
+      const programData = await getProgramV2(programId);
+
+      if (programData) {
+        // Get cohort if applicable
+        let cohort: ProgramCohort | null = null;
+        if (enrollment.cohortId) {
+          const cohortDoc = await adminDb.collection('program_cohorts').doc(enrollment.cohortId).get();
+          if (cohortDoc.exists) {
+            cohort = { id: cohortDoc.id, ...cohortDoc.data() } as ProgramCohort;
+          }
+        }
+
+        // For each day, calculate the date and fetch user's tasks to get completion status
+        for (const day of days) {
+          const dateForDay = calculateDateForProgramDay(enrollment, programData, cohort, day.dayIndex);
+          if (!dateForDay) continue;
+
+          // Fetch user's tasks for this date
+          const userTasksSnapshot = await adminDb
+            .collection('tasks')
+            .where('userId', '==', enrollment.userId)
+            .where('date', '==', dateForDay)
+            .get();
+
+          const userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          // Merge completion status into template tasks
+          if (day.tasks && Array.isArray(day.tasks)) {
+            day.tasks = day.tasks.map(template => {
+              const actualTask = userTasks.find(t => (t as { title?: string }).title === template.label);
+              if (actualTask) {
+                return {
+                  ...template,
+                  completed: (actualTask as { status?: string }).status === 'completed',
+                  completedAt: (actualTask as { completedAt?: string }).completedAt,
+                  taskId: actualTask.id,
+                };
+              }
+              return template;
+            });
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       clientDays: days,
       total: days.length,
