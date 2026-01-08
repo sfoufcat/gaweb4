@@ -197,6 +197,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "programEnrollmentId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "programDayIndex",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "userId",
           "order": "ASCENDING"
         },

@@ -479,6 +479,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     }
   }, [currentEnrollment, selectedProgram, daysToUse]);
 
+  // Refresh loading state - handler defined after fetch functions
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const fetchPrograms = useCallback(async () => {
     // Skip API call in demo mode
     if (isDemoMode) {
@@ -921,13 +924,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
   // Fetch cohort-specific week content for group programs
   const fetchCohortWeekContent = useCallback(async (programId: string, cohortId: string, weekId: string) => {
+    console.log('[COHORT_CONTENT_FETCH] Fetching...', { programId, cohortId, weekId });
     try {
       setLoadingCohortContent(true);
       const response = await fetch(`${apiBasePath}/${programId}/cohorts/${cohortId}/week-content/${weekId}`);
       if (response.ok) {
         const data = await response.json();
+        console.log('[COHORT_CONTENT_FETCH] Success, content:', {
+          exists: data.exists,
+          hasWeeklyTasks: !!data.content?.weeklyTasks?.length,
+          tasksCount: data.content?.weeklyTasks?.length || 0,
+        });
         setCohortWeekContent(data.content || null);
       } else {
+        console.error('[COHORT_CONTENT_FETCH] Failed:', response.status);
         setCohortWeekContent(null);
       }
     } catch (err) {
@@ -959,6 +969,21 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       setLoadingCohortDays(false);
     }
   }, [apiBasePath]);
+
+  // Refresh client/cohort data handler
+  const handleRefreshData = useCallback(async () => {
+    if (!selectedProgram) return;
+    setIsRefreshing(true);
+    try {
+      if (selectedProgram.type === 'individual' && clientViewContext.mode === 'client') {
+        await fetchClientDays(selectedProgram.id, clientViewContext.enrollmentId, selectedCycle);
+      } else if (selectedProgram.type === 'group' && cohortViewContext.mode === 'cohort') {
+        await fetchCohortDays(selectedProgram.id, cohortViewContext.cohortId);
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [selectedProgram, clientViewContext, cohortViewContext, selectedCycle, fetchClientDays, fetchCohortDays]);
 
   const handleRemoveEnrollment = async () => {
     if (!removeConfirmEnrollment || !selectedProgram) return;
@@ -1149,6 +1174,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
   // Fetch cohort week content when a week is selected in cohort mode
   useEffect(() => {
+    console.log('[COHORT_CONTENT_EFFECT] Running...', {
+      cohortMode: cohortViewContext.mode,
+      cohortId: cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined,
+      programType: selectedProgram?.type,
+      sidebarType: sidebarSelection?.type,
+      weekNumber: sidebarSelection?.type === 'week' ? sidebarSelection.weekNumber : undefined,
+      programWeeksCount: programWeeks.length,
+    });
     if (
       cohortViewContext.mode === 'cohort' &&
       cohortViewContext.cohortId &&
@@ -1157,10 +1190,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     ) {
       // Find the template week for this week number
       const templateWeek = programWeeks.find(w => w.weekNumber === sidebarSelection.weekNumber);
+      console.log('[COHORT_CONTENT_EFFECT] templateWeek:', templateWeek?.id, 'for weekNumber:', sidebarSelection.weekNumber);
       if (templateWeek?.id) {
         fetchCohortWeekContent(selectedProgram.id, cohortViewContext.cohortId, templateWeek.id);
       } else {
         // No template week yet - clear cohort content
+        console.log('[COHORT_CONTENT_EFFECT] No template week found, clearing content');
         setCohortWeekContent(null);
       }
     } else if (cohortViewContext.mode !== 'cohort') {
@@ -2353,6 +2388,22 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       Enrollment: {currentEnrollment.status.charAt(0).toUpperCase() + currentEnrollment.status.slice(1)}
                     </span>
                   )
+                )}
+
+                {/* Refresh Button - for client/cohort views */}
+                {viewMode === 'days' && (
+                  (selectedProgram?.type === 'individual' && clientViewContext.mode === 'client') ||
+                  (selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort')
+                ) && (
+                  <button
+                    type="button"
+                    onClick={handleRefreshData}
+                    disabled={isRefreshing}
+                    className="p-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-md transition-colors disabled:opacity-50"
+                    title="Refresh data"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </button>
                 )}
 
                 {/* Row/Calendar Toggle - only show on Content view */}
@@ -3561,6 +3612,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         d.dayIndex >= startDay && d.dayIndex <= endDay
                       )}
                       onSave={async (updates) => {
+                        console.log('[WEEK_EDITOR_SAVE] Starting save...', {
+                          isClientMode,
+                          clientWeek: !!clientWeek,
+                          cohortMode: cohortViewContext.mode,
+                          cohortId: cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined,
+                          templateWeekId: templateWeek?.id,
+                          weekNumber,
+                          programType: selectedProgram?.type,
+                        });
                         try {
                           if (isClientMode && clientWeek) {
                             // Update existing client-specific week
@@ -3618,7 +3678,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             }
                           } else if (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId) {
                             // Save cohort-specific week content + optionally distribute to cohort days
+                            console.log('[WEEK_EDITOR_SAVE] Entering COHORT branch');
                             let weekIdForCohort = templateWeek?.id;
+                            console.log('[WEEK_EDITOR_SAVE] templateWeek?.id =', weekIdForCohort);
                             
                             // If template week doesn't exist, create it first (without tasks - they go to cohort content)
                             if (!weekIdForCohort) {
@@ -3644,6 +3706,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             
                             if (weekIdForCohort) {
                               const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
+                              console.log('[WEEK_EDITOR_SAVE] Making cohort PUT request', {
+                                url: `${apiBasePath}/${selectedProgram?.id}/cohorts/${cohortViewContext.cohortId}/week-content/${weekIdForCohort}`,
+                                hasWeeklyTasks,
+                                tasksCount: updates.weeklyTasks?.length,
+                              });
                               const res = await fetch(
                                 `${apiBasePath}/${selectedProgram?.id}/cohorts/${cohortViewContext.cohortId}/week-content/${weekIdForCohort}`,
                                 {
@@ -3658,16 +3725,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                   }),
                                 }
                               );
+                              console.log('[WEEK_EDITOR_SAVE] Cohort PUT response status:', res.status, res.ok);
                               if (res.ok) {
                                 const data = await res.json();
+                                console.log('[WEEK_EDITOR_SAVE] Cohort save SUCCESS, content:', data.content);
                                 setCohortWeekContent(data.content || null);
                                 // Refresh cohort days if distribution happened
                                 if (hasWeeklyTasks && cohortViewContext.cohortId) {
                                   fetchCohortDays(selectedProgram!.id, cohortViewContext.cohortId);
                                 }
+                              } else {
+                                const errorText = await res.text();
+                                console.error('[WEEK_EDITOR_SAVE] Cohort PUT FAILED:', res.status, errorText);
                               }
+                            } else {
+                              console.error('[WEEK_EDITOR_SAVE] No weekIdForCohort - cannot save cohort content');
                             }
                           } else if (templateWeek) {
+                            console.log('[WEEK_EDITOR_SAVE] Entering TEMPLATE branch (templateWeek exists)');
                             // Update template week and distribute tasks to days
                             const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks/${templateWeek.id}`, {
@@ -3695,6 +3770,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             }
                           } else {
                             // Create new template week record
+                            console.log('[WEEK_EDITOR_SAVE] Entering CREATE TEMPLATE WEEK branch');
                             const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks`, {
                               method: 'POST',
