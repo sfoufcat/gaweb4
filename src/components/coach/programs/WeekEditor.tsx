@@ -417,16 +417,23 @@ export function WeekEditor({
       let endpoint = getApiEndpoint();
 
       if (viewContext === 'client' && enrollmentId) {
-        // Client week requires POST with enrollmentId and weekNumber
-        pendingDataForContext = {
-          ...formData,
-          enrollmentId,
-          weekNumber: week.weekNumber,
-          startDayIndex: week.startDayIndex,
-          endDayIndex: week.endDayIndex,
-          moduleId: week.moduleId,
-        };
-        httpMethod = 'POST';
+        if (!isTempWeek) {
+          // EXISTING client week - use PATCH with the week ID
+          endpoint = `/api/coach/org-programs/${programId}/client-weeks/${week.id}`;
+          pendingDataForContext = { ...formData };
+          httpMethod = 'PATCH';
+        } else {
+          // NEW client week - use POST with enrollment info
+          pendingDataForContext = {
+            ...formData,
+            enrollmentId,
+            weekNumber: week.weekNumber,
+            startDayIndex: week.startDayIndex,
+            endDayIndex: week.endDayIndex,
+            moduleId: week.moduleId,
+          };
+          httpMethod = 'POST';
+        }
       } else if (viewContext === 'cohort' && cohortId) {
         // Cohort week content - handle temp weeks differently
         if (isTempWeek) {

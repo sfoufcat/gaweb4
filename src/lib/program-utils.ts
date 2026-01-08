@@ -614,17 +614,22 @@ export async function distributeCohortWeeklyTasksToDays(
       // Get existing tasks and filter out week-sourced ones (they'll be replaced)
       const existingTasks = existingData?.tasks || [];
       const manualTasks = existingTasks.filter(t => t.source !== 'week');
+      
+      // Build a set of manual task labels for deduplication (case-insensitive)
+      const manualTaskLabels = new Set(manualTasks.map(t => t.label?.toLowerCase()));
 
-      // Tag new tasks with source: 'week'
-      const weekSourcedTasks = weeklyTasks.map((task: ProgramTaskTemplate) => ({
-        ...task,
-        source: 'week' as const,
-      }));
+      // Tag new tasks with source: 'week', but skip if a manual task with same name exists
+      const weekSourcedTasks = weeklyTasks
+        .filter((task: ProgramTaskTemplate) => !manualTaskLabels.has(task.label?.toLowerCase()))
+        .map((task: ProgramTaskTemplate) => ({
+          ...task,
+          source: 'week' as const,
+        }));
 
-      // Merge: manual tasks + new week tasks
+      // Merge: manual tasks + new week tasks (deduplicated)
       const mergedTasks = [...manualTasks, ...weekSourcedTasks];
 
-      console.log(`[PROGRAM_UTILS] Cohort day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week`);
+      console.log(`[PROGRAM_UTILS] Cohort day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week (${weeklyTasks.length - weekSourcedTasks.length} duplicates skipped)`);
 
       const dayRef = existing
         ? adminDb.collection('cohort_program_days').doc(existingData!.id)
@@ -663,20 +668,26 @@ export async function distributeCohortWeeklyTasksToDays(
       // Get existing tasks and filter out week-sourced ones (they'll be replaced)
       const existingTasks = existingData?.tasks || [];
       const manualTasks = existingTasks.filter(t => t.source !== 'week');
+      
+      // Build a set of manual task labels for deduplication (case-insensitive)
+      const manualTaskLabels = new Set(manualTasks.map(t => t.label?.toLowerCase()));
 
       // Check if this day should receive a task
       const taskIndexForDay = spreadDays.indexOf(d);
       let weekSourcedTasks: ProgramTaskTemplate[] = [];
 
       if (taskIndexForDay !== -1 && taskIndexForDay < weeklyTasks.length) {
-        // This day gets a task - tag it with source: 'week'
-        weekSourcedTasks = [{
-          ...weeklyTasks[taskIndexForDay],
-          source: 'week' as const,
-        }];
+        const taskToAdd = weeklyTasks[taskIndexForDay];
+        // Skip if a manual task with same name exists (deduplication)
+        if (!manualTaskLabels.has(taskToAdd.label?.toLowerCase())) {
+          weekSourcedTasks = [{
+            ...taskToAdd,
+            source: 'week' as const,
+          }];
+        }
       }
 
-      // Merge: manual tasks + new week tasks (may be empty for non-spread days)
+      // Merge: manual tasks + new week tasks (may be empty for non-spread days or duplicates)
       const mergedTasks = [...manualTasks, ...weekSourcedTasks];
 
       // Skip if no change needed (no manual tasks and no new tasks)
@@ -803,17 +814,22 @@ export async function distributeClientWeeklyTasksToDays(
       // Get existing tasks and filter out week-sourced ones (they'll be replaced)
       const existingTasks = existingData?.tasks || [];
       const manualTasks = existingTasks.filter(t => t.source !== 'week');
+      
+      // Build a set of manual task labels for deduplication (case-insensitive)
+      const manualTaskLabels = new Set(manualTasks.map(t => t.label?.toLowerCase()));
 
-      // Tag new tasks with source: 'week'
-      const weekSourcedTasks = weeklyTasks.map((task: ProgramTaskTemplate) => ({
-        ...task,
-        source: 'week' as const,
-      }));
+      // Tag new tasks with source: 'week', but skip if a manual task with same name exists
+      const weekSourcedTasks = weeklyTasks
+        .filter((task: ProgramTaskTemplate) => !manualTaskLabels.has(task.label?.toLowerCase()))
+        .map((task: ProgramTaskTemplate) => ({
+          ...task,
+          source: 'week' as const,
+        }));
 
-      // Merge: manual tasks + new week tasks
+      // Merge: manual tasks + new week tasks (deduplicated)
       const mergedTasks = [...manualTasks, ...weekSourcedTasks];
 
-      console.log(`[PROGRAM_UTILS] Client day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week`);
+      console.log(`[PROGRAM_UTILS] Client day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week (${weeklyTasks.length - weekSourcedTasks.length} duplicates skipped)`);
 
       const dayRef = existing
         ? adminDb.collection('client_program_days').doc(existingData!.id)
@@ -853,20 +869,26 @@ export async function distributeClientWeeklyTasksToDays(
       // Get existing tasks and filter out week-sourced ones (they'll be replaced)
       const existingTasks = existingData?.tasks || [];
       const manualTasks = existingTasks.filter(t => t.source !== 'week');
+      
+      // Build a set of manual task labels for deduplication (case-insensitive)
+      const manualTaskLabels = new Set(manualTasks.map(t => t.label?.toLowerCase()));
 
       // Check if this day should receive a task
       const taskIndexForDay = spreadDays.indexOf(d);
       let weekSourcedTasks: ProgramTaskTemplate[] = [];
 
       if (taskIndexForDay !== -1 && taskIndexForDay < weeklyTasks.length) {
-        // This day gets a task - tag it with source: 'week'
-        weekSourcedTasks = [{
-          ...weeklyTasks[taskIndexForDay],
-          source: 'week' as const,
-        }];
+        const taskToAdd = weeklyTasks[taskIndexForDay];
+        // Skip if a manual task with same name exists (deduplication)
+        if (!manualTaskLabels.has(taskToAdd.label?.toLowerCase())) {
+          weekSourcedTasks = [{
+            ...taskToAdd,
+            source: 'week' as const,
+          }];
+        }
       }
 
-      // Merge: manual tasks + new week tasks (may be empty for non-spread days)
+      // Merge: manual tasks + new week tasks (may be empty for non-spread days or duplicates)
       const mergedTasks = [...manualTasks, ...weekSourcedTasks];
 
       // Skip if no change needed (no manual tasks and no new tasks)
