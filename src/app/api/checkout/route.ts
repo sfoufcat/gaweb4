@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
@@ -98,9 +98,15 @@ export async function POST(req: Request) {
       if (existingCustomers.data.length > 0) {
         customerId = existingCustomers.data[0].id;
       } else {
-        // Create new customer
+        // Get user name from Clerk
+        const clerk = await clerkClient();
+        const clerkUser = await clerk.users.getUser(userId);
+        const userName = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined;
+
+        // Create new customer (Platform Stripe - no stripeAccount)
         const customer = await stripe.customers.create({
           email: userEmail,
+          name: userName,
           metadata: {
             userId: userId,
           },

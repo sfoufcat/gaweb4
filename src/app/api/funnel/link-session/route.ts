@@ -174,6 +174,76 @@ export async function POST(req: Request) {
     }
 
     // ==========================================================================
+    // LINK STRIPE CUSTOMER TO USER (Transfer guest checkout payment method)
+    // ==========================================================================
+    //
+    // When a guest completed checkout, a Stripe customer was created on the connected
+    // account with the payment method saved. Now link that customer to the user's account.
+    //
+    let stripeCustomerLinked = false;
+    const sessionData = session.data || {};
+    const stripeConnectAccountId = sessionData.stripeConnectAccountId as string | undefined;
+    
+    if (stripeConnectAccountId) {
+      const guestCustomerId = sessionData[`stripeCustomerId_${stripeConnectAccountId}`] as string | undefined;
+      
+      if (guestCustomerId) {
+        try {
+          // Get user's current connected customer IDs
+          const userDoc = await adminDb.collection('users').doc(userId).get();
+          const userData = userDoc.data();
+          const connectedCustomerIds = userData?.stripeConnectedCustomerIds || {};
+          
+          // Only link if user doesn't already have a customer on this account
+          if (!connectedCustomerIds[stripeConnectAccountId]) {
+            // Save the guest customer ID to the user's account
+            await adminDb.collection('users').doc(userId).set(
+              {
+                stripeConnectedCustomerIds: {
+                  ...connectedCustomerIds,
+                  [stripeConnectAccountId]: guestCustomerId,
+                },
+              },
+              { merge: true }
+            );
+            
+            // Update the Stripe customer with the user's info
+            const client = await clerkClient();
+            const clerkUser = await client.users.getUser(userId);
+            const email = clerkUser.emailAddresses[0]?.emailAddress;
+            const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined;
+            
+            // Import Stripe and update customer
+            const Stripe = (await import('stripe')).default;
+            const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+              apiVersion: '2025-02-24.acacia',
+            });
+            
+            await stripe.customers.update(
+              guestCustomerId,
+              {
+                email,
+                name,
+                metadata: {
+                  userId,
+                  platformUserId: userId,
+                  linkedFromGuestCheckout: 'true',
+                },
+              },
+              { stripeAccount: stripeConnectAccountId }
+            );
+            
+            stripeCustomerLinked = true;
+            console.log(`[FUNNEL_LINK_SESSION] Linked guest Stripe customer ${guestCustomerId} to user ${userId} on account ${stripeConnectAccountId}`);
+          }
+        } catch (stripeError) {
+          // Log but don't fail - the main session linking succeeded
+          console.error(`[FUNNEL_LINK_SESSION] Failed to link Stripe customer (non-fatal):`, stripeError);
+        }
+      }
+    }
+
+    // ==========================================================================
     // ENROLL USER IN ORGANIZATION (Critical for existing users signing in)
     // ==========================================================================
     // 
@@ -228,6 +298,7 @@ export async function POST(req: Request) {
       alreadyLinked,
       enrolledInOrg,
       membershipCreated,
+      stripeCustomerLinked,
       organizationId: session.organizationId,
       session: updatedSession,
     });

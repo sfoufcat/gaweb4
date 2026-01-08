@@ -296,13 +296,13 @@ function calculateLegacyAlignmentScore(
  */
 async function checkUserHasActiveGoal(userId: string, organizationId: string): Promise<boolean> {
   try {
-    // First check org_memberships for org-scoped goal
+    // Check org_memberships for org-scoped goal
     const membershipSnapshot = await adminDb.collection('org_memberships')
       .where('userId', '==', userId)
       .where('organizationId', '==', organizationId)
       .limit(1)
       .get();
-    
+
     if (!membershipSnapshot.empty) {
       const memberData = membershipSnapshot.docs[0].data();
       // User has an active goal if they have a goal and goalTargetDate set
@@ -311,13 +311,9 @@ async function checkUserHasActiveGoal(userId: string, organizationId: string): P
         return true;
       }
     }
-    
-    // Fallback to legacy users collection for backward compatibility
-    const userDoc = await adminDb.collection('users').doc(userId).get();
-    if (!userDoc.exists) return false;
-    
-    const userData = userDoc.data();
-    return !!(userData?.goal && userData?.goalTargetDate && !userData?.goalCompleted);
+
+    // No active goal found for this organization
+    return false;
   } catch (error) {
     console.error('[ALIGNMENT] Error checking active goal:', error);
     return false;

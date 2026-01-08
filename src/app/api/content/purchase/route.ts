@@ -278,10 +278,45 @@ export async function POST(request: NextRequest) {
     const stripe = getStripe();
     const stripeAccount = orgSettings.stripeConnectAccountId;
 
-    // Get user email
+    // Get user email and name
     const clerk = await clerkClient();
     const clerkUser = await clerk.users.getUser(userId);
     const email = clerkUser.emailAddresses[0]?.emailAddress;
+    const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined;
+
+    // Get or create Stripe customer on the Connected account
+    let customerId: string | undefined;
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+    const connectedCustomerIds = userData?.stripeConnectedCustomerIds || {};
+
+    if (connectedCustomerIds[stripeAccount]) {
+      customerId = connectedCustomerIds[stripeAccount];
+    } else {
+      const customer = await stripe.customers.create(
+        {
+          email,
+          name,
+          metadata: {
+            userId,
+            platformUserId: userId,
+          },
+        },
+        { stripeAccount }
+      );
+      customerId = customer.id;
+
+      // Save customer ID for this connected account
+      await adminDb.collection('users').doc(userId).set(
+        {
+          stripeConnectedCustomerIds: {
+            ...connectedCustomerIds,
+            [stripeAccount]: customerId,
+          },
+        },
+        { merge: true }
+      );
+    }
 
     // Calculate platform fee (same as programs)
     const platformFeePercent = orgSettings.platformFeePercent ?? 1;
@@ -321,6 +356,7 @@ export async function POST(request: NextRequest) {
         ],
         payment_intent_data: {
           application_fee_amount: applicationFeeAmount,
+          setup_future_usage: 'off_session', // Save card for future purchases
           metadata: {
             contentType,
             contentId,
@@ -331,7 +367,7 @@ export async function POST(request: NextRequest) {
         },
         success_url: successUrl,
         cancel_url: cancelUrl,
-        customer_email: email,
+        customer: customerId,
         metadata: {
           contentType,
           contentId,

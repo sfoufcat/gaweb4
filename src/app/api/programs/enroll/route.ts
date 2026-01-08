@@ -613,6 +613,44 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Get or create Stripe customer on the Connected account
+    let customerId: string | undefined;
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+    const connectedCustomerIds = userData?.stripeConnectedCustomerIds || {};
+
+    if (connectedCustomerIds[stripeConnectAccountId]) {
+      customerId = connectedCustomerIds[stripeConnectAccountId];
+    } else {
+      // Create new Stripe customer on the Connected account with name
+      const email = clerkUser.emailAddresses[0]?.emailAddress;
+      const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined;
+
+      const customer = await stripe.customers.create(
+        {
+          email,
+          name,
+          metadata: {
+            userId,
+            platformUserId: userId,
+          },
+        },
+        { stripeAccount: stripeConnectAccountId }
+      );
+      customerId = customer.id;
+
+      // Save customer ID for this connected account
+      await adminDb.collection('users').doc(userId).set(
+        {
+          stripeConnectedCustomerIds: {
+            ...connectedCustomerIds,
+            [stripeConnectAccountId]: customerId,
+          },
+        },
+        { merge: true }
+      );
+    }
+
     // Calculate platform fee based on final discounted price
     const platformFeePercent = orgSettings?.platformFeePercent ?? 1;
     const applicationFeeAmount = Math.round(finalPrice * (platformFeePercent / 100));
@@ -727,7 +765,7 @@ export async function POST(request: NextRequest) {
         },
         success_url: successUrl,
         cancel_url: cancelUrl,
-        customer_email: clerkUser.emailAddresses[0]?.emailAddress,
+        customer: customerId,
         metadata: {
           userId,
           programId,
@@ -770,6 +808,7 @@ export async function POST(request: NextRequest) {
         line_items: allLineItems,
         payment_intent_data: {
           application_fee_amount: combinedApplicationFee,
+          setup_future_usage: 'off_session', // Save card for future purchases
           metadata: {
             userId,
             programId,
@@ -787,7 +826,7 @@ export async function POST(request: NextRequest) {
         },
         success_url: successUrl,
         cancel_url: cancelUrl,
-        customer_email: clerkUser.emailAddresses[0]?.emailAddress,
+        customer: customerId,
         metadata: {
           userId,
           programId,

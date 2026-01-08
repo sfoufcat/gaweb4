@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
 import type { Program, ProgramCohort, OrgSettings, OrderBumpConfig } from '@/types';
@@ -140,11 +140,54 @@ export async function POST(request: NextRequest) {
 
     const stripe = getStripe();
 
+    // Get user info from Clerk for customer creation
+    const clerk = await clerkClient();
+    const clerkUser = await clerk.users.getUser(userId);
+    const email = clerkUser.emailAddresses[0]?.emailAddress;
+    const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined;
+
+    // Get or create Stripe customer on the Connected account
+    let customerId: string | undefined;
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+    const connectedCustomerIds = userData?.stripeConnectedCustomerIds || {};
+
+    if (connectedCustomerIds[orgSettings.stripeConnectAccountId]) {
+      customerId = connectedCustomerIds[orgSettings.stripeConnectAccountId];
+    } else {
+      // Create new Stripe customer on the Connected account
+      const customer = await stripe.customers.create(
+        {
+          email,
+          name,
+          metadata: {
+            userId,
+            platformUserId: userId,
+          },
+        },
+        { stripeAccount: orgSettings.stripeConnectAccountId }
+      );
+      customerId = customer.id;
+
+      // Save customer ID for this connected account
+      await adminDb.collection('users').doc(userId).set(
+        {
+          stripeConnectedCustomerIds: {
+            ...connectedCustomerIds,
+            [orgSettings.stripeConnectAccountId]: customerId,
+          },
+        },
+        { merge: true }
+      );
+    }
+
     // Create PaymentIntent on the connected account
     const paymentIntent = await stripe.paymentIntents.create(
       {
         amount: totalAmountCents,
         currency: program.currency || 'usd',
+        customer: customerId,
+        setup_future_usage: 'off_session',
         automatic_payment_methods: {
           enabled: true,
         },

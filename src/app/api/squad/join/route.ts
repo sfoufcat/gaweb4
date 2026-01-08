@@ -114,6 +114,41 @@ export async function POST(req: Request) {
       const clerk = await clerkClient();
       const clerkUser = await clerk.users.getUser(userId);
       const email = clerkUser.emailAddresses[0]?.emailAddress;
+      const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined;
+
+      // Get or create Stripe customer on the Connected account
+      let customerId: string | undefined;
+      const userDoc = await adminDb.collection('users').doc(userId).get();
+      const userData = userDoc.data();
+      const connectedCustomerIds = userData?.stripeConnectedCustomerIds || {};
+
+      if (connectedCustomerIds[stripeAccount]) {
+        customerId = connectedCustomerIds[stripeAccount];
+      } else {
+        const customer = await stripe.customers.create(
+          {
+            email,
+            name,
+            metadata: {
+              userId,
+              platformUserId: userId,
+            },
+          },
+          { stripeAccount }
+        );
+        customerId = customer.id;
+
+        // Save customer ID for this connected account
+        await adminDb.collection('users').doc(userId).set(
+          {
+            stripeConnectedCustomerIds: {
+              ...connectedCustomerIds,
+              [stripeAccount]: customerId,
+            },
+          },
+          { merge: true }
+        );
+      }
 
       // Create Stripe checkout session for subscription
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -140,7 +175,7 @@ export async function POST(req: Request) {
           },
           success_url: successUrl,
           cancel_url: cancelUrl,
-          customer_email: email,
+          customer: customerId,
           metadata: {
             squadId,
             userId,

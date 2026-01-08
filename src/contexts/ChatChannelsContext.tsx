@@ -522,7 +522,8 @@ export function ChatChannelsProvider({
 
     // Fetch channels
     fetchChannels();
-  }, [client, isConnected, squadChannelsLoaded, hasSSRFilterData, fetchChannels]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- client?.user?.id triggers re-run when user connects
+  }, [client, client?.user?.id, isConnected, squadChannelsLoaded, hasSSRFilterData, fetchChannels]);
 
   // Listen to Stream events for real-time updates
   useEffect(() => {
@@ -559,7 +560,8 @@ export function ChatChannelsProvider({
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [userSquadChannelIds, isInitialized, squadChannelsLoaded, client]); // Removed fetchChannels - using ref instead
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- client?.user?.id triggers re-run when user connects; fetchChannels via ref
+  }, [userSquadChannelIds, isInitialized, squadChannelsLoaded, client, client?.user?.id]);
 
   const value = useMemo(
     () => ({

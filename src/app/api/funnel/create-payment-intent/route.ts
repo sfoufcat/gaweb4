@@ -198,9 +198,11 @@ export async function POST(req: Request) {
         customerId = connectedCustomerIds[stripeConnectAccountId];
       } else {
         // Create new Stripe customer on the Connected account
+        const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined;
         const customer = await getStripe().customers.create(
           {
             email,
+            name,
             metadata: {
               userId,
               platformUserId: userId, // Reference back to platform user
@@ -251,6 +253,12 @@ export async function POST(req: Request) {
         // Add email if available (may be collected via Stripe Payment Element instead)
         if (email) {
           customerData.email = email;
+        }
+        
+        // Add name if available from session data
+        const sessionName = sessionData.name as string | undefined;
+        if (sessionName) {
+          customerData.name = sessionName;
         }
         
         const customer = await getStripe().customers.create(

@@ -335,9 +335,11 @@ export async function POST(request: NextRequest) {
       customerId = connectedCustomerIds[stripeConnectAccountId];
     } else {
       // Create new Stripe customer on the Connected account
+      const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined;
       const customer = await stripe.customers.create(
         {
           email,
+          name,
           metadata: {
             userId,
             platformUserId: userId,

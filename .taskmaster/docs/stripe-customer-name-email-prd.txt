@@ -1,0 +1,103 @@
+# PRD: Fix Stripe Customer Name and Email Capture
+
+## Overview
+When payment methods are saved to Stripe, some customers appear with just a customer ID (e.g., `cus_TjhEI9VidNe75T`) instead of their actual name and email. This creates poor data hygiene and makes it impossible to identify customers in the Stripe dashboard.
+
+## Problem Statement
+Inconsistent customer creation across payment flows:
+- Some routes pass `email` but not `name`
+- Some routes pass neither `email` nor `name`
+- One route (programs/create-payment-intent) doesn't create a customer at all, so payment methods aren't saved
+- Some checkout session routes use `customer_email` without creating a proper customer with name
+
+## Architecture Context
+
+### Platform Stripe (NO stripeAccount option)
+- Used for: User tier subscriptions, Coach tier subscriptions, Coach credit purchases
+- Customer storage: `users.billing.stripeCustomerId` or `organizations.stripeCustomerId`
+
+### Stripe Connect (WITH stripeAccount option)
+- Used for: Programs, Content, Squads, Funnels (everything sold BY coaches TO users)
+- Customer storage: `users.stripeConnectedCustomerIds[accountId]`
+- Each user can have different customer IDs on different coach's connected accounts
+
+**CRITICAL**: All fixes must preserve this architecture. Connect routes must always pass `{ stripeAccount: stripeConnectAccountId }`.
+
+## Requirements
+
+### Task 1: Fix funnel/create-payment-intent (Connect)
+File: src/app/api/funnel/create-payment-intent/route.ts
+- Add `name` field to customer creation for authenticated users (~line 200)
+- Add `name` from flow session for guest checkout (~line 240)
+- Use pattern: `name = \`${user.firstName || ''} ${user.lastName || ''}\`.trim() || undefined`
+
+### Task 2: Fix content/create-payment-intent (Connect)
+File: src/app/api/content/create-payment-intent/route.ts
+- Add `name` field to customer creation (~line 343-355)
+- Get name from clerkUser: `\`${clerkUser.firstName || ''} ${clerkUser.lastName || ''}\`.trim() || undefined`
+
+### Task 3: Fix programs/create-payment-intent (Connect) - CRITICAL
+File: src/app/api/programs/create-payment-intent/route.ts
+- This route has NO customer creation at all - payment methods won't be saved!
+- Add full customer creation pattern:
+  - Import clerkClient
+  - Get user from Clerk
+  - Get or create customer on connected account with email and name
+  - Save customer ID to users.stripeConnectedCustomerIds
+  - Add `customer: customerId` to PaymentIntent
+  - Add `setup_future_usage: 'off_session'` to save payment method
+
+### Task 4: Fix coach/credits/purchase (Platform)
+File: src/app/api/coach/credits/purchase/route.ts
+- Add `email` and `name` to customer creation (~line 85-92)
+- Import and use clerkClient to get user info
+- NOTE: This is Platform Stripe - NO stripeAccount option
+
+### Task 5: Fix checkout route (Platform)
+File: src/app/api/checkout/route.ts
+- Add `name` to customer creation (~line 100-107)
+- Import and use clerkClient to get user info
+- NOTE: This is Platform Stripe - NO stripeAccount option
+
+### Task 6: Fix programs/enroll checkout session (Connect)
+File: src/app/api/programs/enroll/route.ts
+- Create customer BEFORE checkout session with name and email
+- Change from `customer_email` to `customer: customerId` in session params
+- Save customer ID to users.stripeConnectedCustomerIds
+
+### Task 7: Fix squad/join checkout session (Connect)
+File: src/app/api/squad/join/route.ts
+- Same pattern as Task 6
+- Create customer first, then use customer ID in session
+
+### Task 8: Fix content/purchase checkout session (Connect)
+File: src/app/api/content/purchase/route.ts
+- Same pattern as Task 6
+- Create customer first, then use customer ID in session
+
+## Correct Pattern Reference
+See src/app/api/squad/create-subscription-intent/route.ts for correct implementation:
+```typescript
+const customer = await stripe.customers.create(
+  {
+    email,
+    name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined,
+    metadata: {
+      userId,
+      platformUserId: userId,
+    },
+  },
+  { stripeAccount: stripeConnectAccountId }
+);
+```
+
+## Verification
+After implementation, test each payment flow:
+1. Funnel purchase (authenticated and guest)
+2. Content purchase (both routes)
+3. Program enrollment (both routes)
+4. Coach credit purchase
+5. Platform subscription checkout
+6. Squad subscription/join
+
+Check Stripe dashboard to verify name and email appear correctly for each new customer.

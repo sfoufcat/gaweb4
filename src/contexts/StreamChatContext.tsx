@@ -23,6 +23,14 @@ let globalClient: StreamChatType | null = null;
 let globalConnectionPromise: Promise<StreamChatType | null> | null = null;
 let globalConnectedUserId: string | null = null;
 
+// OPTIMIZATION: Preload stream-chat module immediately when this context loads
+// This ensures the module is cached before we need it for connection
+if (typeof window !== 'undefined') {
+  import('stream-chat').catch(() => {
+    // Silently ignore preload errors - we'll handle them during actual connection
+  });
+}
+
 interface StreamChatProviderProps {
   children: ReactNode;
 }
@@ -97,14 +105,23 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
     globalConnectedUserId = userId;
     globalConnectionPromise = (async () => {
       try {
-        // Dynamic import to reduce initial bundle size
-        const { StreamChat } = await import('stream-chat');
-        
-        // Get API key
+        // Get API key early (sync)
         const apiKey = process.env.NEXT_PUBLIC_STREAM_API_KEY;
         if (!apiKey) {
           throw new Error('Stream API key not found');
         }
+
+        // OPTIMIZATION: Parallelize module import and token fetch
+        // On fresh load, we need both - fetching in parallel saves ~100-300ms
+        const tokenPromise = fetch('/api/stream-token').then(async (response) => {
+          if (!response.ok) throw new Error('Failed to fetch Stream token');
+          const data = await response.json();
+          if (!data.token) throw new Error('Invalid token response');
+          return data.token as string;
+        });
+
+        // Dynamic import runs in parallel with token fetch
+        const { StreamChat } = await import('stream-chat');
 
         // Get or create client instance
         const chatClient = StreamChat.getInstance(apiKey);
@@ -129,16 +146,9 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
               // Ignore disconnect errors for stale connections
             }
           }
-          // Fetch token from API
-          const response = await fetch('/api/stream-token');
-          if (!response.ok) {
-            throw new Error('Failed to fetch Stream token');
-          }
 
-          const data = await response.json();
-          if (!data.token) {
-            throw new Error('Invalid token response');
-          }
+          // Wait for token (already fetching in parallel)
+          const token = await tokenPromise;
 
           // Connect user with profile data
           // The connectUser call sends our profile data to Stream
@@ -148,7 +158,7 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
               name: expectedName,
               image: expectedImage,
             },
-            data.token
+            token
           );
           
           // Fire-and-forget: upsert user to ensure Stream's server-side

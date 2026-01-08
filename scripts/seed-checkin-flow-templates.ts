@@ -89,7 +89,7 @@ const MORNING_TEMPLATE_STEPS: Omit<CheckInStep, 'id' | 'flowId' | 'createdAt' | 
       },
     },
     conditions: [
-      { field: 'emotionalState', operator: 'in', value: ['low_stuck', 'uneasy', 'uncertain', 'neutral', 'steady'] },
+      { field: 'emotionalState', operator: 'in', value: ['low_stuck', 'uneasy', 'uncertain', 'neutral'] },
     ],
   },
   {
@@ -106,7 +106,7 @@ const MORNING_TEMPLATE_STEPS: Omit<CheckInStep, 'id' | 'flowId' | 'createdAt' | 
       },
     },
     conditions: [
-      { field: 'emotionalState', operator: 'in', value: ['low_stuck', 'uneasy', 'uncertain', 'neutral', 'steady'] },
+      { field: 'emotionalState', operator: 'in', value: ['low_stuck', 'uneasy', 'uncertain', 'neutral'] },
     ],
   },
   {

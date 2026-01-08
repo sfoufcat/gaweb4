@@ -54,14 +54,14 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
   // Width classes: fullWidth for grids, fixed width for carousels
   const widthClass = fullWidth
     ? 'w-full'
-    : isCompact ? 'w-[200px]' : 'w-[280px]';
+    : isCompact ? 'w-[200px]' : 'w-[320px]';
 
   return (
     <Link href={`/discover/programs/${program.id}`}>
       <div className={`glass-card flex-shrink-0 overflow-hidden cursor-pointer group ${widthClass}`}>
         {/* Cover Image */}
         <div className={`relative w-full overflow-hidden ${
-          isCompact ? 'h-[100px]' : 'h-[140px]'
+          isCompact ? 'h-[100px]' : 'h-[160px]'
         }`}>
           {program.coverImageUrl ? (
             <>
@@ -71,7 +71,7 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
                 alt={program.name}
                 fill
                 className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-                sizes={fullWidth ? "(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" : isCompact ? "200px" : "280px"}
+                sizes={fullWidth ? "(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" : isCompact ? "200px" : "320px"}
               />
             </>
           ) : (

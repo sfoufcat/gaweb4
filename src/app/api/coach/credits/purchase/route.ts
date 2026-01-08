@@ -5,7 +5,7 @@
  * Creates a Stripe checkout session for one-time payment.
  */
 
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
@@ -85,8 +85,16 @@ export async function POST(request: NextRequest) {
     let stripeCustomerId = orgData?.stripeCustomerId;
 
     if (!stripeCustomerId) {
-      // Create Stripe customer
+      // Get coach info from Clerk for customer creation
+      const clerk = await clerkClient();
+      const clerkUser = await clerk.users.getUser(userId);
+      const email = clerkUser.emailAddresses[0]?.emailAddress;
+      const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined;
+
+      // Create Stripe customer (Platform Stripe - no stripeAccount)
       const customer = await getStripe().customers.create({
+        email,
+        name,
         metadata: {
           organizationId,
           userId,

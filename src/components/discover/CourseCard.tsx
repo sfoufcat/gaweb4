@@ -30,14 +30,14 @@ export function CourseCard({ course }: CourseCardProps) {
   const CardContent = () => (
     <>
       {/* Cover Image */}
-      <div className="relative h-[100px] w-full bg-earth-100 dark:bg-[#262b35]">
+      <div className="relative h-[120px] w-full bg-earth-100 dark:bg-[#262b35]">
         {course.coverImageUrl ? (
           <Image
             src={course.coverImageUrl}
             alt={course.title}
             fill
             className="object-cover"
-            sizes="180px"
+            sizes="220px"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -88,6 +88,13 @@ export function CourseCard({ course }: CourseCardProps) {
         <h3 className="font-albert font-semibold text-base text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] leading-[1.3] line-clamp-2">
           {course.title}
         </h3>
+
+        {/* Description - 1 line */}
+        {course.shortDescription && (
+          <p className="text-xs text-text-muted dark:text-[#7d8190] leading-relaxed line-clamp-1">
+            {course.shortDescription}
+          </p>
+        )}
       </div>
     </>
   );
@@ -98,7 +105,7 @@ export function CourseCard({ course }: CourseCardProps) {
       <>
         <div 
           onClick={() => setShowPurchaseSheet(true)}
-          className="bg-white/70 dark:bg-[#171b22] rounded-[20px] w-[180px] flex-shrink-0 hover:shadow-md dark:hover:shadow-black/30 transition-shadow cursor-pointer overflow-hidden"
+          className="bg-white/70 dark:bg-[#171b22] rounded-[20px] w-[220px] flex-shrink-0 hover:shadow-md dark:hover:shadow-black/30 transition-shadow cursor-pointer overflow-hidden"
         >
           <CardContent />
         </div>
@@ -126,7 +133,7 @@ export function CourseCard({ course }: CourseCardProps) {
   // For free content, use Link for direct navigation
   return (
     <Link href={`/discover/courses/${course.id}`}>
-      <div className="bg-white/70 dark:bg-[#171b22] rounded-[20px] w-[180px] flex-shrink-0 hover:shadow-md dark:hover:shadow-black/30 transition-shadow cursor-pointer overflow-hidden">
+      <div className="bg-white/70 dark:bg-[#171b22] rounded-[20px] w-[220px] flex-shrink-0 hover:shadow-md dark:hover:shadow-black/30 transition-shadow cursor-pointer overflow-hidden">
         <CardContent />
       </div>
     </Link>
