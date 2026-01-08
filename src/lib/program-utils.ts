@@ -24,6 +24,43 @@ interface WeekData {
 }
 
 /**
+ * Calculate which day indices should receive tasks for even distribution.
+ *
+ * Examples (for 7-day week, days 1-7):
+ * - 2 tasks: [1, 4] (Monday, Thursday)
+ * - 3 tasks: [1, 3, 5] (Monday, Wednesday, Friday)
+ * - 4 tasks: [1, 3, 5, 7] (spread across week)
+ * - 7 tasks: [1, 2, 3, 4, 5, 6, 7] (one per day)
+ *
+ * @param numTasks Number of tasks to spread
+ * @param startDay First day index of the week
+ * @param endDay Last day index of the week
+ * @returns Array of day indices where tasks should be placed
+ */
+function calculateSpreadDayIndices(numTasks: number, startDay: number, endDay: number): number[] {
+  const daysInWeek = endDay - startDay + 1;
+
+  if (numTasks <= 0) return [];
+  if (numTasks >= daysInWeek) {
+    // More tasks than days: return all days
+    return Array.from({ length: daysInWeek }, (_, i) => startDay + i);
+  }
+
+  // Calculate evenly spaced indices
+  const dayIndices: number[] = [];
+  const interval = daysInWeek / numTasks;
+
+  for (let i = 0; i < numTasks; i++) {
+    // Use Math.floor to get the day index, offset by half interval for better centering
+    const dayOffset = Math.floor(i * interval + interval / 2);
+    dayIndices.push(startDay + Math.min(dayOffset, daysInWeek - 1));
+  }
+
+  // Deduplicate in case of rounding collisions
+  return [...new Set(dayIndices)].sort((a, b) => a - b);
+}
+
+/**
  * Recalculates the day indices for all weeks in a program based on module order and week order within modules.
  *
  * This function:
@@ -421,16 +458,14 @@ export async function distributeWeeklyTasksToDays(
       }
     }
   } else {
-    // Spread: distribute tasks across days (with smart merging)
-    const tasksPerDay = Math.ceil(weeklyTasks.length / daysInWeek);
-    let taskIndex = 0;
+    // Spread: distribute tasks evenly across days (with smart merging)
+    // Calculate which days should receive tasks (evenly spaced)
+    const spreadDays = calculateSpreadDayIndices(weeklyTasks.length, startDay, endDay);
 
-    for (let d = startDay; d <= endDay && taskIndex < weeklyTasks.length; d++) {
-      const dayTasks = weeklyTasks.slice(taskIndex, taskIndex + tasksPerDay);
-      taskIndex += tasksPerDay;
+    console.log(`[PROGRAM_UTILS] Spread distribution: ${weeklyTasks.length} tasks over days ${spreadDays.join(', ')}`);
 
-      if (dayTasks.length === 0) continue;
-
+    // Process ALL days in the week (to clear old week tasks from days that won't get new tasks)
+    for (let d = startDay; d <= endDay; d++) {
       const existing = existingDays.get(d);
       const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
@@ -438,14 +473,23 @@ export async function distributeWeeklyTasksToDays(
       const existingTasks = existingData?.tasks || [];
       const manualTasks = existingTasks.filter(t => t.source !== 'week');
 
-      // Tag new tasks with source: 'week'
-      const weekSourcedTasks = dayTasks.map((task: ProgramTaskTemplate) => ({
-        ...task,
-        source: 'week' as const,
-      }));
+      // Check if this day should receive a task
+      const taskIndexForDay = spreadDays.indexOf(d);
+      let weekSourcedTasks: ProgramTaskTemplate[] = [];
 
-      // Merge: manual tasks + new week tasks
+      if (taskIndexForDay !== -1 && taskIndexForDay < weeklyTasks.length) {
+        // This day gets a task - tag it with source: 'week'
+        weekSourcedTasks = [{
+          ...weeklyTasks[taskIndexForDay],
+          source: 'week' as const,
+        }];
+      }
+
+      // Merge: manual tasks + new week tasks (may be empty for non-spread days)
       const mergedTasks = [...manualTasks, ...weekSourcedTasks];
+
+      // Skip if no change needed (no manual tasks and no new tasks)
+      if (mergedTasks.length === 0 && !existing) continue;
 
       console.log(`[PROGRAM_UTILS] Day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week`);
 
@@ -606,16 +650,13 @@ export async function distributeCohortWeeklyTasksToDays(
       }
     }
   } else {
-    // Spread: distribute tasks across days (with smart merging)
-    const tasksPerDay = Math.ceil(weeklyTasks.length / daysInWeek);
-    let taskIndex = 0;
+    // Spread: distribute tasks evenly across days (with smart merging)
+    const spreadDays = calculateSpreadDayIndices(weeklyTasks.length, startDay, endDay);
 
-    for (let d = startDay; d <= endDay && taskIndex < weeklyTasks.length; d++) {
-      const dayTasks = weeklyTasks.slice(taskIndex, taskIndex + tasksPerDay);
-      taskIndex += tasksPerDay;
+    console.log(`[PROGRAM_UTILS] Cohort spread distribution: ${weeklyTasks.length} tasks over days ${spreadDays.join(', ')}`);
 
-      if (dayTasks.length === 0) continue;
-
+    // Process ALL days in the week (to clear old week tasks from days that won't get new tasks)
+    for (let d = startDay; d <= endDay; d++) {
       const existing = existingDays.get(d);
       const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
@@ -623,14 +664,23 @@ export async function distributeCohortWeeklyTasksToDays(
       const existingTasks = existingData?.tasks || [];
       const manualTasks = existingTasks.filter(t => t.source !== 'week');
 
-      // Tag new tasks with source: 'week'
-      const weekSourcedTasks = dayTasks.map((task: ProgramTaskTemplate) => ({
-        ...task,
-        source: 'week' as const,
-      }));
+      // Check if this day should receive a task
+      const taskIndexForDay = spreadDays.indexOf(d);
+      let weekSourcedTasks: ProgramTaskTemplate[] = [];
 
-      // Merge: manual tasks + new week tasks
+      if (taskIndexForDay !== -1 && taskIndexForDay < weeklyTasks.length) {
+        // This day gets a task - tag it with source: 'week'
+        weekSourcedTasks = [{
+          ...weeklyTasks[taskIndexForDay],
+          source: 'week' as const,
+        }];
+      }
+
+      // Merge: manual tasks + new week tasks (may be empty for non-spread days)
       const mergedTasks = [...manualTasks, ...weekSourcedTasks];
+
+      // Skip if no change needed (no manual tasks and no new tasks)
+      if (mergedTasks.length === 0 && !existing) continue;
 
       console.log(`[PROGRAM_UTILS] Cohort day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week`);
 
@@ -790,16 +840,13 @@ export async function distributeClientWeeklyTasksToDays(
       }
     }
   } else {
-    // Spread: distribute tasks across days (with smart merging)
-    const tasksPerDay = Math.ceil(weeklyTasks.length / daysInWeek);
-    let taskIndex = 0;
+    // Spread: distribute tasks evenly across days (with smart merging)
+    const spreadDays = calculateSpreadDayIndices(weeklyTasks.length, startDay, endDay);
 
-    for (let d = startDay; d <= endDay && taskIndex < weeklyTasks.length; d++) {
-      const dayTasks = weeklyTasks.slice(taskIndex, taskIndex + tasksPerDay);
-      taskIndex += tasksPerDay;
+    console.log(`[PROGRAM_UTILS] Client spread distribution: ${weeklyTasks.length} tasks over days ${spreadDays.join(', ')}`);
 
-      if (dayTasks.length === 0) continue;
-
+    // Process ALL days in the week (to clear old week tasks from days that won't get new tasks)
+    for (let d = startDay; d <= endDay; d++) {
       const existing = existingDays.get(d);
       const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
@@ -807,14 +854,23 @@ export async function distributeClientWeeklyTasksToDays(
       const existingTasks = existingData?.tasks || [];
       const manualTasks = existingTasks.filter(t => t.source !== 'week');
 
-      // Tag new tasks with source: 'week'
-      const weekSourcedTasks = dayTasks.map((task: ProgramTaskTemplate) => ({
-        ...task,
-        source: 'week' as const,
-      }));
+      // Check if this day should receive a task
+      const taskIndexForDay = spreadDays.indexOf(d);
+      let weekSourcedTasks: ProgramTaskTemplate[] = [];
 
-      // Merge: manual tasks + new week tasks
+      if (taskIndexForDay !== -1 && taskIndexForDay < weeklyTasks.length) {
+        // This day gets a task - tag it with source: 'week'
+        weekSourcedTasks = [{
+          ...weeklyTasks[taskIndexForDay],
+          source: 'week' as const,
+        }];
+      }
+
+      // Merge: manual tasks + new week tasks (may be empty for non-spread days)
       const mergedTasks = [...manualTasks, ...weekSourcedTasks];
+
+      // Skip if no change needed (no manual tasks and no new tasks)
+      if (mergedTasks.length === 0 && !existing) continue;
 
       console.log(`[PROGRAM_UTILS] Client day ${d} merge: kept ${manualTasks.length} manual, adding ${weekSourcedTasks.length} from week`);
 
