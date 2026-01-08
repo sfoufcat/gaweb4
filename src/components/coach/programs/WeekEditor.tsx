@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
-import { Save, Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil } from 'lucide-react';
+import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil } from 'lucide-react';
+import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -25,7 +26,8 @@ interface EnrollmentWithUser extends ProgramEnrollment {
 interface WeekEditorProps {
   week: ProgramWeek;
   days: ProgramDay[];
-  onSave: (updates: Partial<ProgramWeek>) => Promise<void>;
+  /** @deprecated Use ProgramEditorContext instead. Only needed for sync dialog. */
+  onSave?: (updates: Partial<ProgramWeek>) => Promise<void>;
   onDaySelect?: (dayIndex: number) => void;
   onFillWithAI?: () => void;
   isSaving?: boolean;
@@ -182,7 +184,50 @@ export function WeekEditor({
   enrollments = [],
   onSummaryGenerated,
 }: WeekEditorProps) {
-  const [formData, setFormData] = useState({
+  // Program editor context for centralized save
+  const editorContext = useProgramEditorOptional();
+
+  // Determine view context for the editor
+  const viewContext = isClientView ? 'client' : cohortId ? 'cohort' : 'template';
+  const clientContextId = isClientView ? enrollmentId : cohortId;
+
+  // Build API endpoint based on view context
+  const getApiEndpoint = useCallback(() => {
+    if (!programId) return '';
+    const base = `/api/coach/org-programs/${programId}`;
+    if (viewContext === 'client' && enrollmentId) {
+      // Client week - may need POST if doesn't exist, PATCH if exists
+      return `${base}/client-weeks`;
+    } else if (viewContext === 'cohort' && cohortId) {
+      return `${base}/cohorts/${cohortId}/week-content/${week.id}`;
+    }
+    return `${base}/weeks/${week.id}`;
+  }, [programId, viewContext, enrollmentId, cohortId, week.id]);
+
+  // Check for pending data from context
+  const pendingData = editorContext?.getPendingData('week', week.id, clientContextId);
+
+  // Track if we've initialized from pending data
+  const initializedFromPending = useRef(false);
+
+  // Form data type
+  type WeekFormData = {
+    name: string;
+    theme: string;
+    description: string;
+    weeklyPrompt: string;
+    weeklyTasks: ProgramTaskTemplate[];
+    currentFocus: string[];
+    notes: string[];
+    manualNotes: string;
+    distribution: TaskDistribution;
+    coachRecordingUrl: string;
+    coachRecordingNotes: string;
+    linkedSummaryIds: string[];
+    linkedCallEventIds: string[];
+  };
+
+  const getDefaultFormData = useCallback((): WeekFormData => ({
     name: week.name || '',
     theme: week.theme || '',
     description: week.description || '',
@@ -194,10 +239,19 @@ export function WeekEditor({
     distribution: (week.distribution || 'spread') as TaskDistribution,
     coachRecordingUrl: week.coachRecordingUrl || '',
     coachRecordingNotes: week.coachRecordingNotes || '',
-    linkedSummaryIds: week.linkedSummaryIds || [] as string[],
-    linkedCallEventIds: week.linkedCallEventIds || [] as string[],
+    linkedSummaryIds: week.linkedSummaryIds || [],
+    linkedCallEventIds: week.linkedCallEventIds || [],
+  }), [week]);
+
+  const [formData, setFormData] = useState<WeekFormData>(() => {
+    // Initialize from pending data if available
+    if (pendingData && !initializedFromPending.current) {
+      initializedFromPending.current = true;
+      return pendingData as WeekFormData;
+    }
+    return getDefaultFormData();
   });
-  const [hasChanges, setHasChanges] = useState(false);
+  const [hasChanges, setHasChanges] = useState(!!pendingData);
   const [newTask, setNewTask] = useState('');
   const [newFocus, setNewFocus] = useState('');
   const [newNote, setNewNote] = useState('');
@@ -246,30 +300,27 @@ export function WeekEditor({
     d => d.dayIndex >= week.startDayIndex && d.dayIndex <= week.endDayIndex
   ).sort((a, b) => a.dayIndex - b.dayIndex);
 
-  // Reset form when week changes
+  // Reset form when week changes - but check for pending data first
   useEffect(() => {
-    setFormData({
-      name: week.name || '',
-      theme: week.theme || '',
-      description: week.description || '',
-      weeklyPrompt: week.weeklyPrompt || '',
-      weeklyTasks: week.weeklyTasks || [],
-      currentFocus: week.currentFocus || [],
-      notes: week.notes || [],
-      manualNotes: week.manualNotes || '',
-      distribution: (week.distribution || 'spread') as TaskDistribution,
-      coachRecordingUrl: week.coachRecordingUrl || '',
-      coachRecordingNotes: week.coachRecordingNotes || '',
-      linkedSummaryIds: week.linkedSummaryIds || [],
-      linkedCallEventIds: week.linkedCallEventIds || [],
-    });
-    setHasChanges(false);
+    // Check if there's pending data in context for this week
+    const contextPendingData = editorContext?.getPendingData('week', week.id, clientContextId);
+
+    if (contextPendingData) {
+      // Restore from pending data
+      setFormData(contextPendingData as WeekFormData);
+      setHasChanges(true);
+    } else {
+      // Reset to week data
+      setFormData(getDefaultFormData());
+      setHasChanges(false);
+    }
     setShowSyncButton(false);
     setSaveStatus('idle');
     setEditedFields(new Set());
-  }, [week.id, week.name, week.theme, week.description, week.weeklyPrompt, week.weeklyTasks, week.currentFocus, week.notes, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.linkedSummaryIds, week.linkedCallEventIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [week.id]); // Only depend on week.id to detect week changes
 
-  // Check for changes
+  // Check for changes and register with context
   useEffect(() => {
     const changed =
       formData.name !== (week.name || '') ||
@@ -286,9 +337,48 @@ export function WeekEditor({
       JSON.stringify(formData.linkedSummaryIds) !== JSON.stringify(week.linkedSummaryIds || []) ||
       JSON.stringify(formData.linkedCallEventIds) !== JSON.stringify(week.linkedCallEventIds || []);
     setHasChanges(changed);
-  }, [formData, week]);
 
+    // Register changes with context if available
+    if (editorContext && changed && programId) {
+      editorContext.registerChange({
+        entityType: 'week',
+        entityId: week.id,
+        weekNumber: week.weekNumber,
+        viewContext: viewContext as 'template' | 'client' | 'cohort',
+        clientContextId,
+        originalData: {
+          name: week.name,
+          theme: week.theme,
+          description: week.description,
+          weeklyPrompt: week.weeklyPrompt,
+          weeklyTasks: week.weeklyTasks,
+          currentFocus: week.currentFocus,
+          notes: week.notes,
+          manualNotes: week.manualNotes,
+          distribution: week.distribution,
+          coachRecordingUrl: week.coachRecordingUrl,
+          coachRecordingNotes: week.coachRecordingNotes,
+          linkedSummaryIds: week.linkedSummaryIds,
+          linkedCallEventIds: week.linkedCallEventIds,
+        },
+        pendingData: formData,
+        apiEndpoint: getApiEndpoint(),
+        httpMethod: viewContext === 'cohort' ? 'PUT' : 'PATCH',
+        editedFields: Array.from(editedFields),
+      });
+    } else if (editorContext && !changed) {
+      // Remove from pending changes if no longer changed
+      const changeKey = editorContext.getChangeKey('week', week.id, clientContextId);
+      editorContext.discardChange(changeKey);
+    }
+  }, [formData, week, editorContext, programId, viewContext, clientContextId, getApiEndpoint, editedFields]);
+
+  // handleSave is only used by the SyncToClientsDialog now
   const handleSave = async () => {
+    if (!onSave) {
+      console.warn('WeekEditor: onSave prop not provided');
+      return;
+    }
     setSaveStatus('saving');
     try {
       await onSave({
@@ -309,12 +399,14 @@ export function WeekEditor({
       setHasChanges(false);
       setSaveStatus('saved');
 
-      // After animation, show sync button for individual programs in template mode
+      // Clear from context after successful save
+      if (editorContext) {
+        const changeKey = editorContext.getChangeKey('week', week.id, clientContextId);
+        editorContext.discardChange(changeKey);
+      }
+
       setTimeout(() => {
         setSaveStatus('idle');
-        if (programType === 'individual' && !isClientView) {
-          setShowSyncButton(true);
-        }
       }, 1500);
     } catch (error) {
       console.error('Save error:', error);
@@ -647,89 +739,17 @@ export function WeekEditor({
             </Button>
           )}
 
-          {/* Save/Sync Button with Morph Animation - only render when there's something to show */}
-          {(saveStatus !== 'idle' || hasChanges || showSyncButton) && (
-            <div className="relative min-w-[100px] sm:min-w-[140px]">
-              <AnimatePresence mode="wait">
-                {saveStatus === 'saving' && (
-                  <motion.div
-                    key="saving"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <Button disabled className="flex items-center gap-1.5 w-full justify-center h-8 sm:h-9 text-xs sm:text-sm">
-                      <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
-                      <span className="hidden sm:inline">Saving...</span>
-                    </Button>
-                  </motion.div>
-                )}
-
-                {saveStatus === 'saved' && (
-                  <motion.div
-                    key="saved"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <Button
-                      className="flex items-center gap-1.5 w-full justify-center bg-green-600 hover:bg-green-600 text-white h-8 sm:h-9 text-xs sm:text-sm"
-                      disabled
-                    >
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                      >
-                        <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </motion.div>
-                      <span className="hidden sm:inline">Saved!</span>
-                    </Button>
-                  </motion.div>
-                )}
-
-                {saveStatus === 'idle' && hasChanges && !showSyncButton && (
-                  <motion.div
-                    key="save"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <Button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      className="flex items-center gap-1.5 w-full justify-center h-8 sm:h-9 text-xs sm:text-sm"
-                    >
-                      <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    Save & Sync
-                    </Button>
-                  </motion.div>
-                )}
-
-                {saveStatus === 'idle' && showSyncButton && (
-                  <motion.div
-                    key="sync"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <Button
-                      variant="outline"
-                      onClick={() => setSyncDialogOpen(true)}
-                      className="flex items-center gap-1.5 w-full justify-center border-brand-accent text-brand-accent hover:bg-brand-accent/10 h-8 sm:h-9 text-xs sm:text-sm"
-                    >
-                      <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">Sync to Clients</span>
-                      <span className="sm:hidden">Sync</span>
-                    </Button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+          {/* Sync Button - only for individual programs in template mode */}
+          {programType === 'individual' && !isClientView && !isCohortMode && (
+            <Button
+              variant="outline"
+              onClick={() => setSyncDialogOpen(true)}
+              className="flex items-center gap-1.5 border-brand-accent text-brand-accent hover:bg-brand-accent/10 h-8 sm:h-9 text-xs sm:text-sm px-2.5 sm:px-3"
+            >
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Sync to Clients</span>
+              <span className="sm:hidden">Sync</span>
+            </Button>
           )}
         </div>
       </div>

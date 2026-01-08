@@ -1,18 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { ProgramModule, ProgramWeek } from '@/types';
-import { Trash2, Save, Calendar, AlertTriangle, Info } from 'lucide-react';
+import { Trash2, Calendar, AlertTriangle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
+import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 
 interface ModuleEditorProps {
   module: ProgramModule;
   weeks: ProgramWeek[];
-  onSave: (updates: Partial<ProgramModule>) => Promise<void>;
+  /** @deprecated Use ProgramEditorContext instead */
+  onSave?: (updates: Partial<ProgramModule>) => Promise<void>;
   onDelete?: () => Promise<void>;
   isSaving?: boolean;
   readOnly?: boolean;
+  /** Program ID for context registration */
+  programId?: string;
 }
 
 /**
@@ -26,29 +30,60 @@ export function ModuleEditor({
   onDelete,
   isSaving = false,
   readOnly = false,
+  programId,
 }: ModuleEditorProps) {
-  const [formData, setFormData] = useState({
+  // Program editor context for centralized save
+  const editorContext = useProgramEditorOptional();
+
+  // Check for pending data from context
+  const pendingData = editorContext?.getPendingData('module', module.id);
+
+  // Form data type
+  type ModuleFormData = {
+    name: string;
+    description: string;
+    previewTitle: string;
+    previewDescription: string;
+  };
+
+  const getDefaultFormData = useCallback((): ModuleFormData => ({
     name: module.name,
     description: module.description || '',
     previewTitle: module.previewTitle || '',
     previewDescription: module.previewDescription || '',
+  }), [module.name, module.description, module.previewTitle, module.previewDescription]);
+
+  const [formData, setFormData] = useState<ModuleFormData>(() => {
+    if (pendingData) {
+      return pendingData as ModuleFormData;
+    }
+    return getDefaultFormData();
   });
-  const [hasChanges, setHasChanges] = useState(false);
+  const [hasChanges, setHasChanges] = useState(!!pendingData);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Reset form when module changes
-  useEffect(() => {
-    setFormData({
-      name: module.name,
-      description: module.description || '',
-      previewTitle: module.previewTitle || '',
-      previewDescription: module.previewDescription || '',
-    });
-    setHasChanges(false);
-  }, [module.id, module.name, module.description, module.previewTitle, module.previewDescription]);
+  // Build API endpoint
+  const getApiEndpoint = useCallback(() => {
+    if (!programId) return '';
+    return `/api/coach/org-programs/${programId}/modules/${module.id}`;
+  }, [programId, module.id]);
 
-  // Check for changes
+  // Reset form when module changes - but check for pending data first
+  useEffect(() => {
+    const contextPendingData = editorContext?.getPendingData('module', module.id);
+
+    if (contextPendingData) {
+      setFormData(contextPendingData as ModuleFormData);
+      setHasChanges(true);
+    } else {
+      setFormData(getDefaultFormData());
+      setHasChanges(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [module.id]);
+
+  // Check for changes and register with context
   useEffect(() => {
     const changed =
       formData.name !== module.name ||
@@ -56,9 +91,36 @@ export function ModuleEditor({
       formData.previewTitle !== (module.previewTitle || '') ||
       formData.previewDescription !== (module.previewDescription || '');
     setHasChanges(changed);
-  }, [formData, module]);
 
+    // Register changes with context if available
+    if (editorContext && changed && programId) {
+      editorContext.registerChange({
+        entityType: 'module',
+        entityId: module.id,
+        viewContext: 'template', // Modules are always template-level
+        originalData: {
+          name: module.name,
+          description: module.description,
+          previewTitle: module.previewTitle,
+          previewDescription: module.previewDescription,
+        },
+        pendingData: formData,
+        apiEndpoint: getApiEndpoint(),
+        httpMethod: 'PATCH',
+      });
+    } else if (editorContext && !changed) {
+      // Remove from pending changes if no longer changed
+      const changeKey = editorContext.getChangeKey('module', module.id);
+      editorContext.discardChange(changeKey);
+    }
+  }, [formData, module, editorContext, programId, getApiEndpoint]);
+
+  // handleSave is kept for backwards compatibility but rarely used now
   const handleSave = async () => {
+    if (!onSave) {
+      console.warn('ModuleEditor: onSave prop not provided');
+      return;
+    }
     await onSave({
       name: formData.name,
       description: formData.description || undefined,
@@ -66,6 +128,12 @@ export function ModuleEditor({
       previewDescription: formData.previewDescription || undefined,
     });
     setHasChanges(false);
+
+    // Clear from context after successful save
+    if (editorContext) {
+      const changeKey = editorContext.getChangeKey('module', module.id);
+      editorContext.discardChange(changeKey);
+    }
   };
 
   const handleDelete = async () => {
@@ -101,16 +169,6 @@ export function ModuleEditor({
         </h3>
         {!readOnly && (
           <div className="flex items-center gap-2">
-            {hasChanges && (
-              <Button
-                onClick={handleSave}
-                disabled={isSaving || !formData.name.trim()}
-                className="flex items-center gap-1.5"
-              >
-                <Save className="w-4 h-4" />
-                {isSaving ? 'Saving...' : 'Save'}
-              </Button>
-            )}
             {onDelete && (
               <Button
                 variant="ghost"

@@ -124,6 +124,13 @@ export async function GET(
 
           let userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
+          // Debug logging
+          console.log(`[CLIENT_DAYS_DEBUG] Day ${day.dayIndex}: Found ${userTasks.length} tasks for enrollment ${enrollmentId}`);
+          userTasks.forEach(t => {
+            const task = t as { title?: string; status?: string; clientLocked?: boolean; programTaskId?: string };
+            console.log(`[CLIENT_DAYS_DEBUG]   Task: "${task.title}", status=${task.status}, clientLocked=${task.clientLocked}, programTaskId=${task.programTaskId}`);
+          });
+
           // Filter by cycleNumber if provided (for evergreen programs)
           // Tasks without cycleNumber are treated as cycle 1
           if (cycleNumber) {
@@ -154,6 +161,7 @@ export async function GET(
                 const isDeleted = taskStatus === 'deleted';
                 // Client edited if: locked and not deleted (clientLocked is set when client modifies a program task)
                 const isEdited = clientLocked && !isDeleted;
+                console.log(`[CLIENT_DAYS_DEBUG] Matched template "${template.label}" -> task "${actualTitle}", status=${taskStatus}, clientLocked=${clientLocked}, isDeleted=${isDeleted}, isEdited=${isEdited}`);
                 return {
                   ...template,
                   // Show client's edited title if they changed it (clientLocked indicates client edited the task)
@@ -164,6 +172,8 @@ export async function GET(
                   deletedByClient: isDeleted,
                   editedByClient: isEdited || undefined,
                 };
+              } else {
+                console.log(`[CLIENT_DAYS_DEBUG] No match for template "${template.label}" (id=${template.id})`);
               }
               // No matching task found - return template without completion data
               // This ensures stale completion data doesn't persist

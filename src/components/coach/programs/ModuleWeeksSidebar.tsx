@@ -28,6 +28,8 @@ import {
   RefreshCw,
   Loader2,
   Check,
+  Save,
+  X,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -82,6 +84,14 @@ interface ModuleWeeksSidebarProps {
   selectedCycle?: number;
   /** Callback when a cycle is selected */
   onCycleSelect?: (cycle: number) => void;
+  /** Whether there are unsaved changes (shows save/discard icons) */
+  hasUnsavedChanges?: boolean;
+  /** Whether save is in progress */
+  isSaving?: boolean;
+  /** Callback when save all is clicked */
+  onSaveAll?: () => Promise<void>;
+  /** Callback when discard all is clicked */
+  onDiscardAll?: () => void;
 }
 
 interface CalculatedWeek {
@@ -227,6 +237,10 @@ export function ModuleWeeksSidebar({
   currentCohort,
   selectedCycle,
   onCycleSelect,
+  hasUnsavedChanges,
+  isSaving,
+  onSaveAll,
+  onDiscardAll,
 }: ModuleWeeksSidebarProps) {
   // In client view mode, disable reordering (structure comes from template)
   const isClientView = viewContext?.mode === 'client';
@@ -1239,9 +1253,45 @@ export function ModuleWeeksSidebar({
     <div className="w-full h-full flex flex-col">
       {/* Header */}
       <div className="px-4 py-3 border-b border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <LayoutList className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-          <h3 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Structure</h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <LayoutList className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+            <h3 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Structure</h3>
+          </div>
+
+          {/* Save/Discard buttons - only visible when changes exist */}
+          <AnimatePresence>
+            {hasUnsavedChanges && (
+              <motion.div
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.15 }}
+                className="flex items-center gap-1"
+              >
+                <button
+                  onClick={onDiscardAll}
+                  disabled={isSaving}
+                  className="p-1.5 text-[#5f5a55] hover:text-red-500 dark:text-[#b2b6c2] dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                  title="Discard all changes"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={onSaveAll}
+                  disabled={isSaving}
+                  className="p-1.5 text-[#5f5a55] hover:text-brand-accent dark:text-[#b2b6c2] dark:hover:text-brand-accent transition-colors disabled:opacity-50"
+                  title="Save all changes"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

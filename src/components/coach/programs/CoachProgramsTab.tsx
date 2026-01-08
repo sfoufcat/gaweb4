@@ -21,6 +21,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ScheduleCallModal } from '@/components/scheduling';
 import { ClientDetailSlideOver } from '@/components/coach';
 import { AIHelperModal } from '@/components/ai';
@@ -41,6 +51,7 @@ import { LimitReachedModal, useLimitCheck, CohortTasksPanel } from '@/components
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
+import { ProgramEditorProvider, useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 
 import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
 import { calculateProgramDayIndex, getActiveCycleNumber, calculateCyclesSinceDate } from '@/lib/program-client-utils';
@@ -51,6 +62,45 @@ const fadeVariants = {
   animate: { opacity: 1 },
   exit: { opacity: 0 },
 };
+
+// Wrapper component that connects ModuleWeeksSidebar to ProgramEditorContext
+interface ConnectedModuleWeeksSidebarProps extends React.ComponentProps<typeof ModuleWeeksSidebar> {}
+
+function ConnectedModuleWeeksSidebar(props: ConnectedModuleWeeksSidebarProps) {
+  const context = useProgramEditorOptional();
+  return (
+    <ModuleWeeksSidebar
+      {...props}
+      hasUnsavedChanges={context?.hasUnsavedChanges ?? false}
+      isSaving={context?.isSaving ?? false}
+      onSaveAll={context?.saveAllChanges ? async () => { await context.saveAllChanges(); } : undefined}
+      onDiscardAll={context?.discardAllChanges}
+    />
+  );
+}
+
+// Component that syncs context state to a ref for parent access
+interface ContextStateSyncProps {
+  stateRef: React.MutableRefObject<{
+    hasUnsavedChanges: boolean;
+    saveAllChanges: () => Promise<void>;
+    discardAllChanges: () => void;
+  }>;
+}
+
+function ContextStateSync({ stateRef }: ContextStateSyncProps) {
+  const context = useProgramEditorOptional();
+
+  React.useEffect(() => {
+    stateRef.current = {
+      hasUnsavedChanges: context?.hasUnsavedChanges ?? false,
+      saveAllChanges: context?.saveAllChanges ? async () => { await context.saveAllChanges(); } : async () => {},
+      discardAllChanges: context?.discardAllChanges ?? (() => {}),
+    };
+  }, [context?.hasUnsavedChanges, context?.saveAllChanges, context?.discardAllChanges, stateRef]);
+
+  return null;
+}
 
 // Next call info structure
 interface NextCallInfo {
@@ -121,6 +171,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   // Track if we've attempted to restore selection from URL to prevent race condition
   const hasRestoredInitialSelection = useRef(false);
 
+  // Ref for accessing editor context state from outside the provider
+  const editorContextRef = useRef<{
+    hasUnsavedChanges: boolean;
+    saveAllChanges: () => Promise<void>;
+    discardAllChanges: () => void;
+  }>({
+    hasUnsavedChanges: false,
+    saveAllChanges: async () => {},
+    discardAllChanges: () => {},
+  });
+
   // Demo data (memoized)
   const demoPrograms = useMemo(() => generateDemoProgramsWithStats(), []);
   
@@ -173,6 +234,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [cohortDays, setCohortDays] = useState<CohortProgramDay[]>([]);
   const [loadingCohortDays, setLoadingCohortDays] = useState(false);
   const [loadedCohortId, setLoadedCohortId] = useState<string | null>(null);
+
+  // Leave warning dialog state (for unsaved changes)
+  const [showLeaveWarning, setShowLeaveWarning] = useState(false);
+  const [pendingNavigationAction, setPendingNavigationAction] = useState<(() => void) | null>(null);
 
   // Computed days array - use clientDays for 1:1 programs in client mode, cohortDays for group programs in cohort mode, otherwise programDays
   const daysToUse = useMemo(() => {
@@ -394,6 +459,40 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     setViewModeDirection(newOrder > prevOrder ? 1 : -1);
     prevViewModeRef.current = newMode;
     setViewMode(newMode);
+  }, []);
+
+  // Safe navigation helper - checks for unsaved changes before allowing navigation
+  const safeNavigate = useCallback((action: () => void) => {
+    if (editorContextRef.current.hasUnsavedChanges) {
+      setPendingNavigationAction(() => action);
+      setShowLeaveWarning(true);
+    } else {
+      action();
+    }
+  }, []);
+
+  // Handle leave warning dialog actions
+  const handleLeaveWarningDiscard = useCallback(() => {
+    editorContextRef.current.discardAllChanges();
+    setShowLeaveWarning(false);
+    if (pendingNavigationAction) {
+      pendingNavigationAction();
+      setPendingNavigationAction(null);
+    }
+  }, [pendingNavigationAction]);
+
+  const handleLeaveWarningSave = useCallback(async () => {
+    await editorContextRef.current.saveAllChanges();
+    setShowLeaveWarning(false);
+    if (pendingNavigationAction) {
+      pendingNavigationAction();
+      setPendingNavigationAction(null);
+    }
+  }, [pendingNavigationAction]);
+
+  const handleLeaveWarningCancel = useCallback(() => {
+    setShowLeaveWarning(false);
+    setPendingNavigationAction(null);
   }, []);
 
   // Get current enrollment's day index for "Jump to Today" feature
@@ -2274,7 +2373,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             <div className="flex items-center gap-3 w-full overflow-x-auto scrollbar-hide">
               {/* Back button */}
               <button
-                onClick={() => handleViewModeChange('list')}
+                onClick={() => safeNavigate(() => handleViewModeChange('list'))}
                 className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
                 title="Back to Programs"
               >
@@ -2711,10 +2810,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     <div
                       key={program.id}
                       className="glass-card overflow-hidden cursor-pointer group"
-                      onClick={() => {
+                      onClick={() => safeNavigate(() => {
                         setSelectedProgram(program);
                         handleViewModeChange('days');
-                      }}
+                      })}
                     >
                       {/* Cover Image */}
                       <div className="h-36 relative overflow-hidden">
@@ -2842,10 +2941,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     <div
                       key={program.id}
                       className="glass-card overflow-hidden cursor-pointer group opacity-80 hover:opacity-100 transition-opacity"
-                      onClick={() => {
+                      onClick={() => safeNavigate(() => {
                         setSelectedProgram(program);
                         handleViewModeChange('days');
-                      }}
+                      })}
                     >
                       {/* Cover Image */}
                       <div className="h-36 relative overflow-hidden">
@@ -3063,11 +3162,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             className="flex flex-col gap-4"
           >
             {/* Content area - Unified Sidebar + Editor Card */}
-            <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
-              <div className="flex flex-col lg:flex-row lg:items-start">
-                {/* Sidebar Navigation - glassmorphism style with constrained height */}
-                <div className="lg:w-96 lg:flex-shrink-0 lg:sticky lg:top-4 bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border-b lg:border-b-0 lg:border-r border-[#e1ddd8]/40 dark:border-[#262b35]/40">
-                  <ModuleWeeksSidebar
+            <ProgramEditorProvider programId={selectedProgram?.id}>
+              <ContextStateSync stateRef={editorContextRef} />
+              <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+                <div className="flex flex-col lg:flex-row lg:items-start">
+                  {/* Sidebar Navigation - glassmorphism style with constrained height */}
+                  <div className="lg:w-96 lg:flex-shrink-0 lg:sticky lg:top-4 bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border-b lg:border-b-0 lg:border-r border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+                    <ConnectedModuleWeeksSidebar
               key={clientViewContext.mode === 'client' ? `client-${clientViewContext.enrollmentId}` : 'template'}
               program={selectedProgram as Program}
               modules={programModules}
@@ -4158,6 +4259,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             </div>
           </div>
           </div>
+            </ProgramEditorProvider>
           </motion.div>
           )}
           </AnimatePresence>
@@ -5913,6 +6015,35 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         cohortCompletionThreshold={selectedProgram?.cohortCompletionThreshold}
         onCohortCompletionThresholdChange={handleCohortCompletionThresholdChange}
       />
+
+      {/* Leave Warning Dialog for Unsaved Changes */}
+      <AlertDialog open={showLeaveWarning} onOpenChange={setShowLeaveWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes that will be lost if you leave. Would you like to save your changes first?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleLeaveWarningCancel}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLeaveWarningDiscard}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Discard
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={handleLeaveWarningSave}
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white"
+            >
+              Save & Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </>
   );

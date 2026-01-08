@@ -105,14 +105,16 @@ export async function POST(
     }
 
     // Get next week number (global in program)
-    const existingWeeks = await adminDb
+    // Use ascending order to work with existing Firestore index
+    const existingWeeksSnapshot = await adminDb
       .collection('program_weeks')
       .where('programId', '==', programId)
-      .orderBy('weekNumber', 'desc')
-      .limit(1)
+      .orderBy('weekNumber', 'asc')
       .get();
 
-    const nextWeekNumber = existingWeeks.empty ? 1 : (existingWeeks.docs[0].data().weekNumber || 0) + 1;
+    const nextWeekNumber = existingWeeksSnapshot.empty
+      ? 1
+      : (existingWeeksSnapshot.docs[existingWeeksSnapshot.docs.length - 1].data().weekNumber || 0) + 1;
 
     // Get next order number (within module if provided, otherwise global)
     let nextOrder = 1;
