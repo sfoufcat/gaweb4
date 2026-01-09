@@ -835,6 +835,18 @@ export function ModuleWeeksSidebar({
   }, [program.durationType, program.createdAt, program.lengthDays, program.includeWeekends, 
       isClientView, isCohortView, currentEnrollment, currentCohort?.startDate, selectedCycle, onCycleSelect]);
 
+  // Memoized visible cycles based on pagination
+  const visibleCyclesData = useMemo(() => {
+    if (!cycleData) return null;
+    const { allCycles } = cycleData;
+    const visibleCycles = allCycles.slice(cyclePage * CYCLES_PER_PAGE, (cyclePage + 1) * CYCLES_PER_PAGE);
+    const hasMorePages = allCycles.length > CYCLES_PER_PAGE;
+    const canGoNewer = cyclePage > 0;
+    const canGoOlder = (cyclePage + 1) * CYCLES_PER_PAGE < allCycles.length;
+    const remainingOlderCycles = allCycles.length - (cyclePage + 1) * CYCLES_PER_PAGE;
+    return { visibleCycles, hasMorePages, canGoNewer, canGoOlder, remainingOlderCycles };
+  }, [cycleData, cyclePage]);
+
   // Memoized cycle click handler
   const handleCycleClick = useCallback((cycle: number) => {
     onCycleSelect?.(cycle);
@@ -1405,81 +1417,73 @@ export function ModuleWeeksSidebar({
       </div>
 
       {/* Cycle Indicator/Selector - for evergreen programs, always visible below scroll area */}
-      {cycleData && (() => {
-        const { maxCycleNumber, currentCycleDisplay, canSelectCycle, allCycles } = cycleData;
-        const visibleCycles = allCycles.slice(cyclePage * CYCLES_PER_PAGE, (cyclePage + 1) * CYCLES_PER_PAGE);
-        const hasMorePages = allCycles.length > CYCLES_PER_PAGE;
-        const canGoNewer = cyclePage > 0;
-        const canGoOlder = (cyclePage + 1) * CYCLES_PER_PAGE < allCycles.length;
-
-        return (
-          <div className="mx-3 my-2 relative flex-shrink-0">
-            <button
-              onClick={() => canSelectCycle && setCycleDropdownOpen(!cycleDropdownOpen)}
-              disabled={!canSelectCycle}
-              className={`w-full px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800/30 flex items-center justify-between ${
-                canSelectCycle ? 'cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/30' : 'cursor-default'
-              }`}
-            >
-              <div className="flex items-center gap-2 text-sm">
-                <RefreshCw className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-emerald-700 dark:text-emerald-300 font-medium font-albert">
-                  Cycle {currentCycleDisplay}
-                </span>
-              </div>
-              {canSelectCycle && (
-                <ChevronDown className={`w-4 h-4 text-emerald-600 dark:text-emerald-400 transition-transform ${cycleDropdownOpen ? 'rotate-180' : ''}`} />
-              )}
-            </button>
-
-            {/* Dropdown */}
-            {cycleDropdownOpen && canSelectCycle && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-[#1e222a] rounded-lg border border-[#e1ddd8] dark:border-[#3d4351] shadow-lg z-50 overflow-hidden">
-                {/* Newer cycles pagination */}
-                {hasMorePages && canGoNewer && (
-                  <button
-                    onClick={() => setCyclePage(p => p - 1)}
-                    className="w-full px-3 py-2 text-xs text-center text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] border-b border-[#e1ddd8] dark:border-[#3d4351]"
-                  >
-                    ↑ Newer cycles
-                  </button>
-                )}
-
-                {/* Cycle options */}
-                {visibleCycles.map(cycle => (
-                  <button
-                    key={cycle}
-                    onClick={() => handleCycleClick(cycle)}
-                    className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] ${
-                      cycle === currentCycleDisplay ? 'bg-emerald-50 dark:bg-emerald-900/30' : ''
-                    }`}
-                  >
-                    <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                      Cycle {cycle}
-                      {cycle === maxCycleNumber && (
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400 ml-2">(current)</span>
-                      )}
-                    </span>
-                    {cycle === currentCycleDisplay && (
-                      <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    )}
-                  </button>
-                ))}
-
-                {/* Older cycles pagination */}
-                {hasMorePages && canGoOlder && (
-                  <button
-                    onClick={() => setCyclePage(p => p + 1)}
-                    className="w-full px-3 py-2 text-xs text-center text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] border-t border-[#e1ddd8] dark:border-[#3d4351]"
-                  >
-                    ↓ Older cycles ({allCycles.length - (cyclePage + 1) * CYCLES_PER_PAGE} more)
-                  </button>
-                )}
-              </div>
+      {cycleData && visibleCyclesData && (
+        <div className="mx-3 my-2 relative flex-shrink-0">
+          <button
+            onClick={() => cycleData.canSelectCycle && setCycleDropdownOpen(!cycleDropdownOpen)}
+            disabled={!cycleData.canSelectCycle}
+            className={`w-full px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800/30 flex items-center justify-between ${
+              cycleData.canSelectCycle ? 'cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/30' : 'cursor-default'
+            }`}
+          >
+            <div className="flex items-center gap-2 text-sm">
+              <RefreshCw className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-emerald-700 dark:text-emerald-300 font-medium font-albert">
+                Cycle {cycleData.currentCycleDisplay}
+              </span>
+            </div>
+            {cycleData.canSelectCycle && (
+              <ChevronDown className={`w-4 h-4 text-emerald-600 dark:text-emerald-400 transition-transform ${cycleDropdownOpen ? 'rotate-180' : ''}`} />
             )}
-          </div>
-        );
-      })()}
+          </button>
+
+          {/* Dropdown */}
+          {cycleDropdownOpen && cycleData.canSelectCycle && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-[#1e222a] rounded-lg border border-[#e1ddd8] dark:border-[#3d4351] shadow-lg z-50 overflow-hidden">
+              {/* Newer cycles pagination */}
+              {visibleCyclesData.hasMorePages && visibleCyclesData.canGoNewer && (
+                <button
+                  onClick={() => setCyclePage(p => p - 1)}
+                  className="w-full px-3 py-2 text-xs text-center text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] border-b border-[#e1ddd8] dark:border-[#3d4351]"
+                >
+                  ↑ Newer cycles
+                </button>
+              )}
+
+              {/* Cycle options */}
+              {visibleCyclesData.visibleCycles.map(cycle => (
+                <button
+                  key={cycle}
+                  onClick={() => handleCycleClick(cycle)}
+                  className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] ${
+                    cycle === cycleData.currentCycleDisplay ? 'bg-emerald-50 dark:bg-emerald-900/30' : ''
+                  }`}
+                >
+                  <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    Cycle {cycle}
+                    {cycle === cycleData.maxCycleNumber && (
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 ml-2">(current)</span>
+                    )}
+                  </span>
+                  {cycle === cycleData.currentCycleDisplay && (
+                    <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  )}
+                </button>
+              ))}
+
+              {/* Older cycles pagination */}
+              {visibleCyclesData.hasMorePages && visibleCyclesData.canGoOlder && (
+                <button
+                  onClick={() => setCyclePage(p => p + 1)}
+                  className="w-full px-3 py-2 text-xs text-center text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] border-t border-[#e1ddd8] dark:border-[#3d4351]"
+                >
+                  ↓ Older cycles ({visibleCyclesData.remainingOlderCycles} more)
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Status Legend + Tools Row - show when viewing client/cohort progress */}
       {currentDayIndex !== undefined && currentDayIndex > 0 && (

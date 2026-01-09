@@ -683,6 +683,275 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     setSelectedCycle(cycle);
   }, []);
 
+  // Memoized handlers for sidebar - these MUST be stable to prevent re-render loops
+  const handleAddModule = useCallback(async () => {
+    if (!selectedProgram) return;
+    const lastModule = programModules[programModules.length - 1];
+    const startDay = lastModule ? lastModule.endDayIndex + 1 : 1;
+    const endDay = Math.min(startDay + 6, selectedProgram.lengthDays);
+
+    try {
+      console.log('[onAddModule] Creating module:', { startDay, endDay, programId: selectedProgram.id });
+      const res = await fetch(`${apiBasePath}/${selectedProgram.id}/modules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `Module ${programModules.length + 1}`,
+          startDayIndex: startDay,
+          endDayIndex: endDay,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('[onAddModule] Failed:', res.status, errorData);
+        alert(`Failed to create module: ${errorData.error || res.statusText}`);
+        return;
+      }
+
+      const data = await res.json();
+      console.log('[onAddModule] Created module:', data);
+      setProgramModules(prev => [...prev, data.module]);
+
+      if (programModules.length === 0) {
+        setSelectedProgram(prev => prev ? { ...prev, hasModules: true } : prev);
+      }
+    } catch (err) {
+      console.error('[onAddModule] Error:', err);
+      alert('Failed to create module. Check console for details.');
+    }
+  }, [selectedProgram, programModules, apiBasePath]);
+
+  const handleFillWeek = useCallback((weekNumber: number) => {
+    const existingWeek = programWeeks.find(w => w.weekNumber === weekNumber);
+    if (existingWeek) {
+      setWeekToFill(existingWeek);
+    } else {
+      const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
+      const startDay = (weekNumber - 1) * daysPerWeek + 1;
+      const endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
+      setWeekToFill({
+        id: `temp-week-${weekNumber}`,
+        programId: selectedProgram?.id || '',
+        weekNumber,
+        order: weekNumber,
+        startDayIndex: startDay,
+        endDayIndex: endDay,
+        distribution: 'spread',
+      } as ProgramWeek);
+    }
+    setIsWeekFillModalOpen(true);
+  }, [programWeeks, selectedProgram]);
+
+  const handleWeekDistributionChange = useCallback(async (weekNumber: number, distribution: 'repeat-daily' | 'spread') => {
+    if (!selectedProgram) return;
+    try {
+      const existingWeek = programWeeks.find(w => w.weekNumber === weekNumber);
+      
+      if (existingWeek) {
+        const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${existingWeek.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            distribution,
+            distributeTasksNow: true,
+            overwriteExisting: true,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setProgramWeeks(prev => prev.map(w => w.id === existingWeek.id ? data.week : w));
+          const daysRes = await fetch(`${apiBasePath}/${selectedProgram.id}/days`);
+          if (daysRes.ok) {
+            const daysData = await daysRes.json();
+            setProgramDays(daysData.days || []);
+          }
+        }
+      } else {
+        const daysPerWeek = selectedProgram.includeWeekends !== false ? 7 : 5;
+        const startDay = (weekNumber - 1) * daysPerWeek + 1;
+        const endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram.lengthDays || 30);
+        
+        const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            weekNumber,
+            startDayIndex: startDay,
+            endDayIndex: endDay,
+            distribution,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setProgramWeeks(prev => [...prev, data.week]);
+        }
+      }
+    } catch (err) {
+      console.error('Error updating week distribution:', err);
+    }
+  }, [selectedProgram, programWeeks, apiBasePath]);
+
+  const handleModulesReorder = useCallback(async (reorderedModules: ProgramModule[]) => {
+    if (!selectedProgram) return;
+    setProgramModules(reorderedModules.map((m, i) => ({ ...m, order: i + 1 })));
+    try {
+      await fetch(`${apiBasePath}/${selectedProgram.id}/modules/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moduleIds: reorderedModules.map(m => m.id) }),
+      });
+    } catch (err) {
+      console.error('Error reordering modules:', err);
+      const res = await fetch(`${apiBasePath}/${selectedProgram.id}/modules`);
+      if (res.ok) {
+        const data = await res.json();
+        setProgramModules(data.modules || []);
+      }
+    }
+  }, [selectedProgram, apiBasePath]);
+
+  const handleWeeksReorder = useCallback(async (moduleId: string, reorderedWeeks: ProgramWeek[]) => {
+    if (!selectedProgram) return;
+    setProgramWeeks(prev => {
+      const other = prev.filter(w => w.moduleId !== moduleId);
+      return [...other, ...reorderedWeeks.map((w, i) => ({ ...w, order: i + 1, moduleId }))];
+    });
+    try {
+      await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moduleId, weekIds: reorderedWeeks.map(w => w.id) }),
+      });
+      const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`);
+      if (res.ok) {
+        const data = await res.json();
+        setProgramWeeks(data.weeks || []);
+      }
+    } catch (err) {
+      console.error('Error reordering weeks:', err);
+    }
+  }, [selectedProgram, apiBasePath]);
+
+  const handleCreateMissingWeeks = useCallback(async (weeksToCreate: Array<{ weekNumber: number; moduleId: string; startDayIndex: number; endDayIndex: number }>) => {
+    if (!selectedProgram) return new Map<number, string>();
+    const newWeekIds = new Map<number, string>();
+    
+    for (const weekData of weeksToCreate) {
+      try {
+        const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            weekNumber: weekData.weekNumber,
+            moduleId: weekData.moduleId,
+            startDayIndex: weekData.startDayIndex,
+            endDayIndex: weekData.endDayIndex,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.week?.id) {
+            newWeekIds.set(weekData.weekNumber, data.week.id);
+            setProgramWeeks(prev => [...prev, data.week]);
+          }
+        }
+      } catch (err) {
+        console.error('Error creating week:', err);
+      }
+    }
+    
+    return newWeekIds;
+  }, [selectedProgram, apiBasePath]);
+
+  const handleWeekMoveToModule = useCallback(async (weekId: string, targetModuleId: string) => {
+    if (!selectedProgram) return;
+    setProgramWeeks(prev => prev.map(w =>
+      w.id === weekId ? { ...w, moduleId: targetModuleId } : w
+    ));
+    try {
+      await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${weekId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moduleId: targetModuleId }),
+      });
+      const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`);
+      if (res.ok) {
+        const data = await res.json();
+        setProgramWeeks(data.weeks || []);
+      }
+    } catch (err) {
+      console.error('Error moving week to module:', err);
+    }
+  }, [selectedProgram, apiBasePath]);
+
+  const handleDeleteModule = useCallback(async (moduleId: string, action: 'move' | 'delete') => {
+    if (!selectedProgram) return;
+    const moduleToDelete = programModules.find(m => m.id === moduleId);
+    if (!moduleToDelete) return;
+
+    const sortedModules = [...programModules].sort((a, b) => a.order - b.order);
+    const idx = sortedModules.findIndex(m => m.id === moduleId);
+    const adjacentModuleId = idx > 0 ? sortedModules[idx - 1].id : (sortedModules[idx + 1]?.id || null);
+
+    if (action === 'move' && adjacentModuleId) {
+      const weeksToMove = programWeeks.filter(w => w.moduleId === moduleId);
+      for (const week of weeksToMove) {
+        if (week.id) {
+          await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${week.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ moduleId: adjacentModuleId }),
+          });
+        }
+      }
+    }
+
+    await fetch(`${apiBasePath}/${selectedProgram.id}/modules/${moduleId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deleteWeeks: action === 'delete' }),
+    });
+
+    setProgramModules(prev => prev.filter(m => m.id !== moduleId));
+
+    if (action === 'delete') {
+      setProgramWeeks(prev => prev.filter(w => w.moduleId !== moduleId));
+    } else if (adjacentModuleId) {
+      setProgramWeeks(prev => prev.map(w =>
+        w.moduleId === moduleId ? { ...w, moduleId: adjacentModuleId } : w
+      ));
+    }
+
+    if (sidebarSelection?.type === 'module' && sidebarSelection.id === moduleId) {
+      setSidebarSelection(null);
+    }
+  }, [selectedProgram, programModules, programWeeks, apiBasePath, sidebarSelection]);
+
+  const handleAutoDistributeWeeks = useCallback(async () => {
+    if (!selectedProgram) return;
+    try {
+      const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/auto-distribute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Failed to auto-distribute weeks:', errorData);
+        alert(`Failed to auto-distribute weeks: ${errorData.error || res.statusText}`);
+        return;
+      }
+      const weeksRes = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`);
+      if (weeksRes.ok) {
+        const weeksData = await weeksRes.json();
+        setProgramWeeks(weeksData.weeks || []);
+      }
+    } catch (err) {
+      console.error('Error auto-distributing weeks:', err);
+      alert('Failed to auto-distribute weeks. Check console for details.');
+    }
+  }, [selectedProgram, apiBasePath]);
+
   // Refresh loading state - handler defined after fetch functions
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -3328,287 +3597,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               selection={sidebarSelectionProp}
               viewContext={clientViewContext}
               onSelect={handleSidebarSelect}
-              onAddModule={async () => {
-                if (!selectedProgram) return;
-                const lastModule = programModules[programModules.length - 1];
-                const startDay = lastModule ? lastModule.endDayIndex + 1 : 1;
-                const endDay = Math.min(startDay + 6, selectedProgram.lengthDays);
-
-                try {
-                  console.log('[onAddModule] Creating module:', { startDay, endDay, programId: selectedProgram.id });
-                  const res = await fetch(`${apiBasePath}/${selectedProgram.id}/modules`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      name: `Module ${programModules.length + 1}`,
-                      startDayIndex: startDay,
-                      endDayIndex: endDay,
-                    }),
-                  });
-
-                  if (!res.ok) {
-                    const errorData = await res.json().catch(() => ({}));
-                    console.error('[onAddModule] Failed:', res.status, errorData);
-                    alert(`Failed to create module: ${errorData.error || res.statusText}`);
-                    return;
-                  }
-
-                  const data = await res.json();
-                  console.log('[onAddModule] Created module:', data);
-                  setProgramModules([...programModules, data.module]);
-
-                  // Update hasModules if first module (API already does this, but update local state)
-                  if (programModules.length === 0) {
-                    setSelectedProgram({ ...selectedProgram, hasModules: true });
-                  }
-                } catch (err) {
-                  console.error('[onAddModule] Error:', err);
-                  alert('Failed to create module. Check console for details.');
-                }
-              }}
+              onAddModule={handleAddModule}
               onFillWithAI={handleFillWithAI}
-              onFillWeek={(weekNumber) => {
-                // Find or create a week object for this week number
-                const existingWeek = programWeeks.find(w => w.weekNumber === weekNumber);
-                if (existingWeek) {
-                  setWeekToFill(existingWeek);
-                } else {
-                  // Create a temporary week object for the fill modal
-                  const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
-                  const startDay = (weekNumber - 1) * daysPerWeek + 1;
-                  const endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
-                  setWeekToFill({
-                    id: `temp-week-${weekNumber}`,
-                    programId: selectedProgram?.id || '',
-                    weekNumber,
-                    order: weekNumber,
-                    startDayIndex: startDay,
-                    endDayIndex: endDay,
-                    distribution: 'spread',
-                  } as ProgramWeek);
-                }
-                setIsWeekFillModalOpen(true);
-              }}
-              onWeekDistributionChange={async (weekNumber, distribution) => {
-                if (!selectedProgram) return;
-                try {
-                  // Find existing week record or create one
-                  const existingWeek = programWeeks.find(w => w.weekNumber === weekNumber);
-                  
-                  if (existingWeek) {
-                    // Update existing week and redistribute tasks
-                    const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${existingWeek.id}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ 
-                        distribution,
-                        distributeTasksNow: true,
-                        overwriteExisting: true,
-                      }),
-                    });
-                    if (res.ok) {
-                      const data = await res.json();
-                      setProgramWeeks(prev => prev.map(w => w.id === existingWeek.id ? data.week : w));
-                      // Refresh days after distribution
-                      const daysRes = await fetch(`${apiBasePath}/${selectedProgram.id}/days`);
-                      if (daysRes.ok) {
-                        const daysData = await daysRes.json();
-                        setProgramDays(daysData.days || []);
-                      }
-                    }
-                  } else {
-                    // Create new week record with this distribution
-                    const daysPerWeek = selectedProgram.includeWeekends !== false ? 7 : 5;
-                    const startDay = (weekNumber - 1) * daysPerWeek + 1;
-                    const endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram.lengthDays || 30);
-                    
-                    const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        weekNumber,
-                        startDayIndex: startDay,
-                        endDayIndex: endDay,
-                        distribution,
-                      }),
-                    });
-                    if (res.ok) {
-                      const data = await res.json();
-                      setProgramWeeks(prev => [...prev, data.week]);
-                    }
-                  }
-                } catch (err) {
-                  console.error('Error updating week distribution:', err);
-                }
-              }}
+              onFillWeek={handleFillWeek}
+              onWeekDistributionChange={handleWeekDistributionChange}
               isLoading={loadingDetails}
-              onModulesReorder={async (reorderedModules) => {
-                if (!selectedProgram) return;
-                // Optimistic update
-                setProgramModules(reorderedModules.map((m, i) => ({ ...m, order: i + 1 })));
-                try {
-                  await fetch(`${apiBasePath}/${selectedProgram.id}/modules/reorder`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ moduleIds: reorderedModules.map(m => m.id) }),
-                  });
-                } catch (err) {
-                  console.error('Error reordering modules:', err);
-                  // Refetch on error
-                  const res = await fetch(`${apiBasePath}/${selectedProgram.id}/modules`);
-                  if (res.ok) {
-                    const data = await res.json();
-                    setProgramModules(data.modules || []);
-                  }
-                }
-              }}
-              onWeeksReorder={async (moduleId, reorderedWeeks) => {
-                if (!selectedProgram) return;
-                // Optimistic update
-                setProgramWeeks(prev => {
-                  const other = prev.filter(w => w.moduleId !== moduleId);
-                  return [...other, ...reorderedWeeks.map((w, i) => ({ ...w, order: i + 1, moduleId }))];
-                });
-                try {
-                  await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/reorder`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ moduleId, weekIds: reorderedWeeks.map(w => w.id) }),
-                  });
-                  // Refetch to get recalculated day indices
-                  const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`);
-                  if (res.ok) {
-                    const data = await res.json();
-                    setProgramWeeks(data.weeks || []);
-                  }
-                } catch (err) {
-                  console.error('Error reordering weeks:', err);
-                }
-              }}
-              onCreateMissingWeeks={async (weeksToCreate) => {
-                if (!selectedProgram) return new Map();
-                const newWeekIds = new Map<number, string>();
-                
-                // Create each missing week
-                for (const weekData of weeksToCreate) {
-                  try {
-                    const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        weekNumber: weekData.weekNumber,
-                        moduleId: weekData.moduleId,
-                        startDayIndex: weekData.startDayIndex,
-                        endDayIndex: weekData.endDayIndex,
-                      }),
-                    });
-                    if (res.ok) {
-                      const data = await res.json();
-                      if (data.week?.id) {
-                        newWeekIds.set(weekData.weekNumber, data.week.id);
-                        // Add to local state
-                        setProgramWeeks(prev => [...prev, data.week]);
-                      }
-                    }
-                  } catch (err) {
-                    console.error('Error creating week:', err);
-                  }
-                }
-                
-                return newWeekIds;
-              }}
-              onWeekMoveToModule={async (weekId, targetModuleId) => {
-                if (!selectedProgram) return;
-                // Optimistic update
-                setProgramWeeks(prev => prev.map(w =>
-                  w.id === weekId ? { ...w, moduleId: targetModuleId } : w
-                ));
-                try {
-                  await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${weekId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ moduleId: targetModuleId }),
-                  });
-                  // Refetch to get recalculated day indices
-                  const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`);
-                  if (res.ok) {
-                    const data = await res.json();
-                    setProgramWeeks(data.weeks || []);
-                  }
-                } catch (err) {
-                  console.error('Error moving week to module:', err);
-                }
-              }}
-              onDeleteModule={async (moduleId, action) => {
-                if (!selectedProgram) return;
-                const moduleToDelete = programModules.find(m => m.id === moduleId);
-                if (!moduleToDelete) return;
-
-                const sortedModules = [...programModules].sort((a, b) => a.order - b.order);
-                const idx = sortedModules.findIndex(m => m.id === moduleId);
-                const adjacentModuleId = idx > 0 ? sortedModules[idx - 1].id : (sortedModules[idx + 1]?.id || null);
-
-                if (action === 'move' && adjacentModuleId) {
-                  // Move weeks to adjacent module
-                  const weeksToMove = programWeeks.filter(w => w.moduleId === moduleId);
-                  for (const week of weeksToMove) {
-                    if (week.id) {
-                      await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/${week.id}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ moduleId: adjacentModuleId }),
-                      });
-                    }
-                  }
-                }
-
-                // Delete the module (and its weeks if action === 'delete')
-                await fetch(`${apiBasePath}/${selectedProgram.id}/modules/${moduleId}`, {
-                  method: 'DELETE',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ deleteWeeks: action === 'delete' }),
-                });
-
-                // Update local state
-                setProgramModules(prev => prev.filter(m => m.id !== moduleId));
-
-                if (action === 'delete') {
-                  setProgramWeeks(prev => prev.filter(w => w.moduleId !== moduleId));
-                } else if (adjacentModuleId) {
-                  setProgramWeeks(prev => prev.map(w =>
-                    w.moduleId === moduleId ? { ...w, moduleId: adjacentModuleId } : w
-                  ));
-                }
-
-                // Clear selection if deleted module was selected
-                if (sidebarSelection?.type === 'module' && sidebarSelection.id === moduleId) {
-                  setSidebarSelection(null);
-                }
-              }}
-              onAutoDistributeWeeks={async () => {
-                if (!selectedProgram) return;
-                try {
-                  const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks/auto-distribute`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                  });
-                  if (!res.ok) {
-                    const errorData = await res.json().catch(() => ({}));
-                    console.error('Failed to auto-distribute weeks:', errorData);
-                    alert(`Failed to auto-distribute weeks: ${errorData.error || res.statusText}`);
-                    return;
-                  }
-                  // Refetch weeks to get updated module assignments
-                  const weeksRes = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`);
-                  if (weeksRes.ok) {
-                    const weeksData = await weeksRes.json();
-                    setProgramWeeks(weeksData.weeks || []);
-                  }
-                } catch (err) {
-                  console.error('Error auto-distributing weeks:', err);
-                  alert('Failed to auto-distribute weeks. Check console for details.');
-                }
-              }}
+              onModulesReorder={handleModulesReorder}
+              onWeeksReorder={handleWeeksReorder}
+              onCreateMissingWeeks={handleCreateMissingWeeks}
+              onWeekMoveToModule={handleWeekMoveToModule}
+              onDeleteModule={handleDeleteModule}
+              onAutoDistributeWeeks={handleAutoDistributeWeeks}
               currentDayIndex={currentEnrollment?.currentDayIndex || cohortCurrentDayIndex}
               onJumpToToday={handleJumpToToday}
               cohortViewContext={cohortViewContext}

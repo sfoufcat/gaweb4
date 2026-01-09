@@ -206,7 +206,11 @@ export function EnrollClientsModal({
 
     setError(null);
     setEnrolling(true);
-    const results = { success: 0, failed: 0 };
+    const results: { success: number; failed: number; errors: string[] } = {
+      success: 0,
+      failed: 0,
+      errors: []
+    };
 
     for (const clientId of selectedClientIds) {
       try {
@@ -224,6 +228,15 @@ export function EnrollClientsModal({
           results.success++;
         } else {
           results.failed++;
+          // Extract error message from API response
+          try {
+            const errorData = await res.json();
+            if (errorData.error && !results.errors.includes(errorData.error)) {
+              results.errors.push(errorData.error);
+            }
+          } catch {
+            // If parsing fails, continue with generic error
+          }
         }
       } catch {
         results.failed++;
@@ -233,7 +246,15 @@ export function EnrollClientsModal({
     setEnrolling(false);
 
     if (results.failed > 0) {
-      setError(`Failed to enroll ${results.failed} client${results.failed !== 1 ? 's' : ''}. ${results.success > 0 ? `${results.success} enrolled successfully.` : ''}`);
+      // Show detailed error messages
+      let errorMessage = `Failed to enroll ${results.failed} client${results.failed !== 1 ? 's' : ''}.`;
+      if (results.errors.length > 0) {
+        errorMessage += ` ${results.errors.join(' ')}`;
+      }
+      if (results.success > 0) {
+        errorMessage += ` ${results.success} enrolled successfully.`;
+      }
+      setError(errorMessage);
       if (results.success > 0) {
         // Partial success - still close and refresh
         onEnrollComplete();
