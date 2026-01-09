@@ -10,7 +10,7 @@ import {
   updateMemberTaskState,
   getProgramCompletionThreshold,
   findCohortTaskStateByProgramTaskId,
-  createCohortTaskState
+  getOrCreateCohortTaskState
 } from '@/lib/cohort-task-state';
 import type { Task, UpdateTaskRequest, ClerkPublicMetadata } from '@/types';
 
@@ -165,12 +165,13 @@ export async function PATCH(
             }
 
             // Fallback to title-based matching for tasks without programTaskId
-            if (!cohortState) {
+            // Use originalTitle if available (preserved when task was synced from program)
+            if (!cohortState && existingTask.programDayIndex != null) {
               cohortState = await findCohortTaskStateByTaskTitle(
                 enrollment.cohortId,
-                existingTask.title,
+                existingTask.originalTitle || existingTask.title, // Use original title if client edited
                 existingTask.date,
-                existingTask.programDayIndex || 0
+                existingTask.programDayIndex
               );
             }
 
@@ -184,9 +185,10 @@ export async function PATCH(
                 threshold
               );
               console.log(`[COHORT_STATE] Updated member ${userId} task completion for cohort ${enrollment.cohortId}`);
-            } else if (existingTask.programDayIndex !== undefined) {
-              // Auto-create CohortTaskState for retroactive tracking
+            } else if (existingTask.programDayIndex != null && existingTask.programDayIndex >= 0) {
+              // Auto-create CohortTaskState for retroactive tracking (using getOrCreate to avoid race conditions)
               try {
+                const dayIndex = existingTask.programDayIndex; // Capture for type narrowing
                 const cohortMembersSnapshot = await adminDb
                   .collection('program_enrollments')
                   .where('cohortId', '==', enrollment.cohortId)
@@ -195,27 +197,30 @@ export async function PATCH(
 
                 const memberIds = cohortMembersSnapshot.docs.map(d => d.data().userId);
 
-                const newState = await createCohortTaskState({
+                // Use getOrCreateCohortTaskState to handle race conditions when multiple users complete tasks
+                // Use originalTitle if available (preserved when task was synced from program)
+                const taskTitle = existingTask.originalTitle || existingTask.title;
+                const state = await getOrCreateCohortTaskState({
                   cohortId: enrollment.cohortId,
                   programId: enrollment.programId,
                   organizationId: existingTask.organizationId || enrollment.organizationId || '',
-                  programDayIndex: existingTask.programDayIndex ?? 0,
-                  taskTemplateId: existingTask.programTaskId || `${existingTask.title}:${existingTask.programDayIndex}`,
-                  taskTitle: existingTask.title,
+                  programDayIndex: dayIndex,
+                  taskTemplateId: existingTask.programTaskId || `${taskTitle}:${dayIndex}`,
+                  taskTitle,
                   programTaskId: existingTask.programTaskId,
                   date: existingTask.date,
                   memberIds,
                 });
 
-                // Update the newly created state with this completion
+                // Update the state with this completion
                 const threshold = await getProgramCompletionThreshold(enrollment.programId);
-                await updateMemberTaskState(newState.id, userId, isCompleted, id, threshold);
-                console.log(`[COHORT_STATE] Auto-created and updated CohortTaskState for task: ${existingTask.title}`);
+                await updateMemberTaskState(state.id, userId, isCompleted, id, threshold);
+                console.log(`[COHORT_STATE] Created/updated CohortTaskState for task: ${existingTask.title}`);
               } catch (createErr) {
-                console.error('[COHORT_STATE] Failed to auto-create CohortTaskState:', createErr);
+                console.error('[COHORT_STATE] Failed to create/update CohortTaskState:', createErr);
               }
             } else {
-              console.log(`[COHORT_STATE] Cannot create CohortTaskState - missing programDayIndex for task: ${existingTask.title}`);
+              console.log(`[COHORT_STATE] Cannot create CohortTaskState - invalid programDayIndex for task: ${existingTask.title}`);
             }
           }
         }

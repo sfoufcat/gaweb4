@@ -435,6 +435,8 @@ async function createProgramTask(
     sourceType: 'program',
     programEnrollmentId: enrollmentId,
     programDayIndex: dayIndex,
+    programTaskId: template.id || undefined,
+    originalTitle: template.label, // Preserve original for fallback matching when client edits title
     createdAt: now,
     updatedAt: now,
   } as Omit<Task, 'id'>;
@@ -1374,6 +1376,7 @@ async function createProgramTaskV2(
     // Sync fields for cohort task state tracking
     sourceProgramId: programId,
     programTaskId: template.id || undefined,
+    originalTitle: template.label, // Preserve original for fallback matching when client edits title
     visibility: 'public' as const,
     clientLocked: false,
     ...(cycleNumber !== undefined && { cycleNumber }),
@@ -2741,6 +2744,7 @@ export async function syncProgramTasksToClientDay(
       assignedByCoachId: coachUserId || null,
       // Link to template task for robust matching on renames
       programTaskId: template.id || undefined,
+      originalTitle: template.label, // Preserve original for fallback matching when client edits title
       // Cycle tracking for evergreen programs
       ...(cycleNumberForTasks !== undefined && { cycleNumber: cycleNumberForTasks }),
     };
