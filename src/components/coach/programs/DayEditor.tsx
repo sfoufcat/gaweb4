@@ -2,10 +2,31 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment, ClientViewContext, CohortViewContext } from '@/types';
-import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, Check, ChevronDown, Pencil } from 'lucide-react';
+import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, Check, ChevronDown, ChevronRight, Pencil, Clock, Loader2 } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { Button } from '@/components/ui/button';
 import { DayCourseSelector } from './DayCourseSelector';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
+
+// Extended completion data for cohort tasks
+interface CohortTaskCompletionData {
+  completionRate: number;
+  completed: boolean;
+  completedCount: number;
+  totalMembers: number;
+}
+
+// Member info for task breakdown
+interface TaskMemberInfo {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  imageUrl: string;
+  status: 'pending' | 'completed';
+  completedAt?: string;
+}
 
 interface DayEditorProps {
   dayIndex: number;
@@ -16,8 +37,12 @@ interface DayEditorProps {
   // View context (template vs client vs cohort)
   clientViewContext?: ClientViewContext;
   cohortViewContext?: CohortViewContext;
-  // Task completion tracking for cohorts
-  cohortTaskCompletion?: Map<string, { completionRate: number; completed: boolean }>;
+  // Task completion tracking for cohorts (extended with member counts)
+  cohortTaskCompletion?: Map<string, CohortTaskCompletionData>;
+  // Completion threshold (default 50%)
+  completionThreshold?: number;
+  // Current date for task queries
+  currentDate?: string;
   // API base path
   apiBasePath: string;
   // Callbacks
@@ -49,6 +74,8 @@ export function DayEditor({
   clientViewContext,
   cohortViewContext,
   cohortTaskCompletion = new Map(),
+  completionThreshold = 50,
+  currentDate,
   apiBasePath,
   onSave,
   saving = false,
@@ -56,6 +83,72 @@ export function DayEditor({
 }: DayEditorProps) {
   // Program editor context for centralized save
   const editorContext = useProgramEditorOptional();
+
+  // State for expanded tasks (to show member breakdown)
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [taskMemberData, setTaskMemberData] = useState<Map<string, TaskMemberInfo[]>>(new Map());
+  const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
+
+  // Toggle task expansion
+  const toggleTaskExpanded = (taskKey: string) => {
+    setExpandedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskKey)) {
+        next.delete(taskKey);
+      } else {
+        next.add(taskKey);
+      }
+      return next;
+    });
+  };
+
+  // Fetch member breakdown for a task (lazy load)
+  const fetchTaskMembers = async (taskId: string, taskLabel: string) => {
+    if (taskMemberData.has(taskLabel) || cohortViewContext?.mode !== 'cohort') return;
+
+    setLoadingTasks(prev => new Set(prev).add(taskLabel));
+
+    try {
+      const params = new URLSearchParams();
+      if (currentDate) {
+        params.set('date', currentDate);
+      }
+
+      const response = await fetch(
+        `/api/coach/cohort-tasks/${cohortViewContext.cohortId}/task/${encodeURIComponent(taskId || taskLabel)}?${params.toString()}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setTaskMemberData(prev => new Map(prev).set(taskLabel, data.memberBreakdown || []));
+      }
+    } catch (err) {
+      console.error('Error fetching task members:', err);
+    } finally {
+      setLoadingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskLabel);
+        return next;
+      });
+    }
+  };
+
+  // Fetch members when task is expanded
+  useEffect(() => {
+    expandedTasks.forEach(taskLabel => {
+      const task = formData.tasks.find(t => t.label === taskLabel);
+      if (task && !taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
+        fetchTaskMembers(task.id || taskLabel, taskLabel);
+      }
+    });
+  }, [expandedTasks]);
+
+  // Helper to get progress bar color
+  const getProgressColor = (rate: number, threshold: number): string => {
+    if (rate >= threshold) return 'bg-green-500';
+    if (rate >= threshold - 15) return 'bg-yellow-500';
+    return 'bg-gray-400';
+  };
 
   // Determine view context with proper type narrowing
   const isClientMode = programType === 'individual' && clientViewContext?.mode === 'client';
@@ -294,113 +387,227 @@ export function DayEditor({
         )}
         
         <div className="space-y-2">
-          {formData.tasks.map((task, index) => (
-            <div 
-              key={index} 
-              className="group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
-            >
-              {/* Task completion indicator */}
-              {(() => {
-                // Check for 1:1 client completion
-                const isClientCompleted = isClientMode && task.completed;
-                // Check for cohort completion (threshold met)
-                const cohortCompletion = isCohortMode ? cohortTaskCompletion.get(task.label) : undefined;
-                const isCohortCompleted = cohortCompletion?.completed;
-                const completionRate = cohortCompletion?.completionRate;
+          {formData.tasks.map((task, index) => {
+            // Check for cohort completion data
+            const cohortCompletion = isCohortMode ? cohortTaskCompletion.get(task.label) : undefined;
+            const isTaskExpanded = expandedTasks.has(task.label);
+            const isLoading = loadingTasks.has(task.label);
+            const members = taskMemberData.get(task.label) || [];
+            const hasCompletionData = isCohortMode && cohortCompletion;
 
-                if (isClientCompleted || isCohortCompleted) {
-                  return (
-                    <div
-                      className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0"
-                      title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : 'Completed'}
-                    >
-                      <Check className="w-3 h-3 text-white" />
-                    </div>
-                  );
-                }
-                // Show partial completion for cohorts (below threshold)
-                if (cohortCompletion && !isCohortCompleted && completionRate && completionRate > 0) {
-                  return (
-                    <div
-                      className="w-5 h-5 rounded-full border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0"
-                      title={`${completionRate}% completed (threshold not met)`}
-                    >
-                      <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400">{completionRate}</span>
-                    </div>
-                  );
-                }
-                return (
-                  <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
-                );
-              })()}
+            // Check for 1:1 client completion
+            const isClientCompleted = isClientMode && task.completed;
+            const isCohortCompleted = cohortCompletion?.completed;
+            const completionRate = cohortCompletion?.completionRate || 0;
+            const completedCount = cohortCompletion?.completedCount || 0;
+            const totalMembers = cohortCompletion?.totalMembers || 0;
 
-              {/* Input */}
-              <input
-                type="text"
-                value={task.label}
-                onChange={(e) => updateTask(index, { label: e.target.value })}
-                placeholder="What should they accomplish?"
-                className="flex-1 bg-transparent border-none outline-none font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
-              />
-              
-              {/* Task Actions Group - badges and Focus toggle */}
-              <div className="flex items-center gap-1">
-                {/* Deleted by Client Indicator */}
-                {task.deletedByClient && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full border border-red-200 dark:border-red-800">
-                    <Trash2 className="w-3 h-3" />
-                    Deleted
-                  </span>
+            return (
+              <div
+                key={index}
+                className={cn(
+                  "group relative bg-white dark:bg-[#171b22] border rounded-xl transition-all duration-200",
+                  isCohortCompleted
+                    ? "border-green-500/30 bg-green-500/5"
+                    : "border-[#e1ddd8] dark:border-[#262b35] hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746]"
                 )}
-
-                {/* Edited by Client Indicator */}
-                {task.editedByClient && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full border border-amber-200 dark:border-amber-800">
-                    <Pencil className="w-3 h-3" />
-                    Edited
-                  </span>
-                )}
-
-                {/* Focus/Backlog Toggle */}
-                <button
-                  type="button"
-                  onClick={() => updateTask(index, { isPrimary: !task.isPrimary })}
-                  className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200 group"
-                >
-                  <ArrowLeftRight className={`w-3.5 h-3.5 transition-transform duration-300 ease-out ${task.isPrimary ? 'rotate-0' : 'rotate-180'}`} />
-                  <span className="relative w-[52px] h-4 overflow-hidden">
-                    <span
-                      className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
-                        task.isPrimary
-                          ? 'opacity-100 translate-y-0'
-                          : 'opacity-0 -translate-y-full'
-                      }`}
-                    >
-                      Focus
-                    </span>
-                    <span
-                      className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
-                        !task.isPrimary
-                          ? 'opacity-100 translate-y-0'
-                          : 'opacity-0 translate-y-full'
-                      }`}
-                    >
-                      Backlog
-                    </span>
-                  </span>
-                </button>
-              </div>
-
-              {/* Delete Button */}
-              <button
-                type="button"
-                onClick={() => removeTask(index)}
-                className="p-1.5 rounded-lg text-[#a7a39e] dark:text-[#7d8190] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+                {/* Main task row */}
+                <div className="flex items-center gap-3 p-4">
+                  {/* Expand/collapse button for cohort mode with completion data */}
+                  {hasCompletionData ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleTaskExpanded(task.label)}
+                      className="shrink-0 flex items-center gap-1"
+                    >
+                      {isTaskExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      )}
+                      {/* Status icon */}
+                      <div
+                        className={cn(
+                          'w-5 h-5 rounded-full flex items-center justify-center',
+                          isCohortCompleted
+                            ? 'bg-green-500 text-white'
+                            : completionRate > 0
+                            ? 'border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20'
+                            : 'border-2 border-[#e1ddd8] dark:border-[#3d4351]'
+                        )}
+                        title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
+                      >
+                        {isCohortCompleted ? (
+                          <Check className="w-3 h-3" />
+                        ) : completionRate > 0 ? (
+                          <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400">{completionRate}</span>
+                        ) : null}
+                      </div>
+                    </button>
+                  ) : (
+                    /* Non-cohort completion indicator */
+                    (() => {
+                      if (isClientCompleted) {
+                        return (
+                          <div
+                            className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0"
+                            title="Completed"
+                          >
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
+                      );
+                    })()
+                  )}
+
+                  {/* Input */}
+                  <input
+                    type="text"
+                    value={task.label}
+                    onChange={(e) => updateTask(index, { label: e.target.value })}
+                    placeholder="What should they accomplish?"
+                    className="flex-1 bg-transparent border-none outline-none font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
+                  />
+
+                  {/* Task Actions Group - badges and Focus toggle */}
+                  <div className="flex items-center gap-1">
+                    {/* Cohort completion badge */}
+                    {hasCompletionData && (
+                      <span
+                        className={cn(
+                          "shrink-0 text-xs font-medium px-2 py-0.5 rounded-full",
+                          isCohortCompleted
+                            ? "text-green-600 bg-green-50 dark:bg-green-900/20"
+                            : "text-muted-foreground bg-muted"
+                        )}
+                      >
+                        {completedCount}/{totalMembers}
+                      </span>
+                    )}
+
+                    {/* Deleted by Client Indicator */}
+                    {task.deletedByClient && (
+                      <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full border border-red-200 dark:border-red-800">
+                        <Trash2 className="w-3 h-3" />
+                        Deleted
+                      </span>
+                    )}
+
+                    {/* Edited by Client Indicator */}
+                    {task.editedByClient && (
+                      <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full border border-amber-200 dark:border-amber-800">
+                        <Pencil className="w-3 h-3" />
+                        Edited
+                      </span>
+                    )}
+
+                    {/* Focus/Backlog Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => updateTask(index, { isPrimary: !task.isPrimary })}
+                      className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200 group"
+                    >
+                      <ArrowLeftRight className={`w-3.5 h-3.5 transition-transform duration-300 ease-out ${task.isPrimary ? 'rotate-0' : 'rotate-180'}`} />
+                      <span className="relative w-[52px] h-4 overflow-hidden">
+                        <span
+                          className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
+                            task.isPrimary
+                              ? 'opacity-100 translate-y-0'
+                              : 'opacity-0 -translate-y-full'
+                          }`}
+                        >
+                          Focus
+                        </span>
+                        <span
+                          className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
+                            !task.isPrimary
+                              ? 'opacity-100 translate-y-0'
+                              : 'opacity-0 translate-y-full'
+                          }`}
+                        >
+                          Backlog
+                        </span>
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Delete Button */}
+                  <button
+                    type="button"
+                    onClick={() => removeTask(index)}
+                    className="p-1.5 rounded-lg text-[#a7a39e] dark:text-[#7d8190] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Expanded member breakdown (cohort mode only) */}
+                {hasCompletionData && isTaskExpanded && (
+                  <div className="border-t border-[#e1ddd8] dark:border-[#262b35] px-4 pb-4">
+                    {/* Progress bar */}
+                    <div className="pt-3 pb-2">
+                      <Progress
+                        value={completionRate}
+                        className="h-1.5"
+                        indicatorClassName={getProgressColor(completionRate, completionThreshold)}
+                      />
+                    </div>
+
+                    {/* Member list */}
+                    <div className="space-y-2 pt-2">
+                      {isLoading && (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+
+                      {!isLoading && members.length === 0 && (
+                        <div className="text-sm text-muted-foreground py-2">
+                          No member data available
+                        </div>
+                      )}
+
+                      {!isLoading && members.map((member) => (
+                        <div
+                          key={member.userId}
+                          className="flex items-center gap-3 text-sm"
+                        >
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={member.imageUrl} />
+                            <AvatarFallback className="text-xs">
+                              {member.firstName?.[0]}
+                              {member.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="flex-1 truncate">
+                            {member.firstName} {member.lastName}
+                          </span>
+                          <div
+                            className={cn(
+                              'shrink-0 h-5 w-5 rounded-full flex items-center justify-center',
+                              member.status === 'completed'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-muted text-muted-foreground'
+                            )}
+                          >
+                            {member.status === 'completed' ? (
+                              <Check className="h-3 w-3" />
+                            ) : (
+                              <Clock className="h-3 w-3" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
           
           {/* Empty State */}
           {formData.tasks.length === 0 && (

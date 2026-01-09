@@ -48,7 +48,7 @@ import { StatusBadge, TypeBadge, VisibilityBadge } from '@/components/ui/program
 import { CoachSelector } from '@/components/coach/CoachSelector';
 import { ClientSelector } from './ClientSelector';
 import { CohortSelector } from './CohortSelector';
-import { LimitReachedModal, useLimitCheck, CohortTasksPanel } from '@/components/coach';
+import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
@@ -306,7 +306,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [selectedCycle, setSelectedCycle] = useState<number | undefined>(undefined);
 
   // Cohort task completion state (for showing completion in day editor)
-  const [cohortTaskCompletion, setCohortTaskCompletion] = useState<Map<string, { completed: boolean; completionRate: number }>>(new Map());
+  const [cohortTaskCompletion, setCohortTaskCompletion] = useState<Map<string, { completed: boolean; completionRate: number; completedCount: number; totalMembers: number }>>(new Map());
+  const [cohortCompletionDate, setCohortCompletionDate] = useState<string | undefined>(undefined);
 
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
@@ -1843,15 +1844,18 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         const response = await fetch(`/api/coach/cohort-tasks/${cohortViewContext.cohortId}?date=${dateStr}`);
         if (response.ok) {
           const data = await response.json();
-          const completionMap = new Map<string, { completed: boolean; completionRate: number }>();
+          const completionMap = new Map<string, { completed: boolean; completionRate: number; completedCount: number; totalMembers: number }>();
           for (const task of data.tasks || []) {
             // Map by task title for matching with template tasks
             completionMap.set(task.title, {
               completed: task.isThresholdMet,
               completionRate: task.completionRate,
+              completedCount: task.completedCount || 0,
+              totalMembers: task.totalMembers || 0,
             });
           }
           setCohortTaskCompletion(completionMap);
+          setCohortCompletionDate(dateStr);
         }
       } catch (err) {
         console.error('[COHORT_COMPLETION] Failed to fetch:', err);
@@ -4128,6 +4132,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       clientViewContext={clientViewContext}
                       cohortViewContext={cohortViewContext}
                       cohortTaskCompletion={cohortTaskCompletion}
+                      completionThreshold={selectedProgram?.cohortCompletionThreshold}
+                      currentDate={cohortCompletionDate}
                       apiBasePath={apiBasePath}
                       saveError={saveError}
                       saving={saving}
@@ -4228,16 +4234,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     </div>
                   </div>
 
-                  {/* Task Completion Panel - show for active cohorts */}
-                  {cohort.status === 'active' && (
-                    <div className="mt-4 pt-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-                      <CohortTasksPanel
-                        cohortId={cohort.id}
-                        compact={true}
-                        refreshInterval={60000}
-                      />
-                    </div>
-                  )}
+                  
                 </div>
               ))}
 

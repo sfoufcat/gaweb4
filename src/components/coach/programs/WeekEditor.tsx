@@ -23,6 +23,14 @@ interface EnrollmentWithUser extends ProgramEnrollment {
   };
 }
 
+// Extended completion data for cohort weekly tasks (aggregate across week)
+interface CohortWeeklyTaskCompletionData {
+  completionRate: number;
+  completed: boolean;
+  completedCount: number;
+  totalMembers: number;
+}
+
 interface WeekEditorProps {
   week: ProgramWeek;
   days: ProgramDay[];
@@ -48,6 +56,10 @@ interface WeekEditorProps {
   enrollments?: EnrollmentWithUser[];
   // Callback when a new summary is generated
   onSummaryGenerated?: (summaryId: string) => void;
+  // Cohort task completion for weekly tasks (aggregate)
+  cohortWeeklyTaskCompletion?: Map<string, CohortWeeklyTaskCompletionData>;
+  // Completion threshold
+  completionThreshold?: number;
 }
 
 // Sortable task component for drag-and-drop weekly tasks
@@ -58,9 +70,11 @@ interface SortableWeeklyTaskProps {
   showCompletionStatus: boolean;
   onTogglePrimary: (index: number) => void;
   onRemove: (index: number) => void;
+  // Cohort completion data (optional)
+  cohortCompletion?: CohortWeeklyTaskCompletionData;
 }
 
-function SortableWeeklyTask({ task, index, id, showCompletionStatus, onTogglePrimary, onRemove }: SortableWeeklyTaskProps) {
+function SortableWeeklyTask({ task, index, id, showCompletionStatus, onTogglePrimary, onRemove, cohortCompletion }: SortableWeeklyTaskProps) {
   const {
     attributes,
     listeners,
@@ -77,20 +91,46 @@ function SortableWeeklyTask({ task, index, id, showCompletionStatus, onTogglePri
   };
 
   const isCompleted = task.completed || false;
+  const isCohortCompleted = cohortCompletion?.completed || false;
+  const completionRate = cohortCompletion?.completionRate || 0;
+  const completedCount = cohortCompletion?.completedCount || 0;
+  const totalMembers = cohortCompletion?.totalMembers || 0;
+  const hasCohortData = !!cohortCompletion;
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
+      className={`group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border rounded-xl hover:shadow-sm transition-all duration-200 ${
+        isCohortCompleted
+          ? 'border-green-500/30 bg-green-500/5 hover:border-green-500/50'
+          : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d4d0cb] dark:hover:border-[#313746]'
+      }`}
     >
       {/* Drag Handle */}
       <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
         <GripVertical className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
       </div>
 
-      {/* Completion Checkbox */}
-      {showCompletionStatus && isCompleted ? (
+      {/* Completion Checkbox - show cohort status if available, otherwise client status */}
+      {hasCohortData ? (
+        <div
+          className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+            isCohortCompleted
+              ? 'bg-green-500 text-white'
+              : completionRate > 0
+              ? 'border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20'
+              : 'border-2 border-[#e1ddd8] dark:border-[#3d4351]'
+          }`}
+          title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
+        >
+          {isCohortCompleted ? (
+            <Check className="w-3 h-3" />
+          ) : completionRate > 0 ? (
+            <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400">{completionRate}</span>
+          ) : null}
+        </div>
+      ) : showCompletionStatus && isCompleted ? (
         <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
           <Check className="w-3 h-3 text-white" />
         </div>
@@ -102,6 +142,19 @@ function SortableWeeklyTask({ task, index, id, showCompletionStatus, onTogglePri
       <span className="flex-1 font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8]">
         {task.label}
       </span>
+
+      {/* Cohort completion badge */}
+      {hasCohortData && (
+        <span
+          className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
+            isCohortCompleted
+              ? 'text-green-600 bg-green-50 dark:bg-green-900/20'
+              : 'text-muted-foreground bg-muted'
+          }`}
+        >
+          {completedCount}/{totalMembers}
+        </span>
+      )}
 
       {/* Task Actions Group - badges and Focus toggle */}
       <div className="flex items-center gap-1">
@@ -186,6 +239,8 @@ export function WeekEditor({
   programType,
   enrollments = [],
   onSummaryGenerated,
+  cohortWeeklyTaskCompletion = new Map(),
+  completionThreshold = 50,
 }: WeekEditorProps) {
   // Program editor context for centralized save
   const editorContext = useProgramEditorOptional();
@@ -980,6 +1035,7 @@ export function WeekEditor({
                       showCompletionStatus={isClientView || !!cohortId}
                       onTogglePrimary={toggleTaskPrimary}
                       onRemove={removeTask}
+                      cohortCompletion={cohortId ? cohortWeeklyTaskCompletion.get(task.label) : undefined}
                     />
                   ))}
                 </SortableContext>
