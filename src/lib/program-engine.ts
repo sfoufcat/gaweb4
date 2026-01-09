@@ -9,6 +9,7 @@
  */
 
 import { adminDb } from './firebase-admin';
+import { calculateSpreadDayIndices } from './program-utils';
 import { getStreamServerClient } from './stream-server';
 import { FieldValue } from 'firebase-admin/firestore';
 import type {
@@ -1277,16 +1278,21 @@ export function getWeeklyTasksForDay(
     return weeklyTasks;
   }
   
-  // Spread distribution: distribute tasks across the week
-  const daysInWeek = week.endDayIndex - week.startDayIndex + 1;
-  const dayInWeek = dayIndex - week.startDayIndex; // 0-indexed position in week
-  
-  // Calculate which tasks belong to this day
-  const tasksPerDay = Math.ceil(weeklyTasks.length / daysInWeek);
-  const startIndex = dayInWeek * tasksPerDay;
-  const endIndex = Math.min(startIndex + tasksPerDay, weeklyTasks.length);
-  
-  return weeklyTasks.slice(startIndex, endIndex);
+  // Spread distribution: use centered spacing (same as distributeClientWeeklyTasksToDays)
+  const spreadDays = calculateSpreadDayIndices(
+    weeklyTasks.length,
+    week.startDayIndex,
+    week.endDayIndex
+  );
+
+  // Find which task index (if any) is assigned to this day
+  const taskIndex = spreadDays.indexOf(dayIndex);
+
+  if (taskIndex !== -1 && taskIndex < weeklyTasks.length) {
+    return [weeklyTasks[taskIndex]];
+  }
+
+  return [];
 }
 
 /**

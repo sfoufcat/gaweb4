@@ -37,7 +37,7 @@ interface WeekData {
  * @param endDay Last day index of the week
  * @returns Array of day indices where tasks should be placed
  */
-function calculateSpreadDayIndices(numTasks: number, startDay: number, endDay: number): number[] {
+export function calculateSpreadDayIndices(numTasks: number, startDay: number, endDay: number): number[] {
   const daysInWeek = endDay - startDay + 1;
 
   if (numTasks <= 0) return [];
@@ -716,6 +716,15 @@ export async function distributeCohortWeeklyTasksToDays(
     existingDaysSnapshot.docs.map(doc => [doc.data().dayIndex as number, { id: doc.id, ...doc.data() }])
   );
 
+  // Debug logging - trace what days were found
+  console.log(`[DIST_DEBUG_COHORT] Query: cohortId=${cohortId}, programId=${programId}, dayIndex ${startDay}-${endDay}`);
+  console.log(`[DIST_DEBUG_COHORT] Found ${existingDaysSnapshot.size} existing days`);
+  existingDays.forEach((day, dayIndex) => {
+    const dayData = day as { tasks?: ProgramTaskTemplate[] };
+    const tasks = dayData.tasks || [];
+    console.log(`[DIST_DEBUG_COHORT] Day ${dayIndex}: ${tasks.length} tasks, sources: [${tasks.map(t => t.source || 'undefined').join(', ')}]`);
+  });
+
   // Get program's organizationId for new documents
   const programDoc = await adminDb.collection('programs').doc(programId).get();
   const organizationId = programDoc.data()?.organizationId || '';
@@ -928,6 +937,15 @@ export async function distributeClientWeeklyTasksToDays(
   const existingDays = new Map(
     existingDaysSnapshot.docs.map(doc => [doc.data().dayIndex as number, { id: doc.id, ...doc.data() }])
   );
+
+  // Debug logging - trace what days were found
+  console.log(`[DIST_DEBUG_CLIENT] Query: enrollmentId=${enrollmentId}, programId=${programId}, dayIndex ${startDay}-${endDay}`);
+  console.log(`[DIST_DEBUG_CLIENT] Found ${existingDaysSnapshot.size} existing days`);
+  existingDays.forEach((day, dayIndex) => {
+    const dayData = day as { tasks?: ProgramTaskTemplate[] };
+    const tasks = dayData.tasks || [];
+    console.log(`[DIST_DEBUG_CLIENT] Day ${dayIndex}: ${tasks.length} tasks, sources: [${tasks.map(t => t.source || 'undefined').join(', ')}]`);
+  });
 
   // Get organizationId and userId from enrollment
   const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();

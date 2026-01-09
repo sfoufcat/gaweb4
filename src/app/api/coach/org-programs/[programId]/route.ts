@@ -16,6 +16,27 @@ import { getStreamServerClient } from '@/lib/stream-server';
 import type { Program, ProgramDay, ProgramCohort, ProgramHabitTemplate, ProgramFeature, ProgramTestimonial, ProgramFAQ, Squad } from '@/types';
 import { syncProgramWeeks, recalculateWeekDayIndices } from '@/lib/program-utils';
 
+/**
+ * Calculate cohort status dynamically based on dates.
+ * This ensures cohorts automatically transition from 'upcoming' to 'active' when startDate passes.
+ */
+function calculateCohortStatus(
+  startDate: string,
+  endDate: string,
+  storedStatus: string
+): 'upcoming' | 'active' | 'completed' | 'archived' {
+  // If manually archived, keep it archived
+  if (storedStatus === 'archived') return 'archived';
+
+  const now = new Date();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (end <= now) return 'completed';
+  if (start <= now && end > now) return 'active';
+  return 'upcoming';
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ programId: string }> }
@@ -68,12 +89,21 @@ export async function GET(
         .where('programId', '==', programId)
         .get();
 
-      cohorts = cohortsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
-        updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
-      })) as ProgramCohort[];
+      cohorts = cohortsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        const calculatedStatus = calculateCohortStatus(
+          data.startDate,
+          data.endDate,
+          data.status
+        );
+        return {
+          id: doc.id,
+          ...data,
+          status: calculatedStatus, // Use calculated status based on dates
+          createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+        };
+      }) as ProgramCohort[];
 
       // Sort cohorts by startDate descending in memory
       cohorts.sort((a, b) => 

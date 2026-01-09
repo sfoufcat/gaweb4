@@ -11,7 +11,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { CohortWeekContent, ProgramTaskTemplate } from '@/types';
+import type { CohortWeekContent, ProgramTaskTemplate, CohortTaskState, ProgramWeek } from '@/types';
+import { getProgramCompletionThreshold, recalculateAggregates } from '@/lib/cohort-task-state';
 
 /**
  * Process tasks to ensure each has a unique ID for robust matching.
@@ -83,6 +84,47 @@ export async function GET(
         createdAt: doc.data()?.createdAt?.toDate?.()?.toISOString?.() || doc.data()?.createdAt,
         updatedAt: doc.data()?.updatedAt?.toDate?.()?.toISOString?.() || doc.data()?.updatedAt,
       } as CohortWeekContent;
+
+      // Merge cohort completion status into weeklyTasks using CohortTaskState
+      // A task is considered "completed" when threshold % of cohort members have completed it
+      if (content.weeklyTasks && content.weeklyTasks.length > 0) {
+        const weekData = weekDoc.data() as ProgramWeek;
+        const threshold = await getProgramCompletionThreshold(programId);
+
+        // Fetch all CohortTaskState documents for this cohort within the week's day range
+        const taskStatesSnapshot = await adminDb
+          .collection('cohort_task_states')
+          .where('cohortId', '==', cohortId)
+          .where('programDayIndex', '>=', weekData.startDayIndex)
+          .where('programDayIndex', '<=', weekData.endDayIndex)
+          .get();
+
+        const taskStates = taskStatesSnapshot.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+        })) as CohortTaskState[];
+
+        // Merge completion status into weeklyTasks
+        content.weeklyTasks = content.weeklyTasks.map(template => {
+          // Find matching CohortTaskState by programTaskId or taskTitle
+          const matchingState = taskStates.find(state =>
+            (template.id && state.programTaskId === template.id) ||
+            state.taskTitle === template.label
+          );
+
+          if (matchingState) {
+            // Recalculate to ensure threshold is applied correctly
+            const { isThresholdMet, completionRate } = recalculateAggregates(matchingState, threshold);
+            return {
+              ...template,
+              completed: isThresholdMet,
+              completionRate, // Include rate for UI display
+            };
+          }
+          // No matching state found - task not started by any cohort member
+          return template;
+        });
+      }
 
       return NextResponse.json({ content, exists: true });
     }

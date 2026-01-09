@@ -41,6 +41,50 @@ export async function GET(
       lastSyncedAt: clientWeekDoc.data()?.lastSyncedAt?.toDate?.()?.toISOString?.() || clientWeekDoc.data()?.lastSyncedAt,
     } as ClientProgramWeek;
 
+    // Merge completion status from actual user tasks into weeklyTasks
+    // This allows the week view to show which weekly tasks have been completed
+    if (clientWeek.weeklyTasks && clientWeek.weeklyTasks.length > 0 &&
+        clientWeek.enrollmentId && clientWeek.startDayIndex !== undefined && clientWeek.endDayIndex !== undefined) {
+      // Fetch user's tasks for this week's day range
+      const userTasksSnapshot = await adminDb
+        .collection('tasks')
+        .where('programEnrollmentId', '==', clientWeek.enrollmentId)
+        .where('programDayIndex', '>=', clientWeek.startDayIndex)
+        .where('programDayIndex', '<=', clientWeek.endDayIndex)
+        .get();
+
+      const userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Merge completion status into weeklyTasks
+      // Use programTaskId for robust matching (survives renames), fallback to title
+      clientWeek.weeklyTasks = clientWeek.weeklyTasks.map(template => {
+        const actualTask = userTasks.find(t => {
+          const task = t as { title?: string; programTaskId?: string };
+          // Prefer programTaskId matching (robust, survives renames)
+          if (template.id && task.programTaskId) {
+            return task.programTaskId === template.id;
+          }
+          // Fallback to title matching for backward compatibility
+          return task.title === template.label;
+        });
+        if (actualTask) {
+          const taskStatus = (actualTask as { status?: string }).status;
+          const clientLocked = (actualTask as { clientLocked?: boolean }).clientLocked;
+          const isDeleted = taskStatus === 'deleted';
+          return {
+            ...template,
+            completed: taskStatus === 'completed',
+            completedAt: (actualTask as { completedAt?: string }).completedAt,
+            taskId: actualTask.id,
+            deletedByClient: isDeleted,
+            editedByClient: clientLocked && !isDeleted || undefined,
+          };
+        }
+        // No matching task found - return template without completion data
+        return template;
+      });
+    }
+
     return NextResponse.json({ clientWeek });
   } catch (error) {
     console.error('[COACH_CLIENT_WEEK_GET] Error:', error);

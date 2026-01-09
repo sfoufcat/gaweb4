@@ -172,11 +172,32 @@ export async function POST(
     if (!existingDaySnapshot.empty) {
       // Update existing cohort day
       const existingDoc = existingDaySnapshot.docs[0];
+      const existingData = existingDoc.data();
 
       // Ensure tasks have IDs for robust matching
-      const processedTasks = dayData.tasks !== undefined
+      let processedTasks = dayData.tasks !== undefined
         ? processTasksWithIds(dayData.tasks)
         : undefined;
+
+      // Smart merge: preserve week-sourced tasks not in the request
+      // This handles race conditions where weekly tasks were distributed after frontend loaded
+      if (processedTasks !== undefined && existingData?.tasks) {
+        const existingTasks: ProgramTaskTemplate[] = existingData.tasks;
+        const incomingTaskIds = new Set(
+          processedTasks.map(t => t.id).filter((id): id is string => Boolean(id))
+        );
+
+        const preservedWeekTasks = existingTasks.filter((t) =>
+          t.source === 'week' && t.id && !incomingTaskIds.has(t.id)
+        );
+
+        if (preservedWeekTasks.length > 0) {
+          console.log(
+            `[COACH_COHORT_DAYS_POST] Preserving ${preservedWeekTasks.length} week-sourced tasks not in save request`
+          );
+          processedTasks = [...processedTasks, ...preservedWeekTasks];
+        }
+      }
 
       const updateData = {
         ...dayData,
