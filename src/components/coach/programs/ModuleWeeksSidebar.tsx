@@ -813,6 +813,15 @@ export function ModuleWeeksSidebar({
     }
   }, [program.id, enrollmentId, cohortId]);
 
+  // Memoized handlers for clear confirm dialog - prevents infinite re-render loop
+  const handleShowClearConfirm = useCallback(() => {
+    setShowClearConfirm(true);
+  }, []);
+
+  const handleHideClearConfirm = useCallback(() => {
+    setShowClearConfirm(false);
+  }, []);
+
   // Memoized cycle data for evergreen programs to prevent re-render loops
   const cycleData = useMemo(() => {
     if (program.durationType !== 'evergreen') return null;
@@ -1540,7 +1549,7 @@ export function ModuleWeeksSidebar({
                     Sync from Template
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => setShowClearConfirm(true)}
+                    onClick={handleShowClearConfirm}
                     disabled={isClearingTasks}
                     className="cursor-pointer text-xs text-red-600 focus:text-red-600"
                   >
@@ -1567,7 +1576,7 @@ export function ModuleWeeksSidebar({
             </p>
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setShowClearConfirm(false)}
+                onClick={handleHideClearConfirm}
                 className="px-4 py-2 text-sm font-medium rounded-lg
                   bg-slate-100 dark:bg-slate-800 text-[#3d3a37] dark:text-[#e8e6e3]
                   hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"

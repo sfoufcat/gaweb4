@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment, ClientViewContext, CohortViewContext } from '@/types';
-import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, Check, ChevronDown } from 'lucide-react';
+import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, Check, ChevronDown, Pencil } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { Button } from '@/components/ui/button';
 import { DayCourseSelector } from './DayCourseSelector';
@@ -371,6 +371,22 @@ export function DayEditor({
                   </span>
                 </span>
               </button>
+
+              {/* Deleted by Client Indicator */}
+              {task.deletedByClient && (
+                <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full border border-red-200 dark:border-red-800">
+                  <Trash2 className="w-3 h-3" />
+                  Deleted
+                </span>
+              )}
+
+              {/* Edited by Client Indicator */}
+              {task.editedByClient && (
+                <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full border border-amber-200 dark:border-amber-800">
+                  <Pencil className="w-3 h-3" />
+                  Edited
+                </span>
+              )}
 
               {/* Delete Button */}
               <button

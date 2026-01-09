@@ -245,8 +245,9 @@ export async function POST(
       }
 
       // Sync tasks to client's Daily Focus
+      // Note: Sync when distribution happened OR tasks provided (even empty for clearing)
       let syncResult = null;
-      if (weekContent.weeklyTasks?.length > 0 && body.syncToClient !== false) {
+      if ((distributionResult || weekContent.weeklyTasks !== undefined) && body.syncToClient !== false) {
         try {
           const { userId: coachUserId } = await requireCoachWithOrg();
           syncResult = await syncProgramTasksForDateRange(programId, {

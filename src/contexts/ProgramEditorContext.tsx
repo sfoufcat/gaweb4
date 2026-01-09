@@ -319,11 +319,11 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
         delete body._createCohortContentAfter;
         delete body._cohortId;
         
-        // Include distribution flags if there are tasks AND:
-        // - Weekly tasks changed, OR
-        // - It's a new week (POST)
-        // This ensures distribution happens for all saves where tasks exist and might have changed
-        if (hasTasks && (hasTaskChanges || isNewWeek)) {
+        // Include distribution flags if:
+        // - Weekly tasks changed (add OR remove), OR
+        // - It's a new week with tasks
+        // This ensures distribution happens when tasks are added, modified, OR cleared
+        if (hasTaskChanges || (isNewWeek && hasTasks)) {
           body.distributeTasksNow = true;
           // Different APIs use different flag names for overwrite
           body.overwriteExisting = true; // Used by client weeks API

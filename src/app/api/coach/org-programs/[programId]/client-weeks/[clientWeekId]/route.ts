@@ -144,9 +144,9 @@ export async function PATCH(
       }
     }
 
-    // 2-way sync: If weekly tasks were updated, sync to this client's Daily Focus
+    // 2-way sync: Sync if weekly tasks were updated OR distribution happened
     let syncResult = null;
-    if (body.weeklyTasks !== undefined && body.syncToClient !== false) {
+    if ((distributionResult || body.weeklyTasks !== undefined) && body.syncToClient !== false) {
       try {
         const clientWeekData = savedDoc.data() as ClientProgramWeek;
         const enrollmentId = clientWeekData.enrollmentId;
