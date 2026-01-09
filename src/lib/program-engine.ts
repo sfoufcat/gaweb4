@@ -2403,7 +2403,10 @@ export async function syncProgramTasksToClientDay(
       foundExplicitDay = true;
       sourceType = 'program_day';
       sourceProgramDayId = clientDay.id;
-      console.log(`[SYNC_TO_CLIENT] Got ${tasksForDay.length} client-specific tasks for day ${dayIndex}`);
+      console.log(`[SYNC_TO_CLIENT] Found client_program_day for day ${dayIndex}: id=${clientDay.id}, tasks=${tasksForDay.length}, isPrimary flags: ${tasksForDay.map(t => t.isPrimary).join(',')}`);
+      console.log(`[SYNC_TO_CLIENT] Client day takes precedence over week-level distribution for this enrollment`);
+    } else {
+      console.log(`[SYNC_TO_CLIENT] No client_program_day exists for day ${dayIndex}, will check week-level tasks`);
     }
   }
 
@@ -2433,10 +2436,13 @@ export async function syncProgramTasksToClientDay(
     // Try week-level tasks
     const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
     if (week && week.weeklyTasks && week.weeklyTasks.length > 0) {
+      console.log(`[SYNC_TO_CLIENT] Week found for day ${dayIndex}: weekId=${week.id}, weekNumber=${week.weekNumber}, distribution=${week.distribution || 'spread (default)'}, weeklyTasks=${week.weeklyTasks.length}, dayRange=${week.startDayIndex}-${week.endDayIndex}`);
       tasksForDay = getWeeklyTasksForDay(week, dayIndex);
       sourceType = 'program_week';
       sourceWeekId = week.id;
-      console.log(`[SYNC_TO_CLIENT] Got ${tasksForDay.length} tasks from week ${week.weekNumber} for day ${dayIndex}`);
+      console.log(`[SYNC_TO_CLIENT] getWeeklyTasksForDay returned ${tasksForDay.length} tasks for day ${dayIndex}: ${tasksForDay.map(t => t.label).join(', ')}`);
+    } else {
+      console.log(`[SYNC_TO_CLIENT] No week found for day ${dayIndex} (or week has no tasks)`);
     }
   
     // Fallback to day-level template tasks
@@ -2535,25 +2541,22 @@ export async function syncProgramTasksToClientDay(
     : undefined;
   
   // Recalculate available slots after potential deletions
-  const remainingTasksSnapshot = await adminDb
-    .collection('tasks')
-    .where('userId', '==', userId)
-    .where('date', '==', date)
-    .where('listType', '==', 'focus')
-    .get();
-  
-  let availableFocusSlots = focusLimit - remainingTasksSnapshot.size;
-  
-  // Get max order numbers
+  // Note: We fetch all tasks and filter in code to avoid requiring a composite index
   const allRemainingSnapshot = await adminDb
     .collection('tasks')
     .where('userId', '==', userId)
     .where('date', '==', date)
     .get();
-  
-  const remainingTasks = allRemainingSnapshot.docs.map(doc => doc.data() as Task);
+
+  // Filter out soft-deleted and archived tasks - they should not count towards limits or order
+  const remainingTasks = allRemainingSnapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() } as Task))
+    .filter(t => t.status !== 'deleted' && t.status !== 'archived');
+
   const remainingFocus = remainingTasks.filter(t => t.listType === 'focus');
   const remainingBacklog = remainingTasks.filter(t => t.listType === 'backlog');
+
+  let availableFocusSlots = focusLimit - remainingFocus.length;
   
   let nextFocusOrder = remainingFocus.length > 0
     ? Math.max(...remainingFocus.map(t => t.order || 0)) + 1

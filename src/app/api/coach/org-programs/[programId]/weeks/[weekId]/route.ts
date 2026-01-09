@@ -11,7 +11,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { recalculateWeekDayIndices, distributeWeeklyTasksToDays } from '@/lib/program-utils';
-import { syncProgramTasksForDateRange } from '@/lib/program-engine';
+import { syncProgramTasksForDateRange, type SyncMode } from '@/lib/program-engine';
 import type { ProgramWeek } from '@/types';
 
 export async function GET(
@@ -148,12 +148,16 @@ export async function PATCH(
     let syncResult = null;
     // Sync triggers when: weeklyTasks explicitly updated OR distribution ran
     const shouldSync = (body.weeklyTasks !== undefined || distributionResult) && body.syncToClients !== false;
+    // When weekly tasks are explicitly updated, use override mode to replace old program-sourced tasks
+    // This ensures new task distribution is applied correctly (fill-empty would skip existing tasks)
+    const syncMode: SyncMode = body.weeklyTasks !== undefined ? 'override-program-sourced' : 'fill-empty';
 
     if (shouldSync) {
       try {
         const { userId } = await requireCoachWithOrg();
+        console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Syncing with mode=${syncMode}, weeklyTasks updated=${body.weeklyTasks !== undefined}, distributionResult=${!!distributionResult}`);
         syncResult = await syncProgramTasksForDateRange(programId, {
-          mode: 'fill-empty', // Template changes use fill-empty to not overwrite client tasks
+          mode: syncMode,
           horizonDays: 7,
           coachUserId: userId,
         });
@@ -172,10 +176,10 @@ export async function PATCH(
           const cohortSync = await syncProgramTasksToAllCohorts({
             programId,
             date: today,
-            mode: 'fill-empty',
+            mode: syncMode, // Use same mode as individual sync
             syncHorizonDays: 7,
           });
-          console.log(`[COHORT_SYNC] Synced to cohort members: ${JSON.stringify(cohortSync)}`);
+          console.log(`[COHORT_SYNC] Synced to cohort members with mode=${syncMode}: ${JSON.stringify(cohortSync)}`);
         } catch (err) {
           console.error('[COHORT_SYNC] Sync failed:', err);
         }

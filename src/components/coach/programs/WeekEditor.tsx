@@ -103,50 +103,53 @@ function SortableWeeklyTask({ task, index, id, showCompletionStatus, onTogglePri
         {task.label}
       </span>
 
-      {/* Focus/Backlog Toggle */}
-      <button
-        type="button"
-        onClick={() => onTogglePrimary(index)}
-        className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200 group"
-      >
-        <ArrowLeftRight className={`w-3.5 h-3.5 transition-transform duration-300 ease-out ${task.isPrimary ? 'rotate-0' : 'rotate-180'}`} />
-        <span className="relative w-[52px] h-4 overflow-hidden">
-          <span
-            className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
-              task.isPrimary
-                ? 'opacity-100 translate-y-0'
-                : 'opacity-0 -translate-y-full'
-            }`}
-          >
-            Focus
+      {/* Task Actions Group - badges and Focus toggle */}
+      <div className="flex items-center gap-1.5">
+        {/* Deleted by Client Indicator */}
+        {task.deletedByClient && (
+          <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full border border-red-200 dark:border-red-800">
+            <Trash2 className="w-3 h-3" />
+            Deleted
           </span>
-          <span
-            className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
-              !task.isPrimary
-                ? 'opacity-100 translate-y-0'
-                : 'opacity-0 translate-y-full'
-            }`}
-          >
-            Backlog
+        )}
+
+        {/* Edited by Client Indicator */}
+        {task.editedByClient && (
+          <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full border border-amber-200 dark:border-amber-800">
+            <Pencil className="w-3 h-3" />
+            Edited
           </span>
-        </span>
-      </button>
+        )}
 
-      {/* Deleted by Client Indicator */}
-      {task.deletedByClient && (
-        <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full border border-red-200 dark:border-red-800">
-          <Trash2 className="w-3 h-3" />
-          Deleted
-        </span>
-      )}
-
-      {/* Edited by Client Indicator */}
-      {task.editedByClient && (
-        <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full border border-amber-200 dark:border-amber-800">
-          <Pencil className="w-3 h-3" />
-          Edited
-        </span>
-      )}
+        {/* Focus/Backlog Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePrimary(index)}
+          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200 group"
+        >
+          <ArrowLeftRight className={`w-3.5 h-3.5 transition-transform duration-300 ease-out ${task.isPrimary ? 'rotate-0' : 'rotate-180'}`} />
+          <span className="relative w-[52px] h-4 overflow-hidden">
+            <span
+              className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
+                task.isPrimary
+                  ? 'opacity-100 translate-y-0'
+                  : 'opacity-0 -translate-y-full'
+              }`}
+            >
+              Focus
+            </span>
+            <span
+              className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
+                !task.isPrimary
+                  ? 'opacity-100 translate-y-0'
+                  : 'opacity-0 translate-y-full'
+              }`}
+            >
+              Backlog
+            </span>
+          </span>
+        </button>
+      </div>
 
       {/* Delete Button */}
       <button
