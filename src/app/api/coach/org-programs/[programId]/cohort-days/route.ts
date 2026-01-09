@@ -196,19 +196,18 @@ export async function POST(
 
       console.log(`[COACH_COHORT_DAYS_POST] Updated cohort day for cohort ${cohortId}, dayIndex ${dayIndex}`);
 
-      // Trigger sync to cohort members - must await to complete before response
-      if (processedTasks && processedTasks.length > 0) {
-        try {
-          const syncResult = await syncProgramTasksToAllCohorts({
-            programId,
-            specificDayIndex: dayIndex,
-            mode: 'override-program-sourced',
-          });
-          console.log(`[COACH_COHORT_DAYS_POST] Sync completed:`, JSON.stringify(syncResult));
-        } catch (err) {
-          console.error('[COACH_COHORT_DAYS_POST] Sync failed:', err);
-          // Don't fail the request if sync fails
-        }
+      // Always trigger sync to cohort members - even when clearing tasks
+      // This ensures old program-sourced tasks get deleted from client's Daily Focus
+      try {
+        const syncResult = await syncProgramTasksToAllCohorts({
+          programId,
+          specificDayIndex: dayIndex,
+          mode: 'override-program-sourced',
+        });
+        console.log(`[COACH_COHORT_DAYS_POST] Sync completed:`, JSON.stringify(syncResult));
+      } catch (err) {
+        console.error('[COACH_COHORT_DAYS_POST] Sync failed:', err);
+        // Don't fail the request if sync fails
       }
 
       return NextResponse.json({
@@ -262,19 +261,18 @@ export async function POST(
 
     console.log(`[COACH_COHORT_DAYS_POST] Created cohort day ${cohortDayRef.id} for cohort ${cohortId}, dayIndex ${dayIndex}`);
 
-    // Trigger sync to cohort members - must await to complete before response
-    if (cohortDayData.tasks && cohortDayData.tasks.length > 0) {
-      try {
-        const syncResult = await syncProgramTasksToAllCohorts({
-          programId,
-          specificDayIndex: dayIndex,
-          mode: 'override-program-sourced',
-        });
-        console.log(`[COACH_COHORT_DAYS_POST] Sync completed:`, JSON.stringify(syncResult));
-      } catch (err) {
-        console.error('[COACH_COHORT_DAYS_POST] Sync failed:', err);
-        // Don't fail the request if sync fails
-      }
+    // Always trigger sync to cohort members - even when creating with empty tasks
+    // This ensures the explicit empty day is propagated to clients
+    try {
+      const syncResult = await syncProgramTasksToAllCohorts({
+        programId,
+        specificDayIndex: dayIndex,
+        mode: 'override-program-sourced',
+      });
+      console.log(`[COACH_COHORT_DAYS_POST] Sync completed:`, JSON.stringify(syncResult));
+    } catch (err) {
+      console.error('[COACH_COHORT_DAYS_POST] Sync failed:', err);
+      // Don't fail the request if sync fails
     }
 
     return NextResponse.json({

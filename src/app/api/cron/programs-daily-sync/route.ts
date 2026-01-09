@@ -75,7 +75,7 @@ export async function GET(request: Request) {
             .collection('tasks')
             .where('userId', '==', userId)
             .where('date', '==', today)
-            .where('source', '==', 'program')
+            .where('sourceType', '==', 'program')
             .limit(1)
             .get();
 

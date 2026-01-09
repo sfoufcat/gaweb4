@@ -1553,35 +1553,56 @@ export async function syncProgramV2TasksForToday(
   const isResync = dayIndex <= enrollment.lastAssignedDayIndex;
   
   // 6. Get tasks for this day
-  // For 1:1 programs, check client-specific days FIRST (takes precedence)
-  // Then try week-level tasks (distributed based on taskDistribution setting)
-  // Then check day-level template tasks
+  // Priority chain (document EXISTS means stop fallback, even if empty):
+  // 1. Client-specific day (for 1:1)
+  // 2. Cohort-specific day (for group programs)
+  // 3. Week-level tasks (distributed)
+  // 4. Template day tasks
   let tasksForToday: ProgramTaskTemplate[] = [];
+  let foundExplicitDay = false; // Track if we found an explicit day document (even if empty)
 
   // For individual (1:1) programs, check client-specific day content first
   if (program.type === 'individual') {
     const clientDay = await getClientProgramDay(enrollment.id, dayIndex);
-    if (clientDay && clientDay.tasks && clientDay.tasks.length > 0) {
-      tasksForToday = [...clientDay.tasks];
-      console.log(`[PROGRAM_ENGINE_V2] Got ${clientDay.tasks.length} client-specific tasks for day ${dayIndex}`);
+    if (clientDay) {
+      // Document EXISTS - use it even if tasks empty (coach explicitly cleared them)
+      tasksForToday = clientDay.tasks ? [...clientDay.tasks] : [];
+      foundExplicitDay = true;
+      console.log(`[PROGRAM_ENGINE_V2] Got ${tasksForToday.length} client-specific tasks for day ${dayIndex}`);
     }
   }
 
-  // If no client-specific tasks (or not a 1:1 program), try week-level tasks
-  if (tasksForToday.length === 0) {
+  // For group programs with cohort, check cohort-specific day content
+  if (program.type === 'group' && enrollment.cohortId && !foundExplicitDay) {
+    const cohortDaySnapshot = await adminDb
+      .collection('cohort_program_days')
+      .where('cohortId', '==', enrollment.cohortId)
+      .where('programId', '==', enrollment.programId)
+      .where('dayIndex', '==', dayIndex)
+      .limit(1)
+      .get();
+
+    if (!cohortDaySnapshot.empty) {
+      // Document EXISTS - use it even if tasks empty (coach explicitly cleared them)
+      const cohortDay = cohortDaySnapshot.docs[0].data();
+      tasksForToday = cohortDay.tasks ? [...cohortDay.tasks] : [];
+      foundExplicitDay = true;
+      console.log(`[PROGRAM_ENGINE_V2] Got ${tasksForToday.length} cohort-specific tasks for day ${dayIndex}`);
+    }
+  }
+
+  // Only fallback to week/template if NO explicit day document exists
+  if (!foundExplicitDay) {
+    // Try week-level tasks
     const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
     if (week) {
       tasksForToday = getWeeklyTasksForDay(week, dayIndex);
       console.log(`[PROGRAM_ENGINE_V2] Got ${tasksForToday.length} tasks from week ${week.weekNumber} for day ${dayIndex}`);
     }
-  }
 
-  // Also check program_days for manual day-level task assignments (template days)
-  // For non-1:1 programs, this is the primary source; for 1:1, this is fallback if no client day
-  const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
-  if (programDay && programDay.tasks && programDay.tasks.length > 0) {
-    // Only add template tasks if we don't have client-specific tasks for 1:1 programs
-    if (program.type !== 'individual' || tasksForToday.length === 0) {
+    // Also check program_days for manual day-level task assignments (template days)
+    const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
+    if (programDay && programDay.tasks && programDay.tasks.length > 0) {
       tasksForToday = [...tasksForToday, ...programDay.tasks];
       console.log(`[PROGRAM_ENGINE_V2] Added ${programDay.tasks.length} day-level tasks for day ${dayIndex}`);
     }
@@ -2362,24 +2383,32 @@ export async function syncProgramTasksToClientDay(
   }
   
   // 5. Get tasks for this day from program templates
+  // Priority chain (document EXISTS means stop fallback, even if empty):
+  // 1. Client-specific day (for 1:1)
+  // 2. Cohort-specific day (for group programs)
+  // 3. Week-level tasks (distributed)
+  // 4. Template day tasks
   let tasksForDay: ProgramTaskTemplate[] = [];
   let sourceType: 'program_day' | 'program_week' = 'program_day';
   let sourceWeekId: string | null = null;
   let sourceProgramDayId: string | null = null;
+  let foundExplicitDay = false; // Track if we found an explicit day document (even if empty)
   
   // For 1:1 programs, check client-specific day first
   if (program.type === 'individual') {
     const clientDay = await getClientProgramDay(programEnrollmentId, dayIndex);
-    if (clientDay && clientDay.tasks && clientDay.tasks.length > 0) {
-      tasksForDay = [...clientDay.tasks];
+    if (clientDay) {
+      // Document EXISTS - use it even if tasks empty (coach explicitly cleared them)
+      tasksForDay = clientDay.tasks ? [...clientDay.tasks] : [];
+      foundExplicitDay = true;
       sourceType = 'program_day';
       sourceProgramDayId = clientDay.id;
-      console.log(`[SYNC_TO_CLIENT] Got ${clientDay.tasks.length} client-specific tasks for day ${dayIndex}`);
+      console.log(`[SYNC_TO_CLIENT] Got ${tasksForDay.length} client-specific tasks for day ${dayIndex}`);
     }
   }
 
   // For group programs with cohortId, check cohort-specific day first
-  if (program.type === 'group' && enrollment.cohortId && tasksForDay.length === 0) {
+  if (program.type === 'group' && enrollment.cohortId && !foundExplicitDay) {
     const cohortDaySnapshot = await adminDb
       .collection('cohort_program_days')
       .where('cohortId', '==', enrollment.cohortId)
@@ -2389,18 +2418,19 @@ export async function syncProgramTasksToClientDay(
       .get();
 
     if (!cohortDaySnapshot.empty) {
+      // Document EXISTS - use it even if tasks empty (coach explicitly cleared them)
       const cohortDay = cohortDaySnapshot.docs[0].data();
-      if (cohortDay.tasks && cohortDay.tasks.length > 0) {
-        tasksForDay = [...cohortDay.tasks];
-        sourceType = 'program_day';
-        sourceProgramDayId = cohortDaySnapshot.docs[0].id;
-        console.log(`[SYNC_TO_CLIENT] Got ${cohortDay.tasks.length} cohort-specific tasks from cohort_program_days for day ${dayIndex}`);
-      }
+      tasksForDay = cohortDay.tasks ? [...cohortDay.tasks] : [];
+      foundExplicitDay = true;
+      sourceType = 'program_day';
+      sourceProgramDayId = cohortDaySnapshot.docs[0].id;
+      console.log(`[SYNC_TO_CLIENT] Got ${tasksForDay.length} cohort-specific tasks from cohort_program_days for day ${dayIndex}`);
     }
   }
 
-  // If no client/cohort-specific tasks, try week-level tasks
-  if (tasksForDay.length === 0) {
+  // Only fallback to week/template if NO explicit day document exists
+  if (!foundExplicitDay) {
+    // Try week-level tasks
     const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
     if (week && week.weeklyTasks && week.weeklyTasks.length > 0) {
       tasksForDay = getWeeklyTasksForDay(week, dayIndex);
@@ -2408,32 +2438,21 @@ export async function syncProgramTasksToClientDay(
       sourceWeekId = week.id;
       console.log(`[SYNC_TO_CLIENT] Got ${tasksForDay.length} tasks from week ${week.weekNumber} for day ${dayIndex}`);
     }
-  }
   
-  // Fallback to day-level template tasks
-  if (tasksForDay.length === 0) {
-    const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
-    if (programDay && programDay.tasks && programDay.tasks.length > 0) {
-      tasksForDay = [...programDay.tasks];
-      sourceType = 'program_day';
-      sourceProgramDayId = programDay.id;
-      console.log(`[SYNC_TO_CLIENT] Got ${programDay.tasks.length} day-level tasks for day ${dayIndex}`);
+    // Fallback to day-level template tasks
+    if (tasksForDay.length === 0) {
+      const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
+      if (programDay && programDay.tasks && programDay.tasks.length > 0) {
+        tasksForDay = [...programDay.tasks];
+        sourceType = 'program_day';
+        sourceProgramDayId = programDay.id;
+        console.log(`[SYNC_TO_CLIENT] Got ${programDay.tasks.length} day-level tasks for day ${dayIndex}`);
+      }
     }
   }
   
-  if (tasksForDay.length === 0) {
-    return {
-      success: true,
-      tasksCreated: 0,
-      tasksSkipped: 0,
-      tasksReplaced: 0,
-      tasksToBacklog: 0,
-      programDayIndex: dayIndex,
-      message: `No tasks defined for day ${dayIndex}`,
-    };
-  }
-  
-  // 6. Get existing tasks for this user on this date
+  // 6. Get existing tasks for this user on this date FIRST
+  // (needed for override mode deletion before early return)
   const existingTasksSnapshot = await adminDb
     .collection('tasks')
     .where('userId', '==', userId)
@@ -2445,35 +2464,14 @@ export async function syncProgramTasksToClientDay(
     ...doc.data(),
   })) as Task[];
   
-  const existingFocusTasks = existingTasks.filter(t => t.listType === 'focus');
-  const existingBacklogTasks = existingTasks.filter(t => t.listType === 'backlog');
-  
-  // 7. Get focus limit from org settings or program
-  let focusLimit = program.dailyFocusSlots || 3;
-  try {
-    const orgSettingsDoc = await adminDb.collection('org_settings').doc(enrollment.organizationId).get();
-    const orgSettings = orgSettingsDoc.data();
-    if (orgSettings?.defaultDailyFocusSlots) {
-      focusLimit = orgSettings.defaultDailyFocusSlots;
-    }
-  } catch {
-    // Use default
-  }
-  
-  // 8. Process tasks based on mode
+  // 7. Process tasks based on mode - track counters
   let tasksCreated = 0;
   let tasksSkipped = 0;
   let tasksReplaced = 0;
   let tasksToBacklog = 0;
-  
-  const now = new Date().toISOString();
 
-  // Calculate cycleNumber for evergreen programs only
-  const cycleNumberForTasks = program.durationType === 'evergreen'
-    ? getActiveCycleNumber(enrollment)
-    : undefined;
-
-  // In override mode, first delete existing program-sourced tasks
+  // In override mode, ALWAYS delete existing program-sourced tasks first
+  // This runs even when tasksForDay is empty (coach explicitly cleared the day)
   if (mode === 'override-program-sourced') {
     const tasksToDelete = existingTasks.filter(t => {
       // Never delete client-created tasks
@@ -2497,6 +2495,44 @@ export async function syncProgramTasksToClientDay(
       }
     }
   }
+
+  // NOW check if we have new tasks to add (after deletion)
+  if (tasksForDay.length === 0) {
+    return {
+      success: errors.length === 0,
+      tasksCreated: 0,
+      tasksSkipped: 0,
+      tasksReplaced, // Include the deletion count!
+      tasksToBacklog: 0,
+      programDayIndex: dayIndex,
+      message: tasksReplaced > 0 
+        ? `Cleared ${tasksReplaced} tasks for day ${dayIndex}` 
+        : `No tasks defined for day ${dayIndex}`,
+      errors: errors.length > 0 ? errors : undefined,
+    };
+  }
+  
+  const existingFocusTasks = existingTasks.filter(t => t.listType === 'focus');
+  const existingBacklogTasks = existingTasks.filter(t => t.listType === 'backlog');
+  
+  // 8. Get focus limit from org settings or program
+  let focusLimit = program.dailyFocusSlots || 3;
+  try {
+    const orgSettingsDoc = await adminDb.collection('org_settings').doc(enrollment.organizationId).get();
+    const orgSettings = orgSettingsDoc.data();
+    if (orgSettings?.defaultDailyFocusSlots) {
+      focusLimit = orgSettings.defaultDailyFocusSlots;
+    }
+  } catch {
+    // Use default
+  }
+  
+  const now = new Date().toISOString();
+
+  // Calculate cycleNumber for evergreen programs only
+  const cycleNumberForTasks = program.durationType === 'evergreen'
+    ? getActiveCycleNumber(enrollment)
+    : undefined;
   
   // Recalculate available slots after potential deletions
   const remainingTasksSnapshot = await adminDb

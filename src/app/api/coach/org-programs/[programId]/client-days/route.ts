@@ -389,9 +389,10 @@ export async function POST(
 
     console.log(`[COACH_CLIENT_DAYS_POST] Created client day ${clientDayRef.id} for enrollment ${enrollmentId}, dayIndex ${dayIndex}`);
 
-    // 2-way sync: If tasks were created, immediately sync to client's Daily Focus
+    // 2-way sync: Always sync when tasks field is set - even when empty
+    // This ensures the explicit day document takes precedence over fallback sources
     let syncResult = null;
-    if (dayData.tasks !== undefined && dayData.tasks.length > 0) {
+    if (dayData.tasks !== undefined) {
       try {
         const programData = await getProgramV2(programId);
         if (programData) {

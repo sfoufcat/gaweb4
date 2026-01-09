@@ -598,6 +598,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     }
   }, [currentEnrollment, selectedProgram, daysToUse]);
 
+  // Memoized sidebar select handler to prevent infinite re-render loop
+  // (ModuleWeeksSidebar has onSelect in a useEffect dependency array)
+  const handleSidebarSelect = useCallback((selection: SidebarSelection) => {
+    setSidebarSelection(selection);
+    if (selection.type === 'day') {
+      setSelectedDayIndex(selection.dayIndex);
+    }
+  }, []);
+
   // Refresh loading state - handler defined after fetch functions
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -3263,26 +3272,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               days={daysToUse}
               selection={sidebarSelection || (selectedDayIndex ? { type: 'day', dayIndex: selectedDayIndex } : null)}
               viewContext={clientViewContext}
-              onSelect={(selection) => {
-                setSidebarSelection(selection);
-                if (selection.type === 'day') {
-                  setSelectedDayIndex(selection.dayIndex);
-                  // Load day data into form - use daysToUse to respect client mode
-                  const day = daysToUse.find(d => d.dayIndex === selection.dayIndex);
-                  if (day) {
-                    setDayFormData({
-                      title: day.title || '',
-                      summary: day.summary || '',
-                      dailyPrompt: day.dailyPrompt || '',
-                      tasks: day.tasks || [],
-                      habits: day.habits || [],
-                      courseAssignments: day.courseAssignments || [],
-                    });
-                  } else {
-                    setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [], courseAssignments: [] });
-                  }
-                }
-              }}
+              onSelect={handleSidebarSelect}
               onAddModule={async () => {
                 if (!selectedProgram) return;
                 const lastModule = programModules[programModules.length - 1];
