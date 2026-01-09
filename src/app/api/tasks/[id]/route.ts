@@ -199,7 +199,7 @@ export async function PATCH(
                   cohortId: enrollment.cohortId,
                   programId: enrollment.programId,
                   organizationId: existingTask.organizationId || enrollment.organizationId || '',
-                  programDayIndex: existingTask.programDayIndex,
+                  programDayIndex: existingTask.programDayIndex ?? 0,
                   taskTemplateId: existingTask.programTaskId || `${existingTask.title}:${existingTask.programDayIndex}`,
                   taskTitle: existingTask.title,
                   programTaskId: existingTask.programTaskId,
