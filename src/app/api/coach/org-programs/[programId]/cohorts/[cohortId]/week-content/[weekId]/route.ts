@@ -91,39 +91,53 @@ export async function GET(
         const weekData = weekDoc.data() as ProgramWeek;
         const threshold = await getProgramCompletionThreshold(programId);
 
+        // Safety check: ensure week has valid day indices
+        if (weekData.startDayIndex === undefined || weekData.endDayIndex === undefined) {
+          console.warn('[COHORT_WEEK_CONTENT_GET] Week missing day indices:', { weekId, weekData });
+          // Return content without completion status merge
+          return NextResponse.json({ content, exists: true });
+        }
+
         // Fetch all CohortTaskState documents for this cohort within the week's day range
-        const taskStatesSnapshot = await adminDb
-          .collection('cohort_task_states')
-          .where('cohortId', '==', cohortId)
-          .where('programDayIndex', '>=', weekData.startDayIndex)
-          .where('programDayIndex', '<=', weekData.endDayIndex)
-          .get();
+        // Wrap in try-catch to handle missing index gracefully
+        try {
+          const taskStatesSnapshot = await adminDb
+            .collection('cohort_task_states')
+            .where('cohortId', '==', cohortId)
+            .where('programDayIndex', '>=', weekData.startDayIndex)
+            .where('programDayIndex', '<=', weekData.endDayIndex)
+            .get();
 
-        const taskStates = taskStatesSnapshot.docs.map(d => ({
-          id: d.id,
-          ...d.data(),
-        })) as CohortTaskState[];
+          const taskStates = taskStatesSnapshot.docs.map(d => ({
+            id: d.id,
+            ...d.data(),
+          })) as CohortTaskState[];
 
-        // Merge completion status into weeklyTasks
-        content.weeklyTasks = content.weeklyTasks.map(template => {
-          // Find matching CohortTaskState by programTaskId or taskTitle
-          const matchingState = taskStates.find(state =>
-            (template.id && state.programTaskId === template.id) ||
-            state.taskTitle === template.label
-          );
+          // Merge completion status into weeklyTasks
+          content.weeklyTasks = content.weeklyTasks.map(template => {
+            // Find matching CohortTaskState by programTaskId or taskTitle
+            const matchingState = taskStates.find(state =>
+              (template.id && state.programTaskId === template.id) ||
+              state.taskTitle === template.label
+            );
 
-          if (matchingState) {
-            // Recalculate to ensure threshold is applied correctly
-            const { isThresholdMet, completionRate } = recalculateAggregates(matchingState, threshold);
-            return {
-              ...template,
-              completed: isThresholdMet,
-              completionRate, // Include rate for UI display
-            };
-          }
-          // No matching state found - task not started by any cohort member
-          return template;
-        });
+            if (matchingState) {
+              // Recalculate to ensure threshold is applied correctly
+              const { isThresholdMet, completionRate } = recalculateAggregates(matchingState, threshold);
+              return {
+                ...template,
+                completed: isThresholdMet,
+                completionRate, // Include rate for UI display
+              };
+            }
+            // No matching state found - task not started by any cohort member
+            return template;
+          });
+        } catch (completionErr) {
+          // Log error but don't fail - return content without completion data
+          console.warn('[COHORT_WEEK_CONTENT_GET] Failed to fetch completion data (may need index):', completionErr);
+          // Continue with content as-is (no completion merge)
+        }
       }
 
       return NextResponse.json({ content, exists: true });

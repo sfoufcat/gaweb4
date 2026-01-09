@@ -270,6 +270,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/goal/save',      // Goal save - used during onboarding (has own auth check)
   '/api/tenant/resolve',  // Tenant resolution API - no auth required
   '/api/org/branding',  // Branding API - needs to work for SSR before auth is established
+  '/api/org/ga-config', // GA config API - public, only returns measurement ID
   '/api/marketplace/listings',  // Public marketplace listings API
   '/api/calendar/(.*)/callback',  // OAuth callbacks - auth via state parameter (no session on calendar.coachful.co)
   '/api/coach/integrations/(.*)/callback',  // Integration OAuth callbacks - auth via state parameter

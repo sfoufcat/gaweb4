@@ -388,8 +388,23 @@ export function DayEditor({
         
         <div className="space-y-2">
           {formData.tasks.map((task, index) => {
-            // Check for cohort completion data
-            const cohortCompletion = isCohortMode ? cohortTaskCompletion.get(task.label) : undefined;
+            // Debug logging
+            if (index === 0) {
+              console.log('[DAYEDITOR] Debug:', {
+                isCohortMode,
+                programType,
+                cohortViewContextMode: cohortViewContext?.mode,
+                taskCount: formData.tasks.length,
+                completionMapSize: cohortTaskCompletion.size,
+                completionMapKeys: Array.from(cohortTaskCompletion.keys()),
+                taskLabels: formData.tasks.map(t => t.label),
+                taskIds: formData.tasks.map(t => t.id),
+              });
+            }
+            // Check for cohort completion data - try matching by task ID first, then fall back to label
+            const cohortCompletion = isCohortMode
+              ? (task.id && cohortTaskCompletion.get(task.id)) || cohortTaskCompletion.get(task.label)
+              : undefined;
             const isTaskExpanded = expandedTasks.has(task.label);
             const isLoading = loadingTasks.has(task.label);
             const members = taskMemberData.get(task.label) || [];

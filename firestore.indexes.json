@@ -2123,6 +2123,52 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "cohort_task_states",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "cohortId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "programDayIndex",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "cohort_program_days",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "programId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "cohortId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dayIndex",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "cohort_program_days",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "cohortId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dayIndex",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

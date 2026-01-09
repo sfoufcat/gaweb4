@@ -1848,14 +1848,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           console.log('[COHORT_COMPLETION] API response:', data);
           const completionMap = new Map<string, { completed: boolean; completionRate: number; completedCount: number; totalMembers: number }>();
           for (const task of data.tasks || []) {
-            // Map by task title for matching with template tasks
-            console.log('[COHORT_COMPLETION] Adding task to map:', task.title);
-            completionMap.set(task.title, {
+            const completionData = {
               completed: task.isThresholdMet,
               completionRate: task.completionRate,
               completedCount: task.completedCount || 0,
               totalMembers: task.totalMembers || 0,
-            });
+            };
+            // Map by task title for matching with template tasks
+            console.log('[COHORT_COMPLETION] Adding task to map:', task.title, 'taskTemplateId:', task.taskTemplateId);
+            completionMap.set(task.title, completionData);
+            // Also map by taskTemplateId for ID-based matching (more robust)
+            if (task.taskTemplateId) {
+              completionMap.set(task.taskTemplateId, completionData);
+            }
           }
           console.log('[COHORT_COMPLETION] Completion map size:', completionMap.size);
           setCohortTaskCompletion(completionMap);

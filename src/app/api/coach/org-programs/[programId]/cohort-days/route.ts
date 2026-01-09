@@ -91,7 +91,18 @@ export async function GET(
       query = query.where('dayIndex', '==', parseInt(dayIndex, 10));
     }
 
-    const daysSnapshot = await query.orderBy('dayIndex', 'asc').get();
+    let daysSnapshot;
+    try {
+      daysSnapshot = await query.orderBy('dayIndex', 'asc').get();
+    } catch (queryErr) {
+      // Handle potential missing index error - fall back to unordered query
+      console.warn('[COACH_COHORT_DAYS_GET] Ordered query failed, trying without orderBy:', queryErr);
+      daysSnapshot = await adminDb
+        .collection('cohort_program_days')
+        .where('programId', '==', programId)
+        .where('cohortId', '==', cohortId)
+        .get();
+    }
 
     const days = daysSnapshot.docs.map(doc => ({
       id: doc.id,
@@ -99,6 +110,9 @@ export async function GET(
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
     })) as CohortProgramDay[];
+
+    // Sort client-side if we had to fall back
+    days.sort((a, b) => a.dayIndex - b.dayIndex);
 
     return NextResponse.json({
       cohortDays: days,
