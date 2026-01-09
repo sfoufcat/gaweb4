@@ -65,6 +65,14 @@ export async function PATCH(
     const { programId, weekId } = await params;
     const body = await request.json();
 
+    console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Request body:`, {
+      weekId,
+      distribution: body.distribution,
+      distributeTasksNow: body.distributeTasksNow,
+      overwriteExisting: body.overwriteExisting,
+      weeklyTasksCount: body.weeklyTasks?.length ?? 'not provided',
+    });
+
     // Verify program exists and belongs to this org
     const programDoc = await adminDb.collection('programs').doc(programId).get();
     if (!programDoc.exists || programDoc.data()?.organizationId !== organizationId) {
@@ -133,6 +141,13 @@ export async function PATCH(
     if (body.distributeTasksNow === true) {
       try {
         const programData = programDoc.data();
+        console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Starting task distribution:`, {
+          weekId,
+          weeklyTasksCount: body.weeklyTasks?.length ?? 'not in body',
+          bodyDistribution: body.distribution,
+          programDistribution: programData?.taskDistribution,
+          overwriteExisting: body.overwriteExisting || false,
+        });
         distributionResult = await distributeWeeklyTasksToDays(programId, weekId, {
           overwriteExisting: body.overwriteExisting || false,
           programTaskDistribution: programData?.taskDistribution, // Use program's distribution setting as fallback

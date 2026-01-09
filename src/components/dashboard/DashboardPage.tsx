@@ -48,6 +48,11 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
  * Mobile design adapted for desktop/responsive
  */
 
+// Utility to strip HTML tags from rich text content
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').trim();
+}
+
 export function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1366,7 +1371,7 @@ export function DashboardPage() {
           </p>
           {/* Description */}
           <p className={`font-sans ${isMobile ? 'text-[12px]' : 'text-[13px]'} text-white/80 leading-[1.4] line-clamp-2`}>
-            {discoverRecommendation.description}
+            {stripHtml(discoverRecommendation.description || '')}
           </p>
         </div>
       </Link>

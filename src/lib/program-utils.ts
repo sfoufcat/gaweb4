@@ -372,19 +372,27 @@ export async function distributeWeeklyTasksToDays(
   }
 
   const weeklyTasks = weekData.weeklyTasks || [];
-  
+
   // Use week setting, fall back to program setting, then default to 'spread'
   // Using ?? (nullish coalescing) to only fallback on null/undefined, not empty strings
   const distribution = weekData.distribution ?? programTaskDistribution ?? 'spread';
   const startDay = weekData.startDayIndex;
   const endDay = weekData.endDayIndex;
 
+  console.log('[PROGRAM_UTILS] distributeWeeklyTasksToDays - Raw week data:', {
+    weekId,
+    weekDataDistribution: weekData.distribution,
+    weekDataDistributionType: typeof weekData.distribution,
+    programTaskDistribution,
+    resolvedDistribution: distribution,
+  });
+
   // Validate day indices exist
   if (startDay === undefined || endDay === undefined) {
     console.error('[PROGRAM_UTILS] Week missing startDayIndex or endDayIndex:', { weekId, startDay, endDay });
     return { created: 0, updated: 0, skipped: 0 };
   }
-  
+
   // NOTE: We continue even if weeklyTasks is empty - this allows clearing week-sourced tasks
   // while preserving manually added day tasks (source !== 'week')
 
@@ -397,6 +405,7 @@ export async function distributeWeeklyTasksToDays(
     endDay,
     daysInWeek,
     tasksCount: weeklyTasks.length,
+    taskLabels: weeklyTasks.map((t: { label?: string }) => t.label).join(', '),
   });
 
   // Get existing days in this range
