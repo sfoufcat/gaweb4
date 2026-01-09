@@ -6,6 +6,9 @@ import {
   getCohortTaskStatesForDate,
   getProgramCompletionThreshold,
   getOrCreateCohortTaskState,
+  findCohortTaskStateByProgramTaskId,
+  findCohortTaskStateByTaskTitle,
+  updateMemberTaskState,
 } from '@/lib/cohort-task-state';
 import type { CohortTaskState, ProgramCohort, CohortProgramDay, ProgramTaskTemplate, ProgramDay } from '@/types';
 
@@ -176,6 +179,48 @@ export async function GET(
           // Re-fetch the states after creation
           cohortTaskStates = await getCohortTaskStatesForDate(cohortId, date);
           console.log(`[COACH_COHORT_TASKS] Created ${cohortTaskStates.length} states on-demand`);
+
+          // SYNC: Check for existing completed tasks and update CohortTaskStates
+          // This handles cases where tasks were completed before CohortTaskState existed
+          console.log(`[COACH_COHORT_TASKS] Syncing existing task completions...`);
+          for (const task of tasks) {
+            if (!task.id) continue; // Skip tasks without ID
+
+            // Query tasks collection for completed tasks matching this template
+            const completedTasksSnapshot = await adminDb
+              .collection('tasks')
+              .where('programTaskId', '==', task.id)
+              .where('date', '==', date)
+              .where('status', '==', 'completed')
+              .get();
+
+            if (completedTasksSnapshot.empty) continue;
+
+            // Find the CohortTaskState for this task
+            const state = await findCohortTaskStateByProgramTaskId(cohortId, task.id, date)
+              || await findCohortTaskStateByTaskTitle(cohortId, task.label, date, dayIndex);
+
+            if (state) {
+              // Update member states for completed tasks
+              for (const taskDoc of completedTasksSnapshot.docs) {
+                const taskData = taskDoc.data();
+                if (taskData.userId && state.memberStates[taskData.userId]) {
+                  await updateMemberTaskState(
+                    state.id,
+                    taskData.userId,
+                    true, // completed
+                    taskDoc.id,
+                    threshold
+                  );
+                  console.log(`[COACH_COHORT_TASKS] Synced completion for user ${taskData.userId}, task ${task.label}`);
+                }
+              }
+            }
+          }
+
+          // Re-fetch states again after sync to get updated completion counts
+          cohortTaskStates = await getCohortTaskStatesForDate(cohortId, date);
+          console.log(`[COACH_COHORT_TASKS] After sync: ${cohortTaskStates.length} states with updated completions`);
         } else {
           console.log(`[COACH_COHORT_TASKS] No tasks found in cohort_program_days or program_days for dayIndex ${dayIndex}`);
         }
