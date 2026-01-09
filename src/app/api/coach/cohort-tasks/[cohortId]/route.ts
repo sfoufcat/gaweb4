@@ -5,8 +5,9 @@ import { getEffectiveOrgId } from '@/lib/tenant/context';
 import {
   getCohortTaskStatesForDate,
   getProgramCompletionThreshold,
+  getOrCreateCohortTaskState,
 } from '@/lib/cohort-task-state';
-import type { CohortTaskState, ProgramCohort } from '@/types';
+import type { CohortTaskState, ProgramCohort, CohortProgramDay, ProgramTaskTemplate } from '@/types';
 
 interface MemberInfo {
   userId: string;
@@ -19,6 +20,7 @@ interface MemberInfo {
 
 interface CohortTaskResponse {
   taskTemplateId: string;
+  programTaskId?: string; // The task template's UUID for robust matching
   title: string;
   programDayIndex: number;
   completedCount: number;
@@ -42,10 +44,13 @@ interface CohortTasksResponse {
 }
 
 /**
- * GET /api/coach/cohort-tasks/[cohortId]?date=YYYY-MM-DD
+ * GET /api/coach/cohort-tasks/[cohortId]?date=YYYY-MM-DD&dayIndex=N
  *
  * Returns cohort-level task completion data for a specific date.
  * Shows aggregated completion % and member breakdown.
+ *
+ * If no CohortTaskStates exist and dayIndex is provided, will create them
+ * on-demand from the cohort_program_days content.
  */
 export async function GET(
   request: NextRequest,
@@ -60,6 +65,7 @@ export async function GET(
     const { cohortId } = await params;
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const dayIndexParam = searchParams.get('dayIndex');
 
     // MULTI-TENANCY: Get effective org ID
     const organizationId = await getEffectiveOrgId();
@@ -101,9 +107,59 @@ export async function GET(
     const threshold = await getProgramCompletionThreshold(cohort.programId);
 
     // Get cohort task states for this date
-    const cohortTaskStates = await getCohortTaskStatesForDate(cohortId, date);
+    let cohortTaskStates = await getCohortTaskStatesForDate(cohortId, date);
 
-    // If no task states exist for this date, return empty response
+    // If no task states exist and dayIndex is provided, create them on-demand
+    // from the cohort_program_days content
+    if (cohortTaskStates.length === 0 && dayIndexParam) {
+      const dayIndex = parseInt(dayIndexParam, 10);
+      console.log(`[COACH_COHORT_TASKS] No states for date ${date}, creating on-demand for dayIndex ${dayIndex}`);
+
+      // Get cohort day content
+      const cohortDaySnapshot = await adminDb
+        .collection('cohort_program_days')
+        .where('cohortId', '==', cohortId)
+        .where('dayIndex', '==', dayIndex)
+        .limit(1)
+        .get();
+
+      // Get active cohort members
+      const enrollmentsSnapshot = await adminDb
+        .collection('program_enrollments')
+        .where('cohortId', '==', cohortId)
+        .where('status', 'in', ['active', 'upcoming'])
+        .get();
+
+      const memberIds = enrollmentsSnapshot.docs.map(doc => doc.data().userId);
+
+      if (!cohortDaySnapshot.empty && memberIds.length > 0) {
+        const cohortDay = cohortDaySnapshot.docs[0].data() as CohortProgramDay;
+        const tasks = cohortDay.tasks || [];
+
+        console.log(`[COACH_COHORT_TASKS] Found ${tasks.length} tasks, ${memberIds.length} members, creating states`);
+
+        // Create CohortTaskState for each task
+        for (const task of tasks) {
+          await getOrCreateCohortTaskState({
+            cohortId,
+            programId: cohort.programId,
+            organizationId,
+            programDayIndex: dayIndex,
+            taskTemplateId: task.id || `${task.label}:${dayIndex}`,
+            taskTitle: task.label,
+            programTaskId: task.id,
+            date,
+            memberIds,
+          });
+        }
+
+        // Re-fetch the states after creation
+        cohortTaskStates = await getCohortTaskStatesForDate(cohortId, date);
+        console.log(`[COACH_COHORT_TASKS] Created ${cohortTaskStates.length} states on-demand`);
+      }
+    }
+
+    // If still no task states, return empty response
     if (cohortTaskStates.length === 0) {
       return NextResponse.json({
         cohortId,
@@ -183,6 +239,7 @@ export async function GET(
 
       return {
         taskTemplateId: state.taskTemplateId,
+        programTaskId: state.programTaskId,
         title: state.taskTitle,
         programDayIndex: state.programDayIndex,
         completedCount: state.completedCount,

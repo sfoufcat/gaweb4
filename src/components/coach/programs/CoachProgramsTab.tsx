@@ -1838,11 +1838,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       dateStr = targetDate.toISOString().split('T')[0];
     }
 
-    // Fetch cohort task states for this date
+    // Fetch cohort task states for this date (pass dayIndex to enable on-demand state creation)
     const fetchCohortCompletion = async () => {
       try {
-        console.log('[COHORT_COMPLETION] Fetching for date:', dateStr, 'cohortId:', cohortViewContext.cohortId);
-        const response = await fetch(`/api/coach/cohort-tasks/${cohortViewContext.cohortId}?date=${dateStr}`);
+        console.log('[COHORT_COMPLETION] Fetching for date:', dateStr, 'dayIndex:', selectedDayIndex, 'cohortId:', cohortViewContext.cohortId);
+        const response = await fetch(`/api/coach/cohort-tasks/${cohortViewContext.cohortId}?date=${dateStr}&dayIndex=${selectedDayIndex}`);
         if (response.ok) {
           const data = await response.json();
           console.log('[COHORT_COMPLETION] API response:', data);
@@ -1855,11 +1855,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               totalMembers: task.totalMembers || 0,
             };
             // Map by task title for matching with template tasks
-            console.log('[COHORT_COMPLETION] Adding task to map:', task.title, 'taskTemplateId:', task.taskTemplateId);
+            console.log('[COHORT_COMPLETION] Adding task to map:', task.title, 'taskTemplateId:', task.taskTemplateId, 'programTaskId:', task.programTaskId);
             completionMap.set(task.title, completionData);
-            // Also map by taskTemplateId for ID-based matching (more robust)
+            // Also map by taskTemplateId and programTaskId for ID-based matching (more robust)
             if (task.taskTemplateId) {
               completionMap.set(task.taskTemplateId, completionData);
+            }
+            if (task.programTaskId) {
+              completionMap.set(task.programTaskId, completionData);
             }
           }
           console.log('[COHORT_COMPLETION] Completion map size:', completionMap.size);

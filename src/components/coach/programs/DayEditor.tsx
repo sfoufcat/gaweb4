@@ -429,8 +429,8 @@ export function DayEditor({
               >
                 {/* Main task row */}
                 <div className="flex items-center gap-3 p-4">
-                  {/* Expand/collapse button for cohort mode with completion data */}
-                  {hasCompletionData ? (
+                  {/* Expand/collapse button for cohort mode (show even without completion data) */}
+                  {isCohortMode ? (
                     <button
                       type="button"
                       onClick={() => toggleTaskExpanded(task.label)}
@@ -491,7 +491,7 @@ export function DayEditor({
                   {/* Task Actions Group - badges and Focus toggle */}
                   <div className="flex items-center gap-1">
                     {/* Cohort completion badge */}
-                    {hasCompletionData && (
+                    {isCohortMode && (
                       <span
                         className={cn(
                           "shrink-0 text-xs font-medium px-2 py-0.5 rounded-full",
@@ -561,7 +561,7 @@ export function DayEditor({
                 </div>
 
                 {/* Expanded member breakdown (cohort mode only) */}
-                {hasCompletionData && isTaskExpanded && (
+                {isCohortMode && isTaskExpanded && (
                   <div className="border-t border-[#e1ddd8] dark:border-[#262b35] px-4 pb-4">
                     {/* Progress bar */}
                     <div className="pt-3 pb-2">
