@@ -305,6 +305,8 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
         const hasTaskChanges = JSON.stringify(originalTasks) !== JSON.stringify(pendingTasks);
         const isNewWeek = change.httpMethod === 'POST';
         const hasTasks = pendingTasks.length > 0;
+        const isClientWeek = change.viewContext === 'client';
+        const isCohortWeek = change.viewContext === 'cohort';
         
         // Extract cohort-specific flags
         const createCohortContentAfter = change.pendingData._createCohortContentAfter as boolean;
@@ -321,9 +323,16 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
         
         // Include distribution flags if:
         // - Weekly tasks changed (add OR remove), OR
-        // - It's a new week with tasks
+        // - It's a new week with tasks, OR
+        // - It's a CLIENT week with tasks (always distribute to ensure sync works)
+        // - It's a COHORT week with tasks (always distribute for cohort sync)
         // This ensures distribution happens when tasks are added, modified, OR cleared
-        if (hasTaskChanges || (isNewWeek && hasTasks)) {
+        const shouldDistribute = hasTaskChanges || 
+          (isNewWeek && hasTasks) || 
+          (isClientWeek && hasTasks) ||
+          (isCohortWeek && hasTasks);
+          
+        if (shouldDistribute) {
           body.distributeTasksNow = true;
           // Different APIs use different flag names for overwrite
           body.overwriteExisting = true; // Used by client weeks API
@@ -335,6 +344,9 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
           hasTaskChanges,
           isNewWeek,
           hasTasks,
+          isClientWeek,
+          isCohortWeek,
+          shouldDistribute,
           distributeTasksNow: body.distributeTasksNow,
           originalTasksCount: originalTasks.length,
           pendingTasksCount: pendingTasks.length,

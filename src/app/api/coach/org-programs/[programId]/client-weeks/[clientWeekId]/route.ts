@@ -66,16 +66,30 @@ export async function PATCH(
     const { programId, clientWeekId } = await params;
     const body = await request.json();
 
+    // DEBUG: Log incoming request
+    console.log(`[COACH_CLIENT_WEEK_PATCH] Request received:`, {
+      programId,
+      clientWeekId,
+      distributeTasksNow: body.distributeTasksNow,
+      overwriteExisting: body.overwriteExisting,
+      syncToClient: body.syncToClient,
+      distribution: body.distribution,
+      weeklyTasksProvided: body.weeklyTasks !== undefined,
+      weeklyTasksCount: body.weeklyTasks?.length ?? 0,
+    });
+
     // Verify program exists and belongs to this org
     const programDoc = await adminDb.collection('programs').doc(programId).get();
     if (!programDoc.exists || programDoc.data()?.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
+    const programData = programDoc.data();
 
     const clientWeekDoc = await adminDb.collection('client_program_weeks').doc(clientWeekId).get();
     if (!clientWeekDoc.exists || clientWeekDoc.data()?.programId !== programId) {
       return NextResponse.json({ error: 'Client week not found' }, { status: 404 });
     }
+    const existingClientWeek = clientWeekDoc.data();
 
     // Build update object (only include provided fields)
     const updateData: Record<string, unknown> = {
@@ -121,13 +135,21 @@ export async function PATCH(
     // Distribute tasks to client days if requested
     // Note: We run distribution even with empty tasks to clear week-sourced tasks from days
     let distributionResult = null;
+    const clientWeekData = savedDoc.data() as ClientProgramWeek;
+    const enrollmentId = clientWeekData.enrollmentId;
+    
+    console.log(`[COACH_CLIENT_WEEK_PATCH] Distribution check:`, {
+      distributeTasksNow: body.distributeTasksNow,
+      enrollmentId,
+      savedWeekDistribution: clientWeekData.distribution,
+      programTaskDistribution: programData?.taskDistribution,
+      weeklyTasksCount: clientWeekData.weeklyTasks?.length ?? 0,
+    });
+    
     if (body.distributeTasksNow === true) {
       try {
-        const clientWeekData = savedDoc.data() as ClientProgramWeek;
-        const enrollmentId = clientWeekData.enrollmentId;
-        
         if (enrollmentId) {
-          const programData = (await adminDb.collection('programs').doc(programId).get()).data();
+          console.log(`[COACH_CLIENT_WEEK_PATCH] Calling distributeClientWeeklyTasksToDays...`);
           distributionResult = await distributeClientWeeklyTasksToDays(
             programId,
             clientWeekId,
@@ -137,21 +159,32 @@ export async function PATCH(
               programTaskDistribution: programData?.taskDistribution,
             }
           );
-          console.log(`[COACH_CLIENT_WEEK_PATCH] Distributed tasks: ${JSON.stringify(distributionResult)}`);
+          console.log(`[COACH_CLIENT_WEEK_PATCH] Distribution result: ${JSON.stringify(distributionResult)}`);
+        } else {
+          console.warn(`[COACH_CLIENT_WEEK_PATCH] No enrollmentId found, skipping distribution`);
         }
       } catch (distErr) {
         console.error('[COACH_CLIENT_WEEK_PATCH] Failed to distribute tasks:', distErr);
       }
+    } else {
+      console.log(`[COACH_CLIENT_WEEK_PATCH] Skipping distribution (distributeTasksNow=${body.distributeTasksNow})`);
     }
 
     // 2-way sync: Sync if weekly tasks were updated OR distribution happened
     let syncResult = null;
-    if ((distributionResult || body.weeklyTasks !== undefined) && body.syncToClient !== false) {
+    const shouldSync = (distributionResult || body.weeklyTasks !== undefined) && body.syncToClient !== false;
+    
+    console.log(`[COACH_CLIENT_WEEK_PATCH] Sync check:`, {
+      shouldSync,
+      hasDistributionResult: !!distributionResult,
+      weeklyTasksProvided: body.weeklyTasks !== undefined,
+      syncToClient: body.syncToClient,
+    });
+    
+    if (shouldSync) {
       try {
-        const clientWeekData = savedDoc.data() as ClientProgramWeek;
-        const enrollmentId = clientWeekData.enrollmentId;
-        
         if (enrollmentId) {
+          console.log(`[COACH_CLIENT_WEEK_PATCH] Calling syncProgramTasksForDateRange...`);
           const { userId } = await requireCoachWithOrg();
           syncResult = await syncProgramTasksForDateRange(programId, {
             mode: 'override-program-sourced', // Per-client edits use override mode
@@ -159,12 +192,16 @@ export async function PATCH(
             coachUserId: userId,
             specificEnrollmentId: enrollmentId, // Only sync for this client
           });
-          console.log(`[COACH_CLIENT_WEEK_PATCH] Synced tasks to client: ${JSON.stringify(syncResult)}`);
+          console.log(`[COACH_CLIENT_WEEK_PATCH] Sync result: ${JSON.stringify(syncResult)}`);
+        } else {
+          console.warn(`[COACH_CLIENT_WEEK_PATCH] No enrollmentId found, skipping sync`);
         }
       } catch (syncErr) {
         console.error('[COACH_CLIENT_WEEK_PATCH] Failed to sync tasks to client:', syncErr);
         // Don't fail the whole request, just log the error
       }
+    } else {
+      console.log(`[COACH_CLIENT_WEEK_PATCH] Skipping sync (shouldSync=${shouldSync})`);
     }
 
     return NextResponse.json({

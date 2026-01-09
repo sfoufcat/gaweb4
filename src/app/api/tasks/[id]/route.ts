@@ -5,6 +5,12 @@ import { updateAlignmentForToday } from '@/lib/alignment';
 import { sendTasksCompletedNotification } from '@/lib/notifications';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { updateLastActivity } from '@/lib/analytics/lastActivity';
+import { 
+  findCohortTaskStateByTaskTitle, 
+  updateMemberTaskState, 
+  getProgramCompletionThreshold,
+  findCohortTaskStateByProgramTaskId 
+} from '@/lib/cohort-task-state';
 import type { Task, UpdateTaskRequest, ClerkPublicMetadata } from '@/types';
 
 /**
@@ -135,55 +141,55 @@ export async function PATCH(
     // Cohort task state update: If a program-sourced task completion status changed
     if (body.status !== undefined && isProgramSourced && existingTask.programEnrollmentId) {
       const isCompleted = body.status === 'completed';
-      // Fire and forget - don't block the response
-      import('@/lib/cohort-task-state').then(async ({ findCohortTaskStateByProgramTaskId, findCohortTaskStateByTaskTitle, updateMemberTaskState, getProgramCompletionThreshold }) => {
-        try {
-          // Get the enrollment to check if it's a cohort enrollment
-          const enrollmentDoc = await adminDb.collection('program_enrollments').doc(existingTask.programEnrollmentId!).get();
-          if (!enrollmentDoc.exists) return;
-
+      
+      try {
+        // Get the enrollment to check if it's a cohort enrollment
+        const enrollmentDoc = await adminDb.collection('program_enrollments').doc(existingTask.programEnrollmentId!).get();
+        
+        if (enrollmentDoc.exists) {
           const enrollment = enrollmentDoc.data();
-          if (!enrollment?.cohortId) return; // Not a cohort enrollment
+          
+          if (enrollment?.cohortId) { // Only if part of a cohort
+            // Find the CohortTaskState for this task
+            // Prefer programTaskId (robust) with title fallback (backward compat)
+            let cohortState = null;
 
-          // Find the CohortTaskState for this task
-          // Prefer programTaskId (robust) with title fallback (backward compat)
-          let cohortState = null;
+            if (existingTask.programTaskId) {
+              cohortState = await findCohortTaskStateByProgramTaskId(
+                enrollment.cohortId,
+                existingTask.programTaskId,
+                existingTask.date
+              );
+            }
 
-          if (existingTask.programTaskId) {
-            cohortState = await findCohortTaskStateByProgramTaskId(
-              enrollment.cohortId,
-              existingTask.programTaskId,
-              existingTask.date
-            );
+            // Fallback to title-based matching for tasks without programTaskId
+            if (!cohortState) {
+              cohortState = await findCohortTaskStateByTaskTitle(
+                enrollment.cohortId,
+                existingTask.title,
+                existingTask.date,
+                existingTask.programDayIndex || 0
+              );
+            }
+
+            if (cohortState) {
+              const threshold = await getProgramCompletionThreshold(enrollment.programId);
+              await updateMemberTaskState(
+                cohortState.id,
+                userId,
+                isCompleted,
+                id,
+                threshold
+              );
+              console.log(`[COHORT_STATE] Updated member ${userId} task completion for cohort ${enrollment.cohortId}`);
+            } else {
+              console.log(`[COHORT_STATE] No cohort state found for task: ${existingTask.title} (day ${existingTask.programDayIndex})`);
+            }
           }
-
-          // Fallback to title-based matching for tasks without programTaskId
-          if (!cohortState) {
-            cohortState = await findCohortTaskStateByTaskTitle(
-              enrollment.cohortId,
-              existingTask.title,
-              existingTask.date,
-              existingTask.programDayIndex || 0
-            );
-          }
-
-          if (cohortState) {
-            const threshold = await getProgramCompletionThreshold(enrollment.programId);
-            await updateMemberTaskState(
-              cohortState.id,
-              userId,
-              isCompleted,
-              id,
-              threshold
-            );
-            console.log(`[COHORT_STATE] Updated member ${userId} task completion for cohort ${enrollment.cohortId}`);
-          }
-        } catch (err) {
-          console.error('[COHORT_STATE] Failed to update cohort task state:', err);
         }
-      }).catch(err => {
-        console.error('[COHORT_STATE] Failed to import module:', err);
-      });
+      } catch (err) {
+        console.error('[COHORT_STATE] Failed to update cohort task state:', err);
+      }
     }
 
     // Update alignment when a task is moved to focus for today (org-scoped)

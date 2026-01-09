@@ -2338,6 +2338,14 @@ export async function syncProgramTasksToClientDay(
   const { userId, programEnrollmentId, date, mode, coachUserId, forceDayIndex } = params;
   const errors: string[] = [];
   
+  console.log(`[SYNC_TO_CLIENT] syncProgramTasksToClientDay called:`, {
+    userId,
+    programEnrollmentId,
+    date,
+    mode,
+    forceDayIndex,
+  });
+  
   // 1. Get the enrollment
   const enrollmentDoc = await adminDb.collection('program_enrollments').doc(programEnrollmentId).get();
   if (!enrollmentDoc.exists) {
@@ -2429,8 +2437,15 @@ export async function syncProgramTasksToClientDay(
   let sourceProgramDayId: string | null = null;
   let foundExplicitDay = false; // Track if we found an explicit day document (even if empty)
   
+  console.log(`[SYNC_TO_CLIENT] Looking for tasks for day ${dayIndex}:`, {
+    programType: program.type,
+    enrollmentId: programEnrollmentId,
+    cohortId: enrollment.cohortId,
+  });
+  
   // For 1:1 programs, check client-specific day first
   if (program.type === 'individual') {
+    console.log(`[SYNC_TO_CLIENT] Program is individual, checking client_program_days for enrollment ${programEnrollmentId}, dayIndex ${dayIndex}`);
     const clientDay = await getClientProgramDay(programEnrollmentId, dayIndex);
     if (clientDay) {
       // Document EXISTS - use it even if tasks empty (coach explicitly cleared them)
@@ -2438,11 +2453,19 @@ export async function syncProgramTasksToClientDay(
       foundExplicitDay = true;
       sourceType = 'program_day';
       sourceProgramDayId = clientDay.id;
-      console.log(`[SYNC_TO_CLIENT] Found client_program_day for day ${dayIndex}: id=${clientDay.id}, tasks=${tasksForDay.length}, isPrimary flags: ${tasksForDay.map(t => t.isPrimary).join(',')}`);
-      console.log(`[SYNC_TO_CLIENT] Client day takes precedence over week-level distribution for this enrollment`);
+      console.log(`[SYNC_TO_CLIENT] FOUND client_program_day:`, {
+        dayIndex,
+        clientDayId: clientDay.id,
+        tasksCount: tasksForDay.length,
+        taskLabels: tasksForDay.map(t => t.label),
+        isPrimaryFlags: tasksForDay.map(t => t.isPrimary),
+        sources: tasksForDay.map(t => t.source),
+      });
     } else {
-      console.log(`[SYNC_TO_CLIENT] No client_program_day exists for day ${dayIndex}, will check week-level tasks`);
+      console.log(`[SYNC_TO_CLIENT] NO client_program_day exists for day ${dayIndex}, will check week-level tasks`);
     }
+  } else {
+    console.log(`[SYNC_TO_CLIENT] Program is ${program.type}, skipping client_program_days check`);
   }
 
   // For group programs with cohortId, check cohort-specific day first
@@ -2503,6 +2526,16 @@ export async function syncProgramTasksToClientDay(
       }
     }
   }
+  
+  // Log final task source decision
+  console.log(`[SYNC_TO_CLIENT] Final task source for day ${dayIndex}:`, {
+    foundExplicitDay,
+    sourceType,
+    sourceWeekId,
+    sourceProgramDayId,
+    tasksCount: tasksForDay.length,
+    taskLabels: tasksForDay.map(t => t.label).join(', '),
+  });
   
   // 6. Get existing tasks for this user on this date FIRST
   // (needed for override mode deletion before early return)

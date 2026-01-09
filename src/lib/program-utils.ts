@@ -785,6 +785,21 @@ export async function distributeClientWeeklyTasksToDays(
   const startDay = clientWeekData.startDayIndex;
   const endDay = clientWeekData.endDayIndex;
   
+  // DEBUG: Log distribution decision chain
+  console.log(`[PROGRAM_UTILS] distributeClientWeeklyTasksToDays called:`, {
+    clientWeekId,
+    enrollmentId,
+    programId,
+    weekNumber: clientWeekData.weekNumber,
+    clientWeekDistribution: clientWeekData.distribution,
+    programTaskDistribution,
+    finalDistribution: distribution,
+    weeklyTasksCount: weeklyTasks.length,
+    startDayIndex: startDay,
+    endDayIndex: endDay,
+    overwriteExisting,
+  });
+  
   if (startDay === undefined || endDay === undefined) {
     console.error('[PROGRAM_UTILS] Client week missing startDayIndex or endDayIndex');
     return { created: 0, updated: 0, skipped: 0 };
@@ -816,8 +831,11 @@ export async function distributeClientWeeklyTasksToDays(
     updated = 0,
     skipped = 0;
 
+  console.log(`[PROGRAM_UTILS] Distribution mode: "${distribution}", existing days in range: ${existingDays.size}, days ${startDay}-${endDay}`);
+
   if (distribution === 'repeat-daily') {
     // Copy all tasks to each day (with smart merging)
+    console.log(`[PROGRAM_UTILS] Using REPEAT-DAILY mode: copying ${weeklyTasks.length} tasks to all ${daysInWeek} days`);
     for (let d = startDay; d <= endDay; d++) {
       const existing = existingDays.get(d);
       const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
@@ -868,9 +886,9 @@ export async function distributeClientWeeklyTasksToDays(
     }
   } else {
     // Spread: distribute tasks evenly across days (with smart merging)
+    console.log(`[PROGRAM_UTILS] Using SPREAD mode: distributing ${weeklyTasks.length} tasks evenly across ${daysInWeek} days`);
     const spreadDays = calculateSpreadDayIndices(weeklyTasks.length, startDay, endDay);
-
-    console.log(`[PROGRAM_UTILS] Client spread distribution: ${weeklyTasks.length} tasks over days ${spreadDays.join(', ')}`);
+    console.log(`[PROGRAM_UTILS] Spread calculation: tasks will go on days ${spreadDays.join(', ')}`);
 
     // Process ALL days in the week (to clear old week tasks from days that won't get new tasks)
     for (let d = startDay; d <= endDay; d++) {

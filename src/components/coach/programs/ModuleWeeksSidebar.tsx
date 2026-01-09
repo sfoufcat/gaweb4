@@ -31,13 +31,6 @@ import {
   Save,
   X,
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 // Selection types (same as ProgramSidebarNav for compatibility)
 export type SidebarSelection =
@@ -205,6 +198,102 @@ function DeleteModuleModal({
       </motion.div>
     </motion.div>,
     document.body
+  );
+}
+
+/**
+ * Simple Tools Dropdown - replaces Radix DropdownMenu to avoid compatibility issues
+ * with framer-motion Reorder components
+ */
+interface ToolsDropdownProps {
+  isSyncingTasks: boolean;
+  isClearingTasks: boolean;
+  onSyncTasks: () => void;
+  onClearTasks: () => void;
+}
+
+function ToolsDropdown({ isSyncingTasks, isClearingTasks, onSyncTasks, onClearTasks }: ToolsDropdownProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Close on click outside
+  React.useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  // Close on Escape
+  React.useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
+
+  const handleSyncClick = () => {
+    setIsOpen(false);
+    onSyncTasks();
+  };
+
+  const handleClearClick = () => {
+    setIsOpen(false);
+    onClearTasks();
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-1 text-xs text-[#5f5a55] dark:text-[#8a8f9c] hover:text-[#3d3a37] dark:hover:text-[#e8e6e3] transition-colors"
+        disabled={isSyncingTasks || isClearingTasks}
+      >
+        {isSyncingTasks || isClearingTasks ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <Settings2 className="h-3 w-3" />
+        )}
+        <span>Tools</span>
+        <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-44 z-50 bg-white dark:bg-[#1a1f28] rounded-xl border border-[#e8e4df] dark:border-[#262b35] shadow-lg p-1.5">
+          <button
+            type="button"
+            onClick={handleSyncClick}
+            disabled={isSyncingTasks}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-[#1a1a1a] dark:text-[#f5f5f8]"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Sync from Template
+          </button>
+          <button
+            type="button"
+            onClick={handleClearClick}
+            disabled={isClearingTasks}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-red-600"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Clear Future Tasks
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1524,41 +1613,12 @@ export function ModuleWeeksSidebar({
 
             {/* Tools Dropdown - right side, only when client/cohort selected */}
             {(isClientView || isCohortView) && (enrollmentId || cohortId) && (
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 text-xs text-[#5f5a55] dark:text-[#8a8f9c] hover:text-[#3d3a37] dark:hover:text-[#e8e6e3] transition-colors"
-                    disabled={isSyncingTasks || isClearingTasks}
-                  >
-                    {isSyncingTasks || isClearingTasks ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Settings2 className="h-3 w-3" />
-                    )}
-                    <span>Tools</span>
-                    <ChevronDown className="h-3 w-3" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuItem
-                    onClick={handleSyncTasks}
-                    disabled={isSyncingTasks}
-                    className="cursor-pointer text-xs"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5 mr-2" />
-                    Sync from Template
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleShowClearConfirm}
-                    disabled={isClearingTasks}
-                    className="cursor-pointer text-xs text-red-600 focus:text-red-600"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-2" />
-                    Clear Future Tasks
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <ToolsDropdown
+                isSyncingTasks={isSyncingTasks}
+                isClearingTasks={isClearingTasks}
+                onSyncTasks={handleSyncTasks}
+                onClearTasks={handleShowClearConfirm}
+              />
             )}
           </div>
         </div>
