@@ -10,9 +10,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import { syncProgramTasksForDateRange } from '@/lib/program-engine';
+import { syncProgramTasksToClientDay, calculateDateForProgramDay } from '@/lib/program-engine';
 import { distributeClientWeeklyTasksToDays } from '@/lib/program-utils';
-import type { ClientProgramWeek } from '@/types';
+import type { ClientProgramWeek, Program, ProgramEnrollment } from '@/types';
 
 export async function GET(
   request: NextRequest,
@@ -170,31 +170,67 @@ export async function PATCH(
       console.log(`[COACH_CLIENT_WEEK_PATCH] Skipping distribution (distributeTasksNow=${body.distributeTasksNow})`);
     }
 
-    // 2-way sync: Sync if weekly tasks were updated OR distribution happened
-    let syncResult = null;
-    const shouldSync = (distributionResult || body.weeklyTasks !== undefined) && body.syncToClient !== false;
-    
+    // Sync the specific days of the edited week to client's tasks collection
+    // This ensures tasks appear in the client's Daily Focus regardless of which week is being edited
+    let syncResult: { tasksCreated: number; errors: string[] } | null = null;
+    const shouldSync = distributionResult && body.syncToClient !== false;
+
     console.log(`[COACH_CLIENT_WEEK_PATCH] Sync check:`, {
       shouldSync,
       hasDistributionResult: !!distributionResult,
-      weeklyTasksProvided: body.weeklyTasks !== undefined,
       syncToClient: body.syncToClient,
+      startDayIndex: clientWeekData.startDayIndex,
+      endDayIndex: clientWeekData.endDayIndex,
     });
-    
+
     if (shouldSync) {
       try {
-        if (enrollmentId) {
-          console.log(`[COACH_CLIENT_WEEK_PATCH] Calling syncProgramTasksForDateRange...`);
-          const { userId } = await requireCoachWithOrg();
-          syncResult = await syncProgramTasksForDateRange(programId, {
-            mode: 'override-program-sourced', // Per-client edits use override mode
-            horizonDays: 7,
-            coachUserId: userId,
-            specificEnrollmentId: enrollmentId, // Only sync for this client
-          });
-          console.log(`[COACH_CLIENT_WEEK_PATCH] Sync result: ${JSON.stringify(syncResult)}`);
+        const { startDayIndex, endDayIndex } = clientWeekData;
+        if (enrollmentId && startDayIndex !== undefined && endDayIndex !== undefined) {
+          console.log(`[COACH_CLIENT_WEEK_PATCH] Syncing days ${startDayIndex}-${endDayIndex} to client tasks...`);
+          const { userId: coachUserId } = await requireCoachWithOrg();
+
+          // Get enrollment details for date calculation
+          const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
+          const enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
+
+          let totalTasksCreated = 0;
+          const errors: string[] = [];
+
+          // Sync each day in the week
+          for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+            // Calculate the calendar date for this dayIndex
+            const dateForDay = calculateDateForProgramDay(
+              enrollment,
+              programData as Program,
+              null, // No cohort for 1:1 programs
+              dayIndex
+            );
+
+            if (!dateForDay) {
+              console.warn(`[COACH_CLIENT_WEEK_PATCH] Could not calculate date for day ${dayIndex}`);
+              continue;
+            }
+
+            const result = await syncProgramTasksToClientDay({
+              userId: enrollment.userId,
+              programEnrollmentId: enrollmentId,
+              date: dateForDay,
+              mode: 'override-program-sourced',
+              coachUserId,
+              forceDayIndex: dayIndex,
+            });
+
+            totalTasksCreated += result.tasksCreated;
+            if (result.errors) {
+              errors.push(...result.errors);
+            }
+          }
+
+          syncResult = { tasksCreated: totalTasksCreated, errors };
+          console.log(`[COACH_CLIENT_WEEK_PATCH] Sync complete: ${totalTasksCreated} tasks created for days ${startDayIndex}-${endDayIndex}`);
         } else {
-          console.warn(`[COACH_CLIENT_WEEK_PATCH] No enrollmentId found, skipping sync`);
+          console.warn(`[COACH_CLIENT_WEEK_PATCH] Missing enrollmentId or day indices, skipping sync`);
         }
       } catch (syncErr) {
         console.error('[COACH_CLIENT_WEEK_PATCH] Failed to sync tasks to client:', syncErr);

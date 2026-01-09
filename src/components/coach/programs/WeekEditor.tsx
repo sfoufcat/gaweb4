@@ -104,7 +104,7 @@ function SortableWeeklyTask({ task, index, id, showCompletionStatus, onTogglePri
       </span>
 
       {/* Task Actions Group - badges and Focus toggle */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1">
         {/* Deleted by Client Indicator */}
         {task.deletedByClient && (
           <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full border border-red-200 dark:border-red-800">
@@ -609,6 +609,7 @@ export function WeekEditor({
   const addTask = () => {
     if (!newTask.trim()) return;
     const task: ProgramTaskTemplate = {
+      id: crypto.randomUUID(),
       label: newTask.trim(),
       isPrimary: true,
       type: 'task',

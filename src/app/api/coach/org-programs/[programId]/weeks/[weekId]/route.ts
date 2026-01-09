@@ -12,7 +12,28 @@ import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { recalculateWeekDayIndices, distributeWeeklyTasksToDays, syncClientProgramDaysFromWeekDistribution } from '@/lib/program-utils';
 import { syncProgramTasksForDateRange, type SyncMode } from '@/lib/program-engine';
-import type { ProgramWeek } from '@/types';
+import type { ProgramWeek, ProgramTaskTemplate } from '@/types';
+
+/**
+ * Process tasks to ensure each has a unique ID for robust matching.
+ * Preserves existing IDs, generates new UUIDs for tasks without IDs.
+ * Also strips runtime completion data that should never be stored in templates.
+ */
+function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramTaskTemplate[] {
+  if (!tasks || !Array.isArray(tasks)) return [];
+  return tasks.map((task) => {
+    // Strip runtime completion data - should never be stored in templates
+    const { completed, completedAt, taskId, ...cleanTask } = task as ProgramTaskTemplate & {
+      completed?: boolean;
+      completedAt?: string;
+      taskId?: string;
+    };
+    return {
+      ...cleanTask,
+      id: task.id || crypto.randomUUID(),
+    };
+  });
+}
 
 export async function GET(
   request: NextRequest,
@@ -97,7 +118,7 @@ export async function PATCH(
     if (body.weekNumber !== undefined) updateData.weekNumber = body.weekNumber;
     if (body.startDayIndex !== undefined) updateData.startDayIndex = body.startDayIndex;
     if (body.endDayIndex !== undefined) updateData.endDayIndex = body.endDayIndex;
-    if (body.weeklyTasks !== undefined) updateData.weeklyTasks = body.weeklyTasks || null;
+    if (body.weeklyTasks !== undefined) updateData.weeklyTasks = processTasksWithIds(body.weeklyTasks);
     if (body.weeklyHabits !== undefined) updateData.weeklyHabits = body.weeklyHabits || null;
     if (body.currentFocus !== undefined) updateData.currentFocus = body.currentFocus || null;
     if (body.notes !== undefined) updateData.notes = body.notes || null;

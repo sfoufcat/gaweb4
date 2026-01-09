@@ -6,8 +6,9 @@ import { AdminArticlesSection } from './AdminArticlesSection';
 import { AdminCoursesSection } from './AdminCoursesSection';
 import { AdminDownloadsSection } from './AdminDownloadsSection';
 import { AdminLinksSection } from './AdminLinksSection';
+import { AdminQuestionnairesSection } from './AdminQuestionnairesSection';
 
-type DiscoverSubTab = 'events' | 'articles' | 'courses' | 'downloads' | 'links';
+type DiscoverSubTab = 'events' | 'articles' | 'courses' | 'downloads' | 'links' | 'questionnaires';
 
 interface AdminDiscoverTabProps {
   /** Base API path for multi-tenancy (e.g., '/api/coach/org-discover' for coaches) */
@@ -23,7 +24,7 @@ export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover', initialS
   
   // Restore sub-tab selection from URL param on mount
   useEffect(() => {
-    if (initialSubTab && ['events', 'articles', 'courses', 'downloads', 'links'].includes(initialSubTab)) {
+    if (initialSubTab && ['events', 'articles', 'courses', 'downloads', 'links', 'questionnaires'].includes(initialSubTab)) {
       setActiveSubTab(initialSubTab as DiscoverSubTab);
     }
   }, [initialSubTab]);
@@ -79,6 +80,15 @@ export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover', initialS
         </svg>
       ),
     },
+    {
+      id: 'questionnaires',
+      label: 'Questionnaires',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+        </svg>
+      ),
+    },
   ];
 
   return (
@@ -88,7 +98,7 @@ export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover', initialS
         <div>
           <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Discover Content</h2>
           <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-            Manage events, articles, courses, downloads, and links for programs
+            Manage events, articles, courses, downloads, links, and questionnaires for programs
           </p>
         </div>
       </div>
@@ -118,6 +128,7 @@ export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover', initialS
         {activeSubTab === 'courses' && <AdminCoursesSection apiEndpoint={`${apiBasePath}/courses`} />}
         {activeSubTab === 'downloads' && <AdminDownloadsSection apiEndpoint={`${apiBasePath}/downloads`} />}
         {activeSubTab === 'links' && <AdminLinksSection apiEndpoint={`${apiBasePath}/links`} />}
+        {activeSubTab === 'questionnaires' && <AdminQuestionnairesSection apiEndpoint="/api/coach/questionnaires" />}
       </div>
     </div>
   );

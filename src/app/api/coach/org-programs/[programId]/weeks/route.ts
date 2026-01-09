@@ -9,9 +9,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { ProgramWeek } from '@/types';
+import type { ProgramWeek, ProgramTaskTemplate } from '@/types';
 import { distributeWeeklyTasksToDays } from '@/lib/program-utils';
 import { syncProgramTasksForDateRange } from '@/lib/program-engine';
+
+/**
+ * Process tasks to ensure each has a unique ID for robust matching.
+ * Preserves existing IDs, generates new UUIDs for tasks without IDs.
+ * Also strips runtime completion data that should never be stored in templates.
+ */
+function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramTaskTemplate[] {
+  if (!tasks || !Array.isArray(tasks)) return [];
+  return tasks.map((task) => {
+    // Strip runtime completion data - should never be stored in templates
+    const { completed, completedAt, taskId, ...cleanTask } = task as ProgramTaskTemplate & {
+      completed?: boolean;
+      completedAt?: string;
+      taskId?: string;
+    };
+    return {
+      ...cleanTask,
+      id: task.id || crypto.randomUUID(),
+    };
+  });
+}
 
 export async function GET(
   request: NextRequest,
@@ -142,7 +163,7 @@ export async function POST(
       theme: body.theme?.trim() || undefined,
       startDayIndex: body.startDayIndex,
       endDayIndex: body.endDayIndex,
-      weeklyTasks: body.weeklyTasks || undefined,
+      weeklyTasks: processTasksWithIds(body.weeklyTasks),
       weeklyHabits: body.weeklyHabits || undefined,
       weeklyPrompt: body.weeklyPrompt?.trim() || undefined,
       distribution: body.distribution || 'spread', // Default: spread tasks evenly across days

@@ -2256,6 +2256,9 @@ export interface SquadCallScheduledJob {
 // Poll Types (re-export from poll.ts)
 export * from './poll';
 
+// Questionnaire Types (re-export from questionnaire.ts)
+export * from './questionnaire';
+
 // =============================================================================
 // QUIZ CMS TYPES
 // =============================================================================
