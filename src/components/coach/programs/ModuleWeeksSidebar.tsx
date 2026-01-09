@@ -494,6 +494,13 @@ export function ModuleWeeksSidebar({
   // This runs once when displayWeeks are calculated and relevant data is available
   const hasInitializedExpansion = React.useRef(false);
   const previousViewStatus = React.useRef(viewStatus);
+  
+  // Use a ref for onSelect to avoid having it in the dependency array
+  // This prevents infinite loops when onSelect reference changes
+  const onSelectRef = React.useRef(onSelect);
+  React.useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
 
   // Reset expansion initialization when view mode changes (template <-> client <-> cohort)
   React.useEffect(() => {
@@ -510,31 +517,35 @@ export function ModuleWeeksSidebar({
     if (!currentDayIndex) {
       // Template mode: default to week 1
       if (viewStatus === 'template') {
+        // Always mark as initialized in template mode, only expand if needed
+        hasInitializedExpansion.current = true;
         if (expandedWeeks.size === 0) {
           setExpandedWeeks(new Set([1]));
-          hasInitializedExpansion.current = true;
         }
         return;
       }
 
       // Completed cohort/enrollment: show last week
       if (viewStatus === 'completed') {
+        hasInitializedExpansion.current = true;
         const lastWeek = displayWeeks[displayWeeks.length - 1];
         setExpandedWeeks(new Set([lastWeek.weekNum]));
-        hasInitializedExpansion.current = true;
         return;
       }
 
       // Upcoming cohort/enrollment: show Week 1
       if (viewStatus === 'upcoming') {
-        setExpandedWeeks(new Set([1]));
         hasInitializedExpansion.current = true;
+        setExpandedWeeks(new Set([1]));
         return;
       }
 
       // Active cohort/enrollment but currentDayIndex not yet calculated: wait
       return;
     }
+
+    // Mark as initialized before any state changes to prevent re-triggering
+    hasInitializedExpansion.current = true;
 
     // Find the week containing the current day
     const currentWeek = displayWeeks.find(
@@ -554,21 +565,18 @@ export function ModuleWeeksSidebar({
         });
       }
 
-      // Auto-select the current day
-      onSelect({
+      // Auto-select the current day using ref to avoid dependency issues
+      onSelectRef.current({
         type: 'day',
         dayIndex: currentDayIndex,
         weekId: currentWeek.storedWeekId,
         moduleId: currentWeek.moduleId,
       });
-
-      hasInitializedExpansion.current = true;
     } else {
       // currentDayIndex is outside program range - default to week 1
       setExpandedWeeks(new Set([1]));
-      hasInitializedExpansion.current = true;
     }
-  }, [currentDayIndex, displayWeeks, expandedWeeks.size, onSelect, viewStatus]);
+  }, [currentDayIndex, displayWeeks, viewStatus]); // Removed expandedWeeks.size and onSelect
 
   // Sorted modules for rendering
   const sortedModules = useMemo(() =>

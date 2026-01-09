@@ -470,8 +470,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!program.isActive || !program.isPublished) {
-      return NextResponse.json({ error: 'Program is not available' }, { status: 400 });
+    // For coach enrollment: only require isActive (coaches can enroll in private programs)
+    // For public enrollment: require both isActive and isPublished
+    if (!program.isActive) {
+      return NextResponse.json({ error: 'Program is not active' }, { status: 400 });
+    }
+
+    if (!isCoachEnrollment && !program.isPublished) {
+      return NextResponse.json({ error: 'Program is not available for public enrollment' }, { status: 400 });
     }
 
     // Get cohort for group programs

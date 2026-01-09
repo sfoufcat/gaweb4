@@ -72,14 +72,25 @@ interface ConnectedModuleWeeksSidebarProps extends React.ComponentProps<typeof M
 function ConnectedModuleWeeksSidebar({ onSaveSuccess, ...props }: ConnectedModuleWeeksSidebarProps) {
   const context = useProgramEditorOptional();
   
+  // Use refs to store callbacks to avoid dependency on entire context
+  const saveAllChangesRef = React.useRef(context?.saveAllChanges);
+  const onSaveSuccessRef = React.useRef(onSaveSuccess);
+  
+  // Keep refs updated
+  React.useEffect(() => {
+    saveAllChangesRef.current = context?.saveAllChanges;
+    onSaveSuccessRef.current = onSaveSuccess;
+  }, [context?.saveAllChanges, onSaveSuccess]);
+  
+  // Stable callback that uses refs
   const handleSaveAll = React.useCallback(async () => {
-    if (!context?.saveAllChanges) return;
-    const result = await context.saveAllChanges();
+    if (!saveAllChangesRef.current) return;
+    const result = await saveAllChangesRef.current();
     // Refresh data after successful save
-    if (result.success && onSaveSuccess) {
-      await onSaveSuccess();
+    if (result.success && onSaveSuccessRef.current) {
+      await onSaveSuccessRef.current();
     }
-  }, [context, onSaveSuccess]);
+  }, []); // Empty deps - uses refs
   
   return (
     <ModuleWeeksSidebar
@@ -673,6 +684,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       return businessDays > 0 ? businessDays : undefined;
     }
   }, [cohortViewContext, selectedProgram?.lengthDays, selectedProgram?.includeWeekends]);
+
+  // Memoized current cohort for sidebar to prevent re-render loops
+  const sidebarCurrentCohort = useMemo(() => {
+    if (cohortViewContext.mode !== 'cohort') return undefined;
+    return programCohorts.find(c => c.id === cohortViewContext.cohortId);
+  }, [cohortViewContext, programCohorts]);
 
   // Memoized sidebar callbacks to prevent re-render loops
   const handleFillWithAI = useCallback(() => {
@@ -3614,7 +3631,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               enrollmentId={clientViewContext.mode === 'client' ? clientViewContext.enrollmentId : undefined}
               cohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined}
               currentEnrollment={currentEnrollment || undefined}
-              currentCohort={cohortViewContext.mode === 'cohort' ? programCohorts.find(c => c.id === cohortViewContext.cohortId) : undefined}
+              currentCohort={sidebarCurrentCohort}
               selectedCycle={selectedCycle}
               onCycleSelect={handleCycleSelect}
               onSaveSuccess={handleSaveSuccess}
