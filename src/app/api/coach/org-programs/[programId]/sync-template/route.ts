@@ -191,8 +191,8 @@ export async function POST(
             if (syncOptions.syncTheme !== false) {
               updateData.theme = templateWeek.theme || null;
             }
-            // Always sync distribution
-            updateData.distribution = templateWeek.distribution || 'spread';
+            // Don't sync distribution - let it inherit from program setting
+            // This allows each client week to fall back to the program's taskDistribution
 
             // Preserve client-specific content if requested
             if (syncOptions.preserveClientLinks) {
@@ -238,7 +238,7 @@ export async function POST(
               weeklyHabits: templateWeek.weeklyHabits || null,
               currentFocus: templateWeek.currentFocus || null,
               notes: templateWeek.notes || null,
-              distribution: templateWeek.distribution || 'spread',
+              distribution: undefined, // Let it inherit from program setting
 
               // Client-specific (start empty)
               linkedSummaryIds: [],

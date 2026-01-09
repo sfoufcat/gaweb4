@@ -534,6 +534,118 @@ export async function distributeWeeklyTasksToDays(
   return { created, updated, skipped };
 }
 
+/**
+ * Sync client_program_days with updated week task distribution.
+ *
+ * When week tasks are edited (added/deleted), this function updates any existing
+ * client_program_days to reflect the changes while preserving manually-added tasks.
+ *
+ * Smart merge logic:
+ * - Removes tasks with source: 'week' (they'll be replaced by new week tasks)
+ * - Preserves tasks with source !== 'week' (manually added by coach)
+ * - Merges new week-sourced tasks with preserved manual tasks
+ *
+ * @param programId - The program ID
+ * @param weekId - The week ID that was edited
+ * @param dayRange - The day index range covered by the week
+ * @returns Counts of updated and skipped client_program_days
+ */
+export async function syncClientProgramDaysFromWeekDistribution(
+  programId: string,
+  weekId: string,
+  dayRange: { startDayIndex: number; endDayIndex: number }
+): Promise<{ updated: number; skipped: number }> {
+  const { startDayIndex, endDayIndex } = dayRange;
+  let updated = 0;
+  let skipped = 0;
+
+  console.log(`[PROGRAM_UTILS] syncClientProgramDaysFromWeekDistribution: programId=${programId}, weekId=${weekId}, range=${startDayIndex}-${endDayIndex}`);
+
+  // 1. Get all active enrollments for this program (only individual/1:1 programs have client_program_days)
+  const enrollmentsSnapshot = await adminDb
+    .collection('program_enrollments')
+    .where('programId', '==', programId)
+    .where('status', 'in', ['active', 'upcoming'])
+    .get();
+
+  if (enrollmentsSnapshot.empty) {
+    console.log(`[PROGRAM_UTILS] No active enrollments for program ${programId}`);
+    return { updated: 0, skipped: 0 };
+  }
+
+  console.log(`[PROGRAM_UTILS] Found ${enrollmentsSnapshot.size} active enrollments to sync`);
+
+  // 2. Get the updated program_days for this week's day range
+  const programDaysSnapshot = await adminDb
+    .collection('program_days')
+    .where('programId', '==', programId)
+    .where('dayIndex', '>=', startDayIndex)
+    .where('dayIndex', '<=', endDayIndex)
+    .get();
+
+  // Build a map of dayIndex -> tasks for quick lookup
+  const programDaysTasks = new Map<number, ProgramTaskTemplate[]>();
+  programDaysSnapshot.docs.forEach(doc => {
+    const data = doc.data();
+    programDaysTasks.set(data.dayIndex, data.tasks || []);
+  });
+
+  console.log(`[PROGRAM_UTILS] Loaded program_days for ${programDaysTasks.size} days in range`);
+
+  // 3. For each enrollment, update client_program_days in the day range
+  for (const enrollmentDoc of enrollmentsSnapshot.docs) {
+    const enrollmentId = enrollmentDoc.id;
+
+    // Query client_program_days for this enrollment in the day range
+    const clientDaysSnapshot = await adminDb
+      .collection('client_program_days')
+      .where('enrollmentId', '==', enrollmentId)
+      .where('dayIndex', '>=', startDayIndex)
+      .where('dayIndex', '<=', endDayIndex)
+      .get();
+
+    if (clientDaysSnapshot.empty) {
+      // No client_program_days exist for this enrollment in this range - that's fine
+      // The sync will fall through to program_days automatically
+      skipped += (endDayIndex - startDayIndex + 1);
+      continue;
+    }
+
+    // Update each client_program_day with smart merge
+    for (const clientDayDoc of clientDaysSnapshot.docs) {
+      const clientDayData = clientDayDoc.data();
+      const dayIndex = clientDayData.dayIndex;
+      const existingTasks: ProgramTaskTemplate[] = clientDayData.tasks || [];
+
+      // Get the new week-sourced tasks from program_days
+      const newWeekTasks = programDaysTasks.get(dayIndex) || [];
+
+      // Smart merge: keep manual tasks, replace week-sourced tasks
+      const manualTasks = existingTasks.filter(t => t.source !== 'week');
+      const mergedTasks = [...manualTasks, ...newWeekTasks];
+
+      // Only update if there's an actual change
+      const existingWeekTaskCount = existingTasks.filter(t => t.source === 'week').length;
+      const newWeekTaskCount = newWeekTasks.length;
+
+      if (existingWeekTaskCount !== newWeekTaskCount ||
+          JSON.stringify(existingTasks.filter(t => t.source === 'week')) !== JSON.stringify(newWeekTasks)) {
+        await clientDayDoc.ref.update({
+          tasks: mergedTasks,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        updated++;
+        console.log(`[PROGRAM_UTILS] Updated client_program_day ${clientDayDoc.id} (enrollment=${enrollmentId}, dayIndex=${dayIndex}): kept ${manualTasks.length} manual, set ${newWeekTasks.length} week-sourced`);
+      } else {
+        skipped++;
+      }
+    }
+  }
+
+  console.log(`[PROGRAM_UTILS] syncClientProgramDaysFromWeekDistribution complete: ${updated} updated, ${skipped} skipped`);
+  return { updated, skipped };
+}
+
 
 /**
  * Distribute cohort-specific weekly tasks to individual cohort program days.

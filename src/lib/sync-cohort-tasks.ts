@@ -276,33 +276,49 @@ async function createCohortTaskStatesForSyncedTasks(
   date: string,
   memberUserIds: string[]
 ): Promise<number> {
-  // Get all tasks created for these users on this date with program source
-  const tasksSnapshot = await adminDb
-    .collection('tasks')
-    .where('date', '==', date)
-    .where('userId', 'in', memberUserIds.slice(0, 10)) // Firestore 'in' limit is 10
-    .where('sourceProgramId', '==', programId)
-    .get();
-
-  // If we have more than 10 members, we need multiple queries
+  // Get all program-sourced tasks for these users on this date
+  // Query by sourceType (works for both old tasks without sourceProgramId and new tasks with it)
   const allTasks: Array<{
     title: string;
     programDayIndex: number;
     sourceWeekId?: string;
     sourceProgramDayId?: string;
     programTaskId?: string;
+    sourceProgramId?: string;
   }> = [];
 
-  tasksSnapshot.docs.forEach(doc => {
-    const data = doc.data();
-    allTasks.push({
-      title: data.title,
-      programDayIndex: data.programDayIndex || 0,
-      sourceWeekId: data.sourceWeekId,
-      sourceProgramDayId: data.sourceProgramDayId,
-      programTaskId: data.programTaskId,
+  // Helper function to filter and add tasks
+  const addMatchingTasks = (docs: FirebaseFirestore.QueryDocumentSnapshot[]) => {
+    docs.forEach(doc => {
+      const data = doc.data();
+      // Only include program-sourced tasks
+      const sourceType = data.sourceType;
+      if (!sourceType || !['program', 'program_day', 'program_week'].includes(sourceType)) {
+        return;
+      }
+      // If sourceProgramId is set, verify it matches
+      if (data.sourceProgramId && data.sourceProgramId !== programId) {
+        return;
+      }
+      allTasks.push({
+        title: data.title,
+        programDayIndex: data.programDayIndex || 0,
+        sourceWeekId: data.sourceWeekId,
+        sourceProgramDayId: data.sourceProgramDayId,
+        programTaskId: data.programTaskId,
+        sourceProgramId: data.sourceProgramId,
+      });
     });
-  });
+  };
+
+  // Query first batch (Firestore 'in' limit is 10)
+  const tasksSnapshot = await adminDb
+    .collection('tasks')
+    .where('date', '==', date)
+    .where('userId', 'in', memberUserIds.slice(0, 10))
+    .get();
+
+  addMatchingTasks(tasksSnapshot.docs);
 
   // For more than 10 members, fetch in batches
   if (memberUserIds.length > 10) {
@@ -312,19 +328,9 @@ async function createCohortTaskStatesForSyncedTasks(
         .collection('tasks')
         .where('date', '==', date)
         .where('userId', 'in', batch)
-        .where('sourceProgramId', '==', programId)
         .get();
 
-      batchSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        allTasks.push({
-          title: data.title,
-          programDayIndex: data.programDayIndex || 0,
-          sourceWeekId: data.sourceWeekId,
-          sourceProgramDayId: data.sourceProgramDayId,
-          programTaskId: data.programTaskId,
-        });
-      });
+      addMatchingTasks(batchSnapshot.docs);
     }
   }
 

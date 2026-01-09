@@ -1339,6 +1339,7 @@ async function createProgramTaskV2(
   userId: string,
   enrollmentId: string,
   organizationId: string,
+  programId: string,
   dayIndex: number,
   template: ProgramTaskTemplate,
   listType: 'focus' | 'backlog',
@@ -1360,6 +1361,11 @@ async function createProgramTaskV2(
     sourceType: 'program',
     programEnrollmentId: enrollmentId,
     programDayIndex: dayIndex,
+    // Sync fields for cohort task state tracking
+    sourceProgramId: programId,
+    programTaskId: template.id || undefined,
+    visibility: 'public' as const,
+    clientLocked: false,
     ...(cycleNumber !== undefined && { cycleNumber }),
     createdAt: now,
     updatedAt: now,
@@ -1727,6 +1733,7 @@ export async function syncProgramV2TasksForToday(
       userId,
       enrollment.id,
       enrollment.organizationId,
+      program.id,
       dayIndex,
       template,
       listType,
@@ -1758,6 +1765,7 @@ export async function syncProgramV2TasksForToday(
       userId,
       enrollment.id,
       enrollment.organizationId,
+      program.id,
       dayIndex,
       template,
       'backlog',
@@ -2151,11 +2159,16 @@ export async function syncWeeklyTasks(
       continue;
     }
 
-    // Determine placement (primary tasks try focus, others go to backlog)
+    // Determine placement
+    // Default isPrimary to true for program-sourced tasks if not explicitly set to false
+    // This ensures week tasks go to focus unless coach explicitly marks them as backlog
+    // Only place in focus for today's tasks (future tasks go to backlog)
     let listType: 'focus' | 'backlog';
     let order: number;
 
-    if (template.isPrimary && availableFocusSlots > 0 && taskDate === today) {
+    const shouldGoToFocus = (template.isPrimary !== false) && availableFocusSlots > 0 && taskDate === today;
+    
+    if (shouldGoToFocus) {
       listType = 'focus';
       order = nextFocusOrder++;
       availableFocusSlots--;
@@ -2169,6 +2182,7 @@ export async function syncWeeklyTasks(
       userId,
       enrollmentId,
       enrollment.organizationId,
+      program.id,
       currentWeek.startDayIndex, // Use week start as day index
       template,
       listType,
@@ -2675,20 +2689,19 @@ export async function syncProgramTasksToClientDay(
     }
     
     // Determine placement
+    // Default isPrimary to true for program-sourced tasks if not explicitly set to false
+    // This ensures week tasks go to focus unless coach explicitly marks them as backlog
+    // Using !== false means: true -> focus, undefined -> focus, false -> backlog
     let listType: 'focus' | 'backlog';
     let order: number;
     
-    if (template.isPrimary && availableFocusSlots > 0) {
+    const shouldGoToFocus = (template.isPrimary !== false) && availableFocusSlots > 0;
+    
+    if (shouldGoToFocus) {
       listType = 'focus';
       order = nextFocusOrder++;
       availableFocusSlots--;
-    } else if (availableFocusSlots > 0 && !template.isPrimary) {
-      // Non-primary tasks go to backlog
-      listType = 'backlog';
-      order = nextBacklogOrder++;
-      tasksToBacklog++;
     } else {
-      // Focus is full, go to backlog
       listType = 'backlog';
       order = nextBacklogOrder++;
       tasksToBacklog++;

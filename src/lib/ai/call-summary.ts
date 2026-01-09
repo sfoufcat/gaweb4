@@ -553,7 +553,7 @@ async function notifyCoachToFillWeek(
             weeklyHabits: templateWeek.weeklyHabits,
             currentFocus: templateWeek.currentFocus,
             notes: templateWeek.notes,
-            distribution: templateWeek.distribution || 'spread',
+            distribution: undefined, // Let it inherit from program setting
             linkedSummaryIds: [summaryId], // Link the summary
             linkedCallEventIds: [],
             hasLocalChanges: false,

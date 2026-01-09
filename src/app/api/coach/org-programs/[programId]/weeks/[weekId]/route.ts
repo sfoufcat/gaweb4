@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import { recalculateWeekDayIndices, distributeWeeklyTasksToDays } from '@/lib/program-utils';
+import { recalculateWeekDayIndices, distributeWeeklyTasksToDays, syncClientProgramDaysFromWeekDistribution } from '@/lib/program-utils';
 import { syncProgramTasksForDateRange, type SyncMode } from '@/lib/program-engine';
 import type { ProgramWeek } from '@/types';
 
@@ -153,6 +153,22 @@ export async function PATCH(
           programTaskDistribution: programData?.taskDistribution, // Use program's distribution setting as fallback
         });
         console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Distributed tasks: ${JSON.stringify(distributionResult)}`);
+
+        // Sync client_program_days with new week distribution (for 1:1 programs)
+        // This ensures week-level task changes propagate to client-specific day overrides
+        const currentWeekData = weekDoc.data();
+        if (currentWeekData?.startDayIndex !== undefined && currentWeekData?.endDayIndex !== undefined) {
+          try {
+            const clientDaysSyncResult = await syncClientProgramDaysFromWeekDistribution(programId, weekId, {
+              startDayIndex: currentWeekData.startDayIndex,
+              endDayIndex: currentWeekData.endDayIndex,
+            });
+            console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Synced client_program_days: ${JSON.stringify(clientDaysSyncResult)}`);
+          } catch (clientSyncErr) {
+            console.error('[COACH_ORG_PROGRAM_WEEK_PATCH] Failed to sync client_program_days:', clientSyncErr);
+            // Don't fail the whole request, just log the error
+          }
+        }
       } catch (distErr) {
         console.error('[COACH_ORG_PROGRAM_WEEK_PATCH] Failed to distribute tasks:', distErr);
         // Don't fail the whole request, just log the error

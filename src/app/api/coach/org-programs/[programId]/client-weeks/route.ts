@@ -196,7 +196,7 @@ export async function POST(
         weeklyHabits: weekContent.weeklyHabits ?? template?.weeklyHabits ?? undefined,
         currentFocus: weekContent.currentFocus ?? template?.currentFocus ?? undefined,
         notes: weekContent.notes ?? template?.notes ?? undefined,
-        distribution: weekContent.distribution ?? template?.distribution ?? 'spread',
+        distribution: weekContent.distribution ?? undefined, // Let it inherit from program setting via distributeClientWeeklyTasksToDays
         manualNotes: weekContent.manualNotes ?? undefined,
         coachRecordingUrl: weekContent.coachRecordingUrl ?? undefined,
         coachRecordingNotes: weekContent.coachRecordingNotes ?? undefined,
@@ -336,7 +336,7 @@ export async function POST(
         weeklyHabits: template.weeklyHabits || undefined,
         currentFocus: template.currentFocus || undefined,
         notes: template.notes || undefined,
-        distribution: template.distribution || 'spread',
+        distribution: undefined, // Let it inherit from program setting via distributeClientWeeklyTasksToDays
 
         // Client-specific fields (start empty)
         linkedSummaryIds: [],
