@@ -3353,7 +3353,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           <div className="flex items-center gap-2 text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
                             <StatusBadge isActive={true} size="sm" />
                             {program.durationType === 'evergreen' && (
-                              <RefreshCw className="w-4 h-4 text-emerald-500" title="Evergreen" />
+                              <span title="Evergreen"><RefreshCw className="w-4 h-4 text-emerald-500" /></span>
                             )}
                             <VisibilityBadge isPublic={program.isPublished} size="sm" />
                             <span className="ml-1">
@@ -3495,7 +3495,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           <div className="flex items-center gap-2 text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
                             <StatusBadge isActive={false} size="sm" />
                             {program.durationType === 'evergreen' && (
-                              <RefreshCw className="w-4 h-4 text-emerald-500" title="Evergreen" />
+                              <span title="Evergreen"><RefreshCw className="w-4 h-4 text-emerald-500" /></span>
                             )}
                             <VisibilityBadge isPublic={program.isPublished} size="sm" />
                           </div>
