@@ -3877,7 +3877,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         try {
                           if (isClientMode && clientWeek) {
                             // Update existing client-specific week
-                            const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
+                            const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/client-weeks/${clientWeek.id}`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json' },
@@ -3886,20 +3886,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 startDayIndex: selectedWeek.startDayIndex,
                                 endDayIndex: selectedWeek.endDayIndex,
                                 // Distribute tasks to client days, overwriting existing
-                                ...(hasWeeklyTasks && { distributeTasksNow: true, overwriteExisting: true }),
+                                ...(weeklyTasksUpdated && { distributeTasksNow: true, overwriteExisting: true }),
                               }),
                             });
                             if (res.ok) {
                               const data = await res.json();
                               setClientWeeks(prev => prev.map(w => w.id === clientWeek.id ? data.clientWeek : w));
                               // Refresh client days if distribution happened
-                              if (hasWeeklyTasks && clientViewContext.enrollmentId) {
+                              if (weeklyTasksUpdated && clientViewContext.enrollmentId) {
                                 fetchClientDays(selectedProgram!.id, clientViewContext.enrollmentId);
                               }
                             }
                           } else if (isClientMode && !clientWeek && clientViewContext.enrollmentId) {
                             // Create new client-specific week (client mode but week doesn't exist yet)
-                            const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
+                            const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/client-weeks`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
@@ -3911,7 +3911,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 moduleId: templateWeek?.moduleId || programModules[0]?.id,
                                 ...updates,
                                 // Distribute tasks to client days, overwriting existing
-                                ...(hasWeeklyTasks && { distributeTasksNow: true, overwriteExisting: true }),
+                                ...(weeklyTasksUpdated && { distributeTasksNow: true, overwriteExisting: true }),
                               }),
                             });
                             if (res.ok) {
@@ -3926,7 +3926,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                   return [...prev, data.clientWeek];
                                 });
                                 // Refresh client days if distribution happened
-                                if (hasWeeklyTasks && clientViewContext.enrollmentId) {
+                                if (weeklyTasksUpdated && clientViewContext.enrollmentId) {
                                   fetchClientDays(selectedProgram!.id, clientViewContext.enrollmentId);
                                 }
                               }
@@ -3960,10 +3960,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             }
                             
                             if (weekIdForCohort) {
-                              const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
+                              const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
                               console.log('[WEEK_EDITOR_SAVE] Making cohort PUT request', {
                                 url: `${apiBasePath}/${selectedProgram?.id}/cohorts/${cohortViewContext.cohortId}/week-content/${weekIdForCohort}`,
-                                hasWeeklyTasks,
+                                weeklyTasksUpdated,
                                 tasksCount: updates.weeklyTasks?.length,
                               });
                               const res = await fetch(
@@ -3977,7 +3977,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                     weeklyPrompt: updates.weeklyPrompt,
                                     distribution: updates.distribution,
                                     // Distribute tasks to cohort days, overwriting existing
-                                    ...(hasWeeklyTasks && { distributeTasksNow: true, overwriteExistingTasks: true }),
+                                    ...(weeklyTasksUpdated && { distributeTasksNow: true, overwriteExistingTasks: true }),
                                   }),
                                 }
                               );
@@ -3987,7 +3987,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 console.log('[WEEK_EDITOR_SAVE] Cohort save SUCCESS, content:', data.content);
                                 setCohortWeekContent(data.content || null);
                                 // Refresh cohort days if distribution happened
-                                if (hasWeeklyTasks && cohortViewContext.cohortId) {
+                                if (weeklyTasksUpdated && cohortViewContext.cohortId) {
                                   fetchCohortDays(selectedProgram!.id, cohortViewContext.cohortId);
                                 }
                               } else {
@@ -4000,7 +4000,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           } else if (templateWeek) {
                             console.log('[WEEK_EDITOR_SAVE] Entering TEMPLATE branch (templateWeek exists)');
                             // Update template week and distribute tasks to days
-                            const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
+                            const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks/${templateWeek.id}`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json' },
@@ -4010,14 +4010,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 startDayIndex: selectedWeek.startDayIndex,
                                 endDayIndex: selectedWeek.endDayIndex,
                                 // Distribute tasks to days, overwriting existing day tasks
-                                ...(hasWeeklyTasks && { distributeTasksNow: true, overwriteExisting: true }),
+                                ...(weeklyTasksUpdated && { distributeTasksNow: true, overwriteExisting: true }),
                               }),
                             });
                             if (res.ok) {
                               const data = await res.json();
                               setProgramWeeks(prev => prev.map(w => w.id === templateWeek.id ? data.week : w));
                               // Refresh days if distribution happened
-                              if (hasWeeklyTasks) {
+                              if (weeklyTasksUpdated) {
                                 const daysRes = await fetch(`${apiBasePath}/${selectedProgram?.id}/days`);
                                 if (daysRes.ok) {
                                   const daysData = await daysRes.json();
@@ -4028,7 +4028,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           } else {
                             // Create new template week record
                             console.log('[WEEK_EDITOR_SAVE] Entering CREATE TEMPLATE WEEK branch');
-                            const hasWeeklyTasks = updates.weeklyTasks && updates.weeklyTasks.length > 0;
+                            const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
@@ -4038,14 +4038,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 endDayIndex: endDay,
                                 ...updates,
                                 // Distribute tasks to days, overwriting existing
-                                ...(hasWeeklyTasks && { distributeTasksNow: true, overwriteExisting: true }),
+                                ...(weeklyTasksUpdated && { distributeTasksNow: true, overwriteExisting: true }),
                               }),
                             });
                             if (res.ok) {
                               const data = await res.json();
                               setProgramWeeks(prev => [...prev, data.week]);
                               // Refresh days if distribution happened
-                              if (hasWeeklyTasks) {
+                              if (weeklyTasksUpdated) {
                                 const daysRes = await fetch(`${apiBasePath}/${selectedProgram?.id}/days`);
                                 if (daysRes.ok) {
                                   const daysData = await daysRes.json();

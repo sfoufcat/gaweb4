@@ -98,7 +98,7 @@ export async function POST(
     }
 
     // Validate and process tasks
-    const tasks: ProgramTaskTemplate[] = [];
+    let tasks: ProgramTaskTemplate[] = [];
     if (body.tasks && Array.isArray(body.tasks)) {
       for (const task of body.tasks) {
         if (!task.label) continue;
@@ -112,6 +112,38 @@ export async function POST(
           tag: task.tag || undefined,
           source: task.source || 'day', // Preserve existing source or mark as day-level
         });
+      }
+    }
+
+    // Check if day already exists (query early for merge logic)
+    const existingDay = await adminDb
+      .collection('program_days')
+      .where('programId', '==', programId)
+      .where('dayIndex', '==', body.dayIndex)
+      .limit(1)
+      .get();
+
+    // Smart merge: preserve week-sourced tasks not in the request
+    // This handles race conditions where weekly tasks were distributed after frontend loaded
+    if (!existingDay.empty) {
+      const existingDayData = existingDay.docs[0].data();
+      const existingTasks: ProgramTaskTemplate[] = existingDayData?.tasks || [];
+
+      // Get IDs of incoming tasks
+      const incomingTaskIds = new Set(
+        tasks.map(t => t.id).filter((id): id is string => Boolean(id))
+      );
+
+      // Preserve week-sourced tasks that weren't in the save request
+      const preservedWeekTasks = existingTasks.filter((t) =>
+        t.source === 'week' && t.id && !incomingTaskIds.has(t.id)
+      );
+
+      if (preservedWeekTasks.length > 0) {
+        console.log(
+          `[COACH_ORG_PROGRAM_DAYS_POST] Preserving ${preservedWeekTasks.length} week-sourced tasks not in save request`
+        );
+        tasks.push(...preservedWeekTasks);
       }
     }
 
@@ -140,14 +172,6 @@ export async function POST(
         });
       }
     }
-
-    // Check if day already exists
-    const existingDay = await adminDb
-      .collection('program_days')
-      .where('programId', '==', programId)
-      .where('dayIndex', '==', body.dayIndex)
-      .limit(1)
-      .get();
 
     const dayData = {
       programId,

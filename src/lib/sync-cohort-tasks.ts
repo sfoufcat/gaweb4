@@ -293,7 +293,7 @@ async function createCohortTaskStatesForSyncedTasks(
       const data = doc.data();
       // Only include program-sourced tasks
       const sourceType = data.sourceType;
-      if (!sourceType || !['program', 'program_day', 'program_week'].includes(sourceType)) {
+      if (!sourceType || !['program', 'program_day', 'program_week', 'coach_manual'].includes(sourceType)) {
         return;
       }
       // If sourceProgramId is set, verify it matches

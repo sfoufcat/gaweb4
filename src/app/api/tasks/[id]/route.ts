@@ -5,11 +5,12 @@ import { updateAlignmentForToday } from '@/lib/alignment';
 import { sendTasksCompletedNotification } from '@/lib/notifications';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { updateLastActivity } from '@/lib/analytics/lastActivity';
-import { 
-  findCohortTaskStateByTaskTitle, 
-  updateMemberTaskState, 
+import {
+  findCohortTaskStateByTaskTitle,
+  updateMemberTaskState,
   getProgramCompletionThreshold,
-  findCohortTaskStateByProgramTaskId 
+  findCohortTaskStateByProgramTaskId,
+  createCohortTaskState
 } from '@/lib/cohort-task-state';
 import type { Task, UpdateTaskRequest, ClerkPublicMetadata } from '@/types';
 
@@ -59,9 +60,10 @@ export async function PATCH(
     };
 
     // 2-way sync: If client edits a program-sourced task, lock it from future sync overwrites
-    const isProgramSourced = existingTask.sourceType && 
+    // Only lock when actual content is edited (title), not for status/order/listType changes
+    const isProgramSourced = existingTask.sourceType &&
       ['program', 'program_day', 'program_week', 'coach_manual'].includes(existingTask.sourceType);
-    if (isProgramSourced && !existingTask.clientLocked) {
+    if (isProgramSourced && !existingTask.clientLocked && body.title !== undefined) {
       updates.clientLocked = true;
     }
 
@@ -182,8 +184,38 @@ export async function PATCH(
                 threshold
               );
               console.log(`[COHORT_STATE] Updated member ${userId} task completion for cohort ${enrollment.cohortId}`);
+            } else if (existingTask.programDayIndex !== undefined) {
+              // Auto-create CohortTaskState for retroactive tracking
+              try {
+                const cohortMembersSnapshot = await adminDb
+                  .collection('program_enrollments')
+                  .where('cohortId', '==', enrollment.cohortId)
+                  .where('status', 'in', ['active', 'upcoming'])
+                  .get();
+
+                const memberIds = cohortMembersSnapshot.docs.map(d => d.data().userId);
+
+                const newState = await createCohortTaskState({
+                  cohortId: enrollment.cohortId,
+                  programId: enrollment.programId,
+                  organizationId: existingTask.organizationId || enrollment.organizationId || '',
+                  programDayIndex: existingTask.programDayIndex,
+                  taskTemplateId: existingTask.programTaskId || `${existingTask.title}:${existingTask.programDayIndex}`,
+                  taskTitle: existingTask.title,
+                  programTaskId: existingTask.programTaskId,
+                  date: existingTask.date,
+                  memberIds,
+                });
+
+                // Update the newly created state with this completion
+                const threshold = await getProgramCompletionThreshold(enrollment.programId);
+                await updateMemberTaskState(newState.id, userId, isCompleted, id, threshold);
+                console.log(`[COHORT_STATE] Auto-created and updated CohortTaskState for task: ${existingTask.title}`);
+              } catch (createErr) {
+                console.error('[COHORT_STATE] Failed to auto-create CohortTaskState:', createErr);
+              }
             } else {
-              console.log(`[COHORT_STATE] No cohort state found for task: ${existingTask.title} (day ${existingTask.programDayIndex})`);
+              console.log(`[COHORT_STATE] Cannot create CohortTaskState - missing programDayIndex for task: ${existingTask.title}`);
             }
           }
         }
