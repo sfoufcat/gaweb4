@@ -1841,12 +1841,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     // Fetch cohort task states for this date
     const fetchCohortCompletion = async () => {
       try {
+        console.log('[COHORT_COMPLETION] Fetching for date:', dateStr, 'cohortId:', cohortViewContext.cohortId);
         const response = await fetch(`/api/coach/cohort-tasks/${cohortViewContext.cohortId}?date=${dateStr}`);
         if (response.ok) {
           const data = await response.json();
+          console.log('[COHORT_COMPLETION] API response:', data);
           const completionMap = new Map<string, { completed: boolean; completionRate: number; completedCount: number; totalMembers: number }>();
           for (const task of data.tasks || []) {
             // Map by task title for matching with template tasks
+            console.log('[COHORT_COMPLETION] Adding task to map:', task.title);
             completionMap.set(task.title, {
               completed: task.isThresholdMet,
               completionRate: task.completionRate,
@@ -1854,8 +1857,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               totalMembers: task.totalMembers || 0,
             });
           }
+          console.log('[COHORT_COMPLETION] Completion map size:', completionMap.size);
           setCohortTaskCompletion(completionMap);
           setCohortCompletionDate(dateStr);
+        } else {
+          console.error('[COHORT_COMPLETION] API returned non-OK status:', response.status);
         }
       } catch (err) {
         console.error('[COHORT_COMPLETION] Failed to fetch:', err);
