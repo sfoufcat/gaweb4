@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
@@ -100,6 +100,9 @@ export function CoachCheckInsTab({ initialFlowId, onFlowSelect }: CoachCheckInsT
   const [flowToReset, setFlowToReset] = useState<OrgCheckInFlow | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
+  // Track when user explicitly navigates back to prevent restore effect from re-opening
+  const userNavigatedBackRef = useRef(false);
+
   const fetchFlows = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -192,6 +195,12 @@ export function CoachCheckInsTab({ initialFlowId, onFlowSelect }: CoachCheckInsT
 
   // Restore flow selection from URL param on mount
   useEffect(() => {
+    // Skip restore if user explicitly navigated back
+    if (userNavigatedBackRef.current) {
+      userNavigatedBackRef.current = false;
+      return;
+    }
+
     if (initialFlowId && flows.length > 0 && !editingFlowId) {
       const flow = flows.find(f => f.id === initialFlowId);
       if (flow) {
@@ -335,6 +344,7 @@ export function CoachCheckInsTab({ initialFlowId, onFlowSelect }: CoachCheckInsT
   };
 
   const handleBackToList = () => {
+    userNavigatedBackRef.current = true;
     setEditingFlowId(null);
     setViewMode('list');
     fetchFlows();

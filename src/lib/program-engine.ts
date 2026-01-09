@@ -28,6 +28,7 @@ import type {
   // Programs v3 types (modules/weeks)
   ProgramWeek,
   CallSummary,
+  TaskDistribution,
 } from '@/types';
 
 // Import and re-export client-safe utilities (these can be used in client components)
@@ -1258,15 +1259,18 @@ export async function getProgramWeekForDay(
 /**
  * Get tasks for a specific day from weekly mode
  * Applies distribution logic (repeat-daily or spread)
+ * Distribution is always program-wide, passed in as a parameter
  */
 export function getWeeklyTasksForDay(
   week: ProgramWeek,
-  dayIndex: number
+  dayIndex: number,
+  programDistribution?: TaskDistribution
 ): ProgramTaskTemplate[] {
   const weeklyTasks = week.weeklyTasks || [];
   if (weeklyTasks.length === 0) return [];
-  
-  const distribution = week.distribution || 'spread';
+
+  // Distribution is always program-wide, never week-specific
+  const distribution = programDistribution ?? 'spread';
   
   if (distribution === 'repeat-daily') {
     // All tasks appear every day
@@ -1629,7 +1633,7 @@ export async function syncProgramV2TasksForToday(
     // Try week-level tasks
     const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
     if (week) {
-      tasksForToday = getWeeklyTasksForDay(week, dayIndex);
+      tasksForToday = getWeeklyTasksForDay(week, dayIndex, program.taskDistribution);
       console.log(`[PROGRAM_ENGINE_V2] Got ${tasksForToday.length} tasks from week ${week.weekNumber} for day ${dayIndex}`);
     }
 
@@ -2520,8 +2524,8 @@ export async function syncProgramTasksToClientDay(
     }
 
     if (week && week.weeklyTasks && week.weeklyTasks.length > 0) {
-      console.log(`[SYNC_TO_CLIENT] Week found for day ${dayIndex}: weekId=${week.id}, type=${isClientWeek ? 'client' : 'template'}, weekNumber=${week.weekNumber}, distribution=${week.distribution || 'spread (default)'}, weeklyTasks=${week.weeklyTasks.length}, dayRange=${week.startDayIndex}-${week.endDayIndex}`);
-      tasksForDay = getWeeklyTasksForDay(week, dayIndex);
+      console.log(`[SYNC_TO_CLIENT] Week found for day ${dayIndex}: weekId=${week.id}, type=${isClientWeek ? 'client' : 'template'}, weekNumber=${week.weekNumber}, programDistribution=${program.taskDistribution || 'spread (default)'}, weeklyTasks=${week.weeklyTasks.length}, dayRange=${week.startDayIndex}-${week.endDayIndex}`);
+      tasksForDay = getWeeklyTasksForDay(week, dayIndex, program.taskDistribution);
       sourceType = 'program_week';
       sourceWeekId = week.id;
       console.log(`[SYNC_TO_CLIENT] getWeeklyTasksForDay returned ${tasksForDay.length} tasks for day ${dayIndex}: ${tasksForDay.map(t => t.label).join(', ')}`);

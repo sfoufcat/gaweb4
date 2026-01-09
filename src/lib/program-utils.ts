@@ -373,9 +373,8 @@ export async function distributeWeeklyTasksToDays(
 
   const weeklyTasks = weekData.weeklyTasks || [];
 
-  // Use week setting, fall back to program setting, then default to 'spread'
-  // Using ?? (nullish coalescing) to only fallback on null/undefined, not empty strings
-  const distribution = weekData.distribution ?? programTaskDistribution ?? 'spread';
+  // Distribution is always program-wide, never week-specific
+  const distribution = programTaskDistribution ?? 'spread';
   const startDay = weekData.startDayIndex;
   const endDay = weekData.endDayIndex;
 
@@ -698,9 +697,8 @@ export async function distributeCohortWeeklyTasksToDays(
   // NOTE: We continue even if weeklyTasks is empty - this allows clearing week-sourced tasks
   // while preserving manually added day tasks (source !== 'week')
 
-  // Use cohort week setting, fall back to program setting, then default to 'spread'
-  // Using ?? (nullish coalescing) to only fallback on null/undefined, not empty strings
-  const distribution = cohortWeekContent.distribution ?? programTaskDistribution ?? 'spread';
+  // Distribution is always program-wide, never week-specific
+  const distribution = programTaskDistribution ?? 'spread';
   const startDay = weekData.startDayIndex;
   const endDay = weekData.endDayIndex;
   const daysInWeek = endDay - startDay + 1;
@@ -891,9 +889,8 @@ export async function distributeClientWeeklyTasksToDays(
   // NOTE: We continue even if weeklyTasks is empty - this allows clearing week-sourced tasks
   // while preserving manually added day tasks (source !== 'week')
 
-  // Use client week setting, fall back to program setting, then default to 'spread'
-  // Using ?? (nullish coalescing) to only fallback on null/undefined, not empty strings
-  const distribution = clientWeekData.distribution ?? programTaskDistribution ?? 'spread';
+  // Distribution is always program-wide, never week-specific
+  const distribution = programTaskDistribution ?? 'spread';
   const startDay = clientWeekData.startDayIndex;
   const endDay = clientWeekData.endDayIndex;
   
