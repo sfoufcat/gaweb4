@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
-import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil } from 'lucide-react';
+import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -62,6 +62,16 @@ interface WeekEditorProps {
   completionThreshold?: number;
 }
 
+// Member info for task completion breakdown
+interface TaskMemberInfo {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  imageUrl: string;
+  status: 'pending' | 'completed';
+  completedAt?: string;
+}
+
 // Sortable task component for drag-and-drop weekly tasks
 interface SortableWeeklyTaskProps {
   task: ProgramTaskTemplate;
@@ -72,9 +82,30 @@ interface SortableWeeklyTaskProps {
   onRemove: (index: number) => void;
   // Cohort completion data (optional)
   cohortCompletion?: CohortWeeklyTaskCompletionData;
+  // Expand functionality for cohort mode
+  isCohortMode: boolean;
+  isExpanded: boolean;
+  isLoading: boolean;
+  members: TaskMemberInfo[];
+  onToggleExpanded: () => void;
+  completionThreshold: number;
 }
 
-function SortableWeeklyTask({ task, index, id, showCompletionStatus, onTogglePrimary, onRemove, cohortCompletion }: SortableWeeklyTaskProps) {
+function SortableWeeklyTask({
+  task,
+  index,
+  id,
+  showCompletionStatus,
+  onTogglePrimary,
+  onRemove,
+  cohortCompletion,
+  isCohortMode,
+  isExpanded,
+  isLoading,
+  members,
+  onToggleExpanded,
+  completionThreshold
+}: SortableWeeklyTaskProps) {
   const {
     attributes,
     listeners,
@@ -97,121 +128,228 @@ function SortableWeeklyTask({ task, index, id, showCompletionStatus, onTogglePri
   const totalMembers = cohortCompletion?.totalMembers || 0;
   const hasCohortData = !!cohortCompletion;
 
+  // Helper to get progress bar color
+  const getProgressColor = (rate: number, threshold: number) => {
+    if (rate >= threshold) return 'bg-green-500';
+    if (rate >= threshold * 0.7) return 'bg-amber-400';
+    return 'bg-gray-300 dark:bg-gray-600';
+  };
+
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border rounded-xl hover:shadow-sm transition-all duration-200 ${
-        isCohortCompleted
-          ? 'border-green-500/30 bg-green-500/5 hover:border-green-500/50'
-          : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d4d0cb] dark:hover:border-[#313746]'
-      }`}
-    >
-      {/* Drag Handle */}
-      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
-        <GripVertical className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
-      </div>
+    <div className="space-y-0">
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border rounded-xl hover:shadow-sm transition-all duration-200 ${
+          isCohortCompleted
+            ? 'border-green-500/30 bg-green-500/5 hover:border-green-500/50'
+            : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d4d0cb] dark:hover:border-[#313746]'
+        } ${isExpanded ? 'rounded-b-none border-b-0' : ''}`}
+      >
+        {/* Cohort Mode: Expand Chevron */}
+        {isCohortMode ? (
+          <button
+            type="button"
+            onClick={onToggleExpanded}
+            className="shrink-0 flex items-center gap-1"
+          >
+            {isExpanded ? (
+              <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" />
+            )}
+            {/* Completion indicator */}
+            {hasCohortData ? (
+              <div
+                className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  isCohortCompleted
+                    ? 'bg-green-500 text-white'
+                    : completionRate > 0
+                    ? 'border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20'
+                    : 'border-2 border-[#e1ddd8] dark:border-[#3d4351]'
+                }`}
+                title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
+              >
+                {isCohortCompleted ? (
+                  <Check className="w-3 h-3" />
+                ) : completionRate > 0 ? (
+                  <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400">{completionRate}</span>
+                ) : null}
+              </div>
+            ) : (
+              <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
+            )}
+          </button>
+        ) : (
+          <>
+            {/* Drag Handle */}
+            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+              <GripVertical className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+            </div>
 
-      {/* Completion Checkbox - show cohort status if available, otherwise client status */}
-      {hasCohortData ? (
-        <div
-          className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-            isCohortCompleted
-              ? 'bg-green-500 text-white'
-              : completionRate > 0
-              ? 'border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20'
-              : 'border-2 border-[#e1ddd8] dark:border-[#3d4351]'
-          }`}
-          title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
-        >
-          {isCohortCompleted ? (
-            <Check className="w-3 h-3" />
-          ) : completionRate > 0 ? (
-            <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400">{completionRate}</span>
-          ) : null}
-        </div>
-      ) : showCompletionStatus && isCompleted ? (
-        <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-          <Check className="w-3 h-3 text-white" />
-        </div>
-      ) : (
-        <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
-      )}
+            {/* Completion Checkbox - show cohort status if available, otherwise client status */}
+            {hasCohortData ? (
+              <div
+                className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  isCohortCompleted
+                    ? 'bg-green-500 text-white'
+                    : completionRate > 0
+                    ? 'border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20'
+                    : 'border-2 border-[#e1ddd8] dark:border-[#3d4351]'
+                }`}
+                title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
+              >
+                {isCohortCompleted ? (
+                  <Check className="w-3 h-3" />
+                ) : completionRate > 0 ? (
+                  <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400">{completionRate}</span>
+                ) : null}
+              </div>
+            ) : showCompletionStatus && isCompleted ? (
+              <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                <Check className="w-3 h-3 text-white" />
+              </div>
+            ) : (
+              <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
+            )}
+          </>
+        )}
 
-      {/* Task Label */}
-      <span className="flex-1 font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8]">
-        {task.label}
-      </span>
-
-      {/* Cohort completion badge */}
-      {hasCohortData && (
-        <span
-          className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-            isCohortCompleted
-              ? 'text-green-600 bg-green-50 dark:bg-green-900/20'
-              : 'text-muted-foreground bg-muted'
-          }`}
-        >
-          {completedCount}/{totalMembers}
+        {/* Task Label */}
+        <span className="flex-1 font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8]">
+          {task.label}
         </span>
-      )}
 
-      {/* Task Actions Group - badges and Focus toggle */}
-      <div className="flex items-center gap-1">
-        {/* Deleted by Client Indicator */}
-        {task.deletedByClient && (
-          <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full border border-red-200 dark:border-red-800">
-            <Trash2 className="w-3 h-3" />
-            Deleted
+        {/* Cohort completion badge */}
+        {isCohortMode && (
+          <span
+            className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
+              isCohortCompleted
+                ? 'text-green-600 bg-green-50 dark:bg-green-900/20'
+                : 'text-muted-foreground bg-muted'
+            }`}
+          >
+            {completedCount}/{totalMembers}
           </span>
         )}
 
-        {/* Edited by Client Indicator */}
-        {task.editedByClient && (
-          <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full border border-amber-200 dark:border-amber-800">
-            <Pencil className="w-3 h-3" />
-            Edited
-          </span>
-        )}
+        {/* Task Actions Group - badges and Focus toggle */}
+        <div className="flex items-center gap-1">
+          {/* Deleted by Client Indicator */}
+          {task.deletedByClient && (
+            <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full border border-red-200 dark:border-red-800">
+              <Trash2 className="w-3 h-3" />
+              Deleted
+            </span>
+          )}
 
-        {/* Focus/Backlog Toggle */}
+          {/* Edited by Client Indicator */}
+          {task.editedByClient && (
+            <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full border border-amber-200 dark:border-amber-800">
+              <Pencil className="w-3 h-3" />
+              Edited
+            </span>
+          )}
+
+          {/* Focus/Backlog Toggle */}
+          <button
+            type="button"
+            onClick={() => onTogglePrimary(index)}
+            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200 group"
+          >
+            <ArrowLeftRight className={`w-3.5 h-3.5 transition-transform duration-300 ease-out ${task.isPrimary ? 'rotate-0' : 'rotate-180'}`} />
+            <span className="relative w-[52px] h-4 overflow-hidden">
+              <span
+                className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
+                  task.isPrimary
+                    ? 'opacity-100 translate-y-0'
+                    : 'opacity-0 -translate-y-full'
+                }`}
+              >
+                Focus
+              </span>
+              <span
+                className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
+                  !task.isPrimary
+                    ? 'opacity-100 translate-y-0'
+                    : 'opacity-0 translate-y-full'
+                }`}
+              >
+                Backlog
+              </span>
+            </span>
+          </button>
+        </div>
+
+        {/* Delete Button */}
         <button
           type="button"
-          onClick={() => onTogglePrimary(index)}
-          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200 group"
+          onClick={() => onRemove(index)}
+          className="p-1.5 rounded-lg text-[#a7a39e] dark:text-[#7d8190] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
         >
-          <ArrowLeftRight className={`w-3.5 h-3.5 transition-transform duration-300 ease-out ${task.isPrimary ? 'rotate-0' : 'rotate-180'}`} />
-          <span className="relative w-[52px] h-4 overflow-hidden">
-            <span
-              className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
-                task.isPrimary
-                  ? 'opacity-100 translate-y-0'
-                  : 'opacity-0 -translate-y-full'
-              }`}
-            >
-              Focus
-            </span>
-            <span
-              className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
-                !task.isPrimary
-                  ? 'opacity-100 translate-y-0'
-                  : 'opacity-0 translate-y-full'
-              }`}
-            >
-              Backlog
-            </span>
-          </span>
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Delete Button */}
-      <button
-        type="button"
-        onClick={() => onRemove(index)}
-        className="p-1.5 rounded-lg text-[#a7a39e] dark:text-[#7d8190] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
+      {/* Expanded member breakdown */}
+      {isCohortMode && isExpanded && (
+        <div className="border border-t-0 border-[#e1ddd8] dark:border-[#262b35] rounded-b-xl bg-[#fafafa] dark:bg-[#0f1115] p-3">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : members.length > 0 ? (
+            <div className="space-y-2">
+              {/* Progress bar */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${getProgressColor(completionRate, completionThreshold)}`}
+                    style={{ width: `${completionRate}%` }}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {completionRate}%
+                </span>
+              </div>
+              {/* Member list */}
+              {members.map((member) => (
+                <div key={member.userId} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white dark:hover:bg-[#171b22]">
+                  {/* Avatar */}
+                  {member.imageUrl ? (
+                    <img
+                      src={member.imageUrl}
+                      alt={`${member.firstName} ${member.lastName}`}
+                      className="w-6 h-6 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                      {member.firstName?.[0] || '?'}
+                    </div>
+                  )}
+                  {/* Name */}
+                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    {member.firstName} {member.lastName}
+                  </span>
+                  {/* Status */}
+                  {member.status === 'completed' ? (
+                    <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                      <Check className="w-4 h-4" />
+                      <span className="text-xs">Done</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Pending</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-sm text-muted-foreground">
+              No member data available
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -367,6 +505,59 @@ export function WeekEditor({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [recordingStatus, setRecordingStatus] = useState<'idle' | 'uploading' | 'processing' | 'generating' | 'completed' | 'error'>('idle');
   const [recordingError, setRecordingError] = useState<string | null>(null);
+
+  // State for expanded tasks (to show member breakdown) - for cohort mode
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [taskMemberData, setTaskMemberData] = useState<Map<string, TaskMemberInfo[]>>(new Map());
+  const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
+
+  // Toggle task expansion
+  const toggleTaskExpanded = useCallback((taskKey: string) => {
+    setExpandedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskKey)) {
+        next.delete(taskKey);
+      } else {
+        next.add(taskKey);
+      }
+      return next;
+    });
+  }, []);
+
+  // Fetch member breakdown for a task (lazy load)
+  const fetchTaskMembers = useCallback(async (taskId: string, taskLabel: string) => {
+    if (taskMemberData.has(taskLabel) || !cohortId) return;
+
+    setLoadingTasks(prev => new Set(prev).add(taskLabel));
+
+    try {
+      // For weekly tasks, fetch without date filter to get aggregated data across all dates
+      const response = await fetch(`/api/coach/cohort-tasks/${cohortId}/task/${encodeURIComponent(taskId)}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        setTaskMemberData(prev => new Map(prev).set(taskLabel, data.memberBreakdown || []));
+      }
+    } catch (error) {
+      console.error('[WeekEditor] Failed to fetch task members:', error);
+    } finally {
+      setLoadingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskLabel);
+        return next;
+      });
+    }
+  }, [cohortId, taskMemberData]);
+
+  // Fetch members when task is expanded
+  useEffect(() => {
+    expandedTasks.forEach(taskLabel => {
+      const task = formData.weeklyTasks.find(t => t.label === taskLabel);
+      if (task && !taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
+        fetchTaskMembers(task.id || taskLabel, taskLabel);
+      }
+    });
+  }, [expandedTasks, formData.weeklyTasks, taskMemberData, loadingTasks, fetchTaskMembers]);
 
   // Helper to track field edits
   const trackFieldEdit = useCallback((syncFieldKey: string) => {
@@ -1026,18 +1217,30 @@ export function WeekEditor({
                   items={formData.weeklyTasks.map((_, i) => `task-${i}`)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {formData.weeklyTasks.map((task, index) => (
-                    <SortableWeeklyTask
-                      key={`task-${index}`}
-                      id={`task-${index}`}
-                      task={task}
-                      index={index}
-                      showCompletionStatus={isClientView || !!cohortId}
-                      onTogglePrimary={toggleTaskPrimary}
-                      onRemove={removeTask}
-                      cohortCompletion={cohortId ? cohortWeeklyTaskCompletion.get(task.label) : undefined}
-                    />
-                  ))}
+                  {formData.weeklyTasks.map((task, index) => {
+                    const taskKey = task.label;
+                    const cohortCompletion = cohortId
+                      ? (task.id && cohortWeeklyTaskCompletion.get(task.id)) || cohortWeeklyTaskCompletion.get(task.label)
+                      : undefined;
+                    return (
+                      <SortableWeeklyTask
+                        key={`task-${index}`}
+                        id={`task-${index}`}
+                        task={task}
+                        index={index}
+                        showCompletionStatus={isClientView || !!cohortId}
+                        onTogglePrimary={toggleTaskPrimary}
+                        onRemove={removeTask}
+                        cohortCompletion={cohortCompletion}
+                        isCohortMode={isCohortMode}
+                        isExpanded={expandedTasks.has(taskKey)}
+                        isLoading={loadingTasks.has(taskKey)}
+                        members={taskMemberData.get(taskKey) || []}
+                        onToggleExpanded={() => toggleTaskExpanded(taskKey)}
+                        completionThreshold={completionThreshold}
+                      />
+                    );
+                  })}
                 </SortableContext>
               </DndContext>
             </div>

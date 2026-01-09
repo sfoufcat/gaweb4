@@ -7,7 +7,7 @@ import {
   getProgramCompletionThreshold,
   getOrCreateCohortTaskState,
 } from '@/lib/cohort-task-state';
-import type { CohortTaskState, ProgramCohort, CohortProgramDay, ProgramTaskTemplate } from '@/types';
+import type { CohortTaskState, ProgramCohort, CohortProgramDay, ProgramTaskTemplate, ProgramDay } from '@/types';
 
 interface MemberInfo {
   userId: string;
@@ -110,20 +110,12 @@ export async function GET(
     let cohortTaskStates = await getCohortTaskStatesForDate(cohortId, date);
 
     // If no task states exist and dayIndex is provided, create them on-demand
-    // from the cohort_program_days content
+    // from the cohort_program_days content OR fall back to template program_days
     if (cohortTaskStates.length === 0 && dayIndexParam) {
       const dayIndex = parseInt(dayIndexParam, 10);
       console.log(`[COACH_COHORT_TASKS] No states for date ${date}, creating on-demand for dayIndex ${dayIndex}`);
 
-      // Get cohort day content
-      const cohortDaySnapshot = await adminDb
-        .collection('cohort_program_days')
-        .where('cohortId', '==', cohortId)
-        .where('dayIndex', '==', dayIndex)
-        .limit(1)
-        .get();
-
-      // Get active cohort members
+      // Get active cohort members first
       const enrollmentsSnapshot = await adminDb
         .collection('program_enrollments')
         .where('cohortId', '==', cohortId)
@@ -132,30 +124,61 @@ export async function GET(
 
       const memberIds = enrollmentsSnapshot.docs.map(doc => doc.data().userId);
 
-      if (!cohortDaySnapshot.empty && memberIds.length > 0) {
-        const cohortDay = cohortDaySnapshot.docs[0].data() as CohortProgramDay;
-        const tasks = cohortDay.tasks || [];
+      if (memberIds.length > 0) {
+        let tasks: ProgramTaskTemplate[] = [];
 
-        console.log(`[COACH_COHORT_TASKS] Found ${tasks.length} tasks, ${memberIds.length} members, creating states`);
+        // Try cohort-specific day content first
+        const cohortDaySnapshot = await adminDb
+          .collection('cohort_program_days')
+          .where('cohortId', '==', cohortId)
+          .where('dayIndex', '==', dayIndex)
+          .limit(1)
+          .get();
 
-        // Create CohortTaskState for each task
-        for (const task of tasks) {
-          await getOrCreateCohortTaskState({
-            cohortId,
-            programId: cohort.programId,
-            organizationId,
-            programDayIndex: dayIndex,
-            taskTemplateId: task.id || `${task.label}:${dayIndex}`,
-            taskTitle: task.label,
-            programTaskId: task.id,
-            date,
-            memberIds,
-          });
+        if (!cohortDaySnapshot.empty) {
+          const cohortDay = cohortDaySnapshot.docs[0].data() as CohortProgramDay;
+          tasks = cohortDay.tasks || [];
+          console.log(`[COACH_COHORT_TASKS] Found ${tasks.length} tasks from cohort_program_days`);
+        } else {
+          // Fall back to template program_days
+          const programDaySnapshot = await adminDb
+            .collection('program_days')
+            .where('programId', '==', cohort.programId)
+            .where('dayIndex', '==', dayIndex)
+            .limit(1)
+            .get();
+
+          if (!programDaySnapshot.empty) {
+            const programDay = programDaySnapshot.docs[0].data() as ProgramDay;
+            tasks = programDay.tasks || [];
+            console.log(`[COACH_COHORT_TASKS] Found ${tasks.length} tasks from template program_days (fallback)`);
+          }
         }
 
-        // Re-fetch the states after creation
-        cohortTaskStates = await getCohortTaskStatesForDate(cohortId, date);
-        console.log(`[COACH_COHORT_TASKS] Created ${cohortTaskStates.length} states on-demand`);
+        if (tasks.length > 0) {
+          console.log(`[COACH_COHORT_TASKS] Creating states for ${tasks.length} tasks, ${memberIds.length} members`);
+
+          // Create CohortTaskState for each task
+          for (const task of tasks) {
+            await getOrCreateCohortTaskState({
+              cohortId,
+              programId: cohort.programId,
+              organizationId,
+              programDayIndex: dayIndex,
+              taskTemplateId: task.id || `${task.label}:${dayIndex}`,
+              taskTitle: task.label,
+              programTaskId: task.id,
+              date,
+              memberIds,
+            });
+          }
+
+          // Re-fetch the states after creation
+          cohortTaskStates = await getCohortTaskStatesForDate(cohortId, date);
+          console.log(`[COACH_COHORT_TASKS] Created ${cohortTaskStates.length} states on-demand`);
+        } else {
+          console.log(`[COACH_COHORT_TASKS] No tasks found in cohort_program_days or program_days for dayIndex ${dayIndex}`);
+        }
       }
     }
 
