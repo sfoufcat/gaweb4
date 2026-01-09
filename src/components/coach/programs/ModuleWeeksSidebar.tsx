@@ -805,6 +805,42 @@ export function ModuleWeeksSidebar({
     }
   }, [program.id, enrollmentId, cohortId]);
 
+  // Memoized cycle data for evergreen programs to prevent re-render loops
+  const cycleData = useMemo(() => {
+    if (program.durationType !== 'evergreen') return null;
+
+    // Calculate the current/max cycle number
+    let maxCycleNumber = 1;
+    if (isClientView && currentEnrollment) {
+      maxCycleNumber = getActiveCycleNumber(currentEnrollment);
+    } else if (isCohortView && currentCohort?.startDate) {
+      maxCycleNumber = calculateCyclesSinceDate(
+        currentCohort.startDate,
+        program.lengthDays,
+        program.includeWeekends !== false
+      );
+    } else if (program.createdAt) {
+      maxCycleNumber = calculateCyclesSinceDate(
+        program.createdAt,
+        program.lengthDays,
+        program.includeWeekends !== false
+      );
+    }
+
+    const currentCycleDisplay = selectedCycle || maxCycleNumber;
+    const canSelectCycle = (isClientView || isCohortView) && !!onCycleSelect && maxCycleNumber > 1;
+    const allCycles = Array.from({ length: maxCycleNumber }, (_, i) => maxCycleNumber - i);
+
+    return { maxCycleNumber, currentCycleDisplay, canSelectCycle, allCycles };
+  }, [program.durationType, program.createdAt, program.lengthDays, program.includeWeekends, 
+      isClientView, isCohortView, currentEnrollment, currentCohort?.startDate, selectedCycle, onCycleSelect]);
+
+  // Memoized cycle click handler
+  const handleCycleClick = useCallback((cycle: number) => {
+    onCycleSelect?.(cycle);
+    setCycleDropdownOpen(false);
+  }, [onCycleSelect]);
+
   const hasExistingContent = days.some(d => d.tasks?.length > 0 || d.title) ||
     weeks.some(w => w.weeklyTasks?.length || w.theme);
 
@@ -1369,34 +1405,8 @@ export function ModuleWeeksSidebar({
       </div>
 
       {/* Cycle Indicator/Selector - for evergreen programs, always visible below scroll area */}
-      {program.durationType === 'evergreen' && (() => {
-        // Calculate the current/max cycle number
-        const maxCycleNumber = (() => {
-          if (isClientView && currentEnrollment) {
-            return getActiveCycleNumber(currentEnrollment);
-          }
-          if (isCohortView && currentCohort?.startDate) {
-            return calculateCyclesSinceDate(
-              currentCohort.startDate,
-              program.lengthDays,
-              program.includeWeekends !== false
-            );
-          }
-          if (program.createdAt) {
-            return calculateCyclesSinceDate(
-              program.createdAt,
-              program.lengthDays,
-              program.includeWeekends !== false
-            );
-          }
-          return 1;
-        })();
-
-        const currentCycleDisplay = selectedCycle || maxCycleNumber;
-        const canSelectCycle = (isClientView || isCohortView) && onCycleSelect && maxCycleNumber > 1;
-
-        // Generate cycles array (newest first)
-        const allCycles = Array.from({ length: maxCycleNumber }, (_, i) => maxCycleNumber - i);
+      {cycleData && (() => {
+        const { maxCycleNumber, currentCycleDisplay, canSelectCycle, allCycles } = cycleData;
         const visibleCycles = allCycles.slice(cyclePage * CYCLES_PER_PAGE, (cyclePage + 1) * CYCLES_PER_PAGE);
         const hasMorePages = allCycles.length > CYCLES_PER_PAGE;
         const canGoNewer = cyclePage > 0;
@@ -1439,10 +1449,7 @@ export function ModuleWeeksSidebar({
                 {visibleCycles.map(cycle => (
                   <button
                     key={cycle}
-                    onClick={() => {
-                      onCycleSelect?.(cycle);
-                      setCycleDropdownOpen(false);
-                    }}
+                    onClick={() => handleCycleClick(cycle)}
                     className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] ${
                       cycle === currentCycleDisplay ? 'bg-emerald-50 dark:bg-emerald-900/30' : ''
                     }`}

@@ -224,9 +224,10 @@ export async function POST(
         lastSyncedAt: savedDoc.data()?.lastSyncedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.lastSyncedAt,
       } as ClientProgramWeek;
 
-      // Distribute tasks to client days if requested and week has tasks
+      // Distribute tasks to client days if requested
+      // Note: We run distribution even with empty tasks to clear week-sourced tasks from days
       let distributionResult = null;
-      if (body.distributeTasksNow === true && weekContent.weeklyTasks?.length > 0) {
+      if (body.distributeTasksNow === true) {
         try {
           distributionResult = await distributeClientWeeklyTasksToDays(
             programId,

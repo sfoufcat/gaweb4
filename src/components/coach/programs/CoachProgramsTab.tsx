@@ -607,6 +607,82 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     }
   }, []);
 
+  // Memoized weeks prop for sidebar to prevent re-render loops
+  const sidebarWeeks = useMemo(() => {
+    if (clientViewContext.mode === 'client') {
+      return clientWeeks.map(cw => ({
+        id: cw.id,
+        programId: cw.programId,
+        weekNumber: cw.weekNumber,
+        moduleId: cw.moduleId,
+        order: cw.order,
+        startDayIndex: cw.startDayIndex,
+        endDayIndex: cw.endDayIndex,
+        name: cw.name,
+        theme: cw.theme,
+        description: cw.description,
+        weeklyPrompt: cw.weeklyPrompt,
+        weeklyTasks: cw.weeklyTasks || [],
+        weeklyHabits: cw.weeklyHabits || [],
+        currentFocus: cw.currentFocus || [],
+        notes: cw.notes || [],
+        distribution: cw.distribution || 'spread',
+        linkedSummaryIds: cw.linkedSummaryIds || [],
+        linkedCallEventIds: cw.linkedCallEventIds || [],
+        createdAt: cw.createdAt,
+        updatedAt: cw.updatedAt,
+      } as ProgramWeek));
+    }
+    return programWeeks;
+  }, [clientViewContext.mode, clientWeeks, programWeeks]);
+
+  // Memoized selection prop for sidebar
+  const sidebarSelectionProp = useMemo(() => {
+    return sidebarSelection || (selectedDayIndex ? { type: 'day' as const, dayIndex: selectedDayIndex } : null);
+  }, [sidebarSelection, selectedDayIndex]);
+
+  // Memoized current day index for cohort view
+  const cohortCurrentDayIndex = useMemo(() => {
+    if (cohortViewContext.mode !== 'cohort' || !cohortViewContext.cohortStartDate) {
+      return undefined;
+    }
+    const startDate = new Date(cohortViewContext.cohortStartDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = today.getTime() - startDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return undefined;
+    if (diffDays >= (selectedProgram?.lengthDays || 30)) return undefined;
+    
+    const includeWeekends = selectedProgram?.includeWeekends !== false;
+    if (includeWeekends) {
+      return diffDays + 1;
+    } else {
+      let businessDays = 0;
+      const currentDate = new Date(startDate);
+      while (currentDate <= today) {
+        const dayOfWeek = currentDate.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          businessDays++;
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      return businessDays > 0 ? businessDays : undefined;
+    }
+  }, [cohortViewContext, selectedProgram?.lengthDays, selectedProgram?.includeWeekends]);
+
+  // Memoized sidebar callbacks to prevent re-render loops
+  const handleFillWithAI = useCallback(() => {
+    setIsAIProgramContentModalOpen(true);
+  }, []);
+
+  const handleCycleSelect = useCallback((cycle: number) => {
+    setSelectedCycle(cycle);
+  }, []);
+
   // Refresh loading state - handler defined after fetch functions
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -3247,30 +3323,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               key={clientViewContext.mode === 'client' ? `client-${clientViewContext.enrollmentId}` : 'template'}
               program={selectedProgram as Program}
               modules={programModules}
-              weeks={clientViewContext.mode === 'client' ? clientWeeks.map(cw => ({
-                id: cw.id,
-                programId: cw.programId,
-                weekNumber: cw.weekNumber,
-                moduleId: cw.moduleId,
-                order: cw.order,
-                startDayIndex: cw.startDayIndex,
-                endDayIndex: cw.endDayIndex,
-                name: cw.name,
-                theme: cw.theme,
-                description: cw.description,
-                weeklyPrompt: cw.weeklyPrompt,
-                weeklyTasks: cw.weeklyTasks || [],
-                weeklyHabits: cw.weeklyHabits || [],
-                currentFocus: cw.currentFocus || [],
-                notes: cw.notes || [],
-                distribution: cw.distribution || 'spread',
-                linkedSummaryIds: cw.linkedSummaryIds || [],
-                linkedCallEventIds: cw.linkedCallEventIds || [],
-                createdAt: cw.createdAt,
-                updatedAt: cw.updatedAt,
-              } as ProgramWeek)) : programWeeks}
+              weeks={sidebarWeeks}
               days={daysToUse}
-              selection={sidebarSelection || (selectedDayIndex ? { type: 'day', dayIndex: selectedDayIndex } : null)}
+              selection={sidebarSelectionProp}
               viewContext={clientViewContext}
               onSelect={handleSidebarSelect}
               onAddModule={async () => {
@@ -3311,7 +3366,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   alert('Failed to create module. Check console for details.');
                 }
               }}
-              onFillWithAI={() => setIsAIProgramContentModalOpen(true)}
+              onFillWithAI={handleFillWithAI}
               onFillWeek={(weekNumber) => {
                 // Find or create a week object for this week number
                 const existingWeek = programWeeks.find(w => w.weekNumber === weekNumber);
@@ -3554,38 +3609,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   alert('Failed to auto-distribute weeks. Check console for details.');
                 }
               }}
-              currentDayIndex={currentEnrollment?.currentDayIndex || (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortStartDate ? (() => {
-                // Calculate current day index for cohort based on start date
-                const startDate = new Date(cohortViewContext.cohortStartDate);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                startDate.setHours(0, 0, 0, 0);
-                
-                const diffTime = today.getTime() - startDate.getTime();
-                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                
-                // If cohort hasn't started yet or is in the past
-                if (diffDays < 0) return undefined;
-                if (diffDays >= (selectedProgram?.lengthDays || 30)) return undefined;
-                
-                // Convert to 1-based day index, accounting for weekends if not included
-                const includeWeekends = selectedProgram?.includeWeekends !== false;
-                if (includeWeekends) {
-                  return diffDays + 1;
-                } else {
-                  // Calculate business days (weekdays only)
-                  let businessDays = 0;
-                  const currentDate = new Date(startDate);
-                  while (currentDate <= today) {
-                    const dayOfWeek = currentDate.getDay();
-                    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
-                      businessDays++;
-                    }
-                    currentDate.setDate(currentDate.getDate() + 1);
-                  }
-                  return businessDays > 0 ? businessDays : undefined;
-                }
-              })() : undefined)}
+              currentDayIndex={currentEnrollment?.currentDayIndex || cohortCurrentDayIndex}
               onJumpToToday={handleJumpToToday}
               cohortViewContext={cohortViewContext}
               enrollmentId={clientViewContext.mode === 'client' ? clientViewContext.enrollmentId : undefined}
@@ -3593,7 +3617,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               currentEnrollment={currentEnrollment || undefined}
               currentCohort={cohortViewContext.mode === 'cohort' ? programCohorts.find(c => c.id === cohortViewContext.cohortId) : undefined}
               selectedCycle={selectedCycle}
-              onCycleSelect={(cycle) => setSelectedCycle(cycle)}
+              onCycleSelect={handleCycleSelect}
               onSaveSuccess={handleSaveSuccess}
             />
                 </div>

@@ -119,8 +119,9 @@ export async function PATCH(
     } as ClientProgramWeek;
 
     // Distribute tasks to client days if requested
+    // Note: We run distribution even with empty tasks to clear week-sourced tasks from days
     let distributionResult = null;
-    if (body.distributeTasksNow === true && body.weeklyTasks?.length > 0) {
+    if (body.distributeTasksNow === true) {
       try {
         const clientWeekData = savedDoc.data() as ClientProgramWeek;
         const enrollmentId = clientWeekData.enrollmentId;

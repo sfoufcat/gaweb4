@@ -170,9 +170,10 @@ export async function POST(
       updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
     } as ProgramWeek;
 
-    // Distribute tasks to days if requested and week has tasks
+    // Distribute tasks to days if requested
+    // Note: We run distribution even with empty tasks to clear week-sourced tasks from days
     let distributionResult = null;
-    if (body.distributeTasksNow === true && body.weeklyTasks?.length > 0) {
+    if (body.distributeTasksNow === true) {
       try {
         const programData = programDoc.data();
         distributionResult = await distributeWeeklyTasksToDays(programId, weekId, {

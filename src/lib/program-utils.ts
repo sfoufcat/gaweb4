@@ -372,10 +372,7 @@ export async function distributeWeeklyTasksToDays(
   }
 
   const weeklyTasks = weekData.weeklyTasks || [];
-  if (weeklyTasks.length === 0) {
-    return { created: 0, updated: 0, skipped: 0 };
-  }
-
+  
   // Use week setting, fall back to program setting, then default to 'spread'
   const distribution = weekData.distribution || programTaskDistribution || 'spread';
   const startDay = weekData.startDayIndex;
@@ -386,6 +383,9 @@ export async function distributeWeeklyTasksToDays(
     console.error('[PROGRAM_UTILS] Week missing startDayIndex or endDayIndex:', { weekId, startDay, endDay });
     return { created: 0, updated: 0, skipped: 0 };
   }
+  
+  // NOTE: We continue even if weeklyTasks is empty - this allows clearing week-sourced tasks
+  // while preserving manually added day tasks (source !== 'week')
 
   const daysInWeek = endDay - startDay + 1;
 
@@ -573,9 +573,8 @@ export async function distributeCohortWeeklyTasksToDays(
   const cohortWeekContent = cohortWeekContentSnapshot.docs[0].data();
   const weeklyTasks = cohortWeekContent.weeklyTasks || [];
   
-  if (weeklyTasks.length === 0) {
-    return { created: 0, updated: 0, skipped: 0 };
-  }
+  // NOTE: We continue even if weeklyTasks is empty - this allows clearing week-sourced tasks
+  // while preserving manually added day tasks (source !== 'week')
 
   // Use cohort week setting, fall back to program setting, then default to 'spread'
   const distribution = cohortWeekContent.distribution || programTaskDistribution || 'spread';
@@ -765,9 +764,9 @@ export async function distributeClientWeeklyTasksToDays(
   }
 
   const weeklyTasks = clientWeekData.weeklyTasks || [];
-  if (weeklyTasks.length === 0) {
-    return { created: 0, updated: 0, skipped: 0 };
-  }
+  
+  // NOTE: We continue even if weeklyTasks is empty - this allows clearing week-sourced tasks
+  // while preserving manually added day tasks (source !== 'week')
 
   // Use client week setting, fall back to program setting, then default to 'spread'
   const distribution = clientWeekData.distribution || programTaskDistribution || 'spread';

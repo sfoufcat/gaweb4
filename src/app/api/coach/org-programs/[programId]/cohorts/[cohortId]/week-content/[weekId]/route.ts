@@ -206,9 +206,10 @@ export async function PUT(
     } as CohortWeekContent;
 
     // Trigger task distribution to cohort days if requested
+    // Note: We run distribution even with empty tasks to clear week-sourced tasks from days
     let distributionResult = null;
     let syncResult = null;
-    if (body.distributeTasksNow === true && body.weeklyTasks?.length > 0) {
+    if (body.distributeTasksNow === true) {
       try {
         // Import dynamically to avoid circular dependency issues
         const { distributeCohortWeeklyTasksToDays } = await import('@/lib/program-utils');
@@ -378,10 +379,10 @@ export async function PATCH(
     } as CohortWeekContent;
 
     // Trigger task distribution and sync to cohort members if requested
+    // Note: We run distribution even with empty tasks to clear week-sourced tasks from days
     let distributionResult = null;
     let syncResult = null;
-    const hasWeeklyTasks = (updateData.weeklyTasks as ProgramTaskTemplate[] | undefined)?.length ?? 0 > 0;
-    if (body.distributeTasksNow === true && hasWeeklyTasks) {
+    if (body.distributeTasksNow === true) {
       try {
         const { distributeCohortWeeklyTasksToDays } = await import('@/lib/program-utils');
         const programData = programDoc.data();
