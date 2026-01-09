@@ -1524,9 +1524,10 @@ export function ModuleWeeksSidebar({
 
             {/* Tools Dropdown - right side, only when client/cohort selected */}
             {(isClientView || isCohortView) && (enrollmentId || cohortId) && (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <button
+                    type="button"
                     className="flex items-center gap-1 text-xs text-[#5f5a55] dark:text-[#8a8f9c] hover:text-[#3d3a37] dark:hover:text-[#e8e6e3] transition-colors"
                     disabled={isSyncingTasks || isClearingTasks}
                   >

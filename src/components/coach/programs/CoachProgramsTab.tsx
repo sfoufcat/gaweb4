@@ -1790,12 +1790,52 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     if (!cohortViewContext.cohortId || !cohortViewContext.cohortStartDate) return;
     if (!selectedDayIndex) return;
 
-    // Calculate the date for this day index
-    const startDate = new Date(cohortViewContext.cohortStartDate);
-    startDate.setHours(0, 0, 0, 0);
-    const targetDate = new Date(startDate);
-    targetDate.setDate(startDate.getDate() + selectedDayIndex - 1);
-    const dateStr = targetDate.toISOString().split('T')[0];
+    // Calculate the date for this day index (accounting for weekends if needed)
+    const startDateStr = cohortViewContext.cohortStartDate;
+    const dateOnly = startDateStr.includes('T') ? startDateStr.split('T')[0] : startDateStr;
+    let startDate = new Date(dateOnly + 'T00:00:00');
+
+    const includeWeekends = selectedProgram.includeWeekends !== false;
+
+    // Helper to check if date is weekend
+    const isWeekend = (date: Date) => date.getDay() === 0 || date.getDay() === 6;
+
+    // Helper to get next weekday
+    const getNextWeekday = (date: Date) => {
+      const next = new Date(date);
+      while (isWeekend(next)) {
+        next.setDate(next.getDate() + 1);
+      }
+      return next;
+    };
+
+    let dateStr: string;
+
+    if (!includeWeekends) {
+      // If program starts on weekend, adjust to next Monday
+      if (isWeekend(startDate)) {
+        startDate = getNextWeekday(startDate);
+      }
+
+      // Find the date that is `selectedDayIndex` weekdays from start
+      let currentDate = new Date(startDate);
+      let weekdayCount = 1; // Start date is day 1
+
+      while (weekdayCount < selectedDayIndex) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        if (!isWeekend(currentDate)) {
+          weekdayCount++;
+        }
+      }
+
+      dateStr = currentDate.toISOString().split('T')[0];
+    } else {
+      // For programs that include weekends: simple date arithmetic
+      const elapsedDays = selectedDayIndex - 1;
+      const targetDate = new Date(startDate);
+      targetDate.setDate(targetDate.getDate() + elapsedDays);
+      dateStr = targetDate.toISOString().split('T')[0];
+    }
 
     // Fetch cohort task states for this date
     const fetchCohortCompletion = async () => {
@@ -3312,6 +3352,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         <div className="flex items-center justify-between pt-4 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
                           <div className="flex items-center gap-2 text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
                             <StatusBadge isActive={true} size="sm" />
+                            {program.durationType === 'evergreen' && (
+                              <RefreshCw className="w-4 h-4 text-emerald-500" title="Evergreen" />
+                            )}
                             <VisibilityBadge isPublic={program.isPublished} size="sm" />
                             <span className="ml-1">
                               <span className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{program.activeEnrollments}</span> active
@@ -3451,6 +3494,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         <div className="flex items-center justify-between pt-4 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
                           <div className="flex items-center gap-2 text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
                             <StatusBadge isActive={false} size="sm" />
+                            {program.durationType === 'evergreen' && (
+                              <RefreshCw className="w-4 h-4 text-emerald-500" title="Evergreen" />
+                            )}
                             <VisibilityBadge isPublic={program.isPublished} size="sm" />
                           </div>
                           <div className="flex items-center gap-1">

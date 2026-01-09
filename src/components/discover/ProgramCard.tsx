@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Users, User, Clock } from 'lucide-react';
+import { Users, User, Clock, RefreshCw } from 'lucide-react';
 import { TypeBadge, EnrolledBadge, PriceBadge } from '@/components/ui/program-badges';
 
 interface ProgramCardProgram {
@@ -140,7 +140,11 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
               <div />
             )}
             <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
-              <Clock className="w-3 h-3 text-brand-accent" />
+              {program.durationType === 'evergreen' ? (
+                <RefreshCw className="w-3 h-3 text-emerald-500" />
+              ) : (
+                <Clock className="w-3 h-3 text-brand-accent" />
+              )}
               {program.durationType === 'evergreen' ? 'Continuous' : `${program.lengthDays} days`}
             </span>
           </div>

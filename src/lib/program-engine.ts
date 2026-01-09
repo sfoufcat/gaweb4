@@ -1203,6 +1203,33 @@ export async function getClientProgramDay(
 }
 
 /**
+ * Get client-specific program week that contains a specific day index
+ */
+export async function getClientProgramWeekForDay(
+  enrollmentId: string,
+  dayIndex: number
+): Promise<ProgramWeek | null> {
+  // Find the week that contains this day
+  const snapshot = await adminDb
+    .collection('client_program_weeks')
+    .where('enrollmentId', '==', enrollmentId)
+    .where('startDayIndex', '<=', dayIndex)
+    .get();
+  
+  if (snapshot.empty) return null;
+  
+  // Find the week where endDayIndex >= dayIndex
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    if (data.endDayIndex >= dayIndex) {
+      // Cast to ProgramWeek type since ClientProgramWeek is a superset/compatible
+      return { id: doc.id, ...data } as unknown as ProgramWeek;
+    }
+  }
+  return null;
+}
+
+/**
  * Get program week that contains a specific day index
  */
 export async function getProgramWeekForDay(
@@ -1819,8 +1846,16 @@ export interface SyncWeeklyTasksOptions {
  */
 async function getCurrentWeekForEnrollment(
   programId: string,
+  enrollmentId: string,
+  programType: 'individual' | 'group' | 'cohort' | undefined,
   currentDayIndex: number
 ): Promise<ProgramWeek | null> {
+  // For individual programs, check client_program_weeks first
+  if (programType === 'individual') {
+    const clientWeek = await getClientProgramWeekForDay(enrollmentId, currentDayIndex);
+    if (clientWeek) return clientWeek;
+  }
+
   const weeksSnapshot = await adminDb
     .collection('program_weeks')
     .where('programId', '==', programId)
@@ -1996,7 +2031,7 @@ export async function syncWeeklyTasks(
   }
 
   // 5. Get current week
-  const currentWeek = await getCurrentWeekForEnrollment(program.id, currentDayIndex);
+  const currentWeek = await getCurrentWeekForEnrollment(program.id, enrollment.id, program.type, currentDayIndex);
   if (!currentWeek) {
     return {
       success: true,
@@ -2068,14 +2103,14 @@ export async function syncWeeklyTasks(
   }
 
   // 8. Calculate task dates based on distribution
-  // Use taskDistribution, fall back to weeklyTaskDistribution for backward compat, default to 'spread'
-  const distribution = program.taskDistribution || program.weeklyTaskDistribution || 'spread';
+  // Use week distribution if set, fall back to program defaults, default to 'spread'
+  const distribution = currentWeek.distribution || program.taskDistribution || program.weeklyTaskDistribution || 'spread';
   const taskDates = calculateWeekTaskDates(
     currentWeek.startDayIndex,
     currentWeek.endDayIndex,
     enrollment.startedAt,
     weeklyTasks.length,
-    distribution
+    distribution as 'spread' | 'repeat-daily'
   );
 
   // 9. Create tasks
@@ -2433,10 +2468,22 @@ export async function syncProgramTasksToClientDay(
 
   // Only fallback to week/template if NO explicit day document exists
   if (!foundExplicitDay) {
-    // Try week-level tasks
-    const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
+    let week: ProgramWeek | null = null;
+    let isClientWeek = false;
+
+    // For individual programs, check client week first
+    if (program.type === 'individual') {
+      week = await getClientProgramWeekForDay(programEnrollmentId, dayIndex);
+      if (week) isClientWeek = true;
+    }
+
+    // Fallback to template week
+    if (!week) {
+      week = await getProgramWeekForDay(enrollment.programId, dayIndex);
+    }
+
     if (week && week.weeklyTasks && week.weeklyTasks.length > 0) {
-      console.log(`[SYNC_TO_CLIENT] Week found for day ${dayIndex}: weekId=${week.id}, weekNumber=${week.weekNumber}, distribution=${week.distribution || 'spread (default)'}, weeklyTasks=${week.weeklyTasks.length}, dayRange=${week.startDayIndex}-${week.endDayIndex}`);
+      console.log(`[SYNC_TO_CLIENT] Week found for day ${dayIndex}: weekId=${week.id}, type=${isClientWeek ? 'client' : 'template'}, weekNumber=${week.weekNumber}, distribution=${week.distribution || 'spread (default)'}, weeklyTasks=${week.weeklyTasks.length}, dayRange=${week.startDayIndex}-${week.endDayIndex}`);
       tasksForDay = getWeeklyTasksForDay(week, dayIndex);
       sourceType = 'program_week';
       sourceWeekId = week.id;

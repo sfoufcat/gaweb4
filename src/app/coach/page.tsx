@@ -188,6 +188,9 @@ export default function CoachPage() {
 
   // Handler for program selection changes - updates URL
   const handleProgramSelect = useCallback((programId: string | null) => {
+    // Don't update URL if navigating away from /coach
+    if (window.location.pathname !== '/coach') return;
+
     const url = new URL(window.location.href);
     // Ensure tab is set to programs for URL persistence on refresh
     url.searchParams.set('tab', 'programs');
@@ -201,6 +204,9 @@ export default function CoachPage() {
 
   // Handler for squad selection changes - updates URL
   const handleSquadSelect = useCallback((squadId: string | null) => {
+    // Don't update URL if navigating away from /coach
+    if (window.location.pathname !== '/coach') return;
+
     const url = new URL(window.location.href);
     // Ensure tab is set to squads for URL persistence on refresh
     url.searchParams.set('tab', 'squads');
@@ -214,6 +220,9 @@ export default function CoachPage() {
 
   // Handler for client selection changes - updates URL
   const handleClientSelect = useCallback((clientId: string | null) => {
+    // Don't update URL if navigating away from /coach
+    if (window.location.pathname !== '/coach') return;
+
     setSelectedClientId(clientId);
     const url = new URL(window.location.href);
     if (clientId) {
@@ -226,6 +235,9 @@ export default function CoachPage() {
 
   // Handler for funnel selection changes - updates URL
   const handleFunnelSelect = useCallback((funnelId: string | null) => {
+    // Don't update URL if navigating away from /coach
+    if (window.location.pathname !== '/coach') return;
+
     const url = new URL(window.location.href);
     // Ensure tab is set to funnels for URL persistence on refresh
     url.searchParams.set('tab', 'funnels');
@@ -239,6 +251,9 @@ export default function CoachPage() {
 
   // Handler for check-in flow selection changes - updates URL
   const handleFlowSelect = useCallback((flowId: string | null) => {
+    // Don't update URL if navigating away from /coach
+    if (window.location.pathname !== '/coach') return;
+
     const url = new URL(window.location.href);
     // Ensure tab is set to checkins for URL persistence on refresh
     url.searchParams.set('tab', 'checkins');
@@ -252,6 +267,9 @@ export default function CoachPage() {
 
   // Handler for discover sub-tab changes - updates URL
   const handleDiscoverSubTabChange = useCallback((subTab: string | null) => {
+    // Don't update URL if navigating away from /coach
+    if (window.location.pathname !== '/coach') return;
+
     const url = new URL(window.location.href);
     if (subTab && subTab !== 'events') {
       url.searchParams.set('discoverSubTab', subTab);
@@ -263,6 +281,9 @@ export default function CoachPage() {
 
   // Handler for customize sub-tab changes - updates URL
   const handleCustomizeSubtabChange = useCallback((subtab: string | null) => {
+    // Don't update URL if navigating away from /coach
+    if (window.location.pathname !== '/coach') return;
+
     const url = new URL(window.location.href);
     if (subtab && subtab !== 'branding') {
       url.searchParams.set('customizeSubtab', subtab);
@@ -274,6 +295,9 @@ export default function CoachPage() {
 
   // Handler for analytics sub-tab changes - updates URL
   const handleAnalyticsSubTabChange = useCallback((subTab: string | null) => {
+    // Don't update URL if navigating away from /coach
+    if (window.location.pathname !== '/coach') return;
+
     const url = new URL(window.location.href);
     if (subTab && subTab !== 'clients') {
       url.searchParams.set('analyticsSubTab', subTab);
@@ -285,6 +309,9 @@ export default function CoachPage() {
 
   // Handler for analytics squad selection changes - updates URL
   const handleAnalyticsSquadSelect = useCallback((squadId: string | null) => {
+    // Don't update URL if navigating away from /coach
+    if (window.location.pathname !== '/coach') return;
+
     const url = new URL(window.location.href);
     if (squadId) {
       url.searchParams.set('analyticsSquadId', squadId);
