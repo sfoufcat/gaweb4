@@ -105,29 +105,10 @@ export async function PATCH(
     if (body.summary !== undefined) updateData.summary = body.summary?.trim() || null;
     if (body.dailyPrompt !== undefined) updateData.dailyPrompt = body.dailyPrompt?.trim() || null;
     if (body.tasks !== undefined) {
-      let processedTasks = processTasksWithIds(body.tasks);
-
-      // Smart merge: preserve week-sourced tasks not in the request
-      // This handles race conditions where weekly tasks were distributed after frontend loaded
-      const existingData = cohortDayDoc.data();
-      if (existingData?.tasks) {
-        const existingTasks: ProgramTaskTemplate[] = existingData.tasks;
-        const incomingTaskIds = new Set(
-          processedTasks.map(t => t.id).filter((id): id is string => Boolean(id))
-        );
-
-        const preservedWeekTasks = existingTasks.filter((t) =>
-          t.source === 'week' && t.id && !incomingTaskIds.has(t.id)
-        );
-
-        if (preservedWeekTasks.length > 0) {
-          console.log(
-            `[COACH_COHORT_DAY_PATCH] Preserving ${preservedWeekTasks.length} week-sourced tasks not in save request`
-          );
-          processedTasks = [...processedTasks, ...preservedWeekTasks];
-        }
-      }
-
+      // Process tasks with IDs - no longer preserve week-sourced tasks
+      // The day editor is now the source of truth. If coach deletes a task, it should be deleted.
+      // Week distribution happens immediately on week save, so no race condition to worry about.
+      const processedTasks = processTasksWithIds(body.tasks);
       updateData.tasks = processedTasks;
     }
     if (body.habits !== undefined) updateData.habits = body.habits || [];

@@ -270,25 +270,9 @@ export async function POST(
         ? processTasksWithIds(dayData.tasks)
         : undefined;
 
-      // Smart merge: preserve week-sourced tasks not in the request
-      // This handles race conditions where weekly tasks were distributed after frontend loaded
-      if (processedTasks !== undefined && existingData?.tasks) {
-        const existingTasks: ProgramTaskTemplate[] = existingData.tasks;
-        const incomingTaskIds = new Set(
-          processedTasks.map(t => t.id).filter((id): id is string => Boolean(id))
-        );
-
-        const preservedWeekTasks = existingTasks.filter((t) =>
-          t.source === 'week' && t.id && !incomingTaskIds.has(t.id)
-        );
-
-        if (preservedWeekTasks.length > 0) {
-          console.log(
-            `[COACH_CLIENT_DAYS_POST] Preserving ${preservedWeekTasks.length} week-sourced tasks not in save request`
-          );
-          processedTasks = [...processedTasks, ...preservedWeekTasks];
-        }
-      }
+      // No longer preserve week-sourced tasks during updates
+      // The day editor is now the source of truth. If coach deletes a task, it should be deleted.
+      // Week distribution happens immediately on week save, so no race condition to worry about.
 
       const updateData = {
         ...dayData,

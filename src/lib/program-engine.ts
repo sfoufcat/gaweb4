@@ -2125,6 +2125,62 @@ export async function syncProgramTasksForDay(
     // Note: We don't pass forceDayIndex - let it calculate from date
   });
 
+  // UNIFIED APPROACH: For cohort enrollments, ensure CohortTaskStates exist
+  // This makes the unified sync function work for both 1:1 and cohort programs
+  if (result.success && result.tasksCreated > 0) {
+    try {
+      const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
+      if (enrollmentDoc.exists) {
+        const enrollment = enrollmentDoc.data();
+        if (enrollment?.cohortId) {
+          // Import dynamically to avoid circular dependency
+          const { getOrCreateCohortTaskState } = await import('@/lib/cohort-task-state');
+
+          // Get program tasks that were just synced
+          const syncedTasksSnapshot = await adminDb
+            .collection('tasks')
+            .where('userId', '==', userId)
+            .where('date', '==', date)
+            .where('programEnrollmentId', '==', enrollmentId)
+            .get();
+
+          // Get all cohort members for the state
+          const cohortMembersSnapshot = await adminDb
+            .collection('program_enrollments')
+            .where('cohortId', '==', enrollment.cohortId)
+            .where('status', 'in', ['active', 'upcoming'])
+            .get();
+          const memberIds = cohortMembersSnapshot.docs.map(d => d.data().userId);
+
+          // Create CohortTaskStates for each program-sourced task
+          for (const doc of syncedTasksSnapshot.docs) {
+            const task = doc.data();
+            const sourceType = task.sourceType;
+            if (!sourceType || !['program', 'program_day', 'program_week', 'coach_manual'].includes(sourceType)) {
+              continue;
+            }
+
+            await getOrCreateCohortTaskState({
+              cohortId: enrollment.cohortId,
+              programId: enrollment.programId,
+              organizationId: task.organizationId || enrollment.organizationId || '',
+              programDayIndex: task.programDayIndex || 0,
+              taskTemplateId: task.programTaskId || `${task.title}:${task.programDayIndex || 0}`,
+              taskTitle: task.originalTitle || task.title,
+              programTaskId: task.programTaskId,
+              date,
+              memberIds,
+            });
+          }
+          console.log(`[SYNC_UNIFIED] Created CohortTaskStates for cohort ${enrollment.cohortId}`);
+        }
+      }
+    } catch (err) {
+      console.error('[SYNC_UNIFIED] Failed to create CohortTaskStates:', err);
+      // Don't fail the sync - CohortTaskStates can be created on-demand when user completes task
+    }
+  }
+
   return {
     success: result.success,
     tasksCreated: result.tasksCreated,
