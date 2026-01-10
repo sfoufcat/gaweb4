@@ -162,61 +162,38 @@ export async function GET(
         }
 
         // Merge completion status into weeklyTasks
-        // Match by taskTitle - reliable because it's always set on CohortTaskState
-        content.weeklyTasks = await Promise.all(content.weeklyTasks.map(async (template) => {
-          // Match CohortTaskState by taskTitle (programTaskId can be missing on legacy data)
-          const matchingState = taskStates.find(state => state.taskTitle === template.label);
+        // ALWAYS query tasks collection for fresh completion data
+        // (CohortTaskState.memberStates can be stale if completions happened after state creation)
+        if (calendarWeek && totalMembers > 0) {
+          // Query ALL completed tasks for the week's date range once
+          const completedTasksSnapshot = await adminDb
+            .collection('tasks')
+            .where('date', '>=', calendarWeek.startDate)
+            .where('date', '<=', calendarWeek.endDate)
+            .where('status', '==', 'completed')
+            .get();
 
-          if (matchingState) {
-            const { isThresholdMet, completionRate, completedCount, totalMembers: stateTotalMembers } = recalculateAggregates(matchingState, threshold);
+          content.weeklyTasks = content.weeklyTasks.map((template) => {
+            // Filter by title OR originalTitle match, AND must be a cohort member
+            const memberCompletions = completedTasksSnapshot.docs.filter(d => {
+              const data = d.data();
+              const titleMatches = data.title === template.label || data.originalTitle === template.label;
+              return titleMatches && memberIds.includes(data.userId);
+            });
+
+            const completedCount = memberCompletions.length;
+            const completionRate = totalMembers > 0 ? Math.round((completedCount / totalMembers) * 100) : 0;
+            const isThresholdMet = completionRate >= threshold;
+
             return {
               ...template,
               completed: isThresholdMet,
               completionRate,
               completedCount,
-              totalMembers: stateTotalMembers,
+              totalMembers,
             };
-          }
-
-          // No CohortTaskState found - query tasks collection directly
-          // Need to check both title AND originalTitle (for when client edited task title)
-          if (calendarWeek && totalMembers > 0) {
-            try {
-              // Query by title - works even if programTaskId is missing
-              const completedTasksSnapshot = await adminDb
-                .collection('tasks')
-                .where('date', '>=', calendarWeek.startDate)
-                .where('date', '<=', calendarWeek.endDate)
-                .where('status', '==', 'completed')
-                .get();
-
-              if (!completedTasksSnapshot.empty) {
-                // Filter by title OR originalTitle match, AND must be a cohort member
-                const memberCompletions = completedTasksSnapshot.docs.filter(d => {
-                  const data = d.data();
-                  const titleMatches = data.title === template.label || data.originalTitle === template.label;
-                  return titleMatches && memberIds.includes(data.userId);
-                });
-                const completedCount = memberCompletions.length;
-                const completionRate = Math.round((completedCount / totalMembers) * 100);
-                const isThresholdMet = completionRate >= threshold;
-
-                return {
-                  ...template,
-                  completed: isThresholdMet,
-                  completionRate,
-                  completedCount,
-                  totalMembers,
-                };
-              }
-            } catch {
-              // Query failed, continue without completion data
-            }
-          }
-
-          // No completion data found
-          return template;
-        }));
+          });
+        }
       }
 
       return NextResponse.json({ content, exists: true });

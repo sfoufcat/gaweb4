@@ -274,6 +274,75 @@ export async function GET(
       }
     }
 
+    // ALWAYS sync completions from tasks collection for EXISTING states
+    // This ensures we pick up completions that happened after the state was created
+    if (cohortTaskStates.length > 0) {
+      const enrollmentsSnapshot = await adminDb
+        .collection('program_enrollments')
+        .where('cohortId', '==', cohortId)
+        .where('status', 'in', ['active', 'upcoming'])
+        .get();
+      const memberIds = enrollmentsSnapshot.docs.map(doc => doc.data().userId);
+
+      if (memberIds.length > 0) {
+        // Query all completed tasks for this date
+        const completedTasksSnapshot = await adminDb
+          .collection('tasks')
+          .where('date', '==', date)
+          .where('status', '==', 'completed')
+          .get();
+
+        if (!completedTasksSnapshot.empty) {
+          let needsRefetch = false;
+
+          for (const state of cohortTaskStates) {
+            // Find completed tasks matching this state's title (or originalTitle)
+            const matchingCompletions = completedTasksSnapshot.docs.filter(d => {
+              const data = d.data();
+              const titleMatches = data.title === state.taskTitle || data.originalTitle === state.taskTitle;
+              return titleMatches && memberIds.includes(data.userId);
+            });
+
+            for (const taskDoc of matchingCompletions) {
+              const taskData = taskDoc.data();
+              const memberState = state.memberStates[taskData.userId];
+
+              // Only update if member exists in state but status differs
+              if (memberState && memberState.status !== 'completed') {
+                await updateMemberTaskState(
+                  state.id,
+                  taskData.userId,
+                  true, // completed
+                  taskDoc.id,
+                  threshold
+                );
+                needsRefetch = true;
+              } else if (!memberState) {
+                // Member not in state yet - add them and mark completed
+                await adminDb.collection('cohort_task_states').doc(state.id).update({
+                  [`memberStates.${taskData.userId}`]: { status: 'pending' },
+                  updatedAt: new Date().toISOString(),
+                });
+                await updateMemberTaskState(
+                  state.id,
+                  taskData.userId,
+                  true,
+                  taskDoc.id,
+                  threshold
+                );
+                needsRefetch = true;
+              }
+            }
+          }
+
+          if (needsRefetch) {
+            cohortTaskStates = await getCohortTaskStatesForDate(cohortId, date);
+            console.log(`[COACH_COHORT_TASKS] Synced completions for existing states`);
+          }
+        }
+      }
+    }
+
     // If still no task states, return empty response
     if (cohortTaskStates.length === 0) {
       return NextResponse.json({
