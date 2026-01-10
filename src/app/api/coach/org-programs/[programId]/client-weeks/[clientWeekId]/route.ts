@@ -134,26 +134,43 @@ export async function GET(
         }
       }
 
+      // Debug logging for matching
+      console.log(`[COACH_CLIENT_WEEK_GET] Matching ${clientWeek.weeklyTasks?.length || 0} weekly tasks against ${userTasks.length} user tasks`);
+      userTasks.forEach(t => {
+        const task = t as { title?: string; programTaskId?: string; originalTitle?: string; status?: string };
+        console.log(`[COACH_CLIENT_WEEK_GET]   User task: "${task.title}" (programTaskId=${task.programTaskId}, status=${task.status}, originalTitle=${task.originalTitle})`);
+      });
+
       // Merge completion status into weeklyTasks
       // Use programTaskId for robust matching (survives renames), fallback to title
       clientWeek.weeklyTasks = clientWeek.weeklyTasks.map(template => {
+        console.log(`[COACH_CLIENT_WEEK_GET] Looking for match for template "${template.label}" (id=${template.id})`);
+
         const actualTask = userTasks.find(t => {
           const task = t as { title?: string; programTaskId?: string; originalTitle?: string };
           // Try programTaskId match first (robust, survives renames)
           if (template.id && task.programTaskId && task.programTaskId === template.id) {
+            console.log(`[COACH_CLIENT_WEEK_GET]   MATCH by programTaskId: ${task.programTaskId}`);
             return true;
           }
           // Fall back to title matching - IDs may differ between template sources
           if (task.title === template.label) {
+            console.log(`[COACH_CLIENT_WEEK_GET]   MATCH by title: ${task.title}`);
             return true;
           }
           // Also check originalTitle for tasks that were edited by client
-          return task.originalTitle === template.label;
+          if (task.originalTitle === template.label) {
+            console.log(`[COACH_CLIENT_WEEK_GET]   MATCH by originalTitle: ${task.originalTitle}`);
+            return true;
+          }
+          return false;
         });
+
         if (actualTask) {
           const taskStatus = (actualTask as { status?: string }).status;
           const clientLocked = (actualTask as { clientLocked?: boolean }).clientLocked;
           const isDeleted = taskStatus === 'deleted';
+          console.log(`[COACH_CLIENT_WEEK_GET]   Found match! status=${taskStatus}, completed=${taskStatus === 'completed'}`);
           return {
             ...template,
             completed: taskStatus === 'completed',
@@ -163,6 +180,7 @@ export async function GET(
             editedByClient: clientLocked && !isDeleted || undefined,
           };
         }
+        console.log(`[COACH_CLIENT_WEEK_GET]   NO MATCH found for "${template.label}"`);
         // No matching task found - return template without completion data
         return template;
       });

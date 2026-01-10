@@ -10,6 +10,7 @@ import {
   findCohortTaskStateByTaskTitle,
   updateMemberTaskState,
   syncMembersWithEnrollments,
+  recalculateAggregates,
 } from '@/lib/cohort-task-state';
 import type { CohortTaskState, ProgramCohort, CohortProgramDay, ProgramTaskTemplate, ProgramDay } from '@/types';
 
@@ -388,15 +389,19 @@ export async function GET(
         return a.firstName.localeCompare(b.firstName);
       });
 
+      // ALWAYS recalculate aggregates from memberStates to ensure accuracy
+      // Stored aggregates might be stale if updateMemberTaskState failed or had issues
+      const aggregates = recalculateAggregates(state, threshold);
+
       return {
         taskTemplateId: state.taskTemplateId,
         programTaskId: state.programTaskId,
         title: state.taskTitle,
         programDayIndex: state.programDayIndex,
-        completedCount: state.completedCount,
-        totalMembers: state.totalMembers,
-        completionRate: state.completionRate,
-        isThresholdMet: state.isThresholdMet,
+        completedCount: aggregates.completedCount,
+        totalMembers: aggregates.totalMembers,
+        completionRate: aggregates.completionRate,
+        isThresholdMet: aggregates.isThresholdMet,
         memberBreakdown,
       };
     });

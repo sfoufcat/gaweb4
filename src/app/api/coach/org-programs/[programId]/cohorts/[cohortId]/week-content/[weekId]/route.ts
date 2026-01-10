@@ -174,11 +174,13 @@ export async function GET(
 
           if (matchingState) {
             // Recalculate to ensure threshold is applied correctly
-            const { isThresholdMet, completionRate } = recalculateAggregates(matchingState, threshold);
+            const { isThresholdMet, completionRate, completedCount, totalMembers: stateTotalMembers } = recalculateAggregates(matchingState, threshold);
             return {
               ...template,
               completed: isThresholdMet,
-              completionRate, // Include rate for UI display
+              completionRate,
+              completedCount,
+              totalMembers: stateTotalMembers,
             };
           }
 
@@ -235,6 +237,8 @@ export async function GET(
                   ...template,
                   completed: isThresholdMet,
                   completionRate,
+                  completedCount,
+                  totalMembers,
                 };
               }
             } catch (fallbackErr) {
