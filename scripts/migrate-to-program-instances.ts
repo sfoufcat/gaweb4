@@ -45,17 +45,32 @@ import type {
   Task,
 } from '../src/types';
 
-// Initialize Firebase Admin
+// Initialize Firebase Admin (same pattern as src/lib/firebase-admin.ts)
 if (!getApps().length) {
-  const serviceAccount = JSON.parse(
-    process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}'
-  );
-  initializeApp({
-    credential: cert(serviceAccount),
-  });
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (projectId && privateKey && clientEmail) {
+    initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        privateKey: privateKey.replace(/\\n/g, '\n'),
+      }),
+    });
+    console.log('Firebase Admin initialized with credentials');
+  } else {
+    console.error('Missing Firebase credentials. Required env vars:');
+    console.error('  FIREBASE_PROJECT_ID:', !!projectId);
+    console.error('  FIREBASE_CLIENT_EMAIL:', !!clientEmail);
+    console.error('  FIREBASE_PRIVATE_KEY:', !!privateKey);
+    process.exit(1);
+  }
 }
 
 const db = getFirestore();
+db.settings({ ignoreUndefinedProperties: true });
 
 // Parse command line arguments
 const args = process.argv.slice(2);

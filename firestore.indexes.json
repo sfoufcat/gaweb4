@@ -2211,46 +2211,6 @@
       ]
     },
     {
-      "collectionGroup": "program_instances",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "cohortId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "program_instances",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "program_instances",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "enrollmentId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "tasks",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "instanceId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "tasks",
       "queryScope": "COLLECTION",
       "fields": [

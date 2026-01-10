@@ -10,16 +10,17 @@
  * This enables gradual migration without changing component logic.
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import useSWR from 'swr';
 import type {
   ProgramInstanceDay,
   ProgramInstanceWeek,
-  ProgramInstanceTask,
   ProgramDay,
   ProgramWeek,
   ClientViewContext,
   CohortViewContext,
+  ProgramHabitTemplate,
+  DayCourseAssignment,
 } from '@/types';
 
 // Unified day data that both old and new systems can provide
@@ -40,15 +41,8 @@ export interface UnifiedDayData {
     completed?: boolean;
     completedAt?: string;
   }>;
-  habits?: Array<{
-    id: string;
-    name: string;
-    frequency?: string;
-  }>;
-  courseAssignments?: Array<{
-    courseId: string;
-    lessonIds?: string[];
-  }>;
+  habits?: ProgramHabitTemplate[];
+  courseAssignments?: DayCourseAssignment[];
 }
 
 // Unified week data
@@ -124,7 +118,7 @@ export function useDayBridge(options: BridgeOptions & { dayIndex: number }) {
     const base = `${apiBasePath}/${programId}`;
     if (isClientMode && clientViewContext?.enrollmentId) {
       return `${base}/client-days?enrollmentId=${clientViewContext.enrollmentId}&dayIndex=${dayIndex}`;
-    } else if (isCohortMode && cohortViewContext?.cohortId) {
+    } else if (isCohortMode && cohortViewContext?.mode === 'cohort') {
       return `${base}/cohort-days?cohortId=${cohortViewContext.cohortId}&dayIndex=${dayIndex}`;
     }
     return `${base}/days/${dayIndex}`;
@@ -211,7 +205,7 @@ export function useDayBridge(options: BridgeOptions & { dayIndex: number }) {
               enrollmentId: clientViewContext.enrollmentId,
               ...updates,
             };
-          } else if (isCohortMode && cohortViewContext?.cohortId) {
+          } else if (isCohortMode && cohortViewContext?.mode === 'cohort') {
             url = `${base}/cohort-days`;
             method = 'POST';
             body = {
@@ -279,7 +273,7 @@ export function useWeekBridge(options: BridgeOptions & { weekNumber: number }) {
     const base = `${apiBasePath}/${programId}`;
     if (isClientMode && clientViewContext?.enrollmentId) {
       return `${base}/client-weeks?enrollmentId=${clientViewContext.enrollmentId}&weekNumber=${weekNumber}`;
-    } else if (isCohortMode && cohortViewContext?.cohortId) {
+    } else if (isCohortMode && cohortViewContext?.mode === 'cohort') {
       // Get week ID first, then fetch content
       return `${base}/cohorts/${cohortViewContext.cohortId}/weeks?weekNumber=${weekNumber}`;
     }
@@ -372,7 +366,7 @@ export function useWeekBridge(options: BridgeOptions & { weekNumber: number }) {
         } else {
           // Old API pattern
           const base = `${apiBasePath}/${programId}`;
-          if (isCohortMode && cohortViewContext?.cohortId) {
+          if (isCohortMode && cohortViewContext?.mode === 'cohort') {
             // Need to get week ID first for old API
             url = `${base}/cohorts/${cohortViewContext.cohortId}/week-content/${data?.weekId || weekNumber}`;
             method = 'PUT';
@@ -450,7 +444,7 @@ export function useCompletionBridge(options: BridgeOptions & {
     }
 
     // Old API pattern
-    if (cohortViewContext?.cohortId) {
+    if (isCohortMode && cohortViewContext?.mode === 'cohort') {
       return `/api/coach/cohort-tasks/${cohortViewContext.cohortId}`;
     }
 
