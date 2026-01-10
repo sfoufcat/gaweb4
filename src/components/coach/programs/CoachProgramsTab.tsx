@@ -53,6 +53,7 @@ import { useDemoMode } from '@/contexts/DemoModeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 import { ProgramEditorProvider, useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
+import { useInstanceIdLookup } from '@/hooks/useProgramInstanceBridge';
 
 import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
 import { calculateProgramDayIndex, getActiveCycleNumber, calculateCyclesSinceDate } from '@/lib/program-client-utils';
@@ -265,6 +266,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [cohortDays, setCohortDays] = useState<CohortProgramDay[]>([]);
   const [loadingCohortDays, setLoadingCohortDays] = useState(false);
   const [loadedCohortId, setLoadedCohortId] = useState<string | null>(null);
+
+  // Get migrated instance ID for the current enrollment/cohort (uses new program_instances API when available)
+  const { instanceId } = useInstanceIdLookup({
+    programId: selectedProgram?.id || '',
+    enrollmentId: clientViewContext.mode === 'client' ? clientViewContext.enrollmentId : undefined,
+    cohortId: cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined,
+  });
 
   // Leave warning dialog state (for unsaved changes)
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
@@ -4125,6 +4133,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       cohorts={programCohorts}
                       cohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined}
                       cohortName={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortName : undefined}
+                      instanceId={instanceId}
                     />
                   );
                 })()
@@ -4167,6 +4176,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       apiBasePath={apiBasePath}
                       saveError={saveError}
                       saving={saving}
+                      instanceId={instanceId}
                     />
                   );
                 })()

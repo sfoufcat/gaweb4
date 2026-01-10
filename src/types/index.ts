@@ -5733,9 +5733,38 @@ export const TIER_CALL_CREDITS: Record<CoachTier, number> = {
  */
 export type ProgramInstanceType = 'individual' | 'cohort';
 
+// ============================================================================
+// PROGRAM INSTANCE TYPES - Simplified 3-Collection Architecture
+// ============================================================================
+//
+// The program system uses 3 Firestore collections:
+//
+// 1. `programs` (template)
+//    └── weeks[] (embedded)
+//         └── days[] (embedded)
+//              └── tasks[] (embedded)
+//
+// 2. `program_instances` (one per enrollment OR cohort)
+//    └── weeks[] (copied from template, with customizations)
+//         └── days[]
+//              └── tasks[]
+//
+// 3. `task_completions` (subcollection of program_instances)
+//    └── instanceId + dayIndex + taskId + userId = completion record
+//
+// Modules stay in template (`program_modules`) - weeks reference via `moduleId`.
+//
+// API Routes:
+//   GET/POST /api/instances - List/create instances
+//   GET/PATCH /api/instances/[id] - Get/update single instance
+//   GET/POST /api/instances/[id]/completions - Completion tracking
+//
+// See CLAUDE.md for full architecture documentation.
+// ============================================================================
+
 /**
  * A task within a program instance day
- * This is the template/definition - actual completion is tracked in `tasks` collection
+ * This is the template/definition - actual completion is tracked in `task_completions` subcollection
  */
 export interface ProgramInstanceTask {
   id: string;                    // Unique ID - assigned once, never changes

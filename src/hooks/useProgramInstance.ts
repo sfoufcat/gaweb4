@@ -1,5 +1,33 @@
 'use client';
 
+// ============================================================================
+// PROGRAM INSTANCE HOOK - Direct API for New 3-Collection Architecture
+// ============================================================================
+//
+// This hook provides direct access to the program_instances API.
+// Use this when you have an instanceId and want to work with the new system.
+//
+// For migration/bridge scenarios where instanceId might not exist, use
+// useProgramInstanceBridge instead.
+//
+// COLLECTIONS:
+//   programs → Template program with embedded weeks/days/tasks
+//   program_instances → One doc per enrollment (1:1) or cohort (group)
+//   task_completions → Subcollection tracking individual completions
+//
+// API ROUTES:
+//   GET    /api/instances              - List instances
+//   POST   /api/instances              - Create instance from template
+//   GET    /api/instances/[id]         - Get instance with all data
+//   PATCH  /api/instances/[id]         - Update instance
+//   GET    /api/instances/[id]/weeks/[weekNum] - Get specific week
+//   GET    /api/instances/[id]/days/[dayIndex] - Get specific day
+//   GET    /api/instances/[id]/completions     - Get completion summary
+//   POST   /api/instances/[id]/completions     - Record completion
+//
+// See CLAUDE.md "Program System Architecture" for full documentation.
+// ============================================================================
+
 /**
  * useProgramInstance Hook
  *

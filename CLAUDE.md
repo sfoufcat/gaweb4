@@ -109,150 +109,145 @@ Key collections (see `FIRESTORE_SCHEMAS.md` for full details):
 - `programs` - Coach-created programs
 - `enrollments` - User program enrollments
 
-## Program System Architecture
+## Program System Architecture (NEW - Simplified 3-Collection Model)
 
-Programs have a 3-tier content system with a clear data flow:
+**IMPORTANT**: The program system uses a simplified 3-collection architecture. This replaces
+the old 10+ collection system with a clean, unified model.
+
+### Collections Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         TEMPLATE LAYER                               │
-│  (Base program design - what coach creates once)                    │
-│                                                                      │
-│  program_modules    → Organizational containers (title only)         │
-│  program_weeks      → Week templates with weekNumber                 │
-│  program_days       → Day templates with tasks                       │
-└─────────────────────────────────────────────────────────────────────┘
-                              ↓
-                    "Sync from Template" button
-                              ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│                         EDITOR LAYER                                 │
-│  (Coach customizations per cohort or 1:1 client)                    │
-│                                                                      │
-│  COHORT (group programs):          1:1 CLIENT (individual):         │
-│  cohort_week_content               client_program_weeks              │
-│  cohort_program_days               client_program_days               │
-└─────────────────────────────────────────────────────────────────────┘
-                              ↓
-                    Cron job (daily) or manual sync
-                              ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│                         USER LAYER                                   │
-│  (What users actually see in Daily Focus)                           │
-│                                                                      │
-│  tasks collection   → User's actual tasks for the day               │
-│  cohort_task_states → Tracks cohort completion rates                │
-└─────────────────────────────────────────────────────────────────────┘
+programs (template)
+  └── weeks[] (embedded)
+       └── days[] (embedded)
+            └── tasks[] (embedded)
+
+program_instances (one per enrollment OR cohort)
+  └── weeks[] (copied from template, with customizations)
+       └── days[]
+            └── tasks[]
+
+task_completions
+  └── instanceId + dayIndex + taskId + oduserId = completion record
+
++ program_modules (template-only, lookup via moduleId on weeks)
 ```
 
-### Key Rules
+### Why This Model?
 
-1. **Day is source of truth**: The day editor (cohort_program_days or client_program_days)
-   is the final source of truth for tasks. If coach deletes a task, it stays deleted.
+1. **Single Document = Single Instance**: One `program_instances` doc per enrollment OR cohort.
+   No more scattered `cohort_program_days`, `client_program_weeks`, etc.
 
-2. **Week feeds into Day**: Week tasks are distributed to days using the distribution
-   function. Week → Day, never the reverse.
+2. **Embedded Structure**: Weeks/days/tasks are embedded arrays, not separate collections.
+   This reduces reads and ensures atomic updates.
 
-3. **Modules are containers only**: Modules group weeks for UI organization. They have
-   `startDayIndex`/`endDayIndex` but these are DERIVED from their weeks, not calculated
-   independently.
+3. **Completion Tracking**: `task_completions` subcollection tracks individual completions
+   with composite key: `instanceId + dayIndex + taskId + userId`.
 
-4. **Calendar-aligned indices for cohort/client distribution**:
-   When distributing week tasks to cohort or client days, ALWAYS use
-   `calculateCalendarWeeks()` with the cohort's `startDate` or enrollment's
-   `startedAt` to get the correct day indices. This accounts for onboarding:
-   ```
-   Example: Client starts on Wednesday:
-   - Onboarding = Days 1-2 (Wed-Fri before first Monday)
-   - Week 1 = Days 3-9 (first full Mon-Sun week)
-   - Week 2 = Days 10-16 (second full week)
+4. **Module Lookup**: Modules stay in template (`program_modules`). Each week has `moduleId`
+   for runtime lookup. No duplication of module data.
 
-   Template indices (Week 1 = Days 1-7) would be WRONG because they
-   don't account for the client's actual calendar start date!
-   ```
-   **RULE: Week tasks must NEVER be distributed to another week's days.**
+### Collection Details
 
-5. **Template vs Calendar indices**:
-   - **Template** (`program_weeks`): Simple sequential indices without calendar alignment
-   - **Cohort/Client**: Uses `calculateCalendarWeeks()` with actual start date to
-     correctly handle onboarding periods based on real calendar weekday of enrollment.
+#### `programs` (Template)
+The base program design created by coaches. Contains:
+- `weeks[]`: Array of `ProgramWeek` (weekNumber, tasks, etc.)
+- Metadata: name, description, lengthDays, type, etc.
 
-6. **Position-based mapping (Template → Calendar weeks)**:
-   Calendar weeks have three types: `onboarding`, `regular`, and `closing`.
-   Template weeks (1, 2, 3...) map to calendar weeks by **position among regular weeks**,
-   NOT by weekNumber. This is critical because:
+#### `program_instances` (Runtime)
+One document per enrollment (1:1) or cohort (group). Contains:
+- `programId`: Reference to template
+- `enrollmentId` OR `cohortId`: Which enrollment/cohort this instance is for
+- `type`: `'enrollment'` or `'cohort'`
+- `weeks[]`: Array of `ProgramInstanceWeek` (copied from template + customizations)
+  - Each week has `moduleId` for looking up module title from template
+  - Each week has `days[]` with `tasks[]`
+- `status`: `'active'` | `'completed'` | `'paused'`
 
-   - If onboarding is a FULL week (started Monday), calendar weekNumbers skip 1:
-     `[Onboarding(0), Week 2(2), Week 3(3)...]` — no weekNumber 1!
-   - If onboarding is PARTIAL (started mid-week), calendar weekNumbers are sequential:
-     `[Onboarding(0), Week 1(1), Week 2(2)...]`
-
-   **Mapping rule**: Nth regular calendar week (0-indexed) → Template Week N+1
-   ```
-   Template Week 1 → 1st regular calendar week (position 0)
-   Template Week 2 → 2nd regular calendar week (position 1)
-   Template Week 3 → 3rd regular calendar week (position 2)
-   ```
-
-   Onboarding and closing weeks have NO template content (they're calendar-specific).
-
-   This logic is used in:
-   - `ModuleWeeksSidebar.tsx` - Frontend week selection
-   - `program-utils.ts` - Backend distribution functions
-
-7. **Sidebar week selection uses `templateWeekNumber`**:
-   In `ModuleWeeksSidebar.tsx`, the `CalculatedWeek` interface has two week number fields:
-   - `weekNum`: Sequential index for internal UI use (1, 2, 3... including onboarding)
-   - `templateWeekNumber`: The actual template week's weekNumber for API calls
-
-   When a week is selected, `weekSelection.weekNumber` must use `templateWeekNumber`
-   (not `weekNum`) so the parent component finds the correct template week:
-   ```typescript
-   // CORRECT: Uses template week number for API lookups
-   weekNumber: week.templateWeekNumber ?? week.weekNum
-
-   // WRONG: weekNum includes onboarding offset, causes +1 week bug
-   weekNumber: week.weekNum
-   ```
-
-   The `templateWeekNumber` is set via position-based matching (see Rule 6 above).
-
-8. **Distribution returns calendar-aligned day range for sync**:
-   `distributeClientWeeklyTasksToDays` returns `{ created, updated, skipped, startDayIndex, endDayIndex }`.
-   The `startDayIndex`/`endDayIndex` are the CALENDAR-ALIGNED indices where tasks were placed.
-   The sync step MUST use these returned values, NOT the template indices from `clientWeekData`.
-
-### Source of Truth by Collection
-
-| Collection | Source of Truth For | Notes |
-|------------|---------------------|-------|
-| `program_weeks` | Template week content | `weekNumber` is 1-indexed. Day indices are template-only |
-| `program_days` | Template day content | Rarely used - most coaches work at week level |
-| `program_modules` | Module titles & ordering | Day indices DERIVED from their weeks |
-| `cohort_week_content` | Cohort week-level tasks | Synced FROM `program_weeks`, coach can customize |
-| `cohort_program_days` | **Cohort day tasks (SOURCE OF TRUTH)** | What gets synced to Daily Focus |
-| `client_program_weeks` | Client week-level tasks | Synced FROM `program_weeks`, coach can customize |
-| `client_program_days` | **Client day tasks (SOURCE OF TRUTH)** | What gets synced to Daily Focus |
-| `tasks` | User's actual Daily Focus | Synced FROM `*_program_days` |
-| `cohort_task_states` | Cohort completion tracking | Tracks member completions |
+#### `task_completions` (Subcollection of instance)
+Tracks individual task completions:
+```typescript
+{
+  instanceId: string;      // Parent instance
+  dayIndex: number;        // Which program day
+  taskId: string;          // Which task in the day
+  userId: string;          // Who completed it
+  completedAt: Timestamp;  // When completed
+}
+```
 
 ### Data Flow
 
 ```
-program_weeks ──► cohort_week_content ──► cohort_program_days ──► tasks
-                                          (SOURCE OF TRUTH)
-              ──► client_program_weeks ──► client_program_days ──► tasks
-                                          (SOURCE OF TRUTH)
+┌──────────────────────────────────────────────────────────────────┐
+│                         TEMPLATE                                  │
+│  programs (with embedded weeks/days/tasks)                       │
+│  program_modules (organizational grouping)                        │
+└──────────────────────────────────────────────────────────────────┘
+                              ↓
+                    Enrollment/Cohort Created
+                              ↓
+┌──────────────────────────────────────────────────────────────────┐
+│                         INSTANCE                                  │
+│  program_instances (one doc per enrollment or cohort)            │
+│  - Weeks/days/tasks embedded                                      │
+│  - Coach can customize per instance                               │
+└──────────────────────────────────────────────────────────────────┘
+                              ↓
+                    User completes task
+                              ↓
+┌──────────────────────────────────────────────────────────────────┐
+│                         COMPLETIONS                               │
+│  task_completions subcollection                                   │
+│  - Tracks individual user completions                             │
+│  - Aggregates for cohort completion rates                         │
+└──────────────────────────────────────────────────────────────────┘
 ```
+
+### API Routes
+
+| Route | Purpose |
+|-------|---------|
+| `GET /api/instances` | List instances (filter by programId, enrollmentId, cohortId) |
+| `GET /api/instances/[id]` | Get single instance with all data |
+| `POST /api/instances` | Create new instance from template |
+| `PATCH /api/instances/[id]` | Update instance (weeks, days, tasks) |
+| `GET /api/instances/[id]/completions` | Get completion data for coach dashboard |
+| `POST /api/instances/[id]/completions` | Record task completion |
 
 ### Key Files
 
-- `src/lib/program-utils.ts` - Week/day distribution, index calculation
-- `src/lib/program-engine.ts` - Sync functions, day index calculation
-- `src/lib/calendar-weeks.ts` - Calendar-aligned week mapping
-- `src/lib/cohort-task-state.ts` - Cohort completion tracking
-- `src/app/api/coach/org-programs/` - Coach API endpoints for program management
-- `src/app/api/cron/programs-daily-sync/` - Daily sync cron job
+| File | Purpose |
+|------|---------|
+| `src/types/index.ts` | TypeScript interfaces for `ProgramInstance`, `ProgramInstanceWeek`, etc. |
+| `src/hooks/useProgramInstance.ts` | React hook for fetching/mutating instances |
+| `src/hooks/useProgramInstanceBridge.ts` | Bridge hooks for gradual migration (supports both old and new APIs) |
+| `src/app/api/instances/` | New unified API routes |
+| `scripts/migrate-to-program-instances.ts` | Migration script for existing data |
+
+### Migration Status
+
+Components are being migrated to use `instanceId` prop:
+- When `instanceId` is present: Uses new `/api/instances/` API
+- When `instanceId` is absent: Falls back to old API (legacy support)
+
+Key components updated:
+- `DayEditor` - accepts `instanceId` prop
+- `WeekEditor` - accepts `instanceId` prop  
+- `CohortTasksPanel` - accepts `instanceId` prop
+- `CoachProgramsTab` - uses `useInstanceIdLookup` hook to get instanceId
+
+### OLD Architecture (Deprecated)
+
+The following collections are being phased out:
+- `cohort_week_content` → Use `program_instances.weeks[]`
+- `cohort_program_days` → Use `program_instances.weeks[].days[]`
+- `client_program_weeks` → Use `program_instances.weeks[]`
+- `client_program_days` → Use `program_instances.weeks[].days[]`
+- `cohort_task_states` → Use `task_completions` subcollection
+
+Old sync functions in `program-utils.ts` and `program-engine.ts` are deprecated.
+New sync uses direct instance updates via `/api/instances/[id]` endpoints
 
 ### Common Patterns
 

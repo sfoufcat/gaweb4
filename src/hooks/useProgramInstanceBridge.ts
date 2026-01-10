@@ -1,5 +1,30 @@
 'use client';
 
+// ============================================================================
+// PROGRAM INSTANCE BRIDGE HOOKS
+// ============================================================================
+//
+// These hooks provide a migration bridge between the old fragmented API pattern
+// (10+ collections: cohort_program_days, client_program_weeks, etc.) and the
+// new simplified 3-collection architecture:
+//
+//   programs → program_instances → task_completions
+//
+// USAGE:
+//   const { instanceId } = useInstanceIdLookup({ programId, enrollmentId?, cohortId? });
+//   const { day } = useDayBridge({ instanceId, dayIndex, fallbackDay });
+//   const { week } = useWeekBridge({ instanceId, weekNumber, fallbackWeek });
+//   const { completions } = useCompletionBridge({ instanceId, date });
+//
+// MIGRATION PATH:
+//   1. Component gets instanceId via useInstanceIdLookup
+//   2. If instanceId exists → uses new /api/instances/ API
+//   3. If instanceId is null → falls back to old API
+//   4. Once all data is migrated, old API paths can be removed
+//
+// See CLAUDE.md "Program System Architecture" for full documentation.
+// ============================================================================
+
 /**
  * useProgramInstanceBridge Hook
  *

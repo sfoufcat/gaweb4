@@ -1,3 +1,16 @@
+// ============================================================================
+// PROGRAM INSTANCES API - Part of 3-Collection Architecture
+// ============================================================================
+//
+// This is part of the new simplified program system:
+//   programs → program_instances → task_completions
+//
+// program_instances stores one document per enrollment (1:1) or cohort (group).
+// All weeks/days/tasks are embedded in the instance document.
+//
+// See CLAUDE.md "Program System Architecture" for full documentation.
+// ============================================================================
+
 /**
  * Program Instances List API
  *
@@ -8,6 +21,7 @@
  * Query params:
  * - programId: Filter by program
  * - cohortId: Filter by cohort
+ * - enrollmentId: Filter by enrollment (for 1:1 programs)
  * - userId: Filter by user (for individual instances)
  * - type: Filter by type ('individual' | 'cohort')
  * - limit: Max results (default: 50)

@@ -119,7 +119,8 @@ async function buildWeeksForInstance(
   templateDays: ProgramDay[],
   customDays: (ClientProgramDay | CohortProgramDay)[],
   customWeeks: (ClientProgramWeek | CohortWeekContent)[],
-  startDate: string
+  startDate: string,
+  modules: Array<{ id: string; weekIds?: string[] }>
 ): Promise<ProgramInstanceWeek[]> {
   const weeks: ProgramInstanceWeek[] = [];
   const includeWeekends = program.includeWeekends !== false;
@@ -198,9 +199,13 @@ async function buildWeeksForInstance(
     const weekEndDate = new Date(weekStartDate);
     weekEndDate.setDate(weekEndDate.getDate() + instanceDays.length - 1);
 
+    // Find module for this week
+    const module = modules.find(m => m.weekIds?.includes(templateWeek.id));
+
     // Build week with merged content
     weeks.push({
       weekNumber,
+      moduleId: module?.id,
       calendarStartDate: weekStartDate.toISOString().split('T')[0],
       calendarEndDate: weekEndDate.toISOString().split('T')[0],
       // CohortWeekContent doesn't have name/theme/description - only ClientProgramWeek does
@@ -264,6 +269,12 @@ async function migrateEnrollment(enrollment: ProgramEnrollment): Promise<void> {
       .get();
     const clientWeeks = clientWeeksSnap.docs.map(d => ({ id: d.id, ...d.data() } as ClientProgramWeek));
 
+    // Get modules for moduleId lookup
+    const modulesSnap = await db.collection('program_modules')
+      .where('programId', '==', programId)
+      .get();
+    const modules = modulesSnap.docs.map(d => ({ id: d.id, weekIds: d.data().weekIds as string[] | undefined }));
+
     // Calculate start date (startedAt is the enrollment field)
     const startDate = enrollment.startedAt?.split('T')[0] || enrollment.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0];
 
@@ -274,7 +285,8 @@ async function migrateEnrollment(enrollment: ProgramEnrollment): Promise<void> {
       templateDays,
       clientDays,
       clientWeeks,
-      startDate
+      startDate,
+      modules
     );
 
     // Create program instance
@@ -374,6 +386,12 @@ async function migrateCohort(cohort: ProgramCohort): Promise<void> {
       .get();
     const cohortWeeks = cohortWeeksSnap.docs.map(d => ({ id: d.id, ...d.data() } as CohortWeekContent));
 
+    // Get modules for moduleId lookup
+    const modulesSnap = await db.collection('program_modules')
+      .where('programId', '==', programId)
+      .get();
+    const modules = modulesSnap.docs.map(d => ({ id: d.id, weekIds: d.data().weekIds as string[] | undefined }));
+
     // Calculate start date
     const startDate = cohort.startDate || new Date().toISOString().split('T')[0];
 
@@ -384,7 +402,8 @@ async function migrateCohort(cohort: ProgramCohort): Promise<void> {
       templateDays,
       cohortDays,
       cohortWeeks,
-      startDate
+      startDate,
+      modules
     );
 
     // Create program instance
