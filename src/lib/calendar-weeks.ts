@@ -6,6 +6,30 @@
  * - Onboarding Week: First week (may be partial if joining mid-week)
  * - Closing Week: Last week (may be partial)
  * - Regular Weeks: Full Mon-Fri weeks in between
+ *
+ * ## IMPORTANT: Position-Based Mapping
+ *
+ * Template weeks (from program_weeks) map to calendar weeks by POSITION among
+ * regular weeks, NOT by weekNumber. This is because:
+ *
+ * - If onboarding is FULL (started Monday), calendar weekNumbers skip 1:
+ *   [Onboarding(weekNumber=0), Week 2(weekNumber=2), Week 3(weekNumber=3)...]
+ *
+ * - If onboarding is PARTIAL (started mid-week), weekNumbers are sequential:
+ *   [Onboarding(weekNumber=0), Week 1(weekNumber=1), Week 2(weekNumber=2)...]
+ *
+ * The mapping rule is:
+ *   Template Week N → Nth regular calendar week (0-indexed position N-1)
+ *
+ * Example with full onboarding (started Monday):
+ *   Template Week 1 → Calendar "Week 2" (1st regular week, position 0)
+ *   Template Week 2 → Calendar "Week 3" (2nd regular week, position 1)
+ *
+ * Onboarding and closing weeks have NO template content.
+ *
+ * This logic is used in:
+ * - ModuleWeeksSidebar.tsx (frontend week selection)
+ * - program-utils.ts (backend distribution functions)
  */
 
 import type { Program, ProgramEnrollment } from '@/types';

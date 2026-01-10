@@ -738,7 +738,14 @@ export async function syncClientProgramDaysFromWeekDistribution(
 /**
  * Distribute cohort-specific weekly tasks to individual cohort program days.
  * Creates or updates cohort_program_days documents based on distribution settings.
- * 
+ *
+ * ## Position-Based Mapping
+ * Uses POSITION among regular weeks (not weekNumber) to map template weeks to
+ * calendar weeks. This handles the case where full onboarding causes calendar
+ * weekNumbers to skip 1. See calendar-weeks.ts header for full explanation.
+ *
+ * Mapping: Template Week N → Nth regular calendar week (position N-1)
+ *
  * @param programId - The program ID
  * @param weekId - The week ID (program_weeks doc)
  * @param cohortId - The cohort ID (program_cohorts doc)
@@ -1056,6 +1063,13 @@ export async function distributeCohortWeeklyTasksToDays(
 /**
  * Distributes weekly tasks from a client-specific week to client-specific days.
  * This is for 1:1 programs where a coach has customized content for a specific client.
+ *
+ * ## Position-Based Mapping
+ * Uses POSITION among regular weeks (not weekNumber) to map template weeks to
+ * calendar weeks. This handles the case where full onboarding causes calendar
+ * weekNumbers to skip 1. See calendar-weeks.ts header for full explanation.
+ *
+ * Mapping: Template Week N → Nth regular calendar week (position N-1)
  *
  * @param programId - The program ID
  * @param clientWeekId - The client week ID (client_program_weeks doc)

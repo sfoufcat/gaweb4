@@ -177,6 +177,29 @@ Programs have a 3-tier content system with a clear data flow:
    - **Cohort/Client**: Uses `calculateCalendarWeeks()` with actual start date to
      correctly handle onboarding periods based on real calendar weekday of enrollment.
 
+6. **Position-based mapping (Template → Calendar weeks)**:
+   Calendar weeks have three types: `onboarding`, `regular`, and `closing`.
+   Template weeks (1, 2, 3...) map to calendar weeks by **position among regular weeks**,
+   NOT by weekNumber. This is critical because:
+
+   - If onboarding is a FULL week (started Monday), calendar weekNumbers skip 1:
+     `[Onboarding(0), Week 2(2), Week 3(3)...]` — no weekNumber 1!
+   - If onboarding is PARTIAL (started mid-week), calendar weekNumbers are sequential:
+     `[Onboarding(0), Week 1(1), Week 2(2)...]`
+
+   **Mapping rule**: Nth regular calendar week (0-indexed) → Template Week N+1
+   ```
+   Template Week 1 → 1st regular calendar week (position 0)
+   Template Week 2 → 2nd regular calendar week (position 1)
+   Template Week 3 → 3rd regular calendar week (position 2)
+   ```
+
+   Onboarding and closing weeks have NO template content (they're calendar-specific).
+
+   This logic is used in:
+   - `ModuleWeeksSidebar.tsx` - Frontend week selection
+   - `program-utils.ts` - Backend distribution functions
+
 ### Key Files
 
 - `src/lib/program-utils.ts` - Week/day distribution, index calculation

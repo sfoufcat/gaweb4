@@ -480,15 +480,30 @@ export function ModuleWeeksSidebar({
         days.some(d => d.dayIndex === day && (d.tasks?.length > 0 || d.title))
       );
 
-      // Find the stored week that contains these days (for theme, etc.)
-      const storedWeek = weeks.find(w => {
-        const includeWeekends = program.includeWeekends !== false;
-        const daysPerWeek = includeWeekends ? 7 : 5;
-        const weekStart = (w.weekNumber - 1) * daysPerWeek + 1;
-        const weekEnd = w.weekNumber * daysPerWeek;
-        // Check if any of our calendar week days fall in this stored week
-        return cw.startDayIndex >= weekStart && cw.startDayIndex <= weekEnd;
-      });
+      // Find the stored week using POSITION-based matching among regular weeks.
+      // Template weeks are numbered 1, 2, 3... but calendar weeks may have:
+      // - Onboarding (weekNumber: 0) - no template match
+      // - Regular weeks (weekNumber: 1, 2, 3... or 2, 3, 4... if onboarding was full)
+      // - Closing (weekNumber: -1) - no template match
+      //
+      // The correct mapping is: Nth regular calendar week → Template Week N
+      // NOT by weekNumber, because calendar weekNumbers can skip 1 if onboarding is full.
+      let storedWeek: typeof weeks[0] | undefined;
+
+      if (cw.type === 'regular') {
+        // Find position of this week among regular calendar weeks (0-indexed)
+        const regularCalendarWeeks = calendarWeeks.filter(w => w.type === 'regular');
+        const positionAmongRegular = regularCalendarWeeks.findIndex(
+          rcw => rcw.startDayIndex === cw.startDayIndex
+        );
+
+        if (positionAmongRegular >= 0) {
+          // Template weeks are 1-indexed, so position 0 → weekNumber 1
+          const targetWeekNumber = positionAmongRegular + 1;
+          storedWeek = weeks.find(w => w.weekNumber === targetWeekNumber);
+        }
+      }
+      // For onboarding and closing weeks, storedWeek remains undefined (no template content)
 
       return {
         weekNum: idx + 1, // Sequential for internal use
