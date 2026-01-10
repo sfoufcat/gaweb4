@@ -54,6 +54,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 import { ProgramEditorProvider, useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { useInstanceIdLookup } from '@/hooks/useProgramInstanceBridge';
+import { useProgramInstance } from '@/hooks/useProgramInstance';
 
 import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
 import { calculateProgramDayIndex, getActiveCycleNumber, calculateCyclesSinceDate } from '@/lib/program-client-utils';
@@ -274,14 +275,97 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     cohortId: cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined,
   });
 
+  // Fetch full instance when instanceId is available (new 3-collection architecture)
+  const {
+    instance,
+    isLoading: instanceLoading,
+    refresh: refreshInstance,
+  } = useProgramInstance(instanceId);
+
+  // Derive flattened days from instance (when using new system)
+  const instanceDays = useMemo(() => {
+    if (!instance?.weeks) return [];
+    const days: (ClientProgramDay | CohortProgramDay)[] = [];
+    for (const week of instance.weeks) {
+      if (!week.days) continue;
+      for (const day of week.days) {
+        days.push({
+          id: `${instance.id}-day-${day.globalDayIndex}`,
+          programId: instance.programId,
+          dayIndex: day.globalDayIndex,
+          enrollmentId: instance.enrollmentId,
+          cohortId: instance.cohortId,
+          tasks: day.tasks?.map(t => ({
+            id: t.id,
+            label: t.label,
+            isPrimary: t.isPrimary,
+            type: t.type,
+            estimatedMinutes: t.estimatedMinutes,
+            notes: t.notes,
+            source: t.source,
+          })) || [],
+          habits: day.habits || [],
+          title: day.title,
+          summary: day.summary,
+          dailyPrompt: day.dailyPrompt,
+          courseAssignments: day.courseAssignments,
+        } as ClientProgramDay | CohortProgramDay);
+      }
+    }
+    return days;
+  }, [instance]);
+
+  // Derive weeks from instance (when using new system)
+  const instanceWeeks = useMemo(() => {
+    if (!instance?.weeks) return [];
+    return instance.weeks.map(week => ({
+      id: `${instance.id}-week-${week.weekNumber}`,
+      programId: instance.programId,
+      enrollmentId: instance.enrollmentId,
+      cohortId: instance.cohortId,
+      weekNumber: week.weekNumber,
+      name: week.name,
+      theme: week.theme,
+      description: week.description,
+      weeklyPrompt: week.weeklyPrompt,
+      weeklyTasks: week.weeklyTasks || [],
+      weeklyHabits: week.weeklyHabits || [],
+      calendarStartDate: week.calendarStartDate,
+      calendarEndDate: week.calendarEndDate,
+      moduleId: week.moduleId,
+    } as ClientProgramWeek));
+  }, [instance]);
+
   // Leave warning dialog state (for unsaved changes)
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const [pendingNavigationAction, setPendingNavigationAction] = useState<(() => void) | null>(null);
 
-  // Computed days array - use clientDays for 1:1 programs in client mode, cohortDays for group programs in cohort mode, otherwise programDays
+  // Computed days array - prefer instance data (new system), fall back to old clientDays/cohortDays
   const daysToUse = useMemo(() => {
     const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
     const isCohortMode = selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort';
+
+    // NEW SYSTEM: Use instance data when available
+    if (instance && instanceDays.length > 0) {
+      // Merge instance days with template days
+      const mergedDays = [...programDays];
+      for (const instanceDay of instanceDays) {
+        const idx = mergedDays.findIndex(d => d.dayIndex === instanceDay.dayIndex);
+        if (idx >= 0) {
+          mergedDays[idx] = {
+            ...mergedDays[idx],
+            tasks: instanceDay.tasks || [],
+            habits: instanceDay.habits || [],
+            title: instanceDay.title || mergedDays[idx].title,
+            summary: instanceDay.summary || mergedDays[idx].summary,
+            dailyPrompt: instanceDay.dailyPrompt || mergedDays[idx].dailyPrompt,
+          };
+        }
+      }
+      return mergedDays;
+    }
+
+    // OLD SYSTEM: Fall back to clientDays/cohortDays when instance not available
     const clientDataMatches = clientViewContext.mode === 'client' && loadedEnrollmentId === clientViewContext.enrollmentId;
     const cohortDataMatches = cohortViewContext.mode === 'cohort' && loadedCohortId === cohortViewContext.cohortId;
 
@@ -308,7 +392,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       return mergedDays;
     }
     return programDays;
-  }, [selectedProgram?.type, clientViewContext, cohortViewContext, loadedEnrollmentId, loadedCohortId, clientDays, cohortDays, programDays]);
+  }, [selectedProgram?.type, clientViewContext, cohortViewContext, loadedEnrollmentId, loadedCohortId, clientDays, cohortDays, programDays, instance, instanceDays]);
 
   // Cycle selection state (for evergreen programs)
   const [selectedCycle, setSelectedCycle] = useState<number | undefined>(undefined);
@@ -629,6 +713,27 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
   // Memoized weeks prop for sidebar to prevent re-render loops
   const sidebarWeeks = useMemo(() => {
+    // NEW SYSTEM: Use instance weeks when available
+    if (instance && instanceWeeks.length > 0) {
+      return instanceWeeks.map(iw => ({
+        id: iw.id,
+        programId: iw.programId,
+        weekNumber: iw.weekNumber,
+        moduleId: iw.moduleId,
+        name: iw.name,
+        theme: iw.theme,
+        description: iw.description,
+        weeklyPrompt: iw.weeklyPrompt,
+        weeklyTasks: iw.weeklyTasks || [],
+        weeklyHabits: iw.weeklyHabits || [],
+        currentFocus: [],
+        notes: [],
+        distribution: 'spread' as TaskDistribution,
+        linkedSummaryIds: [],
+        linkedCallEventIds: [],
+      } as ProgramWeek));
+    }
+    // OLD SYSTEM: Fall back to clientWeeks when instance not available
     if (clientViewContext.mode === 'client') {
       return clientWeeks.map(cw => ({
         id: cw.id,
@@ -654,7 +759,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       } as ProgramWeek));
     }
     return programWeeks;
-  }, [clientViewContext.mode, clientWeeks, programWeeks]);
+  }, [clientViewContext.mode, clientWeeks, programWeeks, instance, instanceWeeks]);
 
   // Memoized selection prop for sidebar
   const sidebarSelectionProp = useMemo(() => {
@@ -1660,6 +1765,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   // Fetch client weeks and days when client is selected (for 1:1 programs)
   useEffect(() => {
     if (clientViewContext.mode === 'client' && selectedProgram?.type === 'individual') {
+      // NEW SYSTEM: Skip old fetch if using instance-based data
+      if (instance && instanceDays.length > 0) {
+        console.log('[CLIENT_FETCH] Skipping old API - using instance data');
+        return;
+      }
+      // OLD SYSTEM: Fall back to legacy fetch
       // Clear tracking immediately to prevent showing stale data during fetch
       setLoadedEnrollmentId(null);
       fetchClientWeeks(selectedProgram.id, clientViewContext.enrollmentId);
@@ -1670,11 +1781,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       setClientDays([]);
       setLoadedEnrollmentId(null);
     }
-  }, [clientViewContext, selectedProgram, fetchClientWeeks, fetchClientDays, selectedCycle]);
+  }, [clientViewContext, selectedProgram, fetchClientWeeks, fetchClientDays, selectedCycle, instance, instanceDays]);
 
   // Fetch cohort days when cohort is selected (for group programs)
   useEffect(() => {
     if (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId && selectedProgram?.type === 'group') {
+      // NEW SYSTEM: Skip old fetch if using instance-based data
+      if (instance && instanceDays.length > 0) {
+        console.log('[COHORT_FETCH] Skipping old API - using instance data');
+        return;
+      }
+      // OLD SYSTEM: Fall back to legacy fetch
       // Clear tracking immediately to prevent showing stale data during fetch
       setLoadedCohortId(null);
       fetchCohortDays(selectedProgram.id, cohortViewContext.cohortId);
@@ -1683,7 +1800,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       setCohortDays([]);
       setLoadedCohortId(null);
     }
-  }, [cohortViewContext, selectedProgram, fetchCohortDays]);
+  }, [cohortViewContext, selectedProgram, fetchCohortDays, instance, instanceDays]);
 
   // Fetch cohort week content when a week is selected in cohort mode
   useEffect(() => {
@@ -1919,13 +2036,22 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   // Callback to refresh data after successful save from global save button
   const handleSaveSuccess = useCallback(async () => {
     if (!selectedProgram) return;
-    
+
     console.log('[handleSaveSuccess] Refreshing data...', {
       programId: selectedProgram.id,
       clientMode: clientViewContext.mode,
       cohortMode: cohortViewContext.mode,
+      instanceId,
     });
-    
+
+    // NEW SYSTEM: Use instance refresh when available
+    if (instanceId) {
+      console.log('[handleSaveSuccess] Using instance refresh');
+      await refreshInstance();
+      return;
+    }
+
+    // OLD SYSTEM: Fall back to legacy fetches
     // Refresh based on current view mode
     if (clientViewContext.mode === 'client' && clientViewContext.enrollmentId) {
       // Client mode: refresh client weeks and days
@@ -1946,7 +2072,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       // Template mode: refresh program details
       await fetchProgramDetails(selectedProgram.id);
     }
-  }, [selectedProgram, clientViewContext, cohortViewContext, sidebarSelection, programWeeks, fetchClientWeeks, fetchClientDays, fetchProgramDetails, fetchCohortDays, fetchCohortWeekContent]);
+  }, [selectedProgram, clientViewContext, cohortViewContext, sidebarSelection, programWeeks, fetchClientWeeks, fetchClientDays, fetchProgramDetails, fetchCohortDays, fetchCohortWeekContent, instanceId, refreshInstance]);
 
   const handleOpenProgramModal = (program?: Program) => {
     // In demo mode, show signup modal instead of allowing edit for existing programs
@@ -2235,11 +2361,33 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     if (!selectedProgram) return;
 
     const isClientMode = clientViewContext.mode === 'client' && selectedProgram.type === 'individual';
+    const isCohortMode = cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId;
 
     try {
       setSaving(true);
       setSaveError(null);
 
+      // NEW SYSTEM: Use instance API when instanceId is available
+      if (instanceId && (isClientMode || isCohortMode)) {
+        console.log('[handleSaveDay] Using new instance API', { instanceId, dayIndex: selectedDayIndex });
+        const response = await fetch(`/api/instances/${instanceId}/days/${selectedDayIndex}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dayFormData),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to save day');
+        }
+
+        // Refresh instance data
+        await refreshInstance();
+        return;
+      }
+
+      // OLD SYSTEM: Fall back to legacy APIs
       if (isClientMode) {
         // Save to client-specific day
         const response = await fetch(`${apiBasePath}/${selectedProgram.id}/client-days`, {
@@ -2270,7 +2418,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             return [...prev, data.clientDay];
           });
         }
-      } else if (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId) {
+      } else if (isCohortMode) {
         // Save to cohort-specific day
         const response = await fetch(`${apiBasePath}/${selectedProgram.id}/cohort-days`, {
           method: 'POST',
