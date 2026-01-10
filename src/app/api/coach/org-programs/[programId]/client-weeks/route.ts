@@ -83,11 +83,11 @@ export async function GET(
           const userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
           // Merge completion status into weeklyTasks
-          // Simple matching: by programTaskId only (we're already scoped to the right day range)
+          // Match by title - reliable and works with legacy data
           week.weeklyTasks = week.weeklyTasks.map(template => {
             const actualTask = userTasks.find(t => {
-              const task = t as { programTaskId?: string };
-              return template.id && task.programTaskId === template.id;
+              const task = t as { title?: string };
+              return task.title === template.label;
             });
             if (actualTask) {
               const taskStatus = (actualTask as { status?: string }).status;

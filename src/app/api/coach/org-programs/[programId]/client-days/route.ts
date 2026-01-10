@@ -145,13 +145,12 @@ export async function GET(
           }
 
           // Merge completion status into template tasks
-          // Simple matching: by programTaskId only (we're already scoped to the right day)
+          // Match by title - reliable and works with legacy data
           if (day.tasks && Array.isArray(day.tasks)) {
             day.tasks = day.tasks.map(template => {
-              // Match by programTaskId - already scoped by dayIndex so this is sufficient
               const actualTask = userTasks.find(t => {
-                const task = t as { programTaskId?: string };
-                return template.id && task.programTaskId === template.id;
+                const task = t as { title?: string };
+                return task.title === template.label;
               });
               if (actualTask) {
                 const taskStatus = (actualTask as { status?: string }).status;

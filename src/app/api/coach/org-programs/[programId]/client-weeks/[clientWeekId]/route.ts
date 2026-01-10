@@ -135,12 +135,11 @@ export async function GET(
       }
 
       // Merge completion status into weeklyTasks
-      // Simple matching: by programTaskId only (we're already scoped to the right date range)
+      // Match by title - reliable and works with legacy data
       clientWeek.weeklyTasks = clientWeek.weeklyTasks.map(template => {
-        // Match by programTaskId - already scoped by date range so this is sufficient
         const actualTask = userTasks.find(t => {
-          const task = t as { programTaskId?: string };
-          return template.id && task.programTaskId === template.id;
+          const task = t as { title?: string };
+          return task.title === template.label;
         });
 
         if (actualTask) {

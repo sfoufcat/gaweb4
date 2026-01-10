@@ -6,7 +6,7 @@ import {
   getCohortTaskStatesForDate,
   getProgramCompletionThreshold,
   getOrCreateCohortTaskState,
-  findCohortTaskStateByProgramTaskId,
+  findCohortTaskStateByTaskTitle,
   updateMemberTaskState,
   syncMembersWithEnrollments,
   recalculateAggregates,
@@ -217,24 +217,20 @@ export async function GET(
           console.log(`[COACH_COHORT_TASKS] Created ${cohortTaskStates.length} states on-demand`);
 
           // SYNC: Check for existing completed tasks and update CohortTaskStates
-          // Simple matching: by programTaskId only (scoped by date)
-          console.log(`[COACH_COHORT_TASKS] Syncing existing task completions...`);
+          // Match by title - reliable and works with legacy data
           for (const task of tasks) {
-            // Skip tasks without id
-            if (!task.id) continue;
-
-            // Query by programTaskId only - simple and reliable
+            // Query completed tasks by title
             const completedTasksSnapshot = await adminDb
               .collection('tasks')
-              .where('programTaskId', '==', task.id)
+              .where('title', '==', task.label)
               .where('date', '==', date)
               .where('status', '==', 'completed')
               .get();
 
             if (completedTasksSnapshot.empty) continue;
 
-            // Find the CohortTaskState by programTaskId
-            const state = await findCohortTaskStateByProgramTaskId(cohortId, task.id, date);
+            // Find the CohortTaskState by title
+            const state = await findCohortTaskStateByTaskTitle(cohortId, task.label, date, dayIndex);
 
             if (state) {
               // Update member states for completed tasks
@@ -350,12 +346,8 @@ export async function GET(
         return a.firstName.localeCompare(b.firstName);
       });
 
-      // ALWAYS recalculate aggregates from memberStates to ensure accuracy
-      // Stored aggregates might be stale if updateMemberTaskState failed or had issues
-      console.log(`[COHORT_TASKS_DEBUG] State ${state.id}: programTaskId=${state.programTaskId}, taskTitle="${state.taskTitle}"`);
-      console.log(`[COHORT_TASKS_DEBUG]   memberStates:`, JSON.stringify(state.memberStates));
+      // Recalculate aggregates from memberStates to ensure accuracy
       const aggregates = recalculateAggregates(state, threshold);
-      console.log(`[COHORT_TASKS_DEBUG]   aggregates: completedCount=${aggregates.completedCount}, totalMembers=${aggregates.totalMembers}`);
 
       return {
         taskTemplateId: state.taskTemplateId,

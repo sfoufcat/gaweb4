@@ -162,22 +162,12 @@ export async function GET(
         }
 
         // Merge completion status into weeklyTasks
-        // Simple matching: by programTaskId only (we're already scoped to the right date range)
-        console.log(`[COHORT_WEEK_CONTENT_GET] Matching ${content.weeklyTasks.length} templates against ${taskStates.length} CohortTaskStates`);
-
+        // Match by taskTitle - reliable because it's always set on CohortTaskState
         content.weeklyTasks = await Promise.all(content.weeklyTasks.map(async (template) => {
-          console.log(`[COHORT_WEEK_CONTENT_GET] Template: "${template.label}" (id=${template.id})`);
-
-          // Match CohortTaskState by programTaskId only
-          const matchingState = taskStates.find(state => {
-            const matches = template.id && state.programTaskId === template.id;
-            console.log(`[COHORT_WEEK_CONTENT_GET]   vs State: programTaskId=${state.programTaskId}, taskTitle="${state.taskTitle}" => ${matches ? 'MATCH' : 'no match'}`);
-            return matches;
-          });
+          // Match CohortTaskState by taskTitle (programTaskId can be missing on legacy data)
+          const matchingState = taskStates.find(state => state.taskTitle === template.label);
 
           if (matchingState) {
-            console.log(`[COHORT_WEEK_CONTENT_GET]   FOUND matching state!`);
-            // Recalculate to ensure threshold is applied correctly
             const { isThresholdMet, completionRate, completedCount, totalMembers: stateTotalMembers } = recalculateAggregates(matchingState, threshold);
             return {
               ...template,
@@ -188,25 +178,19 @@ export async function GET(
             };
           }
 
-          // No CohortTaskState found - query actual tasks collection as FALLBACK
-          // This handles cases where CohortTaskState wasn't created yet
-          console.log(`[COHORT_WEEK_CONTENT_GET]   No matching state, trying fallback query...`);
-          if (calendarWeek && totalMembers > 0 && template.id) {
+          // No CohortTaskState found - query tasks collection directly
+          if (calendarWeek && totalMembers > 0) {
             try {
-              // Query by programTaskId only - simple and reliable
-              console.log(`[COHORT_WEEK_CONTENT_GET]   Fallback: programTaskId=${template.id}, dates ${calendarWeek.startDate} to ${calendarWeek.endDate}`);
+              // Query by title - works even if programTaskId is missing
               const completedTasksSnapshot = await adminDb
                 .collection('tasks')
-                .where('programTaskId', '==', template.id)
+                .where('title', '==', template.label)
                 .where('date', '>=', calendarWeek.startDate)
                 .where('date', '<=', calendarWeek.endDate)
                 .where('status', '==', 'completed')
                 .get();
 
-              console.log(`[COHORT_WEEK_CONTENT_GET]   Fallback found ${completedTasksSnapshot.size} completed tasks`);
-
               if (!completedTasksSnapshot.empty) {
-                // Count completions from cohort members only
                 const memberCompletions = completedTasksSnapshot.docs.filter(d =>
                   memberIds.includes(d.data().userId)
                 );
@@ -222,8 +206,8 @@ export async function GET(
                   totalMembers,
                 };
               }
-            } catch (fallbackErr) {
-              console.warn(`[COHORT_WEEK_CONTENT_GET] Fallback query failed for "${template.label}":`, fallbackErr);
+            } catch {
+              // Query failed, continue without completion data
             }
           }
 
