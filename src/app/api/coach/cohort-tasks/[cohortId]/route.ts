@@ -352,7 +352,10 @@ export async function GET(
 
       // ALWAYS recalculate aggregates from memberStates to ensure accuracy
       // Stored aggregates might be stale if updateMemberTaskState failed or had issues
+      console.log(`[COHORT_TASKS_DEBUG] State ${state.id}: programTaskId=${state.programTaskId}, taskTitle="${state.taskTitle}"`);
+      console.log(`[COHORT_TASKS_DEBUG]   memberStates:`, JSON.stringify(state.memberStates));
       const aggregates = recalculateAggregates(state, threshold);
+      console.log(`[COHORT_TASKS_DEBUG]   aggregates: completedCount=${aggregates.completedCount}, totalMembers=${aggregates.totalMembers}`);
 
       return {
         taskTemplateId: state.taskTemplateId,
