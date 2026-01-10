@@ -815,16 +815,26 @@ export async function distributeCohortWeeklyTasksToDays(
     // Calculate calendar-aligned weeks for this cohort
     const calendarWeeks = calculateCalendarWeeks(cohortStartDate, totalDays, includeWeekends);
 
-    // Find the week matching this weekNumber
-    const calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.weekNumber === weekNumber);
+    // Get non-onboarding weeks sorted by day index (position in program)
+    // This includes regular weeks AND closing week, but NOT onboarding (weekNumber=0)
+    // We match by POSITION, not weekNumber, because:
+    // 1. Closing week has weekNumber=-1 but is still a valid week
+    // 2. Calendar may skip weekNumber=1 if onboarding was a full week
+    const regularWeeks = calendarWeeks
+      .filter((w: CalendarWeek) => w.weekNumber !== 0)
+      .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
+
+    // Template Week N (weekNumber=N) → (N-1)th regular calendar week (0-indexed)
+    const weekIndex = weekNumber - 1;
+    const calendarWeek = regularWeeks[weekIndex];
 
     if (calendarWeek) {
       resolvedStartDay = calendarWeek.startDayIndex;
       resolvedEndDay = Math.min(calendarWeek.endDayIndex, totalDays);
-      console.log(`[PROGRAM_UTILS] Using calendar-aligned indices for cohort ${cohortId}, week ${weekNumber}: days ${resolvedStartDay}-${resolvedEndDay}`);
+      console.log(`[PROGRAM_UTILS] Using calendar-aligned indices for cohort ${cohortId}, template week ${weekNumber} → calendar week index ${weekIndex}: days ${resolvedStartDay}-${resolvedEndDay}`);
     } else {
       // Fallback to template indices if week not found in calendar
-      console.warn(`[PROGRAM_UTILS] Week ${weekNumber} not found in calendar weeks, using template indices`);
+      console.warn(`[PROGRAM_UTILS] Week ${weekNumber} (index ${weekIndex}) not found in calendar weeks (have ${regularWeeks.length} regular weeks), using template indices`);
       resolvedStartDay = weekData.startDayIndex;
       resolvedEndDay = Math.min(weekData.endDayIndex, totalDays);
     }
@@ -1064,16 +1074,26 @@ export async function distributeClientWeeklyTasksToDays(
     // Calculate calendar-aligned weeks for this enrollment
     const calendarWeeks = calculateCalendarWeeks(enrollmentStartDate, totalDays, includeWeekends);
 
-    // Find the week matching this weekNumber
-    const calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.weekNumber === weekNumber);
+    // Get non-onboarding weeks sorted by day index (position in program)
+    // This includes regular weeks AND closing week, but NOT onboarding (weekNumber=0)
+    // We match by POSITION, not weekNumber, because:
+    // 1. Closing week has weekNumber=-1 but is still a valid week
+    // 2. Calendar may skip weekNumber=1 if onboarding was a full week
+    const regularWeeks = calendarWeeks
+      .filter((w: CalendarWeek) => w.weekNumber !== 0)
+      .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
+
+    // Template Week N (weekNumber=N) → (N-1)th regular calendar week (0-indexed)
+    const weekIndex = weekNumber - 1;
+    const calendarWeek = regularWeeks[weekIndex];
 
     if (calendarWeek) {
       resolvedStartDay = calendarWeek.startDayIndex;
       resolvedEndDay = Math.min(calendarWeek.endDayIndex, totalDays);
-      console.log(`[PROGRAM_UTILS] Using calendar-aligned indices for enrollment ${enrollmentId}, week ${weekNumber}: days ${resolvedStartDay}-${resolvedEndDay}`);
+      console.log(`[PROGRAM_UTILS] Using calendar-aligned indices for enrollment ${enrollmentId}, template week ${weekNumber} → calendar week index ${weekIndex}: days ${resolvedStartDay}-${resolvedEndDay}`);
     } else {
       // Fallback to client week's stored indices if week not found in calendar
-      console.warn(`[PROGRAM_UTILS] Week ${weekNumber} not found in calendar weeks, using stored indices`);
+      console.warn(`[PROGRAM_UTILS] Week ${weekNumber} (index ${weekIndex}) not found in calendar weeks (have ${regularWeeks.length} regular weeks), using stored indices`);
       resolvedStartDay = clientWeekData.startDayIndex;
       resolvedEndDay = Math.min(clientWeekData.endDayIndex, totalDays);
     }
