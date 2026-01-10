@@ -815,26 +815,42 @@ export async function distributeCohortWeeklyTasksToDays(
     // Calculate calendar-aligned weeks for this cohort
     const calendarWeeks = calculateCalendarWeeks(cohortStartDate, totalDays, includeWeekends);
 
-    // Get non-onboarding weeks sorted by day index (position in program)
-    // This includes regular weeks AND closing week, but NOT onboarding (weekNumber=0)
-    // We match by POSITION, not weekNumber, because:
-    // 1. Closing week has weekNumber=-1 but is still a valid week
-    // 2. Calendar may skip weekNumber=1 if onboarding was a full week
-    const regularWeeks = calendarWeeks
-      .filter((w: CalendarWeek) => w.weekNumber !== 0)
+    // Get regular calendar weeks only (excludes onboarding weekNumber=0 AND closing weekNumber=-1)
+    // CRITICAL: Must use > 0 because closing week has weekNumber=-1, not !== 0
+    const calendarRegularWeeks = calendarWeeks
+      .filter((w: CalendarWeek) => w.weekNumber > 0)
       .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
 
-    // Template Week N (weekNumber=N) → (N-1)th regular calendar week (0-indexed)
-    const weekIndex = weekNumber - 1;
-    const calendarWeek = regularWeeks[weekIndex];
+    // Get the position of this template week among all template regular weeks
+    // This is more robust than weekNumber - 1, which assumes weekNumbers start at 1
+    const templateWeeksSnapshot = await adminDb
+      .collection('program_weeks')
+      .where('programId', '==', programId)
+      .where('weekNumber', '>', 0) // Regular weeks only (not onboarding weekNumber=0)
+      .orderBy('weekNumber', 'asc')
+      .get();
+
+    const templateRegularWeekIds = templateWeeksSnapshot.docs.map(d => d.id);
+    const templateWeekPosition = templateRegularWeekIds.indexOf(weekId);
+
+    console.log(`[PROGRAM_UTILS] Cohort distribution: weekId=${weekId}, weekNumber=${weekNumber}, templatePosition=${templateWeekPosition}, calendarRegularWeeks=${calendarRegularWeeks.length}`);
+
+    let calendarWeek: CalendarWeek | undefined;
+    if (templateWeekPosition >= 0) {
+      // Regular template week: map to same position in calendar regular weeks
+      calendarWeek = calendarRegularWeeks[templateWeekPosition];
+    } else if (weekNumber === 0) {
+      // Onboarding week: map to calendar onboarding
+      calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.weekNumber === 0);
+    }
 
     if (calendarWeek) {
       resolvedStartDay = calendarWeek.startDayIndex;
       resolvedEndDay = Math.min(calendarWeek.endDayIndex, totalDays);
-      console.log(`[PROGRAM_UTILS] Using calendar-aligned indices for cohort ${cohortId}, template week ${weekNumber} → calendar week index ${weekIndex}: days ${resolvedStartDay}-${resolvedEndDay}`);
+      console.log(`[PROGRAM_UTILS] Using calendar-aligned indices for cohort ${cohortId}, template week ${weekNumber} (position ${templateWeekPosition}) → days ${resolvedStartDay}-${resolvedEndDay}`);
     } else {
-      // Fallback to template indices if week not found in calendar
-      console.warn(`[PROGRAM_UTILS] Week ${weekNumber} (index ${weekIndex}) not found in calendar weeks (have ${regularWeeks.length} regular weeks), using template indices`);
+      // Fallback to template indices if week not found
+      console.warn(`[PROGRAM_UTILS] Week ${weekNumber} (position ${templateWeekPosition}) not found in calendar weeks (have ${calendarRegularWeeks.length} regular weeks), using template indices`);
       resolvedStartDay = weekData.startDayIndex;
       resolvedEndDay = Math.min(weekData.endDayIndex, totalDays);
     }
@@ -1074,26 +1090,44 @@ export async function distributeClientWeeklyTasksToDays(
     // Calculate calendar-aligned weeks for this enrollment
     const calendarWeeks = calculateCalendarWeeks(enrollmentStartDate, totalDays, includeWeekends);
 
-    // Get non-onboarding weeks sorted by day index (position in program)
-    // This includes regular weeks AND closing week, but NOT onboarding (weekNumber=0)
-    // We match by POSITION, not weekNumber, because:
-    // 1. Closing week has weekNumber=-1 but is still a valid week
-    // 2. Calendar may skip weekNumber=1 if onboarding was a full week
-    const regularWeeks = calendarWeeks
-      .filter((w: CalendarWeek) => w.weekNumber !== 0)
+    // Get regular calendar weeks only (excludes onboarding weekNumber=0 AND closing weekNumber=-1)
+    // CRITICAL: Must use > 0 because closing week has weekNumber=-1, not !== 0
+    const calendarRegularWeeks = calendarWeeks
+      .filter((w: CalendarWeek) => w.weekNumber > 0)
       .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
 
-    // Template Week N (weekNumber=N) → (N-1)th regular calendar week (0-indexed)
-    const weekIndex = weekNumber - 1;
-    const calendarWeek = regularWeeks[weekIndex];
+    // Get the position of this week among all template regular weeks
+    // Client weeks are synced from template weeks, so we use the same weekNumber
+    // to find the matching template week position
+    const templateWeeksSnapshot = await adminDb
+      .collection('program_weeks')
+      .where('programId', '==', programId)
+      .where('weekNumber', '>', 0) // Regular weeks only (not onboarding weekNumber=0)
+      .orderBy('weekNumber', 'asc')
+      .get();
+
+    // Find position by weekNumber (since client week has same weekNumber as template)
+    const templateWeekNumbers = templateWeeksSnapshot.docs.map(d => d.data().weekNumber);
+    const templateWeekPosition = templateWeekNumbers.indexOf(weekNumber);
+
+    console.log(`[PROGRAM_UTILS] Client distribution: clientWeekId=${clientWeekId}, weekNumber=${weekNumber}, templatePosition=${templateWeekPosition}, calendarRegularWeeks=${calendarRegularWeeks.length}`);
+
+    let calendarWeek: CalendarWeek | undefined;
+    if (templateWeekPosition >= 0) {
+      // Regular template week: map to same position in calendar regular weeks
+      calendarWeek = calendarRegularWeeks[templateWeekPosition];
+    } else if (weekNumber === 0) {
+      // Onboarding week: map to calendar onboarding
+      calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.weekNumber === 0);
+    }
 
     if (calendarWeek) {
       resolvedStartDay = calendarWeek.startDayIndex;
       resolvedEndDay = Math.min(calendarWeek.endDayIndex, totalDays);
-      console.log(`[PROGRAM_UTILS] Using calendar-aligned indices for enrollment ${enrollmentId}, template week ${weekNumber} → calendar week index ${weekIndex}: days ${resolvedStartDay}-${resolvedEndDay}`);
+      console.log(`[PROGRAM_UTILS] Using calendar-aligned indices for enrollment ${enrollmentId}, week ${weekNumber} (position ${templateWeekPosition}) → days ${resolvedStartDay}-${resolvedEndDay}`);
     } else {
-      // Fallback to client week's stored indices if week not found in calendar
-      console.warn(`[PROGRAM_UTILS] Week ${weekNumber} (index ${weekIndex}) not found in calendar weeks (have ${regularWeeks.length} regular weeks), using stored indices`);
+      // Fallback to client week's stored indices if week not found
+      console.warn(`[PROGRAM_UTILS] Week ${weekNumber} (position ${templateWeekPosition}) not found in calendar weeks (have ${calendarRegularWeeks.length} regular weeks), using stored indices`);
       resolvedStartDay = clientWeekData.startDayIndex;
       resolvedEndDay = Math.min(clientWeekData.endDayIndex, totalDays);
     }

@@ -21,7 +21,11 @@ export interface CalendarWeek {
   type: CalendarWeekType;
   /** Display label: "Onboarding", "Week 1", "Closing" */
   label: string;
-  /** Week number: 0 for onboarding, 1+ for regular, -1 for closing */
+  /**
+   * Week number: 0 for onboarding, 1+ for regular, -1 for closing.
+   * IMPORTANT: When filtering for regular weeks, use `weekNumber > 0` (not `!== 0`)
+   * to exclude both onboarding (0) AND closing (-1).
+   */
   weekNumber: number;
   /** ISO date string for first day of this week (Monday or enrollment date) */
   startDate: string;
