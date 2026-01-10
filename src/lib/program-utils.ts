@@ -397,55 +397,38 @@ export async function distributeWeeklyTasksToDays(
   // Distribution is always program-wide, never week-specific
   const distribution = programTaskDistribution ?? 'spread';
 
-  // ALWAYS calculate expected indices from weekNumber to prevent distribution to wrong days
-  // This fixes bugs where stored indices are stale/incorrect after week reordering
-  const programDoc = await adminDb.collection('programs').doc(programId).get();
-  const programData = programDoc.data();
-  const weekNumber = weekData.weekNumber;
-
-  if (!weekNumber || !programData) {
-    console.error('[PROGRAM_UTILS] Cannot calculate day indices - weekNumber or program missing:', { weekId, weekNumber, hasProgram: !!programData });
-    return { created: 0, updated: 0, skipped: 0 };
-  }
-
-  const { startDayIndex: calculatedStart, endDayIndex: calculatedEnd } = calculateWeekDayIndices(
-    weekNumber,
-    programData.includeWeekends !== false,
-    programData.lengthDays || 30
-  );
-
-  let resolvedStartDay = calculatedStart;
-  let resolvedEndDay = calculatedEnd;
+  // Use stored indices - they're set by recalculateWeekDayIndices which correctly handles modules
+  let resolvedStartDay = weekData.startDayIndex;
+  let resolvedEndDay = weekData.endDayIndex;
 
   console.log('[PROGRAM_UTILS] distributeWeeklyTasksToDays - Raw week data:', {
     weekId,
-    weekNumber,
     weekDataDistribution: weekData.distribution,
     weekDataDistributionType: typeof weekData.distribution,
     programTaskDistribution,
     resolvedDistribution: distribution,
-    storedStartDayIndex: weekData.startDayIndex,
-    storedEndDayIndex: weekData.endDayIndex,
-    calculatedStartDayIndex: calculatedStart,
-    calculatedEndDayIndex: calculatedEnd,
+    startDayIndex: resolvedStartDay,
+    endDayIndex: resolvedEndDay,
   });
 
-  // Check if stored indices differ from calculated (indicates stale data)
-  if (weekData.startDayIndex !== calculatedStart || weekData.endDayIndex !== calculatedEnd) {
-    console.warn('[PROGRAM_UTILS] Week indices mismatch - using calculated values:', {
-      weekId,
-      weekNumber,
-      stored: { start: weekData.startDayIndex, end: weekData.endDayIndex },
-      calculated: { start: calculatedStart, end: calculatedEnd },
-    });
+  // Validate day indices exist - if missing, trigger recalculation (handles modules correctly)
+  if (resolvedStartDay === undefined || resolvedEndDay === undefined) {
+    console.warn('[PROGRAM_UTILS] Week missing day indices, triggering recalculation:', { weekId });
 
-    // Fix the stored indices for future use
-    await adminDb.collection('program_weeks').doc(weekId).update({
-      startDayIndex: calculatedStart,
-      endDayIndex: calculatedEnd,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    console.log('[PROGRAM_UTILS] Fixed week day indices:', { weekId, startDayIndex: calculatedStart, endDayIndex: calculatedEnd });
+    // Recalculate all week indices for this program (accounts for modules)
+    await recalculateWeekDayIndices(programId);
+
+    // Re-fetch the week to get updated indices
+    const refreshedWeekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
+    const refreshedWeekData = refreshedWeekDoc.data();
+    resolvedStartDay = refreshedWeekData?.startDayIndex;
+    resolvedEndDay = refreshedWeekData?.endDayIndex;
+
+    if (resolvedStartDay === undefined || resolvedEndDay === undefined) {
+      console.error('[PROGRAM_UTILS] Still missing day indices after recalculation:', { weekId });
+      return { created: 0, updated: 0, skipped: 0 };
+    }
+    console.log('[PROGRAM_UTILS] Recalculated day indices:', { weekId, startDayIndex: resolvedStartDay, endDayIndex: resolvedEndDay });
   }
 
   // NOTE: We continue even if weeklyTasks is empty - this allows clearing week-sourced tasks
@@ -756,42 +739,37 @@ export async function distributeCohortWeeklyTasksToDays(
   // Distribution is always program-wide, never week-specific
   const distribution = programTaskDistribution ?? 'spread';
 
-  // ALWAYS calculate expected indices from weekNumber to prevent distribution to wrong days
-  // This fixes bugs where stored indices are stale/incorrect after week reordering
-  const programDocForCalc = await adminDb.collection('programs').doc(programId).get();
-  const programDataForCalc = programDocForCalc.data();
-  const weekNumber = weekData.weekNumber;
+  // Use stored indices - they're set by recalculateWeekDayIndices which correctly handles modules
+  let resolvedStartDay = weekData.startDayIndex;
+  let resolvedEndDay = weekData.endDayIndex;
 
-  if (!weekNumber || !programDataForCalc) {
-    console.error('[PROGRAM_UTILS] Cannot calculate day indices for cohort - weekNumber or program missing:', { weekId, cohortId, weekNumber, hasProgram: !!programDataForCalc });
-    return { created: 0, updated: 0, skipped: 0 };
-  }
+  console.log('[PROGRAM_UTILS] distributeCohortWeeklyTasksToDays - Raw week data:', {
+    weekId,
+    cohortId,
+    weekNumber: weekData.weekNumber,
+    startDayIndex: resolvedStartDay,
+    endDayIndex: resolvedEndDay,
+    distribution,
+  });
 
-  const { startDayIndex: calculatedStart, endDayIndex: calculatedEnd } = calculateWeekDayIndices(
-    weekNumber,
-    programDataForCalc.includeWeekends !== false,
-    programDataForCalc.lengthDays || 30
-  );
+  // Validate day indices exist - if missing, trigger recalculation (handles modules correctly)
+  if (resolvedStartDay === undefined || resolvedEndDay === undefined) {
+    console.warn('[PROGRAM_UTILS] Cohort week missing day indices, triggering recalculation:', { weekId, cohortId });
 
-  let resolvedStartDay = calculatedStart;
-  let resolvedEndDay = calculatedEnd;
+    // Recalculate all week indices for this program (accounts for modules)
+    await recalculateWeekDayIndices(programId);
 
-  // Check if stored indices differ from calculated (indicates stale data)
-  if (weekData.startDayIndex !== calculatedStart || weekData.endDayIndex !== calculatedEnd) {
-    console.warn('[PROGRAM_UTILS] Cohort week indices mismatch - using calculated values:', {
-      weekId,
-      weekNumber,
-      stored: { start: weekData.startDayIndex, end: weekData.endDayIndex },
-      calculated: { start: calculatedStart, end: calculatedEnd },
-    });
+    // Re-fetch the week to get updated indices
+    const refreshedWeekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
+    const refreshedWeekData = refreshedWeekDoc.data();
+    resolvedStartDay = refreshedWeekData?.startDayIndex;
+    resolvedEndDay = refreshedWeekData?.endDayIndex;
 
-    // Fix the stored indices for future use
-    await adminDb.collection('program_weeks').doc(weekId).update({
-      startDayIndex: calculatedStart,
-      endDayIndex: calculatedEnd,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    console.log('[PROGRAM_UTILS] Fixed week day indices:', { weekId, startDayIndex: calculatedStart, endDayIndex: calculatedEnd });
+    if (resolvedStartDay === undefined || resolvedEndDay === undefined) {
+      console.error('[PROGRAM_UTILS] Still missing day indices after recalculation:', { weekId, cohortId });
+      return { created: 0, updated: 0, skipped: 0 };
+    }
+    console.log('[PROGRAM_UTILS] Recalculated day indices for cohort:', { weekId, cohortId, startDayIndex: resolvedStartDay, endDayIndex: resolvedEndDay });
   }
 
   const daysInWeek = resolvedEndDay - resolvedStartDay + 1;
@@ -994,61 +972,39 @@ export async function distributeClientWeeklyTasksToDays(
   // Distribution is always program-wide, never week-specific
   const distribution = programTaskDistribution ?? 'spread';
 
-  // ALWAYS calculate expected indices from weekNumber to prevent distribution to wrong days
-  // This fixes bugs where stored indices are stale/incorrect after week reordering
-  const programDoc = await adminDb.collection('programs').doc(programId).get();
-  const programData = programDoc.data();
-  const weekNumber = clientWeekData.weekNumber;
+  // Use stored indices - they're set by recalculateWeekDayIndices which correctly handles modules
+  let resolvedStartDay = clientWeekData.startDayIndex;
+  let resolvedEndDay = clientWeekData.endDayIndex;
 
-  if (!weekNumber || !programData) {
-    console.error('[PROGRAM_UTILS] Cannot calculate day indices for client week - weekNumber or program missing:', { clientWeekId, enrollmentId, weekNumber, hasProgram: !!programData });
-    return { created: 0, updated: 0, skipped: 0 };
-  }
-
-  const { startDayIndex: calculatedStart, endDayIndex: calculatedEnd } = calculateWeekDayIndices(
-    weekNumber,
-    programData.includeWeekends !== false,
-    programData.lengthDays || 30
-  );
-
-  let resolvedStartDay = calculatedStart;
-  let resolvedEndDay = calculatedEnd;
-
-  // DEBUG: Log distribution decision chain
-  console.log(`[PROGRAM_UTILS] distributeClientWeeklyTasksToDays called:`, {
+  console.log('[PROGRAM_UTILS] distributeClientWeeklyTasksToDays - Raw week data:', {
     clientWeekId,
     enrollmentId,
-    programId,
-    weekNumber,
-    clientWeekDistribution: clientWeekData.distribution,
-    programTaskDistribution,
-    finalDistribution: distribution,
-    weeklyTasksCount: weeklyTasks.length,
-    storedStartDayIndex: clientWeekData.startDayIndex,
-    storedEndDayIndex: clientWeekData.endDayIndex,
-    calculatedStartDayIndex: calculatedStart,
-    calculatedEndDayIndex: calculatedEnd,
-    overwriteExisting,
+    weekNumber: clientWeekData.weekNumber,
+    startDayIndex: resolvedStartDay,
+    endDayIndex: resolvedEndDay,
+    distribution,
   });
 
-  // Check if stored indices differ from calculated (indicates stale data)
-  if (clientWeekData.startDayIndex !== calculatedStart || clientWeekData.endDayIndex !== calculatedEnd) {
-    console.warn('[PROGRAM_UTILS] Client week indices mismatch - using calculated values:', {
-      clientWeekId,
-      weekNumber,
-      stored: { start: clientWeekData.startDayIndex, end: clientWeekData.endDayIndex },
-      calculated: { start: calculatedStart, end: calculatedEnd },
-    });
+  // Validate day indices exist - if missing, trigger recalculation (handles modules correctly)
+  if (resolvedStartDay === undefined || resolvedEndDay === undefined) {
+    console.warn('[PROGRAM_UTILS] Client week missing day indices, triggering recalculation:', { clientWeekId, enrollmentId });
 
-    // Fix the stored indices for future use
-    await adminDb.collection('client_program_weeks').doc(clientWeekId).update({
-      startDayIndex: calculatedStart,
-      endDayIndex: calculatedEnd,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    console.log('[PROGRAM_UTILS] Fixed client week day indices:', { clientWeekId, startDayIndex: calculatedStart, endDayIndex: calculatedEnd });
+    // Recalculate all week indices for this program (accounts for modules)
+    await recalculateWeekDayIndices(programId);
+
+    // Re-fetch the client week to get updated indices
+    const refreshedWeekDoc = await adminDb.collection('client_program_weeks').doc(clientWeekId).get();
+    const refreshedWeekData = refreshedWeekDoc.data();
+    resolvedStartDay = refreshedWeekData?.startDayIndex;
+    resolvedEndDay = refreshedWeekData?.endDayIndex;
+
+    if (resolvedStartDay === undefined || resolvedEndDay === undefined) {
+      console.error('[PROGRAM_UTILS] Still missing day indices after recalculation:', { clientWeekId, enrollmentId });
+      return { created: 0, updated: 0, skipped: 0 };
+    }
+    console.log('[PROGRAM_UTILS] Recalculated day indices for client:', { clientWeekId, enrollmentId, startDayIndex: resolvedStartDay, endDayIndex: resolvedEndDay });
   }
-  
+
   const daysInWeek = resolvedEndDay - resolvedStartDay + 1;
 
   // Get existing client days in this range
