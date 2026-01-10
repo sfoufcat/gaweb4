@@ -5770,6 +5770,7 @@ export interface ProgramInstanceDay {
  */
 export interface ProgramInstanceWeek {
   weekNumber: number;            // 0 = onboarding, 1+ = regular weeks
+  moduleId?: string;             // Reference to template module for lookup
   calendarStartDate?: string;    // ISO date - first day of this week
   calendarEndDate?: string;      // ISO date - last day of this week
   name?: string;                 // Week name/title
