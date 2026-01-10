@@ -31,6 +31,7 @@ import {
   Save,
   X,
 } from 'lucide-react';
+import { SyncToCohortDialog } from './SyncToCohortDialog';
 
 // Selection types (same as ProgramSidebarNav for compatibility)
 export type SidebarSelection =
@@ -210,22 +211,32 @@ interface ToolsDropdownProps {
   isClearingTasks: boolean;
   onSyncTasks: () => void;
   onClearTasks: () => void;
+  /** For cohorts: show "Sync from Template" option that syncs Template → Editor */
+  isCohortView?: boolean;
+  onSyncFromTemplate?: () => void;
 }
 
-function ToolsDropdown({ isSyncingTasks, isClearingTasks, onSyncTasks, onClearTasks }: ToolsDropdownProps) {
+function ToolsDropdown({
+  isSyncingTasks,
+  isClearingTasks,
+  onSyncTasks,
+  onClearTasks,
+  isCohortView,
+  onSyncFromTemplate,
+}: ToolsDropdownProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
   // Close on click outside
   React.useEffect(() => {
     if (!isOpen) return;
-    
+
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
@@ -233,13 +244,13 @@ function ToolsDropdown({ isSyncingTasks, isClearingTasks, onSyncTasks, onClearTa
   // Close on Escape
   React.useEffect(() => {
     if (!isOpen) return;
-    
+
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsOpen(false);
       }
     };
-    
+
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen]);
@@ -247,6 +258,11 @@ function ToolsDropdown({ isSyncingTasks, isClearingTasks, onSyncTasks, onClearTa
   const handleSyncClick = () => {
     setIsOpen(false);
     onSyncTasks();
+  };
+
+  const handleSyncFromTemplateClick = () => {
+    setIsOpen(false);
+    onSyncFromTemplate?.();
   };
 
   const handleClearClick = () => {
@@ -270,9 +286,21 @@ function ToolsDropdown({ isSyncingTasks, isClearingTasks, onSyncTasks, onClearTa
         <span>Tools</span>
         <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
-      
+
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-44 z-50 bg-white dark:bg-[#1a1f28] rounded-xl border border-[#e8e4df] dark:border-[#262b35] shadow-lg p-1.5">
+        <div className="absolute right-0 top-full mt-1 w-48 z-50 bg-white dark:bg-[#1a1f28] rounded-xl border border-[#e8e4df] dark:border-[#262b35] shadow-lg p-1.5">
+          {/* For cohorts: Sync from Template (Template → Editor) */}
+          {isCohortView && onSyncFromTemplate && (
+            <button
+              type="button"
+              onClick={handleSyncFromTemplateClick}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors text-[#1a1a1a] dark:text-[#f5f5f8]"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Sync from Template
+            </button>
+          )}
+          {/* Push to Daily Focus (Editor → User) */}
           <button
             type="button"
             onClick={handleSyncClick}
@@ -280,7 +308,7 @@ function ToolsDropdown({ isSyncingTasks, isClearingTasks, onSyncTasks, onClearTa
             className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-[#1a1a1a] dark:text-[#f5f5f8]"
           >
             <RefreshCw className="h-3.5 w-3.5" />
-            Sync from Template
+            {isCohortView ? 'Push to Members' : 'Push to Daily Focus'}
           </button>
           <button
             type="button"
@@ -349,6 +377,7 @@ export function ModuleWeeksSidebar({
   const [isSyncingTasks, setIsSyncingTasks] = useState(false);
   const [isClearingTasks, setIsClearingTasks] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showSyncToCohortDialog, setShowSyncToCohortDialog] = useState(false);
   const [cycleDropdownOpen, setCycleDropdownOpen] = useState(false);
   const [cyclePage, setCyclePage] = useState(0);
   const CYCLES_PER_PAGE = 5;
@@ -1618,6 +1647,8 @@ export function ModuleWeeksSidebar({
                 isClearingTasks={isClearingTasks}
                 onSyncTasks={handleSyncTasks}
                 onClearTasks={handleShowClearConfirm}
+                isCohortView={isCohortView}
+                onSyncFromTemplate={isCohortView ? () => setShowSyncToCohortDialog(true) : undefined}
               />
             )}
           </div>
@@ -1664,6 +1695,20 @@ export function ModuleWeeksSidebar({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Sync to Cohort Dialog */}
+      {cohortId && (
+        <SyncToCohortDialog
+          open={showSyncToCohortDialog}
+          onOpenChange={setShowSyncToCohortDialog}
+          programId={program.id}
+          cohortId={cohortId}
+          cohortName={currentCohort?.name}
+          onSyncComplete={() => {
+            // Optionally refresh or show success message
+          }}
+        />
       )}
 
       {/* Delete Module Modal */}
