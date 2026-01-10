@@ -1,3 +1,20 @@
+// ============================================================================
+// PROGRAM INSTANCE COMPLETIONS API - Part of 3-Collection Architecture
+// ============================================================================
+//
+// This is part of the new simplified program system:
+//   programs → program_instances → task_completions
+//
+// Completions are tracked via the existing `tasks` collection with an `instanceId`
+// field linking back to the program_instances document. The composite key is:
+//   instanceId + dayIndex + taskId + userId
+//
+// For cohort programs, this route aggregates completions across all members
+// to calculate completion rates for the coach dashboard.
+//
+// See CLAUDE.md "Program System Architecture" for full documentation.
+// ============================================================================
+
 /**
  * Program Instance Completions API
  *

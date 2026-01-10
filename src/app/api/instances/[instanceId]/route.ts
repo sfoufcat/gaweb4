@@ -1,3 +1,16 @@
+// ============================================================================
+// PROGRAM INSTANCE API - Part of 3-Collection Architecture
+// ============================================================================
+//
+// This is part of the new simplified program system:
+//   programs → program_instances → task_completions
+//
+// This route handles CRUD for individual program instance documents.
+// Each instance contains embedded weeks/days/tasks.
+//
+// See CLAUDE.md "Program System Architecture" for full documentation.
+// ============================================================================
+
 /**
  * Program Instance API
  *
