@@ -121,6 +121,10 @@ export async function GET(request: NextRequest) {
         const data = doc.data();
         // Skip soft-deleted and archived tasks
         if (data.status === 'deleted' || data.status === 'archived') return;
+        // Skip program-sourced tasks - they should stay on their scheduled day
+        // The coach controls what appears each day via the program structure
+        if (data.sourceType === 'program' || data.sourceType === 'program_day' ||
+            data.sourceType === 'program_week') return;
         tasksToMigrate.push({ id: doc.id, ...data } as Task);
       });
 

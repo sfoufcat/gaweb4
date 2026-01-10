@@ -60,6 +60,27 @@ export function calculateSpreadDayIndices(numTasks: number, startDay: number, en
   return [...new Set(dayIndices)].sort((a, b) => a - b);
 }
 
+
+/**
+ * Calculate day indices for a week based on week number and program settings.
+ * This is used as a fallback when weeks don't have startDayIndex/endDayIndex set.
+ *
+ * @param weekNumber - The 1-based week number
+ * @param includeWeekends - Whether the program includes weekends (7 days) or not (5 days)
+ * @param totalDays - Total days in the program
+ * @returns { startDayIndex, endDayIndex }
+ */
+export function calculateWeekDayIndices(
+  weekNumber: number,
+  includeWeekends: boolean,
+  totalDays: number
+): { startDayIndex: number; endDayIndex: number } {
+  const daysPerWeek = includeWeekends ? 7 : 5;
+  const startDayIndex = (weekNumber - 1) * daysPerWeek + 1;
+  const endDayIndex = Math.min(startDayIndex + daysPerWeek - 1, totalDays);
+  return { startDayIndex, endDayIndex };
+}
+
 /**
  * Recalculates the day indices for all weeks in a program based on module order and week order within modules.
  *
@@ -386,22 +407,51 @@ export async function distributeWeeklyTasksToDays(
     resolvedDistribution: distribution,
   });
 
-  // Validate day indices exist
-  if (startDay === undefined || endDay === undefined) {
-    console.error('[PROGRAM_UTILS] Week missing startDayIndex or endDayIndex:', { weekId, startDay, endDay });
-    return { created: 0, updated: 0, skipped: 0 };
+  // Validate day indices exist - use self-healing if missing
+  let resolvedStartDay = startDay;
+  let resolvedEndDay = endDay;
+  
+  if (resolvedStartDay === undefined || resolvedEndDay === undefined) {
+    console.warn('[PROGRAM_UTILS] Week missing day indices, attempting to calculate:', { weekId, startDay, endDay });
+    
+    // Fetch program to get includeWeekends setting
+    const programDoc = await adminDb.collection('programs').doc(programId).get();
+    const programData = programDoc.data();
+    const weekNumber = weekData.weekNumber;
+    
+    if (weekNumber && programData) {
+      const { startDayIndex, endDayIndex } = calculateWeekDayIndices(
+        weekNumber,
+        programData.includeWeekends !== false,
+        programData.lengthDays || 30
+      );
+      
+      // Update the week document with calculated indices for future use
+      await adminDb.collection('program_weeks').doc(weekId).update({
+        startDayIndex,
+        endDayIndex,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      
+      resolvedStartDay = startDayIndex;
+      resolvedEndDay = endDayIndex;
+      console.log('[PROGRAM_UTILS] Calculated and saved day indices:', { weekId, startDayIndex, endDayIndex });
+    } else {
+      console.error('[PROGRAM_UTILS] Cannot calculate day indices - weekNumber or program missing:', { weekId, weekNumber, hasProgram: !!programData });
+      return { created: 0, updated: 0, skipped: 0 };
+    }
   }
 
   // NOTE: We continue even if weeklyTasks is empty - this allows clearing week-sourced tasks
   // while preserving manually added day tasks (source !== 'week')
 
-  const daysInWeek = endDay - startDay + 1;
+  const daysInWeek = resolvedEndDay - resolvedStartDay + 1;
 
   console.log('[PROGRAM_UTILS] distributeWeeklyTasksToDays:', {
     weekId,
     distribution,
-    startDay,
-    endDay,
+    startDay: resolvedStartDay,
+    endDay: resolvedEndDay,
     daysInWeek,
     tasksCount: weeklyTasks.length,
     taskLabels: weeklyTasks.map((t: { label?: string }) => t.label).join(', '),
@@ -411,8 +461,8 @@ export async function distributeWeeklyTasksToDays(
   const existingDaysSnapshot = await adminDb
     .collection('program_days')
     .where('programId', '==', programId)
-    .where('dayIndex', '>=', startDay)
-    .where('dayIndex', '<=', endDay)
+    .where('dayIndex', '>=', resolvedStartDay)
+    .where('dayIndex', '<=', resolvedEndDay)
     .get();
 
   const existingDays = new Map(
@@ -426,7 +476,7 @@ export async function distributeWeeklyTasksToDays(
 
   if (distribution === 'repeat-daily') {
     // Copy all tasks to each day (with smart merging)
-    for (let d = startDay; d <= endDay; d++) {
+    for (let d = resolvedStartDay; d <= resolvedEndDay; d++) {
       const existing = existingDays.get(d);
       const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
@@ -469,12 +519,12 @@ export async function distributeWeeklyTasksToDays(
   } else {
     // Spread: distribute tasks evenly across days (with smart merging)
     // Calculate which days should receive tasks (evenly spaced)
-    const spreadDays = calculateSpreadDayIndices(weeklyTasks.length, startDay, endDay);
+    const spreadDays = calculateSpreadDayIndices(weeklyTasks.length, resolvedStartDay, resolvedEndDay);
 
     console.log(`[PROGRAM_UTILS] Spread distribution: ${weeklyTasks.length} tasks over days ${spreadDays.join(', ')}`);
 
     // Process ALL days in the week (to clear old week tasks from days that won't get new tasks)
-    for (let d = startDay; d <= endDay; d++) {
+    for (let d = resolvedStartDay; d <= resolvedEndDay; d++) {
       const existing = existingDays.get(d);
       const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
@@ -699,17 +749,50 @@ export async function distributeCohortWeeklyTasksToDays(
 
   // Distribution is always program-wide, never week-specific
   const distribution = programTaskDistribution ?? 'spread';
-  const startDay = weekData.startDayIndex;
-  const endDay = weekData.endDayIndex;
-  const daysInWeek = endDay - startDay + 1;
+  let resolvedStartDay = weekData.startDayIndex;
+  let resolvedEndDay = weekData.endDayIndex;
+
+  // Validate day indices exist - use self-healing if missing
+  if (resolvedStartDay === undefined || resolvedEndDay === undefined) {
+    console.warn('[PROGRAM_UTILS] Cohort week missing day indices, attempting to calculate:', { weekId, cohortId, startDay: resolvedStartDay, endDay: resolvedEndDay });
+    
+    // Fetch program to get includeWeekends setting
+    const programDocForCalc = await adminDb.collection('programs').doc(programId).get();
+    const programDataForCalc = programDocForCalc.data();
+    const weekNumber = weekData.weekNumber;
+    
+    if (weekNumber && programDataForCalc) {
+      const { startDayIndex, endDayIndex } = calculateWeekDayIndices(
+        weekNumber,
+        programDataForCalc.includeWeekends !== false,
+        programDataForCalc.lengthDays || 30
+      );
+      
+      // Update the week document with calculated indices for future use
+      await adminDb.collection('program_weeks').doc(weekId).update({
+        startDayIndex,
+        endDayIndex,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      
+      resolvedStartDay = startDayIndex;
+      resolvedEndDay = endDayIndex;
+      console.log('[PROGRAM_UTILS] Calculated and saved day indices for cohort:', { weekId, cohortId, startDayIndex, endDayIndex });
+    } else {
+      console.error('[PROGRAM_UTILS] Cannot calculate day indices for cohort - weekNumber or program missing:', { weekId, cohortId, weekNumber, hasProgram: !!programDataForCalc });
+      return { created: 0, updated: 0, skipped: 0 };
+    }
+  }
+
+  const daysInWeek = resolvedEndDay - resolvedStartDay + 1;
 
   // Get existing cohort days in this range
   const existingDaysSnapshot = await adminDb
     .collection('cohort_program_days')
     .where('cohortId', '==', cohortId)
     .where('programId', '==', programId)
-    .where('dayIndex', '>=', startDay)
-    .where('dayIndex', '<=', endDay)
+    .where('dayIndex', '>=', resolvedStartDay)
+    .where('dayIndex', '<=', resolvedEndDay)
     .get();
 
   const existingDays = new Map(
@@ -717,7 +800,7 @@ export async function distributeCohortWeeklyTasksToDays(
   );
 
   // Debug logging - trace what days were found
-  console.log(`[DIST_DEBUG_COHORT] Query: cohortId=${cohortId}, programId=${programId}, dayIndex ${startDay}-${endDay}`);
+  console.log(`[DIST_DEBUG_COHORT] Query: cohortId=${cohortId}, programId=${programId}, dayIndex ${resolvedStartDay}-${resolvedEndDay}`);
   console.log(`[DIST_DEBUG_COHORT] Found ${existingDaysSnapshot.size} existing days`);
   existingDays.forEach((day, dayIndex) => {
     const dayData = day as { tasks?: ProgramTaskTemplate[] };
@@ -736,7 +819,7 @@ export async function distributeCohortWeeklyTasksToDays(
 
   if (distribution === 'repeat-daily') {
     // Copy all tasks to each day (with smart merging)
-    for (let d = startDay; d <= endDay; d++) {
+    for (let d = resolvedStartDay; d <= resolvedEndDay; d++) {
       const existing = existingDays.get(d);
       const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
@@ -785,12 +868,12 @@ export async function distributeCohortWeeklyTasksToDays(
     }
   } else {
     // Spread: distribute tasks evenly across days (with smart merging)
-    const spreadDays = calculateSpreadDayIndices(weeklyTasks.length, startDay, endDay);
+    const spreadDays = calculateSpreadDayIndices(weeklyTasks.length, resolvedStartDay, resolvedEndDay);
 
     console.log(`[PROGRAM_UTILS] Cohort spread distribution: ${weeklyTasks.length} tasks over days ${spreadDays.join(', ')}`);
 
     // Process ALL days in the week (to clear old week tasks from days that won't get new tasks)
-    for (let d = startDay; d <= endDay; d++) {
+    for (let d = resolvedStartDay; d <= resolvedEndDay; d++) {
       const existing = existingDays.get(d);
       const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
@@ -900,8 +983,8 @@ export async function distributeClientWeeklyTasksToDays(
 
   // Distribution is always program-wide, never week-specific
   const distribution = programTaskDistribution ?? 'spread';
-  const startDay = clientWeekData.startDayIndex;
-  const endDay = clientWeekData.endDayIndex;
+  let resolvedStartDay = clientWeekData.startDayIndex;
+  let resolvedEndDay = clientWeekData.endDayIndex;
   
   // DEBUG: Log distribution decision chain
   console.log(`[PROGRAM_UTILS] distributeClientWeeklyTasksToDays called:`, {
@@ -913,25 +996,52 @@ export async function distributeClientWeeklyTasksToDays(
     programTaskDistribution,
     finalDistribution: distribution,
     weeklyTasksCount: weeklyTasks.length,
-    startDayIndex: startDay,
-    endDayIndex: endDay,
+    startDayIndex: resolvedStartDay,
+    endDayIndex: resolvedEndDay,
     overwriteExisting,
   });
   
-  if (startDay === undefined || endDay === undefined) {
-    console.error('[PROGRAM_UTILS] Client week missing startDayIndex or endDayIndex');
-    return { created: 0, updated: 0, skipped: 0 };
+  // Validate day indices exist - use self-healing if missing
+  if (resolvedStartDay === undefined || resolvedEndDay === undefined) {
+    console.warn('[PROGRAM_UTILS] Client week missing day indices, attempting to calculate:', { clientWeekId, enrollmentId, startDay: resolvedStartDay, endDay: resolvedEndDay });
+    
+    // Fetch program to get includeWeekends setting
+    const programDoc = await adminDb.collection('programs').doc(programId).get();
+    const programData = programDoc.data();
+    const weekNumber = clientWeekData.weekNumber;
+    
+    if (weekNumber && programData) {
+      const { startDayIndex, endDayIndex } = calculateWeekDayIndices(
+        weekNumber,
+        programData.includeWeekends !== false,
+        programData.lengthDays || 30
+      );
+      
+      // Update the client week document with calculated indices for future use
+      await adminDb.collection('client_program_weeks').doc(clientWeekId).update({
+        startDayIndex,
+        endDayIndex,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      
+      resolvedStartDay = startDayIndex;
+      resolvedEndDay = endDayIndex;
+      console.log('[PROGRAM_UTILS] Calculated and saved day indices for client week:', { clientWeekId, enrollmentId, startDayIndex, endDayIndex });
+    } else {
+      console.error('[PROGRAM_UTILS] Cannot calculate day indices for client week - weekNumber or program missing:', { clientWeekId, enrollmentId, weekNumber, hasProgram: !!programData });
+      return { created: 0, updated: 0, skipped: 0 };
+    }
   }
   
-  const daysInWeek = endDay - startDay + 1;
+  const daysInWeek = resolvedEndDay - resolvedStartDay + 1;
 
   // Get existing client days in this range
   const existingDaysSnapshot = await adminDb
     .collection('client_program_days')
     .where('enrollmentId', '==', enrollmentId)
     .where('programId', '==', programId)
-    .where('dayIndex', '>=', startDay)
-    .where('dayIndex', '<=', endDay)
+    .where('dayIndex', '>=', resolvedStartDay)
+    .where('dayIndex', '<=', resolvedEndDay)
     .get();
 
   const existingDays = new Map(
@@ -939,7 +1049,7 @@ export async function distributeClientWeeklyTasksToDays(
   );
 
   // Debug logging - trace what days were found
-  console.log(`[DIST_DEBUG_CLIENT] Query: enrollmentId=${enrollmentId}, programId=${programId}, dayIndex ${startDay}-${endDay}`);
+  console.log(`[DIST_DEBUG_CLIENT] Query: enrollmentId=${enrollmentId}, programId=${programId}, dayIndex ${resolvedStartDay}-${resolvedEndDay}`);
   console.log(`[DIST_DEBUG_CLIENT] Found ${existingDaysSnapshot.size} existing days`);
   existingDays.forEach((day, dayIndex) => {
     const dayData = day as { tasks?: ProgramTaskTemplate[] };
@@ -958,12 +1068,12 @@ export async function distributeClientWeeklyTasksToDays(
     updated = 0,
     skipped = 0;
 
-  console.log(`[PROGRAM_UTILS] Distribution mode: "${distribution}", existing days in range: ${existingDays.size}, days ${startDay}-${endDay}`);
+  console.log(`[PROGRAM_UTILS] Distribution mode: "${distribution}", existing days in range: ${existingDays.size}, days ${resolvedStartDay}-${resolvedEndDay}`);
 
   if (distribution === 'repeat-daily') {
     // Copy all tasks to each day (with smart merging)
     console.log(`[PROGRAM_UTILS] Using REPEAT-DAILY mode: copying ${weeklyTasks.length} tasks to all ${daysInWeek} days`);
-    for (let d = startDay; d <= endDay; d++) {
+    for (let d = resolvedStartDay; d <= resolvedEndDay; d++) {
       const existing = existingDays.get(d);
       const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 
@@ -1014,11 +1124,11 @@ export async function distributeClientWeeklyTasksToDays(
   } else {
     // Spread: distribute tasks evenly across days (with smart merging)
     console.log(`[PROGRAM_UTILS] Using SPREAD mode: distributing ${weeklyTasks.length} tasks evenly across ${daysInWeek} days`);
-    const spreadDays = calculateSpreadDayIndices(weeklyTasks.length, startDay, endDay);
+    const spreadDays = calculateSpreadDayIndices(weeklyTasks.length, resolvedStartDay, resolvedEndDay);
     console.log(`[PROGRAM_UTILS] Spread calculation: tasks will go on days ${spreadDays.join(', ')}`);
 
     // Process ALL days in the week (to clear old week tasks from days that won't get new tasks)
-    for (let d = startDay; d <= endDay; d++) {
+    for (let d = resolvedStartDay; d <= resolvedEndDay; d++) {
       const existing = existingDays.get(d);
       const existingData = existing as { id: string; tasks?: ProgramTaskTemplate[] } | undefined;
 

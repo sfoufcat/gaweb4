@@ -1,0 +1,173 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#e3f2fd', 'secondaryColor': '#fff3e0', 'tertiaryColor': '#e8f5e9'}}}%%
+flowchart TB
+    %% ==========================================
+    %% FIRESTORE COLLECTIONS (Data Layer)
+    %% ==========================================
+    subgraph DB["Firestore Collections"]
+        direction TB
+
+        subgraph Templates["Templates (Program Structure)"]
+            programs[("programs\n─────────\ntaskDistribution\nlengthDays\ntype: individual|group")]
+            program_weeks[("program_weeks\n─────────\nweeklyTasks[]\nstartDayIndex\nendDayIndex")]
+            program_days[("program_days\n─────────\ntasks[]\ndayIndex")]
+        end
+
+        subgraph Enrollments["Enrollments"]
+            program_enrollments[("program_enrollments\n─────────\nuserId\nprogramId\ncohortId?\nstartedAt\nlastAssignedDayIndex")]
+            program_cohorts[("program_cohorts\n─────────\nstartDate\nmemberIds[]")]
+        end
+
+        subgraph Overrides["Overrides (Customizations)"]
+            client_program_weeks[("client_program_weeks\n─────────\nenrollmentId\nweeklyTasks[]\n(1:1 only)")]
+            client_program_days[("client_program_days\n─────────\nenrollmentId\ntasks[]\n(1:1 only)")]
+            cohort_program_days[("cohort_program_days\n─────────\ncohortId\ntasks[]\n(group only)")]
+        end
+
+        subgraph UserTasks["User Tasks"]
+            tasks[("tasks\n─────────\nuserId\ndate\nlistType: focus|backlog\nstatus: pending|completed\nsourceType: program|user\nprogramDayIndex\nprogramEnrollmentId")]
+        end
+    end
+
+    %% ==========================================
+    %% COACH ACTIONS
+    %% ==========================================
+    subgraph CoachActions["Coach Actions"]
+        direction TB
+
+        coach_create["Create Program\n& Set Distribution"]
+        coach_edit_1to1["Edit 1:1 Client Week\nPATCH /client-weeks/[id]"]
+        coach_edit_group["Edit Cohort Day\nPATCH /cohort-days/[id]"]
+
+        coach_create --> programs
+        programs --> program_weeks
+        programs --> program_days
+
+        coach_edit_1to1 --> distribute["distributeClientWeeklyTasksToDays()"]
+        distribute --> client_program_days
+        distribute --> sync_all["syncProgramTasksToClientDay()\nfor EACH day in week"]
+
+        coach_edit_group --> cohort_program_days
+        cohort_program_days --> sync_cohort["Sync to cohort members"]
+    end
+
+    %% ==========================================
+    %% CLIENT ACTIONS
+    %% ==========================================
+    subgraph ClientActions["Client Opens App - GET /api/tasks"]
+        direction TB
+
+        client_open["Client Opens App"]
+
+        subgraph Migration["Step 1: Migration"]
+            migrate_query["Query: date < today\nstatus = pending"]
+            migrate_check{"sourceType?"}
+            migrate_skip["SKIP\n(program tasks\nstay on their day)"]
+            migrate_do["MIGRATE\nto today's backlog"]
+
+            migrate_query --> migrate_check
+            migrate_check -->|"program\nprogram_day\nprogram_week"| migrate_skip
+            migrate_check -->|"user\nundefined"| migrate_do
+        end
+
+        subgraph LazySync["Step 2: Lazy Sync (if no program tasks)"]
+            sync_start["syncProgramV2TasksForToday()"]
+
+            subgraph Priority["Priority Chain"]
+                direction TB
+                p1["1. client_program_days\n(1:1 only)"]
+                p2["2. cohort_program_days\n(group only)"]
+                p3["3. client_program_weeks\n(1:1 only)"]
+                p4["4. program_weeks\n(template)"]
+                p5["5. program_days\n(template)"]
+
+                p1 -->|not found| p2
+                p2 -->|not found| p3
+                p3 -->|not found| p4
+                p4 -->|not found| p5
+            end
+
+            sync_start --> Priority
+        end
+
+        subgraph Distribution["Task Distribution"]
+            dist_check{"Distribution\nMode?"}
+            dist_spread["SPREAD\ngetWeeklyTasksForDay()\n→ 1 task per spread day"]
+            dist_repeat["REPEAT-DAILY\n→ ALL tasks every day"]
+
+            dist_check -->|spread| dist_spread
+            dist_check -->|repeat-daily| dist_repeat
+        end
+
+        subgraph CreateTask["Create Tasks"]
+            create_check{"Task exists?\n(by title + dayIndex + date)"}
+            create_skip["Skip duplicate"]
+            create_new["Create new task"]
+            assign_list{"Focus slots\navailable?"}
+            to_focus["listType: focus"]
+            to_backlog["listType: backlog"]
+
+            create_check -->|yes| create_skip
+            create_check -->|no| create_new
+            create_new --> assign_list
+            assign_list -->|"yes & isPrimary"| to_focus
+            assign_list -->|"no or !isPrimary"| to_backlog
+        end
+
+        client_open --> Migration
+        client_open --> LazySync
+        Priority --> Distribution
+        Distribution --> CreateTask
+    end
+
+    %% ==========================================
+    %% CONNECTIONS
+    %% ==========================================
+
+    %% Template relationships
+    programs -.->|has many| program_weeks
+    programs -.->|has many| program_days
+
+    %% Enrollment relationships
+    program_enrollments -.->|references| programs
+    program_enrollments -.->|optional| program_cohorts
+
+    %% Override relationships
+    client_program_weeks -.->|for| program_enrollments
+    client_program_days -.->|for| program_enrollments
+    cohort_program_days -.->|for| program_cohorts
+
+    %% Sync creates tasks
+    sync_all -->|creates| tasks
+    sync_cohort -->|creates| tasks
+    to_focus -->|creates| tasks
+    to_backlog -->|creates| tasks
+    migrate_do -->|updates| tasks
+
+    %% ==========================================
+    %% SPREAD EXAMPLE
+    %% ==========================================
+    subgraph SpreadExample["Spread Distribution Example"]
+        direction LR
+        week_tasks["Week Tasks:\n[task1, task2, task3]"]
+        spread_calc["calculateSpreadDayIndices()\nWeek: Days 8-14\n3 tasks across 7 days"]
+        spread_result["Result:\nDay 9 → task1\nDay 11 → task2\nDay 13 → task3\nOther days → no task"]
+
+        week_tasks --> spread_calc --> spread_result
+    end
+
+    %% ==========================================
+    %% STYLING
+    %% ==========================================
+    style DB fill:#fafafa,stroke:#ccc
+    style Templates fill:#e3f2fd,stroke:#1976d2
+    style Enrollments fill:#fff3e0,stroke:#f57c00
+    style Overrides fill:#e8f5e9,stroke:#388e3c
+    style UserTasks fill:#f3e5f5,stroke:#7b1fa2
+    style CoachActions fill:#e1f5fe,stroke:#0288d1
+    style ClientActions fill:#fce4ec,stroke:#c2185b
+    style Migration fill:#ffebee,stroke:#d32f2f
+    style LazySync fill:#e8f5e9,stroke:#388e3c
+    style Priority fill:#fff8e1,stroke:#fbc02d
+    style Distribution fill:#e0f7fa,stroke:#0097a7
+    style CreateTask fill:#f1f8e9,stroke:#689f38
+    style SpreadExample fill:#fffde7,stroke:#fbc02d

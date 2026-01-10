@@ -1,0 +1,92 @@
+%% Program Task Flow - Complete Overview
+%% Shows how tasks flow from templates to client tasks for all program types
+
+flowchart TB
+    subgraph Templates["Program Templates (Coach Creates)"]
+        P[("programs")]
+        PW[("program_weeks")]
+        PD[("program_days")]
+
+        P -->|has many| PW
+        P -->|has many| PD
+        PW -->|weeklyTasks[]| PW
+        PD -->|tasks[]| PD
+    end
+
+    subgraph Enrollments["Enrollments"]
+        PE[("program_enrollments")]
+        PC[("program_cohorts")]
+
+        PE -->|cohortId?| PC
+        PE -->|programId| P
+    end
+
+    subgraph ClientOverrides["Client Overrides (1:1 Programs)"]
+        CPW[("client_program_weeks")]
+        CPD[("client_program_days")]
+
+        CPW -->|enrollmentId| PE
+        CPD -->|enrollmentId| PE
+        CPW -->|weeklyTasks[]| CPW
+        CPD -->|tasks[]| CPD
+    end
+
+    subgraph CohortOverrides["Cohort Overrides (Group Programs)"]
+        COHD[("cohort_program_days")]
+
+        COHD -->|cohortId| PC
+        COHD -->|tasks[]| COHD
+    end
+
+    subgraph Tasks["User Tasks (What Client Sees)"]
+        T[("tasks")]
+        T -->|programEnrollmentId| PE
+        T -->|programDayIndex| T
+        T -->|date| T
+        T -->|sourceType| T
+    end
+
+    %% Coach Actions
+    CoachEdit["Coach Edits Week"]
+
+    CoachEdit -->|1:1 Program| SaveClientWeek
+    CoachEdit -->|Group Program| SaveCohortDay
+
+    SaveClientWeek["PATCH client-weeks/[id]"]
+    SaveCohortDay["PATCH cohort-days/[id]"]
+
+    SaveClientWeek -->|distributeTasksNow=true| DistributeClient
+    SaveCohortDay -->|sync| SyncCohort
+
+    DistributeClient["distributeClientWeeklyTasksToDays()"]
+    DistributeClient -->|creates/updates| CPD
+    DistributeClient -->|then calls| SyncClientDays
+
+    SyncClientDays["syncProgramTasksToClientDay()\nfor EACH day in week"]
+    SyncClientDays -->|creates| T
+
+    SyncCohort["syncProgramTasksToClientDay()"]
+    SyncCohort -->|creates| T
+
+    %% Client Actions
+    ClientOpen["Client Opens App"]
+    ClientOpen -->|GET /api/tasks| TasksAPI
+
+    TasksAPI["Tasks API"]
+    TasksAPI -->|1. Migration| Migration
+    TasksAPI -->|2. Lazy Sync| LazySync
+
+    Migration["Migration Logic"]
+    Migration -->|"moves pending tasks\nfrom previous days\n(EXCLUDES program tasks)"| T
+
+    LazySync["syncProgramV2TasksForToday()"]
+    LazySync -->|if no program tasks| CreateTasks
+
+    CreateTasks["Create Today's Tasks"]
+    CreateTasks -->|creates| T
+
+    style Templates fill:#e1f5fe
+    style Enrollments fill:#fff3e0
+    style ClientOverrides fill:#e8f5e9
+    style CohortOverrides fill:#fce4ec
+    style Tasks fill:#f3e5f5

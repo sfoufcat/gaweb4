@@ -1839,10 +1839,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     }
 
     // Fetch cohort task states for this date (pass dayIndex to enable on-demand state creation)
+    const abortController = new AbortController();
+    
     const fetchCohortCompletion = async () => {
       try {
         console.log('[COHORT_COMPLETION] Fetching for date:', dateStr, 'dayIndex:', selectedDayIndex, 'cohortId:', cohortViewContext.cohortId);
-        const response = await fetch(`/api/coach/cohort-tasks/${cohortViewContext.cohortId}?date=${dateStr}&dayIndex=${selectedDayIndex}`);
+        const response = await fetch(
+          `/api/coach/cohort-tasks/${cohortViewContext.cohortId}?date=${dateStr}&dayIndex=${selectedDayIndex}`,
+          { signal: abortController.signal }
+        );
         if (response.ok) {
           const data = await response.json();
           console.log('[COHORT_COMPLETION] API response:', data);
@@ -1855,7 +1860,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               totalMembers: task.totalMembers || 0,
             };
             // Map by task title for matching with template tasks
-            console.log('[COHORT_COMPLETION] Adding task to map:', task.title, 'taskTemplateId:', task.taskTemplateId, 'programTaskId:', task.programTaskId);
+            console.log('[COHORT_COMPLETION] Adding task to map:', task.title, 'taskTemplateId:', task.taskTemplateId, 'programTaskId:', task.programTaskId, 'completedCount:', completionData.completedCount, 'totalMembers:', completionData.totalMembers);
             completionMap.set(task.title, completionData);
             // Also map by taskTemplateId and programTaskId for ID-based matching (more robust)
             if (task.taskTemplateId) {
@@ -1865,18 +1870,28 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               completionMap.set(task.programTaskId, completionData);
             }
           }
-          console.log('[COHORT_COMPLETION] Completion map size:', completionMap.size);
+          console.log('[COHORT_COMPLETION] Completion map size:', completionMap.size, 'keys:', Array.from(completionMap.keys()));
           setCohortTaskCompletion(completionMap);
           setCohortCompletionDate(dateStr);
         } else {
           console.error('[COHORT_COMPLETION] API returned non-OK status:', response.status);
         }
       } catch (err) {
+        // Ignore abort errors - they're expected when navigating quickly
+        if (err instanceof Error && err.name === 'AbortError') {
+          console.log('[COHORT_COMPLETION] Fetch aborted (navigation)');
+          return;
+        }
         console.error('[COHORT_COMPLETION] Failed to fetch:', err);
       }
     };
 
     fetchCohortCompletion();
+    
+    // Cleanup: abort the fetch if the effect re-runs (e.g., when navigating to another day)
+    return () => {
+      abortController.abort();
+    };
   }, [selectedProgram, cohortViewContext, selectedDayIndex]);
 
   // Auto-expand the week containing the selected day

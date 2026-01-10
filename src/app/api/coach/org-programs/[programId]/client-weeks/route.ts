@@ -231,8 +231,17 @@ export async function POST(
         weekNumber,
         moduleId: moduleId || template?.moduleId || null,
         order: template?.order || weekNumber,
-        startDayIndex: startDayIndex ?? template?.startDayIndex ?? ((weekNumber - 1) * 7 + 1),
-        endDayIndex: endDayIndex ?? template?.endDayIndex ?? (weekNumber * 7),
+        // Use program's includeWeekends setting for fallback calculation (not hardcoded 7)
+        startDayIndex: startDayIndex ?? template?.startDayIndex ?? (() => {
+          const daysPerWeek = program?.includeWeekends !== false ? 7 : 5;
+          return (weekNumber - 1) * daysPerWeek + 1;
+        })(),
+        endDayIndex: endDayIndex ?? template?.endDayIndex ?? (() => {
+          const daysPerWeek = program?.includeWeekends !== false ? 7 : 5;
+          const totalDays = program?.lengthDays || 30;
+          const calculatedEnd = (weekNumber - 1) * daysPerWeek + daysPerWeek;
+          return Math.min(calculatedEnd, totalDays);
+        })(),
 
         // Content from request or template
         name: weekContent.name ?? template?.name ?? undefined,

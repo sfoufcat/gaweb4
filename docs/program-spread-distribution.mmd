@@ -1,0 +1,37 @@
+%% Spread Distribution Logic
+%% Shows how weekly tasks are distributed across days
+
+flowchart TB
+    subgraph Distribution["Task Distribution (getWeeklyTasksForDay)"]
+        WeekTasks["Week has tasks:\n[task1, task2, task3]"]
+        WeekTasks --> CheckDist{"Distribution\nMode?"}
+
+        CheckDist -->|repeat-daily| RepeatDaily["Return ALL tasks\nfor EVERY day"]
+
+        CheckDist -->|spread| CalcSpread["calculateSpreadDayIndices()"]
+        CalcSpread --> SpreadCalc["Week: Days 8-14 (7 days)\n3 tasks\ninterval = 7/3 = 2.33"]
+        SpreadCalc --> SpreadResult["Spread Days:\n[9, 11, 13]"]
+
+        SpreadResult --> DayCheck{"Current\nDay Index?"}
+        DayCheck -->|Day 9| ReturnTask1["Return [task1]"]
+        DayCheck -->|Day 10| ReturnEmpty1["Return [] (no task)"]
+        DayCheck -->|Day 11| ReturnTask2["Return [task2]"]
+        DayCheck -->|Day 12| ReturnEmpty2["Return [] (no task)"]
+        DayCheck -->|Day 13| ReturnTask3["Return [task3]"]
+        DayCheck -->|Day 8,14| ReturnEmpty3["Return [] (no task)"]
+    end
+
+    subgraph Example["Example: Week 2 with Spread"]
+        Day8["Day 8: No task"]
+        Day9["Day 9: task1"]
+        Day10["Day 10: No task"]
+        Day11["Day 11: task2"]
+        Day12["Day 12: No task"]
+        Day13["Day 13: task3"]
+        Day14["Day 14: No task"]
+
+        Day8 --> Day9 --> Day10 --> Day11 --> Day12 --> Day13 --> Day14
+    end
+
+    style Distribution fill:#fff8e1
+    style Example fill:#e8f5e9

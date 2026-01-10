@@ -1,0 +1,85 @@
+%% Complete Program Task Flow
+%% From Coach Setup to Client Task Display
+
+flowchart TB
+    subgraph CoachSetup["1. Coach Creates Program"]
+        CreateProgram["Create Program"]
+        CreateProgram --> SetDistribution["Set taskDistribution:\n'spread' or 'repeat-daily'"]
+        SetDistribution --> CreateWeeks["Create program_weeks\nwith weeklyTasks[]"]
+        CreateWeeks --> CreateDays["Optional: Create program_days\nfor specific day tasks"]
+    end
+
+    subgraph Enrollment["2. Client Enrolls"]
+        ClientEnrolls["Client Enrolls in Program"]
+        ClientEnrolls --> CreateEnrollment["Create program_enrollment"]
+        CreateEnrollment --> SetStartDate["Set startedAt date"]
+
+        CreateEnrollment --> EnrollType{"Program\nType?"}
+        EnrollType -->|individual| Individual["1:1 Program\n(can have client overrides)"]
+        EnrollType -->|group| Group["Group Program\n(uses cohort)"]
+
+        Group --> CreateCohort["Create/Join program_cohort"]
+    end
+
+    subgraph CoachCustomize["3. Coach Customizes (Optional)"]
+        CoachEdits["Coach Edits Client's Week"]
+
+        CoachEdits --> EditType{"Program\nType?"}
+
+        EditType -->|individual| EditClientWeek["Edit client_program_weeks"]
+        EditClientWeek --> DistributeClient["distributeClientWeeklyTasksToDays()"]
+        DistributeClient --> CreateClientDays["Creates client_program_days"]
+        CreateClientDays --> SyncAllDays["syncProgramTasksToClientDay()\nfor ALL days in week"]
+        SyncAllDays --> CreateFutureTasks["Creates tasks for\nALL days (including future)"]
+
+        EditType -->|group| EditCohortDay["Edit cohort_program_days"]
+        EditCohortDay --> SyncCohortMembers["Sync to all cohort members"]
+    end
+
+    subgraph ClientView["4. Client Opens App Each Day"]
+        OpenApp["Client Opens App\nGET /api/tasks?date=today"]
+
+        OpenApp --> Step1["Step 1: Migration"]
+        Step1 --> MigrationLogic["Query: date < today, status = pending"]
+        MigrationLogic --> FilterMigration{"Source\nType?"}
+        FilterMigration -->|"program*"| NoMigrate["DON'T migrate\n(stays on original day)"]
+        FilterMigration -->|"user/manual"| DoMigrate["Migrate to today's backlog"]
+
+        OpenApp --> Step2["Step 2: Lazy Sync"]
+        Step2 --> CheckProgramTasks{"Has program\ntasks for today?"}
+        CheckProgramTasks -->|No| TriggerSync["syncProgramV2TasksForToday()"]
+        CheckProgramTasks -->|Yes| SkipSync["Skip sync"]
+
+        TriggerSync --> PriorityChain["Priority Chain:\n1. client_program_days\n2. cohort_program_days\n3. client_program_weeks\n4. program_weeks\n5. program_days"]
+
+        PriorityChain --> GetTodayTasks["Get tasks for today's dayIndex"]
+        GetTodayTasks --> ApplyDistribution["Apply distribution:\nspread → 1 task per spread day\nrepeat-daily → all tasks"]
+
+        ApplyDistribution --> CreateTodayTasks["Create tasks in 'tasks' collection"]
+
+        OpenApp --> Step3["Step 3: Return Tasks"]
+        Step3 --> ReturnTasks["Return all tasks for today"]
+    end
+
+    subgraph Collections["Firestore Collections"]
+        direction LR
+        Col1[("programs")]
+        Col2[("program_weeks")]
+        Col3[("program_days")]
+        Col4[("program_enrollments")]
+        Col5[("program_cohorts")]
+        Col6[("client_program_weeks")]
+        Col7[("client_program_days")]
+        Col8[("cohort_program_days")]
+        Col9[("tasks")]
+    end
+
+    CoachSetup --> Enrollment
+    Enrollment --> CoachCustomize
+    CoachCustomize --> ClientView
+
+    style CoachSetup fill:#e3f2fd
+    style Enrollment fill:#fff3e0
+    style CoachCustomize fill:#e8f5e9
+    style ClientView fill:#f3e5f5
+    style Collections fill:#fafafa

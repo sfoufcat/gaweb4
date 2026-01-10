@@ -1,0 +1,46 @@
+%% Task Migration Flow
+%% Shows how tasks migrate from previous days (with the fix)
+
+flowchart TB
+    subgraph Migration["Migration Logic (GET /api/tasks)"]
+        FetchTasks["Fetch tasks for today"]
+        FetchTasks --> QueryPrevious["Query previous days:\ndate < today\nstatus = 'pending'"]
+
+        QueryPrevious --> ForEachTask["For each task found"]
+
+        ForEachTask --> CheckDeleted{"status =\n'deleted' or\n'archived'?"}
+        CheckDeleted -->|Yes| SkipDeleted["Skip"]
+
+        CheckDeleted -->|No| CheckSource{"sourceType?"}
+
+        CheckSource -->|"'program'\n'program_day'\n'program_week'"| SkipProgram["Skip\n(Program tasks stay\non their day)"]
+
+        CheckSource -->|"'user' or\nundefined"| Migrate["Migrate to today"]
+
+        Migrate --> UpdateTask["Update task:\n- date = today\n- listType = 'backlog'\n- movedToBacklogAt = now"]
+
+        UpdateTask --> AddToResponse["Add to response"]
+    end
+
+    subgraph Before["BEFORE Fix"]
+        BeforeDay8["Day 8: task1 (program)"]
+        BeforeDay9["Day 9: task2 (program)"]
+        BeforeDay10["Day 10 Opens"]
+
+        BeforeDay8 -->|migrates| BeforeBacklog
+        BeforeDay9 -->|migrates| BeforeBacklog
+        BeforeBacklog["Backlog:\n- task1 (from day 8)\n- task2 (from day 9)\n- task3 (today's)"]
+    end
+
+    subgraph After["AFTER Fix"]
+        AfterDay8["Day 8: task1 (program)\n(stays on day 8)"]
+        AfterDay9["Day 9: task2 (program)\n(stays on day 9)"]
+        AfterDay10["Day 10 Opens"]
+
+        AfterDay10 -->|only today's task| AfterBacklog
+        AfterBacklog["Backlog:\n- task3 (today's only)"]
+    end
+
+    style Migration fill:#e3f2fd
+    style Before fill:#ffebee
+    style After fill:#e8f5e9

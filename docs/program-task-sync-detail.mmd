@@ -1,0 +1,56 @@
+%% Program Task Sync - Detailed Flow
+%% Shows the priority chain for finding tasks and creating them
+
+flowchart TB
+    subgraph SyncV2["syncProgramV2TasksForToday() - Client Opens App"]
+        Start["Start Sync"]
+        Start --> GetEnrollment["Get Active Enrollment"]
+        GetEnrollment --> GetProgram["Get Program"]
+        GetProgram --> CalcDay["Calculate Current Day Index\n(calculateCurrentDayIndexV2)"]
+
+        CalcDay --> CheckType{"Program Type?"}
+
+        %% Individual (1:1) Path
+        CheckType -->|individual| CheckClientDay["Check client_program_days\n(getClientProgramDay)"]
+        CheckClientDay --> ClientDayExists{"Client Day\nExists?"}
+        ClientDayExists -->|Yes| UseClientDay["Use client_program_days.tasks\n(even if empty)"]
+        ClientDayExists -->|No| CheckClientWeek["Check client_program_weeks\n(getClientProgramWeekForDay)"]
+
+        %% Group Path
+        CheckType -->|group| CheckCohortDay["Check cohort_program_days"]
+        CheckCohortDay --> CohortDayExists{"Cohort Day\nExists?"}
+        CohortDayExists -->|Yes| UseCohortDay["Use cohort_program_days.tasks"]
+        CohortDayExists -->|No| CheckTemplateWeek
+
+        %% Fallback to Template
+        CheckClientWeek --> ClientWeekExists{"Client Week\nExists?"}
+        ClientWeekExists -->|Yes| UseClientWeek["Use getWeeklyTasksForDay()\nwith client week"]
+        ClientWeekExists -->|No| CheckTemplateWeek["Check program_weeks\n(getProgramWeekForDay)"]
+
+        CheckTemplateWeek --> TemplateWeekExists{"Template Week\nExists?"}
+        TemplateWeekExists -->|Yes| UseTemplateWeek["Use getWeeklyTasksForDay()\nwith template week"]
+        TemplateWeekExists -->|No| CheckTemplateDay["Check program_days\n(getProgramDayV2)"]
+
+        CheckTemplateDay --> TemplateDayExists{"Template Day\nExists?"}
+        TemplateDayExists -->|Yes| UseTemplateDay["Use program_days.tasks"]
+        TemplateDayExists -->|No| NoTasks["No tasks for today"]
+
+        %% Create Tasks
+        UseClientDay --> CreateTasks
+        UseCohortDay --> CreateTasks
+        UseClientWeek --> CreateTasks
+        UseTemplateWeek --> CreateTasks
+        UseTemplateDay --> CreateTasks
+
+        CreateTasks["Create Tasks in 'tasks' collection"]
+        CreateTasks --> CheckExists["For each task:\nprogramTaskExistsV2()"]
+        CheckExists --> Exists{"Already\nExists?"}
+        Exists -->|Yes| Skip["Skip (no duplicate)"]
+        Exists -->|No| Create["Create Task"]
+
+        Create --> AssignList{"Focus slots\navailable?"}
+        AssignList -->|Yes, isPrimary| ToFocus["listType: 'focus'"]
+        AssignList -->|No or !isPrimary| ToBacklog["listType: 'backlog'"]
+    end
+
+    style SyncV2 fill:#e3f2fd

@@ -116,13 +116,73 @@ export async function GET(
     }
 
     if (filteredStates.length === 0) {
+      // No CohortTaskStates exist yet, but we can still show enrolled members
+      // Fetch enrolled members and return them as pending
+      const enrollmentsSnapshot = await adminDb
+        .collection('program_enrollments')
+        .where('cohortId', '==', cohortId)
+        .where('status', 'in', ['active', 'upcoming'])
+        .get();
+
+      const memberIds = enrollmentsSnapshot.docs.map(doc => doc.data().userId);
+      
+      if (memberIds.length === 0) {
+        return NextResponse.json({
+          taskId,
+          taskTitle: taskId,
+          completionRate: 0,
+          completedCount: 0,
+          totalMembers: 0,
+          memberBreakdown: [],
+        } as TaskMemberResponse);
+      }
+
+      // Fetch user profiles from Clerk
+      const memberProfiles = new Map<string, { firstName: string; lastName: string; imageUrl: string }>();
+      for (let i = 0; i < memberIds.length; i += 100) {
+        const batch = memberIds.slice(i, i + 100);
+        const usersResponse = await client.users.getUserList({
+          userId: batch,
+          limit: 100,
+        });
+
+        for (const user of usersResponse.data) {
+          memberProfiles.set(user.id, {
+            firstName: user.firstName || '',
+            lastName: user.lastName || '',
+            imageUrl: user.imageUrl || '',
+          });
+        }
+      }
+
+      // Build member breakdown (all pending since no states exist)
+      const memberBreakdown: MemberInfo[] = memberIds.map(userId => {
+        const profile = memberProfiles.get(userId) || {
+          firstName: 'Unknown',
+          lastName: 'User',
+          imageUrl: '',
+        };
+        return {
+          userId,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          imageUrl: profile.imageUrl,
+          status: 'pending' as const,
+        };
+      });
+
+      // Sort alphabetically
+      memberBreakdown.sort((a, b) => a.firstName.localeCompare(b.firstName));
+
+      console.log(`[COHORT_TASK_MEMBERS] No states found for task ${taskId}, returning ${memberIds.length} enrolled members as pending`);
+      
       return NextResponse.json({
         taskId,
-        taskTitle: taskId, // Use taskId as fallback title
+        taskTitle: taskId,
         completionRate: 0,
         completedCount: 0,
-        totalMembers: 0,
-        memberBreakdown: [],
+        totalMembers: memberIds.length,
+        memberBreakdown,
       } as TaskMemberResponse);
     }
 
