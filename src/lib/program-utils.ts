@@ -31,20 +31,27 @@
  * CRITICAL: DAY INDEX CALCULATION FOR DISTRIBUTION
  * =============================================================================
  *
- * When distributing week tasks to days, ALWAYS use the week's stored
- * startDayIndex and endDayIndex. DO NOT calculate from weekNumber.
+ * There are TWO types of day index calculations:
  *
- * The formula (weekNumber - 1) * daysPerWeek + 1 DOES NOT account for:
- * - Onboarding periods (e.g., 1-day onboarding shifts all weeks by 1)
- * - Custom week structures
+ * 1. TEMPLATE DISTRIBUTION (program_days):
+ *    Uses stored indices from program_weeks. These are simple sequential
+ *    indices without calendar alignment.
  *
- * Example with 1-day onboarding:
- *   - Formula calculates Week 2 = Days 8-14
- *   - Actual stored indices: Week 2 = Days 9-15
- *   - Using formula would put Week 2 tasks on Days 8-14, bleeding into Week 1!
+ * 2. COHORT/CLIENT DISTRIBUTION (cohort_program_days, client_program_days):
+ *    MUST use calendar-aligned indices from calculateCalendarWeeks() with
+ *    the cohort's startDate or enrollment's startedAt date.
  *
- * The stored indices are set correctly when weeks are created/updated and
- * account for any onboarding or custom offsets. They are the source of truth.
+ *    This correctly accounts for:
+ *    - Onboarding periods (partial weeks at start based on calendar weekday)
+ *    - Calendar alignment (weeks start on Mondays)
+ *
+ *    Example: Client starts on Wednesday:
+ *    - Onboarding = Days 1-2 (Wed-Fri before first Monday)
+ *    - Week 1 = Days 3-9 (first full Mon-Sun week)
+ *    - Week 2 = Days 10-16 (second full week)
+ *
+ *    Using template indices (Week 1 = Days 1-7) would be WRONG because
+ *    they don't account for the client's actual start date!
  *
  * RULE: Week tasks must NEVER be distributed to another week's days.
  *

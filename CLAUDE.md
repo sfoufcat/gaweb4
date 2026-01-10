@@ -157,21 +157,25 @@ Programs have a 3-tier content system with a clear data flow:
    `startDayIndex`/`endDayIndex` but these are DERIVED from their weeks, not calculated
    independently.
 
-4. **Stored day indices are source of truth for distribution**:
-   When distributing week tasks to days, ALWAYS use the week's stored
-   `startDayIndex`/`endDayIndex`. The formula `(weekNumber - 1) * daysPerWeek + 1`
-   does NOT account for onboarding periods:
+4. **Calendar-aligned indices for cohort/client distribution**:
+   When distributing week tasks to cohort or client days, ALWAYS use
+   `calculateCalendarWeeks()` with the cohort's `startDate` or enrollment's
+   `startedAt` to get the correct day indices. This accounts for onboarding:
    ```
-   Example with 1-day onboarding:
-   - Formula: Week 2 = Days 8-14
-   - Actual:  Week 2 = Days 9-15 (stored on week document)
-   - Using formula would put tasks on wrong days!
+   Example: Client starts on Wednesday:
+   - Onboarding = Days 1-2 (Wed-Fri before first Monday)
+   - Week 1 = Days 3-9 (first full Mon-Sun week)
+   - Week 2 = Days 10-16 (second full week)
+
+   Template indices (Week 1 = Days 1-7) would be WRONG because they
+   don't account for the client's actual calendar start date!
    ```
    **RULE: Week tasks must NEVER be distributed to another week's days.**
 
-5. **Calendar-aligned weeks for users**: When syncing to users, the system uses
-   `calculateCalendarWeeks()` to map program days to real calendar dates. Onboarding
-   is the partial first week (e.g., start Wednesday = 3-day onboarding until Monday).
+5. **Template vs Calendar indices**:
+   - **Template** (`program_weeks`): Simple sequential indices without calendar alignment
+   - **Cohort/Client**: Uses `calculateCalendarWeeks()` with actual start date to
+     correctly handle onboarding periods based on real calendar weekday of enrollment.
 
 ### Key Files
 
