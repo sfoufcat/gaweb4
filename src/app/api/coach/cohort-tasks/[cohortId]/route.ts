@@ -260,9 +260,10 @@ export async function GET(
 
             if (state) {
               // Update member states for completed tasks
+              // IMPORTANT: Only process tasks from cohort members (filter out other cohorts with same task title)
               for (const taskDoc of completedTasksSnapshot.docs) {
                 const taskData = taskDoc.data();
-                if (taskData.userId) {
+                if (taskData.userId && memberIds.includes(taskData.userId)) {
                   // Add user to memberStates if not present (handles completions before state existed)
                   if (!state.memberStates[taskData.userId]) {
                     await adminDb.collection('cohort_task_states').doc(state.id).update({
