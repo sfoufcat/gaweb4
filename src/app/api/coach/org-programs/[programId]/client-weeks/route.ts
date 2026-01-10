@@ -83,16 +83,11 @@ export async function GET(
           const userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
           // Merge completion status into weeklyTasks
-          // Use programTaskId for robust matching (survives renames), fallback to title
+          // Simple matching: by programTaskId only (we're already scoped to the right day range)
           week.weeklyTasks = week.weeklyTasks.map(template => {
             const actualTask = userTasks.find(t => {
-              const task = t as { title?: string; programTaskId?: string };
-              // Prefer programTaskId matching (robust, survives renames)
-              if (template.id && task.programTaskId) {
-                return task.programTaskId === template.id;
-              }
-              // Fallback to title matching for backward compatibility
-              return task.title === template.label;
+              const task = t as { programTaskId?: string };
+              return template.id && task.programTaskId === template.id;
             });
             if (actualTask) {
               const taskStatus = (actualTask as { status?: string }).status;
