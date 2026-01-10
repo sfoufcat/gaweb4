@@ -217,6 +217,34 @@ Programs have a 3-tier content system with a clear data flow:
 
    The `templateWeekNumber` is set via position-based matching (see Rule 6 above).
 
+8. **Distribution returns calendar-aligned day range for sync**:
+   `distributeClientWeeklyTasksToDays` returns `{ created, updated, skipped, startDayIndex, endDayIndex }`.
+   The `startDayIndex`/`endDayIndex` are the CALENDAR-ALIGNED indices where tasks were placed.
+   The sync step MUST use these returned values, NOT the template indices from `clientWeekData`.
+
+### Source of Truth by Collection
+
+| Collection | Source of Truth For | Notes |
+|------------|---------------------|-------|
+| `program_weeks` | Template week content | `weekNumber` is 1-indexed. Day indices are template-only |
+| `program_days` | Template day content | Rarely used - most coaches work at week level |
+| `program_modules` | Module titles & ordering | Day indices DERIVED from their weeks |
+| `cohort_week_content` | Cohort week-level tasks | Synced FROM `program_weeks`, coach can customize |
+| `cohort_program_days` | **Cohort day tasks (SOURCE OF TRUTH)** | What gets synced to Daily Focus |
+| `client_program_weeks` | Client week-level tasks | Synced FROM `program_weeks`, coach can customize |
+| `client_program_days` | **Client day tasks (SOURCE OF TRUTH)** | What gets synced to Daily Focus |
+| `tasks` | User's actual Daily Focus | Synced FROM `*_program_days` |
+| `cohort_task_states` | Cohort completion tracking | Tracks member completions |
+
+### Data Flow
+
+```
+program_weeks ──► cohort_week_content ──► cohort_program_days ──► tasks
+                                          (SOURCE OF TRUTH)
+              ──► client_program_weeks ──► client_program_days ──► tasks
+                                          (SOURCE OF TRUTH)
+```
+
 ### Key Files
 
 - `src/lib/program-utils.ts` - Week/day distribution, index calculation

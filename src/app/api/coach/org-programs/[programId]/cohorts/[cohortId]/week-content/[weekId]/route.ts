@@ -11,8 +11,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { CohortWeekContent, ProgramTaskTemplate, CohortTaskState, ProgramWeek } from '@/types';
+import type { CohortWeekContent, ProgramTaskTemplate, CohortTaskState, ProgramWeek, ProgramCohort, Program } from '@/types';
 import { getProgramCompletionThreshold, recalculateAggregates } from '@/lib/cohort-task-state';
+import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
 
 /**
  * Process tasks to ensure each has a unique ID for robust matching.
@@ -90,6 +91,8 @@ export async function GET(
       if (content.weeklyTasks && content.weeklyTasks.length > 0) {
         const weekData = weekDoc.data() as ProgramWeek;
         const threshold = await getProgramCompletionThreshold(programId);
+        const cohortData = cohortDoc.data() as ProgramCohort;
+        const programData = programDoc.data() as Program;
 
         // Safety check: ensure week has valid day indices
         if (weekData.startDayIndex === undefined || weekData.endDayIndex === undefined) {
@@ -98,14 +101,58 @@ export async function GET(
           return NextResponse.json({ content, exists: true });
         }
 
+        // Calculate CALENDAR-ALIGNED day indices for querying CohortTaskState
+        // CohortTaskState uses calendar-aligned indices, not template indices
+        let queryStartDayIndex = weekData.startDayIndex;
+        let queryEndDayIndex = weekData.endDayIndex;
+
+        if (cohortData.startDate) {
+          const includeWeekends = programData.includeWeekends !== false;
+          const totalDays = programData.lengthDays;
+          const calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
+
+          // Get regular calendar weeks only (excludes onboarding weekNumber=0 AND closing weekNumber=-1)
+          const calendarRegularWeeks = calendarWeeks
+            .filter((w: CalendarWeek) => w.weekNumber > 0)
+            .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
+
+          // Get the position of this template week among all template regular weeks
+          const templateWeeksSnapshot = await adminDb
+            .collection('program_weeks')
+            .where('programId', '==', programId)
+            .where('weekNumber', '>', 0) // Regular weeks only
+            .orderBy('weekNumber', 'asc')
+            .get();
+
+          const templateRegularWeekIds = templateWeeksSnapshot.docs.map(d => d.id);
+          const templateWeekPosition = templateRegularWeekIds.indexOf(weekId);
+
+          let calendarWeek: CalendarWeek | undefined;
+          if (templateWeekPosition >= 0) {
+            // Regular template week: map to same position in calendar regular weeks
+            calendarWeek = calendarRegularWeeks[templateWeekPosition];
+          } else if (weekData.weekNumber === 0) {
+            // Onboarding week: map to calendar onboarding
+            calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.weekNumber === 0);
+          }
+
+          if (calendarWeek) {
+            queryStartDayIndex = calendarWeek.startDayIndex;
+            queryEndDayIndex = Math.min(calendarWeek.endDayIndex, totalDays);
+            console.log(`[COHORT_WEEK_CONTENT_GET] Using calendar-aligned indices for completion query: template days ${weekData.startDayIndex}-${weekData.endDayIndex} → calendar days ${queryStartDayIndex}-${queryEndDayIndex}`);
+          } else {
+            console.warn(`[COHORT_WEEK_CONTENT_GET] Could not find calendar week for template position ${templateWeekPosition}, using template indices`);
+          }
+        }
+
         // Fetch all CohortTaskState documents for this cohort within the week's day range
         // Wrap in try-catch to handle missing index gracefully
         try {
           const taskStatesSnapshot = await adminDb
             .collection('cohort_task_states')
             .where('cohortId', '==', cohortId)
-            .where('programDayIndex', '>=', weekData.startDayIndex)
-            .where('programDayIndex', '<=', weekData.endDayIndex)
+            .where('programDayIndex', '>=', queryStartDayIndex)
+            .where('programDayIndex', '<=', queryEndDayIndex)
             .get();
 
           const taskStates = taskStatesSnapshot.docs.map(d => ({

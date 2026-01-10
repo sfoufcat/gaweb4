@@ -12,6 +12,7 @@ import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { syncProgramTasksToClientDay, calculateDateForProgramDay } from '@/lib/program-engine';
 import { distributeClientWeeklyTasksToDays } from '@/lib/program-utils';
+import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
 import type { ClientProgramWeek, Program, ProgramEnrollment } from '@/types';
 
 export async function GET(
@@ -45,12 +46,66 @@ export async function GET(
     // This allows the week view to show which weekly tasks have been completed
     if (clientWeek.weeklyTasks && clientWeek.weeklyTasks.length > 0 &&
         clientWeek.enrollmentId && clientWeek.startDayIndex !== undefined && clientWeek.endDayIndex !== undefined) {
-      // Fetch user's tasks for this week's day range
+
+      // Calculate CALENDAR-ALIGNED day indices for querying tasks
+      // User tasks have calendar-aligned programDayIndex, not template indices
+      let queryStartDayIndex = clientWeek.startDayIndex;
+      let queryEndDayIndex = clientWeek.endDayIndex;
+
+      // Get enrollment to calculate calendar-aligned day indices
+      const enrollmentDoc = await adminDb.collection('program_enrollments').doc(clientWeek.enrollmentId).get();
+      if (enrollmentDoc.exists) {
+        const enrollment = enrollmentDoc.data() as ProgramEnrollment;
+        const programData = programDoc.data() as Program;
+
+        if (enrollment.startedAt) {
+          const includeWeekends = programData.includeWeekends !== false;
+          const totalDays = programData.lengthDays;
+          const calendarWeeks = calculateCalendarWeeks(enrollment.startedAt, totalDays, includeWeekends);
+
+          // Get regular calendar weeks only (excludes onboarding weekNumber=0 AND closing weekNumber=-1)
+          const calendarRegularWeeks = calendarWeeks
+            .filter((w: CalendarWeek) => w.weekNumber > 0)
+            .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
+
+          // Get the position of this week among all template regular weeks
+          // Client week has weekNumber that corresponds to template week position
+          const weekNumber = clientWeek.weekNumber;
+          const templateWeeksSnapshot = await adminDb
+            .collection('program_weeks')
+            .where('programId', '==', programId)
+            .where('weekNumber', '>', 0) // Regular weeks only
+            .orderBy('weekNumber', 'asc')
+            .get();
+
+          const templateWeekNumbers = templateWeeksSnapshot.docs.map(d => d.data().weekNumber);
+          const templateWeekPosition = templateWeekNumbers.indexOf(weekNumber);
+
+          let calendarWeek: CalendarWeek | undefined;
+          if (templateWeekPosition >= 0) {
+            // Regular template week: map to same position in calendar regular weeks
+            calendarWeek = calendarRegularWeeks[templateWeekPosition];
+          } else if (weekNumber === 0) {
+            // Onboarding week: map to calendar onboarding
+            calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.weekNumber === 0);
+          }
+
+          if (calendarWeek) {
+            queryStartDayIndex = calendarWeek.startDayIndex;
+            queryEndDayIndex = Math.min(calendarWeek.endDayIndex, totalDays);
+            console.log(`[COACH_CLIENT_WEEK_GET] Using calendar-aligned indices for completion query: template days ${clientWeek.startDayIndex}-${clientWeek.endDayIndex} → calendar days ${queryStartDayIndex}-${queryEndDayIndex}`);
+          } else {
+            console.warn(`[COACH_CLIENT_WEEK_GET] Could not find calendar week for week ${weekNumber} (position ${templateWeekPosition}), using template indices`);
+          }
+        }
+      }
+
+      // Fetch user's tasks for this week's day range using calendar-aligned indices
       const userTasksSnapshot = await adminDb
         .collection('tasks')
         .where('programEnrollmentId', '==', clientWeek.enrollmentId)
-        .where('programDayIndex', '>=', clientWeek.startDayIndex)
-        .where('programDayIndex', '<=', clientWeek.endDayIndex)
+        .where('programDayIndex', '>=', queryStartDayIndex)
+        .where('programDayIndex', '<=', queryEndDayIndex)
         .get();
 
       const userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));

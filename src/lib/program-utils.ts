@@ -56,6 +56,24 @@
  * RULE: Week tasks must NEVER be distributed to another week's days.
  *
  * =============================================================================
+ * SOURCE OF TRUTH BY COLLECTION
+ * =============================================================================
+ *
+ * | Collection              | Source of Truth For                        |
+ * |-------------------------|---------------------------------------------|
+ * | program_weeks           | Template week content (weekNumber 1-indexed)|
+ * | program_days            | Template day content (rarely used)          |
+ * | cohort_week_content     | Cohort week tasks (synced from template)    |
+ * | cohort_program_days     | **COHORT DAY TASKS - SOURCE OF TRUTH**      |
+ * | client_program_weeks    | Client week tasks (synced from template)    |
+ * | client_program_days     | **CLIENT DAY TASKS - SOURCE OF TRUTH**      |
+ * | tasks                   | User's Daily Focus (synced from *_days)     |
+ *
+ * Distribution functions return { startDayIndex, endDayIndex } which are the
+ * CALENDAR-ALIGNED indices where tasks were placed. The sync step MUST use
+ * these returned values, NOT the template indices.
+ *
+ * =============================================================================
  */
 
 import { adminDb } from '@/lib/firebase-admin';

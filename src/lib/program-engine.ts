@@ -31,6 +31,21 @@
  * - Updated when users complete/uncomplete tasks
  *
  * =============================================================================
+ * SOURCE OF TRUTH
+ * =============================================================================
+ *
+ * This file syncs FROM:
+ *   - cohort_program_days (for cohort members) ← SOURCE OF TRUTH
+ *   - client_program_days (for 1:1 clients)    ← SOURCE OF TRUTH
+ *
+ * This file syncs TO:
+ *   - tasks collection (user's Daily Focus)
+ *   - cohort_task_states (completion tracking)
+ *
+ * The *_program_days collections are the source of truth. If a coach deletes
+ * a task from the day editor, it stays deleted. NO template fallback at runtime.
+ *
+ * =============================================================================
  */
 
 import { adminDb } from './firebase-admin';
