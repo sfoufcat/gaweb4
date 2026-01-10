@@ -352,7 +352,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       description: week.description,
       weeklyPrompt: week.weeklyPrompt,
       weeklyTasks: week.weeklyTasks || [],
-      weeklyHabits: week.weeklyHabits || [],
       calendarStartDate: week.calendarStartDate,
       calendarEndDate: week.calendarEndDate,
       moduleId: week.moduleId,
@@ -740,22 +739,29 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const sidebarWeeks = useMemo(() => {
     // NEW SYSTEM: Use instance weeks when available
     if (instance && instanceWeeks.length > 0) {
-      return instanceWeeks.map(iw => ({
+      const now = new Date().toISOString();
+      return instanceWeeks.map((iw, idx) => ({
         id: iw.id,
         programId: iw.programId,
+        organizationId: iw.organizationId,
         weekNumber: iw.weekNumber,
         moduleId: iw.moduleId,
+        order: idx,
+        startDayIndex: (iw.weekNumber - 1) * 7 + 1,
+        endDayIndex: iw.weekNumber * 7,
         name: iw.name,
         theme: iw.theme,
         description: iw.description,
         weeklyPrompt: iw.weeklyPrompt,
         weeklyTasks: iw.weeklyTasks || [],
-        weeklyHabits: iw.weeklyHabits || [],
+        weeklyHabits: [],
         currentFocus: [],
         notes: [],
         distribution: 'spread' as TaskDistribution,
         linkedSummaryIds: [],
         linkedCallEventIds: [],
+        createdAt: now,
+        updatedAt: now,
       } as ProgramWeek));
     }
     // OLD SYSTEM: Fall back to clientWeeks when instance not available
