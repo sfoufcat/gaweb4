@@ -66,16 +66,14 @@ export async function GET(
 
     // Merge completion status from actual user tasks into weeklyTasks
     // This allows the week view to show which weekly tasks have been completed
-    if (clientWeek.weeklyTasks && clientWeek.weeklyTasks.length > 0 &&
-        clientWeek.enrollmentId && clientWeek.startDayIndex !== undefined && clientWeek.endDayIndex !== undefined) {
+    if (clientWeek.weeklyTasks && clientWeek.weeklyTasks.length > 0 && clientWeek.enrollmentId) {
 
-      // Calculate CALENDAR-ALIGNED day indices for querying tasks
-      // User tasks have calendar-aligned programDayIndex, not template indices
-      let queryStartDayIndex = clientWeek.startDayIndex;
-      let queryEndDayIndex = clientWeek.endDayIndex;
-
-      // Get enrollment to calculate calendar-aligned day indices
+      // Get enrollment to calculate the DATE RANGE for this week
+      // Query by DATE is more reliable than programDayIndex
       const enrollmentDoc = await adminDb.collection('program_enrollments').doc(clientWeek.enrollmentId).get();
+
+      let userTasks: Array<{ id: string; [key: string]: unknown }> = [];
+
       if (enrollmentDoc.exists) {
         const enrollment = enrollmentDoc.data() as ProgramEnrollment;
         const programData = programDoc.data() as Program;
@@ -91,7 +89,6 @@ export async function GET(
             .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
 
           // Get the position of this week among all template regular weeks
-          // Client week has weekNumber that corresponds to template week position
           const weekNumber = clientWeek.weekNumber;
           const templateWeeksSnapshot = await adminDb
             .collection('program_weeks')
@@ -113,24 +110,29 @@ export async function GET(
           }
 
           if (calendarWeek) {
-            queryStartDayIndex = calendarWeek.startDayIndex;
-            queryEndDayIndex = Math.min(calendarWeek.endDayIndex, totalDays);
-            console.log(`[COACH_CLIENT_WEEK_GET] Using calendar-aligned indices for completion query: template days ${clientWeek.startDayIndex}-${clientWeek.endDayIndex} → calendar days ${queryStartDayIndex}-${queryEndDayIndex}`);
+            // Query by DATE range - much more reliable than dayIndex
+            console.log(`[COACH_CLIENT_WEEK_GET] Querying tasks by date range: ${calendarWeek.startDate} to ${calendarWeek.endDate}`);
+
+            const userTasksSnapshot = await adminDb
+              .collection('tasks')
+              .where('programEnrollmentId', '==', clientWeek.enrollmentId)
+              .where('date', '>=', calendarWeek.startDate)
+              .where('date', '<=', calendarWeek.endDate)
+              .get();
+
+            userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            console.log(`[COACH_CLIENT_WEEK_GET] Found ${userTasks.length} tasks in date range`);
           } else {
-            console.warn(`[COACH_CLIENT_WEEK_GET] Could not find calendar week for week ${weekNumber} (position ${templateWeekPosition}), using template indices`);
+            console.warn(`[COACH_CLIENT_WEEK_GET] Could not find calendar week for week ${weekNumber}, falling back to all enrollment tasks`);
+            // Fallback: get all tasks for this enrollment and filter by source
+            const userTasksSnapshot = await adminDb
+              .collection('tasks')
+              .where('programEnrollmentId', '==', clientWeek.enrollmentId)
+              .get();
+            userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
           }
         }
       }
-
-      // Fetch user's tasks for this week's day range using calendar-aligned indices
-      const userTasksSnapshot = await adminDb
-        .collection('tasks')
-        .where('programEnrollmentId', '==', clientWeek.enrollmentId)
-        .where('programDayIndex', '>=', queryStartDayIndex)
-        .where('programDayIndex', '<=', queryEndDayIndex)
-        .get();
-
-      const userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
       // Merge completion status into weeklyTasks
       // Use programTaskId for robust matching (survives renames), fallback to title

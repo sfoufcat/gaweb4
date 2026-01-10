@@ -220,21 +220,43 @@ export async function GET(
           // This handles cases where tasks were completed before CohortTaskState existed
           console.log(`[COACH_COHORT_TASKS] Syncing existing task completions...`);
           for (const task of tasks) {
-            if (!task.id) continue; // Skip tasks without ID
-
             // Query tasks collection for completed tasks matching this template
-            const completedTasksSnapshot = await adminDb
-              .collection('tasks')
-              .where('programTaskId', '==', task.id)
-              .where('date', '==', date)
-              .where('status', '==', 'completed')
-              .get();
+            // Try programTaskId first (robust), then fallback to title
+            let completedTasksSnapshot;
 
-            if (completedTasksSnapshot.empty) continue;
+            if (task.id) {
+              completedTasksSnapshot = await adminDb
+                .collection('tasks')
+                .where('programTaskId', '==', task.id)
+                .where('date', '==', date)
+                .where('status', '==', 'completed')
+                .get();
+            }
+
+            // Fallback: query by title if no programTaskId match
+            if (!completedTasksSnapshot || completedTasksSnapshot.empty) {
+              completedTasksSnapshot = await adminDb
+                .collection('tasks')
+                .where('title', '==', task.label)
+                .where('date', '==', date)
+                .where('status', '==', 'completed')
+                .get();
+
+              if (!completedTasksSnapshot.empty) {
+                console.log(`[COACH_COHORT_TASKS] Found ${completedTasksSnapshot.size} completed tasks by title: ${task.label}`);
+              }
+            }
+
+            if (!completedTasksSnapshot || completedTasksSnapshot.empty) continue;
 
             // Find the CohortTaskState for this task
-            const state = await findCohortTaskStateByProgramTaskId(cohortId, task.id, date)
-              || await findCohortTaskStateByTaskTitle(cohortId, task.label, date, dayIndex);
+            let state = null;
+            if (task.id) {
+              state = await findCohortTaskStateByProgramTaskId(cohortId, task.id, date);
+            }
+            if (!state) {
+              state = await findCohortTaskStateByTaskTitle(cohortId, task.label, date, dayIndex);
+            }
 
             if (state) {
               // Update member states for completed tasks
@@ -250,7 +272,7 @@ export async function GET(
                     state.memberStates[taskData.userId] = { status: 'pending' };
                     console.log(`[COACH_COHORT_TASKS] Added missing user ${taskData.userId} to state before syncing completion`);
                   }
-                  
+
                   await updateMemberTaskState(
                     state.id,
                     taskData.userId,
