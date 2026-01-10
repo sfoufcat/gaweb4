@@ -217,17 +217,23 @@ export async function GET(
           console.log(`[COACH_COHORT_TASKS] Created ${cohortTaskStates.length} states on-demand`);
 
           // SYNC: Check for existing completed tasks and update CohortTaskStates
-          // Match by title - reliable and works with legacy data
+          // Match by title with originalTitle fallback (handles client-edited titles)
           for (const task of tasks) {
-            // Query completed tasks by title
+            // Query completed tasks by date, then filter by title/originalTitle
+            // (Firestore doesn't support OR on different fields)
             const completedTasksSnapshot = await adminDb
               .collection('tasks')
-              .where('title', '==', task.label)
               .where('date', '==', date)
               .where('status', '==', 'completed')
               .get();
 
-            if (completedTasksSnapshot.empty) continue;
+            // Filter by title OR originalTitle match
+            const matchingDocs = completedTasksSnapshot.docs.filter(d => {
+              const data = d.data();
+              return data.title === task.label || data.originalTitle === task.label;
+            });
+
+            if (matchingDocs.length === 0) continue;
 
             // Find the CohortTaskState by title
             const state = await findCohortTaskStateByTaskTitle(cohortId, task.label, date, dayIndex);
@@ -235,7 +241,7 @@ export async function GET(
             if (state) {
               // Update member states for completed tasks
               // IMPORTANT: Only process tasks from cohort members
-              for (const taskDoc of completedTasksSnapshot.docs) {
+              for (const taskDoc of matchingDocs) {
                 const taskData = taskDoc.data();
                 if (taskData.userId && memberIds.includes(taskData.userId)) {
                   // Add user to memberStates if not present (handles completions before state existed)

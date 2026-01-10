@@ -179,21 +179,24 @@ export async function GET(
           }
 
           // No CohortTaskState found - query tasks collection directly
+          // Need to check both title AND originalTitle (for when client edited task title)
           if (calendarWeek && totalMembers > 0) {
             try {
               // Query by title - works even if programTaskId is missing
               const completedTasksSnapshot = await adminDb
                 .collection('tasks')
-                .where('title', '==', template.label)
                 .where('date', '>=', calendarWeek.startDate)
                 .where('date', '<=', calendarWeek.endDate)
                 .where('status', '==', 'completed')
                 .get();
 
               if (!completedTasksSnapshot.empty) {
-                const memberCompletions = completedTasksSnapshot.docs.filter(d =>
-                  memberIds.includes(d.data().userId)
-                );
+                // Filter by title OR originalTitle match, AND must be a cohort member
+                const memberCompletions = completedTasksSnapshot.docs.filter(d => {
+                  const data = d.data();
+                  const titleMatches = data.title === template.label || data.originalTitle === template.label;
+                  return titleMatches && memberIds.includes(data.userId);
+                });
                 const completedCount = memberCompletions.length;
                 const completionRate = Math.round((completedCount / totalMembers) * 100);
                 const isThresholdMet = completionRate >= threshold;

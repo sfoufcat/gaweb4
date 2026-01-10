@@ -145,12 +145,13 @@ export async function GET(
           }
 
           // Merge completion status into template tasks
-          // Match by title - reliable and works with legacy data
+          // Match by title with originalTitle fallback (handles client-edited titles)
           if (day.tasks && Array.isArray(day.tasks)) {
             day.tasks = day.tasks.map(template => {
               const actualTask = userTasks.find(t => {
-                const task = t as { title?: string };
-                return task.title === template.label;
+                const task = t as { title?: string; originalTitle?: string };
+                // Match by current title OR original title (for when client edited task title)
+                return task.title === template.label || task.originalTitle === template.label;
               });
               if (actualTask) {
                 const taskStatus = (actualTask as { status?: string }).status;

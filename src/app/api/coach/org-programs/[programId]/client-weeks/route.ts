@@ -83,11 +83,13 @@ export async function GET(
           const userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
           // Merge completion status into weeklyTasks
-          // Match by title - reliable and works with legacy data
+          // Match by title with originalTitle fallback (handles client-edited titles)
+          // Weekly tasks don't have specific dayIndex, so we match ANY task with that title in the week
           week.weeklyTasks = week.weeklyTasks.map(template => {
             const actualTask = userTasks.find(t => {
-              const task = t as { title?: string };
-              return task.title === template.label;
+              const task = t as { title?: string; originalTitle?: string };
+              // Match by current title OR original title (for when client edited task title)
+              return task.title === template.label || task.originalTitle === template.label;
             });
             if (actualTask) {
               const taskStatus = (actualTask as { status?: string }).status;
