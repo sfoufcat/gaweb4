@@ -278,6 +278,19 @@ export function DayEditor({
     }
   }, [formData, day, editorContext, programId, viewContext, clientContextId, getApiEndpoint, dayIndex, entityId, getDefaultFormData, isClientMode, isCohortMode, clientEnrollmentId, cohortIdValue]);
 
+  // Pre-fetch member data for all tasks in cohort mode to show accurate badge counts
+  useEffect(() => {
+    if (cohortViewContext?.mode !== 'cohort' || formData.tasks.length === 0) return;
+
+    // Fetch member data for each task that we don't already have
+    formData.tasks.forEach(task => {
+      const taskLabel = task.label;
+      if (!taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
+        fetchTaskMembers(task.id || taskLabel, taskLabel);
+      }
+    });
+  }, [cohortViewContext?.mode, formData.tasks, taskMemberData, loadingTasks, fetchTaskMembers]);
+
   // Task management
   const addTask = () => {
     setFormData(prev => ({
@@ -408,14 +421,24 @@ export function DayEditor({
             const isTaskExpanded = expandedTasks.has(task.label);
             const isLoading = loadingTasks.has(task.label);
             const members = taskMemberData.get(task.label) || [];
-            const hasCompletionData = isCohortMode && cohortCompletion;
+            // Derive completion data from members array if cohortCompletion not available
+            // This ensures we show accurate counts even when lazy-loading member data
+            const hasMemberData = members.length > 0;
+            const derivedTotalMembers = members.length;
+            const derivedCompletedCount = members.filter(m => m.status === 'completed').length;
+            const derivedCompletionRate = derivedTotalMembers > 0
+              ? Math.round((derivedCompletedCount / derivedTotalMembers) * 100)
+              : 0;
+
+            // Use cohortCompletion if available, otherwise use derived values from members
+            const completedCount = cohortCompletion?.completedCount ?? (hasMemberData ? derivedCompletedCount : 0);
+            const totalMembers = cohortCompletion?.totalMembers ?? (hasMemberData ? derivedTotalMembers : 0);
+            const completionRate = cohortCompletion?.completionRate ?? (hasMemberData ? derivedCompletionRate : 0);
+            const hasCompletionData = isCohortMode && (cohortCompletion || hasMemberData);
 
             // Check for 1:1 client completion
             const isClientCompleted = isClientMode && task.completed;
-            const isCohortCompleted = cohortCompletion?.completed;
-            const completionRate = cohortCompletion?.completionRate || 0;
-            const completedCount = cohortCompletion?.completedCount || 0;
-            const totalMembers = cohortCompletion?.totalMembers || 0;
+            const isCohortCompleted = cohortCompletion?.completed ?? (completionRate >= completionThreshold);
 
             return (
               <div

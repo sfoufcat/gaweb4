@@ -125,11 +125,22 @@ function SortableWeeklyTask({
   };
 
   const isCompleted = task.completed || false;
-  const isCohortCompleted = cohortCompletion?.completed || false;
-  const completionRate = cohortCompletion?.completionRate || 0;
-  const completedCount = cohortCompletion?.completedCount || 0;
-  const totalMembers = cohortCompletion?.totalMembers || 0;
-  const hasCohortData = !!cohortCompletion;
+
+  // Derive completion data from members array if cohortCompletion not provided
+  // This ensures we show accurate counts even when lazy-loading member data
+  const hasMemberData = members.length > 0;
+  const derivedTotalMembers = members.length;
+  const derivedCompletedCount = members.filter(m => m.status === 'completed').length;
+  const derivedCompletionRate = derivedTotalMembers > 0
+    ? Math.round((derivedCompletedCount / derivedTotalMembers) * 100)
+    : 0;
+
+  // Use cohortCompletion if available, otherwise use derived values from members
+  const completedCount = cohortCompletion?.completedCount ?? (hasMemberData ? derivedCompletedCount : 0);
+  const totalMembers = cohortCompletion?.totalMembers ?? (hasMemberData ? derivedTotalMembers : 0);
+  const completionRate = cohortCompletion?.completionRate ?? (hasMemberData ? derivedCompletionRate : 0);
+  const isCohortCompleted = cohortCompletion?.completed ?? (completionRate >= completionThreshold);
+  const hasCohortData = !!cohortCompletion || hasMemberData;
 
   // Helper to get progress bar color
   const getProgressColor = (rate: number, threshold: number) => {
@@ -563,6 +574,19 @@ export function WeekEditor({
       }
     });
   }, [expandedTasks, formData.weeklyTasks, taskMemberData, loadingTasks, fetchTaskMembers]);
+
+  // Pre-fetch member data for all tasks in cohort mode to show accurate badge counts
+  useEffect(() => {
+    if (!cohortId || formData.weeklyTasks.length === 0) return;
+
+    // Fetch member data for each task that we don't already have
+    formData.weeklyTasks.forEach(task => {
+      const taskLabel = task.label;
+      if (!taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
+        fetchTaskMembers(task.id || taskLabel, taskLabel);
+      }
+    });
+  }, [cohortId, formData.weeklyTasks, taskMemberData, loadingTasks, fetchTaskMembers]);
 
   // Helper to track field edits
   const trackFieldEdit = useCallback((syncFieldKey: string) => {
