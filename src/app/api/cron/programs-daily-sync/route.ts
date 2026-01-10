@@ -4,6 +4,9 @@
 // receive their program tasks even if they don't open the app.
 // Runs at 0:00, 6:00, 12:00, 18:00 UTC to cover all timezones.
 //
+// Creates tasks for TODAY and TOMORROW to provide a buffer.
+// This is especially important since lazy sync has been removed from GET /api/tasks.
+//
 // Configure in vercel.json:
 // {
 //   "crons": [{
@@ -14,7 +17,7 @@
 
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { syncProgramV2TasksForToday } from '@/lib/program-engine';
+import { syncProgramTasksForDay } from '@/lib/program-engine';
 
 // Vercel cron job secret (set in environment)
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -25,6 +28,7 @@ const BATCH_SIZE = 50;
 /**
  * GET /api/cron/programs-daily-sync
  * Sync program tasks for all active enrollments (called by Vercel Cron every 6 hours)
+ * Creates tasks for TODAY and TOMORROW to ensure users always have tasks ready.
  */
 export async function GET(request: Request) {
   const startTime = Date.now();
@@ -41,9 +45,17 @@ export async function GET(request: Request) {
 
     console.log('[CRON_PROGRAMS_SYNC] Starting program tasks sync...');
 
-    const today = new Date().toISOString().split('T')[0];
+    // Calculate today and tomorrow dates
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Get all active enrollments
+    const todayStr = today.toISOString().split('T')[0];
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    console.log(`[CRON_PROGRAMS_SYNC] Syncing for dates: ${todayStr} (today) and ${tomorrowStr} (tomorrow)`);
+
+    // Get all active enrollments with their enrollment IDs
     const enrollmentsSnapshot = await adminDb
       .collection('program_enrollments')
       .where('status', '==', 'active')
@@ -51,75 +63,107 @@ export async function GET(request: Request) {
 
     const enrollments = enrollmentsSnapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data() as { userId: string },
+      userId: doc.data().userId as string,
+      programId: doc.data().programId as string,
     }));
 
     console.log(`[CRON_PROGRAMS_SYNC] Found ${enrollments.length} active enrollments`);
 
-    // Group enrollments by userId (user may have multiple enrollments)
-    const userIds = [...new Set(enrollments.map(e => e.userId as string))];
-
-    let syncedCount = 0;
+    let syncedToday = 0;
+    let syncedTomorrow = 0;
     let skippedCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
 
-    // Process users in batches to avoid overwhelming Firestore
-    for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
-      const batch = userIds.slice(i, i + BATCH_SIZE);
+    // Process enrollments in batches to avoid overwhelming Firestore
+    for (let i = 0; i < enrollments.length; i += BATCH_SIZE) {
+      const batch = enrollments.slice(i, i + BATCH_SIZE);
 
-      await Promise.all(batch.map(async (userId) => {
+      await Promise.all(batch.map(async (enrollment) => {
         try {
-          // Check if user already has program tasks for today
-          const existingTasksSnapshot = await adminDb
+          // Sync TODAY's tasks (fill-empty mode - don't override existing)
+          const todayExisting = await adminDb
             .collection('tasks')
-            .where('userId', '==', userId)
-            .where('date', '==', today)
-            .where('sourceType', '==', 'program')
+            .where('userId', '==', enrollment.userId)
+            .where('date', '==', todayStr)
+            .where('programEnrollmentId', '==', enrollment.id)
             .limit(1)
             .get();
 
-          if (!existingTasksSnapshot.empty) {
-            // User already has program tasks for today, skip
-            skippedCount++;
-            return;
-          }
+          if (todayExisting.empty) {
+            const todayResult = await syncProgramTasksForDay({
+              userId: enrollment.userId,
+              enrollmentId: enrollment.id,
+              date: todayStr,
+              mode: 'fill-empty',
+            });
 
-          // Sync program tasks for this user
-          const result = await syncProgramV2TasksForToday(userId);
-
-          if (result && result.tasksCreated > 0) {
-            syncedCount++;
-            console.log(`[CRON_PROGRAMS_SYNC] Synced tasks for user ${userId}:`, result);
+            if (todayResult.tasksCreated > 0) {
+              syncedToday++;
+              console.log(`[CRON_PROGRAMS_SYNC] Today sync for ${enrollment.userId}: ${todayResult.tasksCreated} tasks`);
+            } else {
+              skippedCount++;
+            }
           } else {
             skippedCount++;
+          }
+
+          // Sync TOMORROW's tasks (buffer for users in advance timezones)
+          const tomorrowExisting = await adminDb
+            .collection('tasks')
+            .where('userId', '==', enrollment.userId)
+            .where('date', '==', tomorrowStr)
+            .where('programEnrollmentId', '==', enrollment.id)
+            .limit(1)
+            .get();
+
+          if (tomorrowExisting.empty) {
+            const tomorrowResult = await syncProgramTasksForDay({
+              userId: enrollment.userId,
+              enrollmentId: enrollment.id,
+              date: tomorrowStr,
+              mode: 'fill-empty',
+            });
+
+            if (tomorrowResult.tasksCreated > 0) {
+              syncedTomorrow++;
+              console.log(`[CRON_PROGRAMS_SYNC] Tomorrow sync for ${enrollment.userId}: ${tomorrowResult.tasksCreated} tasks`);
+            }
           }
         } catch (err) {
           errorCount++;
           const errorMsg = err instanceof Error ? err.message : String(err);
-          errors.push(`User ${userId}: ${errorMsg}`);
-          console.error(`[CRON_PROGRAMS_SYNC] Error syncing user ${userId}:`, err);
+          errors.push(`Enrollment ${enrollment.id}: ${errorMsg}`);
+          console.error(`[CRON_PROGRAMS_SYNC] Error syncing enrollment ${enrollment.id}:`, err);
         }
       }));
 
       // Small delay between batches to avoid rate limiting
-      if (i + BATCH_SIZE < userIds.length) {
+      if (i + BATCH_SIZE < enrollments.length) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
     const duration = Date.now() - startTime;
 
-    console.log(`[CRON_PROGRAMS_SYNC] Completed in ${duration}ms: ${syncedCount} synced, ${skippedCount} skipped, ${errorCount} errors`);
+    console.log(
+      `[CRON_PROGRAMS_SYNC] Completed in ${duration}ms: ` +
+      `${syncedToday} synced today, ${syncedTomorrow} synced tomorrow, ` +
+      `${skippedCount} skipped, ${errorCount} errors`
+    );
 
     return NextResponse.json({
       success: true,
       stats: {
         totalEnrollments: enrollments.length,
-        uniqueUsers: userIds.length,
-        synced: syncedCount,
+        syncedToday,
+        syncedTomorrow,
         skipped: skippedCount,
         errors: errorCount,
+      },
+      dates: {
+        today: todayStr,
+        tomorrow: tomorrowStr,
       },
       duration: `${duration}ms`,
       timestamp: new Date().toISOString(),

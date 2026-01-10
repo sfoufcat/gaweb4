@@ -468,6 +468,13 @@ export async function syncProgramTasksToAllCohorts(
         continue;
       }
 
+      // Skip future days - cron will create tasks when those days arrive
+      const today = new Date().toISOString().split('T')[0];
+      if (cohortDate > today) {
+        console.log(`[COHORT_SYNC_ALL] Skipping future day for cohort ${cohort.name}: dayIndex ${specificDayIndex} = date ${cohortDate} (today is ${today})`);
+        continue;
+      }
+
       console.log(`[COHORT_SYNC_ALL] Cohort ${cohort.name}: dayIndex ${specificDayIndex} = date ${cohortDate}`);
 
       try {

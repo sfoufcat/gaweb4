@@ -241,7 +241,9 @@ export async function PATCH(
           let totalTasksCreated = 0;
           const errors: string[] = [];
 
-          // Sync each day in the week
+          // Sync each day in the week (only today and past days - cron handles future)
+          const today = new Date().toISOString().split('T')[0];
+          
           for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
             // Calculate the calendar date for this dayIndex
             const dateForDay = calculateDateForProgramDay(
@@ -253,6 +255,12 @@ export async function PATCH(
 
             if (!dateForDay) {
               console.warn(`[COACH_CLIENT_WEEK_PATCH] Could not calculate date for day ${dayIndex}`);
+              continue;
+            }
+
+            // Skip future days - cron will create tasks when those days arrive
+            if (dateForDay > today) {
+              console.log(`[COACH_CLIENT_WEEK_PATCH] Skipping future day ${dayIndex} (${dateForDay}) - cron will handle`);
               continue;
             }
 

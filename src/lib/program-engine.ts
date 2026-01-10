@@ -1206,32 +1206,10 @@ export async function getClientProgramDay(
   return { id: doc.id, ...doc.data() } as ClientProgramDay;
 }
 
-/**
- * Get client-specific program week that contains a specific day index
- */
-export async function getClientProgramWeekForDay(
-  enrollmentId: string,
-  dayIndex: number
-): Promise<ProgramWeek | null> {
-  // Find the week that contains this day
-  const snapshot = await adminDb
-    .collection('client_program_weeks')
-    .where('enrollmentId', '==', enrollmentId)
-    .where('startDayIndex', '<=', dayIndex)
-    .get();
-  
-  if (snapshot.empty) return null;
-  
-  // Find the week where endDayIndex >= dayIndex
-  for (const doc of snapshot.docs) {
-    const data = doc.data();
-    if (data.endDayIndex >= dayIndex) {
-      // Cast to ProgramWeek type since ClientProgramWeek is a superset/compatible
-      return { id: doc.id, ...data } as unknown as ProgramWeek;
-    }
-  }
-  return null;
-}
+// REMOVED: getClientProgramWeekForDay
+// This function read from client_program_weeks at runtime.
+// Now client_program_weeks is UI-only - sync reads from client_program_days.
+
 
 /**
  * Get program week that contains a specific day index
@@ -1403,9 +1381,35 @@ function calculateCurrentDayIndexV2(
   const today = todayDate || new Date().toISOString().split('T')[0];
   const todayDateObj = new Date(today + 'T00:00:00');
   
-  // For group programs with cohort, use cohort start date
-  // For individual programs, use enrollment.startedAt
-  const startDateStr = cohort?.startDate || enrollment.startedAt;
+  // CRITICAL: For group programs, cohort.startDate is THE source of truth
+  // ALL cohort members must see the same day index regardless of when they joined
+  let startDateStr: string;
+  
+  if (program.type === 'group') {
+    if (!cohort?.startDate) {
+      console.warn(
+        `[PROGRAM_ENGINE] Group program ${program.id} missing cohort data for enrollment ${enrollment.id}. ` +
+        `This should not happen - all group program members need a cohort.`
+      );
+      // Fallback to enrollment date with warning (should not happen in production)
+      startDateStr = enrollment.startedAt;
+    } else {
+      // Use cohort start date for ALL members - they all see the same day
+      startDateStr = cohort.startDate;
+      
+      // Log if member's enrollment date differs from cohort (late joiner)
+      if (enrollment.startedAt !== cohort.startDate) {
+        console.log(
+          `[PROGRAM_ENGINE] Late joiner: enrollment ${enrollment.id} started ${enrollment.startedAt} ` +
+          `but cohort started ${cohort.startDate}. Using cohort date (day index will match other members).`
+        );
+      }
+    }
+  } else {
+    // Individual programs use enrollment.startedAt
+    startDateStr = enrollment.startedAt;
+  }
+  
   let startDate = new Date(startDateStr + 'T00:00:00');
   
   // Handle weekend exclusion
@@ -1523,10 +1527,15 @@ export function calculateDateForDayIndex(
  * 3. Creates tasks from the program_days template if needed
  * 4. Places tasks in Daily Focus or Backlog
  */
+/**
+ * @deprecated Use syncProgramTasksForDay() instead.
+ * This function will be removed in a future version.
+ */
 export async function syncProgramV2TasksForToday(
   userId: string,
   todayDate?: string
 ): Promise<SyncProgramTasksResult> {
+  console.warn('[PROGRAM_ENGINE_V2] syncProgramV2TasksForToday is deprecated. Use syncProgramTasksForDay() instead.');
   const today = todayDate || new Date().toISOString().split('T')[0];
   
   // 1. Find active enrollment from program_enrollments
@@ -1637,21 +1646,12 @@ export async function syncProgramV2TasksForToday(
     }
   }
 
-  // Only fallback to week/template if NO explicit day document exists
+  // REMOVED: Template fallback chain
+  // Template (program_weeks, program_days) should NEVER be read at runtime.
+  // Client/cohort editor is THE source of truth.
+  // If no explicit day document exists, there are no tasks for this day.
   if (!foundExplicitDay) {
-    // Try week-level tasks
-    const week = await getProgramWeekForDay(enrollment.programId, dayIndex);
-    if (week) {
-      tasksForToday = getWeeklyTasksForDay(week, dayIndex, program.taskDistribution);
-      console.log(`[PROGRAM_ENGINE_V2] Got ${tasksForToday.length} tasks from week ${week.weekNumber} for day ${dayIndex}`);
-    }
-
-    // Also check program_days for manual day-level task assignments (template days)
-    const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
-    if (programDay && programDay.tasks && programDay.tasks.length > 0) {
-      tasksForToday = [...tasksForToday, ...programDay.tasks];
-      console.log(`[PROGRAM_ENGINE_V2] Added ${programDay.tasks.length} day-level tasks for day ${dayIndex}`);
-    }
+    console.log(`[PROGRAM_ENGINE_V2] No client/cohort editor content for day ${dayIndex}. Template fallback disabled.`);
   }
   
   if (tasksForToday.length === 0) {
@@ -1862,105 +1862,11 @@ export interface SyncWeeklyTasksOptions {
   fromSummary?: CallSummary;
 }
 
-/**
- * Get the current week for an enrollment based on day index
- */
-async function getCurrentWeekForEnrollment(
-  programId: string,
-  enrollmentId: string,
-  programType: 'individual' | 'group' | 'cohort' | undefined,
-  currentDayIndex: number
-): Promise<ProgramWeek | null> {
-  // For individual programs, check client_program_weeks first
-  if (programType === 'individual') {
-    const clientWeek = await getClientProgramWeekForDay(enrollmentId, currentDayIndex);
-    if (clientWeek) return clientWeek;
-  }
+// REMOVED: getCurrentWeekForEnrollment and calculateWeekTaskDates
+// These functions were used by the old syncWeeklyTasks implementation
+// which has been deprecated in favor of syncProgramTasksForDay.
+// The client_program_weeks collection is now UI-only.
 
-  const weeksSnapshot = await adminDb
-    .collection('program_weeks')
-    .where('programId', '==', programId)
-    .where('startDayIndex', '<=', currentDayIndex)
-    .orderBy('startDayIndex', 'desc')
-    .limit(1)
-    .get();
-
-  if (weeksSnapshot.empty) return null;
-
-  const weekDoc = weeksSnapshot.docs[0];
-  const weekData = weekDoc.data();
-
-  // Verify the day is within the week's range
-  if (currentDayIndex > weekData.endDayIndex) {
-    // Current day is past this week, find the next week
-    const nextWeeksSnapshot = await adminDb
-      .collection('program_weeks')
-      .where('programId', '==', programId)
-      .where('startDayIndex', '<=', currentDayIndex)
-      .where('endDayIndex', '>=', currentDayIndex)
-      .limit(1)
-      .get();
-
-    if (nextWeeksSnapshot.empty) return null;
-    const nextWeekDoc = nextWeeksSnapshot.docs[0];
-    return {
-      id: nextWeekDoc.id,
-      ...nextWeekDoc.data(),
-      createdAt: nextWeekDoc.data().createdAt?.toDate?.()?.toISOString?.() || nextWeekDoc.data().createdAt,
-      updatedAt: nextWeekDoc.data().updatedAt?.toDate?.()?.toISOString?.() || nextWeekDoc.data().updatedAt,
-    } as ProgramWeek;
-  }
-
-  return {
-    id: weekDoc.id,
-    ...weekData,
-    createdAt: weekData.createdAt?.toDate?.()?.toISOString?.() || weekData.createdAt,
-    updatedAt: weekData.updatedAt?.toDate?.()?.toISOString?.() || weekData.updatedAt,
-  } as ProgramWeek;
-}
-
-/**
- * Calculate dates for spreading tasks across a week
- */
-function calculateWeekTaskDates(
-  weekStartDayIndex: number,
-  weekEndDayIndex: number,
-  enrollmentStartDate: string,
-  taskCount: number,
-  distribution: 'spread' | 'repeat-daily' = 'spread'
-): string[] {
-  const dates: string[] = [];
-  const startDate = new Date(enrollmentStartDate + 'T00:00:00');
-  const daysInWeek = weekEndDayIndex - weekStartDayIndex + 1;
-
-  if (distribution === 'repeat-daily' || daysInWeek <= 1) {
-    // All tasks on the first day of the week
-    const dayDate = new Date(startDate);
-    dayDate.setDate(dayDate.getDate() + weekStartDayIndex - 1);
-    const dateStr = dayDate.toISOString().split('T')[0];
-    for (let i = 0; i < taskCount; i++) {
-      dates.push(dateStr);
-    }
-  } else {
-    // Spread tasks across the week
-    const tasksPerDay = Math.ceil(taskCount / daysInWeek);
-    let taskIndex = 0;
-
-    for (let d = 0; d < daysInWeek && taskIndex < taskCount; d++) {
-      const dayDate = new Date(startDate);
-      dayDate.setDate(dayDate.getDate() + weekStartDayIndex - 1 + d);
-      const dateStr = dayDate.toISOString().split('T')[0];
-
-      const tasksForThisDay = Math.min(tasksPerDay, taskCount - taskIndex);
-      for (let t = 0; t < tasksForThisDay; t++) {
-        dates.push(dateStr);
-        taskIndex++;
-      }
-    }
-  }
-
-  return dates;
-}
 
 /**
  * Sync weekly tasks for a user's enrollment
@@ -1971,262 +1877,40 @@ function calculateWeekTaskDates(
  * 3. Create tasks spread across the week (or all on day 1)
  * 4. Update enrollment with weekly sync info
  */
+/**
+ * @deprecated Use syncProgramTasksForDay() instead.
+ * This function will be removed in a future version.
+ */
 export async function syncWeeklyTasks(
   userId: string,
   enrollmentId: string,
   options: SyncWeeklyTasksOptions = {}
 ): Promise<SyncWeeklyTasksResult> {
-  const { forceResync = false, fromSummary } = options;
-
-  // 1. Get the enrollment
-  const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
-  if (!enrollmentDoc.exists) {
-    return {
-      success: false,
-      tasksCreated: 0,
-      currentWeekIndex: 0,
-      weekId: null,
-      enrollmentId,
-      programId: null,
-      programName: null,
-      message: 'Enrollment not found',
-    };
-  }
-
-  const enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
-
-  // Verify ownership
-  if (enrollment.userId !== userId) {
-    return {
-      success: false,
-      tasksCreated: 0,
-      currentWeekIndex: 0,
-      weekId: null,
-      enrollmentId,
-      programId: enrollment.programId,
-      programName: null,
-      message: 'Enrollment does not belong to user',
-    };
-  }
-
-  // 2. Get the program
-  const program = await getProgramV2(enrollment.programId);
-  if (!program) {
-    return {
-      success: false,
-      tasksCreated: 0,
-      currentWeekIndex: 0,
-      weekId: null,
-      enrollmentId,
-      programId: enrollment.programId,
-      programName: null,
-      message: 'Program not found',
-    };
-  }
-
-  // 3. Program found - proceed with weekly sync
-  // Note: All programs now use weekly-based task distribution
-
-  // 4. Calculate current day and week
+  // DEPRECATED: This function now delegates to syncProgramTasksForDay
+  // The weekly sync logic has been removed in favor of day-level sync.
+  // client_program_weeks is now UI-only - it distributes to client_program_days on save.
+  console.warn('[PROGRAM_ENGINE] syncWeeklyTasks is deprecated. Using syncProgramTasksForDay instead.');
+  
   const today = new Date().toISOString().split('T')[0];
-  let cohort: ProgramCohort | null = null;
-  if (enrollment.cohortId) {
-    const cohortDoc = await adminDb.collection('program_cohorts').doc(enrollment.cohortId).get();
-    if (cohortDoc.exists) {
-      cohort = { id: cohortDoc.id, ...cohortDoc.data() } as ProgramCohort;
-    }
-  }
-
-  const currentDayIndex = calculateCurrentDayIndexV2(enrollment, program, cohort, today);
-  if (currentDayIndex === 0) {
-    return {
-      success: true,
-      tasksCreated: 0,
-      currentWeekIndex: 0,
-      weekId: null,
-      enrollmentId,
-      programId: program.id,
-      programName: program.name,
-      message: 'Program has not started yet',
-    };
-  }
-
-  // 5. Get current week
-  const currentWeek = await getCurrentWeekForEnrollment(program.id, enrollment.id, program.type, currentDayIndex);
-  if (!currentWeek) {
-    return {
-      success: true,
-      tasksCreated: 0,
-      currentWeekIndex: 0,
-      weekId: null,
-      enrollmentId,
-      programId: program.id,
-      programName: program.name,
-      message: 'No week found for current day',
-    };
-  }
-
-  const currentWeekIndex = currentWeek.weekNumber;
-
-  // 6. Check if we've already synced this week
-  if (!forceResync && enrollment.lastAssignedWeekIndex && enrollment.lastAssignedWeekIndex >= currentWeekIndex) {
-    return {
-      success: true,
-      tasksCreated: 0,
-      currentWeekIndex,
-      weekId: currentWeek.id,
-      enrollmentId,
-      programId: program.id,
-      programName: program.name,
-      message: `Week ${currentWeekIndex} already synced`,
-    };
-  }
-
-  // 7. Get tasks for this week
-  let weeklyTasks: ProgramTaskTemplate[] = currentWeek.weeklyTasks || [];
-
-  // If fromSummary is provided, merge action items from the call summary
-  if (fromSummary && fromSummary.actionItems) {
-    const summaryTasks: ProgramTaskTemplate[] = fromSummary.actionItems
-      .filter(item => item.assignedTo === 'client' || item.assignedTo === 'both')
-      .map(item => ({
-        label: item.description,
-        type: 'task' as const,
-        isPrimary: item.priority === 'high',
-        tag: item.category,
-      }));
-
-    // Merge: summary tasks come first (higher priority)
-    weeklyTasks = [...summaryTasks, ...weeklyTasks];
-    console.log(`[WEEKLY_SYNC] Merged ${summaryTasks.length} tasks from call summary`);
-  }
-
-  if (weeklyTasks.length === 0) {
-    // Update enrollment to mark week as synced (even with no tasks)
-    await adminDb.collection('program_enrollments').doc(enrollmentId).update({
-      lastAssignedWeekIndex: currentWeekIndex,
-      currentWeekIndex,
-      lastWeeklySyncAt: new Date().toISOString(),
-      weeklyTasksSynced: true,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-
-    return {
-      success: true,
-      tasksCreated: 0,
-      currentWeekIndex,
-      weekId: currentWeek.id,
-      enrollmentId,
-      programId: program.id,
-      programName: program.name,
-      message: `No tasks defined for week ${currentWeekIndex}`,
-    };
-  }
-
-  // 8. Calculate task dates based on distribution
-  // Use week distribution if set, fall back to program defaults, default to 'spread'
-  const distribution = currentWeek.distribution || program.taskDistribution || program.weeklyTaskDistribution || 'spread';
-  const taskDates = calculateWeekTaskDates(
-    currentWeek.startDayIndex,
-    currentWeek.endDayIndex,
-    enrollment.startedAt,
-    weeklyTasks.length,
-    distribution as 'spread' | 'repeat-daily'
-  );
-
-  // 9. Create tasks
-  let tasksCreated = 0;
-  const existingFocusTasks = await getExistingFocusTasks(userId, today);
-  const existingBacklogTasks = await getExistingBacklogTasks(userId, today);
-
-  let focusLimit = program.dailyFocusSlots || 3;
-  let availableFocusSlots = focusLimit - existingFocusTasks.length;
-  let nextFocusOrder = existingFocusTasks.length > 0
-    ? Math.max(...existingFocusTasks.map(t => t.order)) + 1
-    : 0;
-  let nextBacklogOrder = existingBacklogTasks.length > 0
-    ? Math.max(...existingBacklogTasks.map(t => t.order)) + 1
-    : 0;
-
-  // Calculate cycleNumber for evergreen programs only
-  const cycleNumberForTasks = program.durationType === 'evergreen'
-    ? getActiveCycleNumber(enrollment)
-    : undefined;
-
-  for (let i = 0; i < weeklyTasks.length; i++) {
-    const template = weeklyTasks[i];
-    const taskDate = taskDates[i];
-
-    // Check if task already exists
-    const existsSnapshot = await adminDb
-      .collection('tasks')
-      .where('userId', '==', userId)
-      .where('programEnrollmentId', '==', enrollmentId)
-      .where('title', '==', template.label)
-      .where('date', '==', taskDate)
-      .limit(1)
-      .get();
-
-    if (!existsSnapshot.empty) {
-      console.log(`[WEEKLY_SYNC] Task "${template.label}" already exists on ${taskDate}, skipping`);
-      continue;
-    }
-
-    // Determine placement
-    // Default isPrimary to true for program-sourced tasks if not explicitly set to false
-    // This ensures week tasks go to focus unless coach explicitly marks them as backlog
-    // Only place in focus for today's tasks (future tasks go to backlog)
-    let listType: 'focus' | 'backlog';
-    let order: number;
-
-    const shouldGoToFocus = (template.isPrimary !== false) && availableFocusSlots > 0 && taskDate === today;
-    
-    if (shouldGoToFocus) {
-      listType = 'focus';
-      order = nextFocusOrder++;
-      availableFocusSlots--;
-    } else {
-      listType = 'backlog';
-      order = nextBacklogOrder++;
-    }
-
-    // Create the task
-    await createProgramTaskV2(
-      userId,
-      enrollmentId,
-      enrollment.organizationId,
-      program.id,
-      currentWeek.startDayIndex, // Use week start as day index
-      template,
-      listType,
-      order,
-      taskDate,
-      cycleNumberForTasks
-    );
-
-    tasksCreated++;
-  }
-
-  // 10. Update enrollment
-  await adminDb.collection('program_enrollments').doc(enrollmentId).update({
-    lastAssignedWeekIndex: currentWeekIndex,
-    currentWeekIndex,
-    lastWeeklySyncAt: new Date().toISOString(),
-    weeklyTasksSynced: true,
-    updatedAt: FieldValue.serverTimestamp(),
-  });
-
-  console.log(`[WEEKLY_SYNC] Synced week ${currentWeekIndex} for user ${userId}: ${tasksCreated} tasks created`);
-
-  return {
-    success: true,
-    tasksCreated,
-    currentWeekIndex,
-    weekId: currentWeek.id,
+  
+  // Call the new unified sync for today only
+  const result = await syncProgramTasksForDay({
+    userId,
     enrollmentId,
-    programId: program.id,
-    programName: program.name,
-    message: `Created ${tasksCreated} tasks for week ${currentWeekIndex}`,
+    date: today,
+    mode: 'fill-empty',
+  });
+  
+  // Map the result to the legacy format
+  return {
+    success: result.success,
+    tasksCreated: result.tasksCreated,
+    currentWeekIndex: 0, // No longer tracked at week level
+    weekId: null,
+    enrollmentId,
+    programId: result.programId || null,
+    programName: result.programName || null,
+    message: result.message,
   };
 }
 
@@ -2267,11 +1951,19 @@ export async function queueWeeklyResyncForProgram(
  * Unified sync function for all programs
  * Uses weekly task sync which handles both week-level and day-level tasks
  */
+/**
+ * @deprecated Use syncProgramTasksForDay() instead.
+ * This function will be removed in a future version.
+ */
 export async function syncProgramTasksAuto(
   userId: string,
   todayDate?: string
 ): Promise<SyncProgramTasksResult | SyncWeeklyTasksResult> {
-  // First, get the user's active enrollment
+  // DEPRECATED: This function now delegates to syncProgramTasksForDay
+  // The auto-detect logic has been removed - all programs now use day-level sync.
+  console.warn('[PROGRAM_ENGINE] syncProgramTasksAuto is deprecated. Using syncProgramTasksForDay instead.');
+  
+  // Get the user's active enrollment
   const enrollment = await getActiveEnrollmentV2(userId);
 
   if (!enrollment) {
@@ -2289,31 +1981,29 @@ export async function syncProgramTasksAuto(
     };
   }
 
-  // Get the program
-  const program = await getProgramV2(enrollment.programId);
-
-  if (!program) {
-    return {
-      success: false,
-      tasksCreated: 0,
-      focusTasksCreated: 0,
-      backlogTasksCreated: 0,
-      currentDayIndex: 0,
-      enrollmentId: enrollment.id,
-      programId: enrollment.programId,
-      programName: null,
-      programCompleted: false,
-      message: 'Program not found',
-    };
-  }
-
-  // Use unified sync that handles both week-level and day-level tasks
-  // For backward compatibility: legacy daily-only programs fall back to daily sync
-  if (program.orientation === 'daily' && !program.taskDistribution) {
-    return await syncProgramV2TasksForToday(userId, todayDate);
-  }
-
-  return await syncWeeklyTasks(userId, enrollment.id);
+  const today = todayDate || new Date().toISOString().split('T')[0];
+  
+  // Use the new unified sync function
+  const result = await syncProgramTasksForDay({
+    userId,
+    enrollmentId: enrollment.id,
+    date: today,
+    mode: 'fill-empty',
+  });
+  
+  // Map the result to the legacy format
+  return {
+    success: result.success,
+    tasksCreated: result.tasksCreated,
+    focusTasksCreated: result.focusTasks || 0,
+    backlogTasksCreated: result.backlogTasks || 0,
+    currentDayIndex: result.programDayIndex,
+    enrollmentId: enrollment.id,
+    programId: result.programId || null,
+    programName: result.programName || null,
+    programCompleted: false,
+    message: result.message,
+  };
 }
 
 
@@ -2358,6 +2048,90 @@ export interface SyncProgramTasksToClientDayResult {
  * - Tasks with clientLocked=true are NEVER overwritten
  * - Max Daily Focus limit is respected (excess goes to backlog)
  * - Program-sourced tasks get visibility='public' by default
+ */
+
+// ============================================================================
+// UNIFIED SYNC FUNCTION - Use this instead of the deprecated functions below
+// ============================================================================
+
+/**
+ * Parameters for the unified sync function
+ */
+export interface SyncProgramTasksForDayParams {
+  userId: string;
+  enrollmentId: string;
+  date: string; // YYYY-MM-DD
+  mode: 'fill-empty' | 'override-program-sourced';
+  coachUserId?: string;
+}
+
+/**
+ * Result of the unified sync function
+ */
+export interface SyncProgramTasksForDayResult {
+  success: boolean;
+  tasksCreated: number;
+  tasksSkipped: number;
+  tasksReplaced: number;
+  tasksToBacklog: number;
+  programDayIndex: number;
+  message: string;
+  errors?: string[];
+}
+
+/**
+ * Unified sync function - THE one function to sync program tasks.
+ * 
+ * This function:
+ * 1. Gets enrollment and program
+ * 2. Calculates dayIndex from date (using cohort.startDate for group programs)
+ * 3. Gets tasks from client/cohort editor ONLY (no template fallback)
+ * 4. Creates/updates tasks based on mode
+ * 
+ * Use this instead of deprecated functions:
+ * - syncProgramV2TasksForToday() 
+ * - syncProgramTasksToClientDay()
+ * - syncWeeklyTasks()
+ * - syncProgramTasksAuto()
+ */
+export async function syncProgramTasksForDay(
+  params: SyncProgramTasksForDayParams
+): Promise<SyncProgramTasksForDayResult> {
+  const { userId, enrollmentId, date, mode, coachUserId } = params;
+
+  console.log(`[SYNC_UNIFIED] syncProgramTasksForDay called:`, {
+    userId,
+    enrollmentId,
+    date,
+    mode,
+  });
+
+  // Delegate to the existing implementation (which we've already cleaned up)
+  // This wrapper provides the clean interface going forward
+  const result = await syncProgramTasksToClientDay({
+    userId,
+    programEnrollmentId: enrollmentId,
+    date,
+    mode,
+    coachUserId,
+    // Note: We don't pass forceDayIndex - let it calculate from date
+  });
+
+  return {
+    success: result.success,
+    tasksCreated: result.tasksCreated,
+    tasksSkipped: result.tasksSkipped,
+    tasksReplaced: result.tasksReplaced,
+    tasksToBacklog: result.tasksToBacklog,
+    programDayIndex: result.programDayIndex,
+    message: result.message,
+    errors: result.errors,
+  };
+}
+
+/**
+ * @deprecated Use syncProgramTasksForDay() instead.
+ * This function will be removed in a future version.
  */
 export async function syncProgramTasksToClientDay(
   params: SyncProgramTasksToClientDayParams
@@ -2516,42 +2290,12 @@ export async function syncProgramTasksToClientDay(
     }
   }
 
-  // Only fallback to week/template if NO explicit day document exists
+  // REMOVED: Template fallback chain
+  // Template (program_weeks, program_days) should NEVER be read at runtime.
+  // Client/cohort editor is THE source of truth.
+  // If no explicit day document exists, there are no tasks for this day.
   if (!foundExplicitDay) {
-    let week: ProgramWeek | null = null;
-    let isClientWeek = false;
-
-    // For individual programs, check client week first
-    if (program.type === 'individual') {
-      week = await getClientProgramWeekForDay(programEnrollmentId, dayIndex);
-      if (week) isClientWeek = true;
-    }
-
-    // Fallback to template week
-    if (!week) {
-      week = await getProgramWeekForDay(enrollment.programId, dayIndex);
-    }
-
-    if (week && week.weeklyTasks && week.weeklyTasks.length > 0) {
-      console.log(`[SYNC_TO_CLIENT] Week found for day ${dayIndex}: weekId=${week.id}, type=${isClientWeek ? 'client' : 'template'}, weekNumber=${week.weekNumber}, programDistribution=${program.taskDistribution || 'spread (default)'}, weeklyTasks=${week.weeklyTasks.length}, dayRange=${week.startDayIndex}-${week.endDayIndex}`);
-      tasksForDay = getWeeklyTasksForDay(week, dayIndex, program.taskDistribution);
-      sourceType = 'program_week';
-      sourceWeekId = week.id;
-      console.log(`[SYNC_TO_CLIENT] getWeeklyTasksForDay returned ${tasksForDay.length} tasks for day ${dayIndex}: ${tasksForDay.map(t => t.label).join(', ')}`);
-    } else {
-      console.log(`[SYNC_TO_CLIENT] No week found for day ${dayIndex} (or week has no tasks)`);
-    }
-  
-    // Fallback to day-level template tasks
-    if (tasksForDay.length === 0) {
-      const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
-      if (programDay && programDay.tasks && programDay.tasks.length > 0) {
-        tasksForDay = [...programDay.tasks];
-        sourceType = 'program_day';
-        sourceProgramDayId = programDay.id;
-        console.log(`[SYNC_TO_CLIENT] Got ${programDay.tasks.length} day-level tasks for day ${dayIndex}`);
-      }
-    }
+    console.log(`[SYNC_TO_CLIENT] No client/cohort editor content for day ${dayIndex}. Template fallback disabled.`);
   }
   
   // Log final task source decision
