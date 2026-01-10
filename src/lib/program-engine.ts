@@ -2698,14 +2698,15 @@ export async function syncProgramTasksForDateRange(
       targetDate.setDate(today.getDate() + i);
       const dateStr = targetDate.toISOString().split('T')[0];
       
-      const result = await syncProgramTasksToClientDay({
+      // Use syncProgramTasksForDay to ensure CohortTaskState is created
+      const result = await syncProgramTasksForDay({
         userId: enrollment.userId,
-        programEnrollmentId: enrollment.id,
+        enrollmentId: enrollment.id,
         date: dateStr,
         mode,
         coachUserId,
       });
-      
+
       totalTasksCreated += result.tasksCreated;
       if (result.errors) {
         errors.push(...result.errors);
@@ -2715,26 +2716,27 @@ export async function syncProgramTasksForDateRange(
   } else {
     // Sync for all active enrollments
     const enrollmentsSnapshot = await enrollmentsQuery.get();
-    
+
     for (const doc of enrollmentsSnapshot.docs) {
       const enrollment = { id: doc.id, ...doc.data() } as ProgramEnrollment;
-      
+
       // Sync for each day in the horizon
       const today = new Date();
       for (let i = 0; i <= horizonDays; i++) {
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + i);
         const dateStr = targetDate.toISOString().split('T')[0];
-        
+
         try {
-          const result = await syncProgramTasksToClientDay({
+          // Use syncProgramTasksForDay to ensure CohortTaskState is created
+          const result = await syncProgramTasksForDay({
             userId: enrollment.userId,
-            programEnrollmentId: enrollment.id,
+            enrollmentId: enrollment.id,
             date: dateStr,
             mode,
             coachUserId,
           });
-          
+
           totalTasksCreated += result.tasksCreated;
           if (result.errors) {
             errors.push(...result.errors);
@@ -2928,18 +2930,18 @@ export async function syncAllProgramTasks(
         continue;
       }
 
-      // Sync this day's tasks
-      const result = await syncProgramTasksToClientDay({
+      // Sync this day's tasks using syncProgramTasksForDay (not syncProgramTasksToClientDay)
+      // This ensures CohortTaskState documents are created for cohort enrollments
+      const result = await syncProgramTasksForDay({
         userId,
-        programEnrollmentId: enrollmentId,
+        enrollmentId,
         date: dateStr,
         mode,
         coachUserId,
-        forceDayIndex: dayIndex, // Use forceDayIndex to ensure correct day is synced
       });
 
       tasksCreated += result.tasksCreated;
-      tasksSkipped += result.tasksSkipped;
+      tasksSkipped += result.tasksSkipped || 0;
       daysProcessed++;
 
       if (result.errors && result.errors.length > 0) {
@@ -3064,18 +3066,18 @@ export async function syncProgramTasksFromCurrentDay(
         continue;
       }
 
-      // Sync this day's tasks
-      const result = await syncProgramTasksToClientDay({
+      // Sync this day's tasks using syncProgramTasksForDay (not syncProgramTasksToClientDay)
+      // This ensures CohortTaskState documents are created for cohort enrollments
+      const result = await syncProgramTasksForDay({
         userId,
-        programEnrollmentId: enrollmentId,
+        enrollmentId,
         date: dateStr,
         mode,
         coachUserId,
-        forceDayIndex: dayIndex,
       });
 
       tasksCreated += result.tasksCreated;
-      tasksSkipped += result.tasksSkipped;
+      tasksSkipped += result.tasksSkipped || 0;
       daysProcessed++;
 
       if (result.errors && result.errors.length > 0) {

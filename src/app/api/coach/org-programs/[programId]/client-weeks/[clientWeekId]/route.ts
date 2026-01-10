@@ -13,7 +13,29 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { syncProgramTasksToClientDay, calculateDateForProgramDay } from '@/lib/program-engine';
 import { distributeClientWeeklyTasksToDays } from '@/lib/program-utils';
 import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
-import type { ClientProgramWeek, Program, ProgramEnrollment } from '@/types';
+import type { ClientProgramWeek, Program, ProgramEnrollment, ProgramTaskTemplate } from '@/types';
+
+/**
+ * Process tasks to ensure each has a unique ID for robust matching.
+ * Preserves existing IDs, generates new UUIDs for tasks without IDs.
+ * Also strips runtime completion data that should never be stored in templates.
+ */
+function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramTaskTemplate[] {
+  if (!tasks || !Array.isArray(tasks)) return [];
+  return tasks.map((task) => {
+    // Strip runtime completion data - should never be stored in templates
+    // These fields are populated at read time by merging with actual task status
+    const { completed, completedAt, taskId, ...cleanTask } = task as ProgramTaskTemplate & {
+      completed?: boolean;
+      completedAt?: string;
+      taskId?: string;
+    };
+    return {
+      ...cleanTask,
+      id: cleanTask.id || crypto.randomUUID(),
+    };
+  });
+}
 
 export async function GET(
   request: NextRequest,
@@ -201,7 +223,7 @@ export async function PATCH(
     if (body.description !== undefined) updateData.description = body.description?.trim() || null;
     if (body.theme !== undefined) updateData.theme = body.theme?.trim() || null;
     if (body.weeklyPrompt !== undefined) updateData.weeklyPrompt = body.weeklyPrompt?.trim() || null;
-    if (body.weeklyTasks !== undefined) updateData.weeklyTasks = body.weeklyTasks || null;
+    if (body.weeklyTasks !== undefined) updateData.weeklyTasks = processTasksWithIds(body.weeklyTasks);
     if (body.weeklyHabits !== undefined) updateData.weeklyHabits = body.weeklyHabits || null;
     if (body.currentFocus !== undefined) updateData.currentFocus = body.currentFocus || null;
     if (body.notes !== undefined) updateData.notes = body.notes || null;
