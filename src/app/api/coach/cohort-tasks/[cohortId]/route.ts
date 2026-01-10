@@ -7,7 +7,6 @@ import {
   getProgramCompletionThreshold,
   getOrCreateCohortTaskState,
   findCohortTaskStateByProgramTaskId,
-  findCohortTaskStateByTaskTitle,
   updateMemberTaskState,
   syncMembersWithEnrollments,
   recalculateAggregates,
@@ -218,64 +217,28 @@ export async function GET(
           console.log(`[COACH_COHORT_TASKS] Created ${cohortTaskStates.length} states on-demand`);
 
           // SYNC: Check for existing completed tasks and update CohortTaskStates
-          // This handles cases where tasks were completed before CohortTaskState existed
+          // Simple matching: by programTaskId only (scoped by date)
           console.log(`[COACH_COHORT_TASKS] Syncing existing task completions...`);
           for (const task of tasks) {
-            // Query tasks collection for completed tasks matching this template
-            // Try programTaskId first (robust), then fallback to title
-            let completedTasksSnapshot;
+            // Skip tasks without id
+            if (!task.id) continue;
 
-            if (task.id) {
-              completedTasksSnapshot = await adminDb
-                .collection('tasks')
-                .where('programTaskId', '==', task.id)
-                .where('date', '==', date)
-                .where('status', '==', 'completed')
-                .get();
-            }
+            // Query by programTaskId only - simple and reliable
+            const completedTasksSnapshot = await adminDb
+              .collection('tasks')
+              .where('programTaskId', '==', task.id)
+              .where('date', '==', date)
+              .where('status', '==', 'completed')
+              .get();
 
-            // Fallback: query by title if no programTaskId match
-            if (!completedTasksSnapshot || completedTasksSnapshot.empty) {
-              completedTasksSnapshot = await adminDb
-                .collection('tasks')
-                .where('title', '==', task.label)
-                .where('date', '==', date)
-                .where('status', '==', 'completed')
-                .get();
+            if (completedTasksSnapshot.empty) continue;
 
-              if (!completedTasksSnapshot.empty) {
-                console.log(`[COACH_COHORT_TASKS] Found ${completedTasksSnapshot.size} completed tasks by title: ${task.label}`);
-              }
-            }
-
-            // Also check originalTitle for tasks that were edited by client
-            if (!completedTasksSnapshot || completedTasksSnapshot.empty) {
-              completedTasksSnapshot = await adminDb
-                .collection('tasks')
-                .where('originalTitle', '==', task.label)
-                .where('date', '==', date)
-                .where('status', '==', 'completed')
-                .get();
-
-              if (!completedTasksSnapshot.empty) {
-                console.log(`[COACH_COHORT_TASKS] Found ${completedTasksSnapshot.size} completed tasks by originalTitle: ${task.label}`);
-              }
-            }
-
-            if (!completedTasksSnapshot || completedTasksSnapshot.empty) continue;
-
-            // Find the CohortTaskState for this task
-            let state = null;
-            if (task.id) {
-              state = await findCohortTaskStateByProgramTaskId(cohortId, task.id, date);
-            }
-            if (!state) {
-              state = await findCohortTaskStateByTaskTitle(cohortId, task.label, date, dayIndex);
-            }
+            // Find the CohortTaskState by programTaskId
+            const state = await findCohortTaskStateByProgramTaskId(cohortId, task.id, date);
 
             if (state) {
               // Update member states for completed tasks
-              // IMPORTANT: Only process tasks from cohort members (filter out other cohorts with same task title)
+              // IMPORTANT: Only process tasks from cohort members
               for (const taskDoc of completedTasksSnapshot.docs) {
                 const taskData = taskDoc.data();
                 if (taskData.userId && memberIds.includes(taskData.userId)) {
@@ -286,7 +249,6 @@ export async function GET(
                       updatedAt: new Date().toISOString(),
                     });
                     state.memberStates[taskData.userId] = { status: 'pending' };
-                    console.log(`[COACH_COHORT_TASKS] Added missing user ${taskData.userId} to state before syncing completion`);
                   }
 
                   await updateMemberTaskState(
@@ -296,7 +258,6 @@ export async function GET(
                     taskDoc.id,
                     threshold
                   );
-                  console.log(`[COACH_COHORT_TASKS] Synced completion for user ${taskData.userId}, task ${task.label}`);
                 }
               }
             }

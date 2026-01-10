@@ -162,15 +162,12 @@ export async function GET(
         }
 
         // Merge completion status into weeklyTasks
-        // Uses CohortTaskState if available, otherwise queries actual tasks as fallback
+        // Simple matching: by programTaskId only (we're already scoped to the right date range)
         content.weeklyTasks = await Promise.all(content.weeklyTasks.map(async (template) => {
-          // Find matching CohortTaskState by programTaskId first, then title
-          let matchingState = taskStates.find(state =>
-            template.id && state.programTaskId && state.programTaskId === template.id
+          // Match CohortTaskState by programTaskId only
+          const matchingState = taskStates.find(state =>
+            template.id && state.programTaskId === template.id
           );
-          if (!matchingState) {
-            matchingState = taskStates.find(state => state.taskTitle === template.label);
-          }
 
           if (matchingState) {
             // Recalculate to ensure threshold is applied correctly
@@ -186,43 +183,18 @@ export async function GET(
 
           // No CohortTaskState found - query actual tasks collection as FALLBACK
           // This handles cases where CohortTaskState wasn't created yet
-          if (calendarWeek && totalMembers > 0) {
+          if (calendarWeek && totalMembers > 0 && template.id) {
             try {
-              // Query by programTaskId first (robust)
-              let completedTasksSnapshot;
-              if (template.id) {
-                completedTasksSnapshot = await adminDb
-                  .collection('tasks')
-                  .where('programTaskId', '==', template.id)
-                  .where('date', '>=', calendarWeek.startDate)
-                  .where('date', '<=', calendarWeek.endDate)
-                  .where('status', '==', 'completed')
-                  .get();
-              }
+              // Query by programTaskId only - simple and reliable
+              const completedTasksSnapshot = await adminDb
+                .collection('tasks')
+                .where('programTaskId', '==', template.id)
+                .where('date', '>=', calendarWeek.startDate)
+                .where('date', '<=', calendarWeek.endDate)
+                .where('status', '==', 'completed')
+                .get();
 
-              // Fallback: query by title
-              if (!completedTasksSnapshot || completedTasksSnapshot.empty) {
-                completedTasksSnapshot = await adminDb
-                  .collection('tasks')
-                  .where('title', '==', template.label)
-                  .where('date', '>=', calendarWeek.startDate)
-                  .where('date', '<=', calendarWeek.endDate)
-                  .where('status', '==', 'completed')
-                  .get();
-              }
-
-              // Also check originalTitle for tasks that were edited by client
-              if (!completedTasksSnapshot || completedTasksSnapshot.empty) {
-                completedTasksSnapshot = await adminDb
-                  .collection('tasks')
-                  .where('originalTitle', '==', template.label)
-                  .where('date', '>=', calendarWeek.startDate)
-                  .where('date', '<=', calendarWeek.endDate)
-                  .where('status', '==', 'completed')
-                  .get();
-              }
-
-              if (completedTasksSnapshot && !completedTasksSnapshot.empty) {
+              if (!completedTasksSnapshot.empty) {
                 // Count completions from cohort members only
                 const memberCompletions = completedTasksSnapshot.docs.filter(d =>
                   memberIds.includes(d.data().userId)
@@ -230,8 +202,6 @@ export async function GET(
                 const completedCount = memberCompletions.length;
                 const completionRate = Math.round((completedCount / totalMembers) * 100);
                 const isThresholdMet = completionRate >= threshold;
-
-                console.log(`[COHORT_WEEK_CONTENT_GET] Fallback query for "${template.label}": ${completedCount}/${totalMembers} = ${completionRate}%`);
 
                 return {
                   ...template,

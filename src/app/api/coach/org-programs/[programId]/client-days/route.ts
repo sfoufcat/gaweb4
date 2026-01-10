@@ -134,13 +134,6 @@ export async function GET(
 
           let userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-          // Debug logging
-          console.log(`[CLIENT_DAYS_DEBUG] Day ${day.dayIndex}: Found ${userTasks.length} tasks for enrollment ${enrollmentId}`);
-          userTasks.forEach(t => {
-            const task = t as { title?: string; status?: string; clientLocked?: boolean; programTaskId?: string };
-            console.log(`[CLIENT_DAYS_DEBUG]   Task: "${task.title}", status=${task.status}, clientLocked=${task.clientLocked}, programTaskId=${task.programTaskId}`);
-          });
-
           // Filter by cycleNumber if provided (for evergreen programs)
           // Tasks without cycleNumber are treated as cycle 1
           if (cycleNumber) {
@@ -152,21 +145,13 @@ export async function GET(
           }
 
           // Merge completion status into template tasks
-          // Use programTaskId for robust matching (survives task renames), fallback to title
+          // Simple matching: by programTaskId only (we're already scoped to the right day)
           if (day.tasks && Array.isArray(day.tasks)) {
             day.tasks = day.tasks.map(template => {
+              // Match by programTaskId - already scoped by dayIndex so this is sufficient
               const actualTask = userTasks.find(t => {
-                const task = t as { title?: string; programTaskId?: string; originalTitle?: string };
-                // Try programTaskId match first (robust, survives renames)
-                if (template.id && task.programTaskId && task.programTaskId === template.id) {
-                  return true;
-                }
-                // Fall back to title matching - IDs may differ between template sources
-                if (task.title === template.label) {
-                  return true;
-                }
-                // Also check originalTitle for tasks that were edited by client
-                return task.originalTitle === template.label;
+                const task = t as { programTaskId?: string };
+                return template.id && task.programTaskId === template.id;
               });
               if (actualTask) {
                 const taskStatus = (actualTask as { status?: string }).status;
@@ -175,7 +160,6 @@ export async function GET(
                 const isDeleted = taskStatus === 'deleted';
                 // Client edited if: locked and not deleted (clientLocked is set when client modifies a program task)
                 const isEdited = clientLocked && !isDeleted;
-                console.log(`[CLIENT_DAYS_DEBUG] Matched template "${template.label}" -> task "${actualTitle}", status=${taskStatus}, clientLocked=${clientLocked}, isDeleted=${isDeleted}, isEdited=${isEdited}`);
                 return {
                   ...template,
                   // Show client's edited title if they changed it (clientLocked indicates client edited the task)
@@ -186,8 +170,6 @@ export async function GET(
                   deletedByClient: isDeleted,
                   editedByClient: isEdited || undefined,
                 };
-              } else {
-                console.log(`[CLIENT_DAYS_DEBUG] No match for template "${template.label}" (id=${template.id})`);
               }
               // No matching task found - return template without completion data
               // This ensures stale completion data doesn't persist
