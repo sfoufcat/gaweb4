@@ -53,6 +53,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
 import type { TaskDistribution, ProgramTaskTemplate } from '@/types';
 
 interface ModuleData {
@@ -180,17 +181,31 @@ export async function recalculateWeekDayIndices(programId: string): Promise<void
     endDayIndex: doc.data().endDayIndex || 0,
   }));
 
-  // Calculate week day indices based on weekNumber ONLY (not module order)
-  // weekNumber is the source of truth for which days a week covers
-  const batch = adminDb.batch();
+  // Calculate week day indices sequentially, accounting for onboarding weeks
+  // Sort weeks by weekNumber (0 = onboarding, 1+ = regular weeks)
+  const sortedWeeks = [...allWeeks].sort((a, b) => a.weekNumber - b.weekNumber);
 
-  for (const week of allWeeks) {
+  const batch = adminDb.batch();
+  let currentDay = 1; // Start from Day 1
+
+  for (const week of sortedWeeks) {
     const weekNumber = week.weekNumber;
-    if (weekNumber <= 0) continue; // Skip invalid week numbers
-    
-    // Simple calculation: Week N covers days ((N-1) * daysPerWeek + 1) to (N * daysPerWeek)
-    const startDay = (weekNumber - 1) * daysPerWeek + 1;
-    const endDay = Math.min(weekNumber * daysPerWeek, totalDays);
+    if (weekNumber < 0) continue; // Skip invalid week numbers
+
+    // Calculate how many days this week spans
+    // Onboarding weeks (weekNumber = 0) use their existing length or default to daysPerWeek
+    // Regular weeks use daysPerWeek
+    let weekLength: number;
+    if (weekNumber === 0) {
+      // Onboarding week - preserve its existing length if valid, otherwise calculate from stored indices
+      const existingLength = week.endDayIndex - week.startDayIndex + 1;
+      weekLength = existingLength > 0 && existingLength <= daysPerWeek ? existingLength : daysPerWeek;
+    } else {
+      weekLength = daysPerWeek;
+    }
+
+    const startDay = currentDay;
+    const endDay = Math.min(currentDay + weekLength - 1, totalDays);
 
     // Update the week's stored indices
     week.startDayIndex = startDay;
@@ -201,6 +216,12 @@ export async function recalculateWeekDayIndices(programId: string): Promise<void
       endDayIndex: endDay,
       updatedAt: FieldValue.serverTimestamp(),
     });
+
+    // Move to next day range
+    currentDay = endDay + 1;
+
+    // Stop if we've exceeded total days
+    if (currentDay > totalDays) break;
   }
 
   // Group weeks by module for deriving module indices
@@ -754,31 +775,63 @@ export async function distributeCohortWeeklyTasksToDays(
 
   const cohortWeekContent = cohortWeekContentSnapshot.docs[0].data();
   const weeklyTasks = cohortWeekContent.weeklyTasks || [];
-  
+  const weekNumber = weekData.weekNumber;
+
   // NOTE: We continue even if weeklyTasks is empty - this allows clearing week-sourced tasks
   // while preserving manually added day tasks (source !== 'week')
 
   // Distribution is always program-wide, never week-specific
   const distribution = programTaskDistribution ?? 'spread';
 
-  // Use the week's stored day indices - these are the source of truth
-  // They correctly account for onboarding periods and custom week structures
-  // CRITICAL: Week tasks must NEVER be distributed to another week's days
-  const storedStartDay = weekData.startDayIndex;
-  const storedEndDay = weekData.endDayIndex;
-
-  if (!storedStartDay || !storedEndDay) {
-    console.error('[PROGRAM_UTILS] Week missing day indices for cohort distribution:', { weekId, cohortId, storedStartDay, storedEndDay });
-    return { created: 0, updated: 0, skipped: 0 };
-  }
-
-  // Get program total days for capping
+  // Get program settings
   const programDocForCalc = await adminDb.collection('programs').doc(programId).get();
   const programDataForCalc = programDocForCalc.data();
   const totalDays = programDataForCalc?.lengthDays || 30;
+  const includeWeekends = programDataForCalc?.includeWeekends !== false;
 
-  const resolvedStartDay = storedStartDay;
-  const resolvedEndDay = Math.min(storedEndDay, totalDays);
+  // Fetch cohort to get start date for calendar-aligned day indices
+  const cohortDoc = await adminDb.collection('program_cohorts').doc(cohortId).get();
+  if (!cohortDoc.exists) {
+    console.error('[PROGRAM_UTILS] Cohort not found:', cohortId);
+    return { created: 0, updated: 0, skipped: 0 };
+  }
+  const cohortData = cohortDoc.data();
+  const cohortStartDate = cohortData?.startDate;
+
+  // Use calendar-aligned day indices based on the cohort's start date
+  // This correctly accounts for onboarding periods based on when the cohort actually starts
+  // CRITICAL: Week tasks must NEVER be distributed to another week's days
+  let resolvedStartDay: number;
+  let resolvedEndDay: number;
+
+  if (cohortStartDate) {
+    // Calculate calendar-aligned weeks for this cohort
+    const calendarWeeks = calculateCalendarWeeks(cohortStartDate, totalDays, includeWeekends);
+
+    // Find the week matching this weekNumber
+    const calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.weekNumber === weekNumber);
+
+    if (calendarWeek) {
+      resolvedStartDay = calendarWeek.startDayIndex;
+      resolvedEndDay = Math.min(calendarWeek.endDayIndex, totalDays);
+      console.log(`[PROGRAM_UTILS] Using calendar-aligned indices for cohort ${cohortId}, week ${weekNumber}: days ${resolvedStartDay}-${resolvedEndDay}`);
+    } else {
+      // Fallback to template indices if week not found in calendar
+      console.warn(`[PROGRAM_UTILS] Week ${weekNumber} not found in calendar weeks, using template indices`);
+      resolvedStartDay = weekData.startDayIndex;
+      resolvedEndDay = Math.min(weekData.endDayIndex, totalDays);
+    }
+  } else {
+    // No cohort start date - use template indices as fallback
+    console.warn(`[PROGRAM_UTILS] Cohort ${cohortId} has no start date, using template indices`);
+    resolvedStartDay = weekData.startDayIndex;
+    resolvedEndDay = Math.min(weekData.endDayIndex, totalDays);
+  }
+
+  if (!resolvedStartDay || !resolvedEndDay) {
+    console.error('[PROGRAM_UTILS] Could not resolve day indices for cohort distribution:', { weekId, cohortId, weekNumber, resolvedStartDay, resolvedEndDay });
+    return { created: 0, updated: 0, skipped: 0 };
+  }
 
   const daysInWeek = resolvedEndDay - resolvedStartDay + 1;
 
@@ -973,39 +1026,68 @@ export async function distributeClientWeeklyTasksToDays(
   }
 
   const weeklyTasks = clientWeekData.weeklyTasks || [];
-  
+  const weekNumber = clientWeekData.weekNumber;
+
   // NOTE: We continue even if weeklyTasks is empty - this allows clearing week-sourced tasks
   // while preserving manually added day tasks (source !== 'week')
 
   // Distribution is always program-wide, never week-specific
   const distribution = programTaskDistribution ?? 'spread';
 
-  // Use the client week's stored day indices - these are the source of truth
-  // They correctly account for onboarding periods and custom week structures
-  // CRITICAL: Week tasks must NEVER be distributed to another week's days
-  const storedStartDay = clientWeekData.startDayIndex;
-  const storedEndDay = clientWeekData.endDayIndex;
-
-  if (!storedStartDay || !storedEndDay) {
-    console.error('[PROGRAM_UTILS] Client week missing day indices:', { clientWeekId, enrollmentId, storedStartDay, storedEndDay });
-    return { created: 0, updated: 0, skipped: 0 };
-  }
-
-  // Get program total days for capping
+  // Get program settings
   const programDoc = await adminDb.collection('programs').doc(programId).get();
   const programData = programDoc.data();
   const totalDays = programData?.lengthDays || 30;
+  const includeWeekends = programData?.includeWeekends !== false;
 
-  const resolvedStartDay = storedStartDay;
-  const resolvedEndDay = Math.min(storedEndDay, totalDays);
+  // Get enrollment to get start date for calendar-aligned day indices
+  const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
+  const enrollment = enrollmentDoc.data();
+  const organizationId = enrollment?.organizationId || '';
+  const userId = enrollment?.userId || '';
+  const enrollmentStartDate = enrollment?.startedAt;
+
+  // Use calendar-aligned day indices based on the enrollment's start date
+  // This correctly accounts for onboarding periods based on when the client actually started
+  // CRITICAL: Week tasks must NEVER be distributed to another week's days
+  let resolvedStartDay: number;
+  let resolvedEndDay: number;
+
+  if (enrollmentStartDate) {
+    // Calculate calendar-aligned weeks for this enrollment
+    const calendarWeeks = calculateCalendarWeeks(enrollmentStartDate, totalDays, includeWeekends);
+
+    // Find the week matching this weekNumber
+    const calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.weekNumber === weekNumber);
+
+    if (calendarWeek) {
+      resolvedStartDay = calendarWeek.startDayIndex;
+      resolvedEndDay = Math.min(calendarWeek.endDayIndex, totalDays);
+      console.log(`[PROGRAM_UTILS] Using calendar-aligned indices for enrollment ${enrollmentId}, week ${weekNumber}: days ${resolvedStartDay}-${resolvedEndDay}`);
+    } else {
+      // Fallback to client week's stored indices if week not found in calendar
+      console.warn(`[PROGRAM_UTILS] Week ${weekNumber} not found in calendar weeks, using stored indices`);
+      resolvedStartDay = clientWeekData.startDayIndex;
+      resolvedEndDay = Math.min(clientWeekData.endDayIndex, totalDays);
+    }
+  } else {
+    // No enrollment start date - use stored indices as fallback
+    console.warn(`[PROGRAM_UTILS] Enrollment ${enrollmentId} has no start date, using stored indices`);
+    resolvedStartDay = clientWeekData.startDayIndex;
+    resolvedEndDay = Math.min(clientWeekData.endDayIndex, totalDays);
+  }
+
+  if (!resolvedStartDay || !resolvedEndDay) {
+    console.error('[PROGRAM_UTILS] Could not resolve day indices for client distribution:', { clientWeekId, enrollmentId, weekNumber, resolvedStartDay, resolvedEndDay });
+    return { created: 0, updated: 0, skipped: 0 };
+  }
 
   // DEBUG: Log distribution decision chain
   console.log(`[PROGRAM_UTILS] distributeClientWeeklyTasksToDays called:`, {
     clientWeekId,
     enrollmentId,
     programId,
-    weekNumber: clientWeekData.weekNumber,
-    clientWeekDistribution: clientWeekData.distribution,
+    weekNumber,
     programTaskDistribution,
     finalDistribution: distribution,
     weeklyTasksCount: weeklyTasks.length,
@@ -1013,7 +1095,7 @@ export async function distributeClientWeeklyTasksToDays(
     resolvedEndDayIndex: resolvedEndDay,
     overwriteExisting,
   });
-  
+
   const daysInWeek = resolvedEndDay - resolvedStartDay + 1;
 
   // Get existing client days in this range
@@ -1037,12 +1119,6 @@ export async function distributeClientWeeklyTasksToDays(
     const tasks = dayData.tasks || [];
     console.log(`[DIST_DEBUG_CLIENT] Day ${dayIndex}: ${tasks.length} tasks, sources: [${tasks.map(t => t.source || 'undefined').join(', ')}]`);
   });
-
-  // Get organizationId and userId from enrollment
-  const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
-  const enrollment = enrollmentDoc.data();
-  const organizationId = enrollment?.organizationId || '';
-  const userId = enrollment?.userId || '';
 
   const batch = adminDb.batch();
   let created = 0,

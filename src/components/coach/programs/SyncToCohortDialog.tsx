@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Users, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -78,6 +78,9 @@ export function SyncToCohortDialog({
 
   const [syncFields, setSyncFields] = useState<SyncFieldOptions>(getInitialSyncFields);
 
+  // Track if dialog was previously open to detect open transitions
+  const wasOpenRef = useRef(false);
+
   // Select all / deselect all helper
   const allFieldsSelected = Object.values(syncFields).every(v => v);
   const toggleSelectAll = () => {
@@ -93,15 +96,17 @@ export function SyncToCohortDialog({
     });
   };
 
-  // Reset syncFields when dialog opens
+  // Reset syncFields only when dialog opens (transitions from closed to open)
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpenRef.current) {
+      // Dialog just opened - initialize fields
       setSyncFields(getInitialSyncFields());
       setError(null);
       setSuccess(null);
     }
+    wasOpenRef.current = open;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, editedFields]);
+  }, [open]);
 
   const toggleField = (field: keyof SyncFieldOptions) => {
     setSyncFields(prev => ({ ...prev, [field]: !prev[field] }));

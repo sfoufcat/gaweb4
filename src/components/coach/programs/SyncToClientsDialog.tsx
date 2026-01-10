@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Users, User, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -87,7 +87,10 @@ export function SyncToClientsDialog({
   };
   
   const [syncFields, setSyncFields] = useState<SyncFieldOptions>(getInitialSyncFields);
-  
+
+  // Track if dialog was previously open to detect open transitions
+  const wasOpenRef = useRef(false);
+
   // Select all / deselect all helper
   const allFieldsSelected = Object.values(syncFields).every(v => v);
   const toggleSelectAll = () => {
@@ -103,15 +106,17 @@ export function SyncToClientsDialog({
     });
   };
 
-  // Reset syncFields when dialog opens with new editedFields
+  // Reset syncFields only when dialog opens (transitions from closed to open)
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpenRef.current) {
+      // Dialog just opened - initialize fields
       setSyncFields(getInitialSyncFields());
       setError(null);
       setSuccess(null);
     }
+    wasOpenRef.current = open;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, editedFields]);
+  }, [open]);
 
   // Get display name for a client
   const getClientName = (enrollment: EnrollmentWithUser) => {
