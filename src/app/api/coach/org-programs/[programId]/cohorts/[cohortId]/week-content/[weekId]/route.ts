@@ -11,8 +11,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { CohortWeekContent, ProgramTaskTemplate, CohortTaskState, ProgramWeek, ProgramCohort, Program } from '@/types';
-import { getProgramCompletionThreshold, recalculateAggregates } from '@/lib/cohort-task-state';
+import type { CohortWeekContent, ProgramTaskTemplate, ProgramWeek, ProgramCohort, Program } from '@/types';
+import { getProgramCompletionThreshold } from '@/lib/cohort-task-state';
 import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
 
 /**
@@ -94,7 +94,6 @@ export async function GET(
         const cohortData = cohortDoc.data() as ProgramCohort;
         const programData = programDoc.data() as Program;
 
-        let taskStates: CohortTaskState[] = [];
         let calendarWeek: CalendarWeek | undefined;
 
         // Get cohort members for fallback query
@@ -135,28 +134,7 @@ export async function GET(
             calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.weekNumber === 0);
           }
 
-          // Fetch CohortTaskState by DATE range - much more reliable than dayIndex
-          if (calendarWeek) {
-            console.log(`[COHORT_WEEK_CONTENT_GET] Querying CohortTaskState by date range: ${calendarWeek.startDate} to ${calendarWeek.endDate}`);
-
-            try {
-              const taskStatesSnapshot = await adminDb
-                .collection('cohort_task_states')
-                .where('cohortId', '==', cohortId)
-                .where('date', '>=', calendarWeek.startDate)
-                .where('date', '<=', calendarWeek.endDate)
-                .get();
-
-              taskStates = taskStatesSnapshot.docs.map(d => ({
-                id: d.id,
-                ...d.data(),
-              })) as CohortTaskState[];
-
-              console.log(`[COHORT_WEEK_CONTENT_GET] Found ${taskStates.length} CohortTaskState documents`);
-            } catch (queryErr) {
-              console.warn('[COHORT_WEEK_CONTENT_GET] Failed to query by date, trying dayIndex fallback:', queryErr);
-            }
-          } else {
+          if (!calendarWeek) {
             console.warn(`[COHORT_WEEK_CONTENT_GET] Could not find calendar week for template position ${templateWeekPosition}`);
           }
         }

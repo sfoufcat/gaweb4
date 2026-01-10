@@ -9,7 +9,6 @@ import {
   findCohortTaskStateByTaskTitle,
   updateMemberTaskState,
   syncMembersWithEnrollments,
-  recalculateAggregates,
 } from '@/lib/cohort-task-state';
 import type { CohortTaskState, ProgramCohort, CohortProgramDay, ProgramTaskTemplate, ProgramDay } from '@/types';
 
@@ -394,8 +393,12 @@ export async function GET(
     const tasks: CohortTaskResponse[] = cohortTaskStates.map(state => {
       const memberBreakdown: MemberInfo[] = [];
 
-      for (const [userId, memberState] of Object.entries(state.memberStates)) {
-        if (memberState.removed) continue;
+      // Add null safety for memberStates
+      const memberStates = state.memberStates || {};
+
+      for (const [userId, memberState] of Object.entries(memberStates)) {
+        // Skip if memberState is undefined or marked as removed
+        if (!memberState || memberState.removed) continue;
 
         const profile = memberProfiles.get(userId) || {
           firstName: 'Unknown',
@@ -408,7 +411,7 @@ export async function GET(
           firstName: profile.firstName,
           lastName: profile.lastName,
           imageUrl: profile.imageUrl,
-          status: memberState.status,
+          status: memberState.status || 'pending',
           completedAt: memberState.completedAt,
         });
       }
@@ -421,18 +424,22 @@ export async function GET(
         return a.firstName.localeCompare(b.firstName);
       });
 
-      // Recalculate aggregates from memberStates to ensure accuracy
-      const aggregates = recalculateAggregates(state, threshold);
+      // GUARANTEED CONSISTENT: Derive counts directly from memberBreakdown
+      // This ensures the badge matches the member list exactly
+      const completedCount = memberBreakdown.filter(m => m.status === 'completed').length;
+      const totalMembers = memberBreakdown.length;
+      const completionRate = totalMembers > 0 ? Math.round((completedCount / totalMembers) * 100) : 0;
+      const isThresholdMet = completionRate >= threshold;
 
       return {
         taskTemplateId: state.taskTemplateId,
         programTaskId: state.programTaskId,
         title: state.taskTitle,
         programDayIndex: state.programDayIndex,
-        completedCount: aggregates.completedCount,
-        totalMembers: aggregates.totalMembers,
-        completionRate: aggregates.completionRate,
-        isThresholdMet: aggregates.isThresholdMet,
+        completedCount,
+        totalMembers,
+        completionRate,
+        isThresholdMet,
         memberBreakdown,
       };
     });
