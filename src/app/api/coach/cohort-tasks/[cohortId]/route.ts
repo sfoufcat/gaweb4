@@ -9,6 +9,7 @@ import {
   findCohortTaskStateByProgramTaskId,
   findCohortTaskStateByTaskTitle,
   updateMemberTaskState,
+  syncMembersWithEnrollments,
 } from '@/lib/cohort-task-state';
 import type { CohortTaskState, ProgramCohort, CohortProgramDay, ProgramTaskTemplate, ProgramDay } from '@/types';
 
@@ -112,6 +113,41 @@ export async function GET(
     // Get cohort task states for this date
     let cohortTaskStates = await getCohortTaskStatesForDate(cohortId, date);
 
+    // ALWAYS sync members with current enrollments for existing states
+    // This handles the case where states were created before enrollments
+    if (cohortTaskStates.length > 0) {
+      const enrollmentsSnapshot = await adminDb
+        .collection('program_enrollments')
+        .where('cohortId', '==', cohortId)
+        .where('status', 'in', ['active', 'upcoming'])
+        .get();
+
+      const memberIds = enrollmentsSnapshot.docs.map(doc => doc.data().userId);
+
+      if (memberIds.length > 0) {
+        let needsRefetch = false;
+        
+        // Check if any states need member sync
+        for (const state of cohortTaskStates) {
+          const existingMemberCount = Object.keys(state.memberStates)
+            .filter(k => !state.memberStates[k].removed).length;
+
+          if (existingMemberCount < memberIds.length) {
+            // Sync members for this state
+            console.log(`[COACH_COHORT_TASKS] Syncing members for state ${state.id}: ${existingMemberCount} -> ${memberIds.length} members`);
+            await syncMembersWithEnrollments(state.id, memberIds, threshold);
+            needsRefetch = true;
+          }
+        }
+
+        // Re-fetch after sync if any states were updated
+        if (needsRefetch) {
+          cohortTaskStates = await getCohortTaskStatesForDate(cohortId, date);
+          console.log(`[COACH_COHORT_TASKS] Re-fetched ${cohortTaskStates.length} states after member sync`);
+        }
+      }
+    }
+
     // If no task states exist and dayIndex is provided, create them on-demand
     // from the cohort_program_days content OR fall back to template program_days
     if (cohortTaskStates.length === 0 && dayIndexParam) {
@@ -204,7 +240,17 @@ export async function GET(
               // Update member states for completed tasks
               for (const taskDoc of completedTasksSnapshot.docs) {
                 const taskData = taskDoc.data();
-                if (taskData.userId && state.memberStates[taskData.userId]) {
+                if (taskData.userId) {
+                  // Add user to memberStates if not present (handles completions before state existed)
+                  if (!state.memberStates[taskData.userId]) {
+                    await adminDb.collection('cohort_task_states').doc(state.id).update({
+                      [`memberStates.${taskData.userId}`]: { status: 'pending' },
+                      updatedAt: new Date().toISOString(),
+                    });
+                    state.memberStates[taskData.userId] = { status: 'pending' };
+                    console.log(`[COACH_COHORT_TASKS] Added missing user ${taskData.userId} to state before syncing completion`);
+                  }
+                  
                   await updateMemberTaskState(
                     state.id,
                     taskData.userId,

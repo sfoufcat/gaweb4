@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { syncMembersWithEnrollments, getProgramCompletionThreshold } from '@/lib/cohort-task-state';
 import type { CohortTaskState, ProgramCohort } from '@/types';
 
 interface MemberInfo {
@@ -123,6 +124,55 @@ export async function GET(
         totalMembers: 0,
         memberBreakdown: [],
       } as TaskMemberResponse);
+    }
+
+    // Sync members with current enrollments to ensure states have correct member list
+    const enrollmentsSnapshot = await adminDb
+      .collection('program_enrollments')
+      .where('cohortId', '==', cohortId)
+      .where('status', 'in', ['active', 'upcoming'])
+      .get();
+
+    const enrolledMemberIds = enrollmentsSnapshot.docs.map(doc => doc.data().userId);
+    
+    if (enrolledMemberIds.length > 0) {
+      const threshold = await getProgramCompletionThreshold(cohort.programId);
+      
+      for (const stateDoc of filteredStates) {
+        const stateData = stateDoc.data() as CohortTaskState;
+        const existingCount = Object.keys(stateData.memberStates || {})
+          .filter(k => !stateData.memberStates[k]?.removed).length;
+
+        if (enrolledMemberIds.length > existingCount) {
+          console.log(`[COHORT_TASK_MEMBERS] Syncing members for state ${stateDoc.id}: ${existingCount} -> ${enrolledMemberIds.length} members`);
+          await syncMembersWithEnrollments(stateDoc.id, enrolledMemberIds, threshold);
+        }
+      }
+
+      // Re-fetch states after sync to get updated member data
+      const refreshedSnapshot = await adminDb
+        .collection('cohort_task_states')
+        .where('cohortId', '==', cohortId)
+        .get();
+
+      const refreshedMatchingStates = refreshedSnapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data.taskTemplateId === taskId ||
+               data.programTaskId === taskId ||
+               data.taskTitle === taskId;
+      });
+
+      // Re-apply date filtering
+      if (date) {
+        filteredStates = refreshedMatchingStates.filter(doc => doc.data().date === date);
+      } else if (startDate && endDate) {
+        filteredStates = refreshedMatchingStates.filter(doc => {
+          const stateDate = doc.data().date;
+          return stateDate >= startDate && stateDate <= endDate;
+        });
+      } else {
+        filteredStates = refreshedMatchingStates;
+      }
     }
 
     // Aggregate member states across all matching task states (for date range queries)

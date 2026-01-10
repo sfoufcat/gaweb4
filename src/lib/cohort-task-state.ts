@@ -209,6 +209,50 @@ export function recalculateAggregates(
   return { completedCount, completionRate, isThresholdMet, totalMembers };
 }
 
+
+/**
+ * Synchronize CohortTaskState memberStates with current enrollments.
+ * Adds missing members and recalculates aggregates.
+ * Uses a transaction for atomicity.
+ */
+export async function syncMembersWithEnrollments(
+  cohortTaskStateId: string,
+  currentMemberIds: string[],
+  threshold: number = 50
+): Promise<CohortTaskState | null> {
+  const stateRef = adminDb.collection('cohort_task_states').doc(cohortTaskStateId);
+
+  const result = await adminDb.runTransaction(async (transaction) => {
+    const doc = await transaction.get(stateRef);
+    if (!doc.exists) return null;
+
+    const state = { id: doc.id, ...doc.data() } as CohortTaskState;
+    let needsUpdate = false;
+
+    // Add any missing members
+    for (const memberId of currentMemberIds) {
+      if (!state.memberStates[memberId]) {
+        state.memberStates[memberId] = { status: 'pending' };
+        needsUpdate = true;
+      }
+    }
+
+    if (needsUpdate) {
+      const aggregates = recalculateAggregates(state, threshold);
+      transaction.update(stateRef, {
+        memberStates: state.memberStates,
+        ...aggregates,
+        updatedAt: new Date().toISOString(),
+      });
+      return { ...state, ...aggregates };
+    }
+
+    return state;
+  });
+
+  return result;
+}
+
 /**
  * Update a member's task completion state and recalculate aggregates
  */
@@ -373,11 +417,18 @@ export async function getOrCreateCohortTaskState(
     }
 
     if (needsUpdate) {
+      // Recalculate full aggregates (not just totalMembers) to ensure consistency
+      const threshold = await getProgramCompletionThreshold(params.programId);
+      const aggregates = recalculateAggregates(existing, threshold);
+      
       await adminDb.collection('cohort_task_states').doc(existing.id).update({
         memberStates: existing.memberStates,
-        totalMembers: Object.keys(existing.memberStates).filter(k => !existing.memberStates[k].removed).length,
+        ...aggregates,
         updatedAt: new Date().toISOString(),
       });
+      
+      // Return updated state with correct aggregates
+      return { ...existing, ...aggregates };
     }
 
     return existing;
