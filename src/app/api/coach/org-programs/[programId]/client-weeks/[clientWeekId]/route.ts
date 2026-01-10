@@ -219,19 +219,24 @@ export async function PATCH(
     let syncResult: { tasksCreated: number; errors: string[] } | null = null;
     const shouldSync = distributionResult && body.syncToClient !== false;
 
+    // IMPORTANT: Use the calendar-aligned day range from distribution, NOT the template indices!
+    // Template indices (clientWeekData.startDayIndex) don't account for onboarding.
+    // Distribution returns the actual days where tasks were placed.
+    const syncStartDay = distributionResult?.startDayIndex;
+    const syncEndDay = distributionResult?.endDayIndex;
+
     console.log(`[COACH_CLIENT_WEEK_PATCH] Sync check:`, {
       shouldSync,
       hasDistributionResult: !!distributionResult,
       syncToClient: body.syncToClient,
-      startDayIndex: clientWeekData.startDayIndex,
-      endDayIndex: clientWeekData.endDayIndex,
+      templateDayRange: `${clientWeekData.startDayIndex}-${clientWeekData.endDayIndex}`,
+      calendarDayRange: `${syncStartDay}-${syncEndDay}`,
     });
 
     if (shouldSync) {
       try {
-        const { startDayIndex, endDayIndex } = clientWeekData;
-        if (enrollmentId && startDayIndex !== undefined && endDayIndex !== undefined) {
-          console.log(`[COACH_CLIENT_WEEK_PATCH] Syncing days ${startDayIndex}-${endDayIndex} to client tasks...`);
+        if (enrollmentId && syncStartDay && syncEndDay) {
+          console.log(`[COACH_CLIENT_WEEK_PATCH] Syncing days ${syncStartDay}-${syncEndDay} (calendar-aligned) to client tasks...`);
           const { userId: coachUserId } = await requireCoachWithOrg();
 
           // Get enrollment details for date calculation
@@ -243,8 +248,8 @@ export async function PATCH(
 
           // Sync each day in the week (only today and past days - cron handles future)
           const today = new Date().toISOString().split('T')[0];
-          
-          for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+
+          for (let dayIndex = syncStartDay; dayIndex <= syncEndDay; dayIndex++) {
             // Calculate the calendar date for this dayIndex
             const dateForDay = calculateDateForProgramDay(
               enrollment,
@@ -280,7 +285,7 @@ export async function PATCH(
           }
 
           syncResult = { tasksCreated: totalTasksCreated, errors };
-          console.log(`[COACH_CLIENT_WEEK_PATCH] Sync complete: ${totalTasksCreated} tasks created for days ${startDayIndex}-${endDayIndex}`);
+          console.log(`[COACH_CLIENT_WEEK_PATCH] Sync complete: ${totalTasksCreated} tasks created for days ${syncStartDay}-${syncEndDay}`);
         } else {
           console.warn(`[COACH_CLIENT_WEEK_PATCH] Missing enrollmentId or day indices, skipping sync`);
         }

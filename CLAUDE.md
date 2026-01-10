@@ -200,6 +200,23 @@ Programs have a 3-tier content system with a clear data flow:
    - `ModuleWeeksSidebar.tsx` - Frontend week selection
    - `program-utils.ts` - Backend distribution functions
 
+7. **Sidebar week selection uses `templateWeekNumber`**:
+   In `ModuleWeeksSidebar.tsx`, the `CalculatedWeek` interface has two week number fields:
+   - `weekNum`: Sequential index for internal UI use (1, 2, 3... including onboarding)
+   - `templateWeekNumber`: The actual template week's weekNumber for API calls
+
+   When a week is selected, `weekSelection.weekNumber` must use `templateWeekNumber`
+   (not `weekNum`) so the parent component finds the correct template week:
+   ```typescript
+   // CORRECT: Uses template week number for API lookups
+   weekNumber: week.templateWeekNumber ?? week.weekNum
+
+   // WRONG: weekNum includes onboarding offset, causes +1 week bug
+   weekNumber: week.weekNum
+   ```
+
+   The `templateWeekNumber` is set via position-based matching (see Rule 6 above).
+
 ### Key Files
 
 - `src/lib/program-utils.ts` - Week/day distribution, index calculation

@@ -1085,7 +1085,7 @@ export async function distributeClientWeeklyTasksToDays(
     overwriteExisting?: boolean;
     programTaskDistribution?: TaskDistribution;
   } = {}
-): Promise<{ created: number; updated: number; skipped: number }> {
+): Promise<{ created: number; updated: number; skipped: number; startDayIndex: number; endDayIndex: number }> {
   const { overwriteExisting = false, programTaskDistribution } = options;
 
   // Fetch client week data
@@ -1184,7 +1184,7 @@ export async function distributeClientWeeklyTasksToDays(
 
   if (!resolvedStartDay || !resolvedEndDay) {
     console.error('[PROGRAM_UTILS] Could not resolve day indices for client distribution:', { clientWeekId, enrollmentId, weekNumber, resolvedStartDay, resolvedEndDay });
-    return { created: 0, updated: 0, skipped: 0 };
+    return { created: 0, updated: 0, skipped: 0, startDayIndex: 0, endDayIndex: 0 };
   }
 
   // DEBUG: Log distribution decision chain
@@ -1355,5 +1355,6 @@ export async function distributeClientWeeklyTasksToDays(
     `[PROGRAM_UTILS] Distributed client tasks for enrollment ${enrollmentId}, week ${clientWeekId}: ${created} created, ${updated} updated, ${skipped} skipped`
   );
 
-  return { created, updated, skipped };
+  // Return the actual day range used (calendar-aligned) so callers can sync the correct days
+  return { created, updated, skipped, startDayIndex: resolvedStartDay, endDayIndex: resolvedEndDay };
 }

@@ -88,8 +88,23 @@ interface ModuleWeeksSidebarProps {
   onDiscardAll?: () => void;
 }
 
+/**
+ * Represents a calculated week for display in the sidebar.
+ *
+ * IMPORTANT: weekNum vs templateWeekNumber
+ * - weekNum: Sequential index for UI (1, 2, 3... including onboarding as 1)
+ * - templateWeekNumber: The template week's actual weekNumber for API calls
+ *
+ * In calendar view with onboarding:
+ *   Onboarding → weekNum=1, templateWeekNumber=undefined
+ *   Week 1     → weekNum=2, templateWeekNumber=1
+ *   Week 2     → weekNum=3, templateWeekNumber=2
+ *
+ * When selecting weeks, ALWAYS use templateWeekNumber for API lookups.
+ * Using weekNum would cause a +1 offset bug (tasks go to wrong week).
+ */
 interface CalculatedWeek {
-  weekNum: number;
+  weekNum: number; // Sequential UI index (includes onboarding)
   startDay: number;
   endDay: number;
   daysInWeek: number[];
@@ -102,7 +117,7 @@ interface CalculatedWeek {
   storedWeekId?: string;
   moduleId?: string;
   order?: number; // Order within module for drag-drop persistence
-  templateWeekNumber?: number; // The template week's weekNumber (1, 2, 3...) for API calls
+  templateWeekNumber?: number; // Template week number for API calls (undefined for onboarding/closing)
 }
 
 interface DeleteModuleModalProps {
@@ -467,7 +482,11 @@ export function ModuleWeeksSidebar({
     return calculateCalendarWeeks(startDate, totalDays, includeWeekends);
   }, [isClientView, isCohortView, viewContext, cohortViewContext, program.lengthDays, program.includeWeekends]);
 
-  // Convert calendar weeks to CalculatedWeek format for display in client view
+  // Convert calendar weeks to CalculatedWeek format for display in client/cohort view.
+  // Uses POSITION-based mapping to find the correct template week:
+  // - Filter calendar weeks to regular only (exclude onboarding/closing)
+  // - Nth regular calendar week (0-indexed) → Template Week N+1
+  // This handles the case where full onboarding causes calendar weekNumbers to skip 1.
   const calendarWeeksAsCalculated = useMemo((): CalculatedWeek[] => {
     if (calendarWeeks.length === 0) return [];
 
