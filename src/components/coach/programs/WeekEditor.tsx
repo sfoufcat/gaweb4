@@ -63,6 +63,8 @@ interface WeekEditorProps {
   cohortWeeklyTaskCompletion?: Map<string, CohortWeeklyTaskCompletionData>;
   // Completion threshold
   completionThreshold?: number;
+  // NEW: Instance ID for migrated data (uses new unified API when present)
+  instanceId?: string | null;
 }
 
 // Member info for task completion breakdown
@@ -394,6 +396,7 @@ export function WeekEditor({
   onSummaryGenerated,
   cohortWeeklyTaskCompletion = new Map(),
   completionThreshold = 50,
+  instanceId,
 }: WeekEditorProps) {
   // Program editor context for centralized save
   const editorContext = useProgramEditorOptional();

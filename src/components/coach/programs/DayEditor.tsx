@@ -49,6 +49,8 @@ interface DayEditorProps {
   onSave?: () => void;
   saving?: boolean;
   saveError?: string | null;
+  // NEW: Instance ID for migrated data (uses new unified API when present)
+  instanceId?: string | null;
 }
 
 // Form data type
@@ -80,6 +82,7 @@ export function DayEditor({
   onSave,
   saving = false,
   saveError,
+  instanceId,
 }: DayEditorProps) {
   // Program editor context for centralized save
   const editorContext = useProgramEditorOptional();

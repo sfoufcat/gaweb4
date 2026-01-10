@@ -52,6 +52,8 @@ interface CohortTasksPanelProps {
   date?: string;
   compact?: boolean;
   refreshInterval?: number;
+  // NEW: Instance ID for migrated data (uses new unified API when present)
+  instanceId?: string | null;
 }
 
 /**
@@ -65,6 +67,7 @@ export function CohortTasksPanel({
   date,
   compact = false,
   refreshInterval = 30000,
+  instanceId,
 }: CohortTasksPanelProps) {
   const [data, setData] = useState<CohortTasksData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,20 +82,65 @@ export function CohortTasksPanel({
     // Set up polling for real-time updates
     const interval = setInterval(fetchTasks, refreshInterval);
     return () => clearInterval(interval);
-  }, [cohortId, effectiveDate, refreshInterval]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cohortId, effectiveDate, refreshInterval, instanceId]);
 
   const fetchTasks = async () => {
     try {
-      const response = await fetch(
-        `/api/coach/cohort-tasks/${cohortId}?date=${effectiveDate}`
-      );
+      // Use new unified API if instanceId is present, otherwise use old API
+      const apiUrl = instanceId
+        ? `/api/instances/${instanceId}/completions?date=${effectiveDate}`
+        : `/api/coach/cohort-tasks/${cohortId}?date=${effectiveDate}`;
+
+      const response = await fetch(apiUrl);
 
       if (!response.ok) {
         throw new Error('Failed to fetch cohort tasks');
       }
 
       const result = await response.json();
-      setData(result);
+
+      // Normalize response from new API to match old format
+      if (instanceId && result.completions) {
+        const normalizedData: CohortTasksData = {
+          cohortId,
+          cohortName: result.cohortName || '',
+          date: effectiveDate,
+          threshold: result.threshold || 80,
+          tasks: result.completions.map((c: {
+            taskId: string;
+            label: string;
+            dayIndex: number;
+            completedCount: number;
+            totalMembers: number;
+            completionRate: number;
+            isThresholdMet: boolean;
+            memberBreakdown: MemberInfo[];
+          }) => ({
+            taskTemplateId: c.taskId,
+            title: c.label,
+            programDayIndex: c.dayIndex,
+            completedCount: c.completedCount,
+            totalMembers: c.totalMembers,
+            completionRate: c.completionRate,
+            isThresholdMet: c.isThresholdMet,
+            memberBreakdown: c.memberBreakdown || [],
+          })),
+          stats: {
+            totalTasks: result.completions.length,
+            tasksAtThreshold: result.completions.filter((c: { isThresholdMet: boolean }) => c.isThresholdMet).length,
+            overallCompletionRate: result.completions.length > 0
+              ? Math.round(
+                  result.completions.reduce((sum: number, c: { completionRate: number }) => sum + c.completionRate, 0) /
+                    result.completions.length
+                )
+              : 0,
+          },
+        };
+        setData(normalizedData);
+      } else {
+        setData(result);
+      }
       setError(null);
     } catch (err) {
       console.error('Error fetching cohort tasks:', err);
