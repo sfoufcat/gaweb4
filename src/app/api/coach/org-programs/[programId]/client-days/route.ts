@@ -1,6 +1,16 @@
 /**
  * Coach API: Client-Specific Program Days Management (for 1:1 Programs)
  *
+ * =============================================================================
+ * ARCHITECTURE NOTE:
+ * This is the EDITOR LAYER for 1:1 programs (client_program_days collection).
+ *
+ * Data flow: Template → "Sync from Template" → THIS EDITOR → Cron → Daily Focus
+ *
+ * KEY RULE: Day editor is SOURCE OF TRUTH.
+ * If coach deletes a task here, it stays deleted. No "smart merge" or preservation.
+ * =============================================================================
+ *
  * GET /api/coach/org-programs/[programId]/client-days - List client days
  *   Query params:
  *   - enrollmentId: Required - Filter by specific enrollment

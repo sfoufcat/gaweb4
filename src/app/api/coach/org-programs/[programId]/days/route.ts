@@ -1,6 +1,21 @@
 /**
- * Coach API: Program Days Management
- * 
+ * Coach API: Program Days Management (TEMPLATE LAYER)
+ *
+ * =============================================================================
+ * ARCHITECTURE NOTE:
+ * This is the TEMPLATE LAYER (program_days collection).
+ * This is the BASE program design that coaches create once.
+ *
+ * Data flow: THIS TEMPLATE → "Sync from Template" → Editor → Cron → Daily Focus
+ *
+ * Template content is synced to cohort/client editors via "Sync from Template" button.
+ * The editor layers (cohort_program_days, client_program_days) are the actual
+ * source of truth for what gets synced to users.
+ *
+ * KEY RULE: Day editor is SOURCE OF TRUTH.
+ * If coach deletes a task here, it stays deleted. No "smart merge" or preservation.
+ * =============================================================================
+ *
  * GET /api/coach/org-programs/[programId]/days - List all days for a program
  * POST /api/coach/org-programs/[programId]/days - Create/update a program day
  */
@@ -123,29 +138,8 @@ export async function POST(
       .limit(1)
       .get();
 
-    // Smart merge: preserve week-sourced tasks not in the request
-    // This handles race conditions where weekly tasks were distributed after frontend loaded
-    if (!existingDay.empty) {
-      const existingDayData = existingDay.docs[0].data();
-      const existingTasks: ProgramTaskTemplate[] = existingDayData?.tasks || [];
-
-      // Get IDs of incoming tasks
-      const incomingTaskIds = new Set(
-        tasks.map(t => t.id).filter((id): id is string => Boolean(id))
-      );
-
-      // Preserve week-sourced tasks that weren't in the save request
-      const preservedWeekTasks = existingTasks.filter((t) =>
-        t.source === 'week' && t.id && !incomingTaskIds.has(t.id)
-      );
-
-      if (preservedWeekTasks.length > 0) {
-        console.log(
-          `[COACH_ORG_PROGRAM_DAYS_POST] Preserving ${preservedWeekTasks.length} week-sourced tasks not in save request`
-        );
-        tasks.push(...preservedWeekTasks);
-      }
-    }
+    // Day editor is source of truth - if user deletes a task, it stays deleted
+    // No "smart merge" - whatever tasks are sent are the final set
 
     // Validate and process habits (optional, typically on Day 1)
     const habits: ProgramHabitTemplate[] = [];

@@ -1,11 +1,36 @@
 /**
- * Starter Program Engine
- * 
- * Core logic for managing starter programs:
- * - User enrollment in programs
- * - Daily task generation from program templates
- * - Program progress tracking
- * - Squad membership management on enrollment transitions
+ * Program Engine
+ *
+ * =============================================================================
+ * PROGRAM SYSTEM ARCHITECTURE
+ * =============================================================================
+ *
+ * This file handles syncing program content to users' Daily Focus.
+ *
+ * DATA FLOW:
+ *   Template (program_days)
+ *     → "Sync from Template" button
+ *   Editor (cohort_program_days / client_program_days)
+ *     → Cron job or manual sync (syncProgramTasksForDay)
+ *   Daily Focus (tasks collection)
+ *
+ * KEY FUNCTIONS:
+ * - syncProgramTasksForDay()     → Unified sync for both 1:1 and cohort programs
+ * - syncProgramTasksToClientDay() → Core sync implementation
+ * - calculateCurrentDayIndexV2() → Maps calendar date to program day index
+ *
+ * KEY RULES:
+ * - For cohorts: ALL members see the same day (cohort.startDate is source of truth)
+ * - For 1:1: Uses enrollment.startedAt
+ * - Day editor content is source of truth (no template fallback at runtime)
+ * - Calendar-aligned weeks: Onboarding = partial first week until Monday
+ *
+ * COHORT COMPLETION TRACKING:
+ * - CohortTaskState documents track member completion rates
+ * - Created when tasks are synced to cohort members
+ * - Updated when users complete/uncomplete tasks
+ *
+ * =============================================================================
  */
 
 import { adminDb } from './firebase-admin';

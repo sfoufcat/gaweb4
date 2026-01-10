@@ -109,6 +109,74 @@ Key collections (see `FIRESTORE_SCHEMAS.md` for full details):
 - `programs` - Coach-created programs
 - `enrollments` - User program enrollments
 
+## Program System Architecture
+
+Programs have a 3-tier content system with a clear data flow:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         TEMPLATE LAYER                               │
+│  (Base program design - what coach creates once)                    │
+│                                                                      │
+│  program_modules    → Organizational containers (title only)         │
+│  program_weeks      → Week templates with weekNumber                 │
+│  program_days       → Day templates with tasks                       │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↓
+                    "Sync from Template" button
+                              ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│                         EDITOR LAYER                                 │
+│  (Coach customizations per cohort or 1:1 client)                    │
+│                                                                      │
+│  COHORT (group programs):          1:1 CLIENT (individual):         │
+│  cohort_week_content               client_program_weeks              │
+│  cohort_program_days               client_program_days               │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↓
+                    Cron job (daily) or manual sync
+                              ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│                         USER LAYER                                   │
+│  (What users actually see in Daily Focus)                           │
+│                                                                      │
+│  tasks collection   → User's actual tasks for the day               │
+│  cohort_task_states → Tracks cohort completion rates                │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Rules
+
+1. **Day is source of truth**: The day editor (cohort_program_days or client_program_days)
+   is the final source of truth for tasks. If coach deletes a task, it stays deleted.
+
+2. **Week feeds into Day**: Week tasks are distributed to days using the distribution
+   function. Week → Day, never the reverse.
+
+3. **Modules are containers only**: Modules group weeks for UI organization. They have
+   `startDayIndex`/`endDayIndex` but these are DERIVED from their weeks, not calculated
+   independently.
+
+4. **weekNumber determines day indices**:
+   ```typescript
+   startDayIndex = (weekNumber - 1) * daysPerWeek + 1
+   endDayIndex = weekNumber * daysPerWeek
+   // daysPerWeek = 7 (with weekends) or 5 (without)
+   ```
+
+5. **Calendar-aligned weeks for users**: When syncing to users, the system uses
+   `calculateCalendarWeeks()` to map program days to real calendar dates. Onboarding
+   is the partial first week (e.g., start Wednesday = 3-day onboarding until Monday).
+
+### Key Files
+
+- `src/lib/program-utils.ts` - Week/day distribution, index calculation
+- `src/lib/program-engine.ts` - Sync functions, day index calculation
+- `src/lib/calendar-weeks.ts` - Calendar-aligned week mapping
+- `src/lib/cohort-task-state.ts` - Cohort completion tracking
+- `src/app/api/coach/org-programs/` - Coach API endpoints for program management
+- `src/app/api/cron/programs-daily-sync/` - Daily sync cron job
+
 ### Common Patterns
 
 **Authenticated API route:**

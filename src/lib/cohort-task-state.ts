@@ -1,8 +1,26 @@
 /**
  * Cohort Task State Utilities
  *
- * Functions for managing CohortTaskState documents which track
- * aggregated task completion across cohort members.
+ * =============================================================================
+ * ARCHITECTURE NOTE:
+ * CohortTaskState documents track completion rates for cohort programs.
+ *
+ * Each CohortTaskState represents ONE task for ONE day across ALL cohort members.
+ * It tracks: who completed, completion rate, threshold met status.
+ *
+ * WHEN CREATED:
+ * - When syncProgramTasksForDay() syncs tasks to cohort members
+ * - On-demand when a user completes a task (if state doesn't exist)
+ *
+ * WHEN UPDATED:
+ * - When any cohort member completes/uncompletes a task
+ * - When members join/leave the cohort
+ *
+ * KEY FIELDS:
+ * - memberStates: Record<userId, { status, completedAt, taskId }>
+ * - completionRate: Percentage of members who completed
+ * - isThresholdMet: Whether completion rate meets program threshold
+ * =============================================================================
  */
 
 import { adminDb } from '@/lib/firebase-admin';

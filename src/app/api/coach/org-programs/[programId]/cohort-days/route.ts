@@ -1,6 +1,16 @@
 /**
  * Coach API: Cohort-Specific Program Days Management (for Group Programs)
  *
+ * =============================================================================
+ * ARCHITECTURE NOTE:
+ * This is the EDITOR LAYER for cohort programs (cohort_program_days collection).
+ *
+ * Data flow: Template → "Sync from Template" → THIS EDITOR → Cron → Daily Focus
+ *
+ * KEY RULE: Day editor is SOURCE OF TRUTH.
+ * If coach deletes a task here, it stays deleted. No "smart merge" or preservation.
+ * =============================================================================
+ *
  * GET /api/coach/org-programs/[programId]/cohort-days - List cohort days
  *   Query params:
  *   - cohortId: Required - Filter by specific cohort
@@ -189,29 +199,10 @@ export async function POST(
       const existingData = existingDoc.data();
 
       // Ensure tasks have IDs for robust matching
-      let processedTasks = dayData.tasks !== undefined
+      // Day editor is source of truth - if user deletes a task, it stays deleted
+      const processedTasks = dayData.tasks !== undefined
         ? processTasksWithIds(dayData.tasks)
         : undefined;
-
-      // Smart merge: preserve week-sourced tasks not in the request
-      // This handles race conditions where weekly tasks were distributed after frontend loaded
-      if (processedTasks !== undefined && existingData?.tasks) {
-        const existingTasks: ProgramTaskTemplate[] = existingData.tasks;
-        const incomingTaskIds = new Set(
-          processedTasks.map(t => t.id).filter((id): id is string => Boolean(id))
-        );
-
-        const preservedWeekTasks = existingTasks.filter((t) =>
-          t.source === 'week' && t.id && !incomingTaskIds.has(t.id)
-        );
-
-        if (preservedWeekTasks.length > 0) {
-          console.log(
-            `[COACH_COHORT_DAYS_POST] Preserving ${preservedWeekTasks.length} week-sourced tasks not in save request`
-          );
-          processedTasks = [...processedTasks, ...preservedWeekTasks];
-        }
-      }
 
       const updateData = {
         ...dayData,
