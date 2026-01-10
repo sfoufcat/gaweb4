@@ -484,6 +484,10 @@ export interface Task {
   sourceProgramDayId?: string | null;  // FK to program_days (for day-level tasks)
   sourceWeekId?: string | null;        // FK to program_weeks (for week-level tasks)
   assignedByCoachId?: string | null;   // Coach user ID who assigned the task
+
+  // New unified tracking fields (migration target)
+  instanceId?: string | null;          // FK to program_instances (replaces enrollment-based tracking)
+  templateTaskId?: string | null;      // The task.id from template (replaces programTaskId)
 }
 
 export interface TaskFormData {
@@ -5711,4 +5715,138 @@ export const TIER_CALL_CREDITS: Record<CoachTier, number> = {
   pro: 50,      // 50 calls/month = 3000 minutes
   scale: 100,   // 100 calls/month = 6000 minutes
 };
+
+// ============================================================================
+// SIMPLIFIED PROGRAM INSTANCE SYSTEM (Migration Target)
+// ============================================================================
+// This replaces:
+// - client_program_days
+// - client_program_weeks
+// - cohort_program_days
+// - cohort_week_content
+// - cohort_task_states (partially - completion tracking moves to tasks collection)
+
+/**
+ * Type of program instance
+ * - 'individual': One instance per enrollment (1:1 programs)
+ * - 'cohort': One instance per cohort (group programs, shared by all members)
+ */
+export type ProgramInstanceType = 'individual' | 'cohort';
+
+/**
+ * A task within a program instance day
+ * This is the template/definition - actual completion is tracked in `tasks` collection
+ */
+export interface ProgramInstanceTask {
+  id: string;                    // Unique ID - assigned once, never changes
+  label: string;                 // Task title
+  isPrimary: boolean;            // Focus (true) vs Backlog (false)
+  type?: 'task' | 'habit' | 'learning' | 'admin';
+  estimatedMinutes?: number;
+  notes?: string;
+  tag?: string;
+  source?: TaskSource;           // 'week' | 'day' | 'manual' | 'sync'
+}
+
+/**
+ * A day within a program instance week
+ */
+export interface ProgramInstanceDay {
+  dayIndex: number;              // 1-7 within the week
+  globalDayIndex: number;        // 1-based across entire program
+  calendarDate?: string;         // ISO date (YYYY-MM-DD) - calculated from startDate
+  title?: string;
+  summary?: string;
+  dailyPrompt?: string;
+  tasks: ProgramInstanceTask[];
+  habits?: ProgramHabitTemplate[];
+  courseAssignments?: DayCourseAssignment[];
+  // Customization tracking
+  hasLocalChanges?: boolean;     // True if coach has customized this day
+}
+
+/**
+ * A week within a program instance
+ */
+export interface ProgramInstanceWeek {
+  weekNumber: number;            // 0 = onboarding, 1+ = regular weeks
+  calendarStartDate?: string;    // ISO date - first day of this week
+  calendarEndDate?: string;      // ISO date - last day of this week
+  name?: string;                 // Week name/title
+  theme?: string;
+  description?: string;
+  weeklyPrompt?: string;
+  weeklyTasks: ProgramInstanceTask[];  // Tasks defined at week level
+  days: ProgramInstanceDay[];
+  // Recording/content
+  coachRecordingUrl?: string;
+  coachRecordingNotes?: string;
+  linkedSummaryIds?: string[];
+  linkedCallEventIds?: string[];
+  // Distribution settings
+  distribution?: TaskDistribution;
+  // Customization tracking
+  hasLocalChanges?: boolean;
+}
+
+/**
+ * Program Instance - Instantiated program for a client or cohort
+ *
+ * Replaces multiple collections with a single document per enrollment/cohort.
+ *
+ * For individual programs: One instance per enrollment
+ * For group programs: One instance per cohort (shared by all cohort members)
+ *
+ * Stored in Firestore 'program_instances' collection
+ */
+export interface ProgramInstance {
+  id: string;
+  programId: string;             // FK to programs (template)
+  organizationId: string;        // Multi-tenancy
+
+  // Instance type
+  type: ProgramInstanceType;     // 'individual' | 'cohort'
+
+  // For individual instances
+  userId?: string;               // Client user ID
+  enrollmentId?: string;         // FK to program_enrollments
+
+  // For cohort instances
+  cohortId?: string;             // FK to program_cohorts
+
+  // Timing
+  startDate: string;             // ISO date - when this instance starts
+  endDate?: string;              // ISO date - calculated from startDate + lengthDays
+
+  // Content (copied from template, can be customized)
+  weeks: ProgramInstanceWeek[];
+
+  // Settings (inherited from program, can be overridden)
+  includeWeekends?: boolean;
+  dailyFocusSlots?: number;
+
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+  lastSyncedFromTemplate?: string;  // Last time content was synced from program template
+}
+
+/**
+ * Extended Task type for unified task tracking
+ *
+ * All tasks (program-sourced, coach-added, user-created) go into the `tasks` collection.
+ * This extends the existing Task interface with better source tracking.
+ */
+export interface UnifiedTaskFields {
+  // Instance-based tracking (new - replaces enrollment-based)
+  instanceId?: string;           // FK to program_instances
+  templateTaskId?: string;       // The task.id from ProgramInstanceTask
+
+  // Coach ad-hoc task fields
+  createdByCoachId?: string;     // Coach who created this task (if source === 'coach')
+  assignedToDate?: string;       // Date coach assigned it to
+}
+
+// Note: These fields should be merged into the existing Task interface
+// during migration. For now, they're defined separately to avoid breaking changes.
 
