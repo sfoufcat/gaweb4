@@ -247,6 +247,20 @@ export async function GET(
               }
             }
 
+            // Also check originalTitle for tasks that were edited by client
+            if (!completedTasksSnapshot || completedTasksSnapshot.empty) {
+              completedTasksSnapshot = await adminDb
+                .collection('tasks')
+                .where('originalTitle', '==', task.label)
+                .where('date', '==', date)
+                .where('status', '==', 'completed')
+                .get();
+
+              if (!completedTasksSnapshot.empty) {
+                console.log(`[COACH_COHORT_TASKS] Found ${completedTasksSnapshot.size} completed tasks by originalTitle: ${task.label}`);
+              }
+            }
+
             if (!completedTasksSnapshot || completedTasksSnapshot.empty) continue;
 
             // Find the CohortTaskState for this task

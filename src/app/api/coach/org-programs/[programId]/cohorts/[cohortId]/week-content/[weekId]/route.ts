@@ -95,6 +95,16 @@ export async function GET(
         const programData = programDoc.data() as Program;
 
         let taskStates: CohortTaskState[] = [];
+        let calendarWeek: CalendarWeek | undefined;
+
+        // Get cohort members for fallback query
+        const enrollmentsSnapshot = await adminDb
+          .collection('program_enrollments')
+          .where('cohortId', '==', cohortId)
+          .where('status', 'in', ['active', 'upcoming'])
+          .get();
+        const memberIds = enrollmentsSnapshot.docs.map(d => d.data().userId as string);
+        const totalMembers = memberIds.length;
 
         if (cohortData.startDate) {
           const includeWeekends = programData.includeWeekends !== false;
@@ -117,7 +127,6 @@ export async function GET(
           const templateRegularWeekIds = templateWeeksSnapshot.docs.map(d => d.id);
           const templateWeekPosition = templateRegularWeekIds.indexOf(weekId);
 
-          let calendarWeek: CalendarWeek | undefined;
           if (templateWeekPosition >= 0) {
             // Regular template week: map to same position in calendar regular weeks
             calendarWeek = calendarRegularWeeks[templateWeekPosition];
@@ -153,12 +162,15 @@ export async function GET(
         }
 
         // Merge completion status into weeklyTasks
-        content.weeklyTasks = content.weeklyTasks.map(template => {
-          // Find matching CohortTaskState by programTaskId or taskTitle
-          const matchingState = taskStates.find(state =>
-            (template.id && state.programTaskId === template.id) ||
-            state.taskTitle === template.label
+        // Uses CohortTaskState if available, otherwise queries actual tasks as fallback
+        content.weeklyTasks = await Promise.all(content.weeklyTasks.map(async (template) => {
+          // Find matching CohortTaskState by programTaskId first, then title
+          let matchingState = taskStates.find(state =>
+            template.id && state.programTaskId && state.programTaskId === template.id
           );
+          if (!matchingState) {
+            matchingState = taskStates.find(state => state.taskTitle === template.label);
+          }
 
           if (matchingState) {
             // Recalculate to ensure threshold is applied correctly
@@ -169,9 +181,70 @@ export async function GET(
               completionRate, // Include rate for UI display
             };
           }
-          // No matching state found - task not started by any cohort member
+
+          // No CohortTaskState found - query actual tasks collection as FALLBACK
+          // This handles cases where CohortTaskState wasn't created yet
+          if (calendarWeek && totalMembers > 0) {
+            try {
+              // Query by programTaskId first (robust)
+              let completedTasksSnapshot;
+              if (template.id) {
+                completedTasksSnapshot = await adminDb
+                  .collection('tasks')
+                  .where('programTaskId', '==', template.id)
+                  .where('date', '>=', calendarWeek.startDate)
+                  .where('date', '<=', calendarWeek.endDate)
+                  .where('status', '==', 'completed')
+                  .get();
+              }
+
+              // Fallback: query by title
+              if (!completedTasksSnapshot || completedTasksSnapshot.empty) {
+                completedTasksSnapshot = await adminDb
+                  .collection('tasks')
+                  .where('title', '==', template.label)
+                  .where('date', '>=', calendarWeek.startDate)
+                  .where('date', '<=', calendarWeek.endDate)
+                  .where('status', '==', 'completed')
+                  .get();
+              }
+
+              // Also check originalTitle for tasks that were edited by client
+              if (!completedTasksSnapshot || completedTasksSnapshot.empty) {
+                completedTasksSnapshot = await adminDb
+                  .collection('tasks')
+                  .where('originalTitle', '==', template.label)
+                  .where('date', '>=', calendarWeek.startDate)
+                  .where('date', '<=', calendarWeek.endDate)
+                  .where('status', '==', 'completed')
+                  .get();
+              }
+
+              if (completedTasksSnapshot && !completedTasksSnapshot.empty) {
+                // Count completions from cohort members only
+                const memberCompletions = completedTasksSnapshot.docs.filter(d =>
+                  memberIds.includes(d.data().userId)
+                );
+                const completedCount = memberCompletions.length;
+                const completionRate = Math.round((completedCount / totalMembers) * 100);
+                const isThresholdMet = completionRate >= threshold;
+
+                console.log(`[COHORT_WEEK_CONTENT_GET] Fallback query for "${template.label}": ${completedCount}/${totalMembers} = ${completionRate}%`);
+
+                return {
+                  ...template,
+                  completed: isThresholdMet,
+                  completionRate,
+                };
+              }
+            } catch (fallbackErr) {
+              console.warn(`[COHORT_WEEK_CONTENT_GET] Fallback query failed for "${template.label}":`, fallbackErr);
+            }
+          }
+
+          // No completion data found
           return template;
-        });
+        }));
       }
 
       return NextResponse.json({ content, exists: true });

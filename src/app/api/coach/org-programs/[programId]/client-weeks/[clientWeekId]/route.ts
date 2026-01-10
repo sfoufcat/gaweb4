@@ -138,13 +138,17 @@ export async function GET(
       // Use programTaskId for robust matching (survives renames), fallback to title
       clientWeek.weeklyTasks = clientWeek.weeklyTasks.map(template => {
         const actualTask = userTasks.find(t => {
-          const task = t as { title?: string; programTaskId?: string };
-          // Prefer programTaskId matching (robust, survives renames)
-          if (template.id && task.programTaskId) {
-            return task.programTaskId === template.id;
+          const task = t as { title?: string; programTaskId?: string; originalTitle?: string };
+          // Try programTaskId match first (robust, survives renames)
+          if (template.id && task.programTaskId && task.programTaskId === template.id) {
+            return true;
           }
-          // Fallback to title matching for backward compatibility
-          return task.title === template.label;
+          // Fall back to title matching - IDs may differ between template sources
+          if (task.title === template.label) {
+            return true;
+          }
+          // Also check originalTitle for tasks that were edited by client
+          return task.originalTitle === template.label;
         });
         if (actualTask) {
           const taskStatus = (actualTask as { status?: string }).status;
