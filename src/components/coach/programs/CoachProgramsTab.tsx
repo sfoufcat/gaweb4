@@ -286,15 +286,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const instanceDays = useMemo(() => {
     if (!instance?.weeks) return [];
     const days: (ClientProgramDay | CohortProgramDay)[] = [];
+    const now = new Date().toISOString();
+
     for (const week of instance.weeks) {
       if (!week.days) continue;
       for (const day of week.days) {
-        days.push({
+        // Build base day object with required fields
+        const baseDay = {
           id: `${instance.id}-day-${day.globalDayIndex}`,
           programId: instance.programId,
+          organizationId: instance.organizationId,
           dayIndex: day.globalDayIndex,
-          enrollmentId: instance.enrollmentId,
-          cohortId: instance.cohortId,
           tasks: day.tasks?.map(t => ({
             id: t.id,
             label: t.label,
@@ -309,7 +311,25 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           summary: day.summary,
           dailyPrompt: day.dailyPrompt,
           courseAssignments: day.courseAssignments,
-        } as ClientProgramDay | CohortProgramDay);
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        if (instance.type === 'individual' && instance.enrollmentId) {
+          // ClientProgramDay
+          days.push({
+            ...baseDay,
+            enrollmentId: instance.enrollmentId,
+            userId: instance.userId || '',
+            programDayId: `${instance.programId}-day-${day.globalDayIndex}`,
+          } as ClientProgramDay);
+        } else if (instance.type === 'cohort' && instance.cohortId) {
+          // CohortProgramDay
+          days.push({
+            ...baseDay,
+            cohortId: instance.cohortId,
+          } as CohortProgramDay);
+        }
       }
     }
     return days;
@@ -318,11 +338,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   // Derive weeks from instance (when using new system)
   const instanceWeeks = useMemo(() => {
     if (!instance?.weeks) return [];
+    const now = new Date().toISOString();
     return instance.weeks.map(week => ({
       id: `${instance.id}-week-${week.weekNumber}`,
       programId: instance.programId,
-      enrollmentId: instance.enrollmentId,
-      cohortId: instance.cohortId,
+      organizationId: instance.organizationId,
+      enrollmentId: instance.enrollmentId || '',
+      programWeekId: `${instance.programId}-week-${week.weekNumber}`,
+      userId: instance.userId || '',
       weekNumber: week.weekNumber,
       name: week.name,
       theme: week.theme,
@@ -333,6 +356,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       calendarStartDate: week.calendarStartDate,
       calendarEndDate: week.calendarEndDate,
       moduleId: week.moduleId,
+      createdAt: now,
+      updatedAt: now,
     } as ClientProgramWeek));
   }, [instance]);
 
