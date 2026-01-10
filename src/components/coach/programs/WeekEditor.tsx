@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment } from '@/types';
+import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment, ProgramCohort } from '@/types';
 import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { SyncToClientsDialog } from './SyncToClientsDialog';
+import { SyncToCohortsDialog } from './SyncToCohortsDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface EnrollmentWithUser extends ProgramEnrollment {
@@ -54,6 +55,8 @@ interface WeekEditorProps {
   programId?: string;
   programType?: 'individual' | 'group';
   enrollments?: EnrollmentWithUser[];
+  // For sync functionality (group programs)
+  cohorts?: ProgramCohort[];
   // Callback when a new summary is generated
   onSummaryGenerated?: (summaryId: string) => void;
   // Cohort task completion for weekly tasks (aggregate)
@@ -376,6 +379,7 @@ export function WeekEditor({
   programId,
   programType,
   enrollments = [],
+  cohorts = [],
   onSummaryGenerated,
   cohortWeeklyTaskCompletion = new Map(),
   completionThreshold = 50,
@@ -496,7 +500,8 @@ export function WeekEditor({
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [showSyncButton, setShowSyncButton] = useState(false);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
-  
+  const [cohortSyncDialogOpen, setCohortSyncDialogOpen] = useState(false);
+
   // Track which fields have been edited (for smart sync pre-selection)
   const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
 
@@ -1147,6 +1152,19 @@ export function WeekEditor({
               <span className="sm:hidden">Sync</span>
             </Button>
           )}
+
+          {/* Sync to Cohorts Button - only for group programs in template mode */}
+          {programType === 'group' && !isClientView && !cohortId && (
+            <Button
+              variant="outline"
+              onClick={() => setCohortSyncDialogOpen(true)}
+              className="flex items-center gap-1.5 border-brand-accent text-brand-accent hover:bg-brand-accent/10 h-8 sm:h-9 text-xs sm:text-sm px-2.5 sm:px-3"
+            >
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Sync to Cohorts</span>
+              <span className="sm:hidden">Sync</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1792,6 +1810,22 @@ export function WeekEditor({
           programId={programId}
           weekNumber={week.weekNumber}
           enrollments={enrollments}
+          editedFields={editedFields}
+          onSyncComplete={() => {
+            setShowSyncButton(false);
+            setEditedFields(new Set());
+          }}
+        />
+      )}
+
+      {/* Sync to Cohorts Dialog */}
+      {programId && programType === 'group' && (
+        <SyncToCohortsDialog
+          open={cohortSyncDialogOpen}
+          onOpenChange={setCohortSyncDialogOpen}
+          programId={programId}
+          weekNumber={week.weekNumber}
+          cohorts={cohorts}
           editedFields={editedFields}
           onSyncComplete={() => {
             setShowSyncButton(false);

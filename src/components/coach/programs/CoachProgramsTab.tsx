@@ -4122,6 +4122,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       programId={selectedProgram?.id}
                       programType={selectedProgram?.type}
                       enrollments={programEnrollments}
+                      cohorts={programCohorts}
                       cohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined}
                       cohortName={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortName : undefined}
                     />

@@ -157,12 +157,17 @@ Programs have a 3-tier content system with a clear data flow:
    `startDayIndex`/`endDayIndex` but these are DERIVED from their weeks, not calculated
    independently.
 
-4. **weekNumber determines day indices**:
-   ```typescript
-   startDayIndex = (weekNumber - 1) * daysPerWeek + 1
-   endDayIndex = weekNumber * daysPerWeek
-   // daysPerWeek = 7 (with weekends) or 5 (without)
+4. **Stored day indices are source of truth for distribution**:
+   When distributing week tasks to days, ALWAYS use the week's stored
+   `startDayIndex`/`endDayIndex`. The formula `(weekNumber - 1) * daysPerWeek + 1`
+   does NOT account for onboarding periods:
    ```
+   Example with 1-day onboarding:
+   - Formula: Week 2 = Days 8-14
+   - Actual:  Week 2 = Days 9-15 (stored on week document)
+   - Using formula would put tasks on wrong days!
+   ```
+   **RULE: Week tasks must NEVER be distributed to another week's days.**
 
 5. **Calendar-aligned weeks for users**: When syncing to users, the system uses
    `calculateCalendarWeeks()` to map program days to real calendar dates. Onboarding
