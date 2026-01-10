@@ -805,6 +805,8 @@ export async function distributeCohortWeeklyTasksToDays(
   const cohortData = cohortDoc.data();
   const cohortStartDate = cohortData?.startDate;
 
+  console.log(`[COHORT_DIST_DEBUG] Raw cohort data: id=${cohortId}, name=${cohortData?.name}, startDate=${cohortStartDate}, status=${cohortData?.status}`);
+
   // Use calendar-aligned day indices based on the cohort's start date
   // This correctly accounts for onboarding periods based on when the cohort actually starts
   // CRITICAL: Week tasks must NEVER be distributed to another week's days
@@ -815,11 +817,25 @@ export async function distributeCohortWeeklyTasksToDays(
     // Calculate calendar-aligned weeks for this cohort
     const calendarWeeks = calculateCalendarWeeks(cohortStartDate, totalDays, includeWeekends);
 
+    // DETAILED DEBUG: Log all calendar weeks
+    console.log(`[COHORT_DIST_DEBUG] ===== Calendar Week Calculation =====`);
+    console.log(`[COHORT_DIST_DEBUG] Cohort start date: ${cohortStartDate}`);
+    console.log(`[COHORT_DIST_DEBUG] Total days: ${totalDays}, includeWeekends: ${includeWeekends}`);
+    console.log(`[COHORT_DIST_DEBUG] All calendar weeks:`);
+    calendarWeeks.forEach((w: CalendarWeek, i: number) => {
+      console.log(`[COHORT_DIST_DEBUG]   [${i}] type=${w.type}, weekNumber=${w.weekNumber}, label="${w.label}", days ${w.startDayIndex}-${w.endDayIndex}`);
+    });
+
     // Get regular calendar weeks only (excludes onboarding weekNumber=0 AND closing weekNumber=-1)
     // CRITICAL: Must use > 0 because closing week has weekNumber=-1, not !== 0
     const calendarRegularWeeks = calendarWeeks
       .filter((w: CalendarWeek) => w.weekNumber > 0)
       .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
+
+    console.log(`[COHORT_DIST_DEBUG] Regular calendar weeks (weekNumber > 0): ${calendarRegularWeeks.length}`);
+    calendarRegularWeeks.forEach((w: CalendarWeek, i: number) => {
+      console.log(`[COHORT_DIST_DEBUG]   Position[${i}]: weekNumber=${w.weekNumber}, days ${w.startDayIndex}-${w.endDayIndex}`);
+    });
 
     // Get the position of this template week among all template regular weeks
     // This is more robust than weekNumber - 1, which assumes weekNumbers start at 1
@@ -831,28 +847,42 @@ export async function distributeCohortWeeklyTasksToDays(
       .get();
 
     const templateRegularWeekIds = templateWeeksSnapshot.docs.map(d => d.id);
+    const templateWeekNumbers = templateWeeksSnapshot.docs.map(d => d.data().weekNumber);
     const templateWeekPosition = templateRegularWeekIds.indexOf(weekId);
 
-    console.log(`[PROGRAM_UTILS] Cohort distribution: weekId=${weekId}, weekNumber=${weekNumber}, templatePosition=${templateWeekPosition}, calendarRegularWeeks=${calendarRegularWeeks.length}`);
+    console.log(`[COHORT_DIST_DEBUG] Template regular weeks: ${templateRegularWeekIds.length}`);
+    console.log(`[COHORT_DIST_DEBUG] Template week numbers: [${templateWeekNumbers.join(', ')}]`);
+    console.log(`[COHORT_DIST_DEBUG] Looking for weekId=${weekId} (weekNumber=${weekNumber})`);
+    console.log(`[COHORT_DIST_DEBUG] Found at position: ${templateWeekPosition}`);
 
     let calendarWeek: CalendarWeek | undefined;
     if (templateWeekPosition >= 0) {
       // Regular template week: map to same position in calendar regular weeks
       calendarWeek = calendarRegularWeeks[templateWeekPosition];
+      console.log(`[COHORT_DIST_DEBUG] Mapping: template position ${templateWeekPosition} → calendar position ${templateWeekPosition}`);
+      if (calendarWeek) {
+        console.log(`[COHORT_DIST_DEBUG] Matched calendar week: weekNumber=${calendarWeek.weekNumber}, days ${calendarWeek.startDayIndex}-${calendarWeek.endDayIndex}`);
+      } else {
+        console.log(`[COHORT_DIST_DEBUG] NO MATCH at position ${templateWeekPosition} (calendar only has ${calendarRegularWeeks.length} regular weeks)`);
+      }
     } else if (weekNumber === 0) {
       // Onboarding week: map to calendar onboarding
       calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.weekNumber === 0);
+      console.log(`[COHORT_DIST_DEBUG] Mapping onboarding week (weekNumber=0)`);
+    } else {
+      console.log(`[COHORT_DIST_DEBUG] Template week NOT FOUND in regular weeks! weekId=${weekId}`);
     }
 
     if (calendarWeek) {
       resolvedStartDay = calendarWeek.startDayIndex;
       resolvedEndDay = Math.min(calendarWeek.endDayIndex, totalDays);
-      console.log(`[PROGRAM_UTILS] Using calendar-aligned indices for cohort ${cohortId}, template week ${weekNumber} (position ${templateWeekPosition}) → days ${resolvedStartDay}-${resolvedEndDay}`);
+      console.log(`[COHORT_DIST_DEBUG] RESULT: Template week ${weekNumber} → days ${resolvedStartDay}-${resolvedEndDay}`);
     } else {
       // Fallback to template indices if week not found
-      console.warn(`[PROGRAM_UTILS] Week ${weekNumber} (position ${templateWeekPosition}) not found in calendar weeks (have ${calendarRegularWeeks.length} regular weeks), using template indices`);
+      console.warn(`[COHORT_DIST_DEBUG] FALLBACK: Week ${weekNumber} (position ${templateWeekPosition}) not found, using template indices`);
       resolvedStartDay = weekData.startDayIndex;
       resolvedEndDay = Math.min(weekData.endDayIndex, totalDays);
+      console.log(`[COHORT_DIST_DEBUG] RESULT (fallback): Template week ${weekNumber} → days ${resolvedStartDay}-${resolvedEndDay}`);
     }
   } else {
     // No cohort start date - use template indices as fallback
