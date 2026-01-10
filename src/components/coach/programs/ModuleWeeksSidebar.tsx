@@ -102,6 +102,7 @@ interface CalculatedWeek {
   storedWeekId?: string;
   moduleId?: string;
   order?: number; // Order within module for drag-drop persistence
+  templateWeekNumber?: number; // The template week's weekNumber (1, 2, 3...) for API calls
 }
 
 interface DeleteModuleModalProps {
@@ -441,6 +442,7 @@ export function ModuleWeeksSidebar({
         storedWeekId: storedWeek?.id,
         moduleId: storedWeek?.moduleId,
         order: storedWeek?.order, // Preserve order for drag-drop
+        templateWeekNumber: weekNum, // In template view, weekNum is the template week number
       };
     });
   }, [program.lengthDays, program.includeWeekends, days, weeks]);
@@ -519,6 +521,7 @@ export function ModuleWeeksSidebar({
         storedWeekId: storedWeek?.id,
         moduleId: storedWeek?.moduleId,
         order: idx, // Maintain calendar order
+        templateWeekNumber: storedWeek?.weekNumber, // Template week number for API calls
       };
     });
   }, [calendarWeeks, days, weeks, program.includeWeekends]);
@@ -1070,10 +1073,12 @@ export function ModuleWeeksSidebar({
   }
 
   const renderWeekRow = (week: CalculatedWeek, moduleId: string, moduleIndex: number = 0) => {
+    // Use templateWeekNumber for API calls (maps correctly to template week)
+    // Fall back to weekNum for onboarding/closing weeks that have no template
     const weekSelection: SidebarSelection = {
       type: 'week',
       id: week.storedWeekId || `week-${week.weekNum}`,
-      weekNumber: week.weekNum,
+      weekNumber: week.templateWeekNumber ?? week.weekNum,
       moduleId
     };
     const isWeekSelected = isSelected(weekSelection);
