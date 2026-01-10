@@ -2028,7 +2028,11 @@ export interface SyncProgramTasksToClientDayResult {
   tasksSkipped: number;
   tasksReplaced: number;
   tasksToBacklog: number;
+  focusTasks: number;
+  backlogTasks: number;
   programDayIndex: number;
+  programId: string | null;
+  programName: string | null;
   message: string;
   errors?: string[];
 }
@@ -2074,7 +2078,11 @@ export interface SyncProgramTasksForDayResult {
   tasksSkipped: number;
   tasksReplaced: number;
   tasksToBacklog: number;
+  focusTasks: number;
+  backlogTasks: number;
   programDayIndex: number;
+  programId: string | null;
+  programName: string | null;
   message: string;
   errors?: string[];
 }
@@ -2123,7 +2131,11 @@ export async function syncProgramTasksForDay(
     tasksSkipped: result.tasksSkipped,
     tasksReplaced: result.tasksReplaced,
     tasksToBacklog: result.tasksToBacklog,
+    focusTasks: result.focusTasks,
+    backlogTasks: result.backlogTasks,
     programDayIndex: result.programDayIndex,
+    programId: result.programId,
+    programName: result.programName,
     message: result.message,
     errors: result.errors,
   };
@@ -2156,7 +2168,11 @@ export async function syncProgramTasksToClientDay(
       tasksSkipped: 0,
       tasksReplaced: 0,
       tasksToBacklog: 0,
+      focusTasks: 0,
+      backlogTasks: 0,
       programDayIndex: 0,
+      programId: null,
+      programName: null,
       message: 'Enrollment not found',
     };
   }
@@ -2171,7 +2187,11 @@ export async function syncProgramTasksToClientDay(
       tasksSkipped: 0,
       tasksReplaced: 0,
       tasksToBacklog: 0,
+      focusTasks: 0,
+      backlogTasks: 0,
       programDayIndex: 0,
+      programId: enrollment.programId,
+      programName: null,
       message: 'Enrollment does not belong to user',
     };
   }
@@ -2185,7 +2205,11 @@ export async function syncProgramTasksToClientDay(
       tasksSkipped: 0,
       tasksReplaced: 0,
       tasksToBacklog: 0,
+      focusTasks: 0,
+      backlogTasks: 0,
       programDayIndex: 0,
+      programId: enrollment.programId,
+      programName: null,
       message: 'Program not found',
     };
   }
@@ -2209,7 +2233,11 @@ export async function syncProgramTasksToClientDay(
       tasksSkipped: 0,
       tasksReplaced: 0,
       tasksToBacklog: 0,
+      focusTasks: 0,
+      backlogTasks: 0,
       programDayIndex: 0,
+      programId: program.id,
+      programName: program.name,
       message: 'Date is before program start or on a weekend (weekends excluded)',
     };
   }
@@ -2221,7 +2249,11 @@ export async function syncProgramTasksToClientDay(
       tasksSkipped: 0,
       tasksReplaced: 0,
       tasksToBacklog: 0,
+      focusTasks: 0,
+      backlogTasks: 0,
       programDayIndex: dayIndex,
+      programId: program.id,
+      programName: program.name,
       message: 'Date is after program end',
     };
   }
@@ -2326,6 +2358,7 @@ export async function syncProgramTasksToClientDay(
   let tasksSkipped = 0;
   let tasksReplaced = 0;
   let tasksToBacklog = 0;
+  let focusTasksCreated = 0;
 
   // In override mode, ALWAYS delete existing program-sourced tasks first
   // This runs even when tasksForDay is empty (coach explicitly cleared the day)
@@ -2361,9 +2394,13 @@ export async function syncProgramTasksToClientDay(
       tasksSkipped: 0,
       tasksReplaced, // Include the deletion count!
       tasksToBacklog: 0,
+      focusTasks: 0,
+      backlogTasks: 0,
       programDayIndex: dayIndex,
-      message: tasksReplaced > 0 
-        ? `Cleared ${tasksReplaced} tasks for day ${dayIndex}` 
+      programId: program.id,
+      programName: program.name,
+      message: tasksReplaced > 0
+        ? `Cleared ${tasksReplaced} tasks for day ${dayIndex}`
         : `No tasks defined for day ${dayIndex}`,
       errors: errors.length > 0 ? errors : undefined,
     };
@@ -2458,6 +2495,7 @@ export async function syncProgramTasksToClientDay(
       listType = 'focus';
       order = nextFocusOrder++;
       availableFocusSlots--;
+      focusTasksCreated++;
     } else {
       listType = 'backlog';
       order = nextBacklogOrder++;
@@ -2503,14 +2541,18 @@ export async function syncProgramTasksToClientDay(
   }
   
   console.log(`[SYNC_TO_CLIENT] Completed sync for user ${userId}, date ${date}: ${tasksCreated} created, ${tasksSkipped} skipped, ${tasksReplaced} replaced`);
-  
+
   return {
     success: errors.length === 0,
     tasksCreated,
     tasksSkipped,
     tasksReplaced,
     tasksToBacklog,
+    focusTasks: focusTasksCreated,
+    backlogTasks: tasksToBacklog,
     programDayIndex: dayIndex,
+    programId: program.id,
+    programName: program.name,
     message: `Synced ${tasksCreated} tasks for day ${dayIndex}`,
     errors: errors.length > 0 ? errors : undefined,
   };
