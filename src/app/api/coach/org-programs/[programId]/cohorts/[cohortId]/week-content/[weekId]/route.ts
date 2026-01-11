@@ -536,6 +536,51 @@ export async function PUT(
 
     weeks[weekIndex] = updatedWeek;
 
+    // Distribute weeklyTasks to days if distribution is specified
+    if (body.distributeTasksNow === true && Array.isArray(body.weeklyTasks)) {
+      const distributionType = body.distribution || 'spread';
+      const weeklyTasks = processTasksWithIds(body.weeklyTasks) as ProgramInstanceTask[];
+      const daysToUpdate = updatedWeek.days || [];
+
+      console.log(`[COHORT_WEEK_CONTENT_PUT] Distributing ${weeklyTasks.length} tasks with type: ${distributionType}`);
+
+      if (distributionType === 'spread') {
+        // Spread tasks evenly across days
+        const targetDays = daysToUpdate.map(d => d.dayIndex);
+        const tasksPerDay = targetDays.length > 0 ? Math.ceil(weeklyTasks.length / targetDays.length) : 0;
+
+        let taskIdx = 0;
+        for (const day of daysToUpdate) {
+          const tasksForDay = weeklyTasks.slice(taskIdx, taskIdx + tasksPerDay);
+          day.tasks = [
+            ...(day.tasks || []).filter((t: ProgramInstanceTask) => t.source && t.source !== 'week'),
+            ...tasksForDay.map(t => ({ ...t, source: 'week' as const })),
+          ];
+          taskIdx += tasksPerDay;
+        }
+      } else if (distributionType === 'repeat-daily' || distributionType === 'all_days') {
+        // Add all tasks to all days
+        for (const day of daysToUpdate) {
+          day.tasks = [
+            ...(day.tasks || []).filter((t: ProgramInstanceTask) => t.source && t.source !== 'week'),
+            ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
+          ];
+        }
+      } else if (distributionType === 'first_day') {
+        // Add all tasks to first day only
+        if (daysToUpdate.length > 0) {
+          daysToUpdate[0].tasks = [
+            ...(daysToUpdate[0].tasks || []).filter((t: ProgramInstanceTask) => t.source && t.source !== 'week'),
+            ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
+          ];
+        }
+      }
+
+      // Update the week with distributed tasks
+      updatedWeek.days = daysToUpdate;
+      weeks[weekIndex] = updatedWeek;
+    }
+
     // Update the instance
     await adminDb.collection('program_instances').doc(instanceId).update({
       weeks,
@@ -674,6 +719,51 @@ export async function PATCH(
     }
 
     weeks[weekIndex] = updatedWeek;
+
+    // Distribute weeklyTasks to days if distribution is specified
+    if (body.distributeTasksNow === true && updatedWeek.weeklyTasks) {
+      const distributionType = updatedWeek.distribution || 'spread';
+      const weeklyTasks = (updatedWeek.weeklyTasks || []) as ProgramInstanceTask[];
+      const daysToUpdate = updatedWeek.days || [];
+
+      console.log(`[COHORT_WEEK_CONTENT_PATCH] Distributing ${weeklyTasks.length} tasks with type: ${distributionType}`);
+
+      if (distributionType === 'spread') {
+        // Spread tasks evenly across days
+        const targetDays = daysToUpdate.map(d => d.dayIndex);
+        const tasksPerDay = targetDays.length > 0 ? Math.ceil(weeklyTasks.length / targetDays.length) : 0;
+
+        let taskIdx = 0;
+        for (const day of daysToUpdate) {
+          const tasksForDay = weeklyTasks.slice(taskIdx, taskIdx + tasksPerDay);
+          day.tasks = [
+            ...(day.tasks || []).filter((t: ProgramInstanceTask) => t.source && t.source !== 'week'),
+            ...tasksForDay.map(t => ({ ...t, source: 'week' as const })),
+          ];
+          taskIdx += tasksPerDay;
+        }
+      } else if (distributionType === 'repeat-daily' || distributionType === 'all_days') {
+        // Add all tasks to all days
+        for (const day of daysToUpdate) {
+          day.tasks = [
+            ...(day.tasks || []).filter((t: ProgramInstanceTask) => t.source && t.source !== 'week'),
+            ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
+          ];
+        }
+      } else if (distributionType === 'first_day') {
+        // Add all tasks to first day only
+        if (daysToUpdate.length > 0) {
+          daysToUpdate[0].tasks = [
+            ...(daysToUpdate[0].tasks || []).filter((t: ProgramInstanceTask) => t.source && t.source !== 'week'),
+            ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
+          ];
+        }
+      }
+
+      // Update the week with distributed tasks
+      updatedWeek.days = daysToUpdate;
+      weeks[weekIndex] = updatedWeek;
+    }
 
     // Update the instance
     await adminDb.collection('program_instances').doc(instanceId).update({
