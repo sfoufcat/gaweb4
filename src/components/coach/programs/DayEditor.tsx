@@ -105,9 +105,19 @@ export function DayEditor({
     });
   };
 
+  // Determine view context with proper type narrowing
+  const isClientMode = programType === 'individual' && clientViewContext?.mode === 'client';
+  const isCohortMode = programType === 'group' && cohortViewContext?.mode === 'cohort';
+  const viewContext = isClientMode ? 'client' : isCohortMode ? 'cohort' : 'template';
+
+  // Get the context ID with proper type narrowing
+  const clientEnrollmentId = isClientMode && clientViewContext?.mode === 'client' ? clientViewContext.enrollmentId : undefined;
+  const cohortIdValue = isCohortMode && cohortViewContext?.mode === 'cohort' ? cohortViewContext.cohortId : undefined;
+  const clientContextId = clientEnrollmentId || cohortIdValue;
+
   // Fetch member breakdown for a task (lazy load)
-  const fetchTaskMembers = async (taskId: string, taskLabel: string) => {
-    if (taskMemberData.has(taskLabel) || cohortViewContext?.mode !== 'cohort') return;
+  const fetchTaskMembers = useCallback(async (taskId: string, taskLabel: string) => {
+    if (!isCohortMode || !cohortIdValue) return;
 
     setLoadingTasks(prev => new Set(prev).add(taskLabel));
 
@@ -118,7 +128,7 @@ export function DayEditor({
       }
 
       const response = await fetch(
-        `/api/coach/cohort-tasks/${cohortViewContext.cohortId}/task/${encodeURIComponent(taskId || taskLabel)}?${params.toString()}`
+        `/api/coach/cohort-tasks/${cohortIdValue}/task/${encodeURIComponent(taskId || taskLabel)}?${params.toString()}`
       );
 
       if (response.ok) {
@@ -134,17 +144,7 @@ export function DayEditor({
         return next;
       });
     }
-  };
-
-  // Fetch members when task is expanded
-  useEffect(() => {
-    expandedTasks.forEach(taskLabel => {
-      const task = formData.tasks.find(t => t.label === taskLabel);
-      if (task && !taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
-        fetchTaskMembers(task.id || taskLabel, taskLabel);
-      }
-    });
-  }, [expandedTasks]);
+  }, [isCohortMode, cohortIdValue, currentDate]);
 
   // Helper to get progress bar color
   const getProgressColor = (rate: number, threshold: number): string => {
@@ -152,16 +152,6 @@ export function DayEditor({
     if (rate >= threshold - 15) return 'bg-yellow-500';
     return 'bg-gray-400';
   };
-
-  // Determine view context with proper type narrowing
-  const isClientMode = programType === 'individual' && clientViewContext?.mode === 'client';
-  const isCohortMode = programType === 'group' && cohortViewContext?.mode === 'cohort';
-  const viewContext = isClientMode ? 'client' : isCohortMode ? 'cohort' : 'template';
-  
-  // Get the context ID with proper type narrowing
-  const clientEnrollmentId = isClientMode && clientViewContext?.mode === 'client' ? clientViewContext.enrollmentId : undefined;
-  const cohortIdValue = isCohortMode && cohortViewContext?.mode === 'cohort' ? cohortViewContext.cohortId : undefined;
-  const clientContextId = clientEnrollmentId || cohortIdValue;
 
   // Build API endpoint based on view context
   const getApiEndpoint = useCallback(() => {
@@ -200,6 +190,16 @@ export function DayEditor({
     return getDefaultFormData();
   });
   const [hasChanges, setHasChanges] = useState(!!pendingData);
+
+  // Fetch members when task is expanded
+  useEffect(() => {
+    expandedTasks.forEach(taskLabel => {
+      const task = formData.tasks.find(t => t.label === taskLabel);
+      if (task && !taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
+        fetchTaskMembers(task.id || taskLabel, taskLabel);
+      }
+    });
+  }, [expandedTasks, formData.tasks, taskMemberData, loadingTasks, fetchTaskMembers]);
 
   // Reset when day index changes
   useEffect(() => {
@@ -282,17 +282,20 @@ export function DayEditor({
   }, [formData, day, editorContext, programId, viewContext, clientContextId, getApiEndpoint, dayIndex, entityId, getDefaultFormData, isClientMode, isCohortMode, clientEnrollmentId, cohortIdValue]);
 
   // Pre-fetch member data for all tasks in cohort mode to show accurate badge counts
+  // This runs only when cohort mode is active and tasks change
   useEffect(() => {
-    if (cohortViewContext?.mode !== 'cohort' || formData.tasks.length === 0) return;
+    if (!isCohortMode || formData.tasks.length === 0) return;
 
     // Fetch member data for each task that we don't already have
     formData.tasks.forEach(task => {
       const taskLabel = task.label;
-      if (!taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
+      if (taskLabel && !taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
         fetchTaskMembers(task.id || taskLabel, taskLabel);
       }
     });
-  }, [cohortViewContext?.mode, formData.tasks, taskMemberData, loadingTasks, fetchTaskMembers]);
+    // Note: taskMemberData and loadingTasks are checked inside the loop guards to prevent re-fetching
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCohortMode, cohortIdValue, formData.tasks.length, fetchTaskMembers]);
 
   // Task management
   const addTask = () => {
@@ -404,19 +407,6 @@ export function DayEditor({
         
         <div className="space-y-2">
           {formData.tasks.map((task, index) => {
-            // Debug logging
-            if (index === 0) {
-              console.log('[DAYEDITOR] Debug:', {
-                isCohortMode,
-                programType,
-                cohortViewContextMode: cohortViewContext?.mode,
-                taskCount: formData.tasks.length,
-                completionMapSize: cohortTaskCompletion.size,
-                completionMapKeys: Array.from(cohortTaskCompletion.keys()),
-                taskLabels: formData.tasks.map(t => t.label),
-                taskIds: formData.tasks.map(t => t.id),
-              });
-            }
             // Check for cohort completion data - try matching by task ID first, then fall back to label
             const cohortCompletion = isCohortMode
               ? (task.id && cohortTaskCompletion.get(task.id)) || cohortTaskCompletion.get(task.label)
