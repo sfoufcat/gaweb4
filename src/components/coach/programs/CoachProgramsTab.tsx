@@ -269,11 +269,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [loadedCohortId, setLoadedCohortId] = useState<string | null>(null);
 
   // Get migrated instance ID for the current enrollment/cohort (uses new program_instances API when available)
-  const { instanceId } = useInstanceIdLookup({
+  const { instanceId, isLoading: instanceIdLoading } = useInstanceIdLookup({
     programId: selectedProgram?.id || '',
     enrollmentId: clientViewContext.mode === 'client' ? clientViewContext.enrollmentId : undefined,
     cohortId: cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined,
   });
+
+  // Debug: Log instance lookup results
+  useEffect(() => {
+    if (cohortViewContext.mode === 'cohort') {
+      console.log('[INSTANCE_LOOKUP] Cohort mode lookup:', {
+        programId: selectedProgram?.id,
+        cohortId: cohortViewContext.cohortId,
+        instanceId,
+        instanceIdLoading,
+      });
+    }
+  }, [cohortViewContext.mode, cohortViewContext.cohortId, selectedProgram?.id, instanceId, instanceIdLoading]);
 
   // Fetch full instance when instanceId is available (new 3-collection architecture)
   const {
@@ -281,6 +293,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     isLoading: instanceLoading,
     refresh: refreshInstance,
   } = useProgramInstance(instanceId);
+
+  // Debug: Log instance data
+  useEffect(() => {
+    if (instanceId) {
+      console.log('[INSTANCE_DATA] Instance loaded:', {
+        instanceId,
+        instanceLoading,
+        hasInstance: !!instance,
+        weeksCount: instance?.weeks?.length,
+        weekNumbers: instance?.weeks?.map(w => w.weekNumber),
+      });
+    }
+  }, [instanceId, instanceLoading, instance]);
 
   // Derive flattened days from instance (when using new system)
   const instanceDays = useMemo(() => {
@@ -2077,8 +2102,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
     // NEW SYSTEM: Use instance refresh when available
     if (instanceId) {
-      console.log('[handleSaveSuccess] Using instance refresh');
+      console.log('[handleSaveSuccess] Using instance refresh for instanceId:', instanceId);
+      
+      // Add a small delay to account for Firestore eventual consistency
+      // This ensures the backend has committed the changes before we fetch
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Refresh the instance data
       await refreshInstance();
+      
+      console.log('[handleSaveSuccess] Instance refresh completed');
       return;
     }
 
@@ -3990,10 +4023,26 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   // NEW SYSTEM: Check if we have instance week data
                   const instanceWeek = instance?.weeks?.find(w => w.weekNumber === weekNumber);
 
+                  // Debug: Log week data sources
+                  if (isCohortMode && instanceId) {
+                    console.log('[WEEK_DATA] Cohort week data sources:', {
+                      weekNumber,
+                      instanceId,
+                      hasInstance: !!instance,
+                      hasInstanceWeek: !!instanceWeek,
+                      instanceWeekTasks: instanceWeek?.weeklyTasks?.length ?? 'undefined',
+                      templateWeekTasks: templateWeek?.weeklyTasks?.length ?? 'undefined',
+                    });
+                  }
+
                   // Use existing week data or create a default
                   // Priority: instanceId means new system (always), else old system fallback
                   // When instanceId exists, we use instance data even if still loading (template as base)
                   const useNewSystem = !!instanceId && templateWeek;
+
+                  // CRITICAL: When in new system mode with instance loaded, ALWAYS use instance data
+                  // Don't fall back to stale templateWeek.weeklyTasks - use empty array if instanceWeek not found
+                  const instanceDataAvailable = useNewSystem && instance && !instanceLoading;
 
                   const selectedWeek: ProgramWeek = useNewSystem ? {
                     // NEW SYSTEM: Use instance week data (from program_instances collection)
@@ -4014,16 +4063,31 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     fillSource: templateWeek.fillSource,
                     notes: templateWeek.notes || [],
                     currentFocus: templateWeek.currentFocus || [],
-                    // Use instance week data for customizable fields (fall back to template if loading)
-                    weeklyPrompt: instanceWeek?.weeklyPrompt ?? templateWeek.weeklyPrompt,
-                    weeklyTasks: instanceWeek?.weeklyTasks ?? templateWeek.weeklyTasks ?? [],
+                    // FIXED: When instance data is available, ONLY use instance data (not stale template)
+                    // This prevents "Test 1" from reappearing after save
+                    weeklyPrompt: instanceDataAvailable 
+                      ? (instanceWeek?.weeklyPrompt ?? '') 
+                      : (instanceWeek?.weeklyPrompt ?? templateWeek.weeklyPrompt),
+                    weeklyTasks: instanceDataAvailable 
+                      ? (instanceWeek?.weeklyTasks ?? []) 
+                      : (instanceWeek?.weeklyTasks ?? templateWeek.weeklyTasks ?? []),
                     weeklyHabits: templateWeek.weeklyHabits ?? [],
-                    distribution: instanceWeek?.distribution ?? templateWeek.distribution ?? 'spread',
-                    coachRecordingUrl: instanceWeek?.coachRecordingUrl ?? templateWeek.coachRecordingUrl,
-                    coachRecordingNotes: instanceWeek?.coachRecordingNotes ?? templateWeek.coachRecordingNotes,
+                    distribution: instanceDataAvailable 
+                      ? (instanceWeek?.distribution ?? 'spread') 
+                      : (instanceWeek?.distribution ?? templateWeek.distribution ?? 'spread'),
+                    coachRecordingUrl: instanceDataAvailable 
+                      ? (instanceWeek?.coachRecordingUrl ?? '') 
+                      : (instanceWeek?.coachRecordingUrl ?? templateWeek.coachRecordingUrl),
+                    coachRecordingNotes: instanceDataAvailable 
+                      ? (instanceWeek?.coachRecordingNotes ?? '') 
+                      : (instanceWeek?.coachRecordingNotes ?? templateWeek.coachRecordingNotes),
                     manualNotes: templateWeek.manualNotes,
-                    linkedSummaryIds: instanceWeek?.linkedSummaryIds ?? templateWeek.linkedSummaryIds ?? [],
-                    linkedCallEventIds: instanceWeek?.linkedCallEventIds ?? templateWeek.linkedCallEventIds ?? [],
+                    linkedSummaryIds: instanceDataAvailable 
+                      ? (instanceWeek?.linkedSummaryIds ?? []) 
+                      : (instanceWeek?.linkedSummaryIds ?? templateWeek.linkedSummaryIds ?? []),
+                    linkedCallEventIds: instanceDataAvailable 
+                      ? (instanceWeek?.linkedCallEventIds ?? []) 
+                      : (instanceWeek?.linkedCallEventIds ?? templateWeek.linkedCallEventIds ?? []),
                   } : isCohortMode && !instanceId && templateWeek ? {
                     // OLD SYSTEM FALLBACK: Use cohortWeekContent (deprecated - for unmigrated cohorts)
                     // Only used when instanceId is NOT available (not migrated)
@@ -4107,6 +4171,21 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-accent mx-auto mb-4" />
                           <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
                             Loading client content...
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Show loading indicator for cohort mode when instance is loading
+                  // This prevents showing stale template data while the real instance data loads
+                  if (isCohortMode && instanceId && instanceLoading && !instance) {
+                    return (
+                      <div className="flex-1 p-8 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-accent mx-auto mb-4" />
+                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                            Loading cohort content...
                           </p>
                         </div>
                       </div>
