@@ -1,15 +1,17 @@
 /**
- * Coach API: Auto-Distribute Program Weeks
+ * Coach API: Auto-Distribute Program Weeks (Embedded in programs.weeks[])
  *
  * POST /api/coach/org-programs/[programId]/weeks/auto-distribute
  * Evenly distributes all weeks across modules in order
+ *
+ * NEW: Uses embedded weeks in programs.weeks[] instead of separate program_weeks collection
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import { recalculateWeekDayIndices, syncProgramWeeks } from '@/lib/program-utils';
+import type { ProgramWeek, Program } from '@/types';
 
 export async function POST(
   request: NextRequest,
@@ -28,6 +30,8 @@ export async function POST(
       return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
     }
 
+    const programData = programDoc.data() as Program;
+
     // Get all modules for this program, ordered by their order field
     const modulesSnapshot = await adminDb
       .collection('program_modules')
@@ -44,66 +48,74 @@ export async function POST(
       order: doc.data().order as number,
     }));
 
-    // Get all weeks for this program, ordered by weekNumber
-    let weeksSnapshot = await adminDb
-      .collection('program_weeks')
-      .where('programId', '==', programId)
-      .orderBy('weekNumber', 'asc')
-      .get();
+    // Get all weeks from embedded array, sorted by weekNumber
+    let weeks: ProgramWeek[] = (programData.weeks || []).map((week, index) => ({
+      ...week,
+      id: week.id || `week-${index + 1}`,
+      programId,
+      organizationId,
+    }));
 
-    // If no weeks exist, create them first
-    if (weeksSnapshot.empty) {
+    // If no weeks exist, create them
+    if (weeks.length === 0) {
       console.log(`[COACH_ORG_PROGRAM_WEEKS_AUTO_DISTRIBUTE] No weeks found, creating them first`);
-      try {
-        await syncProgramWeeks(programId, organizationId);
-        // Re-fetch weeks after creation
-        weeksSnapshot = await adminDb
-          .collection('program_weeks')
-          .where('programId', '==', programId)
-          .orderBy('weekNumber', 'asc')
-          .get();
-      } catch (syncError) {
-        console.error('[COACH_ORG_PROGRAM_WEEKS_AUTO_DISTRIBUTE] Failed to create weeks:', syncError);
-        return NextResponse.json({ error: 'Failed to create weeks for distribution' }, { status: 500 });
+      const lengthDays = programData.lengthDays || 28;
+      const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+      const numWeeks = Math.ceil(lengthDays / daysPerWeek);
+      const now = new Date().toISOString();
+
+      weeks = [];
+      for (let i = 0; i < numWeeks; i++) {
+        const weekNumber = i + 1;
+        const startDay = i * daysPerWeek + 1;
+        const endDay = Math.min(startDay + daysPerWeek - 1, lengthDays);
+
+        weeks.push({
+          id: crypto.randomUUID(),
+          programId,
+          moduleId: '', // Will be assigned below
+          organizationId,
+          order: weekNumber,
+          weekNumber,
+          startDayIndex: startDay,
+          endDayIndex: endDay,
+          createdAt: now,
+          updatedAt: now,
+        });
       }
     }
 
-    if (weeksSnapshot.empty) {
-      return NextResponse.json({ error: 'No weeks could be created for this program' }, { status: 400 });
-    }
-
-    const weeks = weeksSnapshot.docs.map(doc => ({
-      id: doc.id,
-      weekNumber: doc.data().weekNumber as number,
-    }));
+    // Sort by weekNumber
+    weeks.sort((a, b) => a.weekNumber - b.weekNumber);
 
     // Calculate even distribution
     const numModules = modules.length;
     const numWeeks = weeks.length;
     const weeksPerModule = Math.ceil(numWeeks / numModules);
+    const now = new Date().toISOString();
 
-    // Batch update all weeks with their new module assignments
-    const batch = adminDb.batch();
-
-    weeks.forEach((week, index) => {
+    // Update weeks with their new module assignments
+    const updatedWeeks = weeks.map((week, index) => {
       const moduleIndex = Math.floor(index / weeksPerModule);
       // Handle edge case where last module might get fewer weeks
       const targetModule = modules[Math.min(moduleIndex, numModules - 1)];
       const orderWithinModule = (index % weeksPerModule) + 1;
 
-      const weekRef = adminDb.collection('program_weeks').doc(week.id);
-      batch.update(weekRef, {
+      return {
+        ...week,
         moduleId: targetModule.id,
         order: orderWithinModule,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+        updatedAt: now,
+      };
     });
 
-    await batch.commit();
-    console.log(`[COACH_ORG_PROGRAM_WEEKS_AUTO_DISTRIBUTE] Distributed ${numWeeks} weeks across ${numModules} modules`);
+    // Update the program document with new weeks array
+    await adminDb.collection('programs').doc(programId).update({
+      weeks: updatedWeeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
-    // Recalculate day indices for all weeks in the program
-    await recalculateWeekDayIndices(programId);
+    console.log(`[COACH_ORG_PROGRAM_WEEKS_AUTO_DISTRIBUTE] Distributed ${numWeeks} weeks across ${numModules} modules`);
 
     // Return the new distribution for the frontend to update state
     const distribution = modules.map((module, moduleIndex) => {
@@ -111,7 +123,7 @@ export async function POST(
       const endIdx = Math.min(startIdx + weeksPerModule, numWeeks);
       return {
         moduleId: module.id,
-        weekIds: weeks.slice(startIdx, endIdx).map(w => w.id),
+        weekIds: updatedWeeks.slice(startIdx, endIdx).map(w => w.id),
       };
     });
 

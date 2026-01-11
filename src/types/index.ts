@@ -845,7 +845,12 @@ export interface Program {
   
   // Completion popup settings - shown when user finishes the program
   completionConfig?: ProgramCompletionConfig;
-  
+
+  // Embedded template weeks (NEW 3-collection architecture)
+  // When present, this is the source of truth for template structure
+  // Replaces the separate 'program_weeks' collection
+  weeks?: ProgramWeek[];
+
   // Metadata
   createdAt: string;
   updatedAt: string;

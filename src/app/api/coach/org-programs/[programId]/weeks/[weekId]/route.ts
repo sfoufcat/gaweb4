@@ -1,18 +1,19 @@
 /**
- * Coach API: Individual Program Week Management
+ * Coach API: Individual Program Week Management (Embedded in programs.weeks[])
  *
  * GET /api/coach/org-programs/[programId]/weeks/[weekId] - Get a week
  * PATCH /api/coach/org-programs/[programId]/weeks/[weekId] - Update a week
  * DELETE /api/coach/org-programs/[programId]/weeks/[weekId] - Delete a week
+ *
+ * NEW: Uses embedded weeks in programs.weeks[] instead of separate program_weeks collection
+ * The weekId is the week's id field within the embedded array.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import { recalculateWeekDayIndices, distributeWeeklyTasksToDays, syncClientProgramDaysFromWeekDistribution } from '@/lib/program-utils';
-import { syncProgramTasksForDateRange, type SyncMode } from '@/lib/program-engine';
-import type { ProgramWeek, ProgramTaskTemplate } from '@/types';
+import type { ProgramWeek, ProgramTaskTemplate, Program } from '@/types';
 
 /**
  * Process tasks to ensure each has a unique ID for robust matching.
@@ -43,25 +44,36 @@ export async function GET(
     const { organizationId } = await requireCoachWithOrg();
     const { programId, weekId } = await params;
 
-    // Verify program exists and belongs to this org
+    // Fetch program with embedded weeks
     const programDoc = await adminDb.collection('programs').doc(programId).get();
     if (!programDoc.exists || programDoc.data()?.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
 
-    const weekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
-    if (!weekDoc.exists || weekDoc.data()?.programId !== programId) {
+    const programData = programDoc.data() as Program;
+    const weeks: ProgramWeek[] = programData.weeks || [];
+
+    // Find week by id or weekNumber
+    let week = weeks.find(w => w.id === weekId);
+
+    // Fallback: try to find by weekNumber if weekId is numeric
+    if (!week && /^\d+$/.test(weekId)) {
+      const weekNum = parseInt(weekId, 10);
+      week = weeks.find(w => w.weekNumber === weekNum);
+    }
+
+    if (!week) {
       return NextResponse.json({ error: 'Week not found' }, { status: 404 });
     }
 
-    const week = {
-      id: weekDoc.id,
-      ...weekDoc.data(),
-      createdAt: weekDoc.data()?.createdAt?.toDate?.()?.toISOString?.() || weekDoc.data()?.createdAt,
-      updatedAt: weekDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || weekDoc.data()?.updatedAt,
-    } as ProgramWeek;
+    // Ensure all fields are populated
+    const enrichedWeek: ProgramWeek = {
+      ...week,
+      programId,
+      organizationId,
+    };
 
-    return NextResponse.json({ week });
+    return NextResponse.json({ week: enrichedWeek });
   } catch (error) {
     console.error('[COACH_ORG_PROGRAM_WEEK_GET] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal Error';
@@ -86,55 +98,38 @@ export async function PATCH(
     const { programId, weekId } = await params;
     const body = await request.json();
 
-    console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Request body:`, {
-      weekId,
+    console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Request for week ${weekId}:`, {
       distribution: body.distribution,
-      distributeTasksNow: body.distributeTasksNow,
-      overwriteExisting: body.overwriteExisting,
       weeklyTasksCount: body.weeklyTasks?.length ?? 'not provided',
     });
 
-    // Verify program exists and belongs to this org
+    // Fetch program with embedded weeks
     const programDoc = await adminDb.collection('programs').doc(programId).get();
     if (!programDoc.exists || programDoc.data()?.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
 
-    const weekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
-    if (!weekDoc.exists || weekDoc.data()?.programId !== programId) {
+    const programData = programDoc.data() as Program;
+    const weeks: ProgramWeek[] = programData.weeks || [];
+
+    // Find week index by id or weekNumber
+    let weekIndex = weeks.findIndex(w => w.id === weekId);
+
+    // Fallback: try to find by weekNumber if weekId is numeric
+    if (weekIndex === -1 && /^\d+$/.test(weekId)) {
+      const weekNum = parseInt(weekId, 10);
+      weekIndex = weeks.findIndex(w => w.weekNumber === weekNum);
+    }
+
+    if (weekIndex === -1) {
       return NextResponse.json({ error: 'Week not found' }, { status: 404 });
     }
 
-    // Build update object (only include provided fields)
-    const updateData: Record<string, unknown> = {
-      updatedAt: FieldValue.serverTimestamp(),
-    };
-
-    if (body.name !== undefined) updateData.name = body.name?.trim() || null;
-    if (body.description !== undefined) updateData.description = body.description?.trim() || null;
-    if (body.theme !== undefined) updateData.theme = body.theme?.trim() || null;
-    if (body.weeklyPrompt !== undefined) updateData.weeklyPrompt = body.weeklyPrompt?.trim() || null;
-    if (body.order !== undefined) updateData.order = body.order;
-    if (body.weekNumber !== undefined) updateData.weekNumber = body.weekNumber;
-    if (body.startDayIndex !== undefined) updateData.startDayIndex = body.startDayIndex;
-    if (body.endDayIndex !== undefined) updateData.endDayIndex = body.endDayIndex;
-    if (body.weeklyTasks !== undefined) updateData.weeklyTasks = processTasksWithIds(body.weeklyTasks);
-    if (body.weeklyHabits !== undefined) updateData.weeklyHabits = body.weeklyHabits || null;
-    if (body.currentFocus !== undefined) updateData.currentFocus = body.currentFocus || null;
-    if (body.notes !== undefined) updateData.notes = body.notes || null;
-    if (body.scheduledCallEventId !== undefined) updateData.scheduledCallEventId = body.scheduledCallEventId || null;
-    if (body.linkedCourseModuleIds !== undefined) updateData.linkedCourseModuleIds = body.linkedCourseModuleIds || null;
-    if (body.linkedSummaryIds !== undefined) updateData.linkedSummaryIds = body.linkedSummaryIds || null;
-    if (body.linkedCallEventIds !== undefined) updateData.linkedCallEventIds = body.linkedCallEventIds || null;
-    if (body.manualNotes !== undefined) updateData.manualNotes = body.manualNotes?.trim() || null;
-    if (body.fillSource !== undefined) updateData.fillSource = body.fillSource || null;
-    if (body.distribution !== undefined) updateData.distribution = body.distribution || 'spread';
-    if (body.coachRecordingUrl !== undefined) updateData.coachRecordingUrl = body.coachRecordingUrl?.trim() || null;
-    if (body.coachRecordingNotes !== undefined) updateData.coachRecordingNotes = body.coachRecordingNotes?.trim() || null;
+    const existingWeek = weeks[weekIndex];
+    const now = new Date().toISOString();
 
     // Handle moduleId updates (for moving weeks between modules)
-    let moduleIdChanged = false;
-    if (body.moduleId !== undefined) {
+    if (body.moduleId !== undefined && body.moduleId !== existingWeek.moduleId) {
       // Verify target module exists and belongs to this program
       if (body.moduleId) {
         const targetModuleDoc = await adminDb.collection('program_modules').doc(body.moduleId).get();
@@ -142,117 +137,60 @@ export async function PATCH(
           return NextResponse.json({ error: 'Target module not found' }, { status: 404 });
         }
       }
-      const currentModuleId = weekDoc.data()?.moduleId;
-      if (body.moduleId !== currentModuleId) {
-        moduleIdChanged = true;
-        updateData.moduleId = body.moduleId || null;
-      }
     }
 
-    await adminDb.collection('program_weeks').doc(weekId).update(updateData);
-    console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Updated week ${weekId}`);
+    // Build updated week (only update provided fields)
+    const updatedWeek: ProgramWeek = {
+      ...existingWeek,
+      updatedAt: now,
+    };
 
-    // Recalculate day indices if moduleId changed
-    if (moduleIdChanged) {
-      await recalculateWeekDayIndices(programId);
-    }
+    if (body.name !== undefined) updatedWeek.name = body.name?.trim() || undefined;
+    if (body.description !== undefined) updatedWeek.description = body.description?.trim() || undefined;
+    if (body.theme !== undefined) updatedWeek.theme = body.theme?.trim() || undefined;
+    if (body.weeklyPrompt !== undefined) updatedWeek.weeklyPrompt = body.weeklyPrompt?.trim() || undefined;
+    if (body.order !== undefined) updatedWeek.order = body.order;
+    if (body.weekNumber !== undefined) updatedWeek.weekNumber = body.weekNumber;
+    if (body.startDayIndex !== undefined) updatedWeek.startDayIndex = body.startDayIndex;
+    if (body.endDayIndex !== undefined) updatedWeek.endDayIndex = body.endDayIndex;
+    if (body.weeklyTasks !== undefined) updatedWeek.weeklyTasks = processTasksWithIds(body.weeklyTasks);
+    if (body.weeklyHabits !== undefined) updatedWeek.weeklyHabits = body.weeklyHabits || undefined;
+    if (body.currentFocus !== undefined) updatedWeek.currentFocus = body.currentFocus || undefined;
+    if (body.notes !== undefined) updatedWeek.notes = body.notes || undefined;
+    if (body.scheduledCallEventId !== undefined) updatedWeek.scheduledCallEventId = body.scheduledCallEventId || undefined;
+    if (body.linkedCourseModuleIds !== undefined) updatedWeek.linkedCourseModuleIds = body.linkedCourseModuleIds || undefined;
+    if (body.linkedSummaryIds !== undefined) updatedWeek.linkedSummaryIds = body.linkedSummaryIds || undefined;
+    if (body.linkedCallEventIds !== undefined) updatedWeek.linkedCallEventIds = body.linkedCallEventIds || undefined;
+    if (body.manualNotes !== undefined) updatedWeek.manualNotes = body.manualNotes?.trim() || undefined;
+    if (body.fillSource !== undefined) updatedWeek.fillSource = body.fillSource || undefined;
+    if (body.distribution !== undefined) updatedWeek.distribution = body.distribution || 'spread';
+    if (body.coachRecordingUrl !== undefined) updatedWeek.coachRecordingUrl = body.coachRecordingUrl?.trim() || undefined;
+    if (body.coachRecordingNotes !== undefined) updatedWeek.coachRecordingNotes = body.coachRecordingNotes?.trim() || undefined;
+    if (body.moduleId !== undefined) updatedWeek.moduleId = body.moduleId || '';
 
-    // Distribute tasks to days if requested
-    let distributionResult = null;
-    if (body.distributeTasksNow === true) {
-      try {
-        const programData = programDoc.data();
-        console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Starting task distribution:`, {
-          weekId,
-          weeklyTasksCount: body.weeklyTasks?.length ?? 'not in body',
-          bodyDistribution: body.distribution,
-          programDistribution: programData?.taskDistribution,
-          overwriteExisting: body.overwriteExisting || false,
-        });
-        distributionResult = await distributeWeeklyTasksToDays(programId, weekId, {
-          overwriteExisting: body.overwriteExisting || false,
-          programTaskDistribution: programData?.taskDistribution, // Use program's distribution setting as fallback
-        });
-        console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Distributed tasks: ${JSON.stringify(distributionResult)}`);
+    // Update the weeks array
+    const updatedWeeks = [...weeks];
+    updatedWeeks[weekIndex] = updatedWeek;
 
-        // Sync client_program_days with new week distribution (for 1:1 programs)
-        // This ensures week-level task changes propagate to client-specific day overrides
-        const currentWeekData = weekDoc.data();
-        if (currentWeekData?.startDayIndex !== undefined && currentWeekData?.endDayIndex !== undefined) {
-          try {
-            const clientDaysSyncResult = await syncClientProgramDaysFromWeekDistribution(programId, weekId, {
-              startDayIndex: currentWeekData.startDayIndex,
-              endDayIndex: currentWeekData.endDayIndex,
-            });
-            console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Synced client_program_days: ${JSON.stringify(clientDaysSyncResult)}`);
-          } catch (clientSyncErr) {
-            console.error('[COACH_ORG_PROGRAM_WEEK_PATCH] Failed to sync client_program_days:', clientSyncErr);
-            // Don't fail the whole request, just log the error
-          }
-        }
-      } catch (distErr) {
-        console.error('[COACH_ORG_PROGRAM_WEEK_PATCH] Failed to distribute tasks:', distErr);
-        // Don't fail the whole request, just log the error
-      }
-    }
+    // Update the program document
+    await adminDb.collection('programs').doc(programId).update({
+      weeks: updatedWeeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
-    // 2-way sync: If weekly tasks were updated OR distribution happened, sync to all active enrollments
-    let syncResult = null;
-    // Sync triggers when: weeklyTasks explicitly updated OR distribution ran
-    const shouldSync = (body.weeklyTasks !== undefined || distributionResult) && body.syncToClients !== false;
-    // When weekly tasks are explicitly updated, use override mode to replace old program-sourced tasks
-    // This ensures new task distribution is applied correctly (fill-empty would skip existing tasks)
-    const syncMode: SyncMode = body.weeklyTasks !== undefined ? 'override-program-sourced' : 'fill-empty';
+    console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Updated week ${weekId} in program ${programId}`);
 
-    if (shouldSync) {
-      try {
-        const { userId } = await requireCoachWithOrg();
-        console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Syncing with mode=${syncMode}, weeklyTasks updated=${body.weeklyTasks !== undefined}, distributionResult=${!!distributionResult}`);
-        syncResult = await syncProgramTasksForDateRange(programId, {
-          mode: syncMode,
-          horizonDays: 7,
-          coachUserId: userId,
-        });
-        console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Synced tasks to clients: ${JSON.stringify(syncResult)}`);
-      } catch (syncErr) {
-        console.error('[COACH_ORG_PROGRAM_WEEK_PATCH] Failed to sync tasks to clients:', syncErr);
-        // Don't fail the whole request, just log the error
-      }
-
-      // Cohort sync for group programs (await to ensure completion before response)
-      const program = programDoc.data();
-      if (program?.type === 'group') {
-        try {
-          const { syncProgramTasksToAllCohorts } = await import('@/lib/sync-cohort-tasks');
-          const today = new Date().toISOString().split('T')[0];
-          const cohortSync = await syncProgramTasksToAllCohorts({
-            programId,
-            date: today,
-            mode: syncMode, // Use same mode as individual sync
-            syncHorizonDays: 7,
-          });
-          console.log(`[COHORT_SYNC] Synced to cohort members with mode=${syncMode}: ${JSON.stringify(cohortSync)}`);
-        } catch (err) {
-          console.error('[COHORT_SYNC] Sync failed:', err);
-        }
-      }
-    }
-
-    // Fetch the updated week
-    const savedDoc = await adminDb.collection('program_weeks').doc(weekId).get();
-    const savedWeek = {
-      id: savedDoc.id,
-      ...savedDoc.data(),
-      createdAt: savedDoc.data()?.createdAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.createdAt,
-      updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
-    } as ProgramWeek;
+    // Return the updated week with full context
+    const responseWeek: ProgramWeek = {
+      ...updatedWeek,
+      programId,
+      organizationId,
+    };
 
     return NextResponse.json({
       success: true,
-      week: savedWeek,
+      week: responseWeek,
       message: 'Week updated successfully',
-      ...(distributionResult && { distribution: distributionResult }),
-      ...(syncResult && { clientSync: syncResult }),
     });
   } catch (error) {
     console.error('[COACH_ORG_PROGRAM_WEEK_PATCH] Error:', error);
@@ -277,20 +215,38 @@ export async function DELETE(
     const { organizationId } = await requireCoachWithOrg();
     const { programId, weekId } = await params;
 
-    // Verify program exists and belongs to this org
+    // Fetch program with embedded weeks
     const programDoc = await adminDb.collection('programs').doc(programId).get();
     if (!programDoc.exists || programDoc.data()?.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
 
-    const weekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
-    if (!weekDoc.exists || weekDoc.data()?.programId !== programId) {
+    const programData = programDoc.data() as Program;
+    const weeks: ProgramWeek[] = programData.weeks || [];
+
+    // Find week index by id or weekNumber
+    let weekIndex = weeks.findIndex(w => w.id === weekId);
+
+    // Fallback: try to find by weekNumber if weekId is numeric
+    if (weekIndex === -1 && /^\d+$/.test(weekId)) {
+      const weekNum = parseInt(weekId, 10);
+      weekIndex = weeks.findIndex(w => w.weekNumber === weekNum);
+    }
+
+    if (weekIndex === -1) {
       return NextResponse.json({ error: 'Week not found' }, { status: 404 });
     }
 
-    // Delete the week
-    await adminDb.collection('program_weeks').doc(weekId).delete();
-    console.log(`[COACH_ORG_PROGRAM_WEEK_DELETE] Deleted week ${weekId}`);
+    // Remove the week from the array
+    const updatedWeeks = weeks.filter((_, index) => index !== weekIndex);
+
+    // Update the program document
+    await adminDb.collection('programs').doc(programId).update({
+      weeks: updatedWeeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    console.log(`[COACH_ORG_PROGRAM_WEEK_DELETE] Deleted week ${weekId} from program ${programId}`);
 
     return NextResponse.json({
       success: true,

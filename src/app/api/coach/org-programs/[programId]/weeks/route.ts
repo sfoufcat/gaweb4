@@ -1,17 +1,17 @@
 /**
- * Coach API: Program Weeks Management
+ * Coach API: Program Weeks Management (Embedded in programs.weeks[])
  *
  * GET /api/coach/org-programs/[programId]/weeks - List all weeks for a program
  * POST /api/coach/org-programs/[programId]/weeks - Create a new week
+ *
+ * NEW: Uses embedded weeks in programs.weeks[] instead of separate program_weeks collection
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { ProgramWeek, ProgramTaskTemplate } from '@/types';
-import { distributeWeeklyTasksToDays } from '@/lib/program-utils';
-import { syncProgramTasksForDateRange } from '@/lib/program-engine';
+import type { ProgramWeek, ProgramTaskTemplate, Program } from '@/types';
 
 /**
  * Process tasks to ensure each has a unique ID for robust matching.
@@ -42,7 +42,7 @@ export async function GET(
     const { organizationId } = await requireCoachWithOrg();
     const { programId } = await params;
 
-    // Verify program exists and belongs to this org
+    // Fetch program with embedded weeks
     const programDoc = await adminDb.collection('programs').doc(programId).get();
     if (!programDoc.exists) {
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
@@ -51,26 +51,27 @@ export async function GET(
       return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
     }
 
+    const programData = programDoc.data() as Program;
+
     // Optional filter by moduleId
     const { searchParams } = new URL(request.url);
     const moduleId = searchParams.get('moduleId');
 
-    let query = adminDb
-      .collection('program_weeks')
-      .where('programId', '==', programId);
+    // Get weeks from embedded array (new architecture)
+    let weeks: ProgramWeek[] = (programData.weeks || []).map((week, index) => ({
+      ...week,
+      id: week.id || `week-${index + 1}`, // Ensure ID exists
+      programId,
+      organizationId,
+    }));
 
+    // Filter by moduleId if provided
     if (moduleId) {
-      query = query.where('moduleId', '==', moduleId);
+      weeks = weeks.filter(w => w.moduleId === moduleId);
     }
 
-    const weeksSnapshot = await query.orderBy('weekNumber', 'asc').get();
-
-    const weeks = weeksSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
-      updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
-    })) as ProgramWeek[];
+    // Sort by weekNumber
+    weeks.sort((a, b) => a.weekNumber - b.weekNumber);
 
     return NextResponse.json({
       weeks,
@@ -100,7 +101,7 @@ export async function POST(
     const { programId } = await params;
     const body = await request.json();
 
-    // Verify program exists and belongs to this organization
+    // Fetch program
     const programDoc = await adminDb.collection('programs').doc(programId).get();
     if (!programDoc.exists) {
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
@@ -108,6 +109,8 @@ export async function POST(
     if (programDoc.data()?.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
     }
+
+    const programData = programDoc.data() as Program;
 
     // Validate required fields
     if (typeof body.startDayIndex !== 'number' || typeof body.endDayIndex !== 'number') {
@@ -125,36 +128,33 @@ export async function POST(
       }
     }
 
-    // Get next week number (global in program)
-    // Use ascending order to work with existing Firestore index
-    const existingWeeksSnapshot = await adminDb
-      .collection('program_weeks')
-      .where('programId', '==', programId)
-      .orderBy('weekNumber', 'asc')
-      .get();
+    // Get existing weeks from embedded array
+    const existingWeeks: ProgramWeek[] = programData.weeks || [];
 
-    const nextWeekNumber = existingWeeksSnapshot.empty
-      ? 1
-      : (existingWeeksSnapshot.docs[existingWeeksSnapshot.docs.length - 1].data().weekNumber || 0) + 1;
+    // Get next week number (max + 1)
+    const nextWeekNumber = existingWeeks.length > 0
+      ? Math.max(...existingWeeks.map(w => w.weekNumber || 0)) + 1
+      : 1;
 
-    // Get next order number (within module if provided, otherwise global)
+    // Get next order number (within module if provided, otherwise use weekNumber)
     let nextOrder = 1;
     if (body.moduleId) {
-      const moduleWeeks = await adminDb
-        .collection('program_weeks')
-        .where('moduleId', '==', body.moduleId)
-        .orderBy('order', 'desc')
-        .limit(1)
-        .get();
-      nextOrder = moduleWeeks.empty ? 1 : (moduleWeeks.docs[0].data().order || 0) + 1;
+      const moduleWeeks = existingWeeks.filter(w => w.moduleId === body.moduleId);
+      nextOrder = moduleWeeks.length > 0
+        ? Math.max(...moduleWeeks.map(w => w.order || 0)) + 1
+        : 1;
     } else {
-      // Use weekNumber as order if no module
       nextOrder = body.weekNumber ?? nextWeekNumber;
     }
 
-    const weekData = {
+    // Create new week with generated ID
+    const weekId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const newWeek: ProgramWeek = {
+      id: weekId,
       programId,
-      moduleId: body.moduleId || null, // moduleId is now optional
+      moduleId: body.moduleId || '', // moduleId is optional
       organizationId,
       order: body.order ?? nextOrder,
       weekNumber: body.weekNumber ?? nextWeekNumber,
@@ -166,7 +166,7 @@ export async function POST(
       weeklyTasks: processTasksWithIds(body.weeklyTasks),
       weeklyHabits: body.weeklyHabits || undefined,
       weeklyPrompt: body.weeklyPrompt?.trim() || undefined,
-      distribution: body.distribution || 'spread', // Default: spread tasks evenly across days
+      distribution: body.distribution || 'spread',
       currentFocus: body.currentFocus || undefined,
       notes: body.notes || undefined,
       scheduledCallEventId: body.scheduledCallEventId || undefined,
@@ -174,79 +174,25 @@ export async function POST(
       coachRecordingUrl: body.coachRecordingUrl?.trim() || undefined,
       coachRecordingNotes: body.coachRecordingNotes?.trim() || undefined,
       fillSource: body.fillSource || undefined,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+      createdAt: now,
+      updatedAt: now,
     };
 
-    const docRef = await adminDb.collection('program_weeks').add(weekData);
-    const weekId = docRef.id;
-    console.log(`[COACH_ORG_PROGRAM_WEEKS_POST] Created week ${nextWeekNumber} for program ${programId}`);
+    // Add to embedded weeks array
+    const updatedWeeks = [...existingWeeks, newWeek];
 
-    // Fetch the created week
-    const savedDoc = await adminDb.collection('program_weeks').doc(weekId).get();
-    const savedWeek = {
-      id: savedDoc.id,
-      ...savedDoc.data(),
-      createdAt: savedDoc.data()?.createdAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.createdAt,
-      updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
-    } as ProgramWeek;
+    // Update the program document
+    await adminDb.collection('programs').doc(programId).update({
+      weeks: updatedWeeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
-    // Distribute tasks to days if requested
-    // Note: We run distribution even with empty tasks to clear week-sourced tasks from days
-    let distributionResult = null;
-    if (body.distributeTasksNow === true) {
-      try {
-        const programData = programDoc.data();
-        distributionResult = await distributeWeeklyTasksToDays(programId, weekId, {
-          overwriteExisting: body.overwriteExisting || false,
-          programTaskDistribution: programData?.taskDistribution,
-        });
-        console.log(`[COACH_ORG_PROGRAM_WEEKS_POST] Distributed tasks: ${JSON.stringify(distributionResult)}`);
-      } catch (distErr) {
-        console.error('[COACH_ORG_PROGRAM_WEEKS_POST] Failed to distribute tasks:', distErr);
-      }
-    }
-
-    // Sync tasks to enrolled clients
-    let syncResult = null;
-    if (body.weeklyTasks?.length > 0 && body.syncToClients !== false) {
-      try {
-        const { userId } = await requireCoachWithOrg();
-        syncResult = await syncProgramTasksForDateRange(programId, {
-          mode: 'fill-empty',
-          horizonDays: 7,
-          coachUserId: userId,
-        });
-        console.log(`[COACH_ORG_PROGRAM_WEEKS_POST] Synced tasks to clients: ${JSON.stringify(syncResult)}`);
-      } catch (syncErr) {
-        console.error('[COACH_ORG_PROGRAM_WEEKS_POST] Failed to sync tasks to clients:', syncErr);
-      }
-
-      // Cohort sync for group programs
-      const program = programDoc.data();
-      if (program?.type === 'group') {
-        import('@/lib/sync-cohort-tasks').then(({ syncProgramTasksToAllCohorts }) => {
-          const today = new Date().toISOString().split('T')[0];
-          syncProgramTasksToAllCohorts({
-            programId,
-            date: today,
-            mode: 'fill-empty',
-            syncHorizonDays: 7,
-          }).catch(err => {
-            console.error('[COHORT_SYNC] Background sync failed:', err);
-          });
-        }).catch(err => {
-          console.error('[COHORT_SYNC] Failed to import sync module:', err);
-        });
-      }
-    }
+    console.log(`[COACH_ORG_PROGRAM_WEEKS_POST] Created week ${nextWeekNumber} (id: ${weekId}) for program ${programId}`);
 
     return NextResponse.json({
       success: true,
-      week: savedWeek,
+      week: newWeek,
       message: 'Program week created successfully',
-      ...(distributionResult && { distribution: distributionResult }),
-      ...(syncResult && { sync: syncResult }),
     });
   } catch (error) {
     console.error('[COACH_ORG_PROGRAM_WEEKS_POST] Error:', error);

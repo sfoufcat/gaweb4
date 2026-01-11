@@ -1,14 +1,16 @@
 /**
- * Coach API: Bulk Reorder Program Weeks
+ * Coach API: Bulk Reorder Program Weeks (Embedded in programs.weeks[])
  *
  * PUT /api/coach/org-programs/[programId]/weeks/reorder - Reorder weeks within a module
+ *
+ * NEW: Uses embedded weeks in programs.weeks[] instead of separate program_weeks collection
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import { recalculateWeekDayIndices } from '@/lib/program-utils';
+import type { ProgramWeek, Program } from '@/types';
 
 export async function PUT(
   request: NextRequest,
@@ -36,20 +38,20 @@ export async function PUT(
       return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
     }
 
+    const programData = programDoc.data() as Program;
+
     // Verify module exists
     const moduleDoc = await adminDb.collection('program_modules').doc(body.moduleId).get();
     if (!moduleDoc.exists || moduleDoc.data()?.programId !== programId) {
       return NextResponse.json({ error: 'Module not found' }, { status: 404 });
     }
 
-    // Verify all weeks exist and belong to this program
-    const weekIds: string[] = body.weekIds;
-    const weeksSnapshot = await adminDb
-      .collection('program_weeks')
-      .where('programId', '==', programId)
-      .get();
+    // Get existing weeks from embedded array
+    const weeks: ProgramWeek[] = programData.weeks || [];
+    const existingWeekIds = new Set(weeks.map(w => w.id));
 
-    const existingWeekIds = new Set(weeksSnapshot.docs.map(doc => doc.id));
+    // Verify all requested weekIds exist
+    const weekIds: string[] = body.weekIds;
     for (const weekId of weekIds) {
       if (!existingWeekIds.has(weekId)) {
         return NextResponse.json(
@@ -59,22 +61,29 @@ export async function PUT(
       }
     }
 
-    // Batch update all week orders and moduleIds
-    const batch = adminDb.batch();
-    weekIds.forEach((weekId, index) => {
-      const weekRef = adminDb.collection('program_weeks').doc(weekId);
-      batch.update(weekRef, {
-        moduleId: body.moduleId,
-        order: index + 1, // 1-based ordering within module
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+    // Update weeks with their new module assignments and order
+    const now = new Date().toISOString();
+    const updatedWeeks = weeks.map(week => {
+      const orderIndex = weekIds.indexOf(week.id);
+      if (orderIndex !== -1) {
+        // This week is being reordered
+        return {
+          ...week,
+          moduleId: body.moduleId,
+          order: orderIndex + 1, // 1-based ordering within module
+          updatedAt: now,
+        };
+      }
+      return week;
     });
 
-    await batch.commit();
-    console.log(`[COACH_ORG_PROGRAM_WEEKS_REORDER] Reordered ${weekIds.length} weeks in module ${body.moduleId}`);
+    // Update the program document with new weeks array
+    await adminDb.collection('programs').doc(programId).update({
+      weeks: updatedWeeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
-    // Recalculate day indices for all weeks in the program
-    await recalculateWeekDayIndices(programId);
+    console.log(`[COACH_ORG_PROGRAM_WEEKS_REORDER] Reordered ${weekIds.length} weeks in module ${body.moduleId}`);
 
     return NextResponse.json({
       success: true,

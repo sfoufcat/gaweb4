@@ -151,45 +151,101 @@ export async function GET(request: NextRequest) {
 
           // Verify ownership
           if (programData?.organizationId === organizationId && cohortData?.programId === programId) {
-            // Fetch program weeks from OLD system to copy structure
-            const weeksSnapshot = await adminDb.collection('program_weeks')
-              .where('programId', '==', programId)
-              .orderBy('weekNumber', 'asc')
-              .get();
+            const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+            let weeks: Array<{
+              weekNumber: number;
+              moduleId?: string;
+              name?: string;
+              theme?: string;
+              weeklyTasks: Array<{ id: string; label: string; [key: string]: unknown }>;
+              weeklyHabits: unknown[];
+              weeklyPrompt?: string;
+              distribution?: string;
+              days: Array<{ dayIndex: number; globalDayIndex: number; tasks: unknown[]; habits: unknown[] }>;
+            }> = [];
 
-            // Build weeks array for the instance
-            const weeks = weeksSnapshot.docs.map(weekDoc => {
-              const weekData = weekDoc.data();
-              const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
-              const startDayIndex = weekData.startDayIndex || ((weekData.weekNumber - 1) * daysPerWeek + 1);
-              const endDayIndex = weekData.endDayIndex || (startDayIndex + daysPerWeek - 1);
+            // NEW: First try to read from programs.weeks[] (embedded template weeks)
+            if (programData.weeks && Array.isArray(programData.weeks) && programData.weeks.length > 0) {
+              console.log(`[INSTANCES_LIST_GET] Using embedded weeks from program (${programData.weeks.length} weeks)`);
+              weeks = programData.weeks.map((weekData: {
+                weekNumber: number;
+                moduleId?: string;
+                name?: string;
+                theme?: string;
+                startDayIndex?: number;
+                endDayIndex?: number;
+                weeklyTasks?: Array<{ id?: string; label: string }>;
+                weeklyHabits?: unknown[];
+                weeklyPrompt?: string;
+                distribution?: string;
+              }) => {
+                const startDayIndex = weekData.startDayIndex || ((weekData.weekNumber - 1) * daysPerWeek + 1);
+                const endDayIndex = weekData.endDayIndex || (startDayIndex + daysPerWeek - 1);
 
-              // Create days array for this week
-              const days = [];
-              for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
-                days.push({
-                  dayIndex,
-                  globalDayIndex: dayIndex,
-                  tasks: [],
-                  habits: [],
-                });
-              }
+                const days = [];
+                for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+                  days.push({
+                    dayIndex,
+                    globalDayIndex: dayIndex,
+                    tasks: [],
+                    habits: [],
+                  });
+                }
 
-              return {
-                weekNumber: weekData.weekNumber,
-                moduleId: weekData.moduleId,
-                name: weekData.name,
-                theme: weekData.theme,
-                weeklyTasks: (weekData.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
-                  ...t,
-                  id: t.id || crypto.randomUUID(),
-                })),
-                weeklyHabits: weekData.weeklyHabits || [],
-                weeklyPrompt: weekData.weeklyPrompt,
-                distribution: weekData.distribution,
-                days,
-              };
-            });
+                return {
+                  weekNumber: weekData.weekNumber,
+                  moduleId: weekData.moduleId,
+                  name: weekData.name,
+                  theme: weekData.theme,
+                  weeklyTasks: (weekData.weeklyTasks || []).map((t) => ({
+                    ...t,
+                    id: t.id || crypto.randomUUID(),
+                  })),
+                  weeklyHabits: weekData.weeklyHabits || [],
+                  weeklyPrompt: weekData.weeklyPrompt,
+                  distribution: weekData.distribution,
+                  days,
+                };
+              });
+            } else {
+              // FALLBACK: Read from program_weeks collection (legacy data)
+              console.log(`[INSTANCES_LIST_GET] Falling back to program_weeks collection`);
+              const weeksSnapshot = await adminDb.collection('program_weeks')
+                .where('programId', '==', programId)
+                .orderBy('weekNumber', 'asc')
+                .get();
+
+              weeks = weeksSnapshot.docs.map(weekDoc => {
+                const weekData = weekDoc.data();
+                const startDayIndex = weekData.startDayIndex || ((weekData.weekNumber - 1) * daysPerWeek + 1);
+                const endDayIndex = weekData.endDayIndex || (startDayIndex + daysPerWeek - 1);
+
+                const days = [];
+                for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+                  days.push({
+                    dayIndex,
+                    globalDayIndex: dayIndex,
+                    tasks: [],
+                    habits: [],
+                  });
+                }
+
+                return {
+                  weekNumber: weekData.weekNumber,
+                  moduleId: weekData.moduleId,
+                  name: weekData.name,
+                  theme: weekData.theme,
+                  weeklyTasks: (weekData.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
+                    ...t,
+                    id: t.id || crypto.randomUUID(),
+                  })),
+                  weeklyHabits: weekData.weeklyHabits || [],
+                  weeklyPrompt: weekData.weeklyPrompt,
+                  distribution: weekData.distribution,
+                  days,
+                };
+              });
+            }
 
             // Create the instance
             const instanceData = {
