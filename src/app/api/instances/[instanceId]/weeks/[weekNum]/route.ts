@@ -27,6 +27,94 @@ function processTasksWithIds(tasks: ProgramInstanceTask[] | undefined): ProgramI
 }
 
 /**
+ * Sync day tasks to user's tasks collection
+ */
+async function syncDayTasksToUser(
+  instanceId: string,
+  userId: string,
+  dayIndex: number,
+  tasks: ProgramInstanceTask[],
+  calendarDate?: string
+): Promise<void> {
+  const batch = adminDb.batch();
+  const now = new Date().toISOString();
+
+  // Get existing tasks for this instance + day + user
+  const existingTasksQuery = await adminDb.collection('tasks')
+    .where('userId', '==', userId)
+    .where('instanceId', '==', instanceId)
+    .where('dayIndex', '==', dayIndex)
+    .get();
+
+  const existingTasksByTemplateId = new Map<string, { id: string; completed: boolean; completedAt?: string }>();
+  for (const doc of existingTasksQuery.docs) {
+    const taskData = doc.data();
+    if (taskData.templateTaskId) {
+      existingTasksByTemplateId.set(taskData.templateTaskId, {
+        id: doc.id,
+        completed: taskData.completed || false,
+        completedAt: taskData.completedAt,
+      });
+    }
+  }
+
+  const processedTemplateIds = new Set<string>();
+
+  // Create/update tasks
+  for (const task of tasks) {
+    processedTemplateIds.add(task.id);
+
+    const existing = existingTasksByTemplateId.get(task.id);
+
+    if (existing) {
+      // Update existing task (preserve completion status)
+      const taskRef = adminDb.collection('tasks').doc(existing.id);
+      batch.update(taskRef, {
+        label: task.label,
+        isPrimary: task.isPrimary,
+        type: task.type || 'task',
+        estimatedMinutes: task.estimatedMinutes,
+        notes: task.notes,
+        tag: task.tag,
+        date: calendarDate,
+        updatedAt: now,
+      });
+    } else {
+      // Create new task
+      const taskRef = adminDb.collection('tasks').doc();
+      batch.set(taskRef, {
+        userId,
+        instanceId,
+        templateTaskId: task.id,
+        label: task.label,
+        isPrimary: task.isPrimary,
+        type: task.type || 'task',
+        estimatedMinutes: task.estimatedMinutes,
+        notes: task.notes,
+        tag: task.tag,
+        source: 'program',
+        dayIndex,
+        date: calendarDate,
+        completed: false,
+        completedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  }
+
+  // Delete tasks that are no longer in the day (coach deleted them)
+  for (const [templateId, existing] of existingTasksByTemplateId.entries()) {
+    if (!processedTemplateIds.has(templateId)) {
+      const taskRef = adminDb.collection('tasks').doc(existing.id);
+      batch.delete(taskRef);
+    }
+  }
+
+  await batch.commit();
+}
+
+/**
  * GET /api/instances/[instanceId]/weeks/[weekNum]
  * Returns the week content for the specified week number
  */
@@ -116,9 +204,8 @@ export async function GET(
  * Update week content (name, theme, tasks, etc.)
  * Also handles day updates within the week
  *
- * NOTE: This route saves to the instance document only.
- * Task sync to users' tasks collection happens via the day route
- * when coach explicitly saves individual days.
+ * When distribution is specified, tasks are distributed to days and
+ * synced to users' tasks collection immediately.
  */
 export async function PATCH(
   request: NextRequest,
@@ -265,6 +352,40 @@ export async function PATCH(
         weeks: updatedWeeks,
         updatedAt: FieldValue.serverTimestamp(),
       });
+
+      // Sync distributed tasks to users' tasks collection
+      if (data?.type === 'individual' && data?.userId) {
+        // Individual instance - sync to the single user
+        for (const day of daysToUpdate) {
+          await syncDayTasksToUser(instanceId, data.userId, day.globalDayIndex, day.tasks, day.calendarDate);
+        }
+        console.log(`[INSTANCE_WEEK_PATCH] Synced ${daysToUpdate.length} days to user ${data.userId}`);
+      } else if (data?.type === 'cohort' && data?.cohortId) {
+        // Cohort instance - sync to all cohort members
+        const enrollmentsSnap = await adminDb.collection('program_enrollments')
+          .where('cohortId', '==', data.cohortId)
+          .where('status', 'in', ['active', 'completed'])
+          .get();
+
+        console.log(`[INSTANCE_WEEK_PATCH] Syncing ${daysToUpdate.length} days to ${enrollmentsSnap.docs.length} cohort members`);
+
+        await Promise.all(
+          enrollmentsSnap.docs.map(async (enrollmentDoc) => {
+            const enrollment = enrollmentDoc.data();
+            if (enrollment.userId) {
+              for (const day of daysToUpdate) {
+                await syncDayTasksToUser(
+                  instanceId,
+                  enrollment.userId,
+                  day.globalDayIndex,
+                  day.tasks,
+                  day.calendarDate
+                );
+              }
+            }
+          })
+        );
+      }
     }
 
     // Fetch the updated week to return
