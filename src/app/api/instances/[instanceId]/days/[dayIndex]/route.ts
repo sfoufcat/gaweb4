@@ -212,6 +212,32 @@ export async function PATCH(
       await syncDayTasksToUser(instanceId, data.userId, globalDayIndex, updatedDay.tasks, updatedDay.calendarDate);
     }
 
+    // Sync tasks to ALL cohort members if this is a cohort instance
+    if (data?.type === 'cohort' && data?.cohortId) {
+      const enrollmentsSnap = await adminDb.collection('program_enrollments')
+        .where('cohortId', '==', data.cohortId)
+        .where('status', 'in', ['active', 'completed'])
+        .get();
+
+      console.log(`[INSTANCE_DAY_PATCH] Syncing to ${enrollmentsSnap.docs.length} cohort members`);
+
+      // Sync to each member in parallel
+      await Promise.all(
+        enrollmentsSnap.docs.map(async (enrollmentDoc) => {
+          const enrollment = enrollmentDoc.data();
+          if (enrollment.userId) {
+            await syncDayTasksToUser(
+              instanceId,
+              enrollment.userId,
+              globalDayIndex,
+              updatedDay.tasks,
+              updatedDay.calendarDate
+            );
+          }
+        })
+      );
+    }
+
     // Fetch the updated day
     const refreshedDoc = await adminDb.collection('program_instances').doc(instanceId).get();
     const refreshedWeeks: ProgramInstanceWeek[] = refreshedDoc.data()?.weeks || [];
