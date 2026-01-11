@@ -325,7 +325,7 @@ export function useWeekBridge(options: BridgeOptions & { weekNumber: number }) {
         description: instanceWeek.description,
         weeklyPrompt: instanceWeek.weeklyPrompt,
         weeklyTasks: (instanceWeek.weeklyTasks || []).map(t => ({
-          id: t.id,
+          id: t.id || crypto.randomUUID(),
           label: t.label,
           isPrimary: t.isPrimary,
         })),
