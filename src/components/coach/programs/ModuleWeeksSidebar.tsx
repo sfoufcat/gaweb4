@@ -578,7 +578,8 @@ export function ModuleWeeksSidebar({
             targetWeekNumber,
             storedWeekFound: !!storedWeek,
             storedWeekNumber: storedWeek?.weekNumber,
-            finalTemplateWeekNumber: storedWeek?.weekNumber ?? targetWeekNumber,
+            // FIXED: Always use targetWeekNumber (position-based), not storedWeek.weekNumber
+            finalTemplateWeekNumber: targetWeekNumber,
             weekNum: idx + 1,
           });
         }
@@ -599,9 +600,11 @@ export function ModuleWeeksSidebar({
         storedWeekId: storedWeek?.id,
         moduleId: storedWeek?.moduleId,
         order: idx, // Maintain calendar order
-        // CRITICAL: Use storedWeek's weekNumber if found, otherwise use targetWeekNumber
-        // This ensures correct API routing even if storedWeek wasn't found
-        templateWeekNumber: storedWeek?.weekNumber ?? targetWeekNumber,
+        // CRITICAL: ALWAYS use targetWeekNumber for API routing!
+        // storedWeek is only used for getting week content (tasks, theme, etc.)
+        // The targetWeekNumber is the POSITION-based mapping (1st regular week → Week 1)
+        // storedWeek.weekNumber might be different if template weeks are numbered 2, 3, 4...
+        templateWeekNumber: targetWeekNumber,
       };
     });
   }, [calendarWeeks, days, weeks, program.includeWeekends]);
