@@ -184,6 +184,69 @@ function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramT
   });
 }
 
+/**
+ * Ensure all days in a week have correct calendar dates based on cohort start date.
+ * This handles cases where existing instances were created before calendar date fix.
+ */
+function ensureDaysHaveCalendarDates(
+  week: ProgramInstanceWeek,
+  cohortStartDate: string | undefined,
+  includeWeekends: boolean,
+  totalDays: number
+): ProgramInstanceWeek {
+  if (!cohortStartDate || !week.days || week.days.length === 0) {
+    return week;
+  }
+
+  // Check if days already have calendar dates
+  const hasCalendarDates = week.days.every(d => d.calendarDate);
+  if (hasCalendarDates) {
+    return week;
+  }
+
+  // Calculate calendar weeks from cohort start date
+  const calendarWeeks = calculateCalendarWeeks(cohortStartDate, totalDays, includeWeekends);
+  const regularCalendarWeeks = calendarWeeks
+    .filter(w => w.weekNumber > 0)
+    .sort((a, b) => a.startDayIndex - b.startDayIndex);
+
+  // Find which calendar week this instance week corresponds to
+  // Use weekNumber - 1 as the position index
+  const weekPosition = week.weekNumber - 1;
+  const calendarWeek = regularCalendarWeeks[weekPosition];
+
+  if (!calendarWeek?.startDate) {
+    console.log(`[ENSURE_CALENDAR_DATES] No calendar week found for week ${week.weekNumber}`);
+    return week;
+  }
+
+  // Update each day with calculated calendar date
+  const updatedDays = week.days.map((day, index) => {
+    if (day.calendarDate) {
+      return day; // Already has date
+    }
+
+    const startDate = new Date(calendarWeek.startDate);
+    startDate.setDate(startDate.getDate() + index);
+    const calendarDate = startDate.toISOString().split('T')[0];
+
+    // Also ensure globalDayIndex is correct
+    const globalDayIndex = calendarWeek.startDayIndex + index;
+
+    return {
+      ...day,
+      calendarDate,
+      globalDayIndex,
+    };
+  });
+
+  console.log(`[ENSURE_CALENDAR_DATES] Updated week ${week.weekNumber} days with calendar dates`);
+  return {
+    ...week,
+    days: updatedDays,
+  };
+}
+
 type RouteParams = { params: Promise<{ programId: string; cohortId: string; weekId: string }> };
 
 /**
@@ -649,6 +712,14 @@ export async function PUT(
       updatedAt: now,
     };
 
+    // Ensure days have calendar dates (fix for existing instances created before calendar date fix)
+    updatedWeek = ensureDaysHaveCalendarDates(
+      updatedWeek,
+      cohortData.startDate,
+      programData.includeWeekends !== false,
+      programData.lengthDays || 28
+    );
+
     weeks[weekIndex] = updatedWeek;
 
     // Distribute weeklyTasks to days if distribution is specified
@@ -866,6 +937,14 @@ export async function PATCH(
     if (body.theme !== undefined) {
       updatedWeek.theme = body.theme?.trim() || undefined;
     }
+
+    // Ensure days have calendar dates (fix for existing instances created before calendar date fix)
+    updatedWeek = ensureDaysHaveCalendarDates(
+      updatedWeek,
+      cohortData.startDate,
+      programData.includeWeekends !== false,
+      programData.lengthDays || 28
+    );
 
     weeks[weekIndex] = updatedWeek;
 

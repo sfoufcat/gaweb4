@@ -263,6 +263,13 @@ export function DayEditor({
         requestBody.cohortId = cohortIdValue;
       }
 
+      // CRITICAL: When registering a client/cohort change, discard any template change
+      // for the same day to prevent dual saves (template + cohort both being saved)
+      if (viewContext !== 'template' && clientContextId) {
+        const templateKey = editorContext.getChangeKey('day', entityId, undefined);
+        editorContext.discardChange(templateKey);
+      }
+
       editorContext.registerChange({
         entityType: 'day',
         entityId,

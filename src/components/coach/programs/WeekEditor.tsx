@@ -788,6 +788,13 @@ export function WeekEditor({
         };
       }
 
+      // CRITICAL: When registering a client/cohort change, discard any template change
+      // for the same week to prevent dual saves (template + cohort both being saved)
+      if (viewContext !== 'template' && clientContextId) {
+        const templateKey = editorContext.getChangeKey('week', week.id, undefined);
+        editorContext.discardChange(templateKey);
+      }
+
       editorContext.registerChange({
         entityType: 'week',
         entityId: week.id,

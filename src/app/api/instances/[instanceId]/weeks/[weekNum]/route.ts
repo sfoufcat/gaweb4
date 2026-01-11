@@ -12,8 +12,69 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { ProgramInstanceWeek, ProgramInstanceDay, ProgramInstanceTask } from '@/types';
+import { calculateCalendarWeeks } from '@/lib/calendar-weeks';
 
 type RouteParams = { params: Promise<{ instanceId: string; weekNum: string }> };
+
+/**
+ * Ensure all days in a week have correct calendar dates.
+ * This handles cases where existing instances were created before calendar date fix.
+ */
+function ensureDaysHaveCalendarDates(
+  week: ProgramInstanceWeek,
+  startDate: string | undefined,
+  includeWeekends: boolean,
+  totalDays: number
+): ProgramInstanceWeek {
+  if (!startDate || !week.days || week.days.length === 0) {
+    return week;
+  }
+
+  // Check if days already have calendar dates
+  const hasCalendarDates = week.days.every(d => d.calendarDate);
+  if (hasCalendarDates) {
+    return week;
+  }
+
+  // Calculate calendar weeks from start date
+  const calendarWeeks = calculateCalendarWeeks(startDate, totalDays, includeWeekends);
+  const regularCalendarWeeks = calendarWeeks
+    .filter(w => w.weekNumber > 0)
+    .sort((a, b) => a.startDayIndex - b.startDayIndex);
+
+  // Find which calendar week this instance week corresponds to
+  const weekPosition = week.weekNumber - 1;
+  const calendarWeek = regularCalendarWeeks[weekPosition];
+
+  if (!calendarWeek?.startDate) {
+    console.log(`[ENSURE_CALENDAR_DATES] No calendar week found for week ${week.weekNumber}`);
+    return week;
+  }
+
+  // Update each day with calculated calendar date
+  const updatedDays = week.days.map((day, index) => {
+    if (day.calendarDate) {
+      return day;
+    }
+
+    const startDateObj = new Date(calendarWeek.startDate);
+    startDateObj.setDate(startDateObj.getDate() + index);
+    const calendarDate = startDateObj.toISOString().split('T')[0];
+    const globalDayIndex = calendarWeek.startDayIndex + index;
+
+    return {
+      ...day,
+      calendarDate,
+      globalDayIndex,
+    };
+  });
+
+  console.log(`[ENSURE_CALENDAR_DATES] Updated week ${week.weekNumber} days with calendar dates`);
+  return {
+    ...week,
+    days: updatedDays,
+  };
+}
 
 /**
  * Process tasks to ensure each has a unique ID
@@ -289,6 +350,18 @@ export async function PATCH(
         };
       }
     }
+
+    // Ensure days have calendar dates (fix for existing instances created before calendar date fix)
+    const instanceStartDate = data?.startDate as string | undefined;
+    const includeWeekends = data?.includeWeekends !== false;
+    const totalDays = weeks.reduce((sum, w) => sum + (w.days?.length || 0), 0) || 28;
+
+    updatedWeek = ensureDaysHaveCalendarDates(
+      updatedWeek,
+      instanceStartDate,
+      includeWeekends,
+      totalDays
+    );
 
     // Update the weeks array
     const updatedWeeks = [...weeks];
