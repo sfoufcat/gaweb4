@@ -511,6 +511,13 @@ export function ModuleWeeksSidebar({
       // NOT by weekNumber, because calendar weekNumbers can skip 1 if onboarding is full.
       let storedWeek: typeof weeks[0] | undefined;
 
+      // For regular weeks, find the corresponding template/instance week
+      // IMPORTANT: Use POSITION-based mapping, not weekNumber, because:
+      // - Template weeks are always numbered 1, 2, 3...
+      // - Calendar weekNumbers can skip 1 if onboarding is a full week (0, 2, 3...)
+      // - Nth regular calendar week (0-indexed position) → Template/Instance week at position N
+      let targetWeekNumber: number | undefined;
+      
       if (cw.type === 'regular') {
         // Find position of this week among regular calendar weeks (0-indexed)
         const regularCalendarWeeks = calendarWeeks.filter(w => w.type === 'regular');
@@ -520,8 +527,35 @@ export function ModuleWeeksSidebar({
 
         if (positionAmongRegular >= 0) {
           // Template weeks are 1-indexed, so position 0 → weekNumber 1
-          const targetWeekNumber = positionAmongRegular + 1;
+          targetWeekNumber = positionAmongRegular + 1;
+          
+          // First try to find by weekNumber (most reliable)
           storedWeek = weeks.find(w => w.weekNumber === targetWeekNumber);
+          
+          // If not found by weekNumber, try by array position (fallback for mismatched numbering)
+          if (!storedWeek && weeks.length > positionAmongRegular) {
+            // Sort weeks by weekNumber to ensure consistent ordering
+            const sortedWeeks = [...weeks].sort((a, b) => (a.weekNumber || 0) - (b.weekNumber || 0));
+            storedWeek = sortedWeeks[positionAmongRegular];
+            console.warn('[SIDEBAR_WEEK_DEBUG] Found storedWeek by position instead of weekNumber', {
+              calendarLabel: cw.label,
+              positionAmongRegular,
+              targetWeekNumber,
+              foundWeekNumber: storedWeek?.weekNumber,
+            });
+          }
+          
+          // DEBUG: Log when week is not found at all
+          if (!storedWeek) {
+            console.warn('[SIDEBAR_WEEK_DEBUG] Could not find storedWeek!', {
+              calendarLabel: cw.label,
+              calendarWeekNumber: cw.weekNumber,
+              positionAmongRegular,
+              targetWeekNumber,
+              availableWeekNumbers: weeks.map(w => w.weekNumber),
+              weeksCount: weeks.length,
+            });
+          }
         }
       }
       // For onboarding and closing weeks, storedWeek remains undefined (no template content)
@@ -540,7 +574,9 @@ export function ModuleWeeksSidebar({
         storedWeekId: storedWeek?.id,
         moduleId: storedWeek?.moduleId,
         order: idx, // Maintain calendar order
-        templateWeekNumber: storedWeek?.weekNumber, // Template week number for API calls
+        // CRITICAL: Use storedWeek's weekNumber if found, otherwise use targetWeekNumber
+        // This ensures correct API routing even if storedWeek wasn't found
+        templateWeekNumber: storedWeek?.weekNumber ?? targetWeekNumber,
       };
     });
   }, [calendarWeeks, days, weeks, program.includeWeekends]);
@@ -1100,6 +1136,20 @@ export function ModuleWeeksSidebar({
       weekNumber: week.templateWeekNumber ?? week.weekNum,
       moduleId
     };
+    
+    // DEBUG: Log week selection on click
+    const handleWeekClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      console.log('[SIDEBAR_WEEK_CLICK]', {
+        displayLabel: week.label,
+        weekNum: week.weekNum,
+        templateWeekNumber: week.templateWeekNumber,
+        selectionWeekNumber: weekSelection.weekNumber,
+        days: `${week.startDay}-${week.endDay}`,
+        storedWeekId: week.storedWeekId,
+      });
+      onSelect(weekSelection);
+    };
     const isWeekSelected = isSelected(weekSelection);
     const isWeekExpanded = expandedWeeks.has(week.weekNum);
     const weekStatus = getWeekStatus(week);
@@ -1149,10 +1199,7 @@ export function ModuleWeeksSidebar({
 
             {/* Week info - clickable to select week */}
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(weekSelection);
-              }}
+              onClick={handleWeekClick}
               className="flex-1 min-w-0 text-left"
             >
               <AnimatePresence mode="wait">

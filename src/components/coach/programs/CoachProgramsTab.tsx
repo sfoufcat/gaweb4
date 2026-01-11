@@ -4001,6 +4001,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 // Week Editor (for weekly mode)
                 (() => {
                   const weekNumber = sidebarSelection.weekNumber;
+                  console.log('[WEEK_EDITOR_CONTEXT]', {
+                    sidebarWeekNumber: weekNumber,
+                    sidebarSelection,
+                    programWeeksNumbers: programWeeks.map(w => w.weekNumber),
+                    instanceWeeksNumbers: instance?.weeks?.map(w => w.weekNumber),
+                    isCohortMode: selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort',
+                    hasInstance: !!instance,
+                    instanceId,
+                  });
                   const templateWeek = programWeeks.find(w => w.weekNumber === weekNumber);
 
                   // For individual programs in client mode, use client week
