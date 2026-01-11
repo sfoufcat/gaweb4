@@ -5803,25 +5803,41 @@ export interface ProgramInstanceDay {
  * A week within a program instance
  */
 export interface ProgramInstanceWeek {
+  id?: string;                   // Unique ID for this week (for updates)
   weekNumber: number;            // 0 = onboarding, 1+ = regular weeks
   moduleId?: string;             // Reference to template module for lookup
+  order?: number;                // Order within module (1-based)
   calendarStartDate?: string;    // ISO date - first day of this week
   calendarEndDate?: string;      // ISO date - last day of this week
+  // Day range (program day indices)
+  startDayIndex?: number;
+  endDayIndex?: number;
+  // Content
   name?: string;                 // Week name/title
   theme?: string;
   description?: string;
   weeklyPrompt?: string;
-  weeklyTasks: ProgramInstanceTask[];  // Tasks defined at week level
+  weeklyTasks: ProgramTaskTemplate[];  // Tasks defined at week level
+  weeklyHabits?: ProgramHabitTemplate[]; // Habits for the week
   days: ProgramInstanceDay[];
+  // Client-facing summary fields
+  currentFocus?: string[];       // Max 3 key priorities
+  notes?: string[];              // Max 3 reminder/context items
   // Recording/content
   coachRecordingUrl?: string;
   coachRecordingNotes?: string;
   linkedSummaryIds?: string[];
   linkedCallEventIds?: string[];
+  manualNotes?: string;          // Coach's manual notes
   // Distribution settings
   distribution?: TaskDistribution;
+  // AI fill tracking
+  fillSource?: WeekFillSource;
   // Customization tracking
   hasLocalChanges?: boolean;
+  // Metadata
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /**

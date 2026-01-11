@@ -1,22 +1,182 @@
 /**
- * Coach API: Client-Specific Program Weeks Management (for 1:1 Programs)
+ * Coach API: Client-Specific Program Weeks Management (Using program_instances)
  *
- * GET /api/coach/org-programs/[programId]/client-weeks - List client weeks
+ * GET /api/coach/org-programs/[programId]/client-weeks - List client weeks from program_instances
  *   Query params:
- *   - enrollmentId: Filter by specific enrollment
+ *   - enrollmentId: Filter by specific enrollment (required for 1:1)
  *   - weekNumber: Filter by week number
  *
- * POST /api/coach/org-programs/[programId]/client-weeks - Initialize client content for an enrollment
- *   Body: { enrollmentId: string }
+ * POST /api/coach/org-programs/[programId]/client-weeks - Initialize/update client content
+ *   Body: { enrollmentId: string, weekNumber?: number, ... }
+ *
+ * NEW: Uses program_instances with type='individual' instead of client_program_weeks collection
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import { distributeClientWeeklyTasksToDays } from '@/lib/program-utils';
-import { syncProgramTasksForDateRange } from '@/lib/program-engine';
-import type { ClientProgramWeek, ProgramWeek, ProgramEnrollment } from '@/types';
+import type { ProgramInstance, ProgramInstanceWeek, ProgramEnrollment, Program, ProgramTaskTemplate } from '@/types';
+
+/**
+ * Process tasks to ensure each has a unique ID
+ */
+function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramTaskTemplate[] {
+  if (!tasks || !Array.isArray(tasks)) return [];
+  return tasks.map((task) => {
+    const { completed, completedAt, taskId, ...cleanTask } = task as ProgramTaskTemplate & {
+      completed?: boolean;
+      completedAt?: string;
+      taskId?: string;
+    };
+    return {
+      ...cleanTask,
+      id: task.id || crypto.randomUUID(),
+    };
+  });
+}
+
+/**
+ * Find or create the program instance for an individual enrollment
+ */
+async function getOrCreateIndividualInstance(
+  programId: string,
+  enrollmentId: string,
+  userId: string,
+  organizationId: string,
+  programData: Program,
+  enrollment: ProgramEnrollment
+): Promise<{ instanceId: string; instance: ProgramInstance }> {
+  // Try to find existing instance
+  const instanceQuery = await adminDb
+    .collection('program_instances')
+    .where('enrollmentId', '==', enrollmentId)
+    .where('programId', '==', programId)
+    .limit(1)
+    .get();
+
+  if (!instanceQuery.empty) {
+    const doc = instanceQuery.docs[0];
+    return {
+      instanceId: doc.id,
+      instance: { id: doc.id, ...doc.data() } as ProgramInstance,
+    };
+  }
+
+  // Create new instance from template
+  console.log(`[CLIENT_WEEKS] Auto-creating instance for enrollment ${enrollmentId}`);
+  const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+
+  // Read weeks from programs.weeks[] or fallback to program_weeks collection
+  let weeks: ProgramInstanceWeek[] = [];
+
+  if (programData.weeks && Array.isArray(programData.weeks) && programData.weeks.length > 0) {
+    weeks = programData.weeks.map((weekData) => {
+      const startDayIndex = weekData.startDayIndex || ((weekData.weekNumber - 1) * daysPerWeek + 1);
+      const endDayIndex = weekData.endDayIndex || (startDayIndex + daysPerWeek - 1);
+
+      const days = [];
+      for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+        days.push({
+          dayIndex,
+          globalDayIndex: dayIndex,
+          tasks: [],
+          habits: [],
+        });
+      }
+
+      return {
+        id: weekData.id || crypto.randomUUID(),
+        weekNumber: weekData.weekNumber,
+        moduleId: weekData.moduleId,
+        name: weekData.name,
+        theme: weekData.theme,
+        weeklyTasks: (weekData.weeklyTasks || []).map((t) => ({
+          ...t,
+          id: t.id || crypto.randomUUID(),
+        })),
+        weeklyHabits: weekData.weeklyHabits || [],
+        weeklyPrompt: weekData.weeklyPrompt,
+        distribution: weekData.distribution,
+        startDayIndex,
+        endDayIndex,
+        days,
+      } as ProgramInstanceWeek;
+    });
+  } else {
+    // Fallback to program_weeks collection
+    const weeksSnapshot = await adminDb.collection('program_weeks')
+      .where('programId', '==', programId)
+      .orderBy('weekNumber', 'asc')
+      .get();
+
+    weeks = weeksSnapshot.docs.map(weekDoc => {
+      const weekData = weekDoc.data();
+      const startDayIndex = weekData.startDayIndex || ((weekData.weekNumber - 1) * daysPerWeek + 1);
+      const endDayIndex = weekData.endDayIndex || (startDayIndex + daysPerWeek - 1);
+
+      const days = [];
+      for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+        days.push({
+          dayIndex,
+          globalDayIndex: dayIndex,
+          tasks: [],
+          habits: [],
+        });
+      }
+
+      return {
+        id: weekDoc.id,
+        weekNumber: weekData.weekNumber,
+        moduleId: weekData.moduleId,
+        name: weekData.name,
+        theme: weekData.theme,
+        weeklyTasks: (weekData.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
+          ...t,
+          id: t.id || crypto.randomUUID(),
+        })),
+        weeklyHabits: weekData.weeklyHabits || [],
+        weeklyPrompt: weekData.weeklyPrompt,
+        distribution: weekData.distribution,
+        startDayIndex,
+        endDayIndex,
+        days,
+      } as ProgramInstanceWeek;
+    });
+  }
+
+  // Calculate end date from start date + program length
+  const startDate = enrollment.startedAt;
+  let endDate: string | undefined;
+  if (startDate && programData.lengthDays) {
+    const start = new Date(startDate);
+    start.setDate(start.getDate() + programData.lengthDays);
+    endDate = start.toISOString().split('T')[0];
+  }
+
+  const instanceData = {
+    programId,
+    organizationId,
+    type: 'individual' as const,
+    enrollmentId,
+    userId,
+    startDate,
+    endDate,
+    includeWeekends: programData.includeWeekends !== false,
+    dailyFocusSlots: programData.dailyFocusSlots || 3,
+    weeks,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const newInstanceRef = await adminDb.collection('program_instances').add(instanceData);
+  console.log(`[CLIENT_WEEKS] Created instance ${newInstanceRef.id} for enrollment ${enrollmentId}`);
+
+  return {
+    instanceId: newInstanceRef.id,
+    instance: { id: newInstanceRef.id, ...instanceData } as ProgramInstance,
+  };
+}
 
 export async function GET(
   request: NextRequest,
@@ -31,13 +191,13 @@ export async function GET(
     if (!programDoc.exists) {
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
-    const program = programDoc.data();
-    if (program?.organizationId !== organizationId) {
+    const program = programDoc.data() as Program;
+    if (program.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
     }
 
     // This API is only for individual programs
-    if (program?.type !== 'individual') {
+    if (program.type !== 'individual') {
       return NextResponse.json({ error: 'Client weeks are only available for individual programs' }, { status: 400 });
     }
 
@@ -45,69 +205,102 @@ export async function GET(
     const enrollmentId = searchParams.get('enrollmentId');
     const weekNumber = searchParams.get('weekNumber');
 
-    let query = adminDb
-      .collection('client_program_weeks')
-      .where('programId', '==', programId);
-
-    if (enrollmentId) {
-      query = query.where('enrollmentId', '==', enrollmentId);
+    if (!enrollmentId) {
+      return NextResponse.json({ error: 'enrollmentId is required' }, { status: 400 });
     }
 
+    // Verify enrollment exists
+    const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
+    if (!enrollmentDoc.exists) {
+      return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
+    }
+    const enrollment = enrollmentDoc.data() as ProgramEnrollment;
+    if (enrollment.programId !== programId) {
+      return NextResponse.json({ error: 'Enrollment does not belong to this program' }, { status: 400 });
+    }
+
+    // Get or create the instance
+    const { instance } = await getOrCreateIndividualInstance(
+      programId,
+      enrollmentId,
+      enrollment.userId,
+      organizationId,
+      program,
+      enrollment
+    );
+
+    // Get weeks from instance
+    let weeks = (instance.weeks || []).map(week => ({
+      id: week.id || `week-${week.weekNumber}`,
+      enrollmentId,
+      programWeekId: week.id,
+      programId,
+      organizationId,
+      userId: enrollment.userId,
+      weekNumber: week.weekNumber,
+      moduleId: week.moduleId,
+      order: week.weekNumber,
+      startDayIndex: week.startDayIndex,
+      endDayIndex: week.endDayIndex,
+      name: week.name,
+      theme: week.theme,
+      description: week.description,
+      weeklyPrompt: week.weeklyPrompt,
+      weeklyTasks: week.weeklyTasks || [],
+      weeklyHabits: week.weeklyHabits || [],
+      currentFocus: week.currentFocus,
+      notes: week.notes,
+      distribution: week.distribution,
+      linkedSummaryIds: week.linkedSummaryIds || [],
+      linkedCallEventIds: week.linkedCallEventIds || [],
+      coachRecordingUrl: week.coachRecordingUrl,
+      coachRecordingNotes: week.coachRecordingNotes,
+      manualNotes: week.manualNotes,
+      hasLocalChanges: false,
+      createdAt: instance.createdAt,
+      updatedAt: week.updatedAt || instance.updatedAt,
+    }));
+
+    // Filter by weekNumber if provided
     if (weekNumber) {
-      query = query.where('weekNumber', '==', parseInt(weekNumber, 10));
+      const weekNum = parseInt(weekNumber, 10);
+      weeks = weeks.filter(w => w.weekNumber === weekNum);
     }
 
-    const weeksSnapshot = await query.orderBy('weekNumber', 'asc').get();
+    // Merge completion status from actual user tasks
+    for (const week of weeks) {
+      if (week.weeklyTasks && week.weeklyTasks.length > 0 && week.startDayIndex !== undefined && week.endDayIndex !== undefined) {
+        // Fetch user's tasks for this week's day range
+        const userTasksSnapshot = await adminDb
+          .collection('tasks')
+          .where('programEnrollmentId', '==', enrollmentId)
+          .where('programDayIndex', '>=', week.startDayIndex)
+          .where('programDayIndex', '<=', week.endDayIndex)
+          .get();
 
-    const weeks = weeksSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
-      updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
-      lastSyncedAt: doc.data().lastSyncedAt?.toDate?.()?.toISOString?.() || doc.data().lastSyncedAt,
-    })) as ClientProgramWeek[];
+        const userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    // Merge completion status from actual user tasks into weeklyTasks
-    // This allows the week view to show which weekly tasks have been completed
-    if (enrollmentId && weeks.length > 0) {
-      for (const week of weeks) {
-        if (week.weeklyTasks && week.weeklyTasks.length > 0 && week.startDayIndex !== undefined && week.endDayIndex !== undefined) {
-          // Fetch user's tasks for this week's day range
-          const userTasksSnapshot = await adminDb
-            .collection('tasks')
-            .where('programEnrollmentId', '==', enrollmentId)
-            .where('programDayIndex', '>=', week.startDayIndex)
-            .where('programDayIndex', '<=', week.endDayIndex)
-            .get();
-
-          const userTasks = userTasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-
-          // Merge completion status into weeklyTasks
-          // Match by title with originalTitle fallback (handles client-edited titles)
-          // Weekly tasks don't have specific dayIndex, so we match ANY task with that title in the week
-          week.weeklyTasks = week.weeklyTasks.map(template => {
-            const actualTask = userTasks.find(t => {
-              const task = t as { title?: string; originalTitle?: string };
-              // Match by current title OR original title (for when client edited task title)
-              return task.title === template.label || task.originalTitle === template.label;
-            });
-            if (actualTask) {
-              const taskStatus = (actualTask as { status?: string }).status;
-              const clientLocked = (actualTask as { clientLocked?: boolean }).clientLocked;
-              const isDeleted = taskStatus === 'deleted';
-              return {
-                ...template,
-                completed: taskStatus === 'completed',
-                completedAt: (actualTask as { completedAt?: string }).completedAt,
-                taskId: actualTask.id,
-                deletedByClient: isDeleted,
-                editedByClient: clientLocked && !isDeleted || undefined,
-              };
-            }
-            // No matching task found - return template without completion data
-            return template;
+        // Merge completion status
+        week.weeklyTasks = week.weeklyTasks.map((template: ProgramTaskTemplate) => {
+          const actualTask = userTasks.find(t => {
+            const task = t as { title?: string; originalTitle?: string };
+            return task.title === template.label || task.originalTitle === template.label;
           });
-        }
+          if (actualTask) {
+            const taskStatus = (actualTask as { status?: string }).status;
+            const clientLocked = (actualTask as { clientLocked?: boolean }).clientLocked;
+            const isDeleted = taskStatus === 'deleted';
+            return {
+              ...template,
+              completed: taskStatus === 'completed',
+              completedAt: (actualTask as { completedAt?: string }).completedAt,
+              taskId: actualTask.id,
+              deletedByClient: isDeleted,
+              editedByClient: clientLocked && !isDeleted || undefined,
+            };
+          }
+          return template;
+        });
       }
     }
 
@@ -138,26 +331,26 @@ export async function POST(
     const { organizationId } = await requireCoachWithOrg();
     const { programId } = await params;
     const body = await request.json();
-    const { enrollmentId, weekNumber, startDayIndex, endDayIndex, moduleId, ...weekContent } = body;
+    const { enrollmentId, weekNumber, ...weekContent } = body;
 
     if (!enrollmentId) {
       return NextResponse.json({ error: 'enrollmentId is required' }, { status: 400 });
     }
 
-    // Verify program exists, belongs to this org, and is an individual program
+    // Verify program exists and is an individual program
     const programDoc = await adminDb.collection('programs').doc(programId).get();
     if (!programDoc.exists) {
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
-    const program = programDoc.data();
-    if (program?.organizationId !== organizationId) {
+    const program = programDoc.data() as Program;
+    if (program.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
     }
-    if (program?.type !== 'individual') {
-      return NextResponse.json({ error: 'Client content can only be initialized for individual programs' }, { status: 400 });
+    if (program.type !== 'individual') {
+      return NextResponse.json({ error: 'Client content can only be set for individual programs' }, { status: 400 });
     }
 
-    // Verify enrollment exists and belongs to this program
+    // Verify enrollment exists
     const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
     if (!enrollmentDoc.exists) {
       return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
@@ -167,258 +360,127 @@ export async function POST(
       return NextResponse.json({ error: 'Enrollment does not belong to this program' }, { status: 400 });
     }
 
-    const now = FieldValue.serverTimestamp();
+    // Get or create the instance
+    const { instanceId, instance } = await getOrCreateIndividualInstance(
+      programId,
+      enrollmentId,
+      enrollment.userId,
+      organizationId,
+      program,
+      enrollment
+    );
 
-    // SINGLE WEEK MODE: If weekNumber is provided, create just that one week
+    // If weekNumber is provided, update that specific week
     if (typeof weekNumber === 'number') {
-      // Check if this specific week already exists
-      const existingWeekSnapshot = await adminDb
-        .collection('client_program_weeks')
-        .where('enrollmentId', '==', enrollmentId)
-        .where('weekNumber', '==', weekNumber)
-        .limit(1)
-        .get();
+      const weeks = [...(instance.weeks || [])];
+      let weekIndex = weeks.findIndex(w => w.weekNumber === weekNumber);
 
-      if (!existingWeekSnapshot.empty) {
-        // Week exists - update it instead
-        const existingDoc = existingWeekSnapshot.docs[0];
-        const updateData = {
-          ...weekContent,
-          hasLocalChanges: true,
+      const now = new Date().toISOString();
+      const daysPerWeek = program.includeWeekends !== false ? 7 : 5;
+
+      if (weekIndex === -1) {
+        // Create new week if doesn't exist
+        const startDayIndex = weekContent.startDayIndex ?? (weekNumber - 1) * daysPerWeek + 1;
+        const endDayIndex = weekContent.endDayIndex ?? Math.min(startDayIndex + daysPerWeek - 1, program.lengthDays || 30);
+
+        const days = [];
+        for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+          days.push({
+            dayIndex,
+            globalDayIndex: dayIndex,
+            tasks: [],
+            habits: [],
+          });
+        }
+
+        const newWeek: ProgramInstanceWeek = {
+          id: crypto.randomUUID(),
+          weekNumber,
+          moduleId: weekContent.moduleId,
+          name: weekContent.name,
+          theme: weekContent.theme,
+          description: weekContent.description,
+          weeklyPrompt: weekContent.weeklyPrompt,
+          weeklyTasks: processTasksWithIds(weekContent.weeklyTasks),
+          weeklyHabits: weekContent.weeklyHabits || [],
+          currentFocus: weekContent.currentFocus,
+          notes: weekContent.notes,
+          distribution: weekContent.distribution,
+          startDayIndex,
+          endDayIndex,
+          linkedSummaryIds: weekContent.linkedSummaryIds || [],
+          linkedCallEventIds: weekContent.linkedCallEventIds || [],
+          coachRecordingUrl: weekContent.coachRecordingUrl,
+          coachRecordingNotes: weekContent.coachRecordingNotes,
+          manualNotes: weekContent.manualNotes,
+          fillSource: weekContent.fillSource,
+          days,
+          createdAt: now,
           updatedAt: now,
         };
-        await existingDoc.ref.update(updateData);
-        
-        const updatedDoc = await existingDoc.ref.get();
-        const updatedWeek = {
-          id: updatedDoc.id,
-          ...updatedDoc.data(),
-          createdAt: updatedDoc.data()?.createdAt?.toDate?.()?.toISOString?.() || updatedDoc.data()?.createdAt,
-          updatedAt: updatedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || updatedDoc.data()?.updatedAt,
-          lastSyncedAt: updatedDoc.data()?.lastSyncedAt?.toDate?.()?.toISOString?.() || updatedDoc.data()?.lastSyncedAt,
-        } as ClientProgramWeek;
 
-        return NextResponse.json({
-          success: true,
-          clientWeek: updatedWeek,
-          created: false,
-        });
+        weeks.push(newWeek);
+        weeks.sort((a, b) => a.weekNumber - b.weekNumber);
+        weekIndex = weeks.findIndex(w => w.weekNumber === weekNumber);
+      } else {
+        // Update existing week
+        const existingWeek = weeks[weekIndex];
+        weeks[weekIndex] = {
+          ...existingWeek,
+          name: weekContent.name ?? existingWeek.name,
+          theme: weekContent.theme ?? existingWeek.theme,
+          description: weekContent.description ?? existingWeek.description,
+          weeklyPrompt: weekContent.weeklyPrompt ?? existingWeek.weeklyPrompt,
+          weeklyTasks: weekContent.weeklyTasks !== undefined ? processTasksWithIds(weekContent.weeklyTasks) : existingWeek.weeklyTasks,
+          weeklyHabits: weekContent.weeklyHabits ?? existingWeek.weeklyHabits,
+          currentFocus: weekContent.currentFocus ?? existingWeek.currentFocus,
+          notes: weekContent.notes ?? existingWeek.notes,
+          distribution: weekContent.distribution ?? existingWeek.distribution,
+          linkedSummaryIds: weekContent.linkedSummaryIds ?? existingWeek.linkedSummaryIds,
+          linkedCallEventIds: weekContent.linkedCallEventIds ?? existingWeek.linkedCallEventIds,
+          coachRecordingUrl: weekContent.coachRecordingUrl ?? existingWeek.coachRecordingUrl,
+          coachRecordingNotes: weekContent.coachRecordingNotes ?? existingWeek.coachRecordingNotes,
+          manualNotes: weekContent.manualNotes ?? existingWeek.manualNotes,
+          fillSource: weekContent.fillSource ?? existingWeek.fillSource,
+          updatedAt: now,
+        };
       }
 
-      // Find template week for this week number (if exists)
-      const templateWeekSnapshot = await adminDb
-        .collection('program_weeks')
-        .where('programId', '==', programId)
-        .where('weekNumber', '==', weekNumber)
-        .limit(1)
-        .get();
+      // Update the instance
+      await adminDb.collection('program_instances').doc(instanceId).update({
+        weeks,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
 
-      const template = templateWeekSnapshot.empty ? null : templateWeekSnapshot.docs[0].data() as ProgramWeek;
+      console.log(`[COACH_CLIENT_WEEKS_POST] Updated week ${weekNumber} in instance ${instanceId}`);
 
-      // Create the client week
-      const clientWeekRef = adminDb.collection('client_program_weeks').doc();
-      const clientWeekData = {
+      const savedWeek = weeks[weekIndex];
+      const clientWeek = {
+        ...savedWeek,
+        id: savedWeek.id || `week-${savedWeek.weekNumber}`,
         enrollmentId,
-        programWeekId: templateWeekSnapshot.empty ? null : templateWeekSnapshot.docs[0].id,
+        programWeekId: savedWeek.id,
         programId,
         organizationId,
         userId: enrollment.userId,
-
-        // Positional info
-        weekNumber,
-        moduleId: moduleId || template?.moduleId || null,
-        order: template?.order || weekNumber,
-        // Use program's includeWeekends setting for fallback calculation (not hardcoded 7)
-        startDayIndex: startDayIndex ?? template?.startDayIndex ?? (() => {
-          const daysPerWeek = program?.includeWeekends !== false ? 7 : 5;
-          return (weekNumber - 1) * daysPerWeek + 1;
-        })(),
-        endDayIndex: endDayIndex ?? template?.endDayIndex ?? (() => {
-          const daysPerWeek = program?.includeWeekends !== false ? 7 : 5;
-          const totalDays = program?.lengthDays || 30;
-          const calculatedEnd = (weekNumber - 1) * daysPerWeek + daysPerWeek;
-          return Math.min(calculatedEnd, totalDays);
-        })(),
-
-        // Content from request or template
-        name: weekContent.name ?? template?.name ?? undefined,
-        theme: weekContent.theme ?? template?.theme ?? undefined,
-        description: weekContent.description ?? template?.description ?? undefined,
-        weeklyPrompt: weekContent.weeklyPrompt ?? template?.weeklyPrompt ?? undefined,
-        weeklyTasks: weekContent.weeklyTasks ?? template?.weeklyTasks ?? undefined,
-        weeklyHabits: weekContent.weeklyHabits ?? template?.weeklyHabits ?? undefined,
-        currentFocus: weekContent.currentFocus ?? template?.currentFocus ?? undefined,
-        notes: weekContent.notes ?? template?.notes ?? undefined,
-        distribution: weekContent.distribution ?? undefined, // Let it inherit from program setting via distributeClientWeeklyTasksToDays
-        manualNotes: weekContent.manualNotes ?? undefined,
-        coachRecordingUrl: weekContent.coachRecordingUrl ?? undefined,
-        coachRecordingNotes: weekContent.coachRecordingNotes ?? undefined,
-        linkedSummaryIds: weekContent.linkedSummaryIds ?? [],
-        linkedCallEventIds: weekContent.linkedCallEventIds ?? [],
-        fillSource: weekContent.fillSource ?? undefined,
-
-        // Sync tracking
+        weekNumber: savedWeek.weekNumber,
         hasLocalChanges: true,
-        createdAt: now,
-        updatedAt: now,
-        lastSyncedAt: now,
+        createdAt: savedWeek.createdAt || instance.createdAt,
+        updatedAt: savedWeek.updatedAt,
       };
-
-      await clientWeekRef.set(clientWeekData);
-      const clientWeekId = clientWeekRef.id;
-      console.log(`[COACH_CLIENT_WEEKS_POST] Created single client week ${weekNumber} for enrollment ${enrollmentId}`);
-
-      const savedDoc = await clientWeekRef.get();
-      const savedWeek = {
-        id: savedDoc.id,
-        ...savedDoc.data(),
-        createdAt: savedDoc.data()?.createdAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.createdAt,
-        updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
-        lastSyncedAt: savedDoc.data()?.lastSyncedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.lastSyncedAt,
-      } as ClientProgramWeek;
-
-      // Distribute tasks to client days if requested
-      // Note: We run distribution even with empty tasks to clear week-sourced tasks from days
-      let distributionResult = null;
-      if (body.distributeTasksNow === true) {
-        try {
-          distributionResult = await distributeClientWeeklyTasksToDays(
-            programId,
-            clientWeekId,
-            enrollmentId,
-            {
-              overwriteExisting: body.overwriteExisting || false,
-              programTaskDistribution: program?.taskDistribution,
-            }
-          );
-          console.log(`[COACH_CLIENT_WEEKS_POST] Distributed tasks: ${JSON.stringify(distributionResult)}`);
-        } catch (distErr) {
-          console.error('[COACH_CLIENT_WEEKS_POST] Failed to distribute tasks:', distErr);
-        }
-      }
-
-      // Sync tasks to client's Daily Focus
-      // Note: Sync when distribution happened OR tasks provided (even empty for clearing)
-      let syncResult = null;
-      if ((distributionResult || weekContent.weeklyTasks !== undefined) && body.syncToClient !== false) {
-        try {
-          const { userId: coachUserId } = await requireCoachWithOrg();
-          syncResult = await syncProgramTasksForDateRange(programId, {
-            mode: 'override-program-sourced',
-            horizonDays: 7,
-            coachUserId,
-            specificEnrollmentId: enrollmentId,
-          });
-          console.log(`[COACH_CLIENT_WEEKS_POST] Synced tasks to client: ${JSON.stringify(syncResult)}`);
-        } catch (syncErr) {
-          console.error('[COACH_CLIENT_WEEKS_POST] Failed to sync tasks:', syncErr);
-        }
-      }
 
       return NextResponse.json({
         success: true,
-        clientWeek: savedWeek,
-        created: true,
-        ...(distributionResult && { distribution: distributionResult }),
-        ...(syncResult && { clientSync: syncResult }),
+        clientWeek,
+        created: weekIndex === weeks.length - 1,
       });
     }
 
-    // BATCH INITIALIZATION MODE: Initialize all weeks from template
-    // Check if client weeks already exist for this enrollment
-    const existingWeeks = await adminDb
-      .collection('client_program_weeks')
-      .where('enrollmentId', '==', enrollmentId)
-      .limit(1)
-      .get();
-
-    if (!existingWeeks.empty) {
-      return NextResponse.json({
-        error: 'Client content already initialized for this enrollment',
-        existingCount: existingWeeks.size,
-      }, { status: 409 });
-    }
-
-    // Fetch all template weeks for this program
-    const templateWeeksSnapshot = await adminDb
-      .collection('program_weeks')
-      .where('programId', '==', programId)
-      .orderBy('weekNumber', 'asc')
-      .get();
-
-    if (templateWeeksSnapshot.empty) {
-      return NextResponse.json({
-        success: true,
-        message: 'No template weeks to copy',
-        weeksCreated: 0,
-      });
-    }
-
-    // Create client weeks by copying template weeks
-    const batch = adminDb.batch();
-    const createdWeekIds: string[] = [];
-
-    for (const templateDoc of templateWeeksSnapshot.docs) {
-      const template = templateDoc.data() as ProgramWeek;
-      const clientWeekRef = adminDb.collection('client_program_weeks').doc();
-
-      const clientWeekData: Omit<ClientProgramWeek, 'id' | 'createdAt' | 'updatedAt' | 'lastSyncedAt'> & {
-        createdAt: FieldValue;
-        updatedAt: FieldValue;
-        lastSyncedAt: FieldValue;
-      } = {
-        enrollmentId,
-        programWeekId: templateDoc.id,
-        programId,
-        organizationId,
-        userId: enrollment.userId,
-
-        // Positional info
-        weekNumber: template.weekNumber,
-        moduleId: template.moduleId,
-        order: template.order,
-        startDayIndex: template.startDayIndex,
-        endDayIndex: template.endDayIndex,
-
-        // Content (copied from template)
-        name: template.name || undefined,
-        theme: template.theme || undefined,
-        description: template.description || undefined,
-        weeklyPrompt: template.weeklyPrompt || undefined,
-        weeklyTasks: template.weeklyTasks || undefined,
-        weeklyHabits: template.weeklyHabits || undefined,
-        currentFocus: template.currentFocus || undefined,
-        notes: template.notes || undefined,
-        distribution: undefined, // Let it inherit from program setting via distributeClientWeeklyTasksToDays
-
-        // Client-specific fields (start empty)
-        linkedSummaryIds: [],
-        linkedCallEventIds: [],
-        coachRecordingUrl: undefined,
-        coachRecordingNotes: undefined,
-        manualNotes: undefined,
-        fillSource: undefined,
-
-        // Sync tracking
-        hasLocalChanges: false,
-
-        createdAt: now,
-        updatedAt: now,
-        lastSyncedAt: now,
-      };
-
-      batch.set(clientWeekRef, clientWeekData);
-      createdWeekIds.push(clientWeekRef.id);
-    }
-
-    await batch.commit();
-    console.log(`[COACH_CLIENT_WEEKS_POST] Initialized ${createdWeekIds.length} client weeks for enrollment ${enrollmentId}`);
-
+    // No weekNumber - just return success (instance was already created/retrieved)
     return NextResponse.json({
       success: true,
-      message: `Initialized ${createdWeekIds.length} client weeks`,
-      weeksCreated: createdWeekIds.length,
-      weekIds: createdWeekIds,
+      message: `Instance ready for enrollment ${enrollmentId}`,
+      weeksCreated: instance.weeks?.length || 0,
     });
   } catch (error) {
     console.error('[COACH_CLIENT_WEEKS_POST] Error:', error);

@@ -1,17 +1,20 @@
 /**
- * Cohort Week Content API
- * Manages cohort-specific week content (recordings, summaries, notes)
+ * Cohort Week Content API (Using program_instances)
+ * Manages cohort-specific week content via embedded weeks in program_instances
  *
- * GET - Fetch cohort week content (or empty template if none exists)
+ * GET - Fetch cohort week content from program_instances.weeks[]
  * PUT - Create or update cohort week content (upsert)
  * PATCH - Partial update of cohort week content
+ *
+ * NEW: Uses program_instances.weeks[] instead of separate cohort_week_content collection
+ * The weekId parameter is the weekNumber (e.g., "1", "2") or the week's id field
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { CohortWeekContent, ProgramTaskTemplate, ProgramWeek, ProgramCohort, Program } from '@/types';
+import type { ProgramTaskTemplate, ProgramCohort, Program, ProgramInstance, ProgramInstanceWeek } from '@/types';
 import { getProgramCompletionThreshold } from '@/lib/cohort-task-state';
 import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
 
@@ -23,8 +26,6 @@ import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks'
 function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramTaskTemplate[] {
   if (!tasks || !Array.isArray(tasks)) return [];
   return tasks.map((task) => {
-    // Strip runtime completion data - should never be stored in templates
-    // These fields are populated at read time by merging with actual task status
     const { completed, completedAt, taskId, ...cleanTask } = task as ProgramTaskTemplate & {
       completed?: boolean;
       completedAt?: string;
@@ -40,8 +41,150 @@ function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramT
 type RouteParams = { params: Promise<{ programId: string; cohortId: string; weekId: string }> };
 
 /**
+ * Find or create the program instance for a cohort
+ */
+async function getOrCreateCohortInstance(
+  programId: string,
+  cohortId: string,
+  organizationId: string,
+  programData: Program,
+  cohortData: ProgramCohort
+): Promise<{ instanceId: string; instance: ProgramInstance }> {
+  // Try to find existing instance
+  const instanceQuery = await adminDb
+    .collection('program_instances')
+    .where('cohortId', '==', cohortId)
+    .where('programId', '==', programId)
+    .limit(1)
+    .get();
+
+  if (!instanceQuery.empty) {
+    const doc = instanceQuery.docs[0];
+    return {
+      instanceId: doc.id,
+      instance: { id: doc.id, ...doc.data() } as ProgramInstance,
+    };
+  }
+
+  // Create new instance from template
+  console.log(`[COHORT_WEEK_CONTENT] Auto-creating instance for cohort ${cohortId}`);
+  const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+
+  // Read weeks from programs.weeks[] or fallback to program_weeks collection
+  let weeks: ProgramInstanceWeek[] = [];
+
+  if (programData.weeks && Array.isArray(programData.weeks) && programData.weeks.length > 0) {
+    weeks = programData.weeks.map((weekData) => {
+      const startDayIndex = weekData.startDayIndex || ((weekData.weekNumber - 1) * daysPerWeek + 1);
+      const endDayIndex = weekData.endDayIndex || (startDayIndex + daysPerWeek - 1);
+
+      const days = [];
+      for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+        days.push({
+          dayIndex,
+          globalDayIndex: dayIndex,
+          tasks: [],
+          habits: [],
+        });
+      }
+
+      return {
+        weekNumber: weekData.weekNumber,
+        moduleId: weekData.moduleId,
+        name: weekData.name,
+        theme: weekData.theme,
+        weeklyTasks: (weekData.weeklyTasks || []).map((t) => ({
+          ...t,
+          id: t.id || crypto.randomUUID(),
+        })),
+        weeklyHabits: weekData.weeklyHabits || [],
+        weeklyPrompt: weekData.weeklyPrompt,
+        distribution: weekData.distribution,
+        days,
+      } as ProgramInstanceWeek;
+    });
+  } else {
+    // Fallback to program_weeks collection
+    const weeksSnapshot = await adminDb.collection('program_weeks')
+      .where('programId', '==', programId)
+      .orderBy('weekNumber', 'asc')
+      .get();
+
+    weeks = weeksSnapshot.docs.map(weekDoc => {
+      const weekData = weekDoc.data();
+      const startDayIndex = weekData.startDayIndex || ((weekData.weekNumber - 1) * daysPerWeek + 1);
+      const endDayIndex = weekData.endDayIndex || (startDayIndex + daysPerWeek - 1);
+
+      const days = [];
+      for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+        days.push({
+          dayIndex,
+          globalDayIndex: dayIndex,
+          tasks: [],
+          habits: [],
+        });
+      }
+
+      return {
+        weekNumber: weekData.weekNumber,
+        moduleId: weekData.moduleId,
+        name: weekData.name,
+        theme: weekData.theme,
+        weeklyTasks: (weekData.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
+          ...t,
+          id: t.id || crypto.randomUUID(),
+        })),
+        weeklyHabits: weekData.weeklyHabits || [],
+        weeklyPrompt: weekData.weeklyPrompt,
+        distribution: weekData.distribution,
+        days,
+      } as ProgramInstanceWeek;
+    });
+  }
+
+  const instanceData = {
+    programId,
+    organizationId,
+    type: 'cohort' as const,
+    cohortId,
+    startDate: cohortData.startDate,
+    endDate: cohortData.endDate,
+    includeWeekends: programData.includeWeekends !== false,
+    dailyFocusSlots: programData.dailyFocusSlots || 3,
+    weeks,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const newInstanceRef = await adminDb.collection('program_instances').add(instanceData);
+  console.log(`[COHORT_WEEK_CONTENT] Created instance ${newInstanceRef.id} for cohort ${cohortId}`);
+
+  return {
+    instanceId: newInstanceRef.id,
+    instance: { id: newInstanceRef.id, ...instanceData } as ProgramInstance,
+  };
+}
+
+/**
+ * Find week in instance by weekId (can be weekNumber or week.id)
+ */
+function findWeekInInstance(weeks: ProgramInstanceWeek[], weekId: string): { week: ProgramInstanceWeek; index: number } | null {
+  // Try by id first
+  let index = weeks.findIndex(w => w.id === weekId);
+
+  // Fallback: try by weekNumber if weekId is numeric
+  if (index === -1 && /^\d+$/.test(weekId)) {
+    const weekNum = parseInt(weekId, 10);
+    index = weeks.findIndex(w => w.weekNumber === weekNum);
+  }
+
+  if (index === -1) return null;
+  return { week: weeks[index], index };
+}
+
+/**
  * GET /api/coach/org-programs/[programId]/cohorts/[cohortId]/week-content/[weekId]
- * Returns the cohort-specific week content, or an empty template if none exists
+ * Returns the cohort-specific week content from program_instances
  */
 export async function GET(
   request: NextRequest,
@@ -56,145 +199,113 @@ export async function GET(
     if (!programDoc.exists || programDoc.data()?.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
+    const programData = programDoc.data() as Program;
 
     // Verify cohort exists and belongs to this program
     const cohortDoc = await adminDb.collection('program_cohorts').doc(cohortId).get();
     if (!cohortDoc.exists || cohortDoc.data()?.programId !== programId) {
       return NextResponse.json({ error: 'Cohort not found' }, { status: 404 });
     }
+    const cohortData = cohortDoc.data() as ProgramCohort;
 
-    // Verify week exists and belongs to this program
-    const weekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
-    if (!weekDoc.exists || weekDoc.data()?.programId !== programId) {
-      return NextResponse.json({ error: 'Week not found' }, { status: 404 });
-    }
-
-    // Try to find existing cohort week content
-    const contentQuery = await adminDb
-      .collection('cohort_week_content')
-      .where('cohortId', '==', cohortId)
-      .where('programWeekId', '==', weekId)
-      .limit(1)
-      .get();
-
-    if (!contentQuery.empty) {
-      const doc = contentQuery.docs[0];
-      const content = {
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data()?.createdAt?.toDate?.()?.toISOString?.() || doc.data()?.createdAt,
-        updatedAt: doc.data()?.updatedAt?.toDate?.()?.toISOString?.() || doc.data()?.updatedAt,
-      } as CohortWeekContent;
-
-      // Merge cohort completion status into weeklyTasks using CohortTaskState
-      // A task is considered "completed" when threshold % of cohort members have completed it
-      if (content.weeklyTasks && content.weeklyTasks.length > 0) {
-        const weekData = weekDoc.data() as ProgramWeek;
-        const threshold = await getProgramCompletionThreshold(programId);
-        const cohortData = cohortDoc.data() as ProgramCohort;
-        const programData = programDoc.data() as Program;
-
-        let calendarWeek: CalendarWeek | undefined;
-
-        // Get cohort members for fallback query
-        const enrollmentsSnapshot = await adminDb
-          .collection('program_enrollments')
-          .where('cohortId', '==', cohortId)
-          .where('status', 'in', ['active', 'upcoming'])
-          .get();
-        const memberIds = enrollmentsSnapshot.docs.map(d => d.data().userId as string);
-        const totalMembers = memberIds.length;
-
-        if (cohortData.startDate) {
-          const includeWeekends = programData.includeWeekends !== false;
-          const totalDays = programData.lengthDays;
-          const calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
-
-          // Get regular calendar weeks only (excludes onboarding weekNumber=0 AND closing weekNumber=-1)
-          const calendarRegularWeeks = calendarWeeks
-            .filter((w: CalendarWeek) => w.weekNumber > 0)
-            .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
-
-          // Get the position of this template week among all template regular weeks
-          const templateWeeksSnapshot = await adminDb
-            .collection('program_weeks')
-            .where('programId', '==', programId)
-            .where('weekNumber', '>', 0) // Regular weeks only
-            .orderBy('weekNumber', 'asc')
-            .get();
-
-          const templateRegularWeekIds = templateWeeksSnapshot.docs.map(d => d.id);
-          const templateWeekPosition = templateRegularWeekIds.indexOf(weekId);
-
-          if (templateWeekPosition >= 0) {
-            // Regular template week: map to same position in calendar regular weeks
-            calendarWeek = calendarRegularWeeks[templateWeekPosition];
-          } else if (weekData.weekNumber === 0) {
-            // Onboarding week: map to calendar onboarding
-            calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.weekNumber === 0);
-          }
-
-          if (!calendarWeek) {
-            console.warn(`[COHORT_WEEK_CONTENT_GET] Could not find calendar week for template position ${templateWeekPosition}`);
-          }
-        }
-
-        // Merge completion status into weeklyTasks
-        // ALWAYS query tasks collection for fresh completion data
-        // (CohortTaskState.memberStates can be stale if completions happened after state creation)
-        if (calendarWeek && totalMembers > 0) {
-          // Query ALL completed tasks for the week's date range once
-          const completedTasksSnapshot = await adminDb
-            .collection('tasks')
-            .where('date', '>=', calendarWeek.startDate)
-            .where('date', '<=', calendarWeek.endDate)
-            .where('completed', '==', true)
-            .get();
-
-          content.weeklyTasks = content.weeklyTasks.map((template) => {
-            // Filter by title OR originalTitle match, AND must be a cohort member
-            const memberCompletions = completedTasksSnapshot.docs.filter(d => {
-              const data = d.data();
-              const titleMatches = data.title === template.label || data.originalTitle === template.label;
-              return titleMatches && memberIds.includes(data.userId);
-            });
-
-            const completedCount = memberCompletions.length;
-            const completionRate = totalMembers > 0 ? Math.round((completedCount / totalMembers) * 100) : 0;
-            const isThresholdMet = completionRate >= threshold;
-
-            return {
-              ...template,
-              completed: isThresholdMet,
-              completionRate,
-              completedCount,
-              totalMembers,
-            };
-          });
-        }
-      }
-
-      return NextResponse.json({ content, exists: true });
-    }
-
-    // Return empty template (content doesn't exist yet)
-    const emptyContent: Omit<CohortWeekContent, 'id' | 'createdAt' | 'updatedAt'> = {
+    // Get or create the instance
+    const { instance } = await getOrCreateCohortInstance(
+      programId,
       cohortId,
-      programWeekId: weekId,
+      organizationId,
+      programData,
+      cohortData
+    );
+
+    // Find the week in the instance
+    const weekResult = findWeekInInstance(instance.weeks || [], weekId);
+    if (!weekResult) {
+      return NextResponse.json({ error: 'Week not found in instance' }, { status: 404 });
+    }
+
+    const { week } = weekResult;
+
+    // Build content response (matching old cohort_week_content structure for compatibility)
+    const content = {
+      id: week.id || `week-${week.weekNumber}`,
+      cohortId,
+      programWeekId: weekId, // For backward compatibility
       programId,
       organizationId,
-      coachRecordingUrl: undefined,
-      coachRecordingNotes: undefined,
-      linkedSummaryIds: [],
-      linkedCallEventIds: [],
-      manualNotes: undefined,
-      weeklyTasks: [],
-      weeklyHabits: [],
-      weeklyPrompt: undefined,
-      distribution: undefined,
+      weekNumber: week.weekNumber,
+      coachRecordingUrl: week.coachRecordingUrl,
+      coachRecordingNotes: week.coachRecordingNotes,
+      linkedSummaryIds: week.linkedSummaryIds || [],
+      linkedCallEventIds: week.linkedCallEventIds || [],
+      manualNotes: week.manualNotes,
+      weeklyTasks: week.weeklyTasks || [],
+      weeklyHabits: week.weeklyHabits || [],
+      weeklyPrompt: week.weeklyPrompt,
+      distribution: week.distribution,
+      name: week.name,
+      theme: week.theme,
     };
 
-    return NextResponse.json({ content: emptyContent, exists: false });
+    // Merge completion status from tasks collection
+    if (content.weeklyTasks && content.weeklyTasks.length > 0) {
+      const threshold = await getProgramCompletionThreshold(programId);
+
+      // Get cohort members
+      const enrollmentsSnapshot = await adminDb
+        .collection('program_enrollments')
+        .where('cohortId', '==', cohortId)
+        .where('status', 'in', ['active', 'upcoming'])
+        .get();
+      const memberIds = enrollmentsSnapshot.docs.map(d => d.data().userId as string);
+      const totalMembers = memberIds.length;
+
+      // Calculate calendar week dates
+      let calendarWeek: CalendarWeek | undefined;
+      if (cohortData.startDate) {
+        const includeWeekends = programData.includeWeekends !== false;
+        const totalDays = programData.lengthDays;
+        const calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
+        const calendarRegularWeeks = calendarWeeks
+          .filter((w: CalendarWeek) => w.weekNumber > 0)
+          .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
+
+        // Map week to calendar week by position
+        const weekPosition = week.weekNumber - 1;
+        calendarWeek = calendarRegularWeeks[weekPosition];
+      }
+
+      if (calendarWeek && totalMembers > 0) {
+        // Query completed tasks for the week's date range
+        const completedTasksSnapshot = await adminDb
+          .collection('tasks')
+          .where('date', '>=', calendarWeek.startDate)
+          .where('date', '<=', calendarWeek.endDate)
+          .where('completed', '==', true)
+          .get();
+
+        content.weeklyTasks = content.weeklyTasks.map((template) => {
+          const memberCompletions = completedTasksSnapshot.docs.filter(d => {
+            const data = d.data();
+            const titleMatches = data.title === template.label || data.originalTitle === template.label;
+            return titleMatches && memberIds.includes(data.userId);
+          });
+
+          const completedCount = memberCompletions.length;
+          const completionRate = totalMembers > 0 ? Math.round((completedCount / totalMembers) * 100) : 0;
+          const isThresholdMet = completionRate >= threshold;
+
+          return {
+            ...template,
+            completed: isThresholdMet,
+            completionRate,
+            completedCount,
+            totalMembers,
+          };
+        });
+      }
+    }
+
+    return NextResponse.json({ content, exists: true });
   } catch (error) {
     console.error('[COHORT_WEEK_CONTENT_GET] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal Error';
@@ -212,7 +323,7 @@ export async function GET(
 
 /**
  * PUT /api/coach/org-programs/[programId]/cohorts/[cohortId]/week-content/[weekId]
- * Create or update cohort week content (upsert)
+ * Create or update cohort week content (upsert) in program_instances
  */
 export async function PUT(
   request: NextRequest,
@@ -223,99 +334,79 @@ export async function PUT(
     const { programId, cohortId, weekId } = await params;
     const body = await request.json();
 
-    // Verify program exists and belongs to this org
+    // Verify program and cohort
     const programDoc = await adminDb.collection('programs').doc(programId).get();
     if (!programDoc.exists || programDoc.data()?.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
+    const programData = programDoc.data() as Program;
 
-    // Verify cohort exists and belongs to this program
     const cohortDoc = await adminDb.collection('program_cohorts').doc(cohortId).get();
     if (!cohortDoc.exists || cohortDoc.data()?.programId !== programId) {
       return NextResponse.json({ error: 'Cohort not found' }, { status: 404 });
     }
+    const cohortData = cohortDoc.data() as ProgramCohort;
 
-    // Verify week exists and belongs to this program
-    const weekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
-    if (!weekDoc.exists || weekDoc.data()?.programId !== programId) {
-      return NextResponse.json({ error: 'Week not found' }, { status: 404 });
+    // Get or create instance
+    const { instanceId, instance } = await getOrCreateCohortInstance(
+      programId,
+      cohortId,
+      organizationId,
+      programData,
+      cohortData
+    );
+
+    // Find the week
+    const weeks = [...(instance.weeks || [])];
+    const weekResult = findWeekInInstance(weeks, weekId);
+
+    if (!weekResult) {
+      return NextResponse.json({ error: 'Week not found in instance' }, { status: 404 });
     }
 
-    // Check if content already exists
-    const existingQuery = await adminDb
-      .collection('cohort_week_content')
-      .where('cohortId', '==', cohortId)
-      .where('programWeekId', '==', weekId)
-      .limit(1)
-      .get();
+    const { index: weekIndex } = weekResult;
+    const now = new Date().toISOString();
 
-    const contentData = {
+    // Update the week with new content
+    const updatedWeek: ProgramInstanceWeek = {
+      ...weeks[weekIndex],
+      coachRecordingUrl: body.coachRecordingUrl?.trim() || undefined,
+      coachRecordingNotes: body.coachRecordingNotes?.trim() || undefined,
+      linkedSummaryIds: body.linkedSummaryIds || [],
+      linkedCallEventIds: body.linkedCallEventIds || [],
+      manualNotes: body.manualNotes?.trim() || undefined,
+      weeklyTasks: processTasksWithIds(body.weeklyTasks),
+      weeklyHabits: body.weeklyHabits || [],
+      weeklyPrompt: body.weeklyPrompt?.trim() || undefined,
+      distribution: body.distribution || undefined,
+      updatedAt: now,
+    };
+
+    weeks[weekIndex] = updatedWeek;
+
+    // Update the instance
+    await adminDb.collection('program_instances').doc(instanceId).update({
+      weeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    console.log(`[COHORT_WEEK_CONTENT_PUT] Updated week ${weekId} in instance ${instanceId}`);
+
+    // Build response content
+    const savedContent = {
+      ...updatedWeek,
+      id: updatedWeek.id || `week-${updatedWeek.weekNumber}`,
       cohortId,
       programWeekId: weekId,
       programId,
       organizationId,
-      coachRecordingUrl: body.coachRecordingUrl?.trim() || null,
-      coachRecordingNotes: body.coachRecordingNotes?.trim() || null,
-      linkedSummaryIds: body.linkedSummaryIds || [],
-      linkedCallEventIds: body.linkedCallEventIds || [],
-      manualNotes: body.manualNotes?.trim() || null,
-      // Weekly tasks and distribution
-      weeklyTasks: processTasksWithIds(body.weeklyTasks),
-      weeklyHabits: body.weeklyHabits || [],
-      weeklyPrompt: body.weeklyPrompt?.trim() || null,
-      distribution: body.distribution || null,
-      updatedAt: FieldValue.serverTimestamp(),
+      weekNumber: updatedWeek.weekNumber,
     };
 
-    let contentId: string;
-    let isNew = false;
-
-    if (!existingQuery.empty) {
-      // Update existing
-      contentId = existingQuery.docs[0].id;
-      await adminDb.collection('cohort_week_content').doc(contentId).update(contentData);
-      console.log(`[COHORT_WEEK_CONTENT_PUT] Updated content ${contentId}`);
-    } else {
-      // Create new
-      const docRef = await adminDb.collection('cohort_week_content').add({
-        ...contentData,
-        createdAt: FieldValue.serverTimestamp(),
-      });
-      contentId = docRef.id;
-      isNew = true;
-      console.log(`[COHORT_WEEK_CONTENT_PUT] Created content ${contentId}`);
-    }
-
-    // Fetch the saved content
-    const savedDoc = await adminDb.collection('cohort_week_content').doc(contentId).get();
-    const savedContent = {
-      id: savedDoc.id,
-      ...savedDoc.data(),
-      createdAt: savedDoc.data()?.createdAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.createdAt,
-      updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
-    } as CohortWeekContent;
-
-    // Trigger task distribution to cohort days if requested
-    // Note: We run distribution even with empty tasks to clear week-sourced tasks from days
-    let distributionResult = null;
+    // Trigger task sync if requested
     let syncResult = null;
     if (body.distributeTasksNow === true) {
       try {
-        // Import dynamically to avoid circular dependency issues
-        const { distributeCohortWeeklyTasksToDays } = await import('@/lib/program-utils');
-        const programData = programDoc.data();
-        distributionResult = await distributeCohortWeeklyTasksToDays(
-          programId,
-          weekId,
-          cohortId,
-          { 
-            overwriteExisting: body.overwriteExistingTasks ?? false,
-            programTaskDistribution: programData?.taskDistribution,
-          }
-        );
-        console.log(`[COHORT_WEEK_CONTENT_PUT] Distributed tasks: ${JSON.stringify(distributionResult)}`);
-
-        // Sync to cohort members
         const { syncProgramTasksToCohort } = await import('@/lib/sync-cohort-tasks');
         const today = new Date().toISOString().split('T')[0];
         syncResult = await syncProgramTasksToCohort({
@@ -325,17 +416,15 @@ export async function PUT(
           mode: 'fill-empty',
         });
         console.log(`[COHORT_WEEK_CONTENT_PUT] Synced to members: ${syncResult.totalTasksCreated} tasks created`);
-      } catch (distErr) {
-        console.error('[COHORT_WEEK_CONTENT_PUT] Distribution/sync failed:', distErr);
-        // Don't fail the whole request, just log the error
+      } catch (syncErr) {
+        console.error('[COHORT_WEEK_CONTENT_PUT] Sync failed:', syncErr);
       }
     }
 
     return NextResponse.json({
       success: true,
       content: savedContent,
-      created: isNew,
-      ...(distributionResult && { distribution: distributionResult }),
+      created: false,
       ...(syncResult && { memberSync: { tasksCreated: syncResult.totalTasksCreated, membersProcessed: syncResult.membersProcessed } }),
     });
   } catch (error) {
@@ -355,7 +444,7 @@ export async function PUT(
 
 /**
  * PATCH /api/coach/org-programs/[programId]/cohorts/[cohortId]/week-content/[weekId]
- * Partial update of cohort week content (creates if doesn't exist)
+ * Partial update of cohort week content in program_instances
  */
 export async function PATCH(
   request: NextRequest,
@@ -366,128 +455,104 @@ export async function PATCH(
     const { programId, cohortId, weekId } = await params;
     const body = await request.json();
 
-    // Verify program exists and belongs to this org
+    // Verify program and cohort
     const programDoc = await adminDb.collection('programs').doc(programId).get();
     if (!programDoc.exists || programDoc.data()?.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
+    const programData = programDoc.data() as Program;
 
-    // Verify cohort exists and belongs to this program
     const cohortDoc = await adminDb.collection('program_cohorts').doc(cohortId).get();
     if (!cohortDoc.exists || cohortDoc.data()?.programId !== programId) {
       return NextResponse.json({ error: 'Cohort not found' }, { status: 404 });
     }
+    const cohortData = cohortDoc.data() as ProgramCohort;
 
-    // Verify week exists and belongs to this program
-    const weekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
-    if (!weekDoc.exists || weekDoc.data()?.programId !== programId) {
-      return NextResponse.json({ error: 'Week not found' }, { status: 404 });
+    // Get or create instance
+    const { instanceId, instance } = await getOrCreateCohortInstance(
+      programId,
+      cohortId,
+      organizationId,
+      programData,
+      cohortData
+    );
+
+    // Find the week
+    const weeks = [...(instance.weeks || [])];
+    const weekResult = findWeekInInstance(weeks, weekId);
+
+    if (!weekResult) {
+      return NextResponse.json({ error: 'Week not found in instance' }, { status: 404 });
     }
 
-    // Check if content already exists
-    const existingQuery = await adminDb
-      .collection('cohort_week_content')
-      .where('cohortId', '==', cohortId)
-      .where('programWeekId', '==', weekId)
-      .limit(1)
-      .get();
+    const { week: existingWeek, index: weekIndex } = weekResult;
+    const now = new Date().toISOString();
 
-    // Build update object (only include provided fields)
-    const updateData: Record<string, unknown> = {
-      updatedAt: FieldValue.serverTimestamp(),
+    // Build updated week (only update provided fields)
+    const updatedWeek: ProgramInstanceWeek = {
+      ...existingWeek,
+      updatedAt: now,
     };
 
     if (body.coachRecordingUrl !== undefined) {
-      updateData.coachRecordingUrl = body.coachRecordingUrl?.trim() || null;
+      updatedWeek.coachRecordingUrl = body.coachRecordingUrl?.trim() || undefined;
     }
     if (body.coachRecordingNotes !== undefined) {
-      updateData.coachRecordingNotes = body.coachRecordingNotes?.trim() || null;
+      updatedWeek.coachRecordingNotes = body.coachRecordingNotes?.trim() || undefined;
     }
     if (body.linkedSummaryIds !== undefined) {
-      updateData.linkedSummaryIds = body.linkedSummaryIds || [];
+      updatedWeek.linkedSummaryIds = body.linkedSummaryIds || [];
     }
     if (body.linkedCallEventIds !== undefined) {
-      updateData.linkedCallEventIds = body.linkedCallEventIds || [];
+      updatedWeek.linkedCallEventIds = body.linkedCallEventIds || [];
     }
     if (body.manualNotes !== undefined) {
-      updateData.manualNotes = body.manualNotes?.trim() || null;
+      updatedWeek.manualNotes = body.manualNotes?.trim() || undefined;
     }
-    // Weekly tasks and distribution
     if (body.weeklyTasks !== undefined) {
-      updateData.weeklyTasks = processTasksWithIds(body.weeklyTasks);
+      updatedWeek.weeklyTasks = processTasksWithIds(body.weeklyTasks);
     }
     if (body.weeklyHabits !== undefined) {
-      updateData.weeklyHabits = body.weeklyHabits || [];
+      updatedWeek.weeklyHabits = body.weeklyHabits || [];
     }
     if (body.weeklyPrompt !== undefined) {
-      updateData.weeklyPrompt = body.weeklyPrompt?.trim() || null;
+      updatedWeek.weeklyPrompt = body.weeklyPrompt?.trim() || undefined;
     }
     if (body.distribution !== undefined) {
-      updateData.distribution = body.distribution || null;
+      updatedWeek.distribution = body.distribution || undefined;
+    }
+    if (body.name !== undefined) {
+      updatedWeek.name = body.name?.trim() || undefined;
+    }
+    if (body.theme !== undefined) {
+      updatedWeek.theme = body.theme?.trim() || undefined;
     }
 
-    let contentId: string;
-    let isNew = false;
+    weeks[weekIndex] = updatedWeek;
 
-    if (!existingQuery.empty) {
-      // Update existing
-      contentId = existingQuery.docs[0].id;
-      await adminDb.collection('cohort_week_content').doc(contentId).update(updateData);
-      console.log(`[COHORT_WEEK_CONTENT_PATCH] Updated content ${contentId}`);
-    } else {
-      // Create new with provided fields
-      const createData = {
-        cohortId,
-        programWeekId: weekId,
-        programId,
-        organizationId,
-        coachRecordingUrl: null,
-        coachRecordingNotes: null,
-        linkedSummaryIds: [],
-        linkedCallEventIds: [],
-        manualNotes: null,
-        weeklyTasks: [],
-        weeklyHabits: [],
-        weeklyPrompt: null,
-        distribution: null,
-        ...updateData,
-        createdAt: FieldValue.serverTimestamp(),
-      };
-      const docRef = await adminDb.collection('cohort_week_content').add(createData);
-      contentId = docRef.id;
-      isNew = true;
-      console.log(`[COHORT_WEEK_CONTENT_PATCH] Created content ${contentId}`);
-    }
+    // Update the instance
+    await adminDb.collection('program_instances').doc(instanceId).update({
+      weeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
-    // Fetch the saved content
-    const savedDoc = await adminDb.collection('cohort_week_content').doc(contentId).get();
+    console.log(`[COHORT_WEEK_CONTENT_PATCH] Updated week ${weekId} in instance ${instanceId}`);
+
+    // Build response content
     const savedContent = {
-      id: savedDoc.id,
-      ...savedDoc.data(),
-      createdAt: savedDoc.data()?.createdAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.createdAt,
-      updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
-    } as CohortWeekContent;
+      ...updatedWeek,
+      id: updatedWeek.id || `week-${updatedWeek.weekNumber}`,
+      cohortId,
+      programWeekId: weekId,
+      programId,
+      organizationId,
+      weekNumber: updatedWeek.weekNumber,
+    };
 
-    // Trigger task distribution and sync to cohort members if requested
-    // Note: We run distribution even with empty tasks to clear week-sourced tasks from days
-    let distributionResult = null;
+    // Trigger task sync if requested
     let syncResult = null;
     if (body.distributeTasksNow === true) {
       try {
-        const { distributeCohortWeeklyTasksToDays } = await import('@/lib/program-utils');
-        const programData = programDoc.data();
-        distributionResult = await distributeCohortWeeklyTasksToDays(
-          programId,
-          weekId,
-          cohortId,
-          { 
-            overwriteExisting: body.overwriteExistingTasks ?? false,
-            programTaskDistribution: programData?.taskDistribution,
-          }
-        );
-        console.log(`[COHORT_WEEK_CONTENT_PATCH] Distributed tasks: ${JSON.stringify(distributionResult)}`);
-
-        // Sync to cohort members
         const { syncProgramTasksToCohort } = await import('@/lib/sync-cohort-tasks');
         const today = new Date().toISOString().split('T')[0];
         syncResult = await syncProgramTasksToCohort({
@@ -497,16 +562,15 @@ export async function PATCH(
           mode: 'fill-empty',
         });
         console.log(`[COHORT_WEEK_CONTENT_PATCH] Synced to members: ${syncResult.totalTasksCreated} tasks created`);
-      } catch (distErr) {
-        console.error('[COHORT_WEEK_CONTENT_PATCH] Distribution/sync failed:', distErr);
+      } catch (syncErr) {
+        console.error('[COHORT_WEEK_CONTENT_PATCH] Sync failed:', syncErr);
       }
     }
 
     return NextResponse.json({
       success: true,
       content: savedContent,
-      created: isNew,
-      ...(distributionResult && { distribution: distributionResult }),
+      created: false,
       ...(syncResult && { memberSync: { tasksCreated: syncResult.totalTasksCreated, membersProcessed: syncResult.membersProcessed } }),
     });
   } catch (error) {
