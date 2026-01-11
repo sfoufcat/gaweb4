@@ -16,7 +16,7 @@
  * AFTER (3 collections):
  * - programs (templates - unchanged)
  * - program_instances (one per enrollment/cohort)
- * - tasks (completion tracking via instanceId + templateTaskId)
+ * - tasks (user tasks, linked via instanceId + instanceTaskId)
  *
  * Usage:
  *   npx ts-node scripts/migrate-to-program-instances.ts [--dry-run] [--org=<orgId>]
@@ -321,7 +321,7 @@ async function migrateEnrollment(enrollment: ProgramEnrollment): Promise<void> {
         const taskData = taskDoc.data() as Task;
         batch.update(taskDoc.ref, {
           instanceId: instanceRef.id,
-          templateTaskId: taskData.programTaskId || null,
+          instanceTaskId: taskData.programTaskId || null,
         });
         taskCount++;
       }
@@ -444,7 +444,7 @@ async function migrateCohort(cohort: ProgramCohort): Promise<void> {
           const taskData = taskDoc.data() as Task;
           batch.update(taskDoc.ref, {
             instanceId: instanceRef.id,
-            templateTaskId: taskData.programTaskId || null,
+            instanceTaskId: taskData.programTaskId || null,
           });
           totalTaskCount++;
         }

@@ -1,14 +1,12 @@
 /**
- * Coach API: Cohort-Specific Program Days Management (for Group Programs)
- *
+ * @deprecated Use /api/instances/[instanceId]/days/[dayIndex] instead.
+ * 
+ * This route uses the old cohort_program_days collection.
+ * The new system uses program_instances.weeks[].days[] for all day data.
+ * 
  * =============================================================================
- * ARCHITECTURE NOTE:
+ * OLD ARCHITECTURE (DEPRECATED):
  * This is the EDITOR LAYER for cohort programs (cohort_program_days collection).
- *
- * Data flow: Template → "Sync from Template" → THIS EDITOR → Cron → Daily Focus
- *
- * KEY RULE: Day editor is SOURCE OF TRUTH.
- * If coach deletes a task here, it stays deleted. No "smart merge" or preservation.
  * =============================================================================
  *
  * GET /api/coach/org-programs/[programId]/cohort-days - List cohort days

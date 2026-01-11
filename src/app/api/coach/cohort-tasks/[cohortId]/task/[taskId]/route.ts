@@ -113,7 +113,7 @@ export async function GET(
     const tasksQuery = await adminDb
       .collection('tasks')
       .where('instanceId', '==', instanceId)
-      .where('templateTaskId', '==', taskId)
+      .where('instanceTaskId', '==', taskId)
       .get();
 
     // Map tasks to member status

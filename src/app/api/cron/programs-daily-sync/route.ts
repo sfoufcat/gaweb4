@@ -30,7 +30,7 @@ const BATCH_SIZE = 50;
 
 /**
  * Sync day tasks to user's tasks collection using the instance-based system.
- * Creates tasks with instanceId/templateTaskId fields.
+ * Creates tasks with instanceId/instanceTaskId fields.
  */
 async function syncInstanceDayTasksToUser(
   instanceId: string,
@@ -50,22 +50,22 @@ async function syncInstanceDayTasksToUser(
     .where('dayIndex', '==', dayIndex)
     .get();
 
-  const existingTasksByTemplateId = new Map<string, string>();
+  const existingTasksByInstanceTaskId = new Map<string, string>();
   for (const doc of existingTasksQuery.docs) {
     const data = doc.data();
-    if (data.templateTaskId) {
-      existingTasksByTemplateId.set(data.templateTaskId, doc.id);
+    if (data.instanceTaskId) {
+      existingTasksByInstanceTaskId.set(data.instanceTaskId, doc.id);
     }
   }
 
   // Create tasks that don't exist yet (fill-empty mode)
   for (const task of tasks) {
-    if (!existingTasksByTemplateId.has(task.id)) {
+    if (!existingTasksByInstanceTaskId.has(task.id)) {
       const taskRef = adminDb.collection('tasks').doc();
       batch.set(taskRef, {
         userId,
         instanceId,
-        templateTaskId: task.id,
+        instanceTaskId: task.id,
         label: task.label,
         isPrimary: task.isPrimary,
         type: task.type || 'task',

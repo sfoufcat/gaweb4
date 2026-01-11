@@ -153,18 +153,18 @@ export async function PATCH(
           
           if (enrollment?.cohortId) { // Only if part of a cohort
             // Find the CohortTaskState for this task
-            // Prefer programTaskId (robust) with title fallback (backward compat)
+            // Prefer instanceTaskId (robust) with title fallback (backward compat)
             let cohortState = null;
 
-            if (existingTask.programTaskId) {
+            if (existingTask.instanceTaskId) {
               cohortState = await findCohortTaskStateByProgramTaskId(
                 enrollment.cohortId,
-                existingTask.programTaskId,
+                existingTask.instanceTaskId,
                 existingTask.date
               );
             }
 
-            // Fallback to title-based matching for tasks without programTaskId
+            // Fallback to title-based matching for tasks without instanceTaskId
             // Use originalTitle if available (preserved when task was synced from program)
             if (!cohortState && existingTask.programDayIndex != null) {
               cohortState = await findCohortTaskStateByTaskTitle(
@@ -205,9 +205,9 @@ export async function PATCH(
                   programId: enrollment.programId,
                   organizationId: existingTask.organizationId || enrollment.organizationId || '',
                   programDayIndex: dayIndex,
-                  taskTemplateId: existingTask.programTaskId || `${taskTitle}:${dayIndex}`,
+                  taskTemplateId: existingTask.instanceTaskId || `${taskTitle}:${dayIndex}`,
                   taskTitle,
-                  programTaskId: existingTask.programTaskId,
+                  programTaskId: existingTask.instanceTaskId || undefined, // Renamed field
                   date: existingTask.date,
                   memberIds,
                 });

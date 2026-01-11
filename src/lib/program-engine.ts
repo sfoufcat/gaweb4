@@ -475,12 +475,12 @@ async function createProgramTask(
     sourceType: 'program',
     programEnrollmentId: enrollmentId,
     programDayIndex: dayIndex,
-    programTaskId: template.id || undefined,
+    instanceTaskId: template.id || undefined,
     originalTitle: template.label, // Preserve original for fallback matching when client edits title
     createdAt: now,
     updatedAt: now,
   } as Omit<Task, 'id'>;
-  
+
   const docRef = await adminDb.collection('tasks').add(taskData);
   console.log(`[PROGRAM_ENGINE] Created program task: "${template.label}" (${listType}) for day ${dayIndex}`);
   
@@ -1393,7 +1393,7 @@ async function createProgramTaskV2(
     programDayIndex: dayIndex,
     // Sync fields for cohort task state tracking
     sourceProgramId: programId,
-    programTaskId: template.id || undefined,
+    instanceTaskId: template.id || undefined,
     originalTitle: template.label, // Preserve original for fallback matching when client edits title
     visibility: 'public' as const,
     clientLocked: false,
@@ -2205,9 +2205,9 @@ export async function syncProgramTasksForDay(
               programId: enrollment.programId,
               organizationId: task.organizationId || enrollment.organizationId || '',
               programDayIndex: task.programDayIndex || 0,
-              taskTemplateId: task.programTaskId || `${task.title}:${task.programDayIndex || 0}`,
+              taskTemplateId: task.instanceTaskId || `${task.title}:${task.programDayIndex || 0}`,
               taskTitle: task.originalTitle || task.title,
-              programTaskId: task.programTaskId,
+              programTaskId: task.instanceTaskId, // Renamed field, still passed to deprecated function
               date,
               memberIds,
             });
@@ -2551,12 +2551,12 @@ export async function syncProgramTasksToClientDay(
   
   // 9. Create new tasks from templates
   for (const template of tasksForDay) {
-    // Match existing task by programTaskId (robust) or fallback to title (backward compat)
+    // Match existing task by instanceTaskId (robust) or fallback to title (backward compat)
     const existingTask = remainingTasks.find(t => {
       if (t.programEnrollmentId !== programEnrollmentId) return false;
-      // Prefer programTaskId matching if template has an id
-      if (template.id && t.programTaskId) {
-        return t.programTaskId === template.id;
+      // Prefer instanceTaskId matching if template has an id
+      if (template.id && t.instanceTaskId) {
+        return t.instanceTaskId === template.id;
       }
       // Fallback to title matching for backward compatibility
       return t.title === template.label;
@@ -2566,7 +2566,7 @@ export async function syncProgramTasksToClientDay(
       // In fill-empty mode, skip if task exists
       if (mode === 'fill-empty') {
         tasksSkipped++;
-        console.log(`[SYNC_TO_CLIENT] Skipped existing task: "${template.label}" (matched by ${existingTask.programTaskId ? 'programTaskId' : 'title'})`);
+        console.log(`[SYNC_TO_CLIENT] Skipped existing task: "${template.label}" (matched by ${existingTask.instanceTaskId ? 'instanceTaskId' : 'title'})`);
         continue;
       }
       // In override mode, we already deleted replaceable tasks, so if it still exists
@@ -2620,8 +2620,8 @@ export async function syncProgramTasksToClientDay(
       sourceProgramDayId,
       sourceWeekId,
       assignedByCoachId: coachUserId || null,
-      // Link to template task for robust matching on renames
-      programTaskId: template.id || undefined,
+      // Link to instance task for robust matching on renames
+      instanceTaskId: template.id || undefined,
       originalTitle: template.label, // Preserve original for fallback matching when client edits title
       // Cycle tracking for evergreen programs
       ...(cycleNumberForTasks !== undefined && { cycleNumber: cycleNumberForTasks }),

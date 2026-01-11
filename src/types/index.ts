@@ -471,8 +471,9 @@ export interface Task {
   sourceType?: TaskSourceType;         // Source of the task - defaults to 'user'
   programEnrollmentId?: string | null; // FK to program_enrollments
   programDayIndex?: number | null;     // Which program day this task came from
-  programTaskId?: string;              // Unique ID linking to template task for robust matching
-  originalTitle?: string;              // Original title from template - used for fallback matching if programTaskId unavailable
+  /** @deprecated Use instanceTaskId instead. Links to instance task, not template. */
+  programTaskId?: string;
+  originalTitle?: string;              // Original title from template - for fallback matching
   cycleNumber?: number;                // Which cycle this task belongs to (evergreen programs only)
   // Call summary fields (when sourceType === 'call_suggestion')
   callSummaryId?: string;              // FK to call_summaries
@@ -487,7 +488,7 @@ export interface Task {
 
   // New unified tracking fields (migration target)
   instanceId?: string | null;          // FK to program_instances (replaces enrollment-based tracking)
-  templateTaskId?: string | null;      // The task.id from template (replaces programTaskId)
+  instanceTaskId?: string | null;      // The task.id from program_instances (for sync tracking)
 }
 
 export interface TaskFormData {
@@ -924,7 +925,8 @@ export interface ProgramCohort {
  * This allows group programs to have different call recordings/summaries
  * for each cohort running the same program template.
  * 
- * Stored in Firestore 'cohort_week_content' collection
+ * @deprecated Use ProgramInstance.weeks[] instead. Stored in program_instances collection.
+ * OLD: Firestore 'cohort_week_content' collection
  */
 export interface CohortWeekContent {
   id: string;
@@ -959,7 +961,8 @@ export interface CohortWeekContent {
 /**
  * CohortTaskState - Tracks aggregated task completion for cohort programs
  * One document per task per date per cohort
- * Firestore collection: cohort_task_states
+ * @deprecated Use tasks collection with instanceTaskId instead of cohort_task_states.
+ * Firestore collection: cohort_task_states (DEPRECATED)
  */
 export interface CohortTaskStateMemberState {
   status: 'pending' | 'completed';
@@ -968,14 +971,17 @@ export interface CohortTaskStateMemberState {
   removed?: boolean;           // True if member was removed from cohort
 }
 
+/** @deprecated Use tasks collection with instanceTaskId instead */
 export interface CohortTaskState {
   id: string;
   cohortId: string;            // FK to program_cohorts
   programId: string;           // FK to programs
   organizationId: string;      // Denormalized for queries
   programDayIndex: number;     // Which day in the program (1-based)
-  taskTemplateId: string;      // FK to program_day_tasks or program_week_tasks (deprecated, use programTaskId)
-  programTaskId?: string;      // Unique ID linking to template task for robust matching
+  /** @deprecated Use tasks collection with instanceTaskId instead */
+  taskTemplateId: string;      // FK to program_day_tasks or program_week_tasks
+  /** @deprecated Use tasks collection with instanceTaskId instead */
+  programTaskId?: string;      // Links to template task
   taskTitle: string;           // Denormalized for display
   date: string;                // ISO date YYYY-MM-DD
   
@@ -1186,8 +1192,8 @@ export interface WeekFillSource {
 
 /**
  * Client-specific program week content.
- * For 1:1 programs where each client gets personalized content.
- * Mirrors ProgramWeek structure but scoped to a specific enrollment.
+ * @deprecated Use ProgramInstance.weeks[] instead. Stored in program_instances collection.
+ * OLD: For 1:1 programs where each client gets personalized content.
  */
 export interface ClientProgramWeek {
   id: string;
@@ -1232,8 +1238,8 @@ export interface ClientProgramWeek {
 }
 
 /**
- * Client-specific program day content.
- * For 1:1 programs with daily orientation.
+ * @deprecated Use ProgramInstance.weeks[].days[] instead. Stored in program_instances.
+ * OLD: Client-specific program day content for 1:1 programs.
  */
 export interface ClientProgramDay {
   id: string;
@@ -1265,8 +1271,8 @@ export interface ClientProgramDay {
 
 /**
  * Cohort-specific program day - overrides template day for a specific cohort
- * Mirrors ClientProgramDay but uses cohortId instead of enrollmentId
- * Stored in 'cohort_program_days' Firestore collection
+ * @deprecated Use ProgramInstance.weeks[].days[] instead. Stored in program_instances.
+ * OLD: Stored in 'cohort_program_days' Firestore collection
  */
 export interface CohortProgramDay {
   id: string;
@@ -5891,7 +5897,7 @@ export interface ProgramInstance {
 export interface UnifiedTaskFields {
   // Instance-based tracking (new - replaces enrollment-based)
   instanceId?: string;           // FK to program_instances
-  templateTaskId?: string;       // The task.id from ProgramInstanceTask
+  instanceTaskId?: string;       // The task.id from program_instances.weeks[].days[].tasks[]
 
   // Coach ad-hoc task fields
   createdByCoachId?: string;     // Coach who created this task (if source === 'coach')

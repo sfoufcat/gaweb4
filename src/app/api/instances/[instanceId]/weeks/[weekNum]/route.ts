@@ -46,11 +46,11 @@ async function syncDayTasksToUser(
     .where('dayIndex', '==', dayIndex)
     .get();
 
-  const existingTasksByTemplateId = new Map<string, { id: string; completed: boolean; completedAt?: string }>();
+  const existingTasksByInstanceTaskId = new Map<string, { id: string; completed: boolean; completedAt?: string }>();
   for (const doc of existingTasksQuery.docs) {
     const taskData = doc.data();
-    if (taskData.templateTaskId) {
-      existingTasksByTemplateId.set(taskData.templateTaskId, {
+    if (taskData.instanceTaskId) {
+      existingTasksByInstanceTaskId.set(taskData.instanceTaskId, {
         id: doc.id,
         completed: taskData.completed || false,
         completedAt: taskData.completedAt,
@@ -58,13 +58,13 @@ async function syncDayTasksToUser(
     }
   }
 
-  const processedTemplateIds = new Set<string>();
+  const processedInstanceTaskIds = new Set<string>();
 
   // Create/update tasks
   for (const task of tasks) {
-    processedTemplateIds.add(task.id);
+    processedInstanceTaskIds.add(task.id);
 
-    const existing = existingTasksByTemplateId.get(task.id);
+    const existing = existingTasksByInstanceTaskId.get(task.id);
 
     if (existing) {
       // Update existing task (preserve completion status)
@@ -85,7 +85,7 @@ async function syncDayTasksToUser(
       batch.set(taskRef, {
         userId,
         instanceId,
-        templateTaskId: task.id,
+        instanceTaskId: task.id,
         label: task.label,
         isPrimary: task.isPrimary,
         type: task.type || 'task',
@@ -104,8 +104,8 @@ async function syncDayTasksToUser(
   }
 
   // Delete tasks that are no longer in the day (coach deleted them)
-  for (const [templateId, existing] of existingTasksByTemplateId.entries()) {
-    if (!processedTemplateIds.has(templateId)) {
+  for (const [templateId, existing] of existingTasksByInstanceTaskId.entries()) {
+    if (!processedInstanceTaskIds.has(templateId)) {
       const taskRef = adminDb.collection('tasks').doc(existing.id);
       batch.delete(taskRef);
     }

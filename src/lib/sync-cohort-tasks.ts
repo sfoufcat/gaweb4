@@ -1,6 +1,14 @@
 /**
- * Cohort Task Sync
- *
+ * @deprecated This file is DEPRECATED. Use the new program_instances API instead.
+ * 
+ * The new system syncs tasks via:
+ * - PATCH /api/instances/[instanceId]/weeks/[weekNum] (with distribution)
+ * - PATCH /api/instances/[instanceId]/days/[dayIndex]
+ * 
+ * These endpoints automatically sync to users' tasks collection with instanceTaskId.
+ * See CLAUDE.md "Program System Architecture" for details.
+ * 
+ * OLD DESCRIPTION:
  * Synchronizes program tasks to all members of a cohort.
  * One-way sync: Coach program → Cohort members' Daily Focus
  */
@@ -283,7 +291,7 @@ async function createCohortTaskStatesForSyncedTasks(
     programDayIndex: number;
     sourceWeekId?: string;
     sourceProgramDayId?: string;
-    programTaskId?: string;
+    instanceTaskId?: string;
     sourceProgramId?: string;
   }> = [];
 
@@ -305,7 +313,7 @@ async function createCohortTaskStatesForSyncedTasks(
         programDayIndex: data.programDayIndex || 0,
         sourceWeekId: data.sourceWeekId,
         sourceProgramDayId: data.sourceProgramDayId,
-        programTaskId: data.programTaskId,
+        instanceTaskId: data.instanceTaskId,
         sourceProgramId: data.sourceProgramId,
       });
     });
@@ -334,11 +342,11 @@ async function createCohortTaskStatesForSyncedTasks(
     }
   }
 
-  // Deduplicate by programTaskId (preferred) or title:dayIndex (fallback for backward compat)
+  // Deduplicate by instanceTaskId (preferred) or title:dayIndex (fallback for backward compat)
   const uniqueTasks = new Map<string, typeof allTasks[0]>();
   for (const task of allTasks) {
-    // Use programTaskId as key if available, otherwise fall back to title:dayIndex
-    const key = task.programTaskId || `${task.title}:${task.programDayIndex}`;
+    // Use instanceTaskId as key if available, otherwise fall back to title:dayIndex
+    const key = task.instanceTaskId || `${task.title}:${task.programDayIndex}`;
     if (!uniqueTasks.has(key)) {
       uniqueTasks.set(key, task);
     }
@@ -357,7 +365,7 @@ async function createCohortTaskStatesForSyncedTasks(
       programDayIndex: task.programDayIndex,
       taskTemplateId: templateId,
       taskTitle: task.title,
-      programTaskId: task.programTaskId,
+      programTaskId: task.instanceTaskId, // Renamed field
       date,
       memberIds: memberUserIds,
     });

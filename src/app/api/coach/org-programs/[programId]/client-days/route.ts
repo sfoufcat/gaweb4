@@ -1,14 +1,12 @@
 /**
- * Coach API: Client-Specific Program Days Management (for 1:1 Programs)
- *
+ * @deprecated Use /api/instances/[instanceId]/days/[dayIndex] instead.
+ * 
+ * This route uses the old client_program_days collection.
+ * The new system uses program_instances.weeks[].days[] for all day data.
+ * 
  * =============================================================================
- * ARCHITECTURE NOTE:
+ * OLD ARCHITECTURE (DEPRECATED):
  * This is the EDITOR LAYER for 1:1 programs (client_program_days collection).
- *
- * Data flow: Template → "Sync from Template" → THIS EDITOR → Cron → Daily Focus
- *
- * KEY RULE: Day editor is SOURCE OF TRUTH.
- * If coach deletes a task here, it stays deleted. No "smart merge" or preservation.
  * =============================================================================
  *
  * GET /api/coach/org-programs/[programId]/client-days - List client days

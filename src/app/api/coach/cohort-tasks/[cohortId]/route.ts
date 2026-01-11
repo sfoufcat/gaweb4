@@ -1,3 +1,10 @@
+/**
+ * @deprecated Use /api/instances/[instanceId]/completions instead.
+ * 
+ * This route uses the old cohort_task_states collection.
+ * The new system tracks completions via tasks collection with instanceTaskId.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';

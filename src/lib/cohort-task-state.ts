@@ -1,8 +1,15 @@
 /**
- * Cohort Task State Utilities
- *
+ * @deprecated This file is DEPRECATED. Use the new program_instances system instead.
+ * 
+ * The new system uses:
+ * - `program_instances` collection for cohort/enrollment data
+ * - `tasks` collection with `instanceTaskId` for completion tracking
+ * 
+ * See CLAUDE.md "Program System Architecture" for the new 3-collection model.
+ * This file will be removed once all cohorts are migrated.
+ * 
  * =============================================================================
- * ARCHITECTURE NOTE:
+ * OLD ARCHITECTURE NOTE (DEPRECATED):
  * CohortTaskState documents track completion rates for cohort programs.
  *
  * Each CohortTaskState represents ONE task for ONE day across ALL cohort members.

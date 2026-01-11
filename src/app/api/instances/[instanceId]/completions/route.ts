@@ -25,7 +25,7 @@
  *
  * Task completion is stored in the unified `tasks` collection with:
  * - instanceId: FK to program_instances
- * - templateTaskId: The original task.id from the instance
+ * - instanceTaskId: The original task.id from the instance
  * - completed: boolean
  * - completedAt: ISO timestamp
  */
@@ -143,14 +143,14 @@ export async function GET(
 
     for (const taskDoc of tasksSnap.docs) {
       const task = { id: taskDoc.id, ...taskDoc.data() } as Task;
-      const templateTaskId = task.templateTaskId;
+      const instanceTaskId = task.instanceTaskId;
       const userId = task.userId;
 
-      if (templateTaskId && userId) {
-        if (!taskCompletions.has(templateTaskId)) {
-          taskCompletions.set(templateTaskId, new Map());
+      if (instanceTaskId && userId) {
+        if (!taskCompletions.has(instanceTaskId)) {
+          taskCompletions.set(instanceTaskId, new Map());
         }
-        taskCompletions.get(templateTaskId)!.set(userId, task);
+        taskCompletions.get(instanceTaskId)!.set(userId, task);
       }
     }
 
@@ -263,7 +263,7 @@ export async function POST(
     // Find or create the task in the tasks collection
     const existingTaskQuery = await adminDb.collection('tasks')
       .where('instanceId', '==', instanceId)
-      .where('templateTaskId', '==', taskId)
+      .where('instanceTaskId', '==', taskId)
       .where('userId', '==', userId)
       .limit(1)
       .get();
@@ -274,7 +274,7 @@ export async function POST(
       const newTask = {
         userId,
         instanceId,
-        templateTaskId: taskId,
+        instanceTaskId: taskId,
         label: label || 'Task',
         dayIndex: dayIndex || 1,
         isPrimary: true,
