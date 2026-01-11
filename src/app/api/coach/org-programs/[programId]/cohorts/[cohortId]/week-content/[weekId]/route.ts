@@ -731,18 +731,23 @@ export async function PUT(
       console.log(`[COHORT_WEEK_CONTENT_PUT] Distributing ${weeklyTasks.length} tasks with type: ${distributionType}`);
 
       if (distributionType === 'spread') {
-        // Spread tasks evenly across days
-        const targetDays = daysToUpdate.map(d => d.dayIndex);
-        const tasksPerDay = targetDays.length > 0 ? Math.ceil(weeklyTasks.length / targetDays.length) : 0;
+        // Spread tasks proportionally across ALL days
+        // Each task covers approximately (numDays / numTasks) days
+        const numDays = daysToUpdate.length;
+        const numTasks = weeklyTasks.length;
 
-        let taskIdx = 0;
-        for (const day of daysToUpdate) {
-          const tasksForDay = weeklyTasks.slice(taskIdx, taskIdx + tasksPerDay);
-          day.tasks = [
-            ...(day.tasks || []).filter((t: ProgramInstanceTask) => t.source && t.source !== 'week'),
-            ...tasksForDay.map(t => ({ ...t, source: 'week' as const })),
-          ];
-          taskIdx += tasksPerDay;
+        if (numDays > 0 && numTasks > 0) {
+          for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+            // Calculate which task this day should have based on proportional position
+            // With 2 tasks and 7 days: days 0-3 get task 0, days 4-6 get task 1
+            const taskIdxForDay = Math.floor((dayIdx / numDays) * numTasks);
+            const task = weeklyTasks[taskIdxForDay];
+
+            daysToUpdate[dayIdx].tasks = [
+              ...(daysToUpdate[dayIdx].tasks || []).filter((t: ProgramInstanceTask) => t.source !== 'week'),
+              { ...task, source: 'week' as const },
+            ];
+          }
         }
       } else if (distributionType === 'repeat-daily' || distributionType === 'all_days') {
         // Add all tasks to all days
@@ -957,18 +962,23 @@ export async function PATCH(
       console.log(`[COHORT_WEEK_CONTENT_PATCH] Distributing ${weeklyTasks.length} tasks with type: ${distributionType}`);
 
       if (distributionType === 'spread') {
-        // Spread tasks evenly across days
-        const targetDays = daysToUpdate.map(d => d.dayIndex);
-        const tasksPerDay = targetDays.length > 0 ? Math.ceil(weeklyTasks.length / targetDays.length) : 0;
+        // Spread tasks proportionally across ALL days
+        // Each task covers approximately (numDays / numTasks) days
+        const numDays = daysToUpdate.length;
+        const numTasks = weeklyTasks.length;
 
-        let taskIdx = 0;
-        for (const day of daysToUpdate) {
-          const tasksForDay = weeklyTasks.slice(taskIdx, taskIdx + tasksPerDay);
-          day.tasks = [
-            ...(day.tasks || []).filter((t: ProgramInstanceTask) => t.source && t.source !== 'week'),
-            ...tasksForDay.map(t => ({ ...t, source: 'week' as const })),
-          ];
-          taskIdx += tasksPerDay;
+        if (numDays > 0 && numTasks > 0) {
+          for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+            // Calculate which task this day should have based on proportional position
+            // With 2 tasks and 7 days: days 0-3 get task 0, days 4-6 get task 1
+            const taskIdxForDay = Math.floor((dayIdx / numDays) * numTasks);
+            const task = weeklyTasks[taskIdxForDay];
+
+            daysToUpdate[dayIdx].tasks = [
+              ...(daysToUpdate[dayIdx].tasks || []).filter((t: ProgramInstanceTask) => t.source !== 'week'),
+              { ...task, source: 'week' as const },
+            ];
+          }
         }
       } else if (distributionType === 'repeat-daily' || distributionType === 'all_days') {
         // Add all tasks to all days

@@ -263,6 +263,34 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
 
     console.log(`[ProgramEditor] Saving ${moduleChanges.length} modules, ${weekChanges.length} weeks, ${dayChanges.length} days`);
 
+    // CRITICAL: Filter out template changes if cohort/client change exists for same entity
+    // This is a defensive measure to prevent dual saves even if discardChange timing failed
+    const filteredWeekChanges = weekChanges.filter(change => {
+      if (change.viewContext === 'template') {
+        const hasCohortClientChange = weekChanges.some(c =>
+          c.viewContext !== 'template' && c.entityId === change.entityId
+        );
+        if (hasCohortClientChange) {
+          console.log(`[ProgramEditor] SKIPPING template change for week ${change.entityId} - cohort/client change exists`);
+          return false;
+        }
+      }
+      return true;
+    });
+
+    const filteredDayChanges = dayChanges.filter(change => {
+      if (change.viewContext === 'template') {
+        const hasCohortClientChange = dayChanges.some(c =>
+          c.viewContext !== 'template' && c.entityId === change.entityId
+        );
+        if (hasCohortClientChange) {
+          console.log(`[ProgramEditor] SKIPPING template change for day ${change.entityId} - cohort/client change exists`);
+          return false;
+        }
+      }
+      return true;
+    });
+
     // 1. Save modules first (can parallelize)
     if (moduleChanges.length > 0) {
       const moduleResults = await Promise.allSettled(
@@ -297,7 +325,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     }
 
     // 2. Save weeks (sequential to avoid race conditions with task distribution)
-    for (const change of weekChanges) {
+    for (const change of filteredWeekChanges) {
       try {
         // More robust task change detection
         const originalTasks = (change.originalData.weeklyTasks as unknown[]) || [];
@@ -436,11 +464,11 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     }
 
     // 3. Save days (can parallelize, after weeks complete)
-    if (dayChanges.length > 0) {
-      console.log(`[ProgramEditor] Saving ${dayChanges.length} day changes`);
-      
+    if (filteredDayChanges.length > 0) {
+      console.log(`[ProgramEditor] Saving ${filteredDayChanges.length} day changes`);
+
       const dayResults = await Promise.allSettled(
-        dayChanges.map(async (change) => {
+        filteredDayChanges.map(async (change) => {
           console.log(`[ProgramEditor] Saving day ${change.entityId} to ${change.apiEndpoint}`, {
             method: change.httpMethod,
             viewContext: change.viewContext,
@@ -480,11 +508,11 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
         if (r.status === 'fulfilled') {
           result.savedCount++;
         } else {
-          console.error(`[ProgramEditor] Failed to save day ${dayChanges[i].entityId}:`, r.reason);
+          console.error(`[ProgramEditor] Failed to save day ${filteredDayChanges[i].entityId}:`, r.reason);
           result.success = false;
           result.errors.push({
             entityType: 'day',
-            entityId: dayChanges[i].entityId,
+            entityId: filteredDayChanges[i].entityId,
             error: r.reason?.message || 'Unknown error',
           });
         }
