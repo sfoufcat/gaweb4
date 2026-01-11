@@ -2211,6 +2211,46 @@
       ]
     },
     {
+      "collectionGroup": "program_instances",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "organizationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "cohortId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "program_instances",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "organizationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "programId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "cohortId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "tasks",
       "queryScope": "COLLECTION",
       "fields": [

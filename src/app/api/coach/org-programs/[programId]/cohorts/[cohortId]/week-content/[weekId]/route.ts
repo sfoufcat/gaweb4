@@ -369,13 +369,54 @@ export async function GET(
       cohortData
     );
 
-    // Find the week in the instance
-    const weekResult = findWeekInInstance(instance.weeks || [], weekId);
-    if (!weekResult) {
-      return NextResponse.json({ error: 'Week not found in instance' }, { status: 404 });
-    }
+    // Find the week in the instance or create it on-demand
+    let weekResult = findWeekInInstance(instance.weeks || [], weekId);
+    let week: ProgramInstanceWeek;
 
-    const { week } = weekResult;
+    if (!weekResult) {
+      // Week doesn't exist - create it on-demand
+      const weekNumber = /^\d+$/.test(weekId) ? parseInt(weekId, 10) : 1;
+      const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+      const startDayIndex = (weekNumber - 1) * daysPerWeek + 1;
+      const endDayIndex = startDayIndex + daysPerWeek - 1;
+
+      const days: ProgramInstanceDay[] = [];
+      for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+        days.push({
+          dayIndex,
+          globalDayIndex: dayIndex,
+          tasks: [],
+          habits: [],
+        });
+      }
+
+      const now = new Date().toISOString();
+      const newWeek: ProgramInstanceWeek = {
+        id: crypto.randomUUID(),
+        weekNumber,
+        days,
+        weeklyTasks: [],
+        weeklyHabits: [],
+        startDayIndex,
+        endDayIndex,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      // Save the new week to the instance
+      const weeks = [...(instance.weeks || []), newWeek];
+      weeks.sort((a, b) => a.weekNumber - b.weekNumber);
+
+      await adminDb.collection('program_instances').doc(instance.id!).update({
+        weeks,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      console.log(`[COHORT_WEEK_CONTENT_GET] Created new week ${weekNumber} on-demand for instance ${instance.id}`);
+      week = newWeek;
+    } else {
+      week = weekResult.week;
+    }
 
     // Build content response (matching old cohort_week_content structure for compatibility)
     const content = {
@@ -508,16 +549,49 @@ export async function PUT(
       cohortData
     );
 
-    // Find the week
+    // Find the week or create it if it doesn't exist
     const weeks = [...(instance.weeks || [])];
-    const weekResult = findWeekInInstance(weeks, weekId);
+    let weekResult = findWeekInInstance(weeks, weekId);
+    let weekIndex: number;
+    const now = new Date().toISOString();
 
     if (!weekResult) {
-      return NextResponse.json({ error: 'Week not found in instance' }, { status: 404 });
-    }
+      // Week doesn't exist - create it
+      const weekNumber = /^\d+$/.test(weekId) ? parseInt(weekId, 10) : weeks.length + 1;
+      const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+      const startDayIndex = (weekNumber - 1) * daysPerWeek + 1;
+      const endDayIndex = startDayIndex + daysPerWeek - 1;
 
-    const { index: weekIndex } = weekResult;
-    const now = new Date().toISOString();
+      const days: ProgramInstanceDay[] = [];
+      for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+        days.push({
+          dayIndex,
+          globalDayIndex: dayIndex,
+          tasks: [],
+          habits: [],
+        });
+      }
+
+      const newWeek: ProgramInstanceWeek = {
+        id: crypto.randomUUID(),
+        weekNumber,
+        days,
+        weeklyTasks: [],
+        weeklyHabits: [],
+        startDayIndex,
+        endDayIndex,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      weeks.push(newWeek);
+      // Sort weeks by weekNumber to maintain order
+      weeks.sort((a, b) => a.weekNumber - b.weekNumber);
+      weekIndex = weeks.findIndex(w => w.weekNumber === weekNumber);
+      console.log(`[COHORT_WEEK_CONTENT_PUT] Created new week ${weekNumber} at index ${weekIndex}`);
+    } else {
+      weekIndex = weekResult.index;
+    }
 
     // Update the week with new content
     const updatedWeek: ProgramInstanceWeek = {
@@ -667,16 +741,50 @@ export async function PATCH(
       cohortData
     );
 
-    // Find the week
+    // Find the week or create it if it doesn't exist
     const weeks = [...(instance.weeks || [])];
-    const weekResult = findWeekInInstance(weeks, weekId);
+    let weekResult = findWeekInInstance(weeks, weekId);
+    let existingWeek: ProgramInstanceWeek;
+    let weekIndex: number;
+    const now = new Date().toISOString();
 
     if (!weekResult) {
-      return NextResponse.json({ error: 'Week not found in instance' }, { status: 404 });
-    }
+      // Week doesn't exist - create it
+      const weekNumber = /^\d+$/.test(weekId) ? parseInt(weekId, 10) : weeks.length + 1;
+      const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+      const startDayIndex = (weekNumber - 1) * daysPerWeek + 1;
+      const endDayIndex = startDayIndex + daysPerWeek - 1;
 
-    const { week: existingWeek, index: weekIndex } = weekResult;
-    const now = new Date().toISOString();
+      const days: ProgramInstanceDay[] = [];
+      for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+        days.push({
+          dayIndex,
+          globalDayIndex: dayIndex,
+          tasks: [],
+          habits: [],
+        });
+      }
+
+      existingWeek = {
+        id: crypto.randomUUID(),
+        weekNumber,
+        days,
+        weeklyTasks: [],
+        weeklyHabits: [],
+        startDayIndex,
+        endDayIndex,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      weeks.push(existingWeek);
+      weeks.sort((a, b) => a.weekNumber - b.weekNumber);
+      weekIndex = weeks.findIndex(w => w.weekNumber === weekNumber);
+      console.log(`[COHORT_WEEK_CONTENT_PATCH] Created new week ${weekNumber} at index ${weekIndex}`);
+    } else {
+      existingWeek = weekResult.week;
+      weekIndex = weekResult.index;
+    }
 
     // Build updated week (only update provided fields)
     const updatedWeek: ProgramInstanceWeek = {
