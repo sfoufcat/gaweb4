@@ -300,22 +300,24 @@ export async function PATCH(
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    // If distribution is specified, distribute weekly tasks to days
+    // If distribution is specified (or distributeTasksNow flag is set), distribute weekly tasks to days
     // Note: body.weeklyTasks can be an empty array (coach deleted all tasks), so check for array type
-    if (body.distribution && Array.isArray(body.weeklyTasks)) {
+    // Use body.distribution, or fall back to existing week distribution if distributeTasksNow is set
+    const distributionSetting = body.distribution || (body.distributeTasksNow && updatedWeek.distribution);
+    if (distributionSetting && Array.isArray(body.weeklyTasks)) {
       // Normalize distribution format:
       // - String format: 'spread' | 'repeat-daily' (from TypeScript TaskDistribution type)
       // - Object format: { type: 'spread' | 'all_days' | 'first_day', targetDays?: number[] }
       let distribution: { type: string; targetDays?: number[] };
-      if (typeof body.distribution === 'string') {
+      if (typeof distributionSetting === 'string') {
         // Map string format to object format
         const typeMap: Record<string, string> = {
           'spread': 'spread',
           'repeat-daily': 'all_days',
         };
-        distribution = { type: typeMap[body.distribution] || 'spread' };
+        distribution = { type: typeMap[distributionSetting] || 'spread' };
       } else {
-        distribution = body.distribution;
+        distribution = distributionSetting;
       }
       const weeklyTasks = processTasksWithIds(body.weeklyTasks);
 
@@ -324,17 +326,16 @@ export async function PATCH(
 
       // Distribute tasks based on distribution type
       if (distribution.type === 'spread') {
-        // Spread tasks evenly across specified days
-        const targetDays = distribution.targetDays || daysToUpdate.map(d => d.dayIndex);
-        const tasksPerDay = Math.ceil(weeklyTasks.length / targetDays.length);
-
-        let taskIdx = 0;
-        for (const dayIndex of targetDays) {
-          const dayToUpdate = daysToUpdate.find(d => d.dayIndex === dayIndex);
-          if (dayToUpdate) {
+        // Spread tasks evenly across days
+        // Use array indices for distribution (more robust than relying on dayIndex values)
+        const numDays = daysToUpdate.length;
+        if (numDays > 0 && weeklyTasks.length > 0) {
+          const tasksPerDay = Math.ceil(weeklyTasks.length / numDays);
+          let taskIdx = 0;
+          for (let i = 0; i < numDays; i++) {
             const tasksForDay = weeklyTasks.slice(taskIdx, taskIdx + tasksPerDay);
-            dayToUpdate.tasks = [
-              ...dayToUpdate.tasks.filter(t => t.source && t.source !== 'week'),
+            daysToUpdate[i].tasks = [
+              ...daysToUpdate[i].tasks.filter(t => t.source && t.source !== 'week'),
               ...tasksForDay.map(t => ({ ...t, source: 'week' as const })),
             ];
             taskIdx += tasksPerDay;

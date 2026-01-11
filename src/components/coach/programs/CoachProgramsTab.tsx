@@ -4231,6 +4231,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 fetchClientDays(selectedProgram!.id, clientViewContext.enrollmentId);
                               }
                             }
+                            // CRITICAL: Return early - client saves should NEVER fall through to template
+                            return;
                           } else if (isClientMode && !clientWeek && clientViewContext.enrollmentId) {
                             // Create new client-specific week (client mode but week doesn't exist yet)
                             const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
@@ -4265,10 +4267,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 }
                               }
                             }
+                            // CRITICAL: Return early - client saves should NEVER fall through to template
+                            return;
                           } else if (instanceId) {
                             // NEW SYSTEM: Save to program_instances collection
                             // Note: We only need instanceId to save, not the full instance data
+                            // IMPORTANT: This is for cohort/client instances - NEVER saves to template
                             console.log('[WEEK_EDITOR_SAVE] Entering INSTANCE branch (new system)', { instanceId });
+                            const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
                             const res = await fetch(`/api/instances/${instanceId}/weeks/${weekNumber}`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json' },
@@ -4283,6 +4289,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 coachRecordingNotes: updates.coachRecordingNotes,
                                 linkedSummaryIds: updates.linkedSummaryIds,
                                 linkedCallEventIds: updates.linkedCallEventIds,
+                                // Trigger distribution when tasks are updated
+                                ...(weeklyTasksUpdated && { distributeTasksNow: true }),
                               }),
                             });
                             console.log('[WEEK_EDITOR_SAVE] Instance PATCH response:', res.status, res.ok);
@@ -4295,6 +4303,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                               const errorText = await res.text();
                               console.error('[WEEK_EDITOR_SAVE] Instance PATCH FAILED:', res.status, errorText);
                             }
+                            // CRITICAL: Return early - instance saves should NEVER fall through to template
+                            return;
                           } else if (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId) {
                             // COHORT MODE: Save to program_instances via cohort week-content API
                             // The API handles instance creation automatically via getOrCreateCohortInstance
@@ -4346,6 +4356,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                               const errorText = await res.text();
                               console.error('[WEEK_EDITOR_SAVE] Cohort PUT FAILED:', res.status, errorText);
                             }
+                            // CRITICAL: Return early - cohort saves should NEVER fall through to template
+                            return;
                           } else if (templateWeek) {
                             console.log('[WEEK_EDITOR_SAVE] Entering TEMPLATE branch (templateWeek exists)');
                             // Update template week and distribute tasks to days
