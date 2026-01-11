@@ -14,9 +14,155 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { ProgramTaskTemplate, ProgramCohort, Program, ProgramInstance, ProgramInstanceWeek } from '@/types';
+import type { ProgramTaskTemplate, ProgramCohort, Program, ProgramInstance, ProgramInstanceWeek, ProgramInstanceTask, ProgramInstanceDay } from '@/types';
 import { getProgramCompletionThreshold } from '@/lib/cohort-task-state';
 import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
+
+/**
+ * Sync day tasks to a user's tasks collection (new instance-based sync)
+ */
+async function syncDayTasksToUser(
+  instanceId: string,
+  userId: string,
+  dayIndex: number,
+  tasks: ProgramInstanceTask[],
+  calendarDate?: string
+): Promise<{ created: number; updated: number; deleted: number }> {
+  const batch = adminDb.batch();
+  const now = new Date().toISOString();
+  let created = 0, updated = 0, deleted = 0;
+
+  // Get existing tasks for this instance + day + user
+  const existingTasksQuery = await adminDb.collection('tasks')
+    .where('userId', '==', userId)
+    .where('instanceId', '==', instanceId)
+    .where('dayIndex', '==', dayIndex)
+    .get();
+
+  const existingTasksByInstanceTaskId = new Map<string, { id: string; completed: boolean; completedAt?: string }>();
+  for (const doc of existingTasksQuery.docs) {
+    const taskData = doc.data();
+    if (taskData.instanceTaskId) {
+      existingTasksByInstanceTaskId.set(taskData.instanceTaskId, {
+        id: doc.id,
+        completed: taskData.completed || false,
+        completedAt: taskData.completedAt,
+      });
+    }
+  }
+
+  const processedInstanceTaskIds = new Set<string>();
+
+  // Create/update tasks
+  for (const task of tasks) {
+    processedInstanceTaskIds.add(task.id);
+
+    const existing = existingTasksByInstanceTaskId.get(task.id);
+
+    if (existing) {
+      // Update existing task (preserve completion status)
+      const taskRef = adminDb.collection('tasks').doc(existing.id);
+      batch.update(taskRef, {
+        label: task.label,
+        isPrimary: task.isPrimary,
+        type: task.type || 'task',
+        estimatedMinutes: task.estimatedMinutes,
+        notes: task.notes,
+        tag: task.tag,
+        date: calendarDate,
+        updatedAt: now,
+      });
+      updated++;
+    } else {
+      // Create new task
+      const taskRef = adminDb.collection('tasks').doc();
+      batch.set(taskRef, {
+        userId,
+        instanceId,
+        instanceTaskId: task.id,
+        label: task.label,
+        isPrimary: task.isPrimary,
+        type: task.type || 'task',
+        estimatedMinutes: task.estimatedMinutes,
+        notes: task.notes,
+        tag: task.tag,
+        source: 'program',
+        dayIndex,
+        date: calendarDate,
+        completed: false,
+        completedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      created++;
+    }
+  }
+
+  // Delete tasks that are no longer in the day (coach deleted them)
+  for (const [templateId, existing] of existingTasksByInstanceTaskId.entries()) {
+    if (!processedInstanceTaskIds.has(templateId)) {
+      const taskRef = adminDb.collection('tasks').doc(existing.id);
+      batch.delete(taskRef);
+      deleted++;
+    }
+  }
+
+  await batch.commit();
+  return { created, updated, deleted };
+}
+
+/**
+ * Sync week tasks to all cohort members using the new instance-based system
+ */
+async function syncWeekTasksToMembers(
+  instanceId: string,
+  cohortId: string,
+  week: ProgramInstanceWeek
+): Promise<{ membersProcessed: number; totalTasksCreated: number; totalTasksUpdated: number; totalTasksDeleted: number }> {
+  // Get active cohort members
+  const enrollmentsSnap = await adminDb.collection('program_enrollments')
+    .where('cohortId', '==', cohortId)
+    .where('status', 'in', ['active', 'completed'])
+    .get();
+
+  const memberUserIds = enrollmentsSnap.docs.map(doc => doc.data().userId).filter(Boolean);
+
+  if (memberUserIds.length === 0) {
+    console.log(`[SYNC_WEEK_TO_MEMBERS] No active members in cohort ${cohortId}`);
+    return { membersProcessed: 0, totalTasksCreated: 0, totalTasksUpdated: 0, totalTasksDeleted: 0 };
+  }
+
+  let totalTasksCreated = 0;
+  let totalTasksUpdated = 0;
+  let totalTasksDeleted = 0;
+
+  // Sync each day's tasks to each member
+  for (const day of week.days || []) {
+    const tasks = (day.tasks || []) as ProgramInstanceTask[];
+
+    for (const userId of memberUserIds) {
+      const result = await syncDayTasksToUser(
+        instanceId,
+        userId,
+        day.globalDayIndex,
+        tasks,
+        day.calendarDate
+      );
+      totalTasksCreated += result.created;
+      totalTasksUpdated += result.updated;
+      totalTasksDeleted += result.deleted;
+    }
+  }
+
+  console.log(`[SYNC_WEEK_TO_MEMBERS] Synced week ${week.weekNumber} to ${memberUserIds.length} members: ${totalTasksCreated} created, ${totalTasksUpdated} updated, ${totalTasksDeleted} deleted`);
+
+  return {
+    membersProcessed: memberUserIds.length,
+    totalTasksCreated,
+    totalTasksUpdated,
+    totalTasksDeleted,
+  };
+}
 
 /**
  * Process tasks to ensure each has a unique ID for robust matching.
@@ -409,19 +555,12 @@ export async function PUT(
       weekNumber: updatedWeek.weekNumber,
     };
 
-    // Trigger task sync if requested
+    // Trigger task sync if requested (using new instance-based sync)
     let syncResult = null;
     if (body.distributeTasksNow === true) {
       try {
-        const { syncProgramTasksToCohort } = await import('@/lib/sync-cohort-tasks');
-        const today = new Date().toISOString().split('T')[0];
-        syncResult = await syncProgramTasksToCohort({
-          programId,
-          cohortId,
-          date: today,
-          mode: 'fill-empty',
-        });
-        console.log(`[COHORT_WEEK_CONTENT_PUT] Synced to members: ${syncResult.totalTasksCreated} tasks created`);
+        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek);
+        console.log(`[COHORT_WEEK_CONTENT_PUT] Synced to ${syncResult.membersProcessed} members: ${syncResult.totalTasksCreated} created, ${syncResult.totalTasksUpdated} updated`);
       } catch (syncErr) {
         console.error('[COHORT_WEEK_CONTENT_PUT] Sync failed:', syncErr);
       }
@@ -555,19 +694,12 @@ export async function PATCH(
       weekNumber: updatedWeek.weekNumber,
     };
 
-    // Trigger task sync if requested
+    // Trigger task sync if requested (using new instance-based sync)
     let syncResult = null;
     if (body.distributeTasksNow === true) {
       try {
-        const { syncProgramTasksToCohort } = await import('@/lib/sync-cohort-tasks');
-        const today = new Date().toISOString().split('T')[0];
-        syncResult = await syncProgramTasksToCohort({
-          programId,
-          cohortId,
-          date: today,
-          mode: 'fill-empty',
-        });
-        console.log(`[COHORT_WEEK_CONTENT_PATCH] Synced to members: ${syncResult.totalTasksCreated} tasks created`);
+        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek);
+        console.log(`[COHORT_WEEK_CONTENT_PATCH] Synced to ${syncResult.membersProcessed} members: ${syncResult.totalTasksCreated} created, ${syncResult.totalTasksUpdated} updated`);
       } catch (syncErr) {
         console.error('[COHORT_WEEK_CONTENT_PATCH] Sync failed:', syncErr);
       }
