@@ -319,7 +319,7 @@ export async function PATCH(
           if (dayToUpdate) {
             const tasksForDay = weeklyTasks.slice(taskIdx, taskIdx + tasksPerDay);
             dayToUpdate.tasks = [
-              ...dayToUpdate.tasks.filter(t => t.source && t.source !== 'week' && t.source !== 'program'),
+              ...dayToUpdate.tasks.filter(t => t.source && t.source !== 'week'),
               ...tasksForDay.map(t => ({ ...t, source: 'week' as const })),
             ];
             taskIdx += tasksPerDay;
@@ -329,7 +329,7 @@ export async function PATCH(
         // Add all tasks to all days
         for (const dayToUpdate of daysToUpdate) {
           dayToUpdate.tasks = [
-            ...dayToUpdate.tasks.filter(t => t.source && t.source !== 'week' && t.source !== 'program'),
+            ...dayToUpdate.tasks.filter(t => t.source && t.source !== 'week'),
             ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
           ];
         }
@@ -337,7 +337,7 @@ export async function PATCH(
         // Add all tasks to first day only
         if (daysToUpdate.length > 0) {
           daysToUpdate[0].tasks = [
-            ...daysToUpdate[0].tasks.filter(t => t.source && t.source !== 'week' && t.source !== 'program'),
+            ...daysToUpdate[0].tasks.filter(t => t.source && t.source !== 'week'),
             ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
           ];
         }
