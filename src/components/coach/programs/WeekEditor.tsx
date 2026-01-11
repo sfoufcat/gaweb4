@@ -813,7 +813,7 @@ export function WeekEditor({
         theme: formData.theme || undefined,
         description: formData.description || undefined,
         weeklyPrompt: formData.weeklyPrompt || undefined,
-        weeklyTasks: formData.weeklyTasks.length > 0 ? formData.weeklyTasks : undefined,
+        weeklyTasks: formData.weeklyTasks,
         currentFocus: formData.currentFocus.length > 0 ? formData.currentFocus : undefined,
         notes: formData.notes.length > 0 ? formData.notes : undefined,
         manualNotes: formData.manualNotes || undefined,

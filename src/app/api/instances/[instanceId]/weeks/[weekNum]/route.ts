@@ -299,7 +299,8 @@ export async function PATCH(
     });
 
     // If distribution is specified, distribute weekly tasks to days
-    if (body.distribution && body.weeklyTasks) {
+    // Note: body.weeklyTasks can be an empty array (coach deleted all tasks), so check for array type
+    if (body.distribution && Array.isArray(body.weeklyTasks)) {
       const distribution = body.distribution;
       const weeklyTasks = processTasksWithIds(body.weeklyTasks);
 
@@ -318,7 +319,7 @@ export async function PATCH(
           if (dayToUpdate) {
             const tasksForDay = weeklyTasks.slice(taskIdx, taskIdx + tasksPerDay);
             dayToUpdate.tasks = [
-              ...dayToUpdate.tasks.filter(t => t.source !== 'week'),
+              ...dayToUpdate.tasks.filter(t => t.source && t.source !== 'week' && t.source !== 'program'),
               ...tasksForDay.map(t => ({ ...t, source: 'week' as const })),
             ];
             taskIdx += tasksPerDay;
@@ -328,7 +329,7 @@ export async function PATCH(
         // Add all tasks to all days
         for (const dayToUpdate of daysToUpdate) {
           dayToUpdate.tasks = [
-            ...dayToUpdate.tasks.filter(t => t.source !== 'week'),
+            ...dayToUpdate.tasks.filter(t => t.source && t.source !== 'week' && t.source !== 'program'),
             ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
           ];
         }
@@ -336,7 +337,7 @@ export async function PATCH(
         // Add all tasks to first day only
         if (daysToUpdate.length > 0) {
           daysToUpdate[0].tasks = [
-            ...daysToUpdate[0].tasks.filter(t => t.source !== 'week'),
+            ...daysToUpdate[0].tasks.filter(t => t.source && t.source !== 'week' && t.source !== 'program'),
             ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
           ];
         }
