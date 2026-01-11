@@ -13,6 +13,7 @@ import { MediaUpload } from '@/components/admin/MediaUpload';
 import { SyncToClientsDialog } from './SyncToClientsDialog';
 import { SyncToCohortsDialog } from './SyncToCohortsDialog';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useInstanceIdLookup } from '@/hooks/useProgramInstanceBridge';
 
 interface EnrollmentWithUser extends ProgramEnrollment {
   user?: {
@@ -401,12 +402,27 @@ export function WeekEditor({
   // Program editor context for centralized save
   const editorContext = useProgramEditorOptional();
 
+  // Lookup instanceId if not provided (for migration support)
+  const { instanceId: lookedUpInstanceId } = useInstanceIdLookup({
+    programId: programId || '',
+    enrollmentId,
+    cohortId,
+  });
+  
+  const effectiveInstanceId = instanceId || lookedUpInstanceId;
+
   // Determine view context for the editor
   const viewContext = isClientView ? 'client' : cohortId ? 'cohort' : 'template';
   const clientContextId = isClientView ? enrollmentId : cohortId;
 
   // Build API endpoint based on view context
   const getApiEndpoint = useCallback(() => {
+    // If we have an instance ID (migrated), use the new API
+    // This ensures we write to the single source of truth (program_instances)
+    if (effectiveInstanceId) {
+      return `/api/instances/${effectiveInstanceId}/weeks/${week.weekNumber}`;
+    }
+
     if (!programId) return '';
     const base = `/api/coach/org-programs/${programId}`;
     if (viewContext === 'client' && enrollmentId) {
@@ -416,7 +432,7 @@ export function WeekEditor({
       return `${base}/cohorts/${cohortId}/week-content/${week.id}`;
     }
     return `${base}/weeks/${week.id}`;
-  }, [programId, viewContext, enrollmentId, cohortId, week.id]);
+  }, [programId, viewContext, enrollmentId, cohortId, week.id, week.weekNumber, effectiveInstanceId]);
 
   // Check for pending data from context
   const pendingData = editorContext?.getPendingData('week', week.id, clientContextId);
@@ -660,8 +676,10 @@ export function WeekEditor({
     // Skip registration if we just reset (waiting for fresh data from API)
     if (recentlyReset.current) {
       recentlyReset.current = false;
-      // Reset formData to match current week data
-      setFormData(getDefaultFormData());
+      // CRITICAL: Do NOT revert formData to props here.
+      // The prop 'week' is likely still stale (awaiting re-fetch).
+      // Keeping current formData preserves the "clean" state that matches what was just saved.
+      // setFormData(getDefaultFormData()); // <-- REMOVED to prevent flash of stale content
       setHasChanges(false);
       return; // Don't register changes this cycle
     }
