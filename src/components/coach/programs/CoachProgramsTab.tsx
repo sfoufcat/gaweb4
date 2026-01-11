@@ -3991,37 +3991,42 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   const instanceWeek = instance?.weeks?.find(w => w.weekNumber === weekNumber);
 
                   // Use existing week data or create a default
-                  // Priority: instanceWeek > cohortWeekContent > templateWeek
-                  const selectedWeek: ProgramWeek = instanceWeek && templateWeek ? {
+                  // Priority: instanceId means new system (always), else old system fallback
+                  // When instanceId exists, we use instance data even if still loading (template as base)
+                  const useNewSystem = !!instanceId && templateWeek;
+
+                  const selectedWeek: ProgramWeek = useNewSystem ? {
                     // NEW SYSTEM: Use instance week data (from program_instances collection)
+                    // If instanceWeek hasn't loaded yet, use template values as fallback
                     id: templateWeek.id,
                     programId: templateWeek.programId,
-                    moduleId: instanceWeek.moduleId || templateWeek.moduleId || '',
+                    moduleId: instanceWeek?.moduleId || templateWeek.moduleId || '',
                     organizationId: templateWeek.organizationId,
-                    weekNumber: instanceWeek.weekNumber,
+                    weekNumber: instanceWeek?.weekNumber ?? templateWeek.weekNumber,
                     order: templateWeek.order || templateWeek.weekNumber,
                     startDayIndex: templateWeek.startDayIndex || startDay,
                     endDayIndex: templateWeek.endDayIndex || endDay,
-                    name: instanceWeek.name || templateWeek.name,
-                    description: instanceWeek.description || templateWeek.description,
-                    theme: instanceWeek.theme || templateWeek.theme,
+                    name: instanceWeek?.name || templateWeek.name,
+                    description: instanceWeek?.description || templateWeek.description,
+                    theme: instanceWeek?.theme || templateWeek.theme,
                     createdAt: templateWeek.createdAt,
                     updatedAt: templateWeek.updatedAt,
                     fillSource: templateWeek.fillSource,
                     notes: templateWeek.notes || [],
                     currentFocus: templateWeek.currentFocus || [],
-                    // Use instance week data for customizable fields
-                    weeklyPrompt: instanceWeek.weeklyPrompt ?? templateWeek.weeklyPrompt,
-                    weeklyTasks: instanceWeek.weeklyTasks ?? templateWeek.weeklyTasks ?? [],
+                    // Use instance week data for customizable fields (fall back to template if loading)
+                    weeklyPrompt: instanceWeek?.weeklyPrompt ?? templateWeek.weeklyPrompt,
+                    weeklyTasks: instanceWeek?.weeklyTasks ?? templateWeek.weeklyTasks ?? [],
                     weeklyHabits: templateWeek.weeklyHabits ?? [],
-                    distribution: instanceWeek.distribution ?? templateWeek.distribution ?? 'spread',
-                    coachRecordingUrl: instanceWeek.coachRecordingUrl ?? templateWeek.coachRecordingUrl,
-                    coachRecordingNotes: instanceWeek.coachRecordingNotes ?? templateWeek.coachRecordingNotes,
+                    distribution: instanceWeek?.distribution ?? templateWeek.distribution ?? 'spread',
+                    coachRecordingUrl: instanceWeek?.coachRecordingUrl ?? templateWeek.coachRecordingUrl,
+                    coachRecordingNotes: instanceWeek?.coachRecordingNotes ?? templateWeek.coachRecordingNotes,
                     manualNotes: templateWeek.manualNotes,
-                    linkedSummaryIds: instanceWeek.linkedSummaryIds ?? templateWeek.linkedSummaryIds ?? [],
-                    linkedCallEventIds: instanceWeek.linkedCallEventIds ?? templateWeek.linkedCallEventIds ?? [],
-                  } : isCohortMode && templateWeek ? {
+                    linkedSummaryIds: instanceWeek?.linkedSummaryIds ?? templateWeek.linkedSummaryIds ?? [],
+                    linkedCallEventIds: instanceWeek?.linkedCallEventIds ?? templateWeek.linkedCallEventIds ?? [],
+                  } : isCohortMode && !instanceId && templateWeek ? {
                     // OLD SYSTEM FALLBACK: Use cohortWeekContent (deprecated - for unmigrated cohorts)
+                    // Only used when instanceId is NOT available (not migrated)
                     id: templateWeek.id,
                     programId: templateWeek.programId,
                     moduleId: templateWeek.moduleId || '',
@@ -4181,9 +4186,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 }
                               }
                             }
-                          } else if (instanceId && instance) {
+                          } else if (instanceId) {
                             // NEW SYSTEM: Save to program_instances collection
-                            console.log('[WEEK_EDITOR_SAVE] Entering INSTANCE branch (new system)');
+                            // Note: We only need instanceId to save, not the full instance data
+                            console.log('[WEEK_EDITOR_SAVE] Entering INSTANCE branch (new system)', { instanceId });
                             const res = await fetch(`/api/instances/${instanceId}/weeks/${weekNumber}`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json' },
