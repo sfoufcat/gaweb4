@@ -73,11 +73,26 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute query with ordering and pagination
-    const snapshot = await query
-      .orderBy('createdAt', 'desc')
-      .limit(limit + 1)  // Fetch one extra to check if there are more
-      .offset(offset)
-      .get();
+    // Note: When querying by cohortId, we expect at most 1 instance per cohort,
+    // so we can skip ordering to avoid requiring a composite index
+    let snapshot;
+    try {
+      if (cohortId) {
+        // Simple query for single cohort - no ordering needed
+        snapshot = await query.limit(limit + 1).get();
+      } else {
+        // Full query with ordering for list views
+        snapshot = await query
+          .orderBy('createdAt', 'desc')
+          .limit(limit + 1)
+          .offset(offset)
+          .get();
+      }
+    } catch (queryError) {
+      // If the composite index doesn't exist, fall back to simple query
+      console.warn('[INSTANCES_LIST_GET] Index query failed, using fallback:', queryError);
+      snapshot = await query.limit(limit + 1).get();
+    }
 
     // Filter out soft-deleted documents in-memory
     // (Firestore 'where field == null' doesn't match documents missing the field)
