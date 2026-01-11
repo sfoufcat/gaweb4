@@ -429,8 +429,11 @@ export function WeekEditor({
       // Client week - may need POST if doesn't exist, PATCH if exists
       return `${base}/client-weeks`;
     } else if (viewContext === 'cohort' && cohortId) {
-      return `${base}/cohorts/${cohortId}/week-content/${week.id}`;
+      // Use weekNumber for cohort paths - more reliable than id since instance weeks
+      // may have different IDs than template weeks
+      return `${base}/cohorts/${cohortId}/week-content/${week.weekNumber}`;
     }
+    // Template path - use week.id
     return `${base}/weeks/${week.id}`;
   }, [programId, viewContext, enrollmentId, cohortId, week.id, week.weekNumber, effectiveInstanceId]);
 

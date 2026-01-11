@@ -1583,11 +1583,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   }, [apiBasePath]);;
 
   // Fetch cohort-specific week content for group programs
-  const fetchCohortWeekContent = useCallback(async (programId: string, cohortId: string, weekId: string) => {
-    console.log('[COHORT_CONTENT_FETCH] Fetching...', { programId, cohortId, weekId });
+  const fetchCohortWeekContent = useCallback(async (programId: string, cohortId: string, weekNumber: number) => {
+    console.log('[COHORT_CONTENT_FETCH] Fetching...', { programId, cohortId, weekNumber });
     try {
       setLoadingCohortContent(true);
-      const response = await fetch(`${apiBasePath}/${programId}/cohorts/${cohortId}/week-content/${weekId}`);
+      const response = await fetch(`${apiBasePath}/${programId}/cohorts/${cohortId}/week-content/${weekNumber}`);
       if (response.ok) {
         const data = await response.json();
         console.log('[COHORT_CONTENT_FETCH] Success, content:', {
@@ -1646,8 +1646,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         // Also refresh cohort week content if a week is selected
         if (sidebarSelection?.type === 'week') {
           const templateWeek = programWeeks.find(w => w.weekNumber === sidebarSelection.weekNumber);
-          if (templateWeek?.id) {
-            await fetchCohortWeekContent(selectedProgram.id, cohortViewContext.cohortId, templateWeek.id);
+          if (templateWeek) {
+            await fetchCohortWeekContent(selectedProgram.id, cohortViewContext.cohortId, templateWeek.weekNumber);
           }
         }
       } else {
@@ -1876,9 +1876,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     ) {
       // Find the template week for this week number
       const templateWeek = programWeeks.find(w => w.weekNumber === sidebarSelection.weekNumber);
-      console.log('[COHORT_CONTENT_EFFECT] templateWeek:', templateWeek?.id, 'for weekNumber:', sidebarSelection.weekNumber);
-      if (templateWeek?.id) {
-        fetchCohortWeekContent(selectedProgram.id, cohortViewContext.cohortId, templateWeek.id);
+      console.log('[COHORT_CONTENT_EFFECT] templateWeek:', templateWeek?.weekNumber, 'for weekNumber:', sidebarSelection.weekNumber);
+      if (templateWeek) {
+        fetchCohortWeekContent(selectedProgram.id, cohortViewContext.cohortId, templateWeek.weekNumber);
       } else {
         // No template week yet - clear cohort content
         console.log('[COHORT_CONTENT_EFFECT] No template week found, clearing content');
@@ -2128,8 +2128,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       // Also refresh cohort week content if a week is selected
       if (sidebarSelection?.type === 'week') {
         const templateWeek = programWeeks.find(w => w.weekNumber === sidebarSelection.weekNumber);
-        if (templateWeek?.id) {
-          await fetchCohortWeekContent(selectedProgram.id, cohortViewContext.cohortId, templateWeek.id);
+        if (templateWeek) {
+          await fetchCohortWeekContent(selectedProgram.id, cohortViewContext.cohortId, templateWeek.weekNumber);
         }
       }
     } else {
@@ -4298,11 +4298,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           } else if (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId) {
                             // OLD SYSTEM FALLBACK: Save cohort-specific week content (deprecated)
                             console.log('[WEEK_EDITOR_SAVE] Entering COHORT branch (old system fallback)');
-                            let weekIdForCohort = templateWeek?.id;
-                            console.log('[WEEK_EDITOR_SAVE] templateWeek?.id =', weekIdForCohort);
+                            console.log('[WEEK_EDITOR_SAVE] weekNumber =', weekNumber);
 
                             // If template week doesn't exist, create it first (without tasks - they go to cohort content)
-                            if (!weekIdForCohort) {
+                            if (!templateWeek) {
                               const createWeekRes = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -4318,20 +4317,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                               });
                               if (createWeekRes.ok) {
                                 const weekData = await createWeekRes.json();
-                                weekIdForCohort = weekData.week?.id;
                                 setProgramWeeks(prev => [...prev, weekData.week]);
                               }
                             }
 
-                            if (weekIdForCohort) {
-                              const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
-                              console.log('[WEEK_EDITOR_SAVE] Making cohort PUT request', {
-                                url: `${apiBasePath}/${selectedProgram?.id}/cohorts/${cohortViewContext.cohortId}/week-content/${weekIdForCohort}`,
-                                weeklyTasksUpdated,
-                                tasksCount: updates.weeklyTasks?.length,
-                              });
-                              const res = await fetch(
-                                `${apiBasePath}/${selectedProgram?.id}/cohorts/${cohortViewContext.cohortId}/week-content/${weekIdForCohort}`,
+                            // Use weekNumber for cohort API (more reliable than id)
+                            const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
+                            console.log('[WEEK_EDITOR_SAVE] Making cohort PUT request', {
+                              url: `${apiBasePath}/${selectedProgram?.id}/cohorts/${cohortViewContext.cohortId}/week-content/${weekNumber}`,
+                              weeklyTasksUpdated,
+                              tasksCount: updates.weeklyTasks?.length,
+                            });
+                            const res = await fetch(
+                              `${apiBasePath}/${selectedProgram?.id}/cohorts/${cohortViewContext.cohortId}/week-content/${weekNumber}`,
                                 {
                                   method: 'PUT',
                                   headers: { 'Content-Type': 'application/json' },
@@ -4345,21 +4343,18 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                   }),
                                 }
                               );
-                              console.log('[WEEK_EDITOR_SAVE] Cohort PUT response status:', res.status, res.ok);
-                              if (res.ok) {
-                                const data = await res.json();
-                                console.log('[WEEK_EDITOR_SAVE] Cohort save SUCCESS, content:', data.content);
-                                setCohortWeekContent(data.content || null);
-                                // Refresh cohort days if distribution happened
-                                if (weeklyTasksUpdated && cohortViewContext.cohortId) {
-                                  fetchCohortDays(selectedProgram!.id, cohortViewContext.cohortId);
-                                }
-                              } else {
-                                const errorText = await res.text();
-                                console.error('[WEEK_EDITOR_SAVE] Cohort PUT FAILED:', res.status, errorText);
+                            console.log('[WEEK_EDITOR_SAVE] Cohort PUT response status:', res.status, res.ok);
+                            if (res.ok) {
+                              const data = await res.json();
+                              console.log('[WEEK_EDITOR_SAVE] Cohort save SUCCESS, content:', data.content);
+                              setCohortWeekContent(data.content || null);
+                              // Refresh cohort days if distribution happened
+                              if (weeklyTasksUpdated && cohortViewContext.cohortId) {
+                                fetchCohortDays(selectedProgram!.id, cohortViewContext.cohortId);
                               }
                             } else {
-                              console.error('[WEEK_EDITOR_SAVE] No weekIdForCohort - cannot save cohort content');
+                              const errorText = await res.text();
+                              console.error('[WEEK_EDITOR_SAVE] Cohort PUT FAILED:', res.status, errorText);
                             }
                           } else if (templateWeek) {
                             console.log('[WEEK_EDITOR_SAVE] Entering TEMPLATE branch (templateWeek exists)');
