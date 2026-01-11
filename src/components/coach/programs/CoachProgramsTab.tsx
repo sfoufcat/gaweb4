@@ -4296,30 +4296,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                               console.error('[WEEK_EDITOR_SAVE] Instance PATCH FAILED:', res.status, errorText);
                             }
                           } else if (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId) {
-                            // OLD SYSTEM FALLBACK: Save cohort-specific week content (deprecated)
-                            console.log('[WEEK_EDITOR_SAVE] Entering COHORT branch (old system fallback)');
+                            // COHORT MODE: Save to program_instances via cohort week-content API
+                            // The API handles instance creation automatically via getOrCreateCohortInstance
+                            // IMPORTANT: Do NOT create template weeks here - cohort saves go to instances only
+                            console.log('[WEEK_EDITOR_SAVE] Entering COHORT branch');
                             console.log('[WEEK_EDITOR_SAVE] weekNumber =', weekNumber);
-
-                            // If template week doesn't exist, create it first (without tasks - they go to cohort content)
-                            if (!templateWeek) {
-                              const createWeekRes = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  weekNumber,
-                                  startDayIndex: startDay,
-                                  endDayIndex: endDay,
-                                  // Don't include tasks - they go to cohort content
-                                  name: updates.name,
-                                  theme: updates.theme,
-                                  description: updates.description,
-                                }),
-                              });
-                              if (createWeekRes.ok) {
-                                const weekData = await createWeekRes.json();
-                                setProgramWeeks(prev => [...prev, weekData.week]);
-                              }
-                            }
 
                             // Use weekNumber for cohort API (more reliable than id)
                             const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
@@ -4334,10 +4315,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                   method: 'PUT',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({
+                                    // Include all week fields - they go to the instance, not template
+                                    name: updates.name,
+                                    theme: updates.theme,
                                     weeklyTasks: updates.weeklyTasks,
                                     weeklyHabits: updates.weeklyHabits,
                                     weeklyPrompt: updates.weeklyPrompt,
                                     distribution: updates.distribution,
+                                    coachRecordingUrl: updates.coachRecordingUrl,
+                                    coachRecordingNotes: updates.coachRecordingNotes,
+                                    linkedSummaryIds: updates.linkedSummaryIds,
+                                    linkedCallEventIds: updates.linkedCallEventIds,
                                     // Distribute tasks to cohort days, overwriting existing
                                     ...(weeklyTasksUpdated && { distributeTasksNow: true, overwriteExistingTasks: true }),
                                   }),
@@ -4352,6 +4340,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                               if (weeklyTasksUpdated && cohortViewContext.cohortId) {
                                 fetchCohortDays(selectedProgram!.id, cohortViewContext.cohortId);
                               }
+                              // Refresh instance data to get the updated week
+                              refreshInstance();
                             } else {
                               const errorText = await res.text();
                               console.error('[WEEK_EDITOR_SAVE] Cohort PUT FAILED:', res.status, errorText);

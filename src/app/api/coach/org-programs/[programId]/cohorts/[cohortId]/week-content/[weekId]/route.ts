@@ -439,63 +439,74 @@ export async function GET(
       theme: week.theme,
     };
 
-    // Merge completion status from tasks collection
-    if (content.weeklyTasks && content.weeklyTasks.length > 0) {
-      const threshold = await getProgramCompletionThreshold(programId);
+    // Merge completion status from tasks collection (wrapped in try-catch to not block the response)
+    try {
+      if (content.weeklyTasks && content.weeklyTasks.length > 0) {
+        const threshold = await getProgramCompletionThreshold(programId);
 
-      // Get cohort members
-      const enrollmentsSnapshot = await adminDb
-        .collection('program_enrollments')
-        .where('cohortId', '==', cohortId)
-        .where('status', 'in', ['active', 'upcoming'])
-        .get();
-      const memberIds = enrollmentsSnapshot.docs.map(d => d.data().userId as string);
-      const totalMembers = memberIds.length;
-
-      // Calculate calendar week dates
-      let calendarWeek: CalendarWeek | undefined;
-      if (cohortData.startDate) {
-        const includeWeekends = programData.includeWeekends !== false;
-        const totalDays = programData.lengthDays;
-        const calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
-        const calendarRegularWeeks = calendarWeeks
-          .filter((w: CalendarWeek) => w.weekNumber > 0)
-          .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
-
-        // Map week to calendar week by position
-        const weekPosition = week.weekNumber - 1;
-        calendarWeek = calendarRegularWeeks[weekPosition];
-      }
-
-      if (calendarWeek && totalMembers > 0) {
-        // Query completed tasks for the week's date range
-        const completedTasksSnapshot = await adminDb
-          .collection('tasks')
-          .where('date', '>=', calendarWeek.startDate)
-          .where('date', '<=', calendarWeek.endDate)
-          .where('completed', '==', true)
+        // Get cohort members
+        const enrollmentsSnapshot = await adminDb
+          .collection('program_enrollments')
+          .where('cohortId', '==', cohortId)
+          .where('status', 'in', ['active', 'upcoming'])
           .get();
+        const memberIds = enrollmentsSnapshot.docs.map(d => d.data().userId as string);
+        const totalMembers = memberIds.length;
 
-        content.weeklyTasks = content.weeklyTasks.map((template) => {
-          const memberCompletions = completedTasksSnapshot.docs.filter(d => {
-            const data = d.data();
-            const titleMatches = data.title === template.label || data.originalTitle === template.label;
-            return titleMatches && memberIds.includes(data.userId);
-          });
+        // Calculate calendar week dates
+        let calendarWeek: CalendarWeek | undefined;
+        if (cohortData.startDate) {
+          const includeWeekends = programData.includeWeekends !== false;
+          const totalDays = programData.lengthDays;
+          const calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
+          const calendarRegularWeeks = calendarWeeks
+            .filter((w: CalendarWeek) => w.weekNumber > 0)
+            .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
 
-          const completedCount = memberCompletions.length;
-          const completionRate = totalMembers > 0 ? Math.round((completedCount / totalMembers) * 100) : 0;
-          const isThresholdMet = completionRate >= threshold;
+          // Map week to calendar week by position
+          const weekPosition = week.weekNumber - 1;
+          calendarWeek = calendarRegularWeeks[weekPosition];
+        }
 
-          return {
-            ...template,
-            completed: isThresholdMet,
-            completionRate,
-            completedCount,
-            totalMembers,
-          };
-        });
+        if (calendarWeek && totalMembers > 0) {
+          // Query completed tasks for the week's date range
+          // Note: This query requires a composite index on tasks(completed, date)
+          try {
+            const completedTasksSnapshot = await adminDb
+              .collection('tasks')
+              .where('completed', '==', true)
+              .where('date', '>=', calendarWeek.startDate)
+              .where('date', '<=', calendarWeek.endDate)
+              .get();
+
+            content.weeklyTasks = content.weeklyTasks.map((template) => {
+              const memberCompletions = completedTasksSnapshot.docs.filter(d => {
+                const data = d.data();
+                const titleMatches = data.title === template.label || data.originalTitle === template.label;
+                return titleMatches && memberIds.includes(data.userId);
+              });
+
+              const completedCount = memberCompletions.length;
+              const completionRate = totalMembers > 0 ? Math.round((completedCount / totalMembers) * 100) : 0;
+              const isThresholdMet = completionRate >= threshold;
+
+              return {
+                ...template,
+                completed: isThresholdMet,
+                completionRate,
+                completedCount,
+                totalMembers,
+              };
+            });
+          } catch (queryErr) {
+            console.warn('[COHORT_WEEK_CONTENT_GET] Completion query failed (likely missing index):', queryErr);
+            // Continue without completion data - still return the week content
+          }
+        }
       }
+    } catch (completionErr) {
+      console.warn('[COHORT_WEEK_CONTENT_GET] Completion calculation failed:', completionErr);
+      // Continue without completion data - still return the week content
     }
 
     return NextResponse.json({ content, exists: true });
@@ -596,6 +607,8 @@ export async function PUT(
     // Update the week with new content
     const updatedWeek: ProgramInstanceWeek = {
       ...weeks[weekIndex],
+      name: body.name?.trim() || weeks[weekIndex].name,
+      theme: body.theme?.trim() || weeks[weekIndex].theme,
       coachRecordingUrl: body.coachRecordingUrl?.trim() || undefined,
       coachRecordingNotes: body.coachRecordingNotes?.trim() || undefined,
       linkedSummaryIds: body.linkedSummaryIds || [],
