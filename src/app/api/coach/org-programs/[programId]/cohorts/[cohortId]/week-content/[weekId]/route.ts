@@ -148,7 +148,7 @@ export async function GET(
             .collection('tasks')
             .where('date', '>=', calendarWeek.startDate)
             .where('date', '<=', calendarWeek.endDate)
-            .where('status', '==', 'completed')
+            .where('completed', '==', true)
             .get();
 
           content.weeklyTasks = content.weeklyTasks.map((template) => {

@@ -51,9 +51,10 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
     // Build query
+    // Note: We can't filter 'deletedAt == null' because Firestore doesn't match
+    // documents where the field doesn't exist. We filter in-memory instead.
     let query = adminDb.collection('program_instances')
-      .where('organizationId', '==', organizationId)
-      .where('deletedAt', '==', null);
+      .where('organizationId', '==', organizationId);
 
     if (programId) {
       query = query.where('programId', '==', programId);
@@ -78,8 +79,15 @@ export async function GET(request: NextRequest) {
       .offset(offset)
       .get();
 
-    const hasMore = snapshot.docs.length > limit;
-    const docs = hasMore ? snapshot.docs.slice(0, limit) : snapshot.docs;
+    // Filter out soft-deleted documents in-memory
+    // (Firestore 'where field == null' doesn't match documents missing the field)
+    const activeDocs = snapshot.docs.filter(doc => {
+      const data = doc.data();
+      return !data.deletedAt;
+    });
+
+    const hasMore = activeDocs.length > limit;
+    const docs = hasMore ? activeDocs.slice(0, limit) : activeDocs;
 
     // Map to instances (without full weeks data for list view)
     const instances: Array<Omit<ProgramInstance, 'weeks'> & { weekCount: number; dayCount: number }> = docs.map(doc => {
@@ -125,6 +133,103 @@ export async function GET(request: NextRequest) {
       }
       return instance;
     }));
+
+    // Auto-create instance for cohort if none exists (migration support)
+    if (cohortId && enrichedInstances.length === 0 && programId) {
+      console.log(`[INSTANCES_LIST_GET] No instance found for cohort ${cohortId}, auto-creating...`);
+
+      try {
+        // Fetch program and cohort data
+        const [programDoc, cohortDoc] = await Promise.all([
+          adminDb.collection('programs').doc(programId).get(),
+          adminDb.collection('program_cohorts').doc(cohortId).get(),
+        ]);
+
+        if (programDoc.exists && cohortDoc.exists) {
+          const programData = programDoc.data();
+          const cohortData = cohortDoc.data();
+
+          // Verify ownership
+          if (programData?.organizationId === organizationId && cohortData?.programId === programId) {
+            // Fetch program weeks from OLD system to copy structure
+            const weeksSnapshot = await adminDb.collection('program_weeks')
+              .where('programId', '==', programId)
+              .orderBy('weekNumber', 'asc')
+              .get();
+
+            // Build weeks array for the instance
+            const weeks = weeksSnapshot.docs.map(weekDoc => {
+              const weekData = weekDoc.data();
+              const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+              const startDayIndex = weekData.startDayIndex || ((weekData.weekNumber - 1) * daysPerWeek + 1);
+              const endDayIndex = weekData.endDayIndex || (startDayIndex + daysPerWeek - 1);
+
+              // Create days array for this week
+              const days = [];
+              for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+                days.push({
+                  dayIndex,
+                  globalDayIndex: dayIndex,
+                  tasks: [],
+                  habits: [],
+                });
+              }
+
+              return {
+                weekNumber: weekData.weekNumber,
+                moduleId: weekData.moduleId,
+                name: weekData.name,
+                theme: weekData.theme,
+                weeklyTasks: (weekData.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
+                  ...t,
+                  id: t.id || crypto.randomUUID(),
+                })),
+                weeklyHabits: weekData.weeklyHabits || [],
+                weeklyPrompt: weekData.weeklyPrompt,
+                distribution: weekData.distribution,
+                days,
+              };
+            });
+
+            // Create the instance
+            const instanceData = {
+              programId,
+              organizationId,
+              type: 'cohort' as const,
+              cohortId,
+              startDate: cohortData.startDate,
+              endDate: cohortData.endDate,
+              includeWeekends: programData.includeWeekends !== false,
+              dailyFocusSlots: programData.dailyFocusSlots || 3,
+              weeks,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+
+            const newInstanceRef = await adminDb.collection('program_instances').add(instanceData);
+            console.log(`[INSTANCES_LIST_GET] Auto-created instance ${newInstanceRef.id} for cohort ${cohortId}`);
+
+            // Return the newly created instance
+            return NextResponse.json({
+              instances: [{
+                id: newInstanceRef.id,
+                ...instanceData,
+                weekCount: weeks.length,
+                dayCount: weeks.reduce((sum, w) => sum + w.days.length, 0),
+                cohortName: cohortData.name || 'Unknown Cohort',
+              }],
+              hasMore: false,
+              offset: 0,
+              limit,
+              autoCreated: true,
+            });
+          }
+        }
+      } catch (createError) {
+        console.error('[INSTANCES_LIST_GET] Auto-create failed:', createError);
+        // Fall through to return empty results
+      }
+    }
 
     return NextResponse.json({
       instances: enrichedInstances,
