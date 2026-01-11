@@ -3987,10 +3987,41 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   const isCohortMode = selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort';
                   const existingWeek = isClientMode ? clientWeek : templateWeek;
 
+                  // NEW SYSTEM: Check if we have instance week data
+                  const instanceWeek = instance?.weeks?.find(w => w.weekNumber === weekNumber);
+
                   // Use existing week data or create a default
-                  // For cohort mode, merge cohortWeekContent with templateWeek
-                  const selectedWeek: ProgramWeek = isCohortMode && templateWeek ? {
-                    // Base structure from template
+                  // Priority: instanceWeek > cohortWeekContent > templateWeek
+                  const selectedWeek: ProgramWeek = instanceWeek && templateWeek ? {
+                    // NEW SYSTEM: Use instance week data (from program_instances collection)
+                    id: templateWeek.id,
+                    programId: templateWeek.programId,
+                    moduleId: instanceWeek.moduleId || templateWeek.moduleId || '',
+                    organizationId: templateWeek.organizationId,
+                    weekNumber: instanceWeek.weekNumber,
+                    order: templateWeek.order || templateWeek.weekNumber,
+                    startDayIndex: templateWeek.startDayIndex || startDay,
+                    endDayIndex: templateWeek.endDayIndex || endDay,
+                    name: instanceWeek.name || templateWeek.name,
+                    description: instanceWeek.description || templateWeek.description,
+                    theme: instanceWeek.theme || templateWeek.theme,
+                    createdAt: templateWeek.createdAt,
+                    updatedAt: templateWeek.updatedAt,
+                    fillSource: templateWeek.fillSource,
+                    notes: templateWeek.notes || [],
+                    currentFocus: templateWeek.currentFocus || [],
+                    // Use instance week data for customizable fields
+                    weeklyPrompt: instanceWeek.weeklyPrompt ?? templateWeek.weeklyPrompt,
+                    weeklyTasks: instanceWeek.weeklyTasks ?? templateWeek.weeklyTasks ?? [],
+                    weeklyHabits: templateWeek.weeklyHabits ?? [],
+                    distribution: instanceWeek.distribution ?? templateWeek.distribution ?? 'spread',
+                    coachRecordingUrl: instanceWeek.coachRecordingUrl ?? templateWeek.coachRecordingUrl,
+                    coachRecordingNotes: instanceWeek.coachRecordingNotes ?? templateWeek.coachRecordingNotes,
+                    manualNotes: templateWeek.manualNotes,
+                    linkedSummaryIds: instanceWeek.linkedSummaryIds ?? templateWeek.linkedSummaryIds ?? [],
+                    linkedCallEventIds: instanceWeek.linkedCallEventIds ?? templateWeek.linkedCallEventIds ?? [],
+                  } : isCohortMode && templateWeek ? {
+                    // OLD SYSTEM FALLBACK: Use cohortWeekContent (deprecated - for unmigrated cohorts)
                     id: templateWeek.id,
                     programId: templateWeek.programId,
                     moduleId: templateWeek.moduleId || '',
@@ -4007,7 +4038,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     fillSource: templateWeek.fillSource,
                     notes: templateWeek.notes || [],
                     currentFocus: templateWeek.currentFocus || [],
-                    // Override with cohort-specific content (if exists):
                     weeklyPrompt: cohortWeekContent?.weeklyPrompt ?? templateWeek.weeklyPrompt,
                     weeklyTasks: cohortWeekContent?.weeklyTasks ?? templateWeek.weeklyTasks ?? [],
                     weeklyHabits: cohortWeekContent?.weeklyHabits ?? templateWeek.weeklyHabits ?? [],
@@ -4151,12 +4181,41 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 }
                               }
                             }
+                          } else if (instanceId && instance) {
+                            // NEW SYSTEM: Save to program_instances collection
+                            console.log('[WEEK_EDITOR_SAVE] Entering INSTANCE branch (new system)');
+                            const res = await fetch(`/api/instances/${instanceId}/weeks/${weekNumber}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                name: updates.name,
+                                theme: updates.theme,
+                                description: updates.description,
+                                weeklyPrompt: updates.weeklyPrompt,
+                                weeklyTasks: updates.weeklyTasks,
+                                distribution: updates.distribution,
+                                coachRecordingUrl: updates.coachRecordingUrl,
+                                coachRecordingNotes: updates.coachRecordingNotes,
+                                linkedSummaryIds: updates.linkedSummaryIds,
+                                linkedCallEventIds: updates.linkedCallEventIds,
+                              }),
+                            });
+                            console.log('[WEEK_EDITOR_SAVE] Instance PATCH response:', res.status, res.ok);
+                            if (res.ok) {
+                              const data = await res.json();
+                              console.log('[WEEK_EDITOR_SAVE] Instance save SUCCESS');
+                              // Refresh instance to get updated data
+                              refreshInstance();
+                            } else {
+                              const errorText = await res.text();
+                              console.error('[WEEK_EDITOR_SAVE] Instance PATCH FAILED:', res.status, errorText);
+                            }
                           } else if (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId) {
-                            // Save cohort-specific week content + optionally distribute to cohort days
-                            console.log('[WEEK_EDITOR_SAVE] Entering COHORT branch');
+                            // OLD SYSTEM FALLBACK: Save cohort-specific week content (deprecated)
+                            console.log('[WEEK_EDITOR_SAVE] Entering COHORT branch (old system fallback)');
                             let weekIdForCohort = templateWeek?.id;
                             console.log('[WEEK_EDITOR_SAVE] templateWeek?.id =', weekIdForCohort);
-                            
+
                             // If template week doesn't exist, create it first (without tasks - they go to cohort content)
                             if (!weekIdForCohort) {
                               const createWeekRes = await fetch(`${apiBasePath}/${selectedProgram?.id}/weeks`, {
@@ -4178,7 +4237,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 setProgramWeeks(prev => [...prev, weekData.week]);
                               }
                             }
-                            
+
                             if (weekIdForCohort) {
                               const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
                               console.log('[WEEK_EDITOR_SAVE] Making cohort PUT request', {
