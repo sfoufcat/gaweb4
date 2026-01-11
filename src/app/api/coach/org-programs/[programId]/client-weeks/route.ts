@@ -16,7 +16,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { ProgramInstance, ProgramInstanceWeek, ProgramEnrollment, Program, ProgramTaskTemplate } from '@/types';
+import type { ProgramInstance, ProgramInstanceWeek, ProgramInstanceDay, ProgramEnrollment, Program, ProgramTaskTemplate } from '@/types';
+import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
 
 /**
  * Process tasks to ensure each has a unique ID
@@ -65,21 +66,43 @@ async function getOrCreateIndividualInstance(
 
   // Create new instance from template
   console.log(`[CLIENT_WEEKS] Auto-creating instance for enrollment ${enrollmentId}`);
-  const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+  const includeWeekends = programData.includeWeekends !== false;
+  const daysPerWeek = includeWeekends ? 7 : 5;
+  const totalDays = programData.lengthDays || 28;
+
+  // Calculate calendar weeks from enrollment start date
+  let calendarWeeks: CalendarWeek[] = [];
+  if (enrollment.startedAt) {
+    calendarWeeks = calculateCalendarWeeks(enrollment.startedAt, totalDays, includeWeekends);
+  }
+  const regularCalendarWeeks = calendarWeeks
+    .filter(w => w.weekNumber > 0)
+    .sort((a, b) => a.startDayIndex - b.startDayIndex);
+
+  // Helper to get calendar date for a day
+  const getCalendarDateForDay = (weekPosition: number, dayOffset: number): string | undefined => {
+    const calendarWeek = regularCalendarWeeks[weekPosition];
+    if (!calendarWeek?.startDate) return undefined;
+    const startDate = new Date(calendarWeek.startDate);
+    startDate.setDate(startDate.getDate() + dayOffset);
+    return startDate.toISOString().split('T')[0];
+  };
 
   // Read weeks from programs.weeks[] or fallback to program_weeks collection
   let weeks: ProgramInstanceWeek[] = [];
 
   if (programData.weeks && Array.isArray(programData.weeks) && programData.weeks.length > 0) {
-    weeks = programData.weeks.map((weekData) => {
-      const startDayIndex = weekData.startDayIndex || ((weekData.weekNumber - 1) * daysPerWeek + 1);
-      const endDayIndex = weekData.endDayIndex || (startDayIndex + daysPerWeek - 1);
+    weeks = programData.weeks.map((weekData, weekPosition) => {
+      const calendarWeek = regularCalendarWeeks[weekPosition];
+      const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
+      const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
 
-      const days = [];
-      for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+      const days: ProgramInstanceDay[] = [];
+      for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
         days.push({
-          dayIndex,
-          globalDayIndex: dayIndex,
+          dayIndex: i + 1,
+          globalDayIndex: startDayIndex + i,
+          calendarDate: getCalendarDateForDay(weekPosition, i),
           tasks: [],
           habits: [],
         });
@@ -110,16 +133,18 @@ async function getOrCreateIndividualInstance(
       .orderBy('weekNumber', 'asc')
       .get();
 
-    weeks = weeksSnapshot.docs.map(weekDoc => {
+    weeks = weeksSnapshot.docs.map((weekDoc, weekPosition) => {
       const weekData = weekDoc.data();
-      const startDayIndex = weekData.startDayIndex || ((weekData.weekNumber - 1) * daysPerWeek + 1);
-      const endDayIndex = weekData.endDayIndex || (startDayIndex + daysPerWeek - 1);
+      const calendarWeek = regularCalendarWeeks[weekPosition];
+      const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
+      const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
 
-      const days = [];
-      for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+      const days: ProgramInstanceDay[] = [];
+      for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
         days.push({
-          dayIndex,
-          globalDayIndex: dayIndex,
+          dayIndex: i + 1,
+          globalDayIndex: startDayIndex + i,
+          calendarDate: getCalendarDateForDay(weekPosition, i),
           tasks: [],
           habits: [],
         });

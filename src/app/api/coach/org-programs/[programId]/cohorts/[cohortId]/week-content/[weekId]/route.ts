@@ -214,21 +214,46 @@ async function getOrCreateCohortInstance(
 
   // Create new instance from template
   console.log(`[COHORT_WEEK_CONTENT] Auto-creating instance for cohort ${cohortId}`);
-  const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+  const includeWeekends = programData.includeWeekends !== false;
+  const daysPerWeek = includeWeekends ? 7 : 5;
+  const totalDays = programData.lengthDays || 28;
+
+  // Calculate calendar weeks from cohort start date
+  let calendarWeeks: CalendarWeek[] = [];
+  if (cohortData.startDate) {
+    calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
+  }
+  // Filter to only regular weeks (weekNumber > 0) and sort by startDayIndex
+  const regularCalendarWeeks = calendarWeeks
+    .filter(w => w.weekNumber > 0)
+    .sort((a, b) => a.startDayIndex - b.startDayIndex);
+
+  // Helper to get calendar date for a day index within a week
+  const getCalendarDateForDay = (weekPosition: number, dayOffset: number): string | undefined => {
+    const calendarWeek = regularCalendarWeeks[weekPosition];
+    if (!calendarWeek?.startDate) return undefined;
+    const startDate = new Date(calendarWeek.startDate);
+    startDate.setDate(startDate.getDate() + dayOffset);
+    return startDate.toISOString().split('T')[0];
+  };
 
   // Read weeks from programs.weeks[] or fallback to program_weeks collection
   let weeks: ProgramInstanceWeek[] = [];
 
   if (programData.weeks && Array.isArray(programData.weeks) && programData.weeks.length > 0) {
-    weeks = programData.weeks.map((weekData) => {
-      const startDayIndex = weekData.startDayIndex || ((weekData.weekNumber - 1) * daysPerWeek + 1);
-      const endDayIndex = weekData.endDayIndex || (startDayIndex + daysPerWeek - 1);
+    weeks = programData.weeks.map((weekData, weekPosition) => {
+      const calendarWeek = regularCalendarWeeks[weekPosition];
+      // Use calendar week's day range if available, otherwise calculate from weekNumber
+      const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
+      const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
 
-      const days = [];
-      for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+      const days: ProgramInstanceDay[] = [];
+      for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
+        const dayIndex = startDayIndex + i;
         days.push({
-          dayIndex,
+          dayIndex: i + 1, // Relative to week (1-based)
           globalDayIndex: dayIndex,
+          calendarDate: getCalendarDateForDay(weekPosition, i),
           tasks: [],
           habits: [],
         });
@@ -247,8 +272,8 @@ async function getOrCreateCohortInstance(
         weeklyHabits: weekData.weeklyHabits || [],
         weeklyPrompt: weekData.weeklyPrompt,
         distribution: weekData.distribution,
-        startDayIndex: weekData.startDayIndex,
-        endDayIndex: weekData.endDayIndex,
+        startDayIndex,
+        endDayIndex,
         days,
       } as ProgramInstanceWeek;
     });
@@ -259,16 +284,19 @@ async function getOrCreateCohortInstance(
       .orderBy('weekNumber', 'asc')
       .get();
 
-    weeks = weeksSnapshot.docs.map(weekDoc => {
+    weeks = weeksSnapshot.docs.map((weekDoc, weekPosition) => {
       const weekData = weekDoc.data();
-      const startDayIndex = weekData.startDayIndex || ((weekData.weekNumber - 1) * daysPerWeek + 1);
-      const endDayIndex = weekData.endDayIndex || (startDayIndex + daysPerWeek - 1);
+      const calendarWeek = regularCalendarWeeks[weekPosition];
+      const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
+      const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
 
-      const days = [];
-      for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
+      const days: ProgramInstanceDay[] = [];
+      for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
+        const dayIndex = startDayIndex + i;
         days.push({
-          dayIndex,
+          dayIndex: i + 1, // Relative to week (1-based)
           globalDayIndex: dayIndex,
+          calendarDate: getCalendarDateForDay(weekPosition, i),
           tasks: [],
           habits: [],
         });
