@@ -285,7 +285,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         instanceIdLoading,
       });
     }
-  }, [cohortViewContext.mode, cohortViewContext.cohortId, selectedProgram?.id, instanceId, instanceIdLoading]);
+  }, [cohortViewContext.mode, (cohortViewContext as { cohortId?: string }).cohortId, selectedProgram?.id, instanceId, instanceIdLoading]);
 
   // Fetch full instance when instanceId is available (new 3-collection architecture)
   const {

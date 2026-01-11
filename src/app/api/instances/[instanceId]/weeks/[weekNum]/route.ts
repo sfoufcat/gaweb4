@@ -301,7 +301,20 @@ export async function PATCH(
     // If distribution is specified, distribute weekly tasks to days
     // Note: body.weeklyTasks can be an empty array (coach deleted all tasks), so check for array type
     if (body.distribution && Array.isArray(body.weeklyTasks)) {
-      const distribution = body.distribution;
+      // Normalize distribution format:
+      // - String format: 'spread' | 'repeat-daily' (from TypeScript TaskDistribution type)
+      // - Object format: { type: 'spread' | 'all_days' | 'first_day', targetDays?: number[] }
+      let distribution: { type: string; targetDays?: number[] };
+      if (typeof body.distribution === 'string') {
+        // Map string format to object format
+        const typeMap: Record<string, string> = {
+          'spread': 'spread',
+          'repeat-daily': 'all_days',
+        };
+        distribution = { type: typeMap[body.distribution] || 'spread' };
+      } else {
+        distribution = body.distribution;
+      }
       const weeklyTasks = processTasksWithIds(body.weeklyTasks);
 
       // Get the days for this week
