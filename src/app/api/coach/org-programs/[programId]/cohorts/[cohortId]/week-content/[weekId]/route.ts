@@ -696,7 +696,7 @@ export async function PUT(
     }
 
     // Update the week with new content
-    const updatedWeek: ProgramInstanceWeek = {
+    let updatedWeek: ProgramInstanceWeek = {
       ...weeks[weekIndex],
       name: body.name?.trim() || weeks[weekIndex].name,
       theme: body.theme?.trim() || weeks[weekIndex].theme,
@@ -899,7 +899,7 @@ export async function PATCH(
     }
 
     // Build updated week (only update provided fields)
-    const updatedWeek: ProgramInstanceWeek = {
+    let updatedWeek: ProgramInstanceWeek = {
       ...existingWeek,
       updatedAt: now,
     };

@@ -305,7 +305,7 @@ export async function PATCH(
 
     // Build the updated week
     const existingWeek = weeks[weekIndex];
-    const updatedWeek: ProgramInstanceWeek = {
+    let updatedWeek: ProgramInstanceWeek = {
       ...existingWeek,
       hasLocalChanges: true,
     };
