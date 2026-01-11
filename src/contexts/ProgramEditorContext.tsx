@@ -363,11 +363,16 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
         if (!response.ok) {
           let errorMessage = `HTTP ${response.status}`;
           try {
-            const errorData = await response.json();
-            errorMessage = errorData.error || errorData.message || errorMessage;
-          } catch {
+            // Read body as text first, then try to parse as JSON
             const errorText = await response.text();
-            if (errorText) errorMessage = errorText;
+            try {
+              const errorData = JSON.parse(errorText);
+              errorMessage = errorData.error || errorData.message || errorMessage;
+            } catch {
+              if (errorText) errorMessage = errorText;
+            }
+          } catch {
+            // Couldn't read body at all
           }
           throw new Error(errorMessage);
         }
@@ -451,11 +456,16 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
           if (!response.ok) {
             let errorMessage = `HTTP ${response.status}`;
             try {
-              const errorData = await response.json();
-              errorMessage = errorData.error || errorData.message || errorMessage;
-            } catch {
+              // Read body as text first, then try to parse as JSON
               const errorText = await response.text();
-              if (errorText) errorMessage = errorText;
+              try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.error || errorData.message || errorMessage;
+              } catch {
+                if (errorText) errorMessage = errorText;
+              }
+            } catch {
+              // Couldn't read body at all
             }
             throw new Error(errorMessage);
           }
