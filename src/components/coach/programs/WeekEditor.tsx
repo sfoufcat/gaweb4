@@ -754,7 +754,7 @@ export function WeekEditor({
           };
           httpMethod = 'POST';
         } else {
-          // Existing template week - use PUT to update cohort content
+          // Existing cohort week - use PATCH to update (instances API only supports PATCH)
           pendingDataForContext = {
             weeklyTasks: formData.weeklyTasks,
             weeklyHabits: week.weeklyHabits, // Preserve existing
@@ -766,7 +766,7 @@ export function WeekEditor({
             linkedSummaryIds: formData.linkedSummaryIds,
             linkedCallEventIds: formData.linkedCallEventIds,
           };
-          httpMethod = 'PUT';
+          httpMethod = 'PATCH';
         }
       } else if (isTempWeek) {
         // Template mode with temp week - needs POST to create
