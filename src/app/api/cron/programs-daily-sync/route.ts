@@ -18,12 +18,93 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { syncProgramTasksForDay } from '@/lib/program-engine';
+import type { ProgramInstance, ProgramInstanceDay, ProgramInstanceTask } from '@/types';
 
 // Vercel cron job secret (set in environment)
 const CRON_SECRET = process.env.CRON_SECRET;
 
 // Batch size for processing enrollments
 const BATCH_SIZE = 50;
+
+/**
+ * Sync day tasks to user's tasks collection using the new instance-based system.
+ * Creates tasks with instanceId/templateTaskId fields.
+ */
+async function syncInstanceDayTasksToUser(
+  instanceId: string,
+  userId: string,
+  dayIndex: number,
+  tasks: ProgramInstanceTask[],
+  calendarDate: string
+): Promise<number> {
+  const batch = adminDb.batch();
+  const now = new Date().toISOString();
+  let tasksCreated = 0;
+
+  // Get existing tasks for this instance + day + user
+  const existingTasksQuery = await adminDb.collection('tasks')
+    .where('userId', '==', userId)
+    .where('instanceId', '==', instanceId)
+    .where('dayIndex', '==', dayIndex)
+    .get();
+
+  const existingTasksByTemplateId = new Map<string, string>();
+  for (const doc of existingTasksQuery.docs) {
+    const data = doc.data();
+    if (data.templateTaskId) {
+      existingTasksByTemplateId.set(data.templateTaskId, doc.id);
+    }
+  }
+
+  // Create tasks that don't exist yet (fill-empty mode)
+  for (const task of tasks) {
+    if (!existingTasksByTemplateId.has(task.id)) {
+      const taskRef = adminDb.collection('tasks').doc();
+      batch.set(taskRef, {
+        userId,
+        instanceId,
+        templateTaskId: task.id,
+        label: task.label,
+        isPrimary: task.isPrimary,
+        type: task.type || 'task',
+        estimatedMinutes: task.estimatedMinutes || null,
+        notes: task.notes || null,
+        tag: task.tag || null,
+        source: 'program',
+        dayIndex,
+        date: calendarDate,
+        completed: false,
+        completedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      tasksCreated++;
+    }
+  }
+
+  if (tasksCreated > 0) {
+    await batch.commit();
+  }
+
+  return tasksCreated;
+}
+
+/**
+ * Find the day in an instance that matches the given calendar date
+ */
+function findDayByCalendarDate(
+  instance: ProgramInstance,
+  targetDate: string
+): { day: ProgramInstanceDay; globalDayIndex: number } | null {
+  for (const week of instance.weeks || []) {
+    for (const day of week.days || []) {
+      if (day.calendarDate === targetDate) {
+        return { day, globalDayIndex: day.globalDayIndex };
+      }
+    }
+  }
+  return null;
+}
 
 /**
  * GET /api/cron/programs-daily-sync
@@ -55,7 +136,7 @@ export async function GET(request: Request) {
 
     console.log(`[CRON_PROGRAMS_SYNC] Syncing for dates: ${todayStr} (today) and ${tomorrowStr} (tomorrow)`);
 
-    // Get all active enrollments with their enrollment IDs
+    // Get all active enrollments
     const enrollmentsSnapshot = await adminDb
       .collection('program_enrollments')
       .where('status', '==', 'active')
@@ -63,16 +144,43 @@ export async function GET(request: Request) {
 
     const enrollments = enrollmentsSnapshot.docs.map(doc => ({
       id: doc.id,
-      userId: doc.data().userId as string,
-      programId: doc.data().programId as string,
-    }));
+      ...doc.data(),
+    })) as Array<{
+      id: string;
+      userId: string;
+      programId: string;
+      cohortId?: string;
+    }>;
 
     console.log(`[CRON_PROGRAMS_SYNC] Found ${enrollments.length} active enrollments`);
+
+    // Get all program_instances for these enrollments
+    // Individual instances are linked by enrollmentId
+    // Cohort instances are linked by cohortId
+    const instancesSnapshot = await adminDb
+      .collection('program_instances')
+      .get();
+
+    // Build lookup maps
+    const instanceByEnrollmentId = new Map<string, ProgramInstance>();
+    const instanceByCohortId = new Map<string, ProgramInstance>();
+
+    for (const doc of instancesSnapshot.docs) {
+      const data = doc.data();
+      const instance = { ...data, id: doc.id } as ProgramInstance;
+
+      if (instance.type === 'individual' && instance.enrollmentId) {
+        instanceByEnrollmentId.set(instance.enrollmentId, instance);
+      } else if (instance.type === 'cohort' && instance.cohortId) {
+        instanceByCohortId.set(instance.cohortId, instance);
+      }
+    }
 
     let syncedToday = 0;
     let syncedTomorrow = 0;
     let skippedCount = 0;
     let errorCount = 0;
+    let legacySyncCount = 0;
     const errors: string[] = [];
 
     // Process enrollments in batches to avoid overwhelming Firestore
@@ -81,53 +189,130 @@ export async function GET(request: Request) {
 
       await Promise.all(batch.map(async (enrollment) => {
         try {
-          // Sync TODAY's tasks (fill-empty mode - don't override existing)
-          const todayExisting = await adminDb
-            .collection('tasks')
-            .where('userId', '==', enrollment.userId)
-            .where('date', '==', todayStr)
-            .where('programEnrollmentId', '==', enrollment.id)
-            .limit(1)
-            .get();
+          // Find the instance for this enrollment
+          let instance: ProgramInstance | undefined;
 
-          if (todayExisting.empty) {
-            const todayResult = await syncProgramTasksForDay({
-              userId: enrollment.userId,
-              enrollmentId: enrollment.id,
-              date: todayStr,
-              mode: 'fill-empty',
-            });
+          if (enrollment.cohortId) {
+            // Cohort enrollment - use cohort instance
+            instance = instanceByCohortId.get(enrollment.cohortId);
+          } else {
+            // Individual enrollment - use individual instance
+            instance = instanceByEnrollmentId.get(enrollment.id);
+          }
 
-            if (todayResult.tasksCreated > 0) {
-              syncedToday++;
-              console.log(`[CRON_PROGRAMS_SYNC] Today sync for ${enrollment.userId}: ${todayResult.tasksCreated} tasks`);
+          if (instance) {
+            // NEW SYSTEM: Use instance-based sync
+            // Sync TODAY's tasks
+            const todayDay = findDayByCalendarDate(instance, todayStr);
+            if (todayDay && todayDay.day.tasks.length > 0) {
+              // Check if tasks already exist for today
+              const todayExisting = await adminDb
+                .collection('tasks')
+                .where('userId', '==', enrollment.userId)
+                .where('instanceId', '==', instance.id)
+                .where('dayIndex', '==', todayDay.globalDayIndex)
+                .limit(1)
+                .get();
+
+              if (todayExisting.empty) {
+                const tasksCreated = await syncInstanceDayTasksToUser(
+                  instance.id,
+                  enrollment.userId,
+                  todayDay.globalDayIndex,
+                  todayDay.day.tasks,
+                  todayStr
+                );
+                if (tasksCreated > 0) {
+                  syncedToday++;
+                  console.log(`[CRON_PROGRAMS_SYNC] Today sync (new) for ${enrollment.userId}: ${tasksCreated} tasks`);
+                } else {
+                  skippedCount++;
+                }
+              } else {
+                skippedCount++;
+              }
             } else {
               skippedCount++;
             }
+
+            // Sync TOMORROW's tasks
+            const tomorrowDay = findDayByCalendarDate(instance, tomorrowStr);
+            if (tomorrowDay && tomorrowDay.day.tasks.length > 0) {
+              const tomorrowExisting = await adminDb
+                .collection('tasks')
+                .where('userId', '==', enrollment.userId)
+                .where('instanceId', '==', instance.id)
+                .where('dayIndex', '==', tomorrowDay.globalDayIndex)
+                .limit(1)
+                .get();
+
+              if (tomorrowExisting.empty) {
+                const tasksCreated = await syncInstanceDayTasksToUser(
+                  instance.id,
+                  enrollment.userId,
+                  tomorrowDay.globalDayIndex,
+                  tomorrowDay.day.tasks,
+                  tomorrowStr
+                );
+                if (tasksCreated > 0) {
+                  syncedTomorrow++;
+                  console.log(`[CRON_PROGRAMS_SYNC] Tomorrow sync (new) for ${enrollment.userId}: ${tasksCreated} tasks`);
+                }
+              }
+            }
           } else {
-            skippedCount++;
-          }
+            // LEGACY FALLBACK: No instance found, use old system
+            // This handles enrollments that were created before instances were implemented
+            legacySyncCount++;
 
-          // Sync TOMORROW's tasks (buffer for users in advance timezones)
-          const tomorrowExisting = await adminDb
-            .collection('tasks')
-            .where('userId', '==', enrollment.userId)
-            .where('date', '==', tomorrowStr)
-            .where('programEnrollmentId', '==', enrollment.id)
-            .limit(1)
-            .get();
+            // Sync TODAY's tasks (fill-empty mode - don't override existing)
+            const todayExisting = await adminDb
+              .collection('tasks')
+              .where('userId', '==', enrollment.userId)
+              .where('date', '==', todayStr)
+              .where('programEnrollmentId', '==', enrollment.id)
+              .limit(1)
+              .get();
 
-          if (tomorrowExisting.empty) {
-            const tomorrowResult = await syncProgramTasksForDay({
-              userId: enrollment.userId,
-              enrollmentId: enrollment.id,
-              date: tomorrowStr,
-              mode: 'fill-empty',
-            });
+            if (todayExisting.empty) {
+              const todayResult = await syncProgramTasksForDay({
+                userId: enrollment.userId,
+                enrollmentId: enrollment.id,
+                date: todayStr,
+                mode: 'fill-empty',
+              });
 
-            if (tomorrowResult.tasksCreated > 0) {
-              syncedTomorrow++;
-              console.log(`[CRON_PROGRAMS_SYNC] Tomorrow sync for ${enrollment.userId}: ${tomorrowResult.tasksCreated} tasks`);
+              if (todayResult.tasksCreated > 0) {
+                syncedToday++;
+                console.log(`[CRON_PROGRAMS_SYNC] Today sync (legacy) for ${enrollment.userId}: ${todayResult.tasksCreated} tasks`);
+              } else {
+                skippedCount++;
+              }
+            } else {
+              skippedCount++;
+            }
+
+            // Sync TOMORROW's tasks (buffer for users in advance timezones)
+            const tomorrowExisting = await adminDb
+              .collection('tasks')
+              .where('userId', '==', enrollment.userId)
+              .where('date', '==', tomorrowStr)
+              .where('programEnrollmentId', '==', enrollment.id)
+              .limit(1)
+              .get();
+
+            if (tomorrowExisting.empty) {
+              const tomorrowResult = await syncProgramTasksForDay({
+                userId: enrollment.userId,
+                enrollmentId: enrollment.id,
+                date: tomorrowStr,
+                mode: 'fill-empty',
+              });
+
+              if (tomorrowResult.tasksCreated > 0) {
+                syncedTomorrow++;
+                console.log(`[CRON_PROGRAMS_SYNC] Tomorrow sync (legacy) for ${enrollment.userId}: ${tomorrowResult.tasksCreated} tasks`);
+              }
             }
           }
         } catch (err) {
@@ -149,7 +334,7 @@ export async function GET(request: Request) {
     console.log(
       `[CRON_PROGRAMS_SYNC] Completed in ${duration}ms: ` +
       `${syncedToday} synced today, ${syncedTomorrow} synced tomorrow, ` +
-      `${skippedCount} skipped, ${errorCount} errors`
+      `${skippedCount} skipped, ${legacySyncCount} legacy, ${errorCount} errors`
     );
 
     return NextResponse.json({
@@ -159,6 +344,7 @@ export async function GET(request: Request) {
         syncedToday,
         syncedTomorrow,
         skipped: skippedCount,
+        legacySync: legacySyncCount,
         errors: errorCount,
       },
       dates: {
