@@ -153,6 +153,7 @@ export async function GET(request: NextRequest) {
           if (programData?.organizationId === organizationId && cohortData?.programId === programId) {
             const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
             let weeks: Array<{
+              id: string;
               weekNumber: number;
               moduleId?: string;
               name?: string;
@@ -161,6 +162,8 @@ export async function GET(request: NextRequest) {
               weeklyHabits: unknown[];
               weeklyPrompt?: string;
               distribution?: string;
+              startDayIndex?: number;
+              endDayIndex?: number;
               days: Array<{ dayIndex: number; globalDayIndex: number; tasks: unknown[]; habits: unknown[] }>;
             }> = [];
 
@@ -168,6 +171,7 @@ export async function GET(request: NextRequest) {
             if (programData.weeks && Array.isArray(programData.weeks) && programData.weeks.length > 0) {
               console.log(`[INSTANCES_LIST_GET] Using embedded weeks from program (${programData.weeks.length} weeks)`);
               weeks = programData.weeks.map((weekData: {
+                id?: string;
                 weekNumber: number;
                 moduleId?: string;
                 name?: string;
@@ -193,6 +197,7 @@ export async function GET(request: NextRequest) {
                 }
 
                 return {
+                  id: weekData.id || crypto.randomUUID(),
                   weekNumber: weekData.weekNumber,
                   moduleId: weekData.moduleId,
                   name: weekData.name,
@@ -204,6 +209,8 @@ export async function GET(request: NextRequest) {
                   weeklyHabits: weekData.weeklyHabits || [],
                   weeklyPrompt: weekData.weeklyPrompt,
                   distribution: weekData.distribution,
+                  startDayIndex,
+                  endDayIndex,
                   days,
                 };
               });
@@ -231,6 +238,7 @@ export async function GET(request: NextRequest) {
                 }
 
                 return {
+                  id: weekDoc.id,
                   weekNumber: weekData.weekNumber,
                   moduleId: weekData.moduleId,
                   name: weekData.name,
@@ -242,6 +250,8 @@ export async function GET(request: NextRequest) {
                   weeklyHabits: weekData.weeklyHabits || [],
                   weeklyPrompt: weekData.weeklyPrompt,
                   distribution: weekData.distribution,
+                  startDayIndex,
+                  endDayIndex,
                   days,
                 };
               });

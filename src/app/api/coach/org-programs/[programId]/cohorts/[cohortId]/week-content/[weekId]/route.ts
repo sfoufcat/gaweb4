@@ -89,6 +89,7 @@ async function getOrCreateCohortInstance(
       }
 
       return {
+        id: weekData.id || crypto.randomUUID(),
         weekNumber: weekData.weekNumber,
         moduleId: weekData.moduleId,
         name: weekData.name,
@@ -100,6 +101,8 @@ async function getOrCreateCohortInstance(
         weeklyHabits: weekData.weeklyHabits || [],
         weeklyPrompt: weekData.weeklyPrompt,
         distribution: weekData.distribution,
+        startDayIndex: weekData.startDayIndex,
+        endDayIndex: weekData.endDayIndex,
         days,
       } as ProgramInstanceWeek;
     });
@@ -126,6 +129,7 @@ async function getOrCreateCohortInstance(
       }
 
       return {
+        id: weekDoc.id,
         weekNumber: weekData.weekNumber,
         moduleId: weekData.moduleId,
         name: weekData.name,
@@ -137,6 +141,8 @@ async function getOrCreateCohortInstance(
         weeklyHabits: weekData.weeklyHabits || [],
         weeklyPrompt: weekData.weeklyPrompt,
         distribution: weekData.distribution,
+        startDayIndex,
+        endDayIndex,
         days,
       } as ProgramInstanceWeek;
     });
@@ -169,15 +175,15 @@ async function getOrCreateCohortInstance(
  * Find week in instance by weekId (can be weekNumber or week.id)
  */
 function findWeekInInstance(weeks: ProgramInstanceWeek[], weekId: string): { week: ProgramInstanceWeek; index: number } | null {
-  // Try by id first
-  let index = weeks.findIndex(w => w.id === weekId);
-
-  // Fallback: try by weekNumber if weekId is numeric
-  if (index === -1 && /^\d+$/.test(weekId)) {
+  // Try by weekNumber first if numeric (more reliable than id)
+  if (/^\d+$/.test(weekId)) {
     const weekNum = parseInt(weekId, 10);
-    index = weeks.findIndex(w => w.weekNumber === weekNum);
+    const index = weeks.findIndex(w => w.weekNumber === weekNum);
+    if (index !== -1) return { week: weeks[index], index };
   }
 
+  // Fallback: try by id
+  const index = weeks.findIndex(w => w.id === weekId);
   if (index === -1) return null;
   return { week: weeks[index], index };
 }

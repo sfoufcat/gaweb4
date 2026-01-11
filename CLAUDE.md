@@ -120,17 +120,19 @@ the old 10+ collection system with a clean, unified model.
 programs (template)
   └── weeks[] (embedded)
        └── days[] (embedded)
-            └── tasks[] (embedded)
+            └── tasks[] (embedded ProgramTaskTemplate)
 
 program_instances (one per enrollment OR cohort)
   └── weeks[] (copied from template, with customizations)
        └── days[]
             └── tasks[]
 
-task_completions
-  └── instanceId + dayIndex + taskId + oduserId = completion record
+tasks (user's actual daily tasks)
+  └── linked via programEnrollmentId + programDayIndex
+  └── status: pending | completed | deleted
 
 + program_modules (template-only, lookup via moduleId on weeks)
++ task_completions (subcollection of program_instances for cohort tracking)
 ```
 
 ### Why This Model?
@@ -225,25 +227,38 @@ Tracks individual task completions:
 | `src/app/api/instances/` | New unified API routes |
 | `scripts/migrate-to-program-instances.ts` | Migration script for existing data |
 
-### Migration Status
+### Migration Status ✅
 
-Components are being migrated to use `instanceId` prop:
-- When `instanceId` is present: Uses new `/api/instances/` API
-- When `instanceId` is absent: Falls back to old API (legacy support)
+**Completed migrations:**
+- **Template weeks**: `programs.weeks[]` - Embedded array replaces `program_weeks` collection
+- **Cohort week content**: `/api/coach/org-programs/[programId]/cohorts/[cohortId]/week-content/` now uses `program_instances.weeks[]`
+- **1:1 client weeks**: `/api/coach/org-programs/[programId]/client-weeks/` now uses `program_instances` with `type: 'individual'`
+
+**Instance types:**
+- `type: 'cohort'` - Created when a cohort accesses program content, uses `cohortId`
+- `type: 'individual'` - Created when a 1:1 enrollment accesses program content, uses `enrollmentId`
+
+**Auto-creation pattern:**
+When week content is accessed and no instance exists, the API automatically:
+1. Creates a new `program_instances` document
+2. Copies weeks from `programs.weeks[]` template
+3. Returns the instance for subsequent operations
 
 Key components updated:
 - `DayEditor` - accepts `instanceId` prop
 - `WeekEditor` - accepts `instanceId` prop  
 - `CohortTasksPanel` - accepts `instanceId` prop
 - `CoachProgramsTab` - uses `useInstanceIdLookup` hook to get instanceId
+- `useProgramInstanceBridge` - Bridge hook for gradual migration
 
 ### OLD Architecture (Deprecated)
 
-The following collections are being phased out:
-- `cohort_week_content` → Use `program_instances.weeks[]`
-- `cohort_program_days` → Use `program_instances.weeks[].days[]`
-- `client_program_weeks` → Use `program_instances.weeks[]`
-- `client_program_days` → Use `program_instances.weeks[].days[]`
+The following collections are fully deprecated:
+- `program_weeks` → Read as fallback only, new data goes to `programs.weeks[]`
+- `cohort_week_content` → Replaced by `program_instances.weeks[]`
+- `cohort_program_days` → Replaced by `program_instances.weeks[].days[]`
+- `client_program_weeks` → Replaced by `program_instances.weeks[]`
+- `client_program_days` → Replaced by `program_instances.weeks[].days[]`
 - `cohort_task_states` → Use `task_completions` subcollection
 
 Old sync functions in `program-utils.ts` and `program-engine.ts` are deprecated.
