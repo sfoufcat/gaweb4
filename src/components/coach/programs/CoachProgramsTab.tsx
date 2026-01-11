@@ -762,6 +762,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
   // Memoized weeks prop for sidebar to prevent re-render loops
   const sidebarWeeks = useMemo(() => {
+    // DEBUG: Log which source is being used
+    console.log('[SIDEBAR_WEEKS_SOURCE]', {
+      hasInstance: !!instance,
+      instanceWeeksLength: instanceWeeks.length,
+      clientMode: clientViewContext.mode,
+      programWeeksLength: programWeeks.length,
+      willUseInstance: !!(instance && instanceWeeks.length > 0),
+      willUseClientWeeks: clientViewContext.mode === 'client',
+    });
+
     // NEW SYSTEM: Use instance weeks when available
     if (instance && instanceWeeks.length > 0) {
       const now = new Date().toISOString();

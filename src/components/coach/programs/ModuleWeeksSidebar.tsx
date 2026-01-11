@@ -490,6 +490,14 @@ export function ModuleWeeksSidebar({
   const calendarWeeksAsCalculated = useMemo((): CalculatedWeek[] => {
     if (calendarWeeks.length === 0) return [];
 
+    // DEBUG: Log the weeks prop to see what's available for lookup
+    console.log('[SIDEBAR_WEEKS_PROP]', {
+      weeksCount: weeks.length,
+      weekNumbers: weeks.map(w => w.weekNumber),
+      calendarWeeksCount: calendarWeeks.length,
+      calendarWeekLabels: calendarWeeks.map(cw => cw.label),
+    });
+
     return calendarWeeks.map((cw, idx) => {
       const daysInWeek = Array.from(
         { length: cw.endDayIndex - cw.startDayIndex + 1 },
@@ -511,35 +519,39 @@ export function ModuleWeeksSidebar({
       // NOT by weekNumber, because calendar weekNumbers can skip 1 if onboarding is full.
       let storedWeek: typeof weeks[0] | undefined;
 
-      // For regular weeks, find the corresponding template/instance week
+      // For regular AND closing weeks, find the corresponding template/instance week
       // IMPORTANT: Use POSITION-based mapping, not weekNumber, because:
       // - Template weeks are always numbered 1, 2, 3...
       // - Calendar weekNumbers can skip 1 if onboarding is a full week (0, 2, 3...)
-      // - Nth regular calendar week (0-indexed position) → Template/Instance week at position N
+      // - Nth content calendar week (0-indexed position) → Template/Instance week at position N
+      // Note: 'closing' type is the last week which may still have template content
       let targetWeekNumber: number | undefined;
-      
-      if (cw.type === 'regular') {
-        // Find position of this week among regular calendar weeks (0-indexed)
-        const regularCalendarWeeks = calendarWeeks.filter(w => w.type === 'regular');
-        const positionAmongRegular = regularCalendarWeeks.findIndex(
+
+      // Include both 'regular' AND 'closing' weeks (closing is just the last regular week)
+      const isContentWeek = cw.type === 'regular' || cw.type === 'closing';
+
+      if (isContentWeek) {
+        // Find position of this week among all content weeks (regular + closing)
+        const contentCalendarWeeks = calendarWeeks.filter(w => w.type === 'regular' || w.type === 'closing');
+        const positionAmongContent = contentCalendarWeeks.findIndex(
           rcw => rcw.startDayIndex === cw.startDayIndex
         );
 
-        if (positionAmongRegular >= 0) {
+        if (positionAmongContent >= 0) {
           // Template weeks are 1-indexed, so position 0 → weekNumber 1
-          targetWeekNumber = positionAmongRegular + 1;
+          targetWeekNumber = positionAmongContent + 1;
           
           // First try to find by weekNumber (most reliable)
           storedWeek = weeks.find(w => w.weekNumber === targetWeekNumber);
           
           // If not found by weekNumber, try by array position (fallback for mismatched numbering)
-          if (!storedWeek && weeks.length > positionAmongRegular) {
+          if (!storedWeek && weeks.length > positionAmongContent) {
             // Sort weeks by weekNumber to ensure consistent ordering
             const sortedWeeks = [...weeks].sort((a, b) => (a.weekNumber || 0) - (b.weekNumber || 0));
-            storedWeek = sortedWeeks[positionAmongRegular];
+            storedWeek = sortedWeeks[positionAmongContent];
             console.warn('[SIDEBAR_WEEK_DEBUG] Found storedWeek by position instead of weekNumber', {
               calendarLabel: cw.label,
-              positionAmongRegular,
+              positionAmongContent,
               targetWeekNumber,
               foundWeekNumber: storedWeek?.weekNumber,
             });
@@ -550,12 +562,25 @@ export function ModuleWeeksSidebar({
             console.warn('[SIDEBAR_WEEK_DEBUG] Could not find storedWeek!', {
               calendarLabel: cw.label,
               calendarWeekNumber: cw.weekNumber,
-              positionAmongRegular,
+              positionAmongContent,
               targetWeekNumber,
               availableWeekNumbers: weeks.map(w => w.weekNumber),
               weeksCount: weeks.length,
             });
           }
+
+          // DEBUG: Always log the final templateWeekNumber calculation
+          console.log('[SIDEBAR_WEEK_CALC]', {
+            calendarLabel: cw.label,
+            calendarType: cw.type,
+            calendarDays: `${cw.startDayIndex}-${cw.endDayIndex}`,
+            positionAmongContent,
+            targetWeekNumber,
+            storedWeekFound: !!storedWeek,
+            storedWeekNumber: storedWeek?.weekNumber,
+            finalTemplateWeekNumber: storedWeek?.weekNumber ?? targetWeekNumber,
+            weekNum: idx + 1,
+          });
         }
       }
       // For onboarding and closing weeks, storedWeek remains undefined (no template content)
@@ -583,10 +608,24 @@ export function ModuleWeeksSidebar({
 
   // Use calendar weeks in client view or cohort view, template weeks otherwise
   const displayWeeks = useMemo((): CalculatedWeek[] => {
-    if ((isClientView || isCohortView) && calendarWeeksAsCalculated.length > 0) {
-      return calendarWeeksAsCalculated;
-    }
-    return calculatedWeeks;
+    const useCalendar = (isClientView || isCohortView) && calendarWeeksAsCalculated.length > 0;
+    const result = useCalendar ? calendarWeeksAsCalculated : calculatedWeeks;
+
+    // DEBUG: Log which week source is being used
+    console.log('[SIDEBAR_DISPLAY_WEEKS]', {
+      isClientView,
+      isCohortView,
+      useCalendarWeeks: useCalendar,
+      calendarWeeksLength: calendarWeeksAsCalculated.length,
+      resultWeeks: result.map(w => ({
+        label: w.label,
+        weekNum: w.weekNum,
+        templateWeekNumber: w.templateWeekNumber,
+        days: `${w.startDay}-${w.endDay}`,
+      })),
+    });
+
+    return result;
   }, [isClientView, isCohortView, calendarWeeksAsCalculated, calculatedWeeks]);
 
   // Group weeks by module
