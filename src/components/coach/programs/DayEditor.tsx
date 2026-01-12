@@ -156,6 +156,10 @@ export function DayEditor({
   // Build API endpoint based on view context
   const getApiEndpoint = useCallback(() => {
     if (!programId) return '';
+    // Use instance-based API when available (migrated data)
+    if (instanceId) {
+      return `/api/instances/${instanceId}/days/${dayIndex}`;
+    }
     const base = `${apiBasePath}/${programId}`;
     if (isClientMode && clientEnrollmentId) {
       return `${base}/client-days`;
@@ -163,7 +167,7 @@ export function DayEditor({
       return `${base}/cohort-days`;
     }
     return `${base}/days`;
-  }, [apiBasePath, programId, isClientMode, isCohortMode, clientEnrollmentId, cohortIdValue]);
+  }, [apiBasePath, programId, instanceId, dayIndex, isClientMode, isCohortMode, clientEnrollmentId, cohortIdValue]);
 
   // Track last reset version to detect discard/save
   const lastResetVersion = useRef(editorContext?.resetVersion ?? 0);
