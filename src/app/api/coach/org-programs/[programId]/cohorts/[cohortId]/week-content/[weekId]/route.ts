@@ -89,6 +89,7 @@ async function syncDayTasksToUser(
         notes: task.notes,
         tag: task.tag,
         source: 'program',
+        listType: 'focus',
         dayIndex,
         date: calendarDate,
         completed: false,
