@@ -39,12 +39,14 @@ export async function GET(request: NextRequest) {
     // MULTI-TENANCY: Get effective org ID for filtering
     const organizationId = await getEffectiveOrgId();
 
+    console.log(`[TASKS_GET] Query params: userId=${userId}, date=${date}, organizationId=${organizationId || 'NULL'}`);
+
     // Fetch tasks for the requested date, filtered by organization
     let tasksRef = adminDb
       .collection('tasks')
       .where('userId', '==', userId)
       .where('date', '==', date);
-    
+
     // Filter by organization if available (multi-tenancy)
     if (organizationId) {
       tasksRef = tasksRef.where('organizationId', '==', organizationId);
@@ -53,12 +55,16 @@ export async function GET(request: NextRequest) {
     const snapshot = await tasksRef.get();
     const tasks: Task[] = [];
 
+    console.log(`[TASKS_GET] Raw query returned ${snapshot.docs.length} documents`);
+
     snapshot.forEach((doc) => {
       const data = doc.data();
       // Skip soft-deleted and archived tasks
       if (data.status === 'deleted' || data.status === 'archived') return;
       tasks.push({ id: doc.id, ...data } as Task);
     });
+
+    console.log(`[TASKS_GET] After filtering deleted/archived: ${tasks.length} tasks`);
 
     // REMOVED: Lazy sync
     // Cron handles all program task creation proactively.
