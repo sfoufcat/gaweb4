@@ -104,6 +104,18 @@ async function syncDayTasksToUser(
 
   console.log(`[syncDayTasksToUser] Starting sync for user ${userId}, day ${dayIndex}, date ${calendarDate}, orgId ${organizationId}, tasks: ${tasks?.length || 0}`);
 
+  // Get org's focus limit setting
+  let focusLimit = 3; // Default
+  if (organizationId) {
+    try {
+      const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+      const orgSettings = orgSettingsDoc.data();
+      focusLimit = orgSettings?.defaultDailyFocusSlots ?? 3;
+    } catch {
+      // Fallback to 3 if org settings can't be fetched
+    }
+  }
+
   // Get existing tasks for this instance + day + user
   const existingTasksQuery = await adminDb.collection('tasks')
     .where('userId', '==', userId)
@@ -113,7 +125,7 @@ async function syncDayTasksToUser(
 
   console.log(`[syncDayTasksToUser] Found ${existingTasksQuery.docs.length} existing tasks for day ${dayIndex}`);
 
-  const existingTasksByInstanceTaskId = new Map<string, { id: string; completed: boolean; completedAt?: string }>();
+  const existingTasksByInstanceTaskId = new Map<string, { id: string; completed: boolean; completedAt?: string; listType?: string }>();
   for (const doc of existingTasksQuery.docs) {
     const taskData = doc.data();
     if (taskData.instanceTaskId) {
@@ -121,20 +133,97 @@ async function syncDayTasksToUser(
         id: doc.id,
         completed: taskData.completed || false,
         completedAt: taskData.completedAt,
+        listType: taskData.listType,
       });
     }
   }
 
+  // Count how many focus tasks the user already has for this date (excluding this instance's tasks)
+  let existingFocusCount = 0;
+  if (calendarDate) {
+    const focusTasksQuery = await adminDb.collection('tasks')
+      .where('userId', '==', userId)
+      .where('date', '==', calendarDate)
+      .where('listType', '==', 'focus')
+      .get();
+    // Count focus tasks that are NOT from this instance (to avoid double counting)
+    existingFocusCount = focusTasksQuery.docs.filter(doc => doc.data().instanceId !== instanceId).length;
+  }
+
+  let availableFocusSlots = focusLimit - existingFocusCount;
+  console.log(`[syncDayTasksToUser] Focus limit: ${focusLimit}, existing (other): ${existingFocusCount}, available: ${availableFocusSlots}`);
+
   const processedInstanceTaskIds = new Set<string>();
 
-  // Create/update tasks
-  for (const task of tasks) {
+  // Separate primary and non-primary tasks
+  const primaryTasks = tasks.filter(t => t.isPrimary);
+  const nonPrimaryTasks = tasks.filter(t => !t.isPrimary);
+
+  // Process primary tasks first (try to put in Focus)
+  for (const task of primaryTasks) {
     processedInstanceTaskIds.add(task.id);
 
     const existing = existingTasksByInstanceTaskId.get(task.id);
 
     if (existing) {
-      // Update existing task (preserve completion status)
+      // Update existing task - preserve listType if already set, otherwise determine based on isPrimary
+      const taskRef = adminDb.collection('tasks').doc(existing.id);
+      batch.update(taskRef, {
+        label: task.label,
+        isPrimary: task.isPrimary,
+        type: task.type || 'task',
+        estimatedMinutes: task.estimatedMinutes,
+        notes: task.notes,
+        tag: task.tag,
+        date: calendarDate,
+        updatedAt: now,
+      });
+      // If existing task is in focus, count it towards our slots
+      if (existing.listType === 'focus') {
+        availableFocusSlots--;
+      }
+      updated++;
+    } else {
+      // Create new task - determine listType based on available slots
+      const listType = availableFocusSlots > 0 ? 'focus' : 'backlog';
+      if (listType === 'focus') {
+        availableFocusSlots--;
+      }
+
+      const taskRef = adminDb.collection('tasks').doc();
+      console.log(`[syncDayTasksToUser] Creating primary task: ${task.label} as ${listType} for date ${calendarDate}`);
+      batch.set(taskRef, {
+        userId,
+        organizationId,
+        instanceId,
+        instanceTaskId: task.id,
+        label: task.label,
+        isPrimary: task.isPrimary,
+        type: task.type || 'task',
+        estimatedMinutes: task.estimatedMinutes,
+        notes: task.notes,
+        tag: task.tag,
+        source: 'program',
+        listType,
+        dayIndex,
+        date: calendarDate,
+        completed: false,
+        completedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      created++;
+    }
+  }
+
+  // Process non-primary tasks (always go to backlog)
+  for (const task of nonPrimaryTasks) {
+    processedInstanceTaskIds.add(task.id);
+
+    const existing = existingTasksByInstanceTaskId.get(task.id);
+
+    if (existing) {
+      // Update existing task
       const taskRef = adminDb.collection('tasks').doc(existing.id);
       batch.update(taskRef, {
         label: task.label,
@@ -148,9 +237,9 @@ async function syncDayTasksToUser(
       });
       updated++;
     } else {
-      // Create new task
+      // Create new task - non-primary always goes to backlog
       const taskRef = adminDb.collection('tasks').doc();
-      console.log(`[syncDayTasksToUser] Creating task: ${task.label} for date ${calendarDate}`);
+      console.log(`[syncDayTasksToUser] Creating non-primary task: ${task.label} as backlog for date ${calendarDate}`);
       batch.set(taskRef, {
         userId,
         organizationId,
@@ -163,7 +252,7 @@ async function syncDayTasksToUser(
         notes: task.notes,
         tag: task.tag,
         source: 'program',
-        listType: 'focus',
+        listType: 'backlog',
         dayIndex,
         date: calendarDate,
         completed: false,
