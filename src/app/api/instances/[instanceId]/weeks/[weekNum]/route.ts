@@ -12,7 +12,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { ProgramInstanceWeek, ProgramInstanceDay, ProgramInstanceTask } from '@/types';
-import { calculateCalendarWeeks } from '@/lib/calendar-weeks';
+import { calculateCalendarWeeks, dayIndexToDate } from '@/lib/calendar-weeks';
 
 type RouteParams = { params: Promise<{ instanceId: string; weekNum: string }> };
 
@@ -477,14 +477,21 @@ export async function PATCH(
       if (data?.type === 'individual' && data?.userId) {
         // Individual instance - sync to the single user
         for (const day of daysToUpdate) {
-          await syncDayTasksToUser(instanceId, data.userId, day.globalDayIndex, day.tasks, day.calendarDate);
+          // Calculate calendar date if missing (critical for task sync to work)
+          let effectiveCalendarDate = day.calendarDate;
+          if (!effectiveCalendarDate && instanceStartDate && day.globalDayIndex) {
+            const calculatedDate = dayIndexToDate(instanceStartDate, day.globalDayIndex, includeWeekends);
+            effectiveCalendarDate = calculatedDate.toISOString().split('T')[0];
+            console.log(`[INSTANCE_WEEK_PATCH] Calculated calendarDate for day ${day.globalDayIndex}: ${effectiveCalendarDate}`);
+          }
+          await syncDayTasksToUser(instanceId, data.userId, day.globalDayIndex, day.tasks, effectiveCalendarDate);
         }
         console.log(`[INSTANCE_WEEK_PATCH] Synced ${daysToUpdate.length} days to user ${data.userId}`);
       } else if (data?.type === 'cohort' && data?.cohortId) {
         // Cohort instance - sync to all cohort members
         const enrollmentsSnap = await adminDb.collection('program_enrollments')
           .where('cohortId', '==', data.cohortId)
-          .where('status', 'in', ['active', 'completed'])
+          .where('status', 'in', ['active', 'upcoming', 'completed'])
           .get();
 
         console.log(`[INSTANCE_WEEK_PATCH] Syncing ${daysToUpdate.length} days to ${enrollmentsSnap.docs.length} cohort members`);
@@ -494,12 +501,20 @@ export async function PATCH(
             const enrollment = enrollmentDoc.data();
             if (enrollment.userId) {
               for (const day of daysToUpdate) {
+                // Calculate calendar date if missing (critical for task sync to work)
+                let effectiveCalendarDate = day.calendarDate;
+                if (!effectiveCalendarDate && instanceStartDate && day.globalDayIndex) {
+                  const calculatedDate = dayIndexToDate(instanceStartDate, day.globalDayIndex, includeWeekends);
+                  effectiveCalendarDate = calculatedDate.toISOString().split('T')[0];
+                  console.log(`[INSTANCE_WEEK_PATCH] Calculated calendarDate for day ${day.globalDayIndex}: ${effectiveCalendarDate}`);
+                }
+
                 await syncDayTasksToUser(
                   instanceId,
                   enrollment.userId,
                   day.globalDayIndex,
                   day.tasks,
-                  day.calendarDate
+                  effectiveCalendarDate
                 );
               }
             }
