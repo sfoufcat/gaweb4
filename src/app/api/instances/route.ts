@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const programId = searchParams.get('programId');
     const cohortId = searchParams.get('cohortId');
+    const enrollmentId = searchParams.get('enrollmentId');
     const userId = searchParams.get('userId');
     const type = searchParams.get('type') as 'individual' | 'cohort' | null;
     const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
@@ -63,6 +64,10 @@ export async function GET(request: NextRequest) {
 
     if (cohortId) {
       query = query.where('cohortId', '==', cohortId);
+    }
+
+    if (enrollmentId) {
+      query = query.where('enrollmentId', '==', enrollmentId);
     }
 
     if (userId) {
@@ -334,6 +339,208 @@ export async function GET(request: NextRequest) {
         }
       } catch (createError) {
         console.error('[INSTANCES_LIST_GET] Auto-create failed:', createError);
+        // Fall through to return empty results
+      }
+    }
+
+    // Auto-create instance for individual enrollment if none exists
+    if (enrollmentId && enrichedInstances.length === 0 && programId) {
+      console.log(`[INSTANCES_LIST_GET] No instance found for enrollment ${enrollmentId}, auto-creating...`);
+
+      try {
+        // Fetch enrollment and program data
+        const [enrollmentDoc, programDoc] = await Promise.all([
+          adminDb.collection('program_enrollments').doc(enrollmentId).get(),
+          adminDb.collection('programs').doc(programId).get(),
+        ]);
+
+        if (enrollmentDoc.exists && programDoc.exists) {
+          const enrollmentData = enrollmentDoc.data();
+          const programData = programDoc.data();
+
+          // Verify ownership
+          if (programData?.organizationId === organizationId && enrollmentData?.programId === programId) {
+            const includeWeekends = programData.includeWeekends !== false;
+            const daysPerWeek = includeWeekends ? 7 : 5;
+            const totalDays = programData.lengthDays || 28;
+
+            // Calculate calendar weeks from enrollment start date
+            let calendarWeeks: CalendarWeek[] = [];
+            if (enrollmentData.startDate) {
+              calendarWeeks = calculateCalendarWeeks(enrollmentData.startDate, totalDays, includeWeekends);
+            }
+            const regularCalendarWeeks = calendarWeeks
+              .filter(w => w.weekNumber > 0)
+              .sort((a, b) => a.startDayIndex - b.startDayIndex);
+
+            // Helper to get calendar date for a day
+            const getCalendarDateForDay = (weekPosition: number, dayOffset: number): string | undefined => {
+              const calendarWeek = regularCalendarWeeks[weekPosition];
+              if (!calendarWeek?.startDate) return undefined;
+              const startDate = new Date(calendarWeek.startDate);
+              startDate.setDate(startDate.getDate() + dayOffset);
+              return startDate.toISOString().split('T')[0];
+            };
+
+            let weeks: Array<{
+              id: string;
+              weekNumber: number;
+              moduleId?: string;
+              name?: string;
+              theme?: string;
+              weeklyTasks: Array<{ id: string; label: string; [key: string]: unknown }>;
+              weeklyHabits: unknown[];
+              weeklyPrompt?: string;
+              distribution?: string;
+              startDayIndex?: number;
+              endDayIndex?: number;
+              days: ProgramInstanceDay[];
+            }> = [];
+
+            // Read from programs.weeks[] (embedded template weeks)
+            if (programData.weeks && Array.isArray(programData.weeks) && programData.weeks.length > 0) {
+              console.log(`[INSTANCES_LIST_GET] Using embedded weeks from program (${programData.weeks.length} weeks) for enrollment`);
+              weeks = programData.weeks.map((weekData: {
+                id?: string;
+                weekNumber: number;
+                moduleId?: string;
+                name?: string;
+                theme?: string;
+                startDayIndex?: number;
+                endDayIndex?: number;
+                weeklyTasks?: Array<{ id?: string; label: string }>;
+                weeklyHabits?: unknown[];
+                weeklyPrompt?: string;
+                distribution?: string;
+              }, weekPosition: number) => {
+                const calendarWeek = regularCalendarWeeks[weekPosition];
+                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
+                const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
+
+                const days: ProgramInstanceDay[] = [];
+                for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
+                  days.push({
+                    dayIndex: i + 1,
+                    globalDayIndex: startDayIndex + i,
+                    calendarDate: getCalendarDateForDay(weekPosition, i),
+                    tasks: [],
+                    habits: [],
+                  });
+                }
+
+                return {
+                  id: weekData.id || crypto.randomUUID(),
+                  weekNumber: weekData.weekNumber,
+                  moduleId: weekData.moduleId,
+                  name: weekData.name,
+                  theme: weekData.theme,
+                  weeklyTasks: (weekData.weeklyTasks || []).map((t) => ({
+                    ...t,
+                    id: t.id || crypto.randomUUID(),
+                  })),
+                  weeklyHabits: weekData.weeklyHabits || [],
+                  weeklyPrompt: weekData.weeklyPrompt,
+                  distribution: weekData.distribution,
+                  startDayIndex,
+                  endDayIndex,
+                  days,
+                };
+              });
+            } else {
+              // FALLBACK: Read from program_weeks collection (legacy data)
+              console.log(`[INSTANCES_LIST_GET] Falling back to program_weeks collection for enrollment`);
+              const weeksSnapshot = await adminDb.collection('program_weeks')
+                .where('programId', '==', programId)
+                .orderBy('weekNumber', 'asc')
+                .get();
+
+              weeks = weeksSnapshot.docs.map((weekDoc, weekPosition) => {
+                const weekData = weekDoc.data();
+                const calendarWeek = regularCalendarWeeks[weekPosition];
+                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
+                const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
+
+                const days: ProgramInstanceDay[] = [];
+                for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
+                  days.push({
+                    dayIndex: i + 1,
+                    globalDayIndex: startDayIndex + i,
+                    calendarDate: getCalendarDateForDay(weekPosition, i),
+                    tasks: [],
+                    habits: [],
+                  });
+                }
+
+                return {
+                  id: weekDoc.id,
+                  weekNumber: weekData.weekNumber,
+                  moduleId: weekData.moduleId,
+                  name: weekData.name,
+                  theme: weekData.theme,
+                  weeklyTasks: (weekData.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
+                    ...t,
+                    id: t.id || crypto.randomUUID(),
+                  })),
+                  weeklyHabits: weekData.weeklyHabits || [],
+                  weeklyPrompt: weekData.weeklyPrompt,
+                  distribution: weekData.distribution,
+                  startDayIndex,
+                  endDayIndex,
+                  days,
+                };
+              });
+            }
+
+            // Create the instance for individual enrollment
+            const instanceData = {
+              programId,
+              organizationId,
+              type: 'individual' as const,
+              enrollmentId,
+              userId: enrollmentData.userId,
+              startDate: enrollmentData.startDate,
+              endDate: enrollmentData.endDate,
+              includeWeekends: programData.includeWeekends !== false,
+              dailyFocusSlots: programData.dailyFocusSlots || 3,
+              weeks,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+
+            const newInstanceRef = await adminDb.collection('program_instances').add(instanceData);
+            console.log(`[INSTANCES_LIST_GET] Auto-created instance ${newInstanceRef.id} for enrollment ${enrollmentId}`);
+
+            // Fetch user name for the response
+            let userName = 'Unknown User';
+            let userImageUrl: string | undefined;
+            if (enrollmentData.userId) {
+              const userDoc = await adminDb.collection('users').doc(enrollmentData.userId).get();
+              const userData = userDoc.data();
+              if (userData) {
+                userName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'Unknown User';
+                userImageUrl = userData.imageUrl;
+              }
+            }
+
+            // Return the newly created instance
+            return NextResponse.json({
+              instances: [{
+                id: newInstanceRef.id,
+                ...instanceData,
+                weekCount: weeks.length,
+                dayCount: weeks.reduce((sum, w) => sum + w.days.length, 0),
+                userName,
+                userImageUrl,
+              }],
+              hasMore: false,
+              offset: 0,
+              limit,
+              autoCreated: true,
+            });
+          }
+        }
+      } catch (createError) {
+        console.error('[INSTANCES_LIST_GET] Auto-create for enrollment failed:', createError);
         // Fall through to return empty results
       }
     }
