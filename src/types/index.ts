@@ -462,6 +462,7 @@ export interface Task {
   isPrivate: boolean;                  // Legacy field - use visibility instead
   createdAt: string;
   updatedAt: string;
+  completed?: boolean;                 // Boolean sync'd with status for query compatibility
   completedAt?: string;
   // Archive lifecycle fields
   movedToBacklogAt?: string | null;    // ISO timestamp - when task FIRST entered backlog

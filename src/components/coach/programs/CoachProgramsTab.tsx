@@ -244,6 +244,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
   const [removeConfirmEnrollment, setRemoveConfirmEnrollment] = useState<EnrollmentWithUser | null>(null);
   const [removingEnrollment, setRemovingEnrollment] = useState(false);
+  const [resumingEnrollment, setResumingEnrollment] = useState<string | null>(null); // enrollment ID being resumed
   const [togglingCommunity, setTogglingCommunity] = useState<string | null>(null); // enrollment ID being toggled
   
   // Schedule call modal state (for enrollments)
@@ -1694,6 +1695,37 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       alert(err instanceof Error ? err.message : 'Failed to remove user');
     } finally {
       setRemovingEnrollment(false);
+    }
+  };
+
+  // Resume a stopped enrollment
+  const handleResumeEnrollment = async (enrollment: EnrollmentWithUser) => {
+    if (!selectedProgram) return;
+
+    try {
+      setResumingEnrollment(enrollment.id);
+
+      const response = await fetch(
+        `${apiBasePath}/${selectedProgram.id}/enrollments/${enrollment.id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'resume' }),
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to resume enrollment');
+      }
+
+      // Refresh enrollments list
+      await fetchProgramEnrollments(selectedProgram.id);
+    } catch (err) {
+      console.error('Error resuming enrollment:', err);
+      alert(err instanceof Error ? err.message : 'Failed to resume enrollment');
+    } finally {
+      setResumingEnrollment(null);
     }
   };
 
@@ -4742,6 +4774,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             <UserMinus className="w-5 h-5" />
                           </button>
                         )}
+                        {enrollment.status === 'stopped' && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleResumeEnrollment(enrollment); }}
+                            disabled={resumingEnrollment === enrollment.id}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors disabled:opacity-50"
+                            title="Resume enrollment"
+                          >
+                            {resumingEnrollment === enrollment.id ? (
+                              <span className="animate-spin">...</span>
+                            ) : (
+                              <>
+                                <UserPlus className="w-4 h-4" />
+                                Resume
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -6051,7 +6100,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           priceInCents: selectedProgram.priceInCents || 0,
           currency: selectedProgram.currency,
         } : null}
-        existingEnrollmentUserIds={programEnrollments.map(e => e.userId)}
+        existingEnrollmentUserIds={programEnrollments
+          .filter(e => e.status === 'active' || e.status === 'upcoming')
+          .map(e => e.userId)}
       />
 
       {/* AI Program Content Modal */}

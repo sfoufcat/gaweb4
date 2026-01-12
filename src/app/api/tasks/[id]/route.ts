@@ -5,14 +5,7 @@ import { updateAlignmentForToday } from '@/lib/alignment';
 import { sendTasksCompletedNotification } from '@/lib/notifications';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { updateLastActivity } from '@/lib/analytics/lastActivity';
-import {
-  findCohortTaskStateByTaskTitle,
-  updateMemberTaskState,
-  getProgramCompletionThreshold,
-  findCohortTaskStateByProgramTaskId,
-  getOrCreateCohortTaskState
-} from '@/lib/cohort-task-state';
-import type { Task, UpdateTaskRequest, ClerkPublicMetadata } from '@/types';
+import type { Task, UpdateTaskRequest } from '@/types';
 
 /**
  * PATCH /api/tasks/:id
@@ -80,15 +73,20 @@ export async function PATCH(
 
     if (body.status !== undefined) {
       updates.status = body.status;
+      // Sync completed boolean with status for query compatibility
+      updates.completed = body.status === 'completed';
       if (body.status === 'completed') {
         updates.completedAt = new Date().toISOString();
-        
+
         // Update lastActivityAt for analytics (non-blocking)
         if (organizationId) {
           updateLastActivity(userId, organizationId, 'task').catch(err => {
             console.error('[TASKS] Failed to update lastActivityAt:', err);
           });
         }
+      } else {
+        // Clear completedAt when uncompleting
+        updates.completedAt = undefined;
       }
     }
 
@@ -140,94 +138,10 @@ export async function PATCH(
 
     const updatedTask: Task = { ...existingTask, ...updates } as Task;
 
-    // Cohort task state update: If a program-sourced task completion status changed
-    if (body.status !== undefined && isProgramSourced && existingTask.programEnrollmentId) {
-      const isCompleted = body.status === 'completed';
-      
-      try {
-        // Get the enrollment to check if it's a cohort enrollment
-        const enrollmentDoc = await adminDb.collection('program_enrollments').doc(existingTask.programEnrollmentId!).get();
-        
-        if (enrollmentDoc.exists) {
-          const enrollment = enrollmentDoc.data();
-          
-          if (enrollment?.cohortId) { // Only if part of a cohort
-            // Find the CohortTaskState for this task
-            // Prefer instanceTaskId (robust) with title fallback (backward compat)
-            let cohortState = null;
-
-            if (existingTask.instanceTaskId) {
-              cohortState = await findCohortTaskStateByProgramTaskId(
-                enrollment.cohortId,
-                existingTask.instanceTaskId,
-                existingTask.date
-              );
-            }
-
-            // Fallback to title-based matching for tasks without instanceTaskId
-            // Use originalTitle if available (preserved when task was synced from program)
-            if (!cohortState && existingTask.programDayIndex != null) {
-              cohortState = await findCohortTaskStateByTaskTitle(
-                enrollment.cohortId,
-                existingTask.originalTitle || existingTask.title, // Use original title if client edited
-                existingTask.date,
-                existingTask.programDayIndex
-              );
-            }
-
-            if (cohortState) {
-              const threshold = await getProgramCompletionThreshold(enrollment.programId);
-              await updateMemberTaskState(
-                cohortState.id,
-                userId,
-                isCompleted,
-                id,
-                threshold
-              );
-              console.log(`[COHORT_STATE] Updated member ${userId} task completion for cohort ${enrollment.cohortId}`);
-            } else if (existingTask.programDayIndex != null && existingTask.programDayIndex >= 0) {
-              // Auto-create CohortTaskState for retroactive tracking (using getOrCreate to avoid race conditions)
-              try {
-                const dayIndex = existingTask.programDayIndex; // Capture for type narrowing
-                const cohortMembersSnapshot = await adminDb
-                  .collection('program_enrollments')
-                  .where('cohortId', '==', enrollment.cohortId)
-                  .where('status', 'in', ['active', 'upcoming'])
-                  .get();
-
-                const memberIds = cohortMembersSnapshot.docs.map(d => d.data().userId);
-
-                // Use getOrCreateCohortTaskState to handle race conditions when multiple users complete tasks
-                // Use originalTitle if available (preserved when task was synced from program)
-                const taskTitle = existingTask.originalTitle || existingTask.title;
-                const state = await getOrCreateCohortTaskState({
-                  cohortId: enrollment.cohortId,
-                  programId: enrollment.programId,
-                  organizationId: existingTask.organizationId || enrollment.organizationId || '',
-                  programDayIndex: dayIndex,
-                  taskTemplateId: existingTask.instanceTaskId || `${taskTitle}:${dayIndex}`,
-                  taskTitle,
-                  programTaskId: existingTask.instanceTaskId || undefined, // Renamed field
-                  date: existingTask.date,
-                  memberIds,
-                });
-
-                // Update the state with this completion
-                const threshold = await getProgramCompletionThreshold(enrollment.programId);
-                await updateMemberTaskState(state.id, userId, isCompleted, id, threshold);
-                console.log(`[COHORT_STATE] Created/updated CohortTaskState for task: ${existingTask.title}`);
-              } catch (createErr) {
-                console.error('[COHORT_STATE] Failed to create/update CohortTaskState:', createErr);
-              }
-            } else {
-              console.log(`[COHORT_STATE] Cannot create CohortTaskState - invalid programDayIndex for task: ${existingTask.title}`);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('[COHORT_STATE] Failed to update cohort task state:', err);
-      }
-    }
+    // NOTE: Cohort task completion tracking now uses the NEW system:
+    // - Tasks have `completed` boolean field (set above when status changes)
+    // - Coach dashboard queries `tasks` collection directly with `.where('completed', '==', true)`
+    // - Aggregation is calculated on-the-fly, no separate cohort_task_states collection needed
 
     // Update alignment when a task is moved to focus for today (org-scoped)
     const today = new Date().toISOString().split('T')[0];

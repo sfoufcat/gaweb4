@@ -235,3 +235,167 @@ export async function DELETE(
   }
 }
 
+/**
+ * PATCH /api/coach/org-programs/[programId]/enrollments/[enrollmentId]
+ * Resume a stopped enrollment - sets status back to active and re-adds user to squad/chat
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ programId: string; enrollmentId: string }> }
+) {
+  try {
+    const { userId } = await auth();
+    const { programId, enrollmentId } = await params;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Parse request body
+    const body = await request.json();
+    const { action } = body;
+
+    if (action !== 'resume') {
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    }
+
+    // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
+    const organizationId = await getEffectiveOrgId();
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Coach features require tenant domain' }, { status: 403 });
+    }
+
+    // Verify user is an admin (coach) of the organization
+    const isCoach = await isUserOrgAdmin(userId, organizationId);
+    if (!isCoach) {
+      return NextResponse.json({ error: 'Not authorized - coaches only' }, { status: 403 });
+    }
+
+    // Verify program belongs to this organization
+    const programDoc = await adminDb.collection('programs').doc(programId).get();
+    if (!programDoc.exists) {
+      return NextResponse.json({ error: 'Program not found' }, { status: 404 });
+    }
+
+    const program = programDoc.data() as Program;
+    if (program.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Program does not belong to your organization' }, { status: 403 });
+    }
+
+    // Get the enrollment
+    const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
+    if (!enrollmentDoc.exists) {
+      return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
+    }
+
+    const enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
+
+    // Verify enrollment is for this program
+    if (enrollment.programId !== programId) {
+      return NextResponse.json({ error: 'Enrollment does not belong to this program' }, { status: 400 });
+    }
+
+    // Check if enrollment is stopped (can only resume stopped enrollments)
+    if (enrollment.status !== 'stopped') {
+      return NextResponse.json({ error: 'Can only resume stopped enrollments' }, { status: 400 });
+    }
+
+    const now = new Date().toISOString();
+    const enrolledUserId = enrollment.userId;
+
+    // 1. Update enrollment status back to 'active'
+    await enrollmentDoc.ref.update({
+      status: 'active',
+      resumedAt: now,
+      resumedBy: userId,
+      // Clear stop-related fields
+      stoppedAt: null,
+      stoppedBy: null,
+      stoppedReason: null,
+      updatedAt: now,
+    });
+
+    // 2. Re-add user to squad if applicable
+    if (enrollment.squadId) {
+      try {
+        const { FieldValue } = await import('firebase-admin/firestore');
+        const squadDoc = await adminDb.collection('squads').doc(enrollment.squadId).get();
+
+        if (squadDoc.exists) {
+          const squadData = squadDoc.data();
+          const memberIds = squadData?.memberIds || [];
+
+          // Add user back to squad if not already there
+          if (!memberIds.includes(enrolledUserId)) {
+            await squadDoc.ref.update({
+              memberIds: FieldValue.arrayUnion(enrolledUserId),
+              updatedAt: now,
+            });
+            console.log(`[COACH_ENROLLMENT_RESUME] Re-added user ${enrolledUserId} to squad ${enrollment.squadId}`);
+          }
+
+          // Re-add to Stream chat channel if exists
+          if (squadData?.streamChannelId) {
+            try {
+              const { StreamChat } = await import('stream-chat');
+              const streamClient = StreamChat.getInstance(
+                process.env.NEXT_PUBLIC_STREAM_API_KEY!,
+                process.env.STREAM_API_SECRET!
+              );
+
+              const channel = streamClient.channel('messaging', squadData.streamChannelId);
+              await channel.addMembers([enrolledUserId]);
+              console.log(`[COACH_ENROLLMENT_RESUME] Re-added user ${enrolledUserId} to Stream channel ${squadData.streamChannelId}`);
+            } catch (streamErr) {
+              console.error(`[COACH_ENROLLMENT_RESUME] Failed to re-add to Stream channel (non-fatal):`, streamErr);
+            }
+          }
+        }
+      } catch (squadErr) {
+        console.error(`[COACH_ENROLLMENT_RESUME] Failed to re-add to squad (non-fatal):`, squadErr);
+      }
+    }
+
+    // 3. Update user's current program reference if not set
+    try {
+      const userDoc = await adminDb.collection('users').doc(enrolledUserId).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        // Only update if user doesn't have a current program
+        if (!userData?.currentProgramEnrollmentId) {
+          await userDoc.ref.update({
+            currentProgramEnrollmentId: enrollmentId,
+            currentProgramId: programId,
+            updatedAt: now,
+          });
+          console.log(`[COACH_ENROLLMENT_RESUME] Set current program reference for user ${enrolledUserId}`);
+        }
+      }
+    } catch (userErr) {
+      console.error(`[COACH_ENROLLMENT_RESUME] Failed to update user reference (non-fatal):`, userErr);
+    }
+
+    // 4. Update cohort enrollment count if applicable
+    if (enrollment.cohortId) {
+      try {
+        const { FieldValue } = await import('firebase-admin/firestore');
+        await adminDb.collection('program_cohorts').doc(enrollment.cohortId).update({
+          currentEnrollment: FieldValue.increment(1),
+        });
+      } catch (cohortErr) {
+        console.error(`[COACH_ENROLLMENT_RESUME] Failed to update cohort count (non-fatal):`, cohortErr);
+      }
+    }
+
+    console.log(`[COACH_ENROLLMENT_RESUME] Coach ${userId} resumed enrollment for user ${enrolledUserId} in program ${programId}`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Enrollment resumed successfully',
+    });
+  } catch (error) {
+    console.error('[COACH_ENROLLMENT_RESUME] Error:', error);
+    return NextResponse.json({ error: 'Failed to resume enrollment' }, { status: 500 });
+  }
+}
+

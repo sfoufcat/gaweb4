@@ -117,7 +117,9 @@ async function syncDayTasksToUser(
   dayIndex: number,
   tasks: ProgramInstanceTask[],
   calendarDate?: string,
-  organizationId?: string
+  organizationId?: string,
+  enrollmentId?: string,
+  programId?: string
 ): Promise<void> {
   const batch = adminDb.batch();
   const now = new Date().toISOString();
@@ -219,6 +221,7 @@ async function syncDayTasksToUser(
         instanceId,
         instanceTaskId: task.id,
         title: task.label,
+        originalTitle: task.label, // Preserve original title for cohort matching
         isPrimary: task.isPrimary,
         type: task.type || 'task',
         estimatedMinutes: task.estimatedMinutes,
@@ -227,6 +230,9 @@ async function syncDayTasksToUser(
         sourceType: 'program',
         listType,
         dayIndex,
+        programDayIndex: dayIndex, // Required for cohort task state sync
+        programEnrollmentId: enrollmentId, // Required for cohort task state sync
+        programId, // Program reference
         date: calendarDate,
         status: 'pending',
         order: created,
@@ -270,6 +276,7 @@ async function syncDayTasksToUser(
         instanceId,
         instanceTaskId: task.id,
         title: task.label,
+        originalTitle: task.label, // Preserve original title for cohort matching
         isPrimary: task.isPrimary,
         type: task.type || 'task',
         estimatedMinutes: task.estimatedMinutes,
@@ -278,6 +285,9 @@ async function syncDayTasksToUser(
         sourceType: 'program',
         listType: 'backlog',
         dayIndex,
+        programDayIndex: dayIndex, // Required for cohort task state sync
+        programEnrollmentId: enrollmentId, // Required for cohort task state sync
+        programId, // Program reference
         date: calendarDate,
         status: 'pending',
         order: created,
@@ -690,7 +700,9 @@ export async function PATCH(
                   day.globalDayIndex,
                   day.tasks,
                   effectiveCalendarDate,
-                  data.organizationId
+                  data.organizationId,
+                  enrollmentDoc.id, // Pass enrollment ID for cohort task state sync
+                  data.programId // Pass program ID
                 );
               }
             } else {
