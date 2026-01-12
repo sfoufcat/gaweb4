@@ -274,6 +274,9 @@ export function DayEditor({
         editorContext.discardChange(templateKey);
       }
 
+      // Use PATCH for instance-based endpoints, POST for legacy endpoints
+      const apiEndpoint = getApiEndpoint();
+      const isInstanceEndpoint = apiEndpoint.includes('/api/instances/');
       editorContext.registerChange({
         entityType: 'day',
         entityId,
@@ -282,8 +285,8 @@ export function DayEditor({
         clientContextId,
         originalData: defaultData as unknown as Record<string, unknown>,
         pendingData: requestBody,
-        apiEndpoint: getApiEndpoint(),
-        httpMethod: 'POST',
+        apiEndpoint,
+        httpMethod: isInstanceEndpoint ? 'PATCH' : 'POST',
       });
     } else if (editorContext && !changed) {
       // Remove from pending changes if no longer changed

@@ -410,25 +410,30 @@ export async function PATCH(
       console.log(`[INSTANCE_WEEK_PATCH] Distribution: ${distribution.type}, tasks: ${weeklyTasks.length}, days: ${daysToUpdate.length}`);
 
       // Distribute tasks based on distribution type
+      // IMPORTANT: Always clear old 'week' source tasks from days, even if no new tasks
+      const numDays = daysToUpdate.length;
+      const numTasks = weeklyTasks.length;
+
       if (distribution.type === 'spread') {
         // Spread tasks proportionally across ALL days
         // Each task covers approximately (numDays / numTasks) days
-        const numDays = daysToUpdate.length;
-        const numTasks = weeklyTasks.length;
+        for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+          const existingTasks = daysToUpdate[dayIdx].tasks || [];
+          // Remove old week tasks
+          const nonWeekTasks = existingTasks.filter(t => !t.source || t.source !== 'week');
 
-        if (numDays > 0 && numTasks > 0) {
-          for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+          if (numTasks > 0) {
             // Calculate which task this day should have based on proportional position
             // With 2 tasks and 7 days: days 0-3 get task 0, days 4-6 get task 1
             const taskIdx = Math.floor((dayIdx / numDays) * numTasks);
             const task = weeklyTasks[taskIdx];
-
-            // Ensure tasks array exists
-            const existingTasks = daysToUpdate[dayIdx].tasks || [];
             daysToUpdate[dayIdx].tasks = [
-              ...existingTasks.filter(t => t.source !== 'week'),
+              ...nonWeekTasks,
               { ...task, source: 'week' as const },
             ];
+          } else {
+            // No weekly tasks - just keep non-week tasks (clears week tasks)
+            daysToUpdate[dayIdx].tasks = nonWeekTasks;
           }
         }
       } else if (distribution.type === 'all_days') {
@@ -436,18 +441,24 @@ export async function PATCH(
         for (const dayToUpdate of daysToUpdate) {
           const existingTasks = dayToUpdate.tasks || [];
           dayToUpdate.tasks = [
-            ...existingTasks.filter(t => t.source && t.source !== 'week'),
+            ...existingTasks.filter(t => !t.source || t.source !== 'week'),
             ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
           ];
         }
       } else if (distribution.type === 'first_day') {
-        // Add all tasks to first day only
-        if (daysToUpdate.length > 0) {
-          const existingTasks = daysToUpdate[0].tasks || [];
-          daysToUpdate[0].tasks = [
-            ...existingTasks.filter(t => t.source && t.source !== 'week'),
-            ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
-          ];
+        // Clear week tasks from all days, then add to first day only
+        for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+          const existingTasks = daysToUpdate[dayIdx].tasks || [];
+          if (dayIdx === 0) {
+            // First day: add week tasks
+            daysToUpdate[dayIdx].tasks = [
+              ...existingTasks.filter(t => !t.source || t.source !== 'week'),
+              ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
+            ];
+          } else {
+            // Other days: just clear week tasks
+            daysToUpdate[dayIdx].tasks = existingTasks.filter(t => !t.source || t.source !== 'week');
+          }
         }
       }
 
