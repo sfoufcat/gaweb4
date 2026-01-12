@@ -44,6 +44,7 @@ import type {
   ProgramInstanceWeek,
   ProgramInstanceDay,
   ProgramInstanceTask,
+  TemplateSyncOptions,
 } from '@/types';
 
 // API response types
@@ -159,6 +160,47 @@ export function useProgramInstance(instanceId: string | null) {
     [instanceId, mutateInstance]
   );
 
+  // Sync from template
+  const syncFromTemplate = useCallback(
+    async (options?: {
+      weekNumbers?: number[];
+      syncOptions?: TemplateSyncOptions;
+      distributeAfterSync?: boolean;
+      overwriteDays?: boolean;
+    }) => {
+      if (!instanceId) return;
+
+      setIsUpdating(true);
+      setError(null);
+
+      try {
+        const res = await fetch(`/api/instances/${instanceId}/sync-template`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(options || {}),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to sync from template');
+        }
+
+        const result = await res.json();
+
+        // Wait for Firestore consistency then refresh
+        await new Promise(resolve => setTimeout(resolve, 300));
+        await mutateInstance();
+
+        return result;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Sync failed');
+        throw err;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [instanceId, mutateInstance]
+  );
+
   return {
     instance: instanceData?.instance,
     members: instanceData?.members,
@@ -167,6 +209,7 @@ export function useProgramInstance(instanceId: string | null) {
     isUpdating,
     error: fetchError?.message || error,
     updateInstance,
+    syncFromTemplate,
     refresh: mutateInstance,
   };
 }
