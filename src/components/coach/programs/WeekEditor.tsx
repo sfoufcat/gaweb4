@@ -644,6 +644,11 @@ export function WeekEditor({
       // Reset to week data
       setFormData(getDefaultFormData());
       setHasChanges(false);
+      // CRITICAL: Set recentlyReset to prevent the change detection effect from
+      // re-registering changes in the same render cycle. Without this, the change
+      // detection effect sees OLD formData (not yet updated by setState) vs NEW week
+      // data and incorrectly registers a change.
+      recentlyReset.current = true;
     }
     setShowSyncButton(false);
     setSaveStatus('idle');
