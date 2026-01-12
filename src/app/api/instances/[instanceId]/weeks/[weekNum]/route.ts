@@ -493,6 +493,7 @@ export async function PATCH(
       distributionSetting,
       hasWeeklyTasks: Array.isArray(body.weeklyTasks),
       weeklyTasksCount: Array.isArray(body.weeklyTasks) ? body.weeklyTasks.length : 'not-array',
+      instanceStartDate: instanceStartDate || 'NOT SET',
     });
 
     if (distributionSetting && Array.isArray(body.weeklyTasks)) {
@@ -593,7 +594,13 @@ export async function PATCH(
             effectiveCalendarDate = calculatedDate.toISOString().split('T')[0];
             console.log(`[INSTANCE_WEEK_PATCH] Calculated calendarDate for day ${day.globalDayIndex}: ${effectiveCalendarDate}`);
           }
-          console.log(`[INSTANCE_WEEK_PATCH] Syncing day ${day.globalDayIndex} (${effectiveCalendarDate || 'NO DATE'}) to individual user ${data.userId}`);
+          // Skip syncing if we can't determine the calendar date - prevents creating tasks with wrong/null dates
+          if (!effectiveCalendarDate) {
+            console.log(`[INSTANCE_WEEK_PATCH] SKIPPING day ${day.globalDayIndex} - no calendar date available (instance startDate: ${instanceStartDate || 'NOT SET'})`);
+            continue;
+          }
+
+          console.log(`[INSTANCE_WEEK_PATCH] Syncing day ${day.globalDayIndex} (${effectiveCalendarDate}) to individual user ${data.userId}`);
           await syncDayTasksToUser(instanceId, data.userId, day.globalDayIndex, day.tasks, effectiveCalendarDate, data.organizationId);
         }
         console.log(`[INSTANCE_WEEK_PATCH] Synced ${daysToUpdate.length} days to user ${data.userId}`);
@@ -626,7 +633,13 @@ export async function PATCH(
                   console.log(`[INSTANCE_WEEK_PATCH] Calculated calendarDate for day ${day.globalDayIndex}: ${effectiveCalendarDate}`);
                 }
 
-                console.log(`[INSTANCE_WEEK_PATCH] Syncing day ${day.globalDayIndex} (${effectiveCalendarDate || 'NO DATE'}) with ${day.tasks?.length || 0} tasks to user ${enrollment.userId}`);
+                // Skip syncing if we can't determine the calendar date - prevents creating tasks with wrong/null dates
+                if (!effectiveCalendarDate) {
+                  console.log(`[INSTANCE_WEEK_PATCH] SKIPPING day ${day.globalDayIndex} - no calendar date available (instance startDate: ${instanceStartDate || 'NOT SET'})`);
+                  continue;
+                }
+
+                console.log(`[INSTANCE_WEEK_PATCH] Syncing day ${day.globalDayIndex} (${effectiveCalendarDate}) with ${day.tasks?.length || 0} tasks to user ${enrollment.userId}`);
 
                 await syncDayTasksToUser(
                   instanceId,

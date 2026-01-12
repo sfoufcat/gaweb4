@@ -226,39 +226,49 @@ export async function PATCH(
 
     // Sync tasks to user's tasks collection if this is an individual instance
     if (data?.type === 'individual' && data?.userId) {
-      await syncDayTasksToUser(instanceId, data.userId, globalDayIndex, updatedDay.tasks, effectiveCalendarDate, data.organizationId);
+      // Only sync if we have a valid calendar date
+      if (effectiveCalendarDate) {
+        await syncDayTasksToUser(instanceId, data.userId, globalDayIndex, updatedDay.tasks, effectiveCalendarDate, data.organizationId);
+      } else {
+        console.log(`[INSTANCE_DAY_PATCH] SKIPPING sync - no calendar date available (instance startDate: ${data?.startDate || 'NOT SET'})`);
+      }
     }
 
     // Sync tasks to ALL cohort members if this is a cohort instance
     if (data?.type === 'cohort' && data?.cohortId) {
-      const enrollmentsSnap = await adminDb.collection('program_enrollments')
-        .where('cohortId', '==', data.cohortId)
-        .where('status', 'in', ['active', 'upcoming', 'completed'])
-        .get();
+      // Only sync if we have a valid calendar date
+      if (!effectiveCalendarDate) {
+        console.log(`[INSTANCE_DAY_PATCH] SKIPPING sync - no calendar date available (instance startDate: ${data?.startDate || 'NOT SET'})`);
+      } else {
+        const enrollmentsSnap = await adminDb.collection('program_enrollments')
+          .where('cohortId', '==', data.cohortId)
+          .where('status', 'in', ['active', 'upcoming', 'completed'])
+          .get();
 
-      console.log(`[INSTANCE_DAY_PATCH] Syncing to ${enrollmentsSnap.docs.length} cohort members`, {
-        globalDayIndex,
-        calendarDate: effectiveCalendarDate,
-        taskCount: updatedDay.tasks?.length || 0,
-      });
+        console.log(`[INSTANCE_DAY_PATCH] Syncing to ${enrollmentsSnap.docs.length} cohort members`, {
+          globalDayIndex,
+          calendarDate: effectiveCalendarDate,
+          taskCount: updatedDay.tasks?.length || 0,
+        });
 
-      // Sync to each member in parallel
-      await Promise.all(
-        enrollmentsSnap.docs.map(async (enrollmentDoc) => {
-          const enrollment = enrollmentDoc.data();
-          if (enrollment.userId) {
-            console.log(`[INSTANCE_DAY_PATCH] Syncing day ${globalDayIndex} (${effectiveCalendarDate}) to user ${enrollment.userId}`);
-            await syncDayTasksToUser(
-              instanceId,
-              enrollment.userId,
-              globalDayIndex,
-              updatedDay.tasks,
-              effectiveCalendarDate,
-              data.organizationId
-            );
-          }
-        })
-      );
+        // Sync to each member in parallel
+        await Promise.all(
+          enrollmentsSnap.docs.map(async (enrollmentDoc) => {
+            const enrollment = enrollmentDoc.data();
+            if (enrollment.userId) {
+              console.log(`[INSTANCE_DAY_PATCH] Syncing day ${globalDayIndex} (${effectiveCalendarDate}) to user ${enrollment.userId}`);
+              await syncDayTasksToUser(
+                instanceId,
+                enrollment.userId,
+                globalDayIndex,
+                updatedDay.tasks,
+                effectiveCalendarDate,
+                data.organizationId
+              );
+            }
+          })
+        );
+      }
     }
 
     // Fetch the updated day
