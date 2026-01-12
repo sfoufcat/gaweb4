@@ -19,14 +19,35 @@ import { dayIndexToDate } from '@/lib/calendar-weeks';
 type RouteParams = { params: Promise<{ instanceId: string; dayIndex: string }> };
 
 /**
- * Process tasks to ensure each has a unique ID
+ * Common placeholder texts that indicate an empty task
+ */
+const PLACEHOLDER_TEXTS = [
+  'What should they accomplish?',
+  'Enter task title...',
+  'Task title',
+  'New task',
+];
+
+/**
+ * Check if a task label is empty or just a placeholder
+ */
+function isEmptyTask(task: ProgramInstanceTask): boolean {
+  const label = task.label?.trim() || '';
+  if (!label) return true;
+  return PLACEHOLDER_TEXTS.some(p => p.toLowerCase() === label.toLowerCase());
+}
+
+/**
+ * Process tasks to ensure each has a unique ID and filter out empty tasks
  */
 function processTasksWithIds(tasks: ProgramInstanceTask[] | undefined): ProgramInstanceTask[] {
   if (!tasks || !Array.isArray(tasks)) return [];
-  return tasks.map((task) => ({
-    ...task,
-    id: task.id || crypto.randomUUID(),
-  }));
+  return tasks
+    .filter(task => !isEmptyTask(task))
+    .map((task) => ({
+      ...task,
+      id: task.id || crypto.randomUUID(),
+    }));
 }
 
 /**
@@ -188,10 +209,17 @@ export async function PATCH(
     if (body.habits !== undefined) updatedDay.habits = body.habits || [];
     if (body.courseAssignments !== undefined) updatedDay.courseAssignments = body.courseAssignments || [];
 
-    // Update tasks - this is the source of truth
-    // If coach deletes a task, it's gone. No "smart merge" that brings back week tasks.
+    // Update tasks - merge day tasks with existing week-distributed tasks
+    // Day tasks (source !== 'week') come from the request body
+    // Week tasks (source === 'week') are preserved from existing day
     if (body.tasks !== undefined) {
-      updatedDay.tasks = processTasksWithIds(body.tasks);
+      const incomingTasks = processTasksWithIds(body.tasks);
+      // Keep existing week-distributed tasks
+      const existingWeekTasks = (existingDay.tasks || []).filter(t => t.source === 'week');
+      // Incoming tasks are day-specific (filter out any that might have source: 'week' to avoid duplicates)
+      const dayTasks = incomingTasks.filter(t => t.source !== 'week');
+      // Merge: day tasks first, then week tasks
+      updatedDay.tasks = [...dayTasks, ...existingWeekTasks];
     }
 
     // Update the weeks array

@@ -4938,7 +4938,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
       {/* Program Create/Edit Modal */}
       <Transition appear show={isProgramModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => !saving && setIsProgramModalOpen(false)}>
+        <Dialog as="div" className="relative z-[70]" onClose={() => !saving && setIsProgramModalOpen(false)}>
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"
@@ -5620,7 +5620,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
       {/* Cohort Create/Edit Modal */}
       <Transition appear show={isCohortModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => !saving && setIsCohortModalOpen(false)}>
+        <Dialog as="div" className="relative z-[70]" onClose={() => !saving && setIsCohortModalOpen(false)}>
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"

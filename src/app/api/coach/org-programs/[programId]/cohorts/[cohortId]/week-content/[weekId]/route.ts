@@ -275,23 +275,45 @@ async function syncWeekTasksToMembers(
 }
 
 /**
+ * Common placeholder texts that indicate an empty task
+ */
+const PLACEHOLDER_TEXTS = [
+  'What should they accomplish?',
+  'Enter task title...',
+  'Task title',
+  'New task',
+];
+
+/**
+ * Check if a task label is empty or just a placeholder
+ */
+function isEmptyTask(task: ProgramTaskTemplate): boolean {
+  const label = task.label?.trim() || '';
+  if (!label) return true;
+  return PLACEHOLDER_TEXTS.some(p => p.toLowerCase() === label.toLowerCase());
+}
+
+/**
  * Process tasks to ensure each has a unique ID for robust matching.
  * Preserves existing IDs, generates new UUIDs for tasks without IDs.
  * Also strips runtime completion data that should never be stored in templates.
+ * Filters out empty tasks (those with no label or just placeholder text).
  */
 function processTasksWithIds(tasks: ProgramTaskTemplate[] | undefined): ProgramTaskTemplate[] {
   if (!tasks || !Array.isArray(tasks)) return [];
-  return tasks.map((task) => {
-    const { completed, completedAt, taskId, ...cleanTask } = task as ProgramTaskTemplate & {
-      completed?: boolean;
-      completedAt?: string;
-      taskId?: string;
-    };
-    return {
-      ...cleanTask,
-      id: task.id || crypto.randomUUID(),
-    };
-  });
+  return tasks
+    .filter(task => !isEmptyTask(task))
+    .map((task) => {
+      const { completed, completedAt, taskId, ...cleanTask } = task as ProgramTaskTemplate & {
+        completed?: boolean;
+        completedAt?: string;
+        taskId?: string;
+      };
+      return {
+        ...cleanTask,
+        id: task.id || crypto.randomUUID(),
+      };
+    });
 }
 
 /**
@@ -865,20 +887,34 @@ export async function PUT(
       console.log(`[COHORT_WEEK_CONTENT_PUT] Distributing ${weeklyTasks.length} tasks with type: ${distributionType}`);
 
       if (distributionType === 'spread') {
-        // Spread tasks proportionally across ALL days
-        // Each task covers approximately (numDays / numTasks) days
+        // Spread tasks evenly across the week with gaps between them
+        // 3 tasks, 5 days (Mon-Fri) → task 1 on Mon, task 2 on Wed, task 3 on Fri
         const numDays = daysToUpdate.length;
         const numTasks = weeklyTasks.length;
 
-        if (numDays > 0 && numTasks > 0) {
-          for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
-            // Calculate which task this day should have based on proportional position
-            // With 2 tasks and 7 days: days 0-3 get task 0, days 4-6 get task 1
-            const taskIdxForDay = Math.floor((dayIdx / numDays) * numTasks);
-            const task = weeklyTasks[taskIdxForDay];
+        // First, clear old week tasks from all days
+        for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+          daysToUpdate[dayIdx].tasks = (daysToUpdate[dayIdx].tasks || []).filter(
+            (t: ProgramInstanceTask) => !t.source || t.source !== 'week'
+          );
+        }
 
-            daysToUpdate[dayIdx].tasks = [
-              ...(daysToUpdate[dayIdx].tasks || []).filter((t: ProgramInstanceTask) => t.source !== 'week'),
+        // Then, assign each task to a specific day, spread evenly across the week
+        if (numDays > 0 && numTasks > 0) {
+          for (let taskIdx = 0; taskIdx < numTasks; taskIdx++) {
+            // Calculate which day this task should go to
+            let targetDayIdx: number;
+            if (numTasks === 1) {
+              targetDayIdx = 0; // Single task goes to first day
+            } else {
+              // Spread evenly: task 0 → day 0, last task → last day, others evenly between
+              targetDayIdx = Math.round(taskIdx * (numDays - 1) / (numTasks - 1));
+            }
+            
+            // Add this task to that day
+            const task = weeklyTasks[taskIdx];
+            daysToUpdate[targetDayIdx].tasks = [
+              ...daysToUpdate[targetDayIdx].tasks,
               { ...task, source: 'week' as const },
             ];
           }
@@ -887,7 +923,7 @@ export async function PUT(
         // Add all tasks to all days
         for (const day of daysToUpdate) {
           day.tasks = [
-            ...(day.tasks || []).filter((t: ProgramInstanceTask) => t.source && t.source !== 'week'),
+            ...(day.tasks || []).filter((t: ProgramInstanceTask) => !t.source || t.source !== 'week'),
             ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
           ];
         }
@@ -895,7 +931,7 @@ export async function PUT(
         // Add all tasks to first day only
         if (daysToUpdate.length > 0) {
           daysToUpdate[0].tasks = [
-            ...(daysToUpdate[0].tasks || []).filter((t: ProgramInstanceTask) => t.source && t.source !== 'week'),
+            ...(daysToUpdate[0].tasks || []).filter((t: ProgramInstanceTask) => !t.source || t.source !== 'week'),
             ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
           ];
         }
@@ -1120,20 +1156,34 @@ export async function PATCH(
       console.log(`[COHORT_WEEK_CONTENT_PATCH] Distributing ${weeklyTasks.length} tasks with type: ${distributionType}`);
 
       if (distributionType === 'spread') {
-        // Spread tasks proportionally across ALL days
-        // Each task covers approximately (numDays / numTasks) days
+        // Spread tasks evenly across the week with gaps between them
+        // 3 tasks, 5 days (Mon-Fri) → task 1 on Mon, task 2 on Wed, task 3 on Fri
         const numDays = daysToUpdate.length;
         const numTasks = weeklyTasks.length;
 
-        if (numDays > 0 && numTasks > 0) {
-          for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
-            // Calculate which task this day should have based on proportional position
-            // With 2 tasks and 7 days: days 0-3 get task 0, days 4-6 get task 1
-            const taskIdxForDay = Math.floor((dayIdx / numDays) * numTasks);
-            const task = weeklyTasks[taskIdxForDay];
+        // First, clear old week tasks from all days
+        for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+          daysToUpdate[dayIdx].tasks = (daysToUpdate[dayIdx].tasks || []).filter(
+            (t: ProgramInstanceTask) => !t.source || t.source !== 'week'
+          );
+        }
 
-            daysToUpdate[dayIdx].tasks = [
-              ...(daysToUpdate[dayIdx].tasks || []).filter((t: ProgramInstanceTask) => t.source !== 'week'),
+        // Then, assign each task to a specific day, spread evenly across the week
+        if (numDays > 0 && numTasks > 0) {
+          for (let taskIdx = 0; taskIdx < numTasks; taskIdx++) {
+            // Calculate which day this task should go to
+            let targetDayIdx: number;
+            if (numTasks === 1) {
+              targetDayIdx = 0; // Single task goes to first day
+            } else {
+              // Spread evenly: task 0 → day 0, last task → last day, others evenly between
+              targetDayIdx = Math.round(taskIdx * (numDays - 1) / (numTasks - 1));
+            }
+            
+            // Add this task to that day
+            const task = weeklyTasks[taskIdx];
+            daysToUpdate[targetDayIdx].tasks = [
+              ...daysToUpdate[targetDayIdx].tasks,
               { ...task, source: 'week' as const },
             ];
           }
@@ -1142,7 +1192,7 @@ export async function PATCH(
         // Add all tasks to all days
         for (const day of daysToUpdate) {
           day.tasks = [
-            ...(day.tasks || []).filter((t: ProgramInstanceTask) => t.source && t.source !== 'week'),
+            ...(day.tasks || []).filter((t: ProgramInstanceTask) => !t.source || t.source !== 'week'),
             ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
           ];
         }
@@ -1150,7 +1200,7 @@ export async function PATCH(
         // Add all tasks to first day only
         if (daysToUpdate.length > 0) {
           daysToUpdate[0].tasks = [
-            ...(daysToUpdate[0].tasks || []).filter((t: ProgramInstanceTask) => t.source && t.source !== 'week'),
+            ...(daysToUpdate[0].tasks || []).filter((t: ProgramInstanceTask) => !t.source || t.source !== 'week'),
             ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
           ];
         }
