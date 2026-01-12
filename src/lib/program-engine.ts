@@ -1247,6 +1247,67 @@ export async function getClientProgramDay(
 }
 
 // REMOVED: getClientProgramWeekForDay
+
+/**
+ * Get day tasks from program_instances (NEW architecture).
+ * This is the source of truth for both cohort and individual programs.
+ * Falls back to null if no instance exists (legacy data).
+ */
+export async function getInstanceDayTasks(
+  programId: string,
+  enrollmentId: string | null,
+  cohortId: string | null,
+  dayIndex: number
+): Promise<{ tasks: ProgramTaskTemplate[]; found: boolean } | null> {
+  // Find the program_instances document
+  let instanceQuery = adminDb.collection('program_instances')
+    .where('programId', '==', programId);
+
+  if (cohortId) {
+    instanceQuery = instanceQuery.where('cohortId', '==', cohortId);
+  } else if (enrollmentId) {
+    instanceQuery = instanceQuery.where('enrollmentId', '==', enrollmentId);
+  } else {
+    return null;
+  }
+
+  const instanceSnapshot = await instanceQuery.limit(1).get();
+  if (instanceSnapshot.empty) {
+    return null; // No instance - fall back to legacy collections
+  }
+
+  const instance = instanceSnapshot.docs[0].data();
+  const weeks = instance.weeks || [];
+
+  // Find the week that contains this dayIndex
+  for (const week of weeks) {
+    const startDay = week.startDayIndex || 1;
+    const endDay = week.endDayIndex || 7;
+
+    if (dayIndex >= startDay && dayIndex <= endDay) {
+      // Found the week - now find the day
+      const days = week.days || [];
+      const dayWithinWeek = days.find((d: { globalDayIndex?: number; dayIndex?: number }) =>
+        d.globalDayIndex === dayIndex || d.dayIndex === (dayIndex - startDay + 1)
+      );
+
+      if (dayWithinWeek) {
+        // Return tasks from the instance day
+        const tasks = dayWithinWeek.tasks || [];
+        console.log(`[PROGRAM_ENGINE] Got ${tasks.length} tasks from program_instances for day ${dayIndex}`);
+        return { tasks: tasks as ProgramTaskTemplate[], found: true };
+      } else {
+        // Week exists but day not found - return empty (no tasks for this day)
+        console.log(`[PROGRAM_ENGINE] Day ${dayIndex} not found in week ${week.weekNumber}, returning empty tasks`);
+        return { tasks: [], found: true };
+      }
+    }
+  }
+
+  // Day index not in any week
+  console.log(`[PROGRAM_ENGINE] Day ${dayIndex} not in any week of instance`);
+  return { tasks: [], found: true };
+}
 // This function read from client_program_weeks at runtime.
 // Now client_program_weeks is UI-only - sync reads from client_program_days.
 
@@ -1656,19 +1717,33 @@ export async function syncProgramV2TasksForToday(
   let tasksForToday: ProgramTaskTemplate[] = [];
   let foundExplicitDay = false; // Track if we found an explicit day document (even if empty)
 
-  // For individual (1:1) programs, check client-specific day content first
-  if (program.type === 'individual') {
+  // NEW ARCHITECTURE: Try program_instances first (source of truth)
+  const instanceResult = await getInstanceDayTasks(
+    enrollment.programId,
+    program.type === 'individual' ? enrollment.id : null,
+    program.type === 'group' ? (enrollment.cohortId || null) : null,
+    dayIndex
+  );
+
+  if (instanceResult) {
+    tasksForToday = instanceResult.tasks;
+    foundExplicitDay = instanceResult.found;
+    console.log(`[PROGRAM_ENGINE_V2] Got ${tasksForToday.length} tasks from program_instances for day ${dayIndex}`);
+  }
+
+  // LEGACY FALLBACK: For individual (1:1) programs, check client-specific day content
+  if (!foundExplicitDay && program.type === 'individual') {
     const clientDay = await getClientProgramDay(enrollment.id, dayIndex);
     if (clientDay) {
       // Document EXISTS - use it even if tasks empty (coach explicitly cleared them)
       tasksForToday = clientDay.tasks ? [...clientDay.tasks] : [];
       foundExplicitDay = true;
-      console.log(`[PROGRAM_ENGINE_V2] Got ${tasksForToday.length} client-specific tasks for day ${dayIndex}`);
+      console.log(`[PROGRAM_ENGINE_V2] LEGACY: Got ${tasksForToday.length} client-specific tasks for day ${dayIndex}`);
     }
   }
 
-  // For group programs with cohort, check cohort-specific day content
-  if (program.type === 'group' && enrollment.cohortId && !foundExplicitDay) {
+  // LEGACY FALLBACK: For group programs with cohort, check cohort-specific day content
+  if (!foundExplicitDay && program.type === 'group' && enrollment.cohortId) {
     const cohortDaySnapshot = await adminDb
       .collection('cohort_program_days')
       .where('cohortId', '==', enrollment.cohortId)
@@ -1682,16 +1757,13 @@ export async function syncProgramV2TasksForToday(
       const cohortDay = cohortDaySnapshot.docs[0].data();
       tasksForToday = cohortDay.tasks ? [...cohortDay.tasks] : [];
       foundExplicitDay = true;
-      console.log(`[PROGRAM_ENGINE_V2] Got ${tasksForToday.length} cohort-specific tasks for day ${dayIndex}`);
+      console.log(`[PROGRAM_ENGINE_V2] LEGACY: Got ${tasksForToday.length} cohort-specific tasks for day ${dayIndex}`);
     }
   }
 
-  // REMOVED: Template fallback chain
-  // Template (program_weeks, program_days) should NEVER be read at runtime.
-  // Client/cohort editor is THE source of truth.
-  // If no explicit day document exists, there are no tasks for this day.
+  // If no content found anywhere, log for debugging
   if (!foundExplicitDay) {
-    console.log(`[PROGRAM_ENGINE_V2] No client/cohort editor content for day ${dayIndex}. Template fallback disabled.`);
+    console.log(`[PROGRAM_ENGINE_V2] No content for day ${dayIndex} in program_instances or legacy collections`);
   }
   
   if (tasksForToday.length === 0) {
@@ -2356,25 +2428,39 @@ export async function syncProgramTasksToClientDay(
   
   // 5. Get tasks for this day from program templates
   // Priority chain (document EXISTS means stop fallback, even if empty):
-  // 1. Client-specific day (for 1:1)
-  // 2. Cohort-specific day (for group programs)
-  // 3. Week-level tasks (distributed)
-  // 4. Template day tasks
+  // 1. program_instances (NEW architecture - source of truth)
+  // 2. Client-specific day (for 1:1) - LEGACY fallback
+  // 3. Cohort-specific day (for group programs) - LEGACY fallback
   let tasksForDay: ProgramTaskTemplate[] = [];
   let sourceType: 'program_day' | 'program_week' = 'program_day';
   let sourceWeekId: string | null = null;
   let sourceProgramDayId: string | null = null;
   let foundExplicitDay = false; // Track if we found an explicit day document (even if empty)
-  
+
   console.log(`[SYNC_TO_CLIENT] Looking for tasks for day ${dayIndex}:`, {
     programType: program.type,
     enrollmentId: programEnrollmentId,
     cohortId: enrollment.cohortId,
   });
-  
-  // For 1:1 programs, check client-specific day first
-  if (program.type === 'individual') {
-    console.log(`[SYNC_TO_CLIENT] Program is individual, checking client_program_days for enrollment ${programEnrollmentId}, dayIndex ${dayIndex}`);
+
+  // NEW ARCHITECTURE: Try program_instances first (source of truth)
+  const instanceResult = await getInstanceDayTasks(
+    enrollment.programId,
+    program.type === 'individual' ? programEnrollmentId : null,
+    program.type === 'group' ? (enrollment.cohortId || null) : null,
+    dayIndex
+  );
+
+  if (instanceResult) {
+    tasksForDay = instanceResult.tasks;
+    foundExplicitDay = instanceResult.found;
+    sourceType = 'program_day';
+    console.log(`[SYNC_TO_CLIENT] Got ${tasksForDay.length} tasks from program_instances for day ${dayIndex}`);
+  }
+
+  // LEGACY FALLBACK: For 1:1 programs, check client-specific day
+  if (!foundExplicitDay && program.type === 'individual') {
+    console.log(`[SYNC_TO_CLIENT] LEGACY: Checking client_program_days for enrollment ${programEnrollmentId}, dayIndex ${dayIndex}`);
     const clientDay = await getClientProgramDay(programEnrollmentId, dayIndex);
     if (clientDay) {
       // Document EXISTS - use it even if tasks empty (coach explicitly cleared them)
@@ -2382,7 +2468,7 @@ export async function syncProgramTasksToClientDay(
       foundExplicitDay = true;
       sourceType = 'program_day';
       sourceProgramDayId = clientDay.id;
-      console.log(`[SYNC_TO_CLIENT] FOUND client_program_day:`, {
+      console.log(`[SYNC_TO_CLIENT] LEGACY: FOUND client_program_day:`, {
         dayIndex,
         clientDayId: clientDay.id,
         tasksCount: tasksForDay.length,
@@ -2391,14 +2477,12 @@ export async function syncProgramTasksToClientDay(
         sources: tasksForDay.map(t => t.source),
       });
     } else {
-      console.log(`[SYNC_TO_CLIENT] NO client_program_day exists for day ${dayIndex}, will check week-level tasks`);
+      console.log(`[SYNC_TO_CLIENT] LEGACY: NO client_program_day exists for day ${dayIndex}`);
     }
-  } else {
-    console.log(`[SYNC_TO_CLIENT] Program is ${program.type}, skipping client_program_days check`);
   }
 
-  // For group programs with cohortId, check cohort-specific day first
-  if (program.type === 'group' && enrollment.cohortId && !foundExplicitDay) {
+  // LEGACY FALLBACK: For group programs with cohortId, check cohort-specific day
+  if (!foundExplicitDay && program.type === 'group' && enrollment.cohortId) {
     const cohortDaySnapshot = await adminDb
       .collection('cohort_program_days')
       .where('cohortId', '==', enrollment.cohortId)
@@ -2414,16 +2498,13 @@ export async function syncProgramTasksToClientDay(
       foundExplicitDay = true;
       sourceType = 'program_day';
       sourceProgramDayId = cohortDaySnapshot.docs[0].id;
-      console.log(`[SYNC_TO_CLIENT] Got ${tasksForDay.length} cohort-specific tasks from cohort_program_days for day ${dayIndex}`);
+      console.log(`[SYNC_TO_CLIENT] LEGACY: Got ${tasksForDay.length} cohort-specific tasks from cohort_program_days for day ${dayIndex}`);
     }
   }
 
-  // REMOVED: Template fallback chain
-  // Template (program_weeks, program_days) should NEVER be read at runtime.
-  // Client/cohort editor is THE source of truth.
-  // If no explicit day document exists, there are no tasks for this day.
+  // If no content found anywhere, log for debugging
   if (!foundExplicitDay) {
-    console.log(`[SYNC_TO_CLIENT] No client/cohort editor content for day ${dayIndex}. Template fallback disabled.`);
+    console.log(`[SYNC_TO_CLIENT] No content for day ${dayIndex} in program_instances or legacy collections`);
   }
   
   // Log final task source decision
