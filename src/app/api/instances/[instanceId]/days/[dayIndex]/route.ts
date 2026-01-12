@@ -365,7 +365,7 @@ async function syncDayTasksToUser(
       // Update existing task - preserve listType if already set
       const taskRef = adminDb.collection('tasks').doc(existing.id);
       batch.update(taskRef, {
-        label: task.label,
+        title: task.label,
         isPrimary: task.isPrimary,
         type: task.type || 'task',
         estimatedMinutes: task.estimatedMinutes,
@@ -391,7 +391,7 @@ async function syncDayTasksToUser(
         organizationId,
         instanceId,
         instanceTaskId: task.id,
-        label: task.label,
+        title: task.label,
         isPrimary: task.isPrimary,
         type: task.type || 'task',
         estimatedMinutes: task.estimatedMinutes,
@@ -401,6 +401,9 @@ async function syncDayTasksToUser(
         listType,
         dayIndex,
         date: calendarDate,
+        status: 'pending',
+        order: processedInstanceTaskIds.size,
+        isPrivate: false,
         completed: false,
         completedAt: null,
         createdAt: now,
@@ -419,7 +422,7 @@ async function syncDayTasksToUser(
       // Update existing task
       const taskRef = adminDb.collection('tasks').doc(existing.id);
       batch.update(taskRef, {
-        label: task.label,
+        title: task.label,
         isPrimary: task.isPrimary,
         type: task.type || 'task',
         estimatedMinutes: task.estimatedMinutes,
@@ -436,7 +439,7 @@ async function syncDayTasksToUser(
         organizationId,
         instanceId,
         instanceTaskId: task.id,
-        label: task.label,
+        title: task.label,
         isPrimary: task.isPrimary,
         type: task.type || 'task',
         estimatedMinutes: task.estimatedMinutes,
@@ -446,6 +449,9 @@ async function syncDayTasksToUser(
         listType: 'backlog',
         dayIndex,
         date: calendarDate,
+        status: 'pending',
+        order: processedInstanceTaskIds.size,
+        isPrivate: false,
         completed: false,
         completedAt: null,
         createdAt: now,
