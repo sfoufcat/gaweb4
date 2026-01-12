@@ -377,6 +377,16 @@ export async function PATCH(
     // Note: body.weeklyTasks can be an empty array (coach deleted all tasks), so check for array type
     // Use body.distribution, or fall back to existing week distribution if distributeTasksNow is set
     const distributionSetting = body.distribution || (body.distributeTasksNow && updatedWeek.distribution);
+
+    console.log(`[INSTANCE_WEEK_PATCH] Distribution check:`, {
+      bodyDistribution: body.distribution,
+      distributeTasksNow: body.distributeTasksNow,
+      weekDistribution: updatedWeek.distribution,
+      distributionSetting,
+      hasWeeklyTasks: Array.isArray(body.weeklyTasks),
+      weeklyTasksCount: Array.isArray(body.weeklyTasks) ? body.weeklyTasks.length : 'not-array',
+    });
+
     if (distributionSetting && Array.isArray(body.weeklyTasks)) {
       // Normalize distribution format:
       // - String format: 'spread' | 'repeat-daily' (from TypeScript TaskDistribution type)
@@ -394,8 +404,10 @@ export async function PATCH(
       }
       const weeklyTasks = processTasksWithIds(body.weeklyTasks);
 
-      // Get the days for this week
-      const daysToUpdate = updatedWeek.days;
+      // Get the days for this week (ensure it's an array)
+      const daysToUpdate = updatedWeek.days || [];
+
+      console.log(`[INSTANCE_WEEK_PATCH] Distribution: ${distribution.type}, tasks: ${weeklyTasks.length}, days: ${daysToUpdate.length}`);
 
       // Distribute tasks based on distribution type
       if (distribution.type === 'spread') {
@@ -411,8 +423,10 @@ export async function PATCH(
             const taskIdx = Math.floor((dayIdx / numDays) * numTasks);
             const task = weeklyTasks[taskIdx];
 
+            // Ensure tasks array exists
+            const existingTasks = daysToUpdate[dayIdx].tasks || [];
             daysToUpdate[dayIdx].tasks = [
-              ...daysToUpdate[dayIdx].tasks.filter(t => t.source !== 'week'),
+              ...existingTasks.filter(t => t.source !== 'week'),
               { ...task, source: 'week' as const },
             ];
           }
@@ -420,16 +434,18 @@ export async function PATCH(
       } else if (distribution.type === 'all_days') {
         // Add all tasks to all days
         for (const dayToUpdate of daysToUpdate) {
+          const existingTasks = dayToUpdate.tasks || [];
           dayToUpdate.tasks = [
-            ...dayToUpdate.tasks.filter(t => t.source && t.source !== 'week'),
+            ...existingTasks.filter(t => t.source && t.source !== 'week'),
             ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
           ];
         }
       } else if (distribution.type === 'first_day') {
         // Add all tasks to first day only
         if (daysToUpdate.length > 0) {
+          const existingTasks = daysToUpdate[0].tasks || [];
           daysToUpdate[0].tasks = [
-            ...daysToUpdate[0].tasks.filter(t => t.source && t.source !== 'week'),
+            ...existingTasks.filter(t => t.source && t.source !== 'week'),
             ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
           ];
         }
