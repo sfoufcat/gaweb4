@@ -4361,8 +4361,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             if (res.ok) {
                               const data = await res.json();
                               console.log('[WEEK_EDITOR_SAVE] Instance save SUCCESS');
-                              // Refresh instance to get updated data
-                              refreshInstance();
+                              // Wait for Firestore consistency then refresh instance data
+                              await new Promise(resolve => setTimeout(resolve, 300));
+                              await refreshInstance();
+                              console.log('[WEEK_EDITOR_SAVE] Instance refresh completed');
                             } else {
                               const errorText = await res.text();
                               console.error('[WEEK_EDITOR_SAVE] Instance PATCH FAILED:', res.status, errorText);
@@ -4410,12 +4412,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                               const data = await res.json();
                               console.log('[WEEK_EDITOR_SAVE] Cohort save SUCCESS, content:', data.content);
                               setCohortWeekContent(data.content || null);
+                              // Wait for Firestore consistency then refresh data
+                              await new Promise(resolve => setTimeout(resolve, 300));
                               // Refresh cohort days if distribution happened
                               if (weeklyTasksUpdated && cohortViewContext.cohortId) {
-                                fetchCohortDays(selectedProgram!.id, cohortViewContext.cohortId);
+                                await fetchCohortDays(selectedProgram!.id, cohortViewContext.cohortId);
                               }
                               // Refresh instance data to get the updated week
-                              refreshInstance();
+                              await refreshInstance();
+                              console.log('[WEEK_EDITOR_SAVE] Cohort refresh completed');
                             } else {
                               const errorText = await res.text();
                               console.error('[WEEK_EDITOR_SAVE] Cohort PUT FAILED:', res.status, errorText);
