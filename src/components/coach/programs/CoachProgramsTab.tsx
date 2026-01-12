@@ -4168,75 +4168,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           programType: selectedProgram?.type,
                         });
                         try {
-                          if (isClientMode && clientWeek && !instanceId) {
-                            // OLD SYSTEM FALLBACK: Update existing client-specific week
-                            // Only used when instanceId is NOT available (not migrated)
-                            const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
-                            const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/client-weeks/${clientWeek.id}`, {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                ...updates,
-                                startDayIndex: selectedWeek.startDayIndex,
-                                endDayIndex: selectedWeek.endDayIndex,
-                                // Distribute tasks to client days, overwriting existing
-                                ...(weeklyTasksUpdated && { distributeTasksNow: true, overwriteExisting: true }),
-                              }),
-                            });
-                            if (res.ok) {
-                              const data = await res.json();
-                              setClientWeeks(prev => prev.map(w => w.id === clientWeek.id ? data.clientWeek : w));
-                              // Refresh instance data if distribution happened
-                              if (weeklyTasksUpdated) {
-                                await new Promise(resolve => setTimeout(resolve, 300));
-                                await refreshInstance();
-                              }
-                            }
-                            // CRITICAL: Return early - client saves should NEVER fall through to template
-                            return;
-                          } else if (isClientMode && !clientWeek && clientViewContext.enrollmentId && !instanceId) {
-                            // OLD SYSTEM FALLBACK: Create new client-specific week
-                            // Only used when instanceId is NOT available (not migrated)
-                            const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
-                            const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/client-weeks`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                enrollmentId: clientViewContext.enrollmentId,
-                                weekNumber,
-                                startDayIndex: startDay,
-                                endDayIndex: endDay,
-                                moduleId: templateWeek?.moduleId || programModules[0]?.id,
-                                ...updates,
-                                // Distribute tasks to client days, overwriting existing
-                                ...(weeklyTasksUpdated && { distributeTasksNow: true, overwriteExisting: true }),
-                              }),
-                            });
-                            if (res.ok) {
-                              const data = await res.json();
-                              if (data.clientWeek) {
-                                setClientWeeks(prev => {
-                                  // Check if we need to add or update
-                                  const existing = prev.find(w => w.weekNumber === weekNumber);
-                                  if (existing) {
-                                    return prev.map(w => w.weekNumber === weekNumber ? data.clientWeek : w);
-                                  }
-                                  return [...prev, data.clientWeek];
-                                });
-                                // Refresh instance data if distribution happened
-                                if (weeklyTasksUpdated) {
-                                  await new Promise(resolve => setTimeout(resolve, 300));
-                                  await refreshInstance();
-                                }
-                              }
-                            }
-                            // CRITICAL: Return early - client saves should NEVER fall through to template
-                            return;
-                          } else if (instanceId) {
-                            // NEW SYSTEM: Save to program_instances collection
-                            // Note: We only need instanceId to save, not the full instance data
-                            // IMPORTANT: This is for cohort/client instances - NEVER saves to template
-                            console.log('[WEEK_EDITOR_SAVE] Entering INSTANCE branch (new system)', { instanceId });
+                          if (instanceId) {
+                            // Instance mode (client or cohort): Save to program_instances collection
+                            // Instances are auto-created when looking up enrollmentId or cohortId
+                            console.log('[WEEK_EDITOR_SAVE] Entering INSTANCE branch', { instanceId, isClientMode, isCohortMode });
                             const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
                             const res = await fetch(`/api/instances/${instanceId}/weeks/${weekNumber}`, {
                               method: 'PATCH',
@@ -4247,6 +4182,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 description: updates.description,
                                 weeklyPrompt: updates.weeklyPrompt,
                                 weeklyTasks: updates.weeklyTasks,
+                                weeklyHabits: updates.weeklyHabits,
                                 distribution: updates.distribution,
                                 coachRecordingUrl: updates.coachRecordingUrl,
                                 coachRecordingNotes: updates.coachRecordingNotes,
@@ -4258,7 +4194,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             });
                             console.log('[WEEK_EDITOR_SAVE] Instance PATCH response:', res.status, res.ok);
                             if (res.ok) {
-                              const data = await res.json();
                               console.log('[WEEK_EDITOR_SAVE] Instance save SUCCESS');
                               // Wait for Firestore consistency then refresh instance data
                               await new Promise(resolve => setTimeout(resolve, 300));
@@ -4269,57 +4204,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                               console.error('[WEEK_EDITOR_SAVE] Instance PATCH FAILED:', res.status, errorText);
                             }
                             // CRITICAL: Return early - instance saves should NEVER fall through to template
-                            return;
-                          } else if (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId) {
-                            // COHORT MODE: Save to program_instances via cohort week-content API
-                            // The API handles instance creation automatically via getOrCreateCohortInstance
-                            // IMPORTANT: Do NOT create template weeks here - cohort saves go to instances only
-                            console.log('[WEEK_EDITOR_SAVE] Entering COHORT branch');
-                            console.log('[WEEK_EDITOR_SAVE] weekNumber =', weekNumber);
-
-                            // Use weekNumber for cohort API (more reliable than id)
-                            const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
-                            console.log('[WEEK_EDITOR_SAVE] Making cohort PUT request', {
-                              url: `${apiBasePath}/${selectedProgram?.id}/cohorts/${cohortViewContext.cohortId}/week-content/${weekNumber}`,
-                              weeklyTasksUpdated,
-                              tasksCount: updates.weeklyTasks?.length,
-                            });
-                            const res = await fetch(
-                              `${apiBasePath}/${selectedProgram?.id}/cohorts/${cohortViewContext.cohortId}/week-content/${weekNumber}`,
-                                {
-                                  method: 'PUT',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    // Include all week fields - they go to the instance, not template
-                                    name: updates.name,
-                                    theme: updates.theme,
-                                    weeklyTasks: updates.weeklyTasks,
-                                    weeklyHabits: updates.weeklyHabits,
-                                    weeklyPrompt: updates.weeklyPrompt,
-                                    distribution: updates.distribution,
-                                    coachRecordingUrl: updates.coachRecordingUrl,
-                                    coachRecordingNotes: updates.coachRecordingNotes,
-                                    linkedSummaryIds: updates.linkedSummaryIds,
-                                    linkedCallEventIds: updates.linkedCallEventIds,
-                                    // Distribute tasks to cohort days, overwriting existing
-                                    ...(weeklyTasksUpdated && { distributeTasksNow: true, overwriteExistingTasks: true }),
-                                  }),
-                                }
-                              );
-                            console.log('[WEEK_EDITOR_SAVE] Cohort PUT response status:', res.status, res.ok);
-                            if (res.ok) {
-                              const data = await res.json();
-                              console.log('[WEEK_EDITOR_SAVE] Cohort save SUCCESS, content:', data.content);
-                              setCohortWeekContent(data.content || null);
-                              // Wait for Firestore consistency then refresh instance data
-                              await new Promise(resolve => setTimeout(resolve, 300));
-                              await refreshInstance();
-                              console.log('[WEEK_EDITOR_SAVE] Cohort refresh completed');
-                            } else {
-                              const errorText = await res.text();
-                              console.error('[WEEK_EDITOR_SAVE] Cohort PUT FAILED:', res.status, errorText);
-                            }
-                            // CRITICAL: Return early - cohort saves should NEVER fall through to template
                             return;
                           } else if (templateWeek) {
                             console.log('[WEEK_EDITOR_SAVE] Entering TEMPLATE branch (templateWeek exists)');

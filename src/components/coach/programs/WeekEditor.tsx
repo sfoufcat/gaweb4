@@ -417,25 +417,16 @@ export function WeekEditor({
 
   // Build API endpoint based on view context
   const getApiEndpoint = useCallback(() => {
-    // If we have an instance ID (migrated), use the new API
-    // This ensures we write to the single source of truth (program_instances)
+    // Instance API is the single source of truth for client/cohort views
+    // Instances are auto-created when looking up enrollmentId or cohortId
     if (effectiveInstanceId) {
       return `/api/instances/${effectiveInstanceId}/weeks/${week.weekNumber}`;
     }
 
     if (!programId) return '';
-    const base = `/api/coach/org-programs/${programId}`;
-    if (viewContext === 'client' && enrollmentId) {
-      // Client week - may need POST if doesn't exist, PATCH if exists
-      return `${base}/client-weeks`;
-    } else if (viewContext === 'cohort' && cohortId) {
-      // Use weekNumber for cohort paths - more reliable than id since instance weeks
-      // may have different IDs than template weeks
-      return `${base}/cohorts/${cohortId}/week-content/${week.weekNumber}`;
-    }
-    // Template path - use week.id
-    return `${base}/weeks/${week.id}`;
-  }, [programId, viewContext, enrollmentId, cohortId, week.id, week.weekNumber, effectiveInstanceId]);
+    // Template path - use week.id (for template editing mode only)
+    return `/api/coach/org-programs/${programId}/weeks/${week.id}`;
+  }, [programId, week.id, week.weekNumber, effectiveInstanceId]);
 
   // Check for pending data from context
   const pendingData = editorContext?.getPendingData('week', week.id, clientContextId);
@@ -718,56 +709,14 @@ export function WeekEditor({
       let httpMethod: 'PATCH' | 'POST' | 'PUT' = 'PATCH';
       let endpoint = getApiEndpoint();
 
-      if (viewContext === 'client' && enrollmentId) {
-        if (!isTempWeek) {
-          // EXISTING client week - use PATCH with the week ID
-          endpoint = `/api/coach/org-programs/${programId}/client-weeks/${week.id}`;
-          pendingDataForContext = { ...formData };
-          httpMethod = 'PATCH';
-        } else {
-          // NEW client week - use POST with enrollment info
-          pendingDataForContext = {
-            ...formData,
-            enrollmentId,
-            weekNumber: week.weekNumber,
-            startDayIndex: week.startDayIndex,
-            endDayIndex: week.endDayIndex,
-            moduleId: week.moduleId,
-          };
-          httpMethod = 'POST';
-        }
-      } else if (viewContext === 'cohort' && cohortId) {
-        // Cohort week content - handle temp weeks differently
-        if (isTempWeek) {
-          // For temp weeks in cohort mode, we need to create the template week first
-          // Use the template weeks POST endpoint
-          endpoint = `/api/coach/org-programs/${programId}/weeks`;
-          pendingDataForContext = {
-            ...formData,
-            weekNumber: week.weekNumber,
-            startDayIndex: week.startDayIndex,
-            endDayIndex: week.endDayIndex,
-            moduleId: week.moduleId || undefined, // Will be assigned by API if not set
-            // Mark that this needs cohort content creation after
-            _createCohortContentAfter: true,
-            _cohortId: cohortId,
-          };
-          httpMethod = 'POST';
-        } else {
-          // Existing cohort week - use PATCH to update (instances API only supports PATCH)
-          pendingDataForContext = {
-            weeklyTasks: formData.weeklyTasks,
-            weeklyHabits: week.weeklyHabits, // Preserve existing
-            weeklyPrompt: formData.weeklyPrompt,
-            distribution: formData.distribution,
-            manualNotes: formData.manualNotes,
-            coachRecordingUrl: formData.coachRecordingUrl,
-            coachRecordingNotes: formData.coachRecordingNotes,
-            linkedSummaryIds: formData.linkedSummaryIds,
-            linkedCallEventIds: formData.linkedCallEventIds,
-          };
-          httpMethod = 'PATCH';
-        }
+      if ((viewContext === 'client' || viewContext === 'cohort') && effectiveInstanceId) {
+        // Client/Cohort view: Use instance API (instances are auto-created)
+        endpoint = `/api/instances/${effectiveInstanceId}/weeks/${week.weekNumber}`;
+        pendingDataForContext = {
+          ...formData,
+          distributeTasksNow: true,
+        };
+        httpMethod = 'PATCH';
       } else if (isTempWeek) {
         // Template mode with temp week - needs POST to create
         endpoint = `/api/coach/org-programs/${programId}/weeks`;
