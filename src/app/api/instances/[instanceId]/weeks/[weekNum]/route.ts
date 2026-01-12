@@ -95,7 +95,8 @@ async function syncDayTasksToUser(
   userId: string,
   dayIndex: number,
   tasks: ProgramInstanceTask[],
-  calendarDate?: string
+  calendarDate?: string,
+  organizationId?: string
 ): Promise<void> {
   const batch = adminDb.batch();
   const now = new Date().toISOString();
@@ -145,6 +146,7 @@ async function syncDayTasksToUser(
       const taskRef = adminDb.collection('tasks').doc();
       batch.set(taskRef, {
         userId,
+        organizationId,
         instanceId,
         instanceTaskId: task.id,
         label: task.label,
@@ -484,7 +486,7 @@ export async function PATCH(
             effectiveCalendarDate = calculatedDate.toISOString().split('T')[0];
             console.log(`[INSTANCE_WEEK_PATCH] Calculated calendarDate for day ${day.globalDayIndex}: ${effectiveCalendarDate}`);
           }
-          await syncDayTasksToUser(instanceId, data.userId, day.globalDayIndex, day.tasks, effectiveCalendarDate);
+          await syncDayTasksToUser(instanceId, data.userId, day.globalDayIndex, day.tasks, effectiveCalendarDate, data.organizationId);
         }
         console.log(`[INSTANCE_WEEK_PATCH] Synced ${daysToUpdate.length} days to user ${data.userId}`);
       } else if (data?.type === 'cohort' && data?.cohortId) {
@@ -514,7 +516,8 @@ export async function PATCH(
                   enrollment.userId,
                   day.globalDayIndex,
                   day.tasks,
-                  effectiveCalendarDate
+                  effectiveCalendarDate,
+                  data.organizationId
                 );
               }
             }

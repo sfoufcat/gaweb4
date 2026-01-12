@@ -226,7 +226,7 @@ export async function PATCH(
 
     // Sync tasks to user's tasks collection if this is an individual instance
     if (data?.type === 'individual' && data?.userId) {
-      await syncDayTasksToUser(instanceId, data.userId, globalDayIndex, updatedDay.tasks, effectiveCalendarDate);
+      await syncDayTasksToUser(instanceId, data.userId, globalDayIndex, updatedDay.tasks, effectiveCalendarDate, data.organizationId);
     }
 
     // Sync tasks to ALL cohort members if this is a cohort instance
@@ -253,7 +253,8 @@ export async function PATCH(
               enrollment.userId,
               globalDayIndex,
               updatedDay.tasks,
-              effectiveCalendarDate
+              effectiveCalendarDate,
+              data.organizationId
             );
           }
         })
@@ -296,7 +297,8 @@ async function syncDayTasksToUser(
   userId: string,
   dayIndex: number,
   tasks: ProgramInstanceTask[],
-  calendarDate?: string
+  calendarDate?: string,
+  organizationId?: string
 ): Promise<void> {
   const batch = adminDb.batch();
   const now = new Date().toISOString();
@@ -346,6 +348,7 @@ async function syncDayTasksToUser(
       const taskRef = adminDb.collection('tasks').doc();
       batch.set(taskRef, {
         userId,
+        organizationId,
         instanceId,
         instanceTaskId: task.id,
         label: task.label,

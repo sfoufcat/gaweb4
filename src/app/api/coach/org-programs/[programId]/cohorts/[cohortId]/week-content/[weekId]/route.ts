@@ -26,7 +26,8 @@ async function syncDayTasksToUser(
   userId: string,
   dayIndex: number,
   tasks: ProgramInstanceTask[],
-  calendarDate?: string
+  calendarDate?: string,
+  organizationId?: string
 ): Promise<{ created: number; updated: number; deleted: number }> {
   const batch = adminDb.batch();
   const now = new Date().toISOString();
@@ -78,6 +79,7 @@ async function syncDayTasksToUser(
       const taskRef = adminDb.collection('tasks').doc();
       batch.set(taskRef, {
         userId,
+        organizationId,
         instanceId,
         instanceTaskId: task.id,
         label: task.label,
@@ -119,7 +121,8 @@ async function syncWeekTasksToMembers(
   cohortId: string,
   week: ProgramInstanceWeek,
   cohortStartDate?: string,
-  includeWeekends?: boolean
+  includeWeekends?: boolean,
+  organizationId?: string
 ): Promise<{ membersProcessed: number; totalTasksCreated: number; totalTasksUpdated: number; totalTasksDeleted: number }> {
   // Get cohort members (including upcoming for pre-cohort-start sync)
   const enrollmentsSnap = await adminDb.collection('program_enrollments')
@@ -158,7 +161,8 @@ async function syncWeekTasksToMembers(
         userId,
         day.globalDayIndex,
         tasks,
-        effectiveCalendarDate
+        effectiveCalendarDate,
+        organizationId
       );
       totalTasksCreated += result.created;
       totalTasksUpdated += result.updated;
@@ -831,7 +835,7 @@ export async function PUT(
     let syncResult = null;
     if (body.distributeTasksNow === true) {
       try {
-        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek, cohortData.startDate, programData.includeWeekends !== false);
+        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek, cohortData.startDate, programData.includeWeekends !== false, organizationId);
         console.log(`[COHORT_WEEK_CONTENT_PUT] Synced to ${syncResult.membersProcessed} members: ${syncResult.totalTasksCreated} created, ${syncResult.totalTasksUpdated} updated`);
       } catch (syncErr) {
         console.error('[COHORT_WEEK_CONTENT_PUT] Sync failed:', syncErr);
@@ -1086,7 +1090,7 @@ export async function PATCH(
     let syncResult = null;
     if (body.distributeTasksNow === true) {
       try {
-        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek, cohortData.startDate, programData.includeWeekends !== false);
+        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek, cohortData.startDate, programData.includeWeekends !== false, organizationId);
         console.log(`[COHORT_WEEK_CONTENT_PATCH] Synced to ${syncResult.membersProcessed} members: ${syncResult.totalTasksCreated} created, ${syncResult.totalTasksUpdated} updated`);
       } catch (syncErr) {
         console.error('[COHORT_WEEK_CONTENT_PATCH] Sync failed:', syncErr);
