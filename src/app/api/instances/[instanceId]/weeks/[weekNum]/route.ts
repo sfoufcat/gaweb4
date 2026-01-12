@@ -100,6 +100,9 @@ async function syncDayTasksToUser(
 ): Promise<void> {
   const batch = adminDb.batch();
   const now = new Date().toISOString();
+  let created = 0, updated = 0, deleted = 0;
+
+  console.log(`[syncDayTasksToUser] Starting sync for user ${userId}, day ${dayIndex}, date ${calendarDate}, orgId ${organizationId}, tasks: ${tasks?.length || 0}`);
 
   // Get existing tasks for this instance + day + user
   const existingTasksQuery = await adminDb.collection('tasks')
@@ -107,6 +110,8 @@ async function syncDayTasksToUser(
     .where('instanceId', '==', instanceId)
     .where('dayIndex', '==', dayIndex)
     .get();
+
+  console.log(`[syncDayTasksToUser] Found ${existingTasksQuery.docs.length} existing tasks for day ${dayIndex}`);
 
   const existingTasksByInstanceTaskId = new Map<string, { id: string; completed: boolean; completedAt?: string }>();
   for (const doc of existingTasksQuery.docs) {
@@ -141,9 +146,11 @@ async function syncDayTasksToUser(
         date: calendarDate,
         updatedAt: now,
       });
+      updated++;
     } else {
       // Create new task
       const taskRef = adminDb.collection('tasks').doc();
+      console.log(`[syncDayTasksToUser] Creating task: ${task.label} for date ${calendarDate}`);
       batch.set(taskRef, {
         userId,
         organizationId,
@@ -163,6 +170,7 @@ async function syncDayTasksToUser(
         createdAt: now,
         updatedAt: now,
       });
+      created++;
     }
   }
 
@@ -171,10 +179,12 @@ async function syncDayTasksToUser(
     if (!processedInstanceTaskIds.has(templateId)) {
       const taskRef = adminDb.collection('tasks').doc(existing.id);
       batch.delete(taskRef);
+      deleted++;
     }
   }
 
   await batch.commit();
+  console.log(`[syncDayTasksToUser] Completed: ${created} created, ${updated} updated, ${deleted} deleted`);
 }
 
 /**
@@ -480,12 +490,14 @@ export async function PATCH(
         // Individual instance - sync to the single user
         for (const day of daysToUpdate) {
           // Calculate calendar date if missing (critical for task sync to work)
+          // Note: globalDayIndex can be 0, so use typeof check instead of truthy check
           let effectiveCalendarDate = day.calendarDate;
-          if (!effectiveCalendarDate && instanceStartDate && day.globalDayIndex) {
+          if (!effectiveCalendarDate && instanceStartDate && typeof day.globalDayIndex === 'number') {
             const calculatedDate = dayIndexToDate(instanceStartDate, day.globalDayIndex, includeWeekends);
             effectiveCalendarDate = calculatedDate.toISOString().split('T')[0];
             console.log(`[INSTANCE_WEEK_PATCH] Calculated calendarDate for day ${day.globalDayIndex}: ${effectiveCalendarDate}`);
           }
+          console.log(`[INSTANCE_WEEK_PATCH] Syncing day ${day.globalDayIndex} (${effectiveCalendarDate || 'NO DATE'}) to individual user ${data.userId}`);
           await syncDayTasksToUser(instanceId, data.userId, day.globalDayIndex, day.tasks, effectiveCalendarDate, data.organizationId);
         }
         console.log(`[INSTANCE_WEEK_PATCH] Synced ${daysToUpdate.length} days to user ${data.userId}`);
@@ -501,15 +513,24 @@ export async function PATCH(
         await Promise.all(
           enrollmentsSnap.docs.map(async (enrollmentDoc) => {
             const enrollment = enrollmentDoc.data();
+            console.log(`[INSTANCE_WEEK_PATCH] Processing enrollment:`, {
+              enrollmentId: enrollmentDoc.id,
+              userId: enrollment.userId,
+              status: enrollment.status
+            });
+
             if (enrollment.userId) {
               for (const day of daysToUpdate) {
                 // Calculate calendar date if missing (critical for task sync to work)
+                // Note: globalDayIndex can be 0, so use typeof check instead of truthy check
                 let effectiveCalendarDate = day.calendarDate;
-                if (!effectiveCalendarDate && instanceStartDate && day.globalDayIndex) {
+                if (!effectiveCalendarDate && instanceStartDate && typeof day.globalDayIndex === 'number') {
                   const calculatedDate = dayIndexToDate(instanceStartDate, day.globalDayIndex, includeWeekends);
                   effectiveCalendarDate = calculatedDate.toISOString().split('T')[0];
                   console.log(`[INSTANCE_WEEK_PATCH] Calculated calendarDate for day ${day.globalDayIndex}: ${effectiveCalendarDate}`);
                 }
+
+                console.log(`[INSTANCE_WEEK_PATCH] Syncing day ${day.globalDayIndex} (${effectiveCalendarDate || 'NO DATE'}) with ${day.tasks?.length || 0} tasks to user ${enrollment.userId}`);
 
                 await syncDayTasksToUser(
                   instanceId,
@@ -520,6 +541,8 @@ export async function PATCH(
                   data.organizationId
                 );
               }
+            } else {
+              console.log(`[INSTANCE_WEEK_PATCH] Skipping enrollment ${enrollmentDoc.id} - no userId`);
             }
           })
         );
