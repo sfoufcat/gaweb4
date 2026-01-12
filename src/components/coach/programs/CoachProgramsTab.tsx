@@ -1394,14 +1394,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             const moduleResults = await Promise.all(modulePromises);
             modules = moduleResults.filter(r => r?.module).map(r => r.module);
 
-            if (modules.length > 0) {
+            // Only create weeks if none exist yet (syncProgramWeeks may have created them)
+            if (modules.length > 0 && weeks.length === 0) {
               // Create weeks and distribute across modules
               const weekPromises = [];
               for (let weekIdx = 0; weekIdx < numWeeks; weekIdx++) {
                 const weekNum = weekIdx + 1;
                 const startDay = weekIdx * daysPerWeek + 1;
                 const endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
-                
+
                 // Determine which module this week belongs to
                 const moduleIndex = Math.min(Math.floor(weekIdx / weeksPerModule), modules.length - 1);
                 const targetModule = modules[moduleIndex];
@@ -1427,6 +1428,25 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               weeks = weekResults.filter(r => r?.week).map(r => r.week);
 
               console.log(`[fetchProgramDetails] Auto-initialized ${modules.length} module(s) with ${weeks.length} weeks for program ${programId}`);
+            } else if (modules.length > 0 && weeks.length > 0) {
+              // Modules were created but weeks already exist - auto-distribute to newly created modules
+              console.log(`[fetchProgramDetails] Modules created, auto-distributing existing ${weeks.length} weeks to ${modules.length} modules`);
+              try {
+                const distributeRes = await fetch(`${apiBasePath}/${programId}/weeks/auto-distribute`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                });
+                if (distributeRes.ok) {
+                  // Refresh weeks after distribution
+                  const refreshedWeeksRes = await fetch(`${apiBasePath}/${programId}/weeks`);
+                  if (refreshedWeeksRes.ok) {
+                    const refreshedData = await refreshedWeeksRes.json();
+                    weeks = refreshedData.weeks || [];
+                  }
+                }
+              } catch (distErr) {
+                console.error('Error auto-distributing weeks:', distErr);
+              }
             }
           } catch (initErr) {
             console.error('Error auto-initializing modules:', initErr);

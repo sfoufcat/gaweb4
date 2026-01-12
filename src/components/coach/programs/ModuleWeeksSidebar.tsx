@@ -304,7 +304,7 @@ function ToolsDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-48 z-50 bg-white dark:bg-[#1a1f28] rounded-xl border border-[#e8e4df] dark:border-[#262b35] shadow-lg p-1.5">
+        <div className="absolute right-0 bottom-full mb-1 w-48 z-50 bg-white dark:bg-[#1a1f28] rounded-xl border border-[#e8e4df] dark:border-[#262b35] shadow-lg p-1.5">
           {/* For cohorts: Sync from Template (Template → Editor) */}
           {isCohortView && onSyncFromTemplate && (
             <button

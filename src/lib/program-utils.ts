@@ -297,7 +297,7 @@ export async function recalculateWeekDayIndices(programId: string): Promise<void
  */
 export async function syncProgramWeeks(
   programId: string,
-  organizationId: string,
+  _organizationId: string,
   moduleId?: string | null
 ): Promise<{ created: number; existing: number; total: number }> {
   // Get program to calculate weeks
@@ -312,14 +312,21 @@ export async function syncProgramWeeks(
   const daysPerWeek = includeWeekends ? 7 : 5;
   const targetWeekCount = Math.ceil(totalDays / daysPerWeek);
 
-  // Get existing weeks
-  const existingWeeksSnapshot = await adminDb
-    .collection('program_weeks')
-    .where('programId', '==', programId)
-    .get();
+  // Get existing embedded weeks from the program document
+  const existingWeeks: Array<{
+    id: string;
+    weekNumber: number;
+    moduleId?: string;
+    order: number;
+    startDayIndex: number;
+    endDayIndex: number;
+    distribution?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  }> = programData?.weeks || [];
 
   const existingWeekNumbers = new Set(
-    existingWeeksSnapshot.docs.map(doc => doc.data().weekNumber as number)
+    existingWeeks.map(w => w.weekNumber)
   );
   const existingCount = existingWeekNumbers.size;
 
@@ -339,35 +346,40 @@ export async function syncProgramWeeks(
   }
 
   // Create missing weeks
-  const batch = adminDb.batch();
-  let createdCount = 0;
+  const newWeeks: typeof existingWeeks = [];
+  const now = new Date().toISOString();
 
   for (let weekNum = 1; weekNum <= targetWeekCount; weekNum++) {
     if (!existingWeekNumbers.has(weekNum)) {
       const startDay = (weekNum - 1) * daysPerWeek + 1;
       const endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
 
-      const weekRef = adminDb.collection('program_weeks').doc();
-      batch.set(weekRef, {
-        programId,
-        moduleId: targetModuleId || null,
-        organizationId,
+      newWeeks.push({
+        id: crypto.randomUUID(),
+        moduleId: targetModuleId || '',
         order: weekNum,
         weekNumber: weekNum,
         startDayIndex: startDay,
         endDayIndex: endDay,
         distribution: 'spread',
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
+        createdAt: now,
+        updatedAt: now,
       });
-
-      createdCount++;
     }
   }
 
+  const createdCount = newWeeks.length;
+
   if (createdCount > 0) {
-    await batch.commit();
-    console.log(`[PROGRAM_UTILS] Created ${createdCount} weeks for program ${programId} (${existingCount} existed)`);
+    // Merge with existing weeks and update the program document
+    const allWeeks = [...existingWeeks, ...newWeeks];
+    allWeeks.sort((a, b) => a.weekNumber - b.weekNumber);
+
+    await adminDb.collection('programs').doc(programId).update({
+      weeks: allWeeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    console.log(`[PROGRAM_UTILS] Created ${createdCount} embedded weeks for program ${programId} (${existingCount} existed)`);
   }
 
   return {

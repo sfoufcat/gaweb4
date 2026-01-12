@@ -147,16 +147,17 @@ export async function POST(request: NextRequest) {
       updatedAt: now,
     };
 
-    await programRef.set({ id: programId, ...newProgram });
+    // Create modules and collect their IDs for week assignment
+    const moduleIds: string[] = [];
+    const weeksPerModule = Math.max(1, Math.ceil(durationWeeks / (numModules || 1)));
 
-    // Create modules if requested
-    if (numModules > 1) {
-      const weeksPerModule = Math.ceil(durationWeeks / numModules);
+    if (numModules > 0) {
       const batch = adminDb.batch();
 
       for (let i = 0; i < numModules; i++) {
         const moduleRef = adminDb.collection('program_modules').doc();
         const moduleNumber = i + 1;
+        moduleIds.push(moduleRef.id);
 
         // Calculate start and end weeks for this module
         const startWeek = i * weeksPerModule + 1;
@@ -181,7 +182,52 @@ export async function POST(request: NextRequest) {
       console.log(`[CREATE_PROGRAM] Created ${numModules} modules for program ${programId}`);
     }
 
-    console.log(`[CREATE_PROGRAM] Successfully created program ${programId} with ${lengthDays} days`);
+    // Create weeks and auto-distribute to modules
+    const weeks: Array<{
+      id: string;
+      programId: string;
+      organizationId: string;
+      moduleId: string;
+      order: number;
+      weekNumber: number;
+      startDayIndex: number;
+      endDayIndex: number;
+      createdAt: string;
+      updatedAt: string;
+    }> = [];
+
+    for (let weekNum = 1; weekNum <= durationWeeks; weekNum++) {
+      // Calculate which module this week belongs to
+      const moduleIndex = Math.floor((weekNum - 1) / weeksPerModule);
+      const moduleId = moduleIds[Math.min(moduleIndex, moduleIds.length - 1)] || '';
+      const orderWithinModule = ((weekNum - 1) % weeksPerModule) + 1;
+
+      // Calculate day indices
+      const startDayIndex = (weekNum - 1) * daysPerWeek + 1;
+      const endDayIndex = Math.min(startDayIndex + daysPerWeek - 1, lengthDays);
+
+      weeks.push({
+        id: crypto.randomUUID(),
+        programId,
+        organizationId,
+        moduleId,
+        order: orderWithinModule,
+        weekNumber: weekNum,
+        startDayIndex,
+        endDayIndex,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    // Store weeks embedded in the program document
+    await programRef.set({
+      id: programId,
+      ...newProgram,
+      weeks,
+    });
+
+    console.log(`[CREATE_PROGRAM] Successfully created program ${programId} with ${lengthDays} days and ${weeks.length} weeks distributed across ${numModules} modules`);
 
     return NextResponse.json({
       success: true,
