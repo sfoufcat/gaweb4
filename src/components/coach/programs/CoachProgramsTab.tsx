@@ -924,9 +924,26 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     if (existingWeek) {
       setWeekToFill(existingWeek);
     } else {
+      // Look up template week for day indices
+      const templateWeek = programWeeks.find(w => w.weekNumber === weekNumber);
       const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
-      const startDay = (weekNumber - 1) * daysPerWeek + 1;
-      const endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
+      
+      // Week 0 (onboarding) special handling: starts at day 1, ends at default onboarding length
+      // Regular weeks: look up from template or use formula
+      let startDay: number;
+      let endDay: number;
+      if (weekNumber === 0) {
+        startDay = 1;
+        // Default to 4-day onboarding (typical partial first week)
+        const defaultOnboardingDays = 4;
+        endDay = Math.min(defaultOnboardingDays, selectedProgram?.lengthDays || 30);
+      } else {
+        // Check if Week 0 exists to offset regular weeks
+        const weekZero = programWeeks.find(w => w.weekNumber === 0);
+        const weekZeroEnd = weekZero?.endDayIndex ?? 0;
+        startDay = templateWeek?.startDayIndex ?? (weekZeroEnd + 1 + (weekNumber - 1) * daysPerWeek);
+        endDay = templateWeek?.endDayIndex ?? Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
+      }
       setWeekToFill({
         id: `temp-week-${weekNumber}`,
         programId: selectedProgram?.id || '',
@@ -966,9 +983,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         }
       } else {
         const daysPerWeek = selectedProgram.includeWeekends !== false ? 7 : 5;
-        const startDay = (weekNumber - 1) * daysPerWeek + 1;
-        const endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram.lengthDays || 30);
-        
+
+        // Week 0 (onboarding) special handling
+        let startDay: number;
+        let endDay: number;
+        if (weekNumber === 0) {
+          startDay = 1;
+          // Default to 4-day onboarding (typical partial first week)
+          const defaultOnboardingDays = 4;
+          endDay = Math.min(defaultOnboardingDays, selectedProgram.lengthDays || 30);
+        } else {
+          // Check if Week 0 exists to offset regular weeks
+          const weekZero = programWeeks.find(w => w.weekNumber === 0);
+          const weekZeroEnd = weekZero?.endDayIndex ?? 0;
+          startDay = weekZeroEnd > 0 ? (weekZeroEnd + 1 + (weekNumber - 1) * daysPerWeek) : ((weekNumber - 1) * daysPerWeek + 1);
+          endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram.lengthDays || 30);
+        }
+
         const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -4032,8 +4063,22 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
                   // Calculate week bounds from program settings
                   const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
-                  const startDay = (weekNumber - 1) * daysPerWeek + 1;
-                  const endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
+
+                  // Week 0 (onboarding) special handling for fallback calculation
+                  let startDay: number;
+                  let endDay: number;
+                  if (weekNumber === 0) {
+                    startDay = 1;
+                    // Default to 4-day onboarding (typical partial first week)
+                    const defaultOnboardingDays = 4;
+                    endDay = Math.min(defaultOnboardingDays, selectedProgram?.lengthDays || 30);
+                  } else {
+                    // Check if Week 0 exists to offset regular weeks
+                    const weekZero = programWeeks.find(w => w.weekNumber === 0);
+                    const weekZeroEnd = weekZero?.endDayIndex ?? 0;
+                    startDay = weekZeroEnd > 0 ? (weekZeroEnd + 1 + (weekNumber - 1) * daysPerWeek) : ((weekNumber - 1) * daysPerWeek + 1);
+                    endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
+                  }
 
                   // Determine which week data to use
                   const isCohortMode = selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort';

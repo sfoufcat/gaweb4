@@ -600,11 +600,10 @@ export function ModuleWeeksSidebar({
         storedWeekId: storedWeek?.id,
         moduleId: storedWeek?.moduleId,
         order: idx, // Maintain calendar order
-        // CRITICAL: ALWAYS use targetWeekNumber for API routing!
-        // storedWeek is only used for getting week content (tasks, theme, etc.)
-        // The targetWeekNumber is the POSITION-based mapping (1st regular week → Week 1)
-        // storedWeek.weekNumber might be different if template weeks are numbered 2, 3, 4...
-        templateWeekNumber: targetWeekNumber,
+        // CRITICAL: Use targetWeekNumber for content weeks (regular/closing)
+        // For non-content weeks (onboarding), use cw.weekNumber (0 for onboarding, -1 for closing)
+        // This prevents the collision where both onboarding and Week 1 would have weekNumber=1
+        templateWeekNumber: targetWeekNumber ?? cw.weekNumber,
       };
     });
   }, [calendarWeeks, days, weeks, program.includeWeekends]);
