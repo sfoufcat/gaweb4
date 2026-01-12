@@ -254,16 +254,17 @@ export function NewProgramModal({
       }
 
       const data = await response.json();
+      const programId = data.program?.id || data.id;
 
       // Only show cohort step for group programs
       if (wizardData.type === 'group') {
         // Store the created program ID and transition to cohort step
-        setCreatedProgramId(data.id);
+        setCreatedProgramId(programId);
         setStep('cohort');
       } else {
         // For 1:1 programs, close and navigate directly
         handleClose();
-        onProgramCreated(data.id);
+        onProgramCreated(programId);
       }
     } catch (error) {
       console.error('Error creating program:', error);
