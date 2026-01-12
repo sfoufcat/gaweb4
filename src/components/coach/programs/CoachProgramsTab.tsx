@@ -255,9 +255,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
   // Client view context state (for 1:1/individual programs)
   const [clientViewContext, setClientViewContext] = useState<ClientViewContext>({ mode: 'template' });
-  const [clientWeeks, setClientWeeks] = useState<ClientProgramWeek[]>([]);
-  const [loadingClientWeeks, setLoadingClientWeeks] = useState(false);
-  const [loadedEnrollmentId, setLoadedEnrollmentId] = useState<string | null>(null);
+  // Note: Client loading state now managed by useInstanceIdLookup hook (instanceIdLoading)
 
   // Cohort view context state (for group programs)
   const [cohortViewContext, setCohortViewContext] = useState<CohortViewContext>({ mode: 'template' });
@@ -796,33 +794,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         updatedAt: now,
       } as ProgramWeek));
     }
-    // OLD SYSTEM: Fall back to clientWeeks when instance not available
-    if (clientViewContext.mode === 'client') {
-      return clientWeeks.map(cw => ({
-        id: cw.id,
-        programId: cw.programId,
-        weekNumber: cw.weekNumber,
-        moduleId: cw.moduleId,
-        order: cw.order,
-        startDayIndex: cw.startDayIndex,
-        endDayIndex: cw.endDayIndex,
-        name: cw.name,
-        theme: cw.theme,
-        description: cw.description,
-        weeklyPrompt: cw.weeklyPrompt,
-        weeklyTasks: cw.weeklyTasks || [],
-        weeklyHabits: cw.weeklyHabits || [],
-        currentFocus: cw.currentFocus || [],
-        notes: cw.notes || [],
-        distribution: cw.distribution || 'spread',
-        linkedSummaryIds: cw.linkedSummaryIds || [],
-        linkedCallEventIds: cw.linkedCallEventIds || [],
-        createdAt: cw.createdAt,
-        updatedAt: cw.updatedAt,
-      } as ProgramWeek));
-    }
+    // Client mode uses instance data (auto-created via useInstanceIdLookup)
+    // Fall back to programWeeks (template) while instance is loading
     return programWeeks;
-  }, [clientViewContext.mode, clientWeeks, programWeeks, instance, instanceWeeks]);
+  }, [clientViewContext.mode, programWeeks, instance, instanceWeeks]);
 
   // Memoized selection prop for sidebar
   const sidebarSelectionProp = useMemo(() => {
@@ -1568,54 +1543,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     }
   }, []);
 
-  // Fetch client-specific weeks for 1:1 programs
-  const fetchClientWeeks = useCallback(async (programId: string, enrollmentId: string) => {
-    try {
-      setLoadingClientWeeks(true);
-      const response = await fetch(`${apiBasePath}/${programId}/client-weeks?enrollmentId=${enrollmentId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setClientWeeks(data.clientWeeks || []);
-        setLoadedEnrollmentId(enrollmentId); // Track which enrollment this data is for
-      } else if (response.status === 404) {
-        // Client weeks don't exist yet - need to initialize
-        setClientWeeks([]);
-        setLoadedEnrollmentId(enrollmentId);
-      } else {
-        // Other error - still set enrollmentId to clear loading state
-        console.error('Error fetching client weeks:', response.status);
-        setClientWeeks([]);
-        setLoadedEnrollmentId(enrollmentId);
-      }
-    } catch (err) {
-      console.error('Error fetching client weeks:', err);
-      setClientWeeks([]);
-      setLoadedEnrollmentId(enrollmentId); // Set on error to clear loading state
-    } finally {
-      setLoadingClientWeeks(false);
-    }
-  }, [apiBasePath]);
-
-  // Initialize client weeks for an enrollment (copy from template)
-  const initializeClientWeeks = useCallback(async (programId: string, enrollmentId: string) => {
-    try {
-      setLoadingClientWeeks(true);
-      const response = await fetch(`${apiBasePath}/${programId}/client-weeks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enrollmentId }),
-      });
-      if (response.ok) {
-        // Fetch the newly created client weeks
-        await fetchClientWeeks(programId, enrollmentId);
-      }
-    } catch (err) {
-      console.error('Error initializing client weeks:', err);
-    } finally {
-      setLoadingClientWeeks(false);
-    }
-  }, [apiBasePath, fetchClientWeeks]);
-
   // Fetch cohort-specific week content for group programs
   const fetchCohortWeekContent = useCallback(async (programId: string, cohortId: string, weekNumber: number) => {
     console.log('[COHORT_CONTENT_FETCH] Fetching...', { programId, cohortId, weekNumber });
@@ -1648,9 +1575,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     setIsRefreshing(true);
     try {
       if (selectedProgram.type === 'individual' && clientViewContext.mode === 'client') {
-        // Client mode: refresh instance data and client weeks
+        // Client mode: refresh instance data
         await refreshInstance();
-        await fetchClientWeeks(selectedProgram.id, clientViewContext.enrollmentId);
       } else if (selectedProgram.type === 'group' && cohortViewContext.mode === 'cohort') {
         // Cohort mode: refresh instance data and week content
         await refreshInstance();
@@ -1669,7 +1595,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     } finally {
       setIsRefreshing(false);
     }
-  }, [selectedProgram, clientViewContext, cohortViewContext, sidebarSelection, programWeeks, fetchClientWeeks, fetchProgramDetails, fetchCohortWeekContent, refreshInstance]);
+  }, [selectedProgram, clientViewContext, cohortViewContext, sidebarSelection, programWeeks, fetchProgramDetails, fetchCohortWeekContent, refreshInstance]);
 
   const handleRemoveEnrollment = async () => {
     if (!removeConfirmEnrollment || !selectedProgram) return;
@@ -1861,17 +1787,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     }
   }, [viewMode, selectedProgram, fetchProgramEnrollments]);
 
-  // Fetch client weeks when client is selected (for 1:1 programs)
-  // Note: Day data now comes from instance via useProgramInstance hook
-  useEffect(() => {
-    if (clientViewContext.mode === 'client' && selectedProgram?.type === 'individual') {
-      fetchClientWeeks(selectedProgram.id, clientViewContext.enrollmentId);
-    } else {
-      // Reset client content when switching to template mode
-      setClientWeeks([]);
-      setLoadedEnrollmentId(null);
-    }
-  }, [clientViewContext, selectedProgram, fetchClientWeeks]);
+  // Note: Client loading state now managed by useInstanceIdLookup hook (instanceIdLoading)
+  // Week/Day data comes from instance via useProgramInstance hook (auto-created)
 
   // Reset cohort state when switching to template mode (for group programs)
   // Note: Day data now comes from instance via useProgramInstance hook
@@ -1916,8 +1833,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   // Reset client/cohort view context when switching programs
   useEffect(() => {
     setClientViewContext({ mode: 'template' });
-    setClientWeeks([]);
-    setLoadedEnrollmentId(null);
     setCohortViewContext({ mode: 'template' });
     setCohortWeekContent(null);
     setLoadedCohortId(null);
@@ -3084,7 +2999,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   <ClientSelector
                     enrollments={programEnrollments}
                     value={clientViewContext}
-                    onChange={async (context) => {
+                    onChange={(context) => {
                       setClientViewContext(context);
                       if (context.mode === 'client' && selectedProgram) {
                         // For evergreen programs, set selectedCycle to enrollment's current cycle
@@ -3094,18 +3009,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         } else {
                           setSelectedCycle(undefined);
                         }
-
-                        const existingWeeks = await fetch(
-                          `${apiBasePath}/${selectedProgram.id}/client-weeks?enrollmentId=${context.enrollmentId}`
-                        ).then(r => r.ok ? r.json() : { clientWeeks: [] });
-
-                        if (!existingWeeks.clientWeeks?.length && programWeeks.length > 0) {
-                          await initializeClientWeeks(selectedProgram.id, context.enrollmentId);
-                        }
-                        await fetchClientWeeks(selectedProgram.id, context.enrollmentId!);
-                        // Day data now comes from instance via useProgramInstance hook
+                        // Instance is auto-created via useInstanceIdLookup hook
+                        // Week/day data comes from instance via useProgramInstance hook
                       } else {
-                        setClientWeeks([]);
                         setSelectedCycle(undefined);
                       }
                     }}
@@ -3948,13 +3854,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   });
                   const templateWeek = programWeeks.find(w => w.weekNumber === weekNumber);
 
-                  // For individual programs in client mode, use client week
+                  // For individual programs in client mode
                   const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
-                  // Only use client data if it matches the current context (prevents stale data)
-                  const dataMatchesContext = clientViewContext.mode === 'client' && loadedEnrollmentId === clientViewContext.enrollmentId;
-                  const clientWeek = isClientMode && dataMatchesContext
-                    ? clientWeeks.find(cw => cw.weekNumber === weekNumber)
-                    : null;
+                  // Client/cohort week data now comes from instance (auto-created via useInstanceIdLookup)
 
                   // Calculate week bounds from program settings
                   const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
@@ -3977,7 +3879,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
                   // Determine which week data to use
                   const isCohortMode = selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort';
-                  const existingWeek = isClientMode ? clientWeek : templateWeek;
+                  // Note: In client/cohort mode, we always use instance data (new system)
+                  // existingWeek is only used as fallback for template mode
+                  const existingWeek = templateWeek;
 
                   // NEW SYSTEM: Check if we have instance week data
                   const instanceWeek = instance?.weeks?.find(w => w.weekNumber === weekNumber);
@@ -4122,8 +4026,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     updatedAt: new Date().toISOString(),
                   };
 
-                  // Show loading indicator when switching between clients
-                  if (isClientMode && !dataMatchesContext) {
+                  // Show loading indicator when switching between clients (instance loading)
+                  if (isClientMode && (instanceIdLoading || (instanceId && instanceLoading && !instance))) {
                     return (
                       <div className="flex-1 p-8 flex items-center justify-center">
                         <div className="text-center">
@@ -4160,9 +4064,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       onSave={async (updates) => {
                         console.log('[WEEK_EDITOR_SAVE] Starting save...', {
                           isClientMode,
-                          clientWeek: !!clientWeek,
                           cohortMode: cohortViewContext.mode,
                           cohortId: cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined,
+                          instanceId,
                           templateWeekId: templateWeek?.id,
                           weekNumber,
                           programType: selectedProgram?.type,
@@ -4309,10 +4213,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 (() => {
                   // Check if we're in client mode and data is loading
                   const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
-                  const dataMatchesContext = clientViewContext.mode === 'client' && loadedEnrollmentId === clientViewContext.enrollmentId;
 
-                  // Show loading indicator when switching between clients
-                  if (isClientMode && !dataMatchesContext) {
+                  // Show loading indicator when switching between clients (instance loading)
+                  if (isClientMode && (instanceIdLoading || (instanceId && instanceLoading && !instance))) {
                     return (
                       <div className="flex-1 p-8 flex items-center justify-center">
                         <div className="text-center">
@@ -6046,22 +5949,25 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           onApply={async (updates) => {
             // Determine if we're updating a client week or template week
             const isClientMode = clientViewContext.mode === 'client' && selectedProgram.type === 'individual';
-            const endpoint = isClientMode
-              ? `${apiBasePath}/${selectedProgram.id}/client-weeks/${weekToFill.id}`
+            const isCohortMode = cohortViewContext.mode === 'cohort' && selectedProgram.type === 'group';
+
+            // Use instance API for client/cohort mode, template API otherwise
+            const endpoint = (isClientMode || isCohortMode) && instanceId
+              ? `/api/instances/${instanceId}/weeks/${weekToFill.weekNumber}`
               : `${apiBasePath}/${selectedProgram.id}/weeks/${weekToFill.id}`;
-            
+
             const res = await fetch(endpoint, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(updates),
             });
             if (res.ok) {
-              const data = await res.json();
-              if (isClientMode) {
-                // Update client weeks state
-                setClientWeeks(prev => prev.map(w => w.id === weekToFill.id ? data.clientWeek || data.week : w));
+              if ((isClientMode || isCohortMode) && instanceId) {
+                // Refresh instance data
+                await refreshInstance();
               } else {
                 // Update template weeks state
+                const data = await res.json();
                 setProgramWeeks(prev => prev.map(w => w.id === weekToFill.id ? data.week : w));
               }
             }
