@@ -16,7 +16,7 @@ import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { ProgramTaskTemplate, ProgramCohort, Program, ProgramInstance, ProgramInstanceWeek, ProgramInstanceTask, ProgramInstanceDay } from '@/types';
 import { getProgramCompletionThreshold } from '@/lib/cohort-task-state';
-import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
+import { calculateCalendarWeeks, dayIndexToDate, type CalendarWeek } from '@/lib/calendar-weeks';
 
 /**
  * Sync day tasks to a user's tasks collection (new instance-based sync)
@@ -117,7 +117,9 @@ async function syncDayTasksToUser(
 async function syncWeekTasksToMembers(
   instanceId: string,
   cohortId: string,
-  week: ProgramInstanceWeek
+  week: ProgramInstanceWeek,
+  cohortStartDate?: string,
+  includeWeekends?: boolean
 ): Promise<{ membersProcessed: number; totalTasksCreated: number; totalTasksUpdated: number; totalTasksDeleted: number }> {
   // Get cohort members (including upcoming for pre-cohort-start sync)
   const enrollmentsSnap = await adminDb.collection('program_enrollments')
@@ -140,13 +142,23 @@ async function syncWeekTasksToMembers(
   for (const day of week.days || []) {
     const tasks = (day.tasks || []) as ProgramInstanceTask[];
 
+    // Calculate calendar date if missing (critical for task sync to work)
+    let effectiveCalendarDate = day.calendarDate;
+    if (!effectiveCalendarDate && cohortStartDate && day.globalDayIndex) {
+      const calculatedDate = dayIndexToDate(cohortStartDate, day.globalDayIndex, includeWeekends !== false);
+      effectiveCalendarDate = calculatedDate.toISOString().split('T')[0];
+      console.log(`[SYNC_WEEK_TO_MEMBERS] Calculated calendarDate for day ${day.globalDayIndex}: ${effectiveCalendarDate}`);
+    }
+
+    console.log(`[SYNC_WEEK_TO_MEMBERS] Syncing day ${day.globalDayIndex} (${effectiveCalendarDate || 'NO DATE'}) with ${tasks.length} tasks to ${memberUserIds.length} users`);
+
     for (const userId of memberUserIds) {
       const result = await syncDayTasksToUser(
         instanceId,
         userId,
         day.globalDayIndex,
         tasks,
-        day.calendarDate
+        effectiveCalendarDate
       );
       totalTasksCreated += result.created;
       totalTasksUpdated += result.updated;
@@ -819,7 +831,7 @@ export async function PUT(
     let syncResult = null;
     if (body.distributeTasksNow === true) {
       try {
-        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek);
+        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek, cohortData.startDate, programData.includeWeekends !== false);
         console.log(`[COHORT_WEEK_CONTENT_PUT] Synced to ${syncResult.membersProcessed} members: ${syncResult.totalTasksCreated} created, ${syncResult.totalTasksUpdated} updated`);
       } catch (syncErr) {
         console.error('[COHORT_WEEK_CONTENT_PUT] Sync failed:', syncErr);
@@ -1074,7 +1086,7 @@ export async function PATCH(
     let syncResult = null;
     if (body.distributeTasksNow === true) {
       try {
-        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek);
+        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek, cohortData.startDate, programData.includeWeekends !== false);
         console.log(`[COHORT_WEEK_CONTENT_PATCH] Synced to ${syncResult.membersProcessed} members: ${syncResult.totalTasksCreated} created, ${syncResult.totalTasksUpdated} updated`);
       } catch (syncErr) {
         console.error('[COHORT_WEEK_CONTENT_PATCH] Sync failed:', syncErr);
