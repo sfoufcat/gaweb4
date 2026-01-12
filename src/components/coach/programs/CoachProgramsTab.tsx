@@ -417,6 +417,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     // NEW SYSTEM: Use instance data when available
     if (instance && instanceDays.length > 0) {
       console.log('[DAYS_TO_USE] Using INSTANCE branch');
+
+      // If no template days to merge with, return instance days directly
+      if (programDays.length === 0) {
+        console.log('[DAYS_TO_USE] No template days - returning instanceDays directly:', instanceDays.length);
+        return instanceDays;
+      }
+
       // Merge instance days with template days
       const mergedDays = [...programDays];
       for (const instanceDay of instanceDays) {
