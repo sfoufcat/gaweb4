@@ -294,7 +294,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     refresh: refreshInstance,
   } = useProgramInstance(instanceId);
 
-  // Debug: Log instance data
+  // Debug: Log instance data with task details
   useEffect(() => {
     if (instanceId) {
       console.log('[INSTANCE_DATA] Instance loaded:', {
@@ -304,6 +304,18 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         weeksCount: instance?.weeks?.length,
         weekNumbers: instance?.weeks?.map(w => w.weekNumber),
       });
+      // Log tasks in each day for debugging distribution
+      if (instance?.weeks) {
+        for (const week of instance.weeks) {
+          console.log(`[INSTANCE_DATA] Week ${week.weekNumber} days:`,
+            week.days?.map(d => ({
+              globalDayIndex: d.globalDayIndex,
+              tasksCount: d.tasks?.length || 0,
+              taskLabels: d.tasks?.map(t => t.label)
+            }))
+          );
+        }
+      }
     }
   }, [instanceId, instanceLoading, instance]);
 
@@ -394,12 +406,22 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
     const isCohortMode = selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort';
 
+    console.log('[DAYS_TO_USE] Computing:', {
+      hasInstance: !!instance,
+      instanceDaysCount: instanceDays.length,
+      programDaysCount: programDays.length,
+      isClientMode,
+      isCohortMode,
+    });
+
     // NEW SYSTEM: Use instance data when available
     if (instance && instanceDays.length > 0) {
+      console.log('[DAYS_TO_USE] Using INSTANCE branch');
       // Merge instance days with template days
       const mergedDays = [...programDays];
       for (const instanceDay of instanceDays) {
         const idx = mergedDays.findIndex(d => d.dayIndex === instanceDay.dayIndex);
+        console.log(`[DAYS_TO_USE] Merging instanceDay ${instanceDay.dayIndex}: found at idx ${idx}, tasks: ${instanceDay.tasks?.length || 0}`);
         if (idx >= 0) {
           mergedDays[idx] = {
             ...mergedDays[idx],
@@ -411,17 +433,21 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           };
         }
       }
+      console.log('[DAYS_TO_USE] Merged result:', mergedDays.map(d => ({ dayIndex: d.dayIndex, tasksCount: d.tasks?.length || 0 })));
       return mergedDays;
     }
 
     // OLD SYSTEM: Fall back to clientDays/cohortDays when instance not available
+    console.log('[DAYS_TO_USE] Using OLD SYSTEM fallback');
     const clientDataMatches = clientViewContext.mode === 'client' && loadedEnrollmentId === clientViewContext.enrollmentId;
     const cohortDataMatches = cohortViewContext.mode === 'cohort' && loadedCohortId === cohortViewContext.cohortId;
 
     if (isClientMode && clientDataMatches) {
+      console.log('[DAYS_TO_USE] Returning clientDays');
       return clientDays;
     }
     if (isCohortMode && cohortDataMatches && cohortDays.length > 0) {
+      console.log('[DAYS_TO_USE] Merging cohortDays with programDays');
       // Merge cohort days with template days - cohort overrides take precedence
       const mergedDays = [...programDays];
       for (const cohortDay of cohortDays) {
