@@ -91,7 +91,7 @@ export async function GET(
     if (data?.type === 'cohort' && data?.cohortId) {
       const enrollmentsSnap = await adminDb.collection('program_enrollments')
         .where('cohortId', '==', data.cohortId)
-        .where('status', 'in', ['active', 'completed'])
+        .where('status', 'in', ['active', 'upcoming', 'completed'])
         .get();
 
       const totalMembers = enrollmentsSnap.docs.length;
@@ -216,16 +216,21 @@ export async function PATCH(
     if (data?.type === 'cohort' && data?.cohortId) {
       const enrollmentsSnap = await adminDb.collection('program_enrollments')
         .where('cohortId', '==', data.cohortId)
-        .where('status', 'in', ['active', 'completed'])
+        .where('status', 'in', ['active', 'upcoming', 'completed'])
         .get();
 
-      console.log(`[INSTANCE_DAY_PATCH] Syncing to ${enrollmentsSnap.docs.length} cohort members`);
+      console.log(`[INSTANCE_DAY_PATCH] Syncing to ${enrollmentsSnap.docs.length} cohort members`, {
+        globalDayIndex,
+        calendarDate: updatedDay.calendarDate,
+        taskCount: updatedDay.tasks?.length || 0,
+      });
 
       // Sync to each member in parallel
       await Promise.all(
         enrollmentsSnap.docs.map(async (enrollmentDoc) => {
           const enrollment = enrollmentDoc.data();
           if (enrollment.userId) {
+            console.log(`[INSTANCE_DAY_PATCH] Syncing day ${globalDayIndex} (${updatedDay.calendarDate}) to user ${enrollment.userId}`);
             await syncDayTasksToUser(
               instanceId,
               enrollment.userId,

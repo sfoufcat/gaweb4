@@ -119,10 +119,10 @@ async function syncWeekTasksToMembers(
   cohortId: string,
   week: ProgramInstanceWeek
 ): Promise<{ membersProcessed: number; totalTasksCreated: number; totalTasksUpdated: number; totalTasksDeleted: number }> {
-  // Get active cohort members
+  // Get cohort members (including upcoming for pre-cohort-start sync)
   const enrollmentsSnap = await adminDb.collection('program_enrollments')
     .where('cohortId', '==', cohortId)
-    .where('status', 'in', ['active', 'completed'])
+    .where('status', 'in', ['active', 'upcoming', 'completed'])
     .get();
 
   const memberUserIds = enrollmentsSnap.docs.map(doc => doc.data().userId).filter(Boolean);
