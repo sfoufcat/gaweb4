@@ -41,10 +41,11 @@ export async function GET(
       .collection('program_cohorts')
       .where('programId', '==', programId);
 
-    if (status) {
-      query = query.where('status', '==', status);
-    }
+    // Parse comma-separated status values (e.g., "upcoming,active")
+    const statusValues = status ? status.split(',').map(s => s.trim()).filter(Boolean) : [];
 
+    // Note: We filter by status AFTER fetching because we calculate status dynamically
+    // based on dates, not stored status. The stored status might be stale.
     const cohortsSnapshot = await query.get();
 
     // Helper to calculate current status based on dates
@@ -77,8 +78,13 @@ export async function GET(
       };
     }) as ProgramCohort[];
 
+    // Filter by status if specified (using calculated status, not stored)
+    if (statusValues.length > 0) {
+      cohorts = cohorts.filter(c => statusValues.includes(c.status));
+    }
+
     // Sort by startDate descending (in memory to avoid composite index requirement)
-    cohorts.sort((a, b) => 
+    cohorts.sort((a, b) =>
       new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
     );
 
