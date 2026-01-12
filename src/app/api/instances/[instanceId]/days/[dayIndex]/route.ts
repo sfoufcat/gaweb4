@@ -14,6 +14,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { ProgramInstance, ProgramInstanceWeek, ProgramInstanceDay, ProgramInstanceTask } from '@/types';
+import { dayIndexToDate } from '@/lib/calendar-weeks';
 
 type RouteParams = { params: Promise<{ instanceId: string; dayIndex: string }> };
 
@@ -207,9 +208,25 @@ export async function PATCH(
       updatedAt: FieldValue.serverTimestamp(),
     });
 
+    // Calculate calendar date if missing (needed for task sync to work correctly)
+    let effectiveCalendarDate = updatedDay.calendarDate;
+    if (!effectiveCalendarDate && data?.startDate) {
+      // Calculate from instance start date and day index
+      const includeWeekends = data?.includeWeekends !== false;
+      const calculatedDate = dayIndexToDate(data.startDate, globalDayIndex, includeWeekends);
+      effectiveCalendarDate = calculatedDate.toISOString().split('T')[0];
+      console.log(`[INSTANCE_DAY_PATCH] Calculated calendarDate from dayIndex ${globalDayIndex}: ${effectiveCalendarDate} (includeWeekends: ${includeWeekends})`);
+
+      // Update the day with the calculated calendar date for future reference
+      updatedWeeks[weekIndex].days[dayIndexInWeek].calendarDate = effectiveCalendarDate;
+      await adminDb.collection('program_instances').doc(instanceId).update({
+        weeks: updatedWeeks,
+      });
+    }
+
     // Sync tasks to user's tasks collection if this is an individual instance
     if (data?.type === 'individual' && data?.userId) {
-      await syncDayTasksToUser(instanceId, data.userId, globalDayIndex, updatedDay.tasks, updatedDay.calendarDate);
+      await syncDayTasksToUser(instanceId, data.userId, globalDayIndex, updatedDay.tasks, effectiveCalendarDate);
     }
 
     // Sync tasks to ALL cohort members if this is a cohort instance
@@ -221,7 +238,7 @@ export async function PATCH(
 
       console.log(`[INSTANCE_DAY_PATCH] Syncing to ${enrollmentsSnap.docs.length} cohort members`, {
         globalDayIndex,
-        calendarDate: updatedDay.calendarDate,
+        calendarDate: effectiveCalendarDate,
         taskCount: updatedDay.tasks?.length || 0,
       });
 
@@ -230,13 +247,13 @@ export async function PATCH(
         enrollmentsSnap.docs.map(async (enrollmentDoc) => {
           const enrollment = enrollmentDoc.data();
           if (enrollment.userId) {
-            console.log(`[INSTANCE_DAY_PATCH] Syncing day ${globalDayIndex} (${updatedDay.calendarDate}) to user ${enrollment.userId}`);
+            console.log(`[INSTANCE_DAY_PATCH] Syncing day ${globalDayIndex} (${effectiveCalendarDate}) to user ${enrollment.userId}`);
             await syncDayTasksToUser(
               instanceId,
               enrollment.userId,
               globalDayIndex,
               updatedDay.tasks,
-              updatedDay.calendarDate
+              effectiveCalendarDate
             );
           }
         })
