@@ -653,8 +653,17 @@ export async function PATCH(
             continue;
           }
 
-          console.log(`[INSTANCE_WEEK_PATCH] Syncing day ${day.globalDayIndex} (${effectiveCalendarDate}) to individual user ${data.userId}`);
-          await syncDayTasksToUser(instanceId, data.userId, day.globalDayIndex, day.tasks, effectiveCalendarDate, data.organizationId);
+          console.log(`[INSTANCE_WEEK_PATCH] Syncing day ${day.globalDayIndex} (${effectiveCalendarDate}) with ${day.tasks?.length || 0} tasks to individual user ${data.userId}`);
+          await syncDayTasksToUser(
+            instanceId,
+            data.userId,
+            day.globalDayIndex,
+            day.tasks,
+            effectiveCalendarDate,
+            data.organizationId,
+            data.enrollmentId, // Pass enrollment ID for individual instance
+            data.programId // Pass program ID
+          );
         }
         console.log(`[INSTANCE_WEEK_PATCH] Synced ${daysToUpdate.length} days to user ${data.userId}`);
       } else if (data?.type === 'cohort' && data?.cohortId) {

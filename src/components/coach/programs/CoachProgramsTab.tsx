@@ -4168,8 +4168,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           programType: selectedProgram?.type,
                         });
                         try {
-                          if (isClientMode && clientWeek) {
-                            // Update existing client-specific week
+                          if (isClientMode && clientWeek && !instanceId) {
+                            // OLD SYSTEM FALLBACK: Update existing client-specific week
+                            // Only used when instanceId is NOT available (not migrated)
                             const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/client-weeks/${clientWeek.id}`, {
                               method: 'PATCH',
@@ -4193,8 +4194,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             }
                             // CRITICAL: Return early - client saves should NEVER fall through to template
                             return;
-                          } else if (isClientMode && !clientWeek && clientViewContext.enrollmentId) {
-                            // Create new client-specific week (client mode but week doesn't exist yet)
+                          } else if (isClientMode && !clientWeek && clientViewContext.enrollmentId && !instanceId) {
+                            // OLD SYSTEM FALLBACK: Create new client-specific week
+                            // Only used when instanceId is NOT available (not migrated)
                             const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
                             const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/client-weeks`, {
                               method: 'POST',
