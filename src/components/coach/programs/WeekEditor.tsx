@@ -440,6 +440,8 @@ export function WeekEditor({
   const lastRegisteredFingerprint = useRef<string | null>(null);
   // Track what formData looked like when we last saved (to detect "clean" state)
   const lastSavedFormDataRef = useRef<string | null>(null);
+  // Track last processed fingerprint to prevent infinite reset loops
+  const lastProcessedFingerprint = useRef<string | null>(null);
 
   // Form data type
   type WeekFormData = {
@@ -667,6 +669,15 @@ export function WeekEditor({
   // Reset form when week changes - but check for pending data first
   // CRITICAL: Include clientContextId in deps so we check the correct context's pending data
   useEffect(() => {
+    // Create a unique key for this state to prevent infinite loops
+    const stateKey = `${week.id}:${weekDataFingerprint}:${clientContextId}:${viewContext}`;
+
+    // Skip if we've already processed this exact state
+    if (lastProcessedFingerprint.current === stateKey) {
+      return;
+    }
+    lastProcessedFingerprint.current = stateKey;
+
     // Check if there's pending data in context for this week
     // Uses current clientContextId to avoid finding stale template pending data
     const contextPendingData = editorContext?.getPendingData('week', week.id, clientContextId);
@@ -742,7 +753,7 @@ export function WeekEditor({
     setSaveStatus('idle');
     setEditedFields(new Set());
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [week.id, weekDataFingerprint, clientContextId, viewContext, editorContext]);
+  }, [week.id, weekDataFingerprint, clientContextId, viewContext]);
 
   // Track previous view context to detect changes
   const lastViewContext = useRef(viewContext);
@@ -820,7 +831,7 @@ export function WeekEditor({
       setEditedFields(new Set());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewContext, clientContextId, editorContext, week.id, week.weekNumber]);
+  }, [viewContext, clientContextId, week.id, week.weekNumber]);
 
   // Watch for reset version changes (discard/save from global buttons)
   useEffect(() => {
