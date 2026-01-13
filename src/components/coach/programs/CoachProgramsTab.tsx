@@ -3904,7 +3904,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   // Use existing week data or create a default
                   // Priority: instanceId means new system (always), else old system fallback
                   // When instanceId exists, we use instance data even if still loading (template as base)
-                  const useNewSystem = !!instanceId && templateWeek;
+                  // FIXED: Use new system if we have instanceId AND (templateWeek OR instanceWeek exists)
+                  // This handles the case where week exists in instance but not in template (e.g., week 0 onboarding)
+                  const useNewSystem = !!instanceId && (templateWeek || instanceWeek);
 
                   // CRITICAL: When in new system mode with instance loaded, ALWAYS use instance data
                   // Don't fall back to stale templateWeek.weeklyTasks - use empty array if instanceWeek not found
@@ -3913,47 +3915,48 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   const selectedWeek: ProgramWeek = useNewSystem ? {
                     // NEW SYSTEM: Use instance week data (from program_instances collection)
                     // If instanceWeek hasn't loaded yet, use template values as fallback
-                    id: templateWeek.id,
-                    programId: templateWeek.programId,
-                    moduleId: instanceWeek?.moduleId || templateWeek.moduleId || '',
-                    organizationId: templateWeek.organizationId,
-                    weekNumber: instanceWeek?.weekNumber ?? templateWeek.weekNumber,
-                    order: templateWeek.order || templateWeek.weekNumber,
-                    startDayIndex: templateWeek.startDayIndex || startDay,
-                    endDayIndex: templateWeek.endDayIndex || endDay,
-                    name: instanceWeek?.name || templateWeek.name,
-                    description: instanceWeek?.description || templateWeek.description,
-                    theme: instanceWeek?.theme || templateWeek.theme,
-                    createdAt: templateWeek.createdAt,
-                    updatedAt: templateWeek.updatedAt,
-                    fillSource: templateWeek.fillSource,
-                    notes: templateWeek.notes || [],
-                    currentFocus: templateWeek.currentFocus || [],
+                    // NOTE: templateWeek might be undefined if week only exists in instance (e.g., week 0)
+                    id: templateWeek?.id || `instance-week-${weekNumber}`,
+                    programId: templateWeek?.programId || selectedProgram?.id || '',
+                    moduleId: instanceWeek?.moduleId || templateWeek?.moduleId || '',
+                    organizationId: templateWeek?.organizationId || selectedProgram?.organizationId || '',
+                    weekNumber: instanceWeek?.weekNumber ?? templateWeek?.weekNumber ?? weekNumber,
+                    order: templateWeek?.order || templateWeek?.weekNumber || weekNumber,
+                    startDayIndex: templateWeek?.startDayIndex || startDay,
+                    endDayIndex: templateWeek?.endDayIndex || endDay,
+                    name: instanceWeek?.name || templateWeek?.name || '',
+                    description: instanceWeek?.description || templateWeek?.description || '',
+                    theme: instanceWeek?.theme || templateWeek?.theme || '',
+                    createdAt: templateWeek?.createdAt || new Date().toISOString(),
+                    updatedAt: templateWeek?.updatedAt || new Date().toISOString(),
+                    fillSource: templateWeek?.fillSource,
+                    notes: templateWeek?.notes || [],
+                    currentFocus: templateWeek?.currentFocus || [],
                     // FIXED: When instance data is available, ONLY use instance data (not stale template)
                     // This prevents "Test 1" from reappearing after save
-                    weeklyPrompt: instanceDataAvailable 
-                      ? (instanceWeek?.weeklyPrompt ?? '') 
-                      : (instanceWeek?.weeklyPrompt ?? templateWeek.weeklyPrompt),
-                    weeklyTasks: instanceDataAvailable 
-                      ? (instanceWeek?.weeklyTasks ?? []) 
-                      : (instanceWeek?.weeklyTasks ?? templateWeek.weeklyTasks ?? []),
-                    weeklyHabits: templateWeek.weeklyHabits ?? [],
-                    distribution: instanceDataAvailable 
-                      ? (instanceWeek?.distribution ?? 'spread') 
-                      : (instanceWeek?.distribution ?? templateWeek.distribution ?? 'spread'),
-                    coachRecordingUrl: instanceDataAvailable 
-                      ? (instanceWeek?.coachRecordingUrl ?? '') 
-                      : (instanceWeek?.coachRecordingUrl ?? templateWeek.coachRecordingUrl),
-                    coachRecordingNotes: instanceDataAvailable 
-                      ? (instanceWeek?.coachRecordingNotes ?? '') 
-                      : (instanceWeek?.coachRecordingNotes ?? templateWeek.coachRecordingNotes),
-                    manualNotes: templateWeek.manualNotes,
-                    linkedSummaryIds: instanceDataAvailable 
-                      ? (instanceWeek?.linkedSummaryIds ?? []) 
-                      : (instanceWeek?.linkedSummaryIds ?? templateWeek.linkedSummaryIds ?? []),
-                    linkedCallEventIds: instanceDataAvailable 
-                      ? (instanceWeek?.linkedCallEventIds ?? []) 
-                      : (instanceWeek?.linkedCallEventIds ?? templateWeek.linkedCallEventIds ?? []),
+                    weeklyPrompt: instanceDataAvailable
+                      ? (instanceWeek?.weeklyPrompt ?? '')
+                      : (instanceWeek?.weeklyPrompt ?? templateWeek?.weeklyPrompt ?? ''),
+                    weeklyTasks: instanceDataAvailable
+                      ? (instanceWeek?.weeklyTasks ?? [])
+                      : (instanceWeek?.weeklyTasks ?? templateWeek?.weeklyTasks ?? []),
+                    weeklyHabits: templateWeek?.weeklyHabits ?? [],
+                    distribution: instanceDataAvailable
+                      ? (instanceWeek?.distribution ?? 'spread')
+                      : (instanceWeek?.distribution ?? templateWeek?.distribution ?? 'spread'),
+                    coachRecordingUrl: instanceDataAvailable
+                      ? (instanceWeek?.coachRecordingUrl ?? '')
+                      : (instanceWeek?.coachRecordingUrl ?? templateWeek?.coachRecordingUrl ?? ''),
+                    coachRecordingNotes: instanceDataAvailable
+                      ? (instanceWeek?.coachRecordingNotes ?? '')
+                      : (instanceWeek?.coachRecordingNotes ?? templateWeek?.coachRecordingNotes ?? ''),
+                    manualNotes: templateWeek?.manualNotes,
+                    linkedSummaryIds: instanceDataAvailable
+                      ? (instanceWeek?.linkedSummaryIds ?? [])
+                      : (instanceWeek?.linkedSummaryIds ?? templateWeek?.linkedSummaryIds ?? []),
+                    linkedCallEventIds: instanceDataAvailable
+                      ? (instanceWeek?.linkedCallEventIds ?? [])
+                      : (instanceWeek?.linkedCallEventIds ?? templateWeek?.linkedCallEventIds ?? []),
                   } : isCohortMode && !instanceId && templateWeek ? {
                     // OLD SYSTEM FALLBACK: Use cohortWeekContent (deprecated - for unmigrated cohorts)
                     // Only used when instanceId is NOT available (not migrated)

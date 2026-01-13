@@ -663,15 +663,8 @@ export function WeekEditor({
       });
       setFormData(newFormData);
       setHasChanges(false);
-      // CRITICAL: Set skip cycles to prevent the change detection effect from
-      // re-registering changes while instance refreshes. Without this, the change
-      // detection effect sees formData vs stale week data and incorrectly registers a change.
-      // Use multiple cycles (10) to give SWR time to fetch and React to re-render.
-      skipCyclesRemaining.current = 10;
-      // Also track what we just saved to detect when we're in a "clean" state
-      lastSavedFormDataRef.current = JSON.stringify({
-        weeklyTasks: newFormData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
-      });
+      // NOTE: Don't set skipCyclesRemaining here - this effect fires on initial load too.
+      // Skip cycles should only be set after a save (via resetVersion effect).
     }
     setShowSyncButton(false);
     setSaveStatus('idle');
@@ -690,8 +683,8 @@ export function WeekEditor({
       });
       lastResetVersion.current = editorContext.resetVersion;
       // Set skip cycles to prevent re-registration during save->refresh cycle
-      // Use multiple cycles (10) to give SWR time to fetch and React to re-render
-      skipCyclesRemaining.current = 10;
+      // Use a few cycles (3) to give SWR time to fetch and React to re-render
+      skipCyclesRemaining.current = 3;
       // Track current formData as "saved" state
       lastSavedFormDataRef.current = JSON.stringify({
         weeklyTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
