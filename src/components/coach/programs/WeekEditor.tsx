@@ -640,14 +640,18 @@ export function WeekEditor({
   ).sort((a, b) => a.dayIndex - b.dayIndex);
 
   // Reset form when week changes - but check for pending data first
+  // CRITICAL: Include clientContextId in deps so we check the correct context's pending data
   useEffect(() => {
     // Check if there's pending data in context for this week
+    // Uses current clientContextId to avoid finding stale template pending data
     const contextPendingData = editorContext?.getPendingData('week', week.id, clientContextId);
 
     console.log('[WeekEditor:resetEffect] Triggered:', {
       weekId: week.id,
       weekNumber: week.weekNumber,
       hasPendingData: !!contextPendingData,
+      clientContextId,
+      viewContext,
       weekWeeklyTasksCount: week.weeklyTasks?.length ?? 0,
       weekWeeklyTasks: week.weeklyTasks?.map(t => t.label),
     });
@@ -672,8 +676,7 @@ export function WeekEditor({
     setShowSyncButton(false);
     setSaveStatus('idle');
     setEditedFields(new Set());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [week.id, weekDataFingerprint]); // Include fingerprint to detect data refreshes after save
+  }, [week.id, weekDataFingerprint, clientContextId, viewContext, editorContext, getDefaultFormData, mergePendingWithDefaults]);
 
   // Track previous view context to detect changes
   const lastViewContext = useRef(viewContext);

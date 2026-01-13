@@ -271,14 +271,22 @@ export function DayEditor({
   }, [viewContext, clientContextId, editorContext, entityId, getDefaultFormData, dayIndex]);
 
   // Reset when the day data changes (from props) and there's no pending data
+  // CRITICAL: Include clientContextId in deps so we check the correct context's pending data
   useEffect(() => {
+    // Only check pending data for the CURRENT context (not stale template context)
     const contextPendingData = editorContext?.getPendingData('day', entityId, clientContextId);
     if (!contextPendingData && dayIndex === lastDayIndex.current) {
+      console.log('[DayEditor] Day data changed, resetting form:', {
+        dayIndex,
+        viewContext,
+        clientContextId,
+        hasPendingData: !!contextPendingData,
+        newTasks: day?.tasks?.length ?? 0,
+      });
       setFormData(getDefaultFormData());
       setHasChanges(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [day?.title, day?.summary, day?.dailyPrompt, JSON.stringify(day?.tasks), JSON.stringify(day?.habits)]);
+  }, [day?.title, day?.summary, day?.dailyPrompt, JSON.stringify(day?.tasks), JSON.stringify(day?.habits), clientContextId, entityId, editorContext, getDefaultFormData, dayIndex, viewContext]);
 
   // Watch for reset version changes (discard/save from global buttons)
   useEffect(() => {
