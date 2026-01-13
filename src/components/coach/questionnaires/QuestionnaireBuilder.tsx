@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Reorder, useDragControls, motion, AnimatePresence } from 'framer-motion';
-import { Plus, GripVertical, ArrowLeft, Settings, Copy, Check, Save, X } from 'lucide-react';
+import { Plus, GripVertical, ArrowLeft, Settings, Copy, Check, Send, X, CheckCircle2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { QuestionEditor } from './QuestionEditor';
 import { QuestionTypeSelector } from './QuestionTypeSelector';
@@ -79,18 +79,23 @@ export function QuestionnaireBuilder({
     [onSave]
   );
 
-  // Manual save
+  // Manual save (also publishes by setting isActive to true)
   const handleManualSave = async () => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
     setSaving(true);
     try {
+      // When publishing, also set isActive to true
+      const shouldPublish = !isActive;
+      if (shouldPublish) {
+        setIsActive(true);
+      }
       await onSave({
         title,
         description,
         questions,
-        isActive,
+        isActive: true, // Always set to active when manually saving/publishing
         allowMultipleResponses,
       });
       setSaved(true);
@@ -249,18 +254,18 @@ export function QuestionnaireBuilder({
                 <Settings className="w-4 h-4" />
               </button>
 
-              {/* Save button */}
+              {/* Publish button */}
               <button
                 onClick={handleManualSave}
-                disabled={saving || !hasUnsavedChanges}
+                disabled={saving || (!hasUnsavedChanges && isActive)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium font-albert ml-1 ${
                   saving
                     ? 'bg-[#e1ddd8] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]'
-                    : saved
+                    : isActive && !hasUnsavedChanges
                     ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                     : hasUnsavedChanges
                     ? 'bg-brand-accent text-white hover:bg-brand-accent/90'
-                    : 'bg-[#e1ddd8] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]'
+                    : 'bg-brand-accent text-white hover:bg-brand-accent/90'
                 }`}
               >
                 {saving ? (
@@ -268,15 +273,15 @@ export function QuestionnaireBuilder({
                     <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                     Saving
                   </>
-                ) : saved ? (
+                ) : isActive && !hasUnsavedChanges ? (
                   <>
-                    <Check className="w-3.5 h-3.5" />
-                    Saved
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Published
                   </>
                 ) : (
                   <>
-                    <Save className="w-3.5 h-3.5" />
-                    Save
+                    <Send className="w-3.5 h-3.5" />
+                    Publish
                   </>
                 )}
               </button>

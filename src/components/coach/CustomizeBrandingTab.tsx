@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Moon, GripVertical, Menu, Sparkles, Store } from 'lucide-react';
+import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Moon, GripVertical, Menu, Sparkles, Store, Languages, ListChecks, FileText } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { FeedSettingsToggle } from './FeedSettingsToggle';
 import { StoriesSettingsToggle } from './StoriesSettingsToggle';
@@ -16,8 +16,8 @@ import { AlignmentActivitiesSettings } from './AlignmentActivitiesSettings';
 import { GlobalPixelsSettings } from './GlobalPixelsSettings';
 import { MarketplaceSettings } from './MarketplaceSettings';
 import { useDemoMode } from '@/contexts/DemoModeContext';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgSystemNotifications, MenuItemKey, CoachEmailPreferences } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_SYSTEM_NOTIFICATIONS, DEFAULT_COACH_EMAIL_PREFERENCES, validateSubdomain } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgSystemNotifications, MenuItemKey, CoachEmailPreferences, OrgFeatureLabels, OrgContentLabels } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_SYSTEM_NOTIFICATIONS, DEFAULT_COACH_EMAIL_PREFERENCES, validateSubdomain, DEFAULT_FEATURE_LABELS, DEFAULT_CONTENT_LABELS } from '@/types';
 import { IconPicker } from './IconPicker';
 import {
   DndContext,
@@ -47,6 +47,28 @@ const MENU_ITEM_CONFIG: Record<MenuItemKey, { label: string; placeholder: string
   chat: { label: 'Chat', placeholder: 'e.g., Messages, Community' },
   coach: { label: 'Coach', placeholder: 'e.g., Mentor, Guide, Support' },
 };
+
+// Feature label configuration for display labels and placeholders
+type FeatureKey = keyof OrgFeatureLabels;
+const FEATURE_LABEL_CONFIG: Record<FeatureKey, { label: string; placeholder: string }> = {
+  tasks: { label: 'Tasks', placeholder: 'e.g., Assignments, To-dos, Actions' },
+  goals: { label: 'Goals', placeholder: 'e.g., Objectives, Targets, Outcomes' },
+  checkIns: { label: 'Check-ins', placeholder: 'e.g., Reflections, Updates, Progress' },
+  habits: { label: 'Habits', placeholder: 'e.g., Routines, Practices, Rituals' },
+};
+
+// Content type label configuration for display labels and placeholders
+type ContentKey = keyof OrgContentLabels;
+const CONTENT_LABEL_CONFIG: Record<ContentKey, { label: string; placeholder: string }> = {
+  article: { label: 'Article', placeholder: 'e.g., Post, Blog, Read' },
+  course: { label: 'Course', placeholder: 'e.g., Training, Class, Module' },
+  event: { label: 'Event', placeholder: 'e.g., Session, Workshop, Webinar' },
+  download: { label: 'Download', placeholder: 'e.g., Resource, File, Asset' },
+  link: { label: 'Link', placeholder: 'e.g., Bookmark, External Resource' },
+};
+
+// Language subtab type
+type LanguageSubtab = 'menu' | 'features' | 'content';
 
 // Sortable menu item component
 interface SortableMenuItemProps {
@@ -150,7 +172,7 @@ function getDnsRecordNames(domain: string): { routing: string; clerk: string } {
  * - Preview mode to see changes before saving
  */
 // Subtab type definition
-type CustomizeSubtab = 'branding' | 'navigation' | 'features' | 'marketplace' | 'domains' | 'communications';
+type CustomizeSubtab = 'branding' | 'language' | 'features' | 'marketplace' | 'domains' | 'communications';
 
 interface CustomizeBrandingTabProps {
   /** Optional sub-tab to restore selection from URL */
@@ -161,7 +183,7 @@ interface CustomizeBrandingTabProps {
 
 const SUBTABS: { id: CustomizeSubtab; label: string; icon: React.ReactNode }[] = [
   { id: 'branding', label: 'Branding', icon: <Palette className="w-4 h-4" /> },
-  { id: 'navigation', label: 'Navigation', icon: <Menu className="w-4 h-4" /> },
+  { id: 'language', label: 'Language', icon: <Languages className="w-4 h-4" /> },
   { id: 'features', label: 'Features', icon: <Sparkles className="w-4 h-4" /> },
   { id: 'marketplace', label: 'Marketplace', icon: <Store className="w-4 h-4" /> },
   { id: 'domains', label: 'Domains', icon: <Globe className="w-4 h-4" /> },
@@ -177,8 +199,12 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
   
   // Restore subtab selection from URL param on mount
   useEffect(() => {
-    if (initialSubtab && ['branding', 'navigation', 'features', 'marketplace', 'domains', 'communications'].includes(initialSubtab)) {
-      setActiveSubtab(initialSubtab as CustomizeSubtab);
+    if (initialSubtab) {
+      // Map old 'navigation' to new 'language' for backwards compatibility
+      const mappedSubtab = initialSubtab === 'navigation' ? 'language' : initialSubtab;
+      if (['branding', 'language', 'features', 'marketplace', 'domains', 'communications'].includes(mappedSubtab)) {
+        setActiveSubtab(mappedSubtab as CustomizeSubtab);
+      }
     }
   }, [initialSubtab]);
 
@@ -197,7 +223,12 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
   const [menuTitles, setMenuTitles] = useState<OrgMenuTitles>(DEFAULT_MENU_TITLES);
   const [menuIcons, setMenuIcons] = useState<OrgMenuIcons>(DEFAULT_MENU_ICONS);
   const [menuOrder, setMenuOrder] = useState<MenuItemKey[]>(DEFAULT_MENU_ORDER);
-  
+  const [featureLabels, setFeatureLabels] = useState<OrgFeatureLabels>(DEFAULT_FEATURE_LABELS);
+  const [contentLabels, setContentLabels] = useState<OrgContentLabels>(DEFAULT_CONTENT_LABELS);
+
+  // Language subtab state (for the submenu within the Language tab)
+  const [languageSubtab, setLanguageSubtab] = useState<LanguageSubtab>('menu');
+
   // UI state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -367,6 +398,14 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
         ...(branding.menuIcons || {}),
       });
       setMenuOrder(branding.menuOrder || DEFAULT_MENU_ORDER);
+      setFeatureLabels({
+        ...DEFAULT_FEATURE_LABELS,
+        ...(branding.featureLabels || {}),
+      });
+      setContentLabels({
+        ...DEFAULT_CONTENT_LABELS,
+        ...(branding.contentLabels || {}),
+      });
     } catch (err) {
       console.error('Error fetching branding:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch branding');
@@ -982,11 +1021,13 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
   // Check for changes
   useEffect(() => {
     if (!originalBranding) return;
-    
+
     const originalMenuTitles = originalBranding.menuTitles || DEFAULT_MENU_TITLES;
     const originalMenuIcons = originalBranding.menuIcons || DEFAULT_MENU_ICONS;
     const originalMenuOrder = originalBranding.menuOrder || DEFAULT_MENU_ORDER;
-    const changed = 
+    const originalFeatureLabels = originalBranding.featureLabels || DEFAULT_FEATURE_LABELS;
+    const originalContentLabels = originalBranding.contentLabels || DEFAULT_CONTENT_LABELS;
+    const changed =
       logoUrl !== originalBranding.logoUrl ||
       logoUrlDark !== (originalBranding.logoUrlDark || null) ||
       horizontalLogoUrl !== (originalBranding.horizontalLogoUrl || null) ||
@@ -995,10 +1036,12 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
       JSON.stringify(colors) !== JSON.stringify(originalBranding.colors) ||
       JSON.stringify(menuTitles) !== JSON.stringify(originalMenuTitles) ||
       JSON.stringify(menuIcons) !== JSON.stringify(originalMenuIcons) ||
-      JSON.stringify(menuOrder) !== JSON.stringify(originalMenuOrder);
-    
+      JSON.stringify(menuOrder) !== JSON.stringify(originalMenuOrder) ||
+      JSON.stringify(featureLabels) !== JSON.stringify(originalFeatureLabels) ||
+      JSON.stringify(contentLabels) !== JSON.stringify(originalContentLabels);
+
     setHasChanges(changed);
-  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder, originalBranding]);
+  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder, featureLabels, contentLabels, originalBranding]);
 
   // Build preview branding object
   const getPreviewBranding = useCallback((): OrgBranding => {
@@ -1014,10 +1057,12 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
       menuTitles,
       menuIcons,
       menuOrder,
+      featureLabels,
+      contentLabels,
       createdAt: originalBranding?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder, originalBranding]);
+  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder, featureLabels, contentLabels, originalBranding]);
 
   // Toggle preview mode
   const handleTogglePreview = () => {
@@ -1234,10 +1279,12 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
         setAppTitle(DEFAULT_APP_TITLE);
         setColors(DEFAULT_BRANDING_COLORS);
         break;
-      case 'navigation':
+      case 'language':
         setMenuTitles(DEFAULT_MENU_TITLES);
         setMenuIcons(DEFAULT_MENU_ICONS);
         setMenuOrder(DEFAULT_MENU_ORDER);
+        setFeatureLabels(DEFAULT_FEATURE_LABELS);
+        setContentLabels(DEFAULT_CONTENT_LABELS);
         break;
       case 'features':
       case 'domains':
@@ -1299,6 +1346,8 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
           menuTitles,
           menuIcons,
           menuOrder,
+          featureLabels,
+          contentLabels,
         }),
       });
 
@@ -1808,48 +1857,173 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
         </>
       )}
 
-      {/* ===== NAVIGATION SUBTAB ===== */}
-      {activeSubtab === 'navigation' && (
-        <>
-          {/* Menu Order & Customization Section */}
-      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
-        <div className="flex items-center gap-2 mb-2">
-          <Type className="w-5 h-5 text-brand-accent" />
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Menu Order & Customization</h3>
-        </div>
-        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-4">
-          Drag to reorder, customize labels and icons for your navigation menu.
-        </p>
+      {/* ===== LANGUAGE SUBTAB ===== */}
+      {activeSubtab === 'language' && (
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Submenu - Horizontal on mobile, Vertical on desktop */}
+          <nav className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 md:w-44 flex-shrink-0 -mx-1 px-1">
+            <button
+              type="button"
+              onClick={() => setLanguageSubtab('menu')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
+                languageSubtab === 'menu'
+                  ? 'bg-brand-accent text-white shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+              }`}
+            >
+              <Menu className="w-4 h-4" />
+              Menu Items
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguageSubtab('features')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
+                languageSubtab === 'features'
+                  ? 'bg-brand-accent text-white shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+              }`}
+            >
+              <ListChecks className="w-4 h-4" />
+              Core Features
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguageSubtab('content')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
+                languageSubtab === 'content'
+                  ? 'bg-brand-accent text-white shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Content Types
+            </button>
+          </nav>
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleMenuDragEnd}
-        >
-          <SortableContext
-            items={menuOrder}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="space-y-2">
-              {menuOrder.map((key) => (
-                <SortableMenuItem
-                  key={key}
-                  id={key}
-                  title={menuTitles[key]}
-                  icon={menuIcons[key]}
-                  onTitleChange={(value) => setMenuTitles(prev => ({ ...prev, [key]: value }))}
-                  onIconChange={(value) => setMenuIcons(prev => ({ ...prev, [key]: value }))}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-        
-        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-4 font-albert">
-          Changes apply to navigation menu items. &ldquo;Squad&rdquo; also updates throughout the app (e.g., &ldquo;My Squad&rdquo;, upgrade pages).
-        </p>
-      </div>
-        </>
+          {/* Content area */}
+          <div className="flex-1 min-w-0">
+            {/* Menu Items Section */}
+            {languageSubtab === 'menu' && (
+              <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <Type className="w-5 h-5 text-brand-accent" />
+                  <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Menu Order & Customization</h3>
+                </div>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-4">
+                  Drag to reorder, customize labels and icons for your navigation menu.
+                </p>
+
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleMenuDragEnd}
+                >
+                  <SortableContext
+                    items={menuOrder}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {menuOrder.map((key) => (
+                        <SortableMenuItem
+                          key={key}
+                          id={key}
+                          title={menuTitles[key]}
+                          icon={menuIcons[key]}
+                          onTitleChange={(value) => setMenuTitles(prev => ({ ...prev, [key]: value }))}
+                          onIconChange={(value) => setMenuIcons(prev => ({ ...prev, [key]: value }))}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-4 font-albert">
+                  Changes apply to navigation menu items. &ldquo;Squad&rdquo; also updates throughout the app (e.g., &ldquo;My Squad&rdquo;, upgrade pages).
+                </p>
+              </div>
+            )}
+
+            {/* Core Features Section */}
+            {languageSubtab === 'features' && (
+              <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <ListChecks className="w-5 h-5 text-brand-accent" />
+                  <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Core Feature Labels</h3>
+                </div>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-4">
+                  Customize the labels for core productivity features to match your coaching style.
+                </p>
+
+                <div className="space-y-2">
+                  {(Object.keys(FEATURE_LABEL_CONFIG) as FeatureKey[]).map((key) => {
+                    const config = FEATURE_LABEL_CONFIG[key];
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center gap-3 p-3 bg-white/80 dark:bg-[#1e222a]/80 border border-[#e1ddd8] dark:border-[#313746] rounded-xl"
+                      >
+                        <span className="flex-shrink-0 w-24 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                          {config.label}
+                        </span>
+                        <input
+                          type="text"
+                          value={featureLabels[key]}
+                          onChange={(e) => setFeatureLabels(prev => ({ ...prev, [key]: e.target.value }))}
+                          placeholder={config.placeholder}
+                          className="flex-1 px-3 py-2 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 dark:focus:ring-brand-accent/20 focus:border-brand-accent dark:focus:border-brand-accent"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-4 font-albert">
+                  These labels will be used throughout the platform wherever these features appear.
+                </p>
+              </div>
+            )}
+
+            {/* Content Types Section */}
+            {languageSubtab === 'content' && (
+              <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-5 h-5 text-brand-accent" />
+                  <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Content Type Labels</h3>
+                </div>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-4">
+                  Customize the labels for different content types in your Discover section.
+                </p>
+
+                <div className="space-y-2">
+                  {(Object.keys(CONTENT_LABEL_CONFIG) as ContentKey[]).map((key) => {
+                    const config = CONTENT_LABEL_CONFIG[key];
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center gap-3 p-3 bg-white/80 dark:bg-[#1e222a]/80 border border-[#e1ddd8] dark:border-[#313746] rounded-xl"
+                      >
+                        <span className="flex-shrink-0 w-24 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                          {config.label}
+                        </span>
+                        <input
+                          type="text"
+                          value={contentLabels[key]}
+                          onChange={(e) => setContentLabels(prev => ({ ...prev, [key]: e.target.value }))}
+                          placeholder={config.placeholder}
+                          className="flex-1 px-3 py-2 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 dark:focus:ring-brand-accent/20 focus:border-brand-accent dark:focus:border-brand-accent"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-4 font-albert">
+                  These labels will be used in Discover, content cards, and throughout the platform.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ===== FEATURES SUBTAB ===== */}

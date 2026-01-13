@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, MenuItemKey, EmptyStateBehavior } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_THEME } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, MenuItemKey, EmptyStateBehavior, OrgFeatureLabels, OrgContentLabels } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_THEME, DEFAULT_FEATURE_LABELS, DEFAULT_CONTENT_LABELS } from '@/types';
 import { 
   DEFAULT_TENANT_COACHING_PROMO, 
   type TenantCoachingPromoData 
@@ -412,7 +412,19 @@ export function useBrandingValues() {
   
   // Use custom menu order if set, otherwise use default
   const menuOrder: MenuItemKey[] = effectiveBranding.menuOrder || DEFAULT_MENU_ORDER;
-  
+
+  // Merge feature labels with defaults to ensure all fields are present
+  const featureLabels: OrgFeatureLabels = {
+    ...DEFAULT_FEATURE_LABELS,
+    ...effectiveBranding.featureLabels,
+  };
+
+  // Merge content labels with defaults to ensure all fields are present
+  const contentLabels: OrgContentLabels = {
+    ...DEFAULT_CONTENT_LABELS,
+    ...effectiveBranding.contentLabels,
+  };
+
   // Get theme-aware logos (dark mode logo if available, otherwise fallback to light)
   const logoUrl = currentTheme === 'dark' && effectiveBranding.logoUrlDark
     ? effectiveBranding.logoUrlDark
@@ -435,6 +447,8 @@ export function useBrandingValues() {
     menuTitles,
     menuIcons,
     menuOrder,
+    featureLabels,
+    contentLabels,
     isPreviewMode,
     isDefault,
     // Smart contrast helpers
@@ -466,6 +480,62 @@ export function useMenuTitles() {
     // Helper for "My Squad" style usage
     mySquad: `My ${menuTitles.squad}`,
     myProgram: `My ${menuTitles.program}`,
+  };
+}
+
+
+/**
+ * Hook to get customized feature labels
+ * Features: tasks, goals, check-ins, habits
+ */
+export function useFeatureLabels() {
+  const { featureLabels } = useBrandingValues();
+
+  return {
+    // Raw labels
+    tasks: featureLabels.tasks,
+    goals: featureLabels.goals,
+    checkIns: featureLabels.checkIns,
+    habits: featureLabels.habits,
+    // Lowercase variants
+    tasksLower: featureLabels.tasks.toLowerCase(),
+    goalsLower: featureLabels.goals.toLowerCase(),
+    checkInsLower: featureLabels.checkIns.toLowerCase(),
+    habitsLower: featureLabels.habits.toLowerCase(),
+    // Plural forms (simple 's' append - can be enhanced later)
+    tasksPlural: featureLabels.tasks,
+    goalsPlural: featureLabels.goals,
+    checkInsPlural: featureLabels.checkIns,
+    habitsPlural: featureLabels.habits,
+  };
+}
+
+/**
+ * Hook to get customized content type labels
+ * Content types: article, course, event, download, link
+ */
+export function useContentLabels() {
+  const { contentLabels } = useBrandingValues();
+
+  return {
+    // Raw labels (singular)
+    article: contentLabels.article,
+    course: contentLabels.course,
+    event: contentLabels.event,
+    download: contentLabels.download,
+    link: contentLabels.link,
+    // Lowercase variants
+    articleLower: contentLabels.article.toLowerCase(),
+    courseLower: contentLabels.course.toLowerCase(),
+    eventLower: contentLabels.event.toLowerCase(),
+    downloadLower: contentLabels.download.toLowerCase(),
+    linkLower: contentLabels.link.toLowerCase(),
+    // Plural forms (simple 's' append - can be enhanced later)
+    articles: `${contentLabels.article}s`,
+    courses: `${contentLabels.course}s`,
+    events: `${contentLabels.event}s`,
+    downloads: `${contentLabels.download}s`,
+    links: `${contentLabels.link}s`,
   };
 }
 

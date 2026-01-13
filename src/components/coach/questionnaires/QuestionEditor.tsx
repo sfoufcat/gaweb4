@@ -454,13 +454,18 @@ function InfoStepEditor({
   onUpdate: (updates: Partial<QuestionnaireQuestion>) => void;
 }) {
   const [uploading, setUploading] = useState(false);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleMediaUpload = async (file: File, type: 'image' | 'video') => {
     if (!file) return;
 
     setUploading(true);
+    setUploadError(null);
+
+    // Check for HEIC files
+    const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+
     try {
       // Create form data
       const formData = new FormData();
@@ -473,7 +478,11 @@ function InfoStepEditor({
       });
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorData = await response.json().catch(() => ({}));
+        if (isHeic) {
+          throw new Error('HEIC files are not supported. Please convert to JPG or PNG first.');
+        }
+        throw new Error(errorData.error || 'Upload failed');
       }
 
       const data = await response.json();
@@ -483,12 +492,24 @@ function InfoStepEditor({
       });
     } catch (error) {
       console.error('Upload error:', error);
-      // For now, create a local object URL as fallback
-      const objectUrl = URL.createObjectURL(file);
-      onUpdate({
-        mediaUrl: objectUrl,
-        mediaType: type,
-      });
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+
+      // For HEIC errors, show a friendly message
+      if (isHeic || errorMessage.toLowerCase().includes('heic')) {
+        setUploadError('HEIC format is not supported. Please convert your image to JPG or PNG.');
+        return;
+      }
+
+      // For other errors, try creating a local object URL as fallback
+      try {
+        const objectUrl = URL.createObjectURL(file);
+        onUpdate({
+          mediaUrl: objectUrl,
+          mediaType: type,
+        });
+      } catch {
+        setUploadError(errorMessage);
+      }
     } finally {
       setUploading(false);
     }
@@ -527,51 +548,36 @@ function InfoStepEditor({
           </button>
         </div>
       ) : (
-        <div className="flex gap-2">
+        <div className="space-y-2">
           <input
-            ref={imageInputRef}
+            ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime"
             onChange={e => {
               const file = e.target.files?.[0];
-              if (file) handleMediaUpload(file, 'image');
+              if (file) {
+                const isVideo = file.type.startsWith('video/');
+                handleMediaUpload(file, isVideo ? 'video' : 'image');
+              }
             }}
             className="hidden"
           />
-          <input
-            ref={videoInputRef}
-            type="file"
-            accept="video/*"
-            onChange={e => {
-              const file = e.target.files?.[0];
-              if (file) handleMediaUpload(file, 'video');
-            }}
-            className="hidden"
-          />
-          <button
-            onClick={() => imageInputRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-2 px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-          >
-            {uploading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Image className="w-4 h-4" />
-            )}
-            Insert Image
-          </button>
-          <button
-            onClick={() => videoInputRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-2 px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-          >
-            {uploading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Video className="w-4 h-4" />
-            )}
-            Insert Video
-          </button>
+          {uploading ? (
+            <span className="inline-flex items-center gap-1.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Uploading...
+            </span>
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="text-sm text-brand-accent hover:text-brand-accent/80 hover:underline font-albert transition-colors"
+            >
+              + Insert image or video
+            </button>
+          )}
+          {uploadError && (
+            <p className="text-xs text-red-500 font-albert">{uploadError}</p>
+          )}
         </div>
       )}
 

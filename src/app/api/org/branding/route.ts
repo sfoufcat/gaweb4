@@ -9,8 +9,8 @@ import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
 import { generateDemoBranding } from '@/lib/demo-data';
 import { DEFAULT_MENU_ORDER as DEMO_MENU_ORDER, DEFAULT_MENU_TITLES as DEMO_MENU_TITLES, DEFAULT_MENU_ICONS as DEMO_MENU_ICONS } from '@/types';
 import type { OrgCustomDomain, LogoSource, MenuItemKey } from '@/types';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, UserRole } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_THEME } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, UserRole, OrgFeatureLabels, OrgContentLabels } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_THEME, DEFAULT_FEATURE_LABELS, DEFAULT_CONTENT_LABELS } from '@/types';
 
 /**
  * Cookie data structure for tenant context (must match branding-server.ts)
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder } = body as Partial<OrgBranding>;
+    const { logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder, featureLabels, contentLabels } = body as Partial<OrgBranding>;
 
     // Get existing branding or create new
     const brandingRef = adminDb.collection('org_branding').doc(organizationId);
@@ -253,7 +253,7 @@ export async function POST(request: NextRequest) {
             ...menuTitles,
           } as OrgMenuTitles
         }),
-        ...(menuIcons !== undefined && { 
+        ...(menuIcons !== undefined && {
           menuIcons: {
             ...DEFAULT_MENU_ICONS,
             ...existing.menuIcons,
@@ -261,6 +261,20 @@ export async function POST(request: NextRequest) {
           } as OrgMenuIcons
         }),
         ...(menuOrder !== undefined && { menuOrder }),
+        ...(featureLabels !== undefined && {
+          featureLabels: {
+            ...DEFAULT_FEATURE_LABELS,
+            ...existing.featureLabels,
+            ...featureLabels,
+          } as OrgFeatureLabels
+        }),
+        ...(contentLabels !== undefined && {
+          contentLabels: {
+            ...DEFAULT_CONTENT_LABELS,
+            ...existing.contentLabels,
+            ...contentLabels,
+          } as OrgContentLabels
+        }),
         updatedAt: now,
       };
     } else {
@@ -301,6 +315,14 @@ export async function POST(request: NextRequest) {
           ...menuIcons,
         },
         ...(menuOrder !== undefined && { menuOrder }),
+        featureLabels: {
+          ...DEFAULT_FEATURE_LABELS,
+          ...featureLabels,
+        },
+        contentLabels: {
+          ...DEFAULT_CONTENT_LABELS,
+          ...contentLabels,
+        },
         createdAt: now,
         updatedAt: now,
       };

@@ -2846,6 +2846,26 @@ export interface OrgMenuTitles {
   coach: string;               // Default: "Coach" - can be "Mentor", "Guide", etc.
 }
 
+
+// Core feature labels (independent of menu items)
+// These labels can be customized by coaches to match their terminology
+export interface OrgFeatureLabels {
+  tasks: string;        // Default: "Tasks" - can be "Assignments", "To-dos", "Actions"
+  goals: string;        // Default: "Goals" - can be "Objectives", "Targets", "Outcomes"
+  checkIns: string;     // Default: "Check-ins" - can be "Reflections", "Updates", "Progress"
+  habits: string;       // Default: "Habits" - can be "Routines", "Practices", "Rituals"
+}
+
+// Content type labels for discover/content sections
+// These labels can be customized by coaches to match their content strategy
+export interface OrgContentLabels {
+  article: string;      // Default: "Article" - can be "Post", "Blog", "Read"
+  course: string;       // Default: "Course" - can be "Training", "Class", "Module"
+  event: string;        // Default: "Event" - can be "Session", "Workshop", "Webinar"
+  download: string;     // Default: "Download" - can be "Resource", "File", "Asset"
+  link: string;         // Default: "Link" - can be "Bookmark", "External Resource"
+}
+
 /**
  * Email domain verification status for whitelabel email sending
  */
@@ -2963,6 +2983,8 @@ export interface OrgBranding {
   menuTitles?: OrgMenuTitles;    // Customizable menu titles (optional, uses defaults if not set)
   menuIcons?: OrgMenuIcons;      // Customizable menu icons/emojis (optional, uses defaults if not set)
   menuOrder?: MenuItemKey[];     // Custom menu order (optional, uses DEFAULT_MENU_ORDER if not set)
+  featureLabels?: OrgFeatureLabels;   // Customizable feature labels (optional, uses defaults if not set)
+  contentLabels?: OrgContentLabels;   // Customizable content type labels (optional, uses defaults if not set)
   emailSettings?: OrgEmailSettings; // Whitelabel email settings (optional)
   emailTemplates?: OrgEmailTemplates; // Custom email templates (optional, requires verified email domain)
   defaultTheme?: OrgDefaultTheme; // Default theme for the organization (default: 'light')
@@ -2997,6 +3019,22 @@ export const DEFAULT_MENU_TITLES: OrgMenuTitles = {
   learn: 'Discover', // Renamed from "Learn" to "Discover"
   chat: 'Chat',
   coach: 'Coach',
+};
+
+
+export const DEFAULT_FEATURE_LABELS: OrgFeatureLabels = {
+  tasks: 'Tasks',
+  goals: 'Goals',
+  checkIns: 'Check-ins',
+  habits: 'Habits',
+};
+
+export const DEFAULT_CONTENT_LABELS: OrgContentLabels = {
+  article: 'Article',
+  course: 'Course',
+  event: 'Event',
+  download: 'Download',
+  link: 'Link',
 };
 
 /**

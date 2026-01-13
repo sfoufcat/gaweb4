@@ -1325,7 +1325,13 @@ function ChatContent({
   }, [initialChannelId, client, channelInitialized, setActiveChannel, onMobileViewChange]);
 
   // Handle special channel selection
-  const handleChannelSelect = useCallback(async (channelId: string) => {
+  const handleChannelSelect = useCallback(async (channelId: string | null) => {
+    // Guard against null/undefined channel IDs
+    if (!channelId) {
+      console.warn('handleChannelSelect called with null/undefined channelId');
+      return;
+    }
+
     try {
       console.log('Selecting channel:', channelId);
       // Query for the channel to ensure it's properly initialized with all state
@@ -1335,7 +1341,7 @@ function ChatContent({
         {},
         { limit: 1, state: true, watch: true }
       );
-      
+
       if (channels.length > 0) {
         setActiveChannel(channels[0]);
         onMobileViewChange('channel');
@@ -1436,7 +1442,10 @@ function ChatContent({
                   }
                   name={programCoachInfo?.name || coach?.name || 'My Coach'}
                   description="1:1 coaching chat"
-                  onClick={() => handleChannelSelect(programCoachingChannelId)}
+                  onClick={() => {
+                    console.log('[Program Coaching Chat] Clicked, channelId:', programCoachingChannelId);
+                    handleChannelSelect(programCoachingChannelId);
+                  }}
                   isActive={activeChannel?.id === programCoachingChannelId}
                   isPinned={true}
                   unreadCount={programCoachingUnread}
@@ -1459,7 +1468,10 @@ function ChatContent({
                   }
                   name={coach?.name || 'My Coach'}
                   description="1:1 coaching chat"
-                  onClick={() => handleChannelSelect(coachingChannelId)}
+                  onClick={() => {
+                    console.log('[Legacy Coaching Chat] Clicked, channelId:', coachingChannelId);
+                    handleChannelSelect(coachingChannelId);
+                  }}
                   isActive={activeChannel?.id === coachingChannelId}
                   isPinned={true}
                   unreadCount={coachingUnread}
