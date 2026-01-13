@@ -683,8 +683,34 @@ export function WeekEditor({
 
     if (contextPendingData) {
       // Restore from pending data, merged with defaults to ensure all fields exist
+      // INLINE merge logic to avoid callback dependency issues
       console.log('[WeekEditor:resetEffect] Restoring from pending data');
-      setFormData(mergePendingWithDefaults(contextPendingData));
+      const defaults: WeekFormData = {
+        name: week.name || '',
+        theme: week.theme || '',
+        description: week.description || '',
+        weeklyPrompt: week.weeklyPrompt || '',
+        weeklyTasks: week.weeklyTasks || [],
+        currentFocus: week.currentFocus || [],
+        notes: week.notes || [],
+        manualNotes: week.manualNotes || '',
+        distribution: (week.distribution || 'spread') as TaskDistribution,
+        coachRecordingUrl: week.coachRecordingUrl || '',
+        coachRecordingNotes: week.coachRecordingNotes || '',
+        linkedSummaryIds: week.linkedSummaryIds || [],
+        linkedCallEventIds: week.linkedCallEventIds || [],
+      };
+      const merged: WeekFormData = {
+        ...defaults,
+        ...contextPendingData,
+        // Ensure arrays are never undefined
+        weeklyTasks: (contextPendingData.weeklyTasks as ProgramTaskTemplate[]) || defaults.weeklyTasks,
+        currentFocus: (contextPendingData.currentFocus as string[]) || defaults.currentFocus,
+        notes: (contextPendingData.notes as string[]) || defaults.notes,
+        linkedSummaryIds: (contextPendingData.linkedSummaryIds as string[]) || defaults.linkedSummaryIds,
+        linkedCallEventIds: (contextPendingData.linkedCallEventIds as string[]) || defaults.linkedCallEventIds,
+      };
+      setFormData(merged);
       setHasChanges(true);
     } else {
       // Reset to week data - inline to avoid callback dependency issues
@@ -716,7 +742,7 @@ export function WeekEditor({
     setSaveStatus('idle');
     setEditedFields(new Set());
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [week.id, weekDataFingerprint, clientContextId, viewContext, editorContext, mergePendingWithDefaults]);
+  }, [week.id, weekDataFingerprint, clientContextId, viewContext, editorContext]);
 
   // Track previous view context to detect changes
   const lastViewContext = useRef(viewContext);
@@ -743,7 +769,32 @@ export function WeekEditor({
       // Check for pending data in the NEW context
       const contextPendingData = editorContext?.getPendingData('week', week.id, clientContextId);
       if (contextPendingData) {
-        setFormData(mergePendingWithDefaults(contextPendingData));
+        // Inline merge logic to avoid callback dependency issues
+        const defaults: WeekFormData = {
+          name: week.name || '',
+          theme: week.theme || '',
+          description: week.description || '',
+          weeklyPrompt: week.weeklyPrompt || '',
+          weeklyTasks: week.weeklyTasks || [],
+          currentFocus: week.currentFocus || [],
+          notes: week.notes || [],
+          manualNotes: week.manualNotes || '',
+          distribution: (week.distribution || 'spread') as TaskDistribution,
+          coachRecordingUrl: week.coachRecordingUrl || '',
+          coachRecordingNotes: week.coachRecordingNotes || '',
+          linkedSummaryIds: week.linkedSummaryIds || [],
+          linkedCallEventIds: week.linkedCallEventIds || [],
+        };
+        const merged: WeekFormData = {
+          ...defaults,
+          ...contextPendingData,
+          weeklyTasks: (contextPendingData.weeklyTasks as ProgramTaskTemplate[]) || defaults.weeklyTasks,
+          currentFocus: (contextPendingData.currentFocus as string[]) || defaults.currentFocus,
+          notes: (contextPendingData.notes as string[]) || defaults.notes,
+          linkedSummaryIds: (contextPendingData.linkedSummaryIds as string[]) || defaults.linkedSummaryIds,
+          linkedCallEventIds: (contextPendingData.linkedCallEventIds as string[]) || defaults.linkedCallEventIds,
+        };
+        setFormData(merged);
         setHasChanges(true);
       } else {
         // Reset to the week data for the new context - inline to avoid callback dependency
@@ -769,7 +820,7 @@ export function WeekEditor({
       setEditedFields(new Set());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewContext, clientContextId, editorContext, week.id, week.weekNumber, mergePendingWithDefaults]);
+  }, [viewContext, clientContextId, editorContext, week.id, week.weekNumber]);
 
   // Watch for reset version changes (discard/save from global buttons)
   useEffect(() => {
@@ -1315,7 +1366,7 @@ export function WeekEditor({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2 sm:gap-3">
           <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            Week {week.weekNumber}
+            {week.name || `Week ${week.weekNumber}`}
           </h3>
           {/* Client/Cohort/Template mode badge */}
           {isClientView ? (

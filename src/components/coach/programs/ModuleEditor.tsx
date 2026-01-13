@@ -178,7 +178,7 @@ export function ModuleEditor({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-          Module {module.order}
+          {module.name || `Module ${module.order}`}
         </h3>
         {!readOnly && (
           <div className="flex items-center gap-2">
