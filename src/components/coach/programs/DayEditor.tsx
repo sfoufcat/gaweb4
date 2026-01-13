@@ -537,7 +537,7 @@ export function DayEditor({
                 className={cn(
                   "group relative bg-white dark:bg-[#171b22] border rounded-xl transition-all duration-200",
                   isCohortCompleted || isClientCompleted
-                    ? "border-green-500/30 bg-green-500/5"
+                    ? "border-brand-accent/30 bg-brand-accent/5"
                     : "border-[#e1ddd8] dark:border-[#262b35] hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746]"
                 )}
               >
@@ -558,11 +558,11 @@ export function DayEditor({
                       {/* Status icon */}
                       <div
                         className={cn(
-                          'w-5 h-5 rounded-full flex items-center justify-center',
+                          'w-5 h-5 rounded flex items-center justify-center transition-colors',
                           isCohortCompleted
-                            ? 'bg-green-500 text-white'
+                            ? 'bg-brand-accent text-white'
                             : completionRate > 0
-                            ? 'border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20'
+                            ? 'border-2 border-brand-accent/40 bg-brand-accent/10'
                             : 'border-2 border-[#e1ddd8] dark:border-[#3d4351]'
                         )}
                         title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
@@ -570,7 +570,7 @@ export function DayEditor({
                         {isCohortCompleted ? (
                           <Check className="w-3 h-3" />
                         ) : completionRate > 0 ? (
-                          <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400">{completionRate}</span>
+                          <span className="text-[8px] font-bold text-brand-accent">{completionRate}</span>
                         ) : null}
                       </div>
                     </button>
@@ -580,7 +580,7 @@ export function DayEditor({
                       if (isClientCompleted) {
                         return (
                           <div
-                            className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0"
+                            className="w-5 h-5 rounded bg-brand-accent flex items-center justify-center flex-shrink-0"
                             title="Completed"
                           >
                             <Check className="w-3 h-3 text-white" />
@@ -588,7 +588,7 @@ export function DayEditor({
                         );
                       }
                       return (
-                        <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
+                        <div className="w-5 h-5 rounded border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
                       );
                     })()
                   )}
@@ -615,7 +615,7 @@ export function DayEditor({
                         className={cn(
                           "shrink-0 text-xs font-medium px-2 py-0.5 rounded-full",
                           isCohortCompleted
-                            ? "text-green-600 bg-green-50 dark:bg-green-900/20"
+                            ? "text-brand-accent bg-brand-accent/10"
                             : "text-muted-foreground bg-muted"
                         )}
                       >
@@ -680,65 +680,97 @@ export function DayEditor({
                 </div>
 
                 {/* Expanded member breakdown (cohort mode only) */}
-                {isCohortMode && isTaskExpanded && (
-                  <div className="border-t border-[#e1ddd8] dark:border-[#262b35] px-4 pb-4">
-                    {/* Progress bar */}
-                    <div className="pt-3 pb-2">
-                      <Progress
-                        value={completionRate}
-                        className="h-1.5"
-                        indicatorClassName={getProgressColor(completionRate, completionThreshold)}
-                      />
-                    </div>
-
-                    {/* Member list */}
-                    <div className="space-y-2 pt-2">
-                      {isLoading && (
-                        <div className="flex items-center justify-center py-4">
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        </div>
-                      )}
-
-                      {!isLoading && members.length === 0 && (
-                        <div className="text-sm text-muted-foreground py-2">
-                          No member data available
-                        </div>
-                      )}
-
-                      {!isLoading && members.map((member) => (
-                        <div
-                          key={member.userId}
-                          className="flex items-center gap-3 text-sm"
-                        >
-                          <Avatar className="h-6 w-6">
-                            <AvatarImage src={member.imageUrl} />
-                            <AvatarFallback className="text-xs">
-                              {member.firstName?.[0]}
-                              {member.lastName?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="flex-1 truncate">
-                            {member.firstName} {member.lastName}
+                <div
+                  className={cn(
+                    "grid transition-all duration-300 ease-out",
+                    isCohortMode && isTaskExpanded
+                      ? "grid-rows-[1fr] opacity-100"
+                      : "grid-rows-[0fr] opacity-0"
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="border-t border-[#e1ddd8] dark:border-[#262b35] px-4 pb-4">
+                      {/* Progress bar with label */}
+                      <div className="pt-4 pb-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium text-muted-foreground">Completion Progress</span>
+                          <span className={cn(
+                            "text-xs font-semibold",
+                            isCohortCompleted ? "text-brand-accent" : "text-muted-foreground"
+                          )}>
+                            {completionRate}%
                           </span>
-                          <div
-                            className={cn(
-                              'shrink-0 h-5 w-5 rounded-full flex items-center justify-center',
-                              member.status === 'completed'
-                                ? 'bg-green-500 text-white'
-                                : 'bg-muted text-muted-foreground'
-                            )}
-                          >
-                            {member.status === 'completed' ? (
-                              <Check className="h-3 w-3" />
-                            ) : (
-                              <Clock className="h-3 w-3" />
-                            )}
-                          </div>
                         </div>
-                      ))}
+                        <Progress
+                          value={completionRate}
+                          className="h-2"
+                          indicatorClassName={cn(
+                            "transition-all duration-500",
+                            isCohortCompleted ? "bg-brand-accent" : "bg-brand-accent/60"
+                          )}
+                        />
+                      </div>
+
+                      {/* Member list */}
+                      <div className="space-y-1">
+                        {isLoading && (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                          </div>
+                        )}
+
+                        {!isLoading && members.length === 0 && (
+                          <div className="text-sm text-muted-foreground py-3 text-center">
+                            No member data available
+                          </div>
+                        )}
+
+                        {!isLoading && members.map((member, memberIndex) => (
+                          <div
+                            key={member.userId}
+                            className={cn(
+                              "flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200",
+                              member.status === 'completed'
+                                ? "bg-brand-accent/5"
+                                : "hover:bg-muted/50"
+                            )}
+                            style={{
+                              animationDelay: `${memberIndex * 50}ms`,
+                            }}
+                          >
+                            <Avatar className="h-7 w-7 ring-2 ring-background">
+                              <AvatarImage src={member.imageUrl} />
+                              <AvatarFallback className="text-xs bg-muted">
+                                {member.firstName?.[0]}
+                                {member.lastName?.[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className={cn(
+                              "flex-1 text-sm font-medium truncate",
+                              member.status === 'completed'
+                                ? "text-foreground"
+                                : "text-muted-foreground"
+                            )}>
+                              {member.firstName} {member.lastName}
+                            </span>
+                            <div
+                              className={cn(
+                                'shrink-0 h-5 w-5 rounded flex items-center justify-center transition-colors',
+                                member.status === 'completed'
+                                  ? 'bg-brand-accent text-white'
+                                  : 'border-2 border-[#e1ddd8] dark:border-[#3d4351]'
+                              )}
+                            >
+                              {member.status === 'completed' && (
+                                <Check className="h-3 w-3" />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             );
           })}
