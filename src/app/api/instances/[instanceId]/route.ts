@@ -73,6 +73,18 @@ export async function GET(
       lastSyncedFromTemplate: data.lastSyncedFromTemplate?.toDate?.()?.toISOString?.() || data.lastSyncedFromTemplate,
     };
 
+    // Debug: Log what weeks data we're returning from Firestore
+    console.log('[INSTANCE_GET] Returning instance:', {
+      instanceId,
+      type: instance.type,
+      weeksCount: instance.weeks?.length ?? 0,
+      weeks: instance.weeks?.map((w: ProgramInstanceWeek) => ({
+        weekNumber: w.weekNumber,
+        weeklyTasksCount: w.weeklyTasks?.length ?? 0,
+        weeklyTaskLabels: w.weeklyTasks?.map(t => t.label),
+      })),
+    });
+
     // For cohort instances, fetch member completion data
     if (instance.type === 'cohort' && instance.cohortId) {
       // Get cohort members

@@ -104,7 +104,23 @@ const fetcher = async (url: string) => {
     const error = new Error('Failed to fetch');
     throw error;
   }
-  return res.json();
+  const data = await res.json();
+
+  // Debug: Log what data we got from the API
+  if (url.includes('/api/instances/') && data?.instance) {
+    console.log('[useProgramInstance:fetcher] Got instance data:', {
+      url,
+      instanceId: data.instance.id,
+      weeksCount: data.instance.weeks?.length,
+      weeks: data.instance.weeks?.map((w: { weekNumber: number; weeklyTasks?: { label: string }[] }) => ({
+        weekNumber: w.weekNumber,
+        weeklyTasksCount: w.weeklyTasks?.length ?? 0,
+        weeklyTaskLabels: w.weeklyTasks?.map(t => t.label),
+      })),
+    });
+  }
+
+  return data;
 };
 
 /**

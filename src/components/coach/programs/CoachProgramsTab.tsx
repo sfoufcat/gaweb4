@@ -3887,13 +3887,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   const instanceWeek = instance?.weeks?.find(w => w.weekNumber === weekNumber);
 
                   // Debug: Log week data sources
-                  if (isCohortMode && instanceId) {
-                    console.log('[WEEK_DATA] Cohort week data sources:', {
+                  if ((isCohortMode || isClientMode) && instanceId) {
+                    console.log('[WEEK_DATA] Week data sources:', {
+                      mode: isCohortMode ? 'cohort' : 'client',
                       weekNumber,
                       instanceId,
                       hasInstance: !!instance,
+                      instanceWeeksCount: instance?.weeks?.length ?? 0,
+                      instanceWeekNumbers: instance?.weeks?.map(w => w.weekNumber),
                       hasInstanceWeek: !!instanceWeek,
                       instanceWeekTasks: instanceWeek?.weeklyTasks?.length ?? 'undefined',
+                      instanceWeekTaskLabels: instanceWeek?.weeklyTasks?.map(t => t.label),
                       templateWeekTasks: templateWeek?.weeklyTasks?.length ?? 'undefined',
                     });
                   }

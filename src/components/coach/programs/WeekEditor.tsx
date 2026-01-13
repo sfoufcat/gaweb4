@@ -437,6 +437,8 @@ export function WeekEditor({
   const lastResetVersion = useRef(editorContext?.resetVersion ?? 0);
   // Track if we just reset (to skip re-registration during save->refresh cycle)
   const recentlyReset = useRef(false);
+  // Track last registered data fingerprint to prevent infinite re-registration loops
+  const lastRegisteredFingerprint = useRef<string | null>(null);
 
   // Form data type
   type WeekFormData = {
@@ -788,6 +790,15 @@ export function WeekEditor({
         const templateKey = editorContext.getChangeKey('week', week.id, undefined);
         editorContext.discardChange(templateKey);
       }
+
+      // Create a fingerprint of the pending data to avoid re-registering the same data
+      // This prevents infinite loops when week prop doesn't update after save
+      const pendingFingerprint = JSON.stringify(pendingDataForContext);
+      if (pendingFingerprint === lastRegisteredFingerprint.current) {
+        // Already registered this exact data, skip to prevent infinite loop
+        return;
+      }
+      lastRegisteredFingerprint.current = pendingFingerprint;
 
       editorContext.registerChange({
         entityType: 'week',
