@@ -137,46 +137,45 @@ export async function GET(
       const userData = userDoc.data();
 
       // Fetch task completion data from tasks collection
-      // Tasks are linked via programEnrollmentId and have completion status
+      // Tasks are linked via instanceId (from cron sync) and have completion boolean
       const taskCompletionMap: Record<string, { completed: boolean; completedAt?: string }> = {};
 
-      if (instance.enrollmentId) {
-        const tasksSnap = await adminDb.collection('tasks')
-          .where('userId', '==', instance.userId)
-          .where('programEnrollmentId', '==', instance.enrollmentId)
-          .get();
+      // Query by instanceId - this is how the cron job links tasks
+      const tasksSnap = await adminDb.collection('tasks')
+        .where('userId', '==', instance.userId)
+        .where('instanceId', '==', instanceId)
+        .get();
 
-        for (const taskDoc of tasksSnap.docs) {
-          const taskData = taskDoc.data();
-          // Use both task label and programDayIndex as key for lookup
-          // The key format is: "dayIndex:taskLabel" for precise matching
-          const dayIndex = taskData.programDayIndex || taskData.programDay;
-          const label = taskData.title || '';
+      for (const taskDoc of tasksSnap.docs) {
+        const taskData = taskDoc.data();
+        // Use dayIndex and label fields (set by cron job)
+        const dayIdx = taskData.dayIndex;
+        const label = taskData.label || '';
 
-          if (dayIndex && label) {
-            const key = `${dayIndex}:${label}`;
-            taskCompletionMap[key] = {
-              completed: taskData.status === 'completed',
-              completedAt: taskData.completedAt,
-            };
-          }
-
-          // Also store by just the label for fallback matching
-          if (label) {
-            taskCompletionMap[label] = {
-              completed: taskData.status === 'completed',
-              completedAt: taskData.completedAt,
-            };
-          }
+        if (dayIdx && label) {
+          const key = `${dayIdx}:${label}`;
+          taskCompletionMap[key] = {
+            completed: taskData.completed === true,
+            completedAt: taskData.completedAt,
+          };
         }
 
-        console.log('[INSTANCE_GET] Individual completion data:', {
-          instanceId,
-          userId: instance.userId,
-          enrollmentId: instance.enrollmentId,
-          completionCount: Object.keys(taskCompletionMap).length,
-        });
+        // Also store by just the label for fallback matching
+        if (label) {
+          taskCompletionMap[label] = {
+            completed: taskData.completed === true,
+            completedAt: taskData.completedAt,
+          };
+        }
       }
+
+      console.log('[INSTANCE_GET] Individual completion data:', {
+        instanceId,
+        userId: instance.userId,
+        tasksFound: tasksSnap.docs.length,
+        completionCount: Object.keys(taskCompletionMap).length,
+        sampleKeys: Object.keys(taskCompletionMap).slice(0, 5),
+      });
 
       return NextResponse.json({
         instance,

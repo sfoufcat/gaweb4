@@ -555,40 +555,40 @@ export function DayEditor({
                       ) : (
                         <ChevronRight className="w-4 h-4 text-muted-foreground" />
                       )}
-                      {/* Status icon */}
+                      {/* Status icon - matches client Daily Focus style */}
                       <div
                         className={cn(
-                          'w-5 h-5 rounded flex items-center justify-center transition-colors',
+                          'w-6 h-6 rounded-lg flex items-center justify-center transition-colors',
                           isCohortCompleted
                             ? 'bg-brand-accent text-white'
                             : completionRate > 0
-                            ? 'border-2 border-brand-accent/40 bg-brand-accent/10'
-                            : 'border-2 border-[#e1ddd8] dark:border-[#3d4351]'
+                            ? 'border-[2.5px] border-brand-accent/50 bg-brand-accent/10'
+                            : 'border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351]'
                         )}
                         title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
                       >
                         {isCohortCompleted ? (
-                          <Check className="w-3 h-3" />
+                          <Check className="w-4 h-4" strokeWidth={3} />
                         ) : completionRate > 0 ? (
-                          <span className="text-[8px] font-bold text-brand-accent">{completionRate}</span>
+                          <span className="text-[9px] font-bold text-brand-accent">{completionRate}</span>
                         ) : null}
                       </div>
                     </button>
                   ) : (
-                    /* Non-cohort completion indicator */
+                    /* Non-cohort completion indicator - matches client Daily Focus style */
                     (() => {
                       if (isClientCompleted) {
                         return (
                           <div
-                            className="w-5 h-5 rounded bg-brand-accent flex items-center justify-center flex-shrink-0"
+                            className="w-6 h-6 rounded-lg bg-brand-accent flex items-center justify-center flex-shrink-0"
                             title="Completed"
                           >
-                            <Check className="w-3 h-3 text-white" />
+                            <Check className="w-4 h-4 text-white" strokeWidth={3} />
                           </div>
                         );
                       }
                       return (
-                        <div className="w-5 h-5 rounded border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
+                        <div className="w-6 h-6 rounded-lg border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351] flex-shrink-0" />
                       );
                     })()
                   )}
@@ -755,14 +755,14 @@ export function DayEditor({
                             </span>
                             <div
                               className={cn(
-                                'shrink-0 h-5 w-5 rounded flex items-center justify-center transition-colors',
+                                'shrink-0 h-6 w-6 rounded-lg flex items-center justify-center transition-colors',
                                 member.status === 'completed'
                                   ? 'bg-brand-accent text-white'
-                                  : 'border-2 border-[#e1ddd8] dark:border-[#3d4351]'
+                                  : 'border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351]'
                               )}
                             >
                               {member.status === 'completed' && (
-                                <Check className="h-3 w-3" />
+                                <Check className="h-4 w-4" strokeWidth={3} />
                               )}
                             </div>
                           </div>

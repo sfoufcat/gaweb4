@@ -147,8 +147,8 @@ function SortableWeeklyTask({
 
   // Helper to get progress bar color
   const getProgressColor = (rate: number, threshold: number) => {
-    if (rate >= threshold) return 'bg-green-500';
-    if (rate >= threshold * 0.7) return 'bg-amber-400';
+    if (rate >= threshold) return 'bg-brand-accent';
+    if (rate >= threshold * 0.7) return 'bg-brand-accent/60';
     return 'bg-gray-300 dark:bg-gray-600';
   };
 
@@ -159,7 +159,7 @@ function SortableWeeklyTask({
         style={style}
         className={`group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border rounded-xl hover:shadow-sm transition-all duration-200 ${
           isCohortCompleted
-            ? 'border-green-500/30 bg-green-500/5 hover:border-green-500/50'
+            ? 'border-brand-accent/30 bg-brand-accent/5 hover:border-brand-accent/50'
             : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d4d0cb] dark:hover:border-[#313746]'
         } ${isExpanded ? 'rounded-b-none border-b-0' : ''}`}
       >
@@ -175,26 +175,26 @@ function SortableWeeklyTask({
             ) : (
               <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" />
             )}
-            {/* Completion indicator */}
+            {/* Completion indicator - matches client Daily Focus style */}
             {hasCohortData ? (
               <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${
                   isCohortCompleted
-                    ? 'bg-green-500 text-white'
+                    ? 'bg-brand-accent text-white'
                     : completionRate > 0
-                    ? 'border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20'
-                    : 'border-2 border-[#e1ddd8] dark:border-[#3d4351]'
+                    ? 'border-[2.5px] border-brand-accent/50 bg-brand-accent/10'
+                    : 'border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351]'
                 }`}
                 title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
               >
                 {isCohortCompleted ? (
-                  <Check className="w-3 h-3" />
+                  <Check className="w-4 h-4" strokeWidth={3} />
                 ) : completionRate > 0 ? (
-                  <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400">{completionRate}</span>
+                  <span className="text-[9px] font-bold text-brand-accent">{completionRate}</span>
                 ) : null}
               </div>
             ) : (
-              <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
+              <div className="w-6 h-6 rounded-lg border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351] flex-shrink-0" />
             )}
           </button>
         ) : (
@@ -204,30 +204,30 @@ function SortableWeeklyTask({
               <GripVertical className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
             </div>
 
-            {/* Completion Checkbox - show cohort status if available, otherwise client status */}
+            {/* Completion Checkbox - matches client Daily Focus style */}
             {hasCohortData ? (
               <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${
                   isCohortCompleted
-                    ? 'bg-green-500 text-white'
+                    ? 'bg-brand-accent text-white'
                     : completionRate > 0
-                    ? 'border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20'
-                    : 'border-2 border-[#e1ddd8] dark:border-[#3d4351]'
+                    ? 'border-[2.5px] border-brand-accent/50 bg-brand-accent/10'
+                    : 'border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351]'
                 }`}
                 title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
               >
                 {isCohortCompleted ? (
-                  <Check className="w-3 h-3" />
+                  <Check className="w-4 h-4" strokeWidth={3} />
                 ) : completionRate > 0 ? (
-                  <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400">{completionRate}</span>
+                  <span className="text-[9px] font-bold text-brand-accent">{completionRate}</span>
                 ) : null}
               </div>
             ) : showCompletionStatus && isCompleted ? (
-              <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                <Check className="w-3 h-3 text-white" />
+              <div className="w-6 h-6 rounded-lg bg-brand-accent flex items-center justify-center flex-shrink-0">
+                <Check className="w-4 h-4 text-white" strokeWidth={3} />
               </div>
             ) : (
-              <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
+              <div className="w-6 h-6 rounded-lg border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351] flex-shrink-0" />
             )}
           </>
         )}
@@ -242,7 +242,7 @@ function SortableWeeklyTask({
           <span
             className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
               isCohortCompleted
-                ? 'text-green-600 bg-green-50 dark:bg-green-900/20'
+                ? 'text-brand-accent bg-brand-accent/10'
                 : 'text-muted-foreground bg-muted'
             }`}
           >
@@ -350,12 +350,13 @@ function SortableWeeklyTask({
                   </span>
                   {/* Status */}
                   {member.status === 'completed' ? (
-                    <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                      <Check className="w-4 h-4" />
-                      <span className="text-xs">Done</span>
+                    <div className="flex items-center gap-1 text-brand-accent">
+                      <div className="w-5 h-5 rounded-lg bg-brand-accent flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                      </div>
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">Pending</span>
+                    <div className="w-5 h-5 rounded-lg border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351]" />
                   )}
                 </div>
               ))}
