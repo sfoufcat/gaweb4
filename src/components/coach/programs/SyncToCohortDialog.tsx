@@ -22,7 +22,7 @@ interface SyncToCohortDialogProps {
   cohortName?: string;
   weekNumber?: number; // Optional: sync specific week only
   editedFields?: Set<string>;
-  onSyncComplete?: () => void;
+  onSyncComplete?: () => void | Promise<void>;
 }
 
 interface SyncFieldOptions {
@@ -163,9 +163,9 @@ export function SyncToCohortDialog({
       setSuccess(result.message || msg);
 
       // Close after a short delay to show success
-      setTimeout(() => {
+      setTimeout(async () => {
         onOpenChange(false);
-        onSyncComplete?.();
+        await onSyncComplete?.();
         setSuccess(null);
       }, 1500);
     } catch (err) {

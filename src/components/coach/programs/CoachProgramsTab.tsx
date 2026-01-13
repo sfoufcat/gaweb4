@@ -3775,6 +3775,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               selectedCycle={selectedCycle}
               onCycleSelect={handleCycleSelect}
               onSaveSuccess={handleSaveSuccess}
+              onRefreshInstance={refreshInstance}
             />
                 </div>
 

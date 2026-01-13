@@ -215,6 +215,104 @@ export async function POST(
       `(${weeksCreated} created, ${weeksUpdated} updated) for cohort ${cohortId}`
     );
 
+    // ALSO update program_instances collection (new architecture)
+    // This ensures the UI (which reads from program_instances) gets the updated data
+    try {
+      const instancesSnapshot = await adminDb.collection('program_instances')
+        .where('cohortId', '==', cohortId)
+        .where('type', '==', 'cohort')
+        .limit(1)
+        .get();
+
+      if (!instancesSnapshot.empty) {
+        const instanceDoc = instancesSnapshot.docs[0];
+        const instanceData = instanceDoc.data();
+        const instanceWeeks = instanceData.weeks || [];
+
+        // Update or add weeks based on template
+        const updatedWeeks = [...instanceWeeks];
+        for (const templateWeek of templateWeeks) {
+          const weekIdx = updatedWeeks.findIndex(w => w.weekNumber === templateWeek.weekNumber);
+
+          const weekUpdate: Record<string, unknown> = {
+            weekNumber: templateWeek.weekNumber,
+            moduleId: templateWeek.moduleId,
+            startDayIndex: templateWeek.startDayIndex,
+            endDayIndex: templateWeek.endDayIndex,
+            updatedAt: new Date().toISOString(),
+          };
+
+          // Apply sync options
+          if (syncOptions.syncTasks !== false) {
+            weekUpdate.weeklyTasks = processTasksWithIds(templateWeek.weeklyTasks);
+          }
+          if (syncOptions.syncPrompt !== false) {
+            weekUpdate.weeklyPrompt = templateWeek.weeklyPrompt || null;
+          }
+          if (syncOptions.syncHabits !== false) {
+            weekUpdate.weeklyHabits = templateWeek.weeklyHabits || null;
+          }
+          if (syncOptions.syncName !== false) {
+            weekUpdate.name = templateWeek.name || null;
+            weekUpdate.description = templateWeek.description || null;
+          }
+          if (syncOptions.syncTheme !== false) {
+            weekUpdate.theme = templateWeek.theme || null;
+          }
+          if (syncOptions.syncFocus !== false) {
+            weekUpdate.currentFocus = templateWeek.currentFocus || null;
+          }
+          if (syncOptions.syncNotes !== false) {
+            weekUpdate.notes = templateWeek.notes || null;
+          }
+
+          if (weekIdx >= 0) {
+            // Preserve existing data if options say so
+            const existing = updatedWeeks[weekIdx];
+            if (syncOptions.preserveClientLinks) {
+              weekUpdate.linkedSummaryIds = existing.linkedSummaryIds;
+              weekUpdate.linkedCallEventIds = existing.linkedCallEventIds;
+            }
+            if (syncOptions.preserveManualNotes && existing.manualNotes) {
+              weekUpdate.manualNotes = existing.manualNotes;
+            }
+            if (syncOptions.preserveRecordings && (existing.coachRecordingUrl || existing.coachRecordingNotes)) {
+              weekUpdate.coachRecordingUrl = existing.coachRecordingUrl;
+              weekUpdate.coachRecordingNotes = existing.coachRecordingNotes;
+            }
+            // Preserve days and calendar dates
+            weekUpdate.days = existing.days || [];
+            weekUpdate.calendarStartDate = existing.calendarStartDate;
+            weekUpdate.calendarEndDate = existing.calendarEndDate;
+
+            updatedWeeks[weekIdx] = { ...existing, ...weekUpdate };
+          } else {
+            // Add new week
+            updatedWeeks.push({
+              ...weekUpdate,
+              days: [],
+            });
+          }
+        }
+
+        // Sort by weekNumber
+        updatedWeeks.sort((a, b) => a.weekNumber - b.weekNumber);
+
+        await instanceDoc.ref.update({
+          weeks: updatedWeeks,
+          updatedAt: now,
+          lastSyncedFromTemplate: now,
+        });
+
+        console.log(`[COHORT_SYNC_TEMPLATE] Also updated program_instances doc ${instanceDoc.id}`);
+      } else {
+        console.log(`[COHORT_SYNC_TEMPLATE] No program_instances doc found for cohort ${cohortId} (will be created on first access)`);
+      }
+    } catch (instanceErr) {
+      console.error('[COHORT_SYNC_TEMPLATE] Failed to update program_instances (non-fatal):', instanceErr);
+      // Don't fail the request - the old collection was updated successfully
+    }
+
     // Optionally distribute to days after sync
     let distributionResult = null;
     if (distributeAfterSync) {

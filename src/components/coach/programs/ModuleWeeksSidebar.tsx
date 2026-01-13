@@ -86,6 +86,8 @@ interface ModuleWeeksSidebarProps {
   onSaveAll?: () => Promise<void>;
   /** Callback when discard all is clicked */
   onDiscardAll?: () => void;
+  /** Callback to refresh instance data after sync operations */
+  onRefreshInstance?: () => Promise<void>;
 }
 
 /**
@@ -374,6 +376,7 @@ export function ModuleWeeksSidebar({
   isSaving,
   onSaveAll,
   onDiscardAll,
+  onRefreshInstance,
 }: ModuleWeeksSidebarProps) {
   // In client view mode, disable reordering (structure comes from template)
   const isClientView = viewContext?.mode === 'client';
@@ -1832,8 +1835,11 @@ export function ModuleWeeksSidebar({
           programId={program.id}
           cohortId={cohortId}
           cohortName={currentCohort?.name}
-          onSyncComplete={() => {
-            // Optionally refresh or show success message
+          onSyncComplete={async () => {
+            // Refresh instance data to show synced content
+            if (onRefreshInstance) {
+              await onRefreshInstance();
+            }
           }}
         />
       )}
