@@ -276,8 +276,8 @@ export async function POST(request: NextRequest) {
     const existingTasks: Task[] = [];
     existingTasksSnapshot.forEach((doc) => {
       const data = doc.data();
-      // Skip soft-deleted tasks when counting
-      if (data.status === 'deleted') return;
+      // Skip soft-deleted and archived tasks when counting
+      if (data.status === 'deleted' || data.status === 'archived') return;
       existingTasks.push({ id: doc.id, ...data } as Task);
     });
 

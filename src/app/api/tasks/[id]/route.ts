@@ -116,6 +116,7 @@ export async function PATCH(
           .where('userId', '==', userId)
           .where('date', '==', existingTask.date)
           .where('listType', '==', 'focus')
+          .where('status', 'in', ['pending', 'completed']) // Exclude deleted/archived tasks
           .get();
 
         if (focusTasksSnapshot.size >= focusLimit) {
