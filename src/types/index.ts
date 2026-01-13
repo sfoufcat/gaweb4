@@ -5883,6 +5883,9 @@ export interface ProgramInstance {
   includeWeekends?: boolean;
   dailyFocusSlots?: number;
 
+  // Status
+  status?: 'active' | 'completed' | 'paused';
+
   // Metadata
   createdAt: string;
   updatedAt: string;
