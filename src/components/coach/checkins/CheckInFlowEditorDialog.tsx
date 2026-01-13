@@ -1,12 +1,25 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
 import { X, Sun, Moon, Calendar, Layers, ChevronDown, ChevronUp } from 'lucide-react';
 import type { OrgCheckInFlow, CheckInFlowTemplate, CheckInFlowType, FlowDisplayConfig, FlowShowConditions } from '@/types';
 import { FlowConditionBuilder } from './FlowConditionBuilder';
 import { FlowDisplayConfigEditor } from './FlowDisplayConfigEditor';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface CheckInFlowEditorDialogProps {
   mode: 'create' | 'edit';
@@ -39,6 +52,7 @@ export function CheckInFlowEditorDialog({
   onClose,
   onSaved,
 }: CheckInFlowEditorDialogProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [name, setName] = useState(flow?.name || '');
   const [description, setDescription] = useState(flow?.description || '');
   const [selectedSource, setSelectedSource] = useState<'scratch' | 'template' | 'duplicate'>('scratch');
@@ -46,18 +60,13 @@ export function CheckInFlowEditorDialog({
   const [selectedFlowId, setSelectedFlowId] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
-  
+
   // Custom flow specific settings
   const [displayConfig, setDisplayConfig] = useState<FlowDisplayConfig | undefined>(flow?.displayConfig);
   const [showConditions, setShowConditions] = useState<FlowShowConditions | undefined>(flow?.showConditions);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
-  
-  const isCustomFlow = flow?.type === 'custom' || mode === 'create';
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const isCustomFlow = flow?.type === 'custom' || mode === 'create';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,34 +138,10 @@ export function CheckInFlowEditorDialog({
     }
   };
 
-  if (!mounted) return null;
-
-  return createPortal(
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white dark:bg-[#171b22] rounded-2xl w-full max-w-xl shadow-xl border border-[#e1ddd8] dark:border-[#262b35] max-h-[90vh] overflow-y-auto"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
-          <h2 className="text-xl font-semibold text-text-primary dark:text-[#f5f5f8]">
-            {mode === 'create' ? 'Create Check-in Flow' : 'Edit Flow Details'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+  // Form content - shared between Dialog and Drawer
+  const formContent = (
+    <form onSubmit={handleSubmit} className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-5">
           {/* Error message */}
           {error && (
             <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
@@ -338,27 +323,79 @@ export function CheckInFlowEditorDialog({
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
+      </div>
+
+      {/* Actions - Sticky footer */}
+      <div className="flex-shrink-0 px-4 md:px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 px-4 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="flex-1 py-2.5 px-4 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 disabled:opacity-50 transition-colors"
+          >
+            {isSaving ? 'Saving...' : mode === 'create' ? 'Create' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+
+  // Desktop: Dialog
+  if (isDesktop) {
+    return (
+      <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden rounded-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
+            <DialogTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              {mode === 'create' ? 'Create Check-in Flow' : 'Edit Flow Details'}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+              {mode === 'create'
+                ? 'Create a custom check-in flow for your clients'
+                : 'Update your flow settings'}
+            </DialogDescription>
+          </DialogHeader>
+          {formContent}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Drawer (slide up bottom sheet)
+  return (
+    <Drawer open={true} onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent className="max-h-[90vh] flex flex-col">
+        <DrawerHeader className="px-4 pt-2 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
+          <div className="mx-auto w-12 h-1.5 rounded-full bg-[#e1ddd8] dark:bg-[#3a4150] mb-4" />
+          <div className="flex items-center justify-between">
+            <div>
+              <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                {mode === 'create' ? 'Create Check-in Flow' : 'Edit Flow'}
+              </DrawerTitle>
+              <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                {mode === 'create' ? 'Create a custom check-in' : 'Update flow settings'}
+              </DrawerDescription>
+            </div>
             <button
-              type="button"
               onClick={onClose}
-              className="flex-1 py-3 border border-[#e1ddd8] dark:border-[#262b35] text-text-primary dark:text-[#f5f5f8] rounded-xl hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+              className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="flex-1 py-3 bg-brand-accent text-white rounded-xl hover:bg-brand-accent/90 transition-colors disabled:opacity-50"
-            >
-              {isSaving ? 'Saving...' : mode === 'create' ? 'Create' : 'Save'}
+              <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
             </button>
           </div>
-        </form>
-      </motion.div>
-    </div>,
-    document.body
+        </DrawerHeader>
+        {formContent}
+        {/* Safe area padding for mobile */}
+        <div className="h-6 flex-shrink-0" />
+      </DrawerContent>
+    </Drawer>
   );
 }
 

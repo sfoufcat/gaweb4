@@ -27,6 +27,21 @@ import { ScheduleCallModal } from './ScheduleCallModal';
 import { EventDetailPopup } from './EventDetailPopup';
 import { CounterProposeModal } from './CounterProposeModal';
 import type { UnifiedEvent, ClientCoachingData, FirebaseUser } from '@/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 // Client type for picker
 interface CoachingClient {
@@ -274,6 +289,7 @@ function ClientPickerModal({
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -306,101 +322,120 @@ function ClientPickerModal({
     });
   }, [clients, searchQuery]);
 
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative w-full max-w-md max-h-[80vh] flex flex-col bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
-          <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-            Select Client
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="px-6 py-3 border-b border-[#e1ddd8] dark:border-[#262b35]">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search clients..."
-              className="w-full pl-10 pr-4 py-2 bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent"
-            />
-          </div>
-        </div>
-
-        {/* Client List */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 text-brand-accent animate-spin" />
-            </div>
-          ) : error ? (
-            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl text-red-600 dark:text-red-400">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <p className="text-sm">{error}</p>
-            </div>
-          ) : filteredClients.length === 0 ? (
-            <p className="text-center text-[#a7a39e] dark:text-[#7d8190] py-8">
-              {searchQuery ? 'No clients match your search' : 'No coaching clients found'}
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {filteredClients.map((client) => {
-                const name = `${client.user?.firstName || ''} ${client.user?.lastName || ''}`.trim() || 'Unknown';
-                return (
-                  <button
-                    key={client.id}
-                    onClick={() => onSelect(client)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors text-left"
-                  >
-                    {client.user?.imageUrl ? (
-                      <Image
-                        src={client.user.imageUrl}
-                        alt={name}
-                        width={40}
-                        height={40}
-                        className="rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-brand-accent/20 flex items-center justify-center">
-                        <User className="w-5 h-5 text-brand-accent" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                        {name}
-                      </p>
-                      {client.user?.email && (
-                        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
-                          {client.user.email}
-                        </p>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+  // Shared content for both Dialog and Drawer
+  const modalContent = (
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Search */}
+      <div className="px-6 py-3 border-b border-[#e1ddd8] dark:border-[#262b35]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search clients..."
+            className="w-full pl-10 pr-4 py-2 bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent"
+          />
         </div>
       </div>
+
+      {/* Client List */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 text-brand-accent animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl text-red-600 dark:text-red-400">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <p className="text-sm">{error}</p>
+          </div>
+        ) : filteredClients.length === 0 ? (
+          <p className="text-center text-[#a7a39e] dark:text-[#7d8190] py-8">
+            {searchQuery ? 'No clients match your search' : 'No coaching clients found'}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {filteredClients.map((client) => {
+              const name = `${client.user?.firstName || ''} ${client.user?.lastName || ''}`.trim() || 'Unknown';
+              return (
+                <button
+                  key={client.id}
+                  onClick={() => onSelect(client)}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors text-left"
+                >
+                  {client.user?.imageUrl ? (
+                    <Image
+                      src={client.user.imageUrl}
+                      alt={name}
+                      width={40}
+                      height={40}
+                      className="rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-brand-accent/20 flex items-center justify-center">
+                      <User className="w-5 h-5 text-brand-accent" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                      {name}
+                    </p>
+                    {client.user?.email && (
+                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                        {client.user.email}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Safe area for mobile */}
+      {!isDesktop && <div className="h-6" />}
     </div>
+  );
+
+  if (!isOpen) return null;
+
+  // Desktop: Use Dialog
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden rounded-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader className="px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+            <DialogTitle className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+              Select Client
+            </DialogTitle>
+            <DialogDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+              Choose a client to schedule a call with
+            </DialogDescription>
+          </DialogHeader>
+          {modalContent}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Use Drawer (bottom sheet)
+  return (
+    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent className="max-h-[85vh] flex flex-col">
+        <DrawerHeader className="px-6 pt-4 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35]">
+          <div className="mx-auto w-12 h-1.5 rounded-full bg-[#e1ddd8] dark:bg-[#3a4150] mb-4" />
+          <DrawerTitle className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+            Select Client
+          </DrawerTitle>
+          <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+            Choose a client to schedule a call with
+          </DrawerDescription>
+        </DrawerHeader>
+        {modalContent}
+      </DrawerContent>
+    </Drawer>
   );
 }
 

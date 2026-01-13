@@ -26,12 +26,15 @@ import type { ChatChannelType } from '@/types/chat-preferences';
 interface ChatActionsMenuProps {
   channelId: string;
   channelType: ChatChannelType;
+  /** Whether this channel is default-pinned (e.g., coaching channels for clients) */
+  isDefaultPinned?: boolean;
   onActionComplete?: () => void;
 }
 
 export function ChatActionsMenu({
   channelId,
   channelType,
+  isDefaultPinned = false,
   onActionComplete,
 }: ChatActionsMenuProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -46,18 +49,26 @@ export function ChatActionsMenu({
     canPin,
     canArchive,
     canDelete,
+    isExplicitlyUnpinned,
   } = useChatPreferences();
   const { removeChannel } = useChatChannels();
 
   const preference = getPreference(channelId);
-  const isPinned = preference?.isPinned ?? false;
+  const isUserPinned = preference?.isPinned ?? false;
   const isArchived = preference?.isArchived ?? false;
+  const wasExplicitlyUnpinned = isExplicitlyUnpinned(channelId);
+
+  // A channel appears pinned if: user pinned OR default-pinned (and not explicitly unpinned)
+  const appearsPinned = isUserPinned || (isDefaultPinned && !wasExplicitlyUnpinned);
 
   // Debug: log rendered state
   console.log('[ChatActionsMenu] render:', {
     channelId,
     channelType,
-    isPinned,
+    isUserPinned,
+    isDefaultPinned,
+    wasExplicitlyUnpinned,
+    appearsPinned,
     isArchived,
     canPinResult: canPin(channelType),
     canArchiveResult: canArchive(channelType),
@@ -79,8 +90,8 @@ export function ChatActionsMenu({
   };
 
   const handlePin = () =>
-    handleAction(isPinned ? 'unpin' : 'pin', () =>
-      isPinned
+    handleAction(appearsPinned ? 'unpin' : 'pin', () =>
+      appearsPinned
         ? unpinChannel(channelId, channelType)
         : pinChannel(channelId, channelType)
     );
@@ -124,7 +135,7 @@ export function ChatActionsMenu({
               className="gap-3"
               disabled={isLoading}
             >
-              {isPinned ? (
+              {appearsPinned ? (
                 <>
                   <PinOff className="w-[18px] h-[18px] text-text-secondary" />
                   Unpin

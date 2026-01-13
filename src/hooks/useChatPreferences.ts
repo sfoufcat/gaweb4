@@ -16,6 +16,7 @@ export interface UseChatPreferencesReturn {
   // Computed sets for quick lookups
   pinnedChannelIds: Set<string>;
   archivedChannelIds: Set<string>;
+  explicitlyUnpinnedChannelIds: Set<string>;
 
   // Actions
   pinChannel: (channelId: string, channelType: ChatChannelType) => Promise<void>;
@@ -30,6 +31,7 @@ export interface UseChatPreferencesReturn {
   canPin: (channelType: ChatChannelType) => boolean;
   canArchive: (channelType: ChatChannelType) => boolean;
   canDelete: (channelType: ChatChannelType) => boolean;
+  isExplicitlyUnpinned: (channelId: string) => boolean;
 }
 
 /**
@@ -56,6 +58,7 @@ export function useChatPreferences(_enabled: boolean = true): UseChatPreferences
     error: context.error,
     pinnedChannelIds: context.pinnedChannelIds,
     archivedChannelIds: context.archivedChannelIds,
+    explicitlyUnpinnedChannelIds: context.explicitlyUnpinnedChannelIds,
     pinChannel: context.pinChannel,
     unpinChannel: context.unpinChannel,
     archiveChannel: context.archiveChannel,
@@ -66,5 +69,6 @@ export function useChatPreferences(_enabled: boolean = true): UseChatPreferences
     canPin: context.canPin,
     canArchive: context.canArchive,
     canDelete: context.canDelete,
+    isExplicitlyUnpinned: context.isExplicitlyUnpinned,
   };
 }

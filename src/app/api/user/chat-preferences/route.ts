@@ -118,6 +118,7 @@ export async function POST(req: Request) {
         break;
       case 'unpin':
         updates.isPinned = false;
+        updates.unpinnedAt = now; // Track explicit unpin to override default pins
         break;
       case 'archive':
         updates.isArchived = true;

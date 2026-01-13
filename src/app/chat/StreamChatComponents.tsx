@@ -410,12 +410,13 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
   const { channel } = useChatContext();
   const router = useRouter();
   const [showRequestCallModal, setShowRequestCallModal] = useState(false);
-  
+  const { isCoach } = useCoachSquads();
+
   // Cast channel.data to any to access custom properties like name and image
   const channelData = channel?.data as Record<string, unknown> | undefined;
   const members = Object.values(channel?.state?.members || {}).filter(m => m.user);
   const otherMember = members.find(m => m.user?.id !== channel?._client?.userID);
-  
+
   // Get member count from channel data (reliable for large channels) or fallback to local state
   const memberCount = (channel?.data?.member_count as number) || members.length;
 
@@ -424,13 +425,13 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
   const isGlobalChannel = channelId === ANNOUNCEMENTS_CHANNEL_ID || channelId === SOCIAL_CORNER_CHANNEL_ID || channelId === SHARE_WINS_CHANNEL_ID;
   const isOrgChannel = Boolean(channelData?.isOrgChannel);
   const isSpecialChannel = isGlobalChannel || isOrgChannel;
-  
+
   // Check if this is a coaching channel (ID starts with 'coaching-')
   const isCoachingChannel = channelId?.startsWith('coaching-');
-  
+
   // Get channel type for org channels (for icon display)
   const orgChannelType = channelData?.channelType as string | undefined;
-  
+
   // Get channel name - prioritize special channel names, then explicit name, then other member's name
   const getChannelName = () => {
     if (channelId === ANNOUNCEMENTS_CHANNEL_ID) return 'Announcements';
@@ -444,7 +445,7 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
     if (explicitName) return explicitName;
     return otherMember?.user?.name || 'Chat';
   };
-  
+
   const channelName = getChannelName();
   const isDMChat = !isSpecialChannel && !(channelData?.name as string | undefined) && otherMember?.user?.id;
   // Show member avatar for DM chats AND coaching channels (they also show other member's avatar)
@@ -456,7 +457,7 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
       router.push(`/profile/${otherMember.user.id}`);
     }
   };
-  
+
   // Get coach name for scheduling (the other member in a coaching channel)
   const coachName = isCoachingChannel && otherMember?.user?.name ? otherMember.user.name : 'Coach';
 
@@ -468,6 +469,9 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
     return 'dm'; // Default to dm for unknown types
   };
   const chatChannelType = getChatChannelType();
+
+  // Coaching channels are default-pinned for clients (not coaches)
+  const isDefaultPinned = isCoachingChannel && !isCoach;
 
   return (
     <div className="str-chat__header-livestream bg-[#faf8f6] dark:bg-[#05070b]">
@@ -566,6 +570,7 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
           <ChatActionsMenu
             channelId={channelId || ''}
             channelType={chatChannelType}
+            isDefaultPinned={isDefaultPinned}
           />
         </div>
       </div>

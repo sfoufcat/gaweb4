@@ -102,6 +102,7 @@ export interface ChatPreferencesContextValue {
   // Computed sets for quick lookups
   pinnedChannelIds: Set<string>;
   archivedChannelIds: Set<string>;
+  explicitlyUnpinnedChannelIds: Set<string>; // Channels user explicitly unpinned (overrides default pins)
 
   // Actions
   pinChannel: (channelId: string, channelType: ChatChannelType) => Promise<void>;
@@ -116,6 +117,7 @@ export interface ChatPreferencesContextValue {
   canPin: (channelType: ChatChannelType) => boolean;
   canArchive: (channelType: ChatChannelType) => boolean;
   canDelete: (channelType: ChatChannelType) => boolean;
+  isExplicitlyUnpinned: (channelId: string) => boolean;
 }
 
 // Default context value (empty state)
@@ -125,6 +127,7 @@ const defaultContextValue: ChatPreferencesContextValue = {
   error: null,
   pinnedChannelIds: new Set(),
   archivedChannelIds: new Set(),
+  explicitlyUnpinnedChannelIds: new Set(),
   pinChannel: async () => {},
   unpinChannel: async () => {},
   archiveChannel: async () => {},
@@ -135,6 +138,7 @@ const defaultContextValue: ChatPreferencesContextValue = {
   canPin: () => true,
   canArchive: () => true,
   canDelete: () => false,
+  isExplicitlyUnpinned: () => false,
 };
 
 const ChatPreferencesContext = createContext<ChatPreferencesContextValue>(defaultContextValue);
@@ -320,6 +324,21 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
     return ids;
   }, [preferences]);
 
+  // Channels that user explicitly unpinned (has unpinnedAt timestamp and is not currently pinned)
+  // This is used to override default-pinned channels like coaching chats
+  const explicitlyUnpinnedChannelIds = useMemo(() => {
+    const ids = new Set<string>();
+    preferences.forEach((pref, id) => {
+      // A channel is explicitly unpinned if:
+      // 1. It has an unpinnedAt timestamp (user clicked unpin)
+      // 2. It's not currently pinned (hasn't been re-pinned since)
+      if (pref.unpinnedAt && !pref.isPinned) {
+        ids.add(id);
+      }
+    });
+    return ids;
+  }, [preferences]);
+
   // Permission helpers
   const canPin = useCallback((_channelType: ChatChannelType) => true, []);
   const canArchive = useCallback(
@@ -335,6 +354,12 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
   const getPreference = useCallback(
     (channelId: string) => preferences.get(channelId),
     [preferences]
+  );
+
+  // Check if a channel was explicitly unpinned by the user
+  const isExplicitlyUnpinned = useCallback(
+    (channelId: string) => explicitlyUnpinnedChannelIds.has(channelId),
+    [explicitlyUnpinnedChannelIds]
   );
 
   // Helper to apply optimistic update
@@ -375,7 +400,7 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
 
   const unpinChannel = useCallback(
     async (channelId: string, channelType: ChatChannelType) => {
-      applyOptimisticUpdate(channelId, channelType, { isPinned: false });
+      applyOptimisticUpdate(channelId, channelType, { isPinned: false, unpinnedAt: new Date().toISOString() });
       await updatePreference(channelId, channelType, 'unpin');
     },
     [applyOptimisticUpdate]
@@ -442,6 +467,7 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
       error,
       pinnedChannelIds,
       archivedChannelIds,
+      explicitlyUnpinnedChannelIds,
       pinChannel,
       unpinChannel,
       archiveChannel,
@@ -452,6 +478,7 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
       canPin,
       canArchive,
       canDelete,
+      isExplicitlyUnpinned,
     }),
     [
       preferences,
@@ -459,6 +486,7 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
       error,
       pinnedChannelIds,
       archivedChannelIds,
+      explicitlyUnpinnedChannelIds,
       pinChannel,
       unpinChannel,
       archiveChannel,
@@ -466,6 +494,7 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
       deleteChannel,
       undeleteChannel,
       getPreference,
+      isExplicitlyUnpinned,
       canPin,
       canArchive,
       canDelete,

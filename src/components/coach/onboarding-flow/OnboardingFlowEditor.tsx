@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { Reorder } from 'framer-motion';
 import {
   Plus,
   GripVertical,
@@ -20,6 +20,21 @@ import {
 import type { OnboardingStep, OnboardingStepType, FunnelStepConfigQuestion, FunnelStepConfigGoal, FunnelStepConfigIdentity, FunnelStepConfigExplainer, FunnelStepConfigSuccess } from '@/types';
 import { StepConfigEditor } from '@/components/coach/funnels/StepConfigEditor';
 import { ConfirmationModal } from '@/components/feed/ConfirmationModal';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface OnboardingFlowEditorProps {
   flowId: string;
@@ -118,12 +133,13 @@ function getDefaultConfig(type: OnboardingStepType): FunnelStepConfigQuestion | 
 }
 
 export function OnboardingFlowEditor({ flowId, onBack }: OnboardingFlowEditorProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [steps, setSteps] = useState<OnboardingStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  
+
   // Modals
   const [showAddStep, setShowAddStep] = useState(false);
   const [editingStep, setEditingStep] = useState<OnboardingStep | null>(null);
@@ -373,63 +389,96 @@ export function OnboardingFlowEditor({ flowId, onBack }: OnboardingFlowEditorPro
       </div>
 
       {/* Add Step Modal */}
-      {mounted && createPortal(
-        <AnimatePresence>
-          {showAddStep && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
-              onClick={(e) => e.target === e.currentTarget && setShowAddStep(false)}
-            >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-white dark:bg-[#171b22] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
-              >
-                <div className="p-4 border-b border-[#e1ddd8] dark:border-[#262b35] flex items-center justify-between">
-                  <h3 className="font-semibold text-text-primary dark:text-[#f5f5f8]">Add Step</h3>
+      {showAddStep && (
+        isDesktop ? (
+          <Dialog open={showAddStep} onOpenChange={(open) => !open && setShowAddStep(false)}>
+            <DialogContent className="max-w-md p-0 gap-0 overflow-hidden rounded-2xl">
+              <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                <DialogTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  Add Step
+                </DialogTitle>
+                <DialogDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+                  Choose a step type to add to your flow
+                </DialogDescription>
+              </DialogHeader>
+              <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+                {ONBOARDING_STEP_TYPES.map((type) => {
+                  const info = STEP_TYPE_INFO[type];
+                  const Icon = info.icon;
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => handleAddStep(type)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#faf8f6] dark:hover:bg-[#1a1f27] transition-colors text-left"
+                    >
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${info.color}`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                          {info.label}
+                        </p>
+                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                          {info.description}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <Drawer open={showAddStep} onOpenChange={(open) => !open && setShowAddStep(false)}>
+            <DrawerContent className="max-h-[85vh]">
+              <DrawerHeader className="px-4 pt-2 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                <div className="mx-auto w-12 h-1.5 rounded-full bg-[#e1ddd8] dark:bg-[#3a4150] mb-4" />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                      Add Step
+                    </DrawerTitle>
+                    <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                      Choose a step type
+                    </DrawerDescription>
+                  </div>
                   <button
                     onClick={() => setShowAddStep(false)}
-                    className="p-1 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                    className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
                   >
-                    <X className="w-5 h-5 text-text-secondary" />
+                    <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
                   </button>
                 </div>
-                
-                <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
-                  {ONBOARDING_STEP_TYPES.map((type) => {
-                    const info = STEP_TYPE_INFO[type];
-                    const Icon = info.icon;
-                    
-                    return (
-                      <button
-                        key={type}
-                        onClick={() => handleAddStep(type)}
-                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#faf8f6] dark:hover:bg-[#1a1f27] transition-colors text-left"
-                      >
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${info.color}`}>
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-text-primary dark:text-[#f5f5f8]">
-                            {info.label}
-                          </p>
-                          <p className="text-xs text-text-secondary dark:text-[#b2b6c2]">
-                            {info.description}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body
+              </DrawerHeader>
+              <div className="p-4 space-y-2 overflow-y-auto">
+                {ONBOARDING_STEP_TYPES.map((type) => {
+                  const info = STEP_TYPE_INFO[type];
+                  const Icon = info.icon;
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => handleAddStep(type)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#faf8f6] dark:hover:bg-[#1a1f27] transition-colors text-left"
+                    >
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${info.color}`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                          {info.label}
+                        </p>
+                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                          {info.description}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="h-6" />
+            </DrawerContent>
+          </Drawer>
+        )
       )}
 
       {/* Edit Step Modal - reuse StepConfigEditor from funnels */}

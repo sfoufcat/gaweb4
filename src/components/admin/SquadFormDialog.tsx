@@ -2,17 +2,25 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { Globe, Lock, Copy, RefreshCw, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Globe, Lock, Copy, RefreshCw, AlertTriangle, ChevronDown, ChevronUp, X } from 'lucide-react';
 import type { Squad, FirebaseUser, SquadMember, SquadVisibility } from '@/types';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { Button } from '@/components/ui/button';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
 import {
   Select,
   SelectContent,
@@ -20,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface AvailableUser {
   id: string;
@@ -76,17 +85,18 @@ const POPULAR_TIMEZONES = [
   { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
 ];
 
-export function SquadFormDialog({ 
-  squad, 
-  open, 
-  onClose, 
-  onSave, 
+export function SquadFormDialog({
+  squad,
+  open,
+  onClose,
+  onSave,
   apiBasePath = '/api/admin/squads',
   coachesApiEndpoint = '/api/admin/coaches',
   uploadEndpoint = '/api/admin/upload-media',
   demoMode = false,
   onDemoSave,
 }: SquadFormDialogProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
@@ -517,22 +527,10 @@ export function SquadFormDialog({
     }
   };
 
-  return (
-    <AlertDialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="max-w-3xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-        <AlertDialogHeader className="p-6 pb-4 flex-shrink-0">
-          <AlertDialogTitle className="font-albert">
-            {squad ? 'Edit Squad' : 'Create Squad'}
-          </AlertDialogTitle>
-          {!squad && (
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-              Squads are perfect for evergreen groups, ongoing communities, or paid peer groups that don&apos;t follow a fixed program schedule.
-            </p>
-          )}
-        </AlertDialogHeader>
-
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-          <div className="px-6 pb-4 space-y-4 overflow-y-auto flex-1">
+  // Form content - shared between Dialog and Drawer
+  const formContent = (
+    <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+      <div className="px-4 md:px-6 pb-4 space-y-4 overflow-y-auto flex-1">
           {/* Grace Period Warning */}
           {squad && isInGracePeriod && !convertSuccess && (
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4">
@@ -1038,29 +1036,80 @@ export function SquadFormDialog({
             </div>
           )}
 
-          </div>
+      </div>
 
-          {/* Sticky Footer */}
-          <div className="p-6 pt-4 border-t border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0 flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
+      {/* Sticky Footer */}
+      <div className="px-4 md:px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0 bg-white dark:bg-[#171b22]">
+        <div className="flex gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 font-albert rounded-xl"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={loading || !name.trim() || !description.trim() || !avatarUrl.trim()}
+            className="flex-1 bg-brand-accent hover:bg-brand-accent/90 text-white font-albert rounded-xl"
+          >
+            {loading ? 'Saving...' : squad ? 'Update Squad' : 'Create Squad'}
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+
+  // Desktop: Dialog with backdrop blur
+  if (isDesktop) {
+    return (
+      <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden p-0 flex flex-col gap-0 rounded-2xl">
+          <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
+            <DialogTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              {squad ? 'Edit Squad' : 'Create Squad'}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+              {squad
+                ? 'Update your squad settings and members'
+                : 'Squads are perfect for evergreen groups, ongoing communities, or paid peer groups that don\'t follow a fixed program schedule.'}
+            </DialogDescription>
+          </DialogHeader>
+          {formContent}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Drawer (slide up bottom sheet)
+  return (
+    <Drawer open={open} onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent className="max-h-[90vh] flex flex-col">
+        <DrawerHeader className="px-4 pt-2 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
+          <div className="mx-auto w-12 h-1.5 rounded-full bg-[#e1ddd8] dark:bg-[#3a4150] mb-4" />
+          <div className="flex items-center justify-between">
+            <div>
+              <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                {squad ? 'Edit Squad' : 'Create Squad'}
+              </DrawerTitle>
+              <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                {squad ? 'Update squad settings' : 'Create a new community'}
+              </DrawerDescription>
+            </div>
+            <button
               onClick={onClose}
-              disabled={loading}
-              className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 font-albert"
+              className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
             >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading || !name.trim() || !description.trim() || !avatarUrl.trim()}
-              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
-            >
-              {loading ? 'Saving...' : squad ? 'Update Squad' : 'Create Squad'}
-            </Button>
+              <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+            </button>
           </div>
-        </form>
-      </AlertDialogContent>
-    </AlertDialog>
+        </DrawerHeader>
+        {formContent}
+        {/* Safe area padding for mobile */}
+        <div className="h-6 flex-shrink-0" />
+      </DrawerContent>
+    </Drawer>
   );
 }

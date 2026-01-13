@@ -4349,13 +4349,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                 Manage time-based cohorts for this program
               </p>
-              <Button
+              <button
                 onClick={() => handleOpenCohortModal()}
-                className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
+                className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
               >
                 <Plus className="w-4 h-4" />
                 Add Cohort
-              </Button>
+              </button>
             </div>
 
             <div className="space-y-3">
@@ -4461,14 +4461,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                   {programEnrollments.filter(e => e.status === 'active' || e.status === 'upcoming').length} active
                 </span>
-                <Button
+                <button
                   onClick={() => setShowEnrollClientsModal(true)}
-                  className="flex items-center gap-2 bg-brand-accent hover:bg-brand-accent/90 text-white font-albert text-sm h-9 px-3"
-                  size="sm"
+                  className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
                 >
                   <UserPlus className="w-4 h-4" />
                   Enroll Clients
-                </Button>
+                </button>
               </div>
             </div>
 
@@ -4681,14 +4680,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
+                <button
                   onClick={() => setIsAILandingPageModalOpen(true)}
-                  className="border-brand-accent text-brand-accent hover:bg-brand-accent/10 flex items-center gap-2"
+                  className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
                 >
                   <Sparkles className="w-4 h-4" />
                   Generate with AI
-                </Button>
+                </button>
                 <Button 
                   onClick={async () => {
                     const success = await handleSaveLandingPage();

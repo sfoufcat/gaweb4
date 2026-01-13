@@ -14,6 +14,7 @@ export interface ChatPreference {
   pinnedAt?: string;
   archivedAt?: string;
   deletedAt?: string;
+  unpinnedAt?: string; // Track when user explicitly unpinned (to override default pins)
   updatedAt: string;
 }
 

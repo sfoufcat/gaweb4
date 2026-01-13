@@ -31,6 +31,7 @@ import { ArchivedChatsLink } from '@/components/chat/ArchivedChatsLink';
 import { useChatPreferences } from '@/hooks/useChatPreferences';
 import type { ChatChannelType } from '@/types/chat-preferences';
 import { Archive, Trash2, PinOff, ArchiveRestore } from 'lucide-react';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -131,6 +132,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   const {
     pinnedChannelIds,
     archivedChannelIds,
+    explicitlyUnpinnedChannelIds,
     pinChannel,
     unpinChannel,
     archiveChannel,
@@ -263,7 +265,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     return <MessageCircle className="w-5 h-5 text-text-secondary" />;
   };
 
-  // Sort channels: user-pinned first, then coaching for clients, then unread, then by last message time
+  // Sort channels: user-pinned first, then coaching for clients (unless explicitly unpinned), then unread, then by last message time
   const sortedChannels = useMemo(() => {
     // First filter out archived channels
     const visibleChannels = channels.filter(c =>
@@ -278,9 +280,12 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       if (!aPinned && bPinned) return 1;
 
       // Coaching channels pinned to top ONLY for clients (not coaches)
+      // UNLESS the user has explicitly unpinned them
       if (!isCoach) {
-        if (a.type === 'coaching' && b.type !== 'coaching') return -1;
-        if (a.type !== 'coaching' && b.type === 'coaching') return 1;
+        const aIsDefaultPinnedCoaching = a.type === 'coaching' && !explicitlyUnpinnedChannelIds.has(a.id);
+        const bIsDefaultPinnedCoaching = b.type === 'coaching' && !explicitlyUnpinnedChannelIds.has(b.id);
+        if (aIsDefaultPinnedCoaching && !bIsDefaultPinnedCoaching) return -1;
+        if (!aIsDefaultPinnedCoaching && bIsDefaultPinnedCoaching) return 1;
       }
       // Then unread channels
       if (a.unread > 0 && b.unread === 0) return -1;
@@ -291,7 +296,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       }
       return 0;
     });
-  }, [channels, isCoach, pinnedChannelIds, archivedChannelIds]);
+  }, [channels, isCoach, pinnedChannelIds, archivedChannelIds, explicitlyUnpinnedChannelIds]);
 
   // Filter channels into main vs direct
   // For coaches: coaching channels go in Direct tab (like DMs with clients)
@@ -344,20 +349,27 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   // Build swipe actions for a channel
   const getSwipeActions = useCallback((channelPreview: ChannelPreview): SwipeAction[] => {
     const channelType = toChatChannelType(channelPreview.type);
-    const isPinned = pinnedChannelIds.has(channelPreview.id);
+    const isUserPinned = pinnedChannelIds.has(channelPreview.id);
     const isArchived = archivedChannelIds.has(channelPreview.id);
+    const isExplicitlyUnpinned = explicitlyUnpinnedChannelIds.has(channelPreview.id);
+
+    // For coaching channels (for non-coaches), they're "pinned" by default unless explicitly unpinned
+    const isDefaultPinnedCoaching = !isCoach && channelPreview.type === 'coaching' && !isExplicitlyUnpinned;
+    // Channel appears pinned if: user pinned OR default pinned coaching
+    const appearsPinned = isUserPinned || isDefaultPinnedCoaching;
+
     const actions: SwipeAction[] = [];
 
     // Pin action (all channel types)
     if (canPin(channelType)) {
       actions.push({
-        icon: isPinned ? <PinOff className="w-5 h-5" /> : <Pin className="w-5 h-5" />,
-        label: isPinned ? 'Unpin' : 'Pin',
+        icon: appearsPinned ? <PinOff className="w-5 h-5" /> : <Pin className="w-5 h-5" />,
+        label: appearsPinned ? 'Unpin' : 'Pin',
         bgColor: 'bg-blue-500',
         onClick: async () => {
-          console.log('[ChatSheet] Pin action clicked:', { channelId: channelPreview.id, channelType, isPinned });
+          console.log('[ChatSheet] Pin action clicked:', { channelId: channelPreview.id, channelType, appearsPinned, isUserPinned, isDefaultPinnedCoaching });
           try {
-            if (isPinned) {
+            if (appearsPinned) {
               await unpinChannel(channelPreview.id, channelType);
             } else {
               await pinChannel(channelPreview.id, channelType);
@@ -406,7 +418,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     }
 
     return actions;
-  }, [pinnedChannelIds, archivedChannelIds, canPin, canArchive, canDelete, pinChannel, unpinChannel, archiveChannel, unarchiveChannel, deleteChannel, setDeleteDialogChannel]);
+  }, [pinnedChannelIds, archivedChannelIds, explicitlyUnpinnedChannelIds, isCoach, canPin, canArchive, canDelete, pinChannel, unpinChannel, archiveChannel, unarchiveChannel, deleteChannel, setDeleteDialogChannel]);
 
   // Get selected channel name for header
   const selectedChannelName = useMemo(() => {
@@ -561,69 +573,80 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                       </p>
                     </div>
                   ) : (
-                    // Channel list
-                    <div>
-                      {filteredChannels.map((channelPreview) => (
-                        <SwipeableChatItem
-                          key={channelPreview.id}
-                          itemId={channelPreview.id}
-                          openItemId={openSwipeItemId}
-                          onOpen={setOpenSwipeItemId}
-                          actions={getSwipeActions(channelPreview)}
-                        >
-                          <button
-                            onClick={() => handleChannelClick(channelPreview.channel)}
-                            className="w-full px-5 py-3 flex items-center gap-3 hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors text-left active:bg-[#e9e5e0] dark:active:bg-[#252a33]"
+                    // Channel list with animated reordering
+                    <LayoutGroup>
+                      <div>
+                        {filteredChannels.map((channelPreview) => (
+                          <motion.div
+                            key={channelPreview.id}
+                            layout
+                            layoutId={channelPreview.id}
+                            initial={false}
+                            transition={{
+                              layout: { type: 'spring', stiffness: 500, damping: 35 }
+                            }}
                           >
-                            {/* Avatar */}
-                            <div className="relative w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#272d38] flex items-center justify-center overflow-hidden flex-shrink-0">
-                              {channelPreview.image ? (
-                                <Image
-                                  src={channelPreview.image}
-                                  alt={channelPreview.name}
-                                  fill
-                                  className="object-cover"
-                                />
-                              ) : (
-                                getChannelIcon(channelPreview.type, channelPreview.id)
-                              )}
-                            </div>
+                            <SwipeableChatItem
+                              itemId={channelPreview.id}
+                              openItemId={openSwipeItemId}
+                              onOpen={setOpenSwipeItemId}
+                              actions={getSwipeActions(channelPreview)}
+                            >
+                              <button
+                                onClick={() => handleChannelClick(channelPreview.channel)}
+                                className="w-full px-5 py-3 flex items-center gap-3 hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors text-left active:bg-[#e9e5e0] dark:active:bg-[#252a33]"
+                              >
+                                {/* Avatar */}
+                                <div className="relative w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#272d38] flex items-center justify-center overflow-hidden flex-shrink-0">
+                                  {channelPreview.image ? (
+                                    <Image
+                                      src={channelPreview.image}
+                                      alt={channelPreview.name}
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  ) : (
+                                    getChannelIcon(channelPreview.type, channelPreview.id)
+                                  )}
+                                </div>
 
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className={`font-albert text-[15px] truncate ${channelPreview.unread > 0 ? 'font-semibold text-text-primary' : 'text-text-primary'}`}>
-                                  {channelPreview.name}
-                                </span>
-                                {channelPreview.lastMessageTime && (
-                                  <span className="font-sans text-[12px] text-text-muted flex-shrink-0">
-                                    {formatDistanceToNow(channelPreview.lastMessageTime, { addSuffix: false })}
-                                  </span>
+                                {/* Content */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className={`font-albert text-[15px] truncate ${channelPreview.unread > 0 ? 'font-semibold text-text-primary' : 'text-text-primary'}`}>
+                                      {channelPreview.name}
+                                    </span>
+                                    {channelPreview.lastMessageTime && (
+                                      <span className="font-sans text-[12px] text-text-muted flex-shrink-0">
+                                        {formatDistanceToNow(channelPreview.lastMessageTime, { addSuffix: false })}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {channelPreview.lastMessage && (
+                                    <p className={`font-sans text-[13px] truncate ${channelPreview.unread > 0 ? 'text-text-secondary font-medium' : 'text-text-muted'}`}>
+                                      {channelPreview.lastMessage}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Pinned indicator - show for user-pinned OR default-pinned coaching (if not explicitly unpinned) */}
+                                {(pinnedChannelIds.has(channelPreview.id) ||
+                                  (!isCoach && channelPreview.type === 'coaching' && !explicitlyUnpinnedChannelIds.has(channelPreview.id))) && (
+                                  <Pin className="w-3.5 h-3.5 text-brand-accent flex-shrink-0" />
                                 )}
-                              </div>
-                              {channelPreview.lastMessage && (
-                                <p className={`font-sans text-[13px] truncate ${channelPreview.unread > 0 ? 'text-text-secondary font-medium' : 'text-text-muted'}`}>
-                                  {channelPreview.lastMessage}
-                                </p>
-                              )}
-                            </div>
 
-                            {/* Pinned indicator */}
-                            {pinnedChannelIds.has(channelPreview.id) && (
-                              <Pin className="w-3.5 h-3.5 text-brand-accent flex-shrink-0" />
-                            )}
-
-                            {/* Unread badge or chevron */}
-                            {channelPreview.unread > 0 ? (
-                              <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-[#E74C3C] text-white text-[11px] font-semibold rounded-full">
-                                {channelPreview.unread > 9 ? '9+' : channelPreview.unread}
-                              </span>
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-text-muted flex-shrink-0" />
-                            )}
-                          </button>
-                        </SwipeableChatItem>
-                      ))}
+                                {/* Unread badge or chevron */}
+                                {channelPreview.unread > 0 ? (
+                                  <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-[#E74C3C] text-white text-[11px] font-semibold rounded-full">
+                                    {channelPreview.unread > 9 ? '9+' : channelPreview.unread}
+                                  </span>
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 text-text-muted flex-shrink-0" />
+                                )}
+                              </button>
+                            </SwipeableChatItem>
+                          </motion.div>
+                        ))}
 
                       {/* Coach Promo Item */}
                       {showCoachPromo && promoData?.destinationUrl && (
@@ -665,7 +688,8 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                         count={activeTab === 'main' ? archivedMainChannels.length : archivedDirectChannels.length}
                         onClick={() => setShowArchivedView(activeTab)}
                       />
-                    </div>
+                      </div>
+                    </LayoutGroup>
                   )}
                 </div>
               </div>

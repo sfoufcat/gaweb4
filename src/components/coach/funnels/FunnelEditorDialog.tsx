@@ -1,10 +1,24 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { X, Layers, UsersRound, ChevronDown, ChevronUp, Code, FileText, BookOpen, Calendar, Download, Link as LinkIcon } from 'lucide-react';
 import type { Funnel, Program, FunnelTargetType, FunnelContentType, FunnelTrackingConfig } from '@/types';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface Squad {
   id: string;
@@ -64,18 +78,13 @@ export function FunnelEditorDialog({
   demoMode = false,
   onDemoSave,
 }: FunnelEditorDialogProps) {
-  const [mounted, setMounted] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Content items state
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
-  
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
 
   const [formData, setFormData] = useState({
     name: funnel?.name || '',
@@ -285,31 +294,10 @@ export function FunnelEditorDialog({
     return 'Sell or gate access to content through this funnel';
   };
 
-  if (!mounted) return null;
-
-  const content = (
-    <div 
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 font-albert">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-          <h2 className="text-xl font-semibold text-text-primary dark:text-[#f5f5f8] font-albert">
-            {mode === 'create' ? 'Create New Funnel' : 'Edit Funnel'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+  // Form content - shared between Dialog and Drawer
+  const formContent = (
+    <form onSubmit={handleSubmit} className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-5">
           {/* Target Type Toggle (only for create) */}
           {mode === 'create' && (
             <>
@@ -709,27 +697,80 @@ export function FunnelEditorDialog({
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 mt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2 px-4 text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 py-2 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors"
-            >
-              {isSubmitting ? 'Saving...' : mode === 'create' ? 'Create Funnel' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
       </div>
-    </div>
+
+      {/* Actions - Sticky footer */}
+      <div className="flex-shrink-0 px-4 md:px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 px-4 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="flex-1 py-2.5 px-4 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 disabled:opacity-50 transition-colors"
+          >
+            {isSubmitting ? 'Saving...' : mode === 'create' ? 'Create Funnel' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </form>
   );
 
-  return createPortal(content, document.body);
+  // Desktop: Dialog
+  if (isDesktop) {
+    return (
+      <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden rounded-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
+            <DialogTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              {mode === 'create' ? 'Create New Funnel' : 'Edit Funnel'}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+              {mode === 'create'
+                ? 'Create a custom entry point for your program, squad, or content'
+                : 'Update your funnel settings'}
+            </DialogDescription>
+          </DialogHeader>
+          {formContent}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Drawer (slide up bottom sheet)
+  return (
+    <Drawer open={true} onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent className="max-h-[90vh] flex flex-col">
+        <DrawerHeader className="px-4 pt-2 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
+          <div className="mx-auto w-12 h-1.5 rounded-full bg-[#e1ddd8] dark:bg-[#3a4150] mb-4" />
+          <div className="flex items-center justify-between">
+            <div>
+              <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                {mode === 'create' ? 'Create New Funnel' : 'Edit Funnel'}
+              </DrawerTitle>
+              <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                {mode === 'create'
+                  ? 'Create a custom entry point'
+                  : 'Update your funnel settings'}
+              </DrawerDescription>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            >
+              <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+            </button>
+          </div>
+        </DrawerHeader>
+        {formContent}
+        {/* Safe area padding for mobile */}
+        <div className="h-6 flex-shrink-0" />
+      </DrawerContent>
+    </Drawer>
+  );
 }
