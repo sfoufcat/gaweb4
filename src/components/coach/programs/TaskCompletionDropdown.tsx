@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Check,
-  Clock,
   ChevronDown,
   ChevronRight,
   Loader2,
@@ -144,19 +142,17 @@ export function TaskCompletionDropdown({
           )}
         </div>
 
-        {/* Status icon */}
+        {/* Status icon - matches Daily Focus style */}
         <div
           className={cn(
-            'shrink-0 h-5 w-5 rounded-full flex items-center justify-center',
+            'shrink-0 h-5 w-5 rounded-lg border flex items-center justify-center transition-all duration-300 bg-white dark:bg-[#181d26]',
             isThresholdMet
-              ? 'bg-green-500 text-white'
-              : 'bg-muted text-muted-foreground'
+              ? 'border-brand-accent'
+              : 'border-[#d4d0cb] dark:border-[#3d4351]'
           )}
         >
-          {isThresholdMet ? (
-            <Check className="h-3 w-3" />
-          ) : (
-            <Clock className="h-3 w-3" />
+          {isThresholdMet && (
+            <div className="w-3 h-3 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
           )}
         </div>
 
@@ -231,16 +227,14 @@ export function TaskCompletionDropdown({
                 )}
                 <div
                   className={cn(
-                    'shrink-0 h-5 w-5 rounded-full flex items-center justify-center',
+                    'shrink-0 h-5 w-5 rounded-lg border flex items-center justify-center transition-all duration-300 bg-white dark:bg-[#181d26]',
                     member.status === 'completed'
-                      ? 'bg-green-500 text-white'
-                      : 'bg-muted text-muted-foreground'
+                      ? 'border-brand-accent'
+                      : 'border-[#d4d0cb] dark:border-[#3d4351]'
                   )}
                 >
-                  {member.status === 'completed' ? (
-                    <Check className="h-3 w-3" />
-                  ) : (
-                    <Clock className="h-3 w-3" />
+                  {member.status === 'completed' && (
+                    <div className="w-3 h-3 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
                   )}
                 </div>
               </div>
@@ -273,28 +267,32 @@ export function TaskCompletionBadge({
   threshold,
   onClick,
 }: TaskCompletionBadgeProps) {
-  const getProgressColor = (rate: number, thresh: number): string => {
-    if (rate >= thresh) return 'text-green-600 bg-green-50 border-green-200';
-    if (rate >= thresh - 15) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-    return 'text-gray-600 bg-gray-50 border-gray-200';
-  };
-
-  const colorClasses = getProgressColor(completionRate, threshold);
-
   return (
     <button
       onClick={onClick}
       className={cn(
         'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full border transition-colors hover:opacity-80',
-        colorClasses
+        isThresholdMet
+          ? 'text-brand-accent bg-brand-accent/10 border-brand-accent/30'
+          : completionRate >= threshold - 15
+          ? 'text-amber-600 bg-amber-50 border-amber-200'
+          : 'text-gray-600 bg-gray-50 border-gray-200'
       )}
       title={`${completedCount} of ${totalMembers} members completed (${completionRate}%)`}
     >
-      {isThresholdMet ? (
-        <Check className="h-3 w-3" />
-      ) : (
-        <Clock className="h-3 w-3" />
-      )}
+      {/* Mini checkbox indicator */}
+      <div
+        className={cn(
+          'h-3 w-3 rounded-sm border flex items-center justify-center bg-white',
+          isThresholdMet
+            ? 'border-brand-accent'
+            : 'border-current opacity-50'
+        )}
+      >
+        {isThresholdMet && (
+          <div className="w-1.5 h-1.5 bg-brand-accent rounded-[1px]" />
+        )}
+      </div>
       <span>{completedCount}/{totalMembers}</span>
       <span className="opacity-70">{completionRate}%</span>
     </button>

@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Check,
-  Clock,
   ChevronDown,
   ChevronRight,
   Users,
@@ -241,19 +239,17 @@ export function CohortTasksPanel({
                   )}
                 </div>
 
-                {/* Status icon */}
+                {/* Status icon - matches Daily Focus style */}
                 <div
                   className={cn(
-                    'shrink-0 h-5 w-5 rounded-full flex items-center justify-center',
+                    'shrink-0 h-5 w-5 rounded-lg border flex items-center justify-center transition-all duration-300 bg-white dark:bg-[#181d26]',
                     task.isThresholdMet
-                      ? 'bg-green-500 text-white'
-                      : 'bg-muted text-muted-foreground'
+                      ? 'border-brand-accent'
+                      : 'border-[#d4d0cb] dark:border-[#3d4351]'
                   )}
                 >
-                  {task.isThresholdMet ? (
-                    <Check className="h-3 w-3" />
-                  ) : (
-                    <Clock className="h-3 w-3" />
+                  {task.isThresholdMet && (
+                    <div className="w-3 h-3 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
                   )}
                 </div>
 
@@ -306,16 +302,14 @@ export function CohortTasksPanel({
                         </span>
                         <div
                           className={cn(
-                            'shrink-0 h-5 w-5 rounded-full flex items-center justify-center',
+                            'shrink-0 h-5 w-5 rounded-lg border flex items-center justify-center transition-all duration-300 bg-white dark:bg-[#181d26]',
                             member.status === 'completed'
-                              ? 'bg-green-500 text-white'
-                              : 'bg-muted text-muted-foreground'
+                              ? 'border-brand-accent'
+                              : 'border-[#d4d0cb] dark:border-[#3d4351]'
                           )}
                         >
-                          {member.status === 'completed' ? (
-                            <Check className="h-3 w-3" />
-                          ) : (
-                            <Clock className="h-3 w-3" />
+                          {member.status === 'completed' && (
+                            <div className="w-3 h-3 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
                           )}
                         </div>
                       </div>

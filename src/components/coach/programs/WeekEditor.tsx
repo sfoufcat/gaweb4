@@ -176,26 +176,22 @@ function SortableWeeklyTask({
               <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" />
             )}
             {/* Completion indicator - matches client Daily Focus style */}
-            {hasCohortData ? (
-              <div
-                className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  isCohortCompleted
-                    ? 'bg-brand-accent text-white'
-                    : completionRate > 0
-                    ? 'border-[2.5px] border-brand-accent/50 bg-brand-accent/10'
-                    : 'border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351]'
-                }`}
-                title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
-              >
-                {isCohortCompleted ? (
-                  <Check className="w-4 h-4" strokeWidth={3} />
-                ) : completionRate > 0 ? (
-                  <span className="text-[9px] font-bold text-brand-accent">{completionRate}</span>
-                ) : null}
-              </div>
-            ) : (
-              <div className="w-6 h-6 rounded-lg border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351] flex-shrink-0" />
-            )}
+            <div
+              className={`w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-white dark:bg-[#181d26] ${
+                hasCohortData && isCohortCompleted
+                  ? 'border-brand-accent'
+                  : hasCohortData && completionRate > 0
+                  ? 'border-brand-accent/50'
+                  : 'border-[#d4d0cb] dark:border-[#3d4351]'
+              }`}
+              title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
+            >
+              {hasCohortData && isCohortCompleted ? (
+                <div className="w-4 h-4 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
+              ) : hasCohortData && completionRate > 0 ? (
+                <span className="text-[9px] font-bold text-brand-accent">{completionRate}</span>
+              ) : null}
+            </div>
           </button>
         ) : (
           <>
@@ -205,30 +201,22 @@ function SortableWeeklyTask({
             </div>
 
             {/* Completion Checkbox - matches client Daily Focus style */}
-            {hasCohortData ? (
-              <div
-                className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  isCohortCompleted
-                    ? 'bg-brand-accent text-white'
-                    : completionRate > 0
-                    ? 'border-[2.5px] border-brand-accent/50 bg-brand-accent/10'
-                    : 'border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351]'
-                }`}
-                title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
-              >
-                {isCohortCompleted ? (
-                  <Check className="w-4 h-4" strokeWidth={3} />
-                ) : completionRate > 0 ? (
-                  <span className="text-[9px] font-bold text-brand-accent">{completionRate}</span>
-                ) : null}
-              </div>
-            ) : showCompletionStatus && isCompleted ? (
-              <div className="w-6 h-6 rounded-lg bg-brand-accent flex items-center justify-center flex-shrink-0">
-                <Check className="w-4 h-4 text-white" strokeWidth={3} />
-              </div>
-            ) : (
-              <div className="w-6 h-6 rounded-lg border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351] flex-shrink-0" />
-            )}
+            <div
+              className={`w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-white dark:bg-[#181d26] ${
+                (hasCohortData && isCohortCompleted) || (showCompletionStatus && isCompleted)
+                  ? 'border-brand-accent'
+                  : hasCohortData && completionRate > 0
+                  ? 'border-brand-accent/50'
+                  : 'border-[#d4d0cb] dark:border-[#3d4351]'
+              }`}
+              title={hasCohortData ? (isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions') : ''}
+            >
+              {(hasCohortData && isCohortCompleted) || (showCompletionStatus && isCompleted) ? (
+                <div className="w-4 h-4 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
+              ) : hasCohortData && completionRate > 0 ? (
+                <span className="text-[9px] font-bold text-brand-accent">{completionRate}</span>
+              ) : null}
+            </div>
           </>
         )}
 
@@ -349,15 +337,17 @@ function SortableWeeklyTask({
                     {member.firstName} {member.lastName}
                   </span>
                   {/* Status */}
-                  {member.status === 'completed' ? (
-                    <div className="flex items-center gap-1 text-brand-accent">
-                      <div className="w-5 h-5 rounded-lg bg-brand-accent flex items-center justify-center">
-                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-5 h-5 rounded-lg border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351]" />
-                  )}
+                  <div
+                    className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all duration-300 bg-white dark:bg-[#181d26] ${
+                      member.status === 'completed'
+                        ? 'border-brand-accent'
+                        : 'border-[#d4d0cb] dark:border-[#3d4351]'
+                    }`}
+                  >
+                    {member.status === 'completed' && (
+                      <div className="w-3 h-3 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

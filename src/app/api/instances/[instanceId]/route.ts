@@ -136,11 +136,43 @@ export async function GET(
       const userDoc = await adminDb.collection('users').doc(instance.userId).get();
       const userData = userDoc.data();
 
+      // MIGRATE EXISTING TASKS: Add instanceId to tasks that don't have it
+      // This ensures old tasks (created before instanceId was added) work with the new system
+      if (instance.enrollmentId) {
+        const oldTasksSnap = await adminDb.collection('tasks')
+          .where('userId', '==', instance.userId)
+          .where('programEnrollmentId', '==', instance.enrollmentId)
+          .get();
+
+        if (!oldTasksSnap.empty) {
+          const batch = adminDb.batch();
+          let migratedCount = 0;
+
+          for (const doc of oldTasksSnap.docs) {
+            const data = doc.data();
+            // Only migrate if missing instanceId
+            if (!data.instanceId) {
+              batch.update(doc.ref, {
+                instanceId,
+                dayIndex: data.programDayIndex || data.dayIndex,
+                label: data.label || data.title || data.originalTitle,
+              });
+              migratedCount++;
+            }
+          }
+
+          if (migratedCount > 0) {
+            await batch.commit();
+            console.log(`[INSTANCE_GET] Migrated ${migratedCount} tasks to use instanceId`);
+          }
+        }
+      }
+
       // Fetch task completion data from tasks collection
-      // Tasks are linked via instanceId (from cron sync) and have completion boolean
+      // Tasks are linked via instanceId + dayIndex + label (new system)
       const taskCompletionMap: Record<string, { completed: boolean; completedAt?: string }> = {};
 
-      // Query by instanceId - this is how the cron job links tasks
+      // Query by instanceId - tasks created by cron job or on-demand sync
       const tasksSnap = await adminDb.collection('tasks')
         .where('userId', '==', instance.userId)
         .where('instanceId', '==', instanceId)
@@ -148,7 +180,6 @@ export async function GET(
 
       for (const taskDoc of tasksSnap.docs) {
         const taskData = taskDoc.data();
-        // Use dayIndex and label fields (set by cron job)
         const dayIdx = taskData.dayIndex;
         const label = taskData.label || '';
 
@@ -174,7 +205,7 @@ export async function GET(
         userId: instance.userId,
         tasksFound: tasksSnap.docs.length,
         completionCount: Object.keys(taskCompletionMap).length,
-        sampleKeys: Object.keys(taskCompletionMap).slice(0, 5),
+        sampleKeys: Object.keys(taskCompletionMap).slice(0, 10),
       });
 
       return NextResponse.json({

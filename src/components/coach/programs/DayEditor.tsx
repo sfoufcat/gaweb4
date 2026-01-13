@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment, ClientViewContext, CohortViewContext } from '@/types';
-import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, Check, ChevronDown, ChevronRight, Pencil, Clock, Loader2 } from 'lucide-react';
+import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, ChevronDown, ChevronRight, Pencil, Loader2 } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { useInstanceIdLookup } from '@/hooks/useProgramInstanceBridge';
 import { Button } from '@/components/ui/button';
@@ -558,17 +558,17 @@ export function DayEditor({
                       {/* Status icon - matches client Daily Focus style */}
                       <div
                         className={cn(
-                          'w-6 h-6 rounded-lg flex items-center justify-center transition-colors',
+                          'w-6 h-6 rounded-lg border flex items-center justify-center transition-all duration-300 bg-white dark:bg-[#181d26]',
                           isCohortCompleted
-                            ? 'bg-brand-accent text-white'
+                            ? 'border-brand-accent'
                             : completionRate > 0
-                            ? 'border-[2.5px] border-brand-accent/50 bg-brand-accent/10'
-                            : 'border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351]'
+                            ? 'border-brand-accent/50'
+                            : 'border-[#d4d0cb] dark:border-[#3d4351]'
                         )}
                         title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
                       >
                         {isCohortCompleted ? (
-                          <Check className="w-4 h-4" strokeWidth={3} />
+                          <div className="w-4 h-4 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
                         ) : completionRate > 0 ? (
                           <span className="text-[9px] font-bold text-brand-accent">{completionRate}</span>
                         ) : null}
@@ -576,21 +576,19 @@ export function DayEditor({
                     </button>
                   ) : (
                     /* Non-cohort completion indicator - matches client Daily Focus style */
-                    (() => {
-                      if (isClientCompleted) {
-                        return (
-                          <div
-                            className="w-6 h-6 rounded-lg bg-brand-accent flex items-center justify-center flex-shrink-0"
-                            title="Completed"
-                          >
-                            <Check className="w-4 h-4 text-white" strokeWidth={3} />
-                          </div>
-                        );
-                      }
-                      return (
-                        <div className="w-6 h-6 rounded-lg border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351] flex-shrink-0" />
-                      );
-                    })()
+                    <div
+                      className={cn(
+                        'w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-white dark:bg-[#181d26]',
+                        isClientCompleted
+                          ? 'border-brand-accent'
+                          : 'border-[#d4d0cb] dark:border-[#3d4351]'
+                      )}
+                      title={isClientCompleted ? 'Completed' : ''}
+                    >
+                      {isClientCompleted && (
+                        <div className="w-4 h-4 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
+                      )}
+                    </div>
                   )}
 
                   {/* Input */}
@@ -755,14 +753,14 @@ export function DayEditor({
                             </span>
                             <div
                               className={cn(
-                                'shrink-0 h-6 w-6 rounded-lg flex items-center justify-center transition-colors',
+                                'shrink-0 h-6 w-6 rounded-lg border flex items-center justify-center transition-all duration-300 bg-white dark:bg-[#181d26]',
                                 member.status === 'completed'
-                                  ? 'bg-brand-accent text-white'
-                                  : 'border-[2.5px] border-[#d4d0cb] dark:border-[#3d4351]'
+                                  ? 'border-brand-accent'
+                                  : 'border-[#d4d0cb] dark:border-[#3d4351]'
                               )}
                             >
                               {member.status === 'completed' && (
-                                <Check className="h-4 w-4" strokeWidth={3} />
+                                <div className="w-4 h-4 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
                               )}
                             </div>
                           </div>

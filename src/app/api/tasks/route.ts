@@ -66,11 +66,6 @@ export async function GET(request: NextRequest) {
 
     console.log(`[TASKS_GET] After filtering deleted/archived: ${tasks.length} tasks`);
 
-    // REMOVED: Lazy sync
-    // Cron handles all program task creation proactively.
-    // No sync on app open - this improves response time and eliminates race conditions.
-    // See: src/app/api/cron/programs-daily-sync/route.ts
-
     // Try to migrate pending tasks from previous days (within same organization)
     // This is wrapped in try/catch so it doesn't break the API if index is missing
     try {
