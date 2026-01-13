@@ -381,7 +381,9 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
           viewContext: change.viewContext,
           createCohortContentAfter,
           // Add task details for debugging
-          weeklyTasks: (body.weeklyTasks as unknown[])?.map((t: { id?: string; label?: string }) => ({ id: t.id, label: t.label })),
+          weeklyTasks: Array.isArray(body.weeklyTasks) 
+            ? (body.weeklyTasks as Array<{ id?: string; label?: string }>).map(t => ({ id: t.id, label: t.label }))
+            : undefined,
         });
 
         const response = await fetch(change.apiEndpoint, {
