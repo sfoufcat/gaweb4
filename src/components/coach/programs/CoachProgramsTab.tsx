@@ -435,6 +435,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [cohortTaskCompletion, setCohortTaskCompletion] = useState<Map<string, { completed: boolean; completionRate: number; completedCount: number; totalMembers: number }>>(new Map());
   const [cohortCompletionDate, setCohortCompletionDate] = useState<string | undefined>(undefined);
 
+  // Client task completion state (for showing completion in day editor for 1:1 programs)
+  const [clientTaskCompletion, setClientTaskCompletion] = useState<Map<string, { completed: boolean; completedAt?: string }>>(new Map());
+  const [clientCompletionDate, setClientCompletionDate] = useState<string | undefined>(undefined);
+
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
   const [isNewProgramModalOpen, setIsNewProgramModalOpen] = useState(false);
@@ -2007,6 +2011,97 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       abortController.abort();
     };
   }, [selectedProgram, cohortViewContext, selectedDayIndex]);
+
+  // Effect: Fetch client task completion for 1:1 programs
+  useEffect(() => {
+    // Only run for individual programs in client mode
+    if (!selectedProgram || selectedProgram.type !== 'individual') return;
+    if (clientViewContext.mode !== 'client') return;
+
+    const clientUserId = clientViewContext.userId;
+    const enrollmentStartedAt = clientViewContext.enrollmentStartedAt;
+    if (!clientUserId || !enrollmentStartedAt) return;
+
+    // Calculate the date for the selected day index based on enrollment start date
+    const startDate = new Date(enrollmentStartedAt);
+    let dateStr: string;
+
+    if (selectedProgram.includeWeekends === false) {
+      // For programs without weekends: need to skip weekends when calculating date
+      let currentDate = new Date(startDate);
+      let businessDays = 0;
+
+      while (businessDays < selectedDayIndex) {
+        const dayOfWeek = currentDate.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          businessDays++;
+        }
+        if (businessDays < selectedDayIndex) {
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
+
+      dateStr = currentDate.toISOString().split('T')[0];
+    } else {
+      // For programs that include weekends: simple date arithmetic
+      const elapsedDays = selectedDayIndex - 1;
+      const targetDate = new Date(startDate);
+      targetDate.setDate(targetDate.getDate() + elapsedDays);
+      dateStr = targetDate.toISOString().split('T')[0];
+    }
+
+    // Fetch client tasks for this date
+    const abortController = new AbortController();
+
+    const fetchClientCompletion = async () => {
+      try {
+        console.log('[CLIENT_COMPLETION] Fetching for date:', dateStr, 'dayIndex:', selectedDayIndex, 'userId:', clientUserId);
+        const response = await fetch(
+          `/api/coach/client-tasks/${clientUserId}?date=${dateStr}`,
+          { signal: abortController.signal }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[CLIENT_COMPLETION] API response:', data);
+          const completionMap = new Map<string, { completed: boolean; completedAt?: string }>();
+
+          // Map focus tasks by title for matching with program day tasks
+          for (const task of data.focusTasks || []) {
+            // Only include program-sourced tasks
+            if (task.isProgramSourced) {
+              const completionData = {
+                completed: task.status === 'completed',
+                completedAt: task.completedAt,
+              };
+              // Map by task title for matching
+              completionMap.set(task.title, completionData);
+              console.log('[CLIENT_COMPLETION] Adding task to map:', task.title, 'completed:', completionData.completed);
+            }
+          }
+
+          console.log('[CLIENT_COMPLETION] Completion map size:', completionMap.size, 'keys:', Array.from(completionMap.keys()));
+          setClientTaskCompletion(completionMap);
+          setClientCompletionDate(dateStr);
+        } else {
+          console.error('[CLIENT_COMPLETION] API returned non-OK status:', response.status);
+        }
+      } catch (err) {
+        // Ignore abort errors - they're expected when navigating quickly
+        if (err instanceof Error && err.name === 'AbortError') {
+          console.log('[CLIENT_COMPLETION] Fetch aborted (navigation)');
+          return;
+        }
+        console.error('[CLIENT_COMPLETION] Failed to fetch:', err);
+      }
+    };
+
+    fetchClientCompletion();
+
+    // Cleanup: abort the fetch if the effect re-runs
+    return () => {
+      abortController.abort();
+    };
+  }, [selectedProgram, clientViewContext, selectedDayIndex]);
 
   // Auto-expand the week containing the selected day
   useEffect(() => {
@@ -4294,8 +4389,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       clientViewContext={clientViewContext}
                       cohortViewContext={cohortViewContext}
                       cohortTaskCompletion={cohortTaskCompletion}
+                      clientTaskCompletion={clientTaskCompletion}
                       completionThreshold={selectedProgram?.cohortCompletionThreshold}
-                      currentDate={cohortCompletionDate}
+                      currentDate={cohortCompletionDate || clientCompletionDate}
                       apiBasePath={apiBasePath}
                       saveError={saveError}
                       saving={saving}

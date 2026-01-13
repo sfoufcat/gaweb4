@@ -29,6 +29,12 @@ interface TaskMemberInfo {
   completedAt?: string;
 }
 
+// Client task completion data (for 1:1 programs)
+interface ClientTaskCompletionData {
+  completed: boolean;
+  completedAt?: string;
+}
+
 interface DayEditorProps {
   dayIndex: number;
   day: ProgramDay | null;
@@ -40,6 +46,8 @@ interface DayEditorProps {
   cohortViewContext?: CohortViewContext;
   // Task completion tracking for cohorts (extended with member counts)
   cohortTaskCompletion?: Map<string, CohortTaskCompletionData>;
+  // Task completion tracking for individual clients
+  clientTaskCompletion?: Map<string, ClientTaskCompletionData>;
   // Completion threshold (default 50%)
   completionThreshold?: number;
   // Current date for task queries
@@ -77,6 +85,7 @@ export function DayEditor({
   clientViewContext,
   cohortViewContext,
   cohortTaskCompletion = new Map(),
+  clientTaskCompletion = new Map(),
   completionThreshold = 50,
   currentDate,
   apiBasePath,
@@ -512,8 +521,11 @@ export function DayEditor({
             const completionRate = cohortCompletion?.completionRate ?? (hasMemberData ? derivedCompletionRate : 0);
             const hasCompletionData = isCohortMode && (cohortCompletion || hasMemberData);
 
-            // Check for 1:1 client completion
-            const isClientCompleted = isClientMode && task.completed;
+            // Check for 1:1 client completion - use clientTaskCompletion map from API
+            const clientCompletion = isClientMode
+              ? (task.id && clientTaskCompletion.get(task.id)) || clientTaskCompletion.get(task.label)
+              : undefined;
+            const isClientCompleted = isClientMode && (clientCompletion?.completed ?? task.completed);
             const isCohortCompleted = cohortCompletion?.completed ?? (completionRate >= completionThreshold);
 
             return (
@@ -521,7 +533,7 @@ export function DayEditor({
                 key={index}
                 className={cn(
                   "group relative bg-white dark:bg-[#171b22] border rounded-xl transition-all duration-200",
-                  isCohortCompleted
+                  isCohortCompleted || isClientCompleted
                     ? "border-green-500/30 bg-green-500/5"
                     : "border-[#e1ddd8] dark:border-[#262b35] hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746]"
                 )}
@@ -584,7 +596,12 @@ export function DayEditor({
                     value={task.label}
                     onChange={(e) => updateTask(index, { label: e.target.value })}
                     placeholder="What should they accomplish?"
-                    className="flex-1 bg-transparent border-none outline-none font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
+                    className={cn(
+                      "flex-1 bg-transparent border-none outline-none font-albert text-[15px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]",
+                      isClientCompleted
+                        ? "text-[#a7a39e] dark:text-[#7d8190] line-through"
+                        : "text-[#1a1a1a] dark:text-[#f5f5f8]"
+                    )}
                   />
 
                   {/* Task Actions Group - badges and Focus toggle */}
