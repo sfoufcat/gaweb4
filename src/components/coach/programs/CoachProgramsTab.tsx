@@ -4070,17 +4070,30 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       onSave={async (updates) => {
                         console.log('[WEEK_EDITOR_SAVE] Starting save...', {
                           isClientMode,
+                          isCohortMode,
                           cohortMode: cohortViewContext.mode,
                           cohortId: cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined,
                           instanceId,
+                          instanceIdLoading,
                           templateWeekId: templateWeek?.id,
                           weekNumber,
                           programType: selectedProgram?.type,
                         });
                         try {
-                          if (instanceId) {
+                          // CRITICAL: In client/cohort mode, NEVER fall through to template saves
+                          // This ensures cohort/client edits don't accidentally modify the template
+                          if (isClientMode || isCohortMode) {
+                            if (!instanceId) {
+                              // Instance not ready yet - show error or wait
+                              console.error('[WEEK_EDITOR_SAVE] ERROR: In client/cohort mode but instanceId is null!', {
+                                isClientMode,
+                                isCohortMode,
+                                instanceIdLoading,
+                              });
+                              alert('Please wait for the program instance to load before saving.');
+                              return;
+                            }
                             // Instance mode (client or cohort): Save to program_instances collection
-                            // Instances are auto-created when looking up enrollmentId or cohortId
                             console.log('[WEEK_EDITOR_SAVE] Entering INSTANCE branch', { instanceId, isClientMode, isCohortMode });
                             const weeklyTasksUpdated = updates.weeklyTasks !== undefined;
                             const res = await fetch(`/api/instances/${instanceId}/weeks/${weekNumber}`, {
@@ -5957,8 +5970,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             const isClientMode = clientViewContext.mode === 'client' && selectedProgram.type === 'individual';
             const isCohortMode = cohortViewContext.mode === 'cohort' && selectedProgram.type === 'group';
 
+            // CRITICAL: In client/cohort mode, NEVER fall through to template API
+            if ((isClientMode || isCohortMode) && !instanceId) {
+              alert('Please wait for the program instance to load before applying changes.');
+              return;
+            }
+
             // Use instance API for client/cohort mode, template API otherwise
-            const endpoint = (isClientMode || isCohortMode) && instanceId
+            const endpoint = (isClientMode || isCohortMode)
               ? `/api/instances/${instanceId}/weeks/${weekToFill.weekNumber}`
               : `${apiBasePath}/${selectedProgram.id}/weeks/${weekToFill.id}`;
 
