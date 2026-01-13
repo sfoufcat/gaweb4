@@ -181,7 +181,8 @@ export async function GET(
       for (const taskDoc of tasksSnap.docs) {
         const taskData = taskDoc.data();
         const dayIdx = taskData.dayIndex;
-        const label = taskData.label || '';
+        // Use label field, fallback to title or originalTitle for backward compatibility
+        const label = taskData.label || taskData.title || taskData.originalTitle || '';
 
         if (dayIdx && label) {
           const key = `${dayIdx}:${label}`;
@@ -194,6 +195,14 @@ export async function GET(
         // Also store by just the label for fallback matching
         if (label) {
           taskCompletionMap[label] = {
+            completed: taskData.completed === true,
+            completedAt: taskData.completedAt,
+          };
+        }
+
+        // Also store by instanceTaskId if available (most reliable match)
+        if (taskData.instanceTaskId) {
+          taskCompletionMap[taskData.instanceTaskId] = {
             completed: taskData.completed === true,
             completedAt: taskData.completedAt,
           };

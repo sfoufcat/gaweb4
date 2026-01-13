@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment, ClientViewContext, CohortViewContext } from '@/types';
 import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, ChevronDown, ChevronRight, Pencil, Loader2 } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
@@ -195,15 +195,23 @@ export function DayEditor({
   const lastResetVersion = useRef(editorContext?.resetVersion ?? 0);
   const lastDayIndex = useRef(dayIndex);
 
+  // Memoize day data as primitives to prevent infinite loops from object reference changes
+  const dayTitle = day?.title || '';
+  const daySummary = day?.summary || '';
+  const dayDailyPrompt = day?.dailyPrompt || '';
+  const dayTasks = day?.tasks || [];
+  const dayHabits = day?.habits || [];
+  const dayCourseAssignments = day?.courseAssignments || [];
+
   // Get default form data from day
   const getDefaultFormData = useCallback((): DayFormData => ({
-    title: day?.title || '',
-    summary: day?.summary || '',
-    dailyPrompt: day?.dailyPrompt || '',
-    tasks: day?.tasks || [],
-    habits: day?.habits || [],
-    courseAssignments: day?.courseAssignments || [],
-  }), [day]);
+    title: dayTitle,
+    summary: daySummary,
+    dailyPrompt: dayDailyPrompt,
+    tasks: dayTasks,
+    habits: dayHabits,
+    courseAssignments: dayCourseAssignments,
+  }), [dayTitle, daySummary, dayDailyPrompt, dayTasks, dayHabits, dayCourseAssignments]);
 
   // Check for pending data from context
   const entityId = `day-${dayIndex}`;
@@ -242,11 +250,20 @@ export function DayEditor({
         setFormData(contextPendingData as unknown as DayFormData);
         setHasChanges(true);
       } else {
-        setFormData(getDefaultFormData());
+        // Inline form data to avoid callback dependency issues
+        setFormData({
+          title: day?.title || '',
+          summary: day?.summary || '',
+          dailyPrompt: day?.dailyPrompt || '',
+          tasks: day?.tasks || [],
+          habits: day?.habits || [],
+          courseAssignments: day?.courseAssignments || [],
+        });
         setHasChanges(false);
       }
     }
-  }, [dayIndex, getDefaultFormData, editorContext, clientContextId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayIndex, editorContext, clientContextId]);
 
   // CRITICAL: Reset form when view context changes (template ↔ client ↔ cohort)
   // This ensures template changes don't persist when switching to client/cohort mode
@@ -272,12 +289,24 @@ export function DayEditor({
         setFormData(contextPendingData as unknown as DayFormData);
         setHasChanges(true);
       } else {
-        // Reset to the day data for the new context
-        setFormData(getDefaultFormData());
+        // Reset to the day data for the new context - inline to avoid callback dependency
+        setFormData({
+          title: day?.title || '',
+          summary: day?.summary || '',
+          dailyPrompt: day?.dailyPrompt || '',
+          tasks: day?.tasks || [],
+          habits: day?.habits || [],
+          courseAssignments: day?.courseAssignments || [],
+        });
         setHasChanges(false);
       }
     }
-  }, [viewContext, clientContextId, editorContext, entityId, getDefaultFormData, dayIndex]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewContext, clientContextId, editorContext, entityId, dayIndex]);
+
+  // Stable serialized versions of arrays for dependency comparison
+  const tasksJson = useMemo(() => JSON.stringify(day?.tasks), [day?.tasks]);
+  const habitsJson = useMemo(() => JSON.stringify(day?.habits), [day?.habits]);
 
   // Reset when the day data changes (from props) and there's no pending data
   // CRITICAL: Include clientContextId in deps so we check the correct context's pending data
@@ -292,24 +321,49 @@ export function DayEditor({
         hasPendingData: !!contextPendingData,
         newTasks: day?.tasks?.length ?? 0,
       });
-      setFormData(getDefaultFormData());
+      // Inline the form data to avoid dependency on getDefaultFormData callback
+      setFormData({
+        title: day?.title || '',
+        summary: day?.summary || '',
+        dailyPrompt: day?.dailyPrompt || '',
+        tasks: day?.tasks || [],
+        habits: day?.habits || [],
+        courseAssignments: day?.courseAssignments || [],
+      });
       setHasChanges(false);
     }
-  }, [day?.title, day?.summary, day?.dailyPrompt, JSON.stringify(day?.tasks), JSON.stringify(day?.habits), clientContextId, entityId, editorContext, getDefaultFormData, dayIndex, viewContext]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day?.title, day?.summary, day?.dailyPrompt, tasksJson, habitsJson, clientContextId, entityId, dayIndex, viewContext]);
 
   // Watch for reset version changes (discard/save from global buttons)
   useEffect(() => {
     if (editorContext && editorContext.resetVersion !== lastResetVersion.current) {
       lastResetVersion.current = editorContext.resetVersion;
-      // Reset to original day data
-      setFormData(getDefaultFormData());
+      // Reset to original day data - inline to avoid callback dependency
+      setFormData({
+        title: day?.title || '',
+        summary: day?.summary || '',
+        dailyPrompt: day?.dailyPrompt || '',
+        tasks: day?.tasks || [],
+        habits: day?.habits || [],
+        courseAssignments: day?.courseAssignments || [],
+      });
       setHasChanges(false);
     }
-  }, [editorContext?.resetVersion, getDefaultFormData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorContext?.resetVersion]);
 
   // Check for changes and register with context
   useEffect(() => {
-    const defaultData = getDefaultFormData();
+    // Inline default data to avoid dependency on getDefaultFormData callback
+    const defaultData: DayFormData = {
+      title: dayTitle,
+      summary: daySummary,
+      dailyPrompt: dayDailyPrompt,
+      tasks: dayTasks,
+      habits: dayHabits,
+      courseAssignments: dayCourseAssignments,
+    };
     const changed =
       formData.title !== defaultData.title ||
       formData.summary !== defaultData.summary ||
@@ -371,7 +425,9 @@ export function DayEditor({
       const changeKey = editorContext.getChangeKey('day', entityId, clientContextId);
       editorContext.discardChange(changeKey);
     }
-  }, [formData, day, editorContext, programId, viewContext, clientContextId, getApiEndpoint, dayIndex, entityId, getDefaultFormData, isClientMode, isCohortMode, clientEnrollmentId, cohortIdValue, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
+  // Use stable primitive values instead of `day` object and `getDefaultFormData` callback
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, tasksJson, habitsJson, dayTitle, daySummary, dayDailyPrompt, dayTasks, dayHabits, dayCourseAssignments, editorContext, programId, viewContext, clientContextId, getApiEndpoint, dayIndex, entityId, isClientMode, isCohortMode, clientEnrollmentId, cohortIdValue, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
 
   // Pre-fetch member data for all tasks in cohort mode to show accurate badge counts
   // This runs only when cohort mode is active and tasks change

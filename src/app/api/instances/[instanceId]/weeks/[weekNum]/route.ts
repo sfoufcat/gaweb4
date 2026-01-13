@@ -220,6 +220,7 @@ async function syncDayTasksToUser(
         organizationId,
         instanceId,
         instanceTaskId: task.id,
+        label: task.label, // Required for completion tracking - must match instance task label
         title: task.label,
         originalTitle: task.label, // Preserve original title for cohort matching
         isPrimary: task.isPrimary,
@@ -275,6 +276,7 @@ async function syncDayTasksToUser(
         organizationId,
         instanceId,
         instanceTaskId: task.id,
+        label: task.label, // Required for completion tracking - must match instance task label
         title: task.label,
         originalTitle: task.label, // Preserve original title for cohort matching
         isPrimary: task.isPrimary,

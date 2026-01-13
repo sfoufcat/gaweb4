@@ -67,12 +67,14 @@ async function syncInstanceDayTasksToUser(
         instanceId,
         instanceTaskId: task.id,
         label: task.label,
+        title: task.label, // For backward compatibility with UI that uses title
         isPrimary: task.isPrimary,
         type: task.type || 'task',
         estimatedMinutes: task.estimatedMinutes || null,
         notes: task.notes || null,
         tag: task.tag || null,
         source: 'program',
+        sourceType: 'program', // Match other sync functions
         dayIndex,
         date: calendarDate,
         completed: false,
