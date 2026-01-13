@@ -655,7 +655,7 @@ export function DayEditor({
                     placeholder="What should they accomplish?"
                     className={cn(
                       "flex-1 bg-transparent border-none outline-none font-albert text-[15px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]",
-                      isClientCompleted
+                      (isClientCompleted || isCohortCompleted)
                         ? "text-[#a7a39e] dark:text-[#7d8190] line-through"
                         : "text-[#1a1a1a] dark:text-[#f5f5f8]"
                     )}

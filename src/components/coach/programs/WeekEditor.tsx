@@ -221,7 +221,11 @@ function SortableWeeklyTask({
         )}
 
         {/* Task Label */}
-        <span className="flex-1 font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8]">
+        <span className={`flex-1 font-albert text-[15px] transition-all duration-300 ${
+          (isCohortCompleted || (showCompletionStatus && isCompleted))
+            ? 'text-[#a7a39e] dark:text-[#7d8190] line-through'
+            : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+        }`}>
           {task.label}
         </span>
 
@@ -454,25 +458,55 @@ export function WeekEditor({
     linkedCallEventIds: string[];
   };
 
+  // Memoize week data as primitives to prevent infinite loops from object reference changes
+  const weekName = week.name || '';
+  const weekTheme = week.theme || '';
+  const weekDescription = week.description || '';
+  const weekWeeklyPrompt = week.weeklyPrompt || '';
+  const weekWeeklyTasks = week.weeklyTasks || [];
+  const weekCurrentFocus = week.currentFocus || [];
+  const weekNotes = week.notes || [];
+  const weekManualNotes = week.manualNotes || '';
+  const weekDistribution = (week.distribution || 'spread') as TaskDistribution;
+  const weekCoachRecordingUrl = week.coachRecordingUrl || '';
+  const weekCoachRecordingNotes = week.coachRecordingNotes || '';
+  const weekLinkedSummaryIds = week.linkedSummaryIds || [];
+  const weekLinkedCallEventIds = week.linkedCallEventIds || [];
+
   const getDefaultFormData = useCallback((): WeekFormData => ({
-    name: week.name || '',
-    theme: week.theme || '',
-    description: week.description || '',
-    weeklyPrompt: week.weeklyPrompt || '',
-    weeklyTasks: week.weeklyTasks || [],
-    currentFocus: week.currentFocus || [],
-    notes: week.notes || [],
-    manualNotes: week.manualNotes || '',
-    distribution: (week.distribution || 'spread') as TaskDistribution,
-    coachRecordingUrl: week.coachRecordingUrl || '',
-    coachRecordingNotes: week.coachRecordingNotes || '',
-    linkedSummaryIds: week.linkedSummaryIds || [],
-    linkedCallEventIds: week.linkedCallEventIds || [],
-  }), [week]);
+    name: weekName,
+    theme: weekTheme,
+    description: weekDescription,
+    weeklyPrompt: weekWeeklyPrompt,
+    weeklyTasks: weekWeeklyTasks,
+    currentFocus: weekCurrentFocus,
+    notes: weekNotes,
+    manualNotes: weekManualNotes,
+    distribution: weekDistribution,
+    coachRecordingUrl: weekCoachRecordingUrl,
+    coachRecordingNotes: weekCoachRecordingNotes,
+    linkedSummaryIds: weekLinkedSummaryIds,
+    linkedCallEventIds: weekLinkedCallEventIds,
+  }), [weekName, weekTheme, weekDescription, weekWeeklyPrompt, weekWeeklyTasks, weekCurrentFocus, weekNotes, weekManualNotes, weekDistribution, weekCoachRecordingUrl, weekCoachRecordingNotes, weekLinkedSummaryIds, weekLinkedCallEventIds]);
 
   // Merge pending data with defaults to ensure all fields exist
+  // Uses memoized primitive values instead of getDefaultFormData to avoid dependency loops
   const mergePendingWithDefaults = useCallback((pending: Record<string, unknown>): WeekFormData => {
-    const defaults = getDefaultFormData();
+    const defaults: WeekFormData = {
+      name: weekName,
+      theme: weekTheme,
+      description: weekDescription,
+      weeklyPrompt: weekWeeklyPrompt,
+      weeklyTasks: weekWeeklyTasks,
+      currentFocus: weekCurrentFocus,
+      notes: weekNotes,
+      manualNotes: weekManualNotes,
+      distribution: weekDistribution,
+      coachRecordingUrl: weekCoachRecordingUrl,
+      coachRecordingNotes: weekCoachRecordingNotes,
+      linkedSummaryIds: weekLinkedSummaryIds,
+      linkedCallEventIds: weekLinkedCallEventIds,
+    };
     return {
       ...defaults,
       ...pending,
@@ -483,7 +517,7 @@ export function WeekEditor({
       linkedSummaryIds: (pending.linkedSummaryIds as string[]) || defaults.linkedSummaryIds,
       linkedCallEventIds: (pending.linkedCallEventIds as string[]) || defaults.linkedCallEventIds,
     };
-  }, [getDefaultFormData]);
+  }, [weekName, weekTheme, weekDescription, weekWeeklyPrompt, weekWeeklyTasks, weekCurrentFocus, weekNotes, weekManualNotes, weekDistribution, weekCoachRecordingUrl, weekCoachRecordingNotes, weekLinkedSummaryIds, weekLinkedCallEventIds]);
 
 
   // Create a fingerprint of week data that changes when content changes from API refresh
@@ -653,8 +687,22 @@ export function WeekEditor({
       setFormData(mergePendingWithDefaults(contextPendingData));
       setHasChanges(true);
     } else {
-      // Reset to week data
-      const newFormData = getDefaultFormData();
+      // Reset to week data - inline to avoid callback dependency issues
+      const newFormData: WeekFormData = {
+        name: week.name || '',
+        theme: week.theme || '',
+        description: week.description || '',
+        weeklyPrompt: week.weeklyPrompt || '',
+        weeklyTasks: week.weeklyTasks || [],
+        currentFocus: week.currentFocus || [],
+        notes: week.notes || [],
+        manualNotes: week.manualNotes || '',
+        distribution: (week.distribution || 'spread') as TaskDistribution,
+        coachRecordingUrl: week.coachRecordingUrl || '',
+        coachRecordingNotes: week.coachRecordingNotes || '',
+        linkedSummaryIds: week.linkedSummaryIds || [],
+        linkedCallEventIds: week.linkedCallEventIds || [],
+      };
       console.log('[WeekEditor:resetEffect] Resetting to week data:', {
         newFormDataTasksCount: newFormData.weeklyTasks?.length ?? 0,
         newFormDataTasks: newFormData.weeklyTasks?.map(t => t.label),
@@ -667,7 +715,8 @@ export function WeekEditor({
     setShowSyncButton(false);
     setSaveStatus('idle');
     setEditedFields(new Set());
-  }, [week.id, weekDataFingerprint, clientContextId, viewContext, editorContext, getDefaultFormData, mergePendingWithDefaults]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [week.id, weekDataFingerprint, clientContextId, viewContext, editorContext, mergePendingWithDefaults]);
 
   // Track previous view context to detect changes
   const lastViewContext = useRef(viewContext);
@@ -697,15 +746,30 @@ export function WeekEditor({
         setFormData(mergePendingWithDefaults(contextPendingData));
         setHasChanges(true);
       } else {
-        // Reset to the week data for the new context
-        setFormData(getDefaultFormData());
+        // Reset to the week data for the new context - inline to avoid callback dependency
+        setFormData({
+          name: week.name || '',
+          theme: week.theme || '',
+          description: week.description || '',
+          weeklyPrompt: week.weeklyPrompt || '',
+          weeklyTasks: week.weeklyTasks || [],
+          currentFocus: week.currentFocus || [],
+          notes: week.notes || [],
+          manualNotes: week.manualNotes || '',
+          distribution: (week.distribution || 'spread') as TaskDistribution,
+          coachRecordingUrl: week.coachRecordingUrl || '',
+          coachRecordingNotes: week.coachRecordingNotes || '',
+          linkedSummaryIds: week.linkedSummaryIds || [],
+          linkedCallEventIds: week.linkedCallEventIds || [],
+        });
         setHasChanges(false);
       }
       setShowSyncButton(false);
       setSaveStatus('idle');
       setEditedFields(new Set());
     }
-  }, [viewContext, clientContextId, editorContext, week.id, week.weekNumber, getDefaultFormData, mergePendingWithDefaults]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewContext, clientContextId, editorContext, week.id, week.weekNumber, mergePendingWithDefaults]);
 
   // Watch for reset version changes (discard/save from global buttons)
   useEffect(() => {
@@ -912,7 +976,9 @@ export function WeekEditor({
       const changeKey = editorContext.getChangeKey('week', week.id, clientContextId);
       editorContext.discardChange(changeKey);
     }
-  }, [formData, week, editorContext, programId, viewContext, clientContextId, getApiEndpoint, editedFields, getDefaultFormData, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
+  // Note: Removed getDefaultFormData from deps as it's not used in this effect
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, week.id, week.weekNumber, week.name, week.theme, week.description, week.weeklyPrompt, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.weeklyTasks, week.currentFocus, week.notes, week.linkedSummaryIds, week.linkedCallEventIds, editorContext, programId, viewContext, clientContextId, getApiEndpoint, editedFields, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
 
   // handleSave is only used by the SyncToClientsDialog now
   const handleSave = async () => {
