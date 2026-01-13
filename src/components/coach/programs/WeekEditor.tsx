@@ -435,10 +435,13 @@ export function WeekEditor({
   const initializedFromPending = useRef(false);
   // Track last reset version to detect discard/save
   const lastResetVersion = useRef(editorContext?.resetVersion ?? 0);
-  // Track if we just reset (to skip re-registration during save->refresh cycle)
-  const recentlyReset = useRef(false);
+  // Track skip cycles remaining after reset (to skip re-registration during save->refresh cycle)
+  // Using a counter instead of boolean to allow multiple cycles for instance to refresh
+  const skipCyclesRemaining = useRef(0);
   // Track last registered data fingerprint to prevent infinite re-registration loops
   const lastRegisteredFingerprint = useRef<string | null>(null);
+  // Track what formData looked like when we last saved (to detect "clean" state)
+  const lastSavedFormDataRef = useRef<string | null>(null);
 
   // Form data type
   type WeekFormData = {
@@ -660,11 +663,15 @@ export function WeekEditor({
       });
       setFormData(newFormData);
       setHasChanges(false);
-      // CRITICAL: Set recentlyReset to prevent the change detection effect from
-      // re-registering changes in the same render cycle. Without this, the change
-      // detection effect sees OLD formData (not yet updated by setState) vs NEW week
-      // data and incorrectly registers a change.
-      recentlyReset.current = true;
+      // CRITICAL: Set skip cycles to prevent the change detection effect from
+      // re-registering changes while instance refreshes. Without this, the change
+      // detection effect sees formData vs stale week data and incorrectly registers a change.
+      // Use multiple cycles (10) to give SWR time to fetch and React to re-render.
+      skipCyclesRemaining.current = 10;
+      // Also track what we just saved to detect when we're in a "clean" state
+      lastSavedFormDataRef.current = JSON.stringify({
+        weeklyTasks: newFormData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
+      });
     }
     setShowSyncButton(false);
     setSaveStatus('idle');
@@ -682,8 +689,13 @@ export function WeekEditor({
         weekId: week.id,
       });
       lastResetVersion.current = editorContext.resetVersion;
-      // Mark as recently reset to prevent re-registration during save->refresh cycle
-      recentlyReset.current = true;
+      // Set skip cycles to prevent re-registration during save->refresh cycle
+      // Use multiple cycles (10) to give SWR time to fetch and React to re-render
+      skipCyclesRemaining.current = 10;
+      // Track current formData as "saved" state
+      lastSavedFormDataRef.current = JSON.stringify({
+        weeklyTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
+      });
       // Clear UI state
       setHasChanges(false);
       setShowSyncButton(false);
@@ -694,21 +706,42 @@ export function WeekEditor({
 
   // Check for changes and register with context
   useEffect(() => {
-    // Skip registration if we just reset (waiting for fresh data from API)
-    if (recentlyReset.current) {
-      console.log('[WeekEditor:changeDetection] Skipping - recentlyReset is true, week:', week.weekNumber);
-      recentlyReset.current = false;
-      // CRITICAL: Do NOT revert formData to props here.
-      // The prop 'week' is likely still stale (awaiting re-fetch).
-      // Keeping current formData preserves the "clean" state that matches what was just saved.
-      // setFormData(getDefaultFormData()); // <-- REMOVED to prevent flash of stale content
-      setHasChanges(false);
-      return; // Don't register changes this cycle
-    }
-
     // Skip registration while context is currently saving
     if (editorContext?.isSaving) {
       console.log('[WeekEditor:changeDetection] Skipping - context is saving');
+      return;
+    }
+
+    // Skip if we have remaining skip cycles (waiting for instance to refresh after save)
+    if (skipCyclesRemaining.current > 0) {
+      skipCyclesRemaining.current--;
+      console.log('[WeekEditor:changeDetection] Skipping - cycles remaining:', skipCyclesRemaining.current + 1, 'week:', week.weekNumber);
+      setHasChanges(false);
+      return;
+    }
+
+    // Check if formData matches what we last saved - if so, we're in a "clean" state
+    // even if week prop hasn't caught up yet
+    const currentFormFingerprint = JSON.stringify({
+      weeklyTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
+    });
+    const weekFingerprint = JSON.stringify({
+      weeklyTasks: week.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
+    });
+
+    // If week prop has caught up to match formData, clear the saved state
+    // This allows future edits to be detected normally
+    if (lastSavedFormDataRef.current && weekFingerprint === currentFormFingerprint) {
+      console.log('[WeekEditor:changeDetection] Week prop caught up, clearing saved state');
+      lastSavedFormDataRef.current = null;
+      setHasChanges(false);
+      return;
+    }
+
+    if (lastSavedFormDataRef.current && currentFormFingerprint === lastSavedFormDataRef.current) {
+      // formData matches what was saved, so we're clean - don't register changes
+      // even if week prop is stale
+      setHasChanges(false);
       return;
     }
 
