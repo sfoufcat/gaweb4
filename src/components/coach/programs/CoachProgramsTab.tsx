@@ -3911,35 +3911,51 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   // Don't fall back to stale templateWeek.weeklyTasks - use empty array if instanceWeek not found
                   const instanceDataAvailable = useNewSystem && instance && !instanceLoading;
 
+                  // ARCHITECTURE: In instance mode, use ONLY instance data - NO template fallback
+                  // Template and instance are COMPLETELY SEPARATE data stores.
+                  // Template → Instance sync only happens via explicit "Sync to Client/Cohort" button.
                   const selectedWeek: ProgramWeek = useNewSystem ? {
-                    // NEW SYSTEM: Use instance week data (from program_instances collection)
-                    // If instanceWeek hasn't loaded yet, use template values as fallback
-                    // NOTE: templateWeek might be undefined if week only exists in instance (e.g., week 0)
+                    // NEW SYSTEM: Use instance week data ONLY (no template mixing!)
+                    // Structural fields use template for compatibility, content fields use instance ONLY
                     id: templateWeek?.id || `instance-week-${weekNumber}`,
                     programId: templateWeek?.programId || selectedProgram?.id || '',
-                    moduleId: instanceWeek?.moduleId || templateWeek?.moduleId || '',
                     organizationId: templateWeek?.organizationId || selectedProgram?.organizationId || '',
                     weekNumber: instanceWeek?.weekNumber ?? templateWeek?.weekNumber ?? weekNumber,
                     order: templateWeek?.order || templateWeek?.weekNumber || weekNumber,
                     startDayIndex: templateWeek?.startDayIndex || startDay,
                     endDayIndex: templateWeek?.endDayIndex || endDay,
-                    name: instanceWeek?.name || templateWeek?.name || '',
-                    description: instanceWeek?.description || templateWeek?.description || '',
-                    theme: instanceWeek?.theme || templateWeek?.theme || '',
                     createdAt: templateWeek?.createdAt || new Date().toISOString(),
-                    updatedAt: templateWeek?.updatedAt || new Date().toISOString(),
+                    updatedAt: instanceWeek?.updatedAt || templateWeek?.updatedAt || new Date().toISOString(),
                     fillSource: templateWeek?.fillSource,
-                    notes: templateWeek?.notes || [],
-                    currentFocus: templateWeek?.currentFocus || [],
-                    // FIXED: When instance data is available, ONLY use instance data (not stale template)
-                    // This prevents "Test 1" from reappearing after save
+                    // CONTENT FIELDS: When instance data available, use ONLY instance data (no template fallback!)
+                    // This ensures template changes don't "bleed through" to client/cohort view
+                    moduleId: instanceDataAvailable
+                      ? (instanceWeek?.moduleId ?? '')
+                      : (instanceWeek?.moduleId ?? templateWeek?.moduleId ?? ''),
+                    name: instanceDataAvailable
+                      ? (instanceWeek?.name ?? '')
+                      : (instanceWeek?.name ?? templateWeek?.name ?? ''),
+                    description: instanceDataAvailable
+                      ? (instanceWeek?.description ?? '')
+                      : (instanceWeek?.description ?? templateWeek?.description ?? ''),
+                    theme: instanceDataAvailable
+                      ? (instanceWeek?.theme ?? '')
+                      : (instanceWeek?.theme ?? templateWeek?.theme ?? ''),
+                    notes: instanceDataAvailable
+                      ? (instanceWeek?.notes ?? [])
+                      : (instanceWeek?.notes ?? templateWeek?.notes ?? []),
+                    currentFocus: instanceDataAvailable
+                      ? (instanceWeek?.currentFocus ?? [])
+                      : (instanceWeek?.currentFocus ?? templateWeek?.currentFocus ?? []),
                     weeklyPrompt: instanceDataAvailable
                       ? (instanceWeek?.weeklyPrompt ?? '')
                       : (instanceWeek?.weeklyPrompt ?? templateWeek?.weeklyPrompt ?? ''),
                     weeklyTasks: instanceDataAvailable
                       ? (instanceWeek?.weeklyTasks ?? [])
                       : (instanceWeek?.weeklyTasks ?? templateWeek?.weeklyTasks ?? []),
-                    weeklyHabits: templateWeek?.weeklyHabits ?? [],
+                    weeklyHabits: instanceDataAvailable
+                      ? (instanceWeek?.weeklyHabits ?? [])
+                      : (instanceWeek?.weeklyHabits ?? templateWeek?.weeklyHabits ?? []),
                     distribution: instanceDataAvailable
                       ? (instanceWeek?.distribution ?? 'spread')
                       : (instanceWeek?.distribution ?? templateWeek?.distribution ?? 'spread'),
@@ -3949,7 +3965,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     coachRecordingNotes: instanceDataAvailable
                       ? (instanceWeek?.coachRecordingNotes ?? '')
                       : (instanceWeek?.coachRecordingNotes ?? templateWeek?.coachRecordingNotes ?? ''),
-                    manualNotes: templateWeek?.manualNotes,
+                    manualNotes: instanceDataAvailable
+                      ? (instanceWeek?.manualNotes ?? undefined)
+                      : (instanceWeek?.manualNotes ?? templateWeek?.manualNotes),
                     linkedSummaryIds: instanceDataAvailable
                       ? (instanceWeek?.linkedSummaryIds ?? [])
                       : (instanceWeek?.linkedSummaryIds ?? templateWeek?.linkedSummaryIds ?? []),
