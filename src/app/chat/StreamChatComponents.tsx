@@ -81,8 +81,8 @@ function ChannelPreviewWithMobile(props: ChannelPreviewUIComponentProps) {
   } = props;
 
   const onMobileSelect = useContext(MobileViewContext);
-  const { pinnedChannelIds } = useChatPreferences();
-  const isPinned = channel.id ? pinnedChannelIds.has(channel.id) : false;
+  const { pinnedChannelIds, explicitlyUnpinnedChannelIds } = useChatPreferences();
+  const { isCoach } = useCoachSquads();
 
   // Get channel data - cast to Record to access custom properties
   const channelData = channel.data as Record<string, unknown> | undefined;
@@ -95,6 +95,13 @@ function ChannelPreviewWithMobile(props: ChannelPreviewUIComponentProps) {
   // Detect coaching channels and show other member's name instead of "FirstName - Coaching"
   const channelId = channel.id;
   const isCoachingChannel = channelId?.startsWith('coaching-');
+
+  // Check if user-pinned
+  const isUserPinned = channelId ? pinnedChannelIds.has(channelId) : false;
+  // Check if this is a coaching channel that's default-pinned for non-coaches
+  const isDefaultPinned = isCoachingChannel && !isCoach && !explicitlyUnpinnedChannelIds.has(channelId || '');
+  // Channel appears pinned if user pinned OR default pinned
+  const isPinned = isUserPinned || isDefaultPinned;
   // For coaching channels, ALWAYS use other member's name (ignore displayTitle which has "Name - Coaching")
   const channelName = isCoachingChannel
     ? (otherMember?.user?.name || 'Coaching Chat')
@@ -866,6 +873,7 @@ function ChatContent({
   const {
     pinnedChannelIds,
     archivedChannelIds,
+    explicitlyUnpinnedChannelIds,
     unarchiveChannel,
   } = useChatPreferences();
 
@@ -1482,7 +1490,7 @@ function ChatContent({
                   description="1:1 coaching chat"
                   onClick={() => handleChannelSelect(programCoachingChannelId)}
                   isActive={activeChannel?.id === programCoachingChannelId}
-                  isPinned={true}
+                  isPinned={pinnedChannelIds.has(programCoachingChannelId) || !explicitlyUnpinnedChannelIds.has(programCoachingChannelId)}
                   unreadCount={programCoachingUnread}
                   lastMessageTime={programCoachingLastMessage}
                 />
@@ -1505,7 +1513,7 @@ function ChatContent({
                   description="1:1 coaching chat"
                   onClick={() => handleChannelSelect(coachingChannelId)}
                   isActive={activeChannel?.id === coachingChannelId}
-                  isPinned={true}
+                  isPinned={pinnedChannelIds.has(coachingChannelId) || !explicitlyUnpinnedChannelIds.has(coachingChannelId)}
                   unreadCount={coachingUnread}
                   lastMessageTime={coachingLastMessage}
                 />
