@@ -434,10 +434,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   // Cohort task completion state (for showing completion in day editor)
   const [cohortTaskCompletion, setCohortTaskCompletion] = useState<Map<string, { completed: boolean; completionRate: number; completedCount: number; totalMembers: number }>>(new Map());
   const [cohortCompletionDate, setCohortCompletionDate] = useState<string | undefined>(undefined);
+  const [cohortCompletionLoading, setCohortCompletionLoading] = useState(false);
 
   // Client task completion state (for showing completion in day editor for 1:1 programs)
   const [clientTaskCompletion, setClientTaskCompletion] = useState<Map<string, { completed: boolean; completedAt?: string }>>(new Map());
   const [clientCompletionDate, setClientCompletionDate] = useState<string | undefined>(undefined);
+  const [clientCompletionLoading, setClientCompletionLoading] = useState(false);
 
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
@@ -1958,7 +1960,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
     // Fetch cohort task states for this date (pass dayIndex to enable on-demand state creation)
     const abortController = new AbortController();
-    
+
+    // Set loading state immediately
+    setCohortCompletionLoading(true);
+
     const fetchCohortCompletion = async () => {
       try {
         console.log('[COHORT_COMPLETION] Fetching for date:', dateStr, 'dayIndex:', selectedDayIndex, 'cohortId:', cohortViewContext.cohortId);
@@ -2001,6 +2006,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           return;
         }
         console.error('[COHORT_COMPLETION] Failed to fetch:', err);
+      } finally {
+        setCohortCompletionLoading(false);
       }
     };
 
@@ -2053,6 +2060,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     // Fetch client tasks for this date
     const abortController = new AbortController();
 
+    // Set loading state immediately
+    setClientCompletionLoading(true);
+
     const fetchClientCompletion = async () => {
       try {
         console.log('[CLIENT_COMPLETION] Fetching for date:', dateStr, 'dayIndex:', selectedDayIndex, 'userId:', clientUserId);
@@ -2092,6 +2102,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           return;
         }
         console.error('[CLIENT_COMPLETION] Failed to fetch:', err);
+      } finally {
+        setClientCompletionLoading(false);
       }
     };
 
@@ -4390,6 +4402,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       cohortViewContext={cohortViewContext}
                       cohortTaskCompletion={cohortTaskCompletion}
                       clientTaskCompletion={clientTaskCompletion}
+                      completionLoading={cohortCompletionLoading || clientCompletionLoading}
                       completionThreshold={selectedProgram?.cohortCompletionThreshold}
                       currentDate={cohortCompletionDate || clientCompletionDate}
                       apiBasePath={apiBasePath}

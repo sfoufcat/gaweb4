@@ -48,6 +48,8 @@ interface DayEditorProps {
   cohortTaskCompletion?: Map<string, CohortTaskCompletionData>;
   // Task completion tracking for individual clients
   clientTaskCompletion?: Map<string, ClientTaskCompletionData>;
+  // Whether completion data is currently being fetched
+  completionLoading?: boolean;
   // Completion threshold (default 50%)
   completionThreshold?: number;
   // Current date for task queries
@@ -86,6 +88,7 @@ export function DayEditor({
   cohortViewContext,
   cohortTaskCompletion = new Map(),
   clientTaskCompletion = new Map(),
+  completionLoading = false,
   completionThreshold = 50,
   currentDate,
   apiBasePath,
@@ -556,15 +559,19 @@ export function DayEditor({
                       <div
                         className={cn(
                           'w-5 h-5 rounded-full flex items-center justify-center',
-                          isCohortCompleted
+                          completionLoading
+                            ? 'border-2 border-[#e1ddd8] dark:border-[#3d4351] animate-pulse'
+                            : isCohortCompleted
                             ? 'bg-green-500 text-white'
                             : completionRate > 0
                             ? 'border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20'
                             : 'border-2 border-[#e1ddd8] dark:border-[#3d4351]'
                         )}
-                        title={isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
+                        title={completionLoading ? 'Loading...' : isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions'}
                       >
-                        {isCohortCompleted ? (
+                        {completionLoading ? (
+                          <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                        ) : isCohortCompleted ? (
                           <Check className="w-3 h-3" />
                         ) : completionRate > 0 ? (
                           <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400">{completionRate}</span>
@@ -574,6 +581,17 @@ export function DayEditor({
                   ) : (
                     /* Non-cohort completion indicator */
                     (() => {
+                      // Show loading spinner while completion data is being fetched (only in client mode)
+                      if (isClientMode && completionLoading) {
+                        return (
+                          <div
+                            className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex items-center justify-center flex-shrink-0 animate-pulse"
+                            title="Loading..."
+                          >
+                            <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                          </div>
+                        );
+                      }
                       if (isClientCompleted) {
                         return (
                           <div
