@@ -131,10 +131,52 @@ export async function GET(
       });
     }
 
-    // For individual instances, fetch user profile
+    // For individual instances, fetch user profile and task completion data
     if (instance.type === 'individual' && instance.userId) {
       const userDoc = await adminDb.collection('users').doc(instance.userId).get();
       const userData = userDoc.data();
+
+      // Fetch task completion data from tasks collection
+      // Tasks are linked via programEnrollmentId and have completion status
+      const taskCompletionMap: Record<string, { completed: boolean; completedAt?: string }> = {};
+
+      if (instance.enrollmentId) {
+        const tasksSnap = await adminDb.collection('tasks')
+          .where('userId', '==', instance.userId)
+          .where('programEnrollmentId', '==', instance.enrollmentId)
+          .get();
+
+        for (const taskDoc of tasksSnap.docs) {
+          const taskData = taskDoc.data();
+          // Use both task label and programDayIndex as key for lookup
+          // The key format is: "dayIndex:taskLabel" for precise matching
+          const dayIndex = taskData.programDayIndex || taskData.programDay;
+          const label = taskData.title || '';
+
+          if (dayIndex && label) {
+            const key = `${dayIndex}:${label}`;
+            taskCompletionMap[key] = {
+              completed: taskData.status === 'completed',
+              completedAt: taskData.completedAt,
+            };
+          }
+
+          // Also store by just the label for fallback matching
+          if (label) {
+            taskCompletionMap[label] = {
+              completed: taskData.status === 'completed',
+              completedAt: taskData.completedAt,
+            };
+          }
+        }
+
+        console.log('[INSTANCE_GET] Individual completion data:', {
+          instanceId,
+          userId: instance.userId,
+          enrollmentId: instance.enrollmentId,
+          completionCount: Object.keys(taskCompletionMap).length,
+        });
+      }
 
       return NextResponse.json({
         instance,
@@ -144,6 +186,7 @@ export async function GET(
           lastName: userData?.lastName || '',
           imageUrl: userData?.imageUrl || '',
         },
+        taskCompletionMap,
       });
     }
 

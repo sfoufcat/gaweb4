@@ -287,6 +287,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     instance,
     isLoading: instanceLoading,
     refresh: refreshInstance,
+    taskCompletionMap: instanceTaskCompletionMap,
   } = useProgramInstance(instanceId);
 
   // Debug: Log instance data with task details
@@ -436,10 +437,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [cohortCompletionDate, setCohortCompletionDate] = useState<string | undefined>(undefined);
   const [cohortCompletionLoading, setCohortCompletionLoading] = useState(false);
 
-  // Client task completion state (for showing completion in day editor for 1:1 programs)
-  const [clientTaskCompletion, setClientTaskCompletion] = useState<Map<string, { completed: boolean; completedAt?: string }>>(new Map());
-  const [clientCompletionDate, setClientCompletionDate] = useState<string | undefined>(undefined);
-  const [clientCompletionLoading, setClientCompletionLoading] = useState(false);
+  // Client task completion - computed from instance data (SSR-like approach)
+  // The instance API returns taskCompletionMap for 1:1 programs
+  const clientTaskCompletion = useMemo(() => {
+    const map = new Map<string, { completed: boolean; completedAt?: string }>();
+    if (!instanceTaskCompletionMap) return map;
+
+    // Convert the Record from API to a Map for DayEditor
+    for (const [key, value] of Object.entries(instanceTaskCompletionMap)) {
+      map.set(key, value);
+    }
+
+    console.log('[CLIENT_COMPLETION] Computed from instance data:', {
+      size: map.size,
+      keys: Array.from(map.keys()).slice(0, 10),
+    });
+
+    return map;
+  }, [instanceTaskCompletionMap]);
 
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
@@ -2019,101 +2034,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     };
   }, [selectedProgram, cohortViewContext, selectedDayIndex]);
 
-  // Effect: Fetch client task completion for 1:1 programs
-  useEffect(() => {
-    // Only run for individual programs in client mode
-    if (!selectedProgram || selectedProgram.type !== 'individual') return;
-    if (clientViewContext.mode !== 'client') return;
-
-    const clientUserId = clientViewContext.userId;
-    const enrollmentStartedAt = clientViewContext.enrollmentStartedAt;
-    if (!clientUserId || !enrollmentStartedAt) return;
-
-    // Calculate the date for the selected day index based on enrollment start date
-    const startDate = new Date(enrollmentStartedAt);
-    let dateStr: string;
-
-    if (selectedProgram.includeWeekends === false) {
-      // For programs without weekends: need to skip weekends when calculating date
-      let currentDate = new Date(startDate);
-      let businessDays = 0;
-
-      while (businessDays < selectedDayIndex) {
-        const dayOfWeek = currentDate.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          businessDays++;
-        }
-        if (businessDays < selectedDayIndex) {
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-      }
-
-      dateStr = currentDate.toISOString().split('T')[0];
-    } else {
-      // For programs that include weekends: simple date arithmetic
-      const elapsedDays = selectedDayIndex - 1;
-      const targetDate = new Date(startDate);
-      targetDate.setDate(targetDate.getDate() + elapsedDays);
-      dateStr = targetDate.toISOString().split('T')[0];
-    }
-
-    // Fetch client tasks for this date
-    const abortController = new AbortController();
-
-    // Set loading state immediately
-    setClientCompletionLoading(true);
-
-    const fetchClientCompletion = async () => {
-      try {
-        console.log('[CLIENT_COMPLETION] Fetching for date:', dateStr, 'dayIndex:', selectedDayIndex, 'userId:', clientUserId);
-        const response = await fetch(
-          `/api/coach/client-tasks/${clientUserId}?date=${dateStr}`,
-          { signal: abortController.signal }
-        );
-        if (response.ok) {
-          const data = await response.json();
-          console.log('[CLIENT_COMPLETION] API response:', data);
-          const completionMap = new Map<string, { completed: boolean; completedAt?: string }>();
-
-          // Map focus tasks by title for matching with program day tasks
-          for (const task of data.focusTasks || []) {
-            // Only include program-sourced tasks
-            if (task.isProgramSourced) {
-              const completionData = {
-                completed: task.status === 'completed',
-                completedAt: task.completedAt,
-              };
-              // Map by task title for matching
-              completionMap.set(task.title, completionData);
-              console.log('[CLIENT_COMPLETION] Adding task to map:', task.title, 'completed:', completionData.completed);
-            }
-          }
-
-          console.log('[CLIENT_COMPLETION] Completion map size:', completionMap.size, 'keys:', Array.from(completionMap.keys()));
-          setClientTaskCompletion(completionMap);
-          setClientCompletionDate(dateStr);
-        } else {
-          console.error('[CLIENT_COMPLETION] API returned non-OK status:', response.status);
-        }
-      } catch (err) {
-        // Ignore abort errors - they're expected when navigating quickly
-        if (err instanceof Error && err.name === 'AbortError') {
-          console.log('[CLIENT_COMPLETION] Fetch aborted (navigation)');
-          return;
-        }
-        console.error('[CLIENT_COMPLETION] Failed to fetch:', err);
-      } finally {
-        setClientCompletionLoading(false);
-      }
-    };
-
-    fetchClientCompletion();
-
-    // Cleanup: abort the fetch if the effect re-runs
-    return () => {
-      abortController.abort();
-    };
-  }, [selectedProgram, clientViewContext, selectedDayIndex]);
+  // Note: Client task completion is now computed directly from instance data via useMemo
+  // (see clientTaskCompletion above) - no separate fetch needed
 
   // Auto-expand the week containing the selected day
   useEffect(() => {
@@ -4402,9 +4324,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       cohortViewContext={cohortViewContext}
                       cohortTaskCompletion={cohortTaskCompletion}
                       clientTaskCompletion={clientTaskCompletion}
-                      completionLoading={cohortCompletionLoading || clientCompletionLoading}
                       completionThreshold={selectedProgram?.cohortCompletionThreshold}
-                      currentDate={cohortCompletionDate || clientCompletionDate}
+                      currentDate={cohortCompletionDate}
                       apiBasePath={apiBasePath}
                       saveError={saveError}
                       saving={saving}

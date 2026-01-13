@@ -47,6 +47,12 @@ import type {
   TemplateSyncOptions,
 } from '@/types';
 
+// Task completion data for individual instances
+interface TaskCompletionData {
+  completed: boolean;
+  completedAt?: string;
+}
+
 // API response types
 interface InstanceResponse {
   instance: ProgramInstance;
@@ -62,6 +68,7 @@ interface InstanceResponse {
     lastName: string;
     imageUrl: string;
   };
+  taskCompletionMap?: Record<string, TaskCompletionData>;
 }
 
 interface WeekResponse {
@@ -221,6 +228,7 @@ export function useProgramInstance(instanceId: string | null) {
     instance: instanceData?.instance,
     members: instanceData?.members,
     user: instanceData?.user,
+    taskCompletionMap: instanceData?.taskCompletionMap,
     isLoading,
     isUpdating,
     error: fetchError?.message || error,
