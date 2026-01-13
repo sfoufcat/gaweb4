@@ -14,6 +14,9 @@ import { SyncToClientsDialog } from './SyncToClientsDialog';
 import { SyncToCohortsDialog } from './SyncToCohortsDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInstanceIdLookup } from '@/hooks/useProgramInstanceBridge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 interface EnrollmentWithUser extends ProgramEnrollment {
   user?: {
@@ -300,68 +303,98 @@ function SortableWeeklyTask({
         </button>
       </div>
 
-      {/* Expanded member breakdown */}
-      {isCohortMode && isExpanded && (
-        <div className="border border-t-0 border-[#e1ddd8] dark:border-[#262b35] rounded-b-xl bg-[#fafafa] dark:bg-[#0f1115] p-3">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : members.length > 0 ? (
-            <div className="space-y-2">
-              {/* Progress bar */}
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-300 ${getProgressColor(completionRate, completionThreshold)}`}
-                    style={{ width: `${completionRate}%` }}
-                  />
-                </div>
-                <span className="text-xs text-muted-foreground">
+      {/* Expanded member breakdown (cohort mode only) */}
+      <div
+        className={cn(
+          "grid transition-all duration-300 ease-out",
+          isCohortMode && isExpanded
+            ? "grid-rows-[1fr] opacity-100"
+            : "grid-rows-[0fr] opacity-0"
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="border-t border-[#e1ddd8] dark:border-[#262b35] px-4 pb-4">
+            {/* Progress bar with label */}
+            <div className="pt-4 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-muted-foreground">Completion Progress</span>
+                <span className={cn(
+                  "text-xs font-semibold",
+                  isCohortCompleted ? "text-brand-accent" : "text-muted-foreground"
+                )}>
                   {completionRate}%
                 </span>
               </div>
-              {/* Member list */}
-              {members.map((member) => (
-                <div key={member.userId} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white dark:hover:bg-[#171b22]">
-                  {/* Avatar */}
-                  {member.imageUrl ? (
-                    <img
-                      src={member.imageUrl}
-                      alt={`${member.firstName} ${member.lastName}`}
-                      className="w-6 h-6 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                      {member.firstName?.[0] || '?'}
-                    </div>
+              <Progress
+                value={completionRate}
+                className="h-2"
+                indicatorClassName={cn(
+                  "transition-all duration-500",
+                  isCohortCompleted ? "bg-brand-accent" : "bg-brand-accent/60"
+                )}
+              />
+            </div>
+
+            {/* Member list */}
+            <div className="space-y-1">
+              {isLoading && (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+
+              {!isLoading && members.length === 0 && (
+                <div className="text-sm text-muted-foreground py-3 text-center">
+                  No member data available
+                </div>
+              )}
+
+              {!isLoading && members.map((member, memberIndex) => (
+                <div
+                  key={member.userId}
+                  className={cn(
+                    "flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200",
+                    member.status === 'completed'
+                      ? "bg-brand-accent/5"
+                      : "hover:bg-muted/50"
                   )}
-                  {/* Name */}
-                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  style={{
+                    animationDelay: `${memberIndex * 50}ms`,
+                  }}
+                >
+                  <Avatar className="h-7 w-7 ring-2 ring-background">
+                    <AvatarImage src={member.imageUrl} />
+                    <AvatarFallback className="text-xs bg-muted">
+                      {member.firstName?.[0]}
+                      {member.lastName?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className={cn(
+                    "flex-1 text-sm font-medium truncate",
+                    member.status === 'completed'
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                  )}>
                     {member.firstName} {member.lastName}
                   </span>
-                  {/* Status */}
                   <div
-                    className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all duration-300 bg-white dark:bg-[#181d26] ${
+                    className={cn(
+                      'shrink-0 h-6 w-6 rounded-lg border flex items-center justify-center transition-all duration-300 bg-white dark:bg-[#181d26]',
                       member.status === 'completed'
                         ? 'border-brand-accent'
                         : 'border-[#d4d0cb] dark:border-[#3d4351]'
-                    }`}
+                    )}
                   >
                     {member.status === 'completed' && (
-                      <div className="w-3 h-3 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
+                      <div className="w-4 h-4 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
                     )}
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-4 text-sm text-muted-foreground">
-              No member data available
-            </div>
-          )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

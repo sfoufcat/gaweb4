@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Trash2, Copy, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Trash2, Copy, ChevronDown, ChevronUp, Image, Video, X, Upload, Loader2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { QuestionOptionEditor } from './QuestionOptionEditor';
 import { SkipLogicEditor } from './SkipLogicEditor';
@@ -313,6 +313,13 @@ export function QuestionEditor({
           </div>
         );
 
+      case 'info':
+        return <InfoStepEditor question={question} onUpdate={onUpdate} />;
+
+      case 'page_break':
+        // Page break is handled in QuestionnaireBuilder with inline display
+        return null;
+
       default:
         return null;
     }
@@ -434,6 +441,143 @@ export function QuestionEditor({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// Info Step Editor Component
+function InfoStepEditor({
+  question,
+  onUpdate,
+}: {
+  question: QuestionnaireQuestion;
+  onUpdate: (updates: Partial<QuestionnaireQuestion>) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleMediaUpload = async (file: File, type: 'image' | 'video') => {
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Upload to your upload endpoint
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      onUpdate({
+        mediaUrl: data.url,
+        mediaType: type,
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      // For now, create a local object URL as fallback
+      const objectUrl = URL.createObjectURL(file);
+      onUpdate({
+        mediaUrl: objectUrl,
+        mediaType: type,
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveMedia = () => {
+    onUpdate({
+      mediaUrl: undefined,
+      mediaType: undefined,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Media Display/Upload */}
+      {question.mediaUrl ? (
+        <div className="relative rounded-xl overflow-hidden border border-[#e1ddd8] dark:border-[#262b35]">
+          {question.mediaType === 'video' ? (
+            <video
+              src={question.mediaUrl}
+              controls
+              className="w-full max-h-64 object-contain bg-black"
+            />
+          ) : (
+            <img
+              src={question.mediaUrl}
+              alt="Info step media"
+              className="w-full max-h-64 object-contain bg-[#f3f1ef] dark:bg-[#262b35]"
+            />
+          )}
+          <button
+            onClick={handleRemoveMedia}
+            className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+          >
+            <X className="w-4 h-4 text-white" />
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) handleMediaUpload(file, 'image');
+            }}
+            className="hidden"
+          />
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) handleMediaUpload(file, 'video');
+            }}
+            className="hidden"
+          />
+          <button
+            onClick={() => imageInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+          >
+            {uploading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Image className="w-4 h-4" />
+            )}
+            Insert Image
+          </button>
+          <button
+            onClick={() => videoInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+          >
+            {uploading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Video className="w-4 h-4" />
+            )}
+            Insert Video
+          </button>
+        </div>
+      )}
+
+      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+        This step displays information to the user without requiring any input.
+      </p>
     </div>
   );
 }

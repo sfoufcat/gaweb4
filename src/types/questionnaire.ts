@@ -20,7 +20,9 @@ export type QuestionnaireQuestionType =
   | 'file_upload'       // File attachment (any file type)
   | 'media_upload'      // Image/video specifically
   | 'number'            // Numeric input
-  | 'scale';            // Rating scale (1-5, 1-10, etc.)
+  | 'scale'             // Rating scale (1-5, 1-10, etc.)
+  | 'info'              // Display-only content step (text, image, video)
+  | 'page_break';       // Divides questionnaire into pages
 
 /**
  * Option for choice-type questions (single_choice, multi_choice)
@@ -90,6 +92,13 @@ export interface QuestionnaireQuestion {
   acceptedFileTypes?: string[];
   /** Maximum file size in MB for uploads */
   maxFileSizeMB?: number;
+
+  // ---- Info step specific ----
+
+  /** URL to media (image or video) for info step */
+  mediaUrl?: string;
+  /** Type of media for info step */
+  mediaType?: 'image' | 'video';
 
   // ---- Skip logic ----
 
@@ -319,6 +328,18 @@ export const QUESTION_TYPES: QuestionTypeInfo[] = [
     description: 'Rating on a numeric scale',
     icon: 'SlidersHorizontal',
   },
+  {
+    type: 'info',
+    label: 'Info',
+    description: 'Display text, image or video',
+    icon: 'Info',
+  },
+  {
+    type: 'page_break',
+    label: 'Page Break',
+    description: 'Divide into sections',
+    icon: 'SeparatorHorizontal',
+  },
 ];
 
 /**
@@ -389,6 +410,20 @@ export function createEmptyQuestion(type: QuestionnaireQuestionType, order: numb
         ...baseQuestion,
         acceptedFileTypes: ['image/*', 'video/*'],
         maxFileSizeMB: 50,
+      };
+    case 'info':
+      return {
+        ...baseQuestion,
+        title: '',
+        description: '',
+        required: false, // Info steps are never required (no input)
+      };
+    case 'page_break':
+      return {
+        ...baseQuestion,
+        title: '',
+        description: '',
+        required: false, // Page breaks are never required
       };
     default:
       return baseQuestion;

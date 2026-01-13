@@ -33,6 +33,11 @@ export function QuestionRenderer({ question, answer, error, onChange }: Question
         return <FileUploadQuestion question={question} answer={answer} onChange={onChange} />;
       case 'media_upload':
         return <MediaUploadQuestion question={question} answer={answer} onChange={onChange} />;
+      case 'info':
+        return <InfoStep question={question} />;
+      case 'page_break':
+        // Page breaks are handled by the form - they don't render as questions
+        return null;
       default:
         return <div>Unknown question type</div>;
     }
@@ -542,6 +547,42 @@ function MediaUploadQuestion({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// Info step (display-only, no input)
+function InfoStep({ question }: { question: QuestionnaireQuestion }) {
+  return (
+    <div className="space-y-6">
+      {/* Media display */}
+      {question.mediaUrl && (
+        <div className="rounded-xl overflow-hidden">
+          {question.mediaType === 'video' ? (
+            <video
+              src={question.mediaUrl}
+              controls
+              className="w-full max-h-96 object-contain bg-black"
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={question.mediaUrl}
+              alt={question.title || 'Info image'}
+              className="w-full max-h-96 object-contain bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl"
+            />
+          )}
+        </div>
+      )}
+
+      {/* If there's only description but no title, show the description more prominently */}
+      {!question.title && question.description && (
+        <p className="text-lg text-[#1a1a1a] dark:text-[#f5f5f8] font-albert leading-relaxed">
+          {question.description}
+        </p>
+      )}
+
+      {/* Note: title and description are already rendered by QuestionRenderer wrapper */}
     </div>
   );
 }

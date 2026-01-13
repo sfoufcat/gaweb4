@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Send, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Send, Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { QuestionRenderer } from './QuestionRenderer';
 import type { Questionnaire, QuestionnaireAnswer, QuestionnaireQuestion } from '@/types/questionnaire';
@@ -23,7 +23,7 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
     return [...questionnaire.questions].sort((a, b) => a.order - b.order);
   }, [questionnaire.questions]);
 
-  // Get visible questions based on skip logic
+  // Get visible questions based on skip logic (includes page breaks and info steps)
   const visibleQuestions = useMemo(() => {
     const visible: QuestionnaireQuestion[] = [];
 
@@ -80,10 +80,31 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
     return visible;
   }, [sortedQuestions, answers]);
 
+  // Count actual questions (excluding page breaks and info steps for display)
+  const actualQuestions = useMemo(() => {
+    return visibleQuestions.filter(q => q.type !== 'page_break' && q.type !== 'info');
+  }, [visibleQuestions]);
+
+  // Calculate current "question number" for progress display
+  const currentQuestionNumber = useMemo(() => {
+    let count = 0;
+    for (let i = 0; i <= currentIndex && i < visibleQuestions.length; i++) {
+      const q = visibleQuestions[i];
+      if (q.type !== 'page_break' && q.type !== 'info') {
+        count++;
+      }
+    }
+    return count;
+  }, [currentIndex, visibleQuestions]);
+
   const currentQuestion = visibleQuestions[currentIndex];
   const isFirstQuestion = currentIndex === 0;
   const isLastQuestion = currentIndex === visibleQuestions.length - 1;
   const progress = ((currentIndex + 1) / visibleQuestions.length) * 100;
+
+  // Check if current item is a page break
+  const isPageBreak = currentQuestion?.type === 'page_break';
+  const isInfoStep = currentQuestion?.type === 'info';
 
   // Update answer for a question
   const updateAnswer = useCallback((questionId: string, value: QuestionnaireAnswer['value']) => {
@@ -111,6 +132,11 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
   // Validate current question
   const validateCurrentQuestion = useCallback(() => {
     if (!currentQuestion) return true;
+
+    // Page breaks and info steps don't need validation
+    if (currentQuestion.type === 'page_break' || currentQuestion.type === 'info') {
+      return true;
+    }
 
     const answer = answers.get(currentQuestion.id);
 
@@ -177,10 +203,12 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
 
   // Handle form submission
   const handleSubmit = useCallback(async () => {
-    // Validate all required questions
+    // Validate all required questions (skip page breaks and info steps)
     let hasErrors = false;
 
     for (const question of visibleQuestions) {
+      if (question.type === 'page_break' || question.type === 'info') continue;
+
       const answer = answers.get(question.id);
 
       if (question.required) {
@@ -208,7 +236,7 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
       return;
     }
 
-    // Convert answers map to array
+    // Convert answers map to array (only include actual answers, not page breaks)
     const answersArray = Array.from(answers.values());
     await onSubmit(answersArray);
   }, [visibleQuestions, answers, errors, onSubmit]);
@@ -245,7 +273,11 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
             />
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-2">
-            Question {currentIndex + 1} of {visibleQuestions.length}
+            {actualQuestions.length > 0 ? (
+              <>Question {Math.min(currentQuestionNumber, actualQuestions.length)} of {actualQuestions.length}</>
+            ) : (
+              <>Step {currentIndex + 1} of {visibleQuestions.length}</>
+            )}
           </p>
         </div>
       </header>
@@ -254,7 +286,46 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
       <main className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl">
           <AnimatePresence mode="wait">
-            {currentQuestion && (
+            {isPageBreak ? (
+              // Page Break Transition Screen
+              <motion.div
+                key={`page-break-${currentQuestion.id}`}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                className="text-center py-16"
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="space-y-6"
+                >
+                  {currentQuestion.title && (
+                    <h2 className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                      {currentQuestion.title}
+                    </h2>
+                  )}
+                  {currentQuestion.description && (
+                    <p className="text-lg text-[#5f5a55] dark:text-[#b2b6c2] font-albert max-w-md mx-auto">
+                      {currentQuestion.description}
+                    </p>
+                  )}
+                  {!currentQuestion.title && !currentQuestion.description && (
+                    <div className="space-y-4">
+                      <div className="w-16 h-16 mx-auto rounded-full bg-brand-accent/10 flex items-center justify-center">
+                        <ArrowRight className="w-8 h-8 text-brand-accent" />
+                      </div>
+                      <p className="text-lg text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                        Ready for the next section?
+                      </p>
+                    </div>
+                  )}
+                </motion.div>
+              </motion.div>
+            ) : currentQuestion ? (
+              // Regular Question or Info Step
               <motion.div
                 key={currentQuestion.id}
                 initial={{ opacity: 0, x: 20 }}
@@ -269,7 +340,7 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
                   onChange={(value) => updateAnswer(currentQuestion.id, value)}
                 />
               </motion.div>
-            )}
+            ) : null}
           </AnimatePresence>
         </div>
       </main>
@@ -301,6 +372,11 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
               <>
                 <Send className="w-4 h-4 mr-2" />
                 Submit
+              </>
+            ) : isPageBreak || isInfoStep ? (
+              <>
+                Continue
+                <ChevronRight className="w-4 h-4 ml-2" />
               </>
             ) : (
               <>
