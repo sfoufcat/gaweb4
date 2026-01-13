@@ -12,6 +12,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { getOrgChannels } from '@/lib/org-channels';
+import { createHash } from 'crypto';
 
 // ============================================================================
 // TYPES
@@ -145,4 +146,28 @@ async function fetchUserSquadChannelIds(
     console.error('[chat-server] Failed to fetch squad channel IDs:', error);
     return [];
   }
+}
+
+// ============================================================================
+// CHANNEL ID GENERATION
+// ============================================================================
+
+/**
+ * Generate a short, unique coaching channel ID from user IDs.
+ *
+ * Stream Chat has a 64-character limit on channel IDs.
+ * Full Clerk user IDs are ~30+ chars each, so we hash them.
+ *
+ * Format: coaching-{shortUserId}-{shortCoachId} (35 characters total)
+ *
+ * @param userId - The client's Clerk user ID
+ * @param coachId - The coach's Clerk user ID
+ * @returns A unique channel ID under 64 characters
+ */
+export function generateCoachingChannelId(userId: string, coachId: string): string {
+  // Create short hashes of user IDs (first 12 chars of MD5)
+  const shortUserId = createHash('md5').update(userId).digest('hex').slice(0, 12);
+  const shortCoachId = createHash('md5').update(coachId).digest('hex').slice(0, 12);
+  // Format: coaching-{12chars}-{12chars} = 35 characters total
+  return `coaching-${shortUserId}-${shortCoachId}`;
 }

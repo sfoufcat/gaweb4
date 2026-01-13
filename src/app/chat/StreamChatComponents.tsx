@@ -1442,10 +1442,7 @@ function ChatContent({
                   }
                   name={programCoachInfo?.name || coach?.name || 'My Coach'}
                   description="1:1 coaching chat"
-                  onClick={() => {
-                    console.log('[Program Coaching Chat] Clicked, channelId:', programCoachingChannelId);
-                    handleChannelSelect(programCoachingChannelId);
-                  }}
+                  onClick={() => handleChannelSelect(programCoachingChannelId)}
                   isActive={activeChannel?.id === programCoachingChannelId}
                   isPinned={true}
                   unreadCount={programCoachingUnread}
@@ -1468,10 +1465,7 @@ function ChatContent({
                   }
                   name={coach?.name || 'My Coach'}
                   description="1:1 coaching chat"
-                  onClick={() => {
-                    console.log('[Legacy Coaching Chat] Clicked, channelId:', coachingChannelId);
-                    handleChannelSelect(coachingChannelId);
-                  }}
+                  onClick={() => handleChannelSelect(coachingChannelId)}
                   isActive={activeChannel?.id === coachingChannelId}
                   isPinned={true}
                   unreadCount={coachingUnread}

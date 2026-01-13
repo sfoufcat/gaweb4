@@ -41,6 +41,7 @@ export function AdminQuestionnairesSection({
   const [deleteConfirm, setDeleteConfirm] = useState<Questionnaire | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   // View management
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -119,6 +120,8 @@ export function AdminQuestionnairesSection({
 
   // Handle create new questionnaire
   const handleCreate = async () => {
+    if (creating) return;
+    setCreating(true);
     try {
       const response = await fetch(apiEndpoint, {
         method: 'POST',
@@ -138,6 +141,8 @@ export function AdminQuestionnairesSection({
     } catch (error) {
       console.error('Error creating questionnaire:', error);
       alert('Failed to create questionnaire');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -239,23 +244,111 @@ export function AdminQuestionnairesSection({
           </div>
 
           {/* Create Button */}
-          <Button
-            onClick={handleCreate}
-            className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert font-medium whitespace-nowrap"
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Questionnaire
-          </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={creating}
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert font-medium whitespace-nowrap disabled:opacity-70"
+            >
+              <AnimatePresence mode="wait">
+                {creating ? (
+                  <motion.span
+                    key="creating"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="flex items-center"
+                  >
+                    <motion.span
+                      className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    />
+                    Creating...
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="create"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="flex items-center"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Questionnaire
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Button>
+          </motion.div>
         </div>
       </div>
 
       {/* Table */}
       {loading ? (
-        <div className="p-12 text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-brand-accent border-t-transparent rounded-full mx-auto" />
-          <p className="mt-4 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            Loading questionnaires...
-          </p>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-[#e1ddd8] dark:border-[#262b35]/50 hover:bg-transparent">
+                <TableHead className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] font-medium">
+                  Title
+                </TableHead>
+                <TableHead className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] font-medium">
+                  Questions
+                </TableHead>
+                <TableHead className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] font-medium">
+                  Responses
+                </TableHead>
+                <TableHead className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] font-medium">
+                  Status
+                </TableHead>
+                <TableHead className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] font-medium">
+                  Created
+                </TableHead>
+                <TableHead className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] font-medium text-right">
+                  Actions
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[1, 2, 3].map(i => (
+                <TableRow
+                  key={i}
+                  className="border-b border-[#e1ddd8] dark:border-[#262b35]/50"
+                >
+                  <TableCell>
+                    <div className="space-y-2">
+                      <div className="h-4 w-40 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                      <div className="h-3 w-56 bg-[#e1ddd8]/60 dark:bg-[#262b35]/60 rounded animate-pulse" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 w-8 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-6 w-10 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full animate-pulse" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-5 w-14 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full animate-pulse" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="h-4 w-20 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-1">
+                      <div className="h-8 w-8 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
+                      <div className="h-8 w-8 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
+                      <div className="h-8 w-8 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
+                      <div className="h-8 w-8 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       ) : filteredQuestionnaires.length === 0 ? (
         <div className="p-12 text-center">
@@ -271,13 +364,47 @@ export function AdminQuestionnairesSection({
               : 'Create your first questionnaire to start collecting responses from clients'}
           </p>
           {!searchQuery && (
-            <Button
-              onClick={handleCreate}
-              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert font-medium"
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-block"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Questionnaire
-            </Button>
+              <Button
+                onClick={handleCreate}
+                disabled={creating}
+                className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert font-medium disabled:opacity-70"
+              >
+                <AnimatePresence mode="wait">
+                  {creating ? (
+                    <motion.span
+                      key="creating"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="flex items-center"
+                    >
+                      <motion.span
+                        className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      />
+                      Creating...
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="create"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="flex items-center"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Questionnaire
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </Button>
+            </motion.div>
           )}
         </div>
       ) : (

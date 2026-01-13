@@ -4,6 +4,7 @@ import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { adminDb } from '@/lib/firebase-admin';
 import { isUserOrgAdmin } from '@/lib/clerk-organizations';
+import { generateCoachingChannelId } from '@/lib/chat-server';
 import type { ClientCoachingData } from '@/types';
 
 /**
@@ -135,10 +136,8 @@ export async function POST(request: Request) {
     ]);
 
     // Create the coaching channel with a consistent ID format
-    // Use org suffix + client suffix to ensure uniqueness while staying under 64 char limit
-    const orgSuffix = organizationId.replace('org_', '').slice(0, 10);
-    const clientSuffix = actualClientId.replace('user_', '').slice(0, 10);
-    const channelId = `coaching-${orgSuffix}-${clientSuffix}`;
+    // Use hashed user IDs to ensure uniqueness while staying under 64 char limit
+    const channelId = generateCoachingChannelId(actualClientId, coachId);
 
     // Create the channel with custom properties for filtering
     const channel = streamClient.channel('messaging', channelId, {

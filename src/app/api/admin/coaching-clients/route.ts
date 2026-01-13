@@ -2,6 +2,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAdmin } from '@/lib/admin-utils-clerk';
+import { generateCoachingChannelId } from '@/lib/chat-server';
 import type { ClientCoachingData, FirebaseUser, Coach, CoachingPlanType, CoachingStatus } from '@/types';
 import { StreamChat } from 'stream-chat';
 
@@ -162,7 +163,7 @@ export async function POST(request: Request) {
         const serverClient = StreamChat.getInstance(streamApiKey, streamApiSecret);
         
         // Create unique channel ID for this coach-client pair
-        chatChannelId = `coaching-${userId}-${coachId}`.slice(0, 64);
+        chatChannelId = generateCoachingChannelId(userId, coachId);
         
         const channel = serverClient.channel('messaging', chatChannelId, {
           name: `Coaching: ${user.firstName || 'Client'}`,

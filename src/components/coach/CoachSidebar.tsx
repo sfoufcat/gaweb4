@@ -23,13 +23,14 @@ const FULL_NAV_GROUPS: NavGroup[] = [
       { value: 'clients', label: 'Clients' },
       { value: 'programs', label: 'Programs' },
       { value: 'squads', label: 'Squads' },
+      { value: 'discover', label: 'Content' },
     ],
   },
   {
-    name: 'Content',
+    name: 'Marketing',
     items: [
-      { value: 'discover', label: 'Content' },
-      { value: 'onboarding', label: 'Onboarding' },
+      { value: 'analytics', label: 'Analytics' },
+      { value: 'funnels', label: 'Funnels' },
     ],
   },
   {
@@ -38,13 +39,7 @@ const FULL_NAV_GROUPS: NavGroup[] = [
       { value: 'channels', label: 'Chats' },
       { value: 'checkins', label: 'Check-ins' },
       { value: 'referrals', label: 'Referrals' },
-    ],
-  },
-  {
-    name: 'Marketing',
-    items: [
-      { value: 'analytics', label: 'Analytics' },
-      { value: 'funnels', label: 'Funnels' },
+      { value: 'onboarding', label: 'Onboarding' },
     ],
   },
   {
@@ -63,7 +58,7 @@ const FULL_NAV_GROUPS: NavGroup[] = [
       { value: 'support', label: 'Support' },
     ],
   },
-];;
+];
 
 // Limited navigation groups (for org coaches with limited access)
 const LIMITED_NAV_GROUPS: NavGroup[] = [
@@ -72,11 +67,6 @@ const LIMITED_NAV_GROUPS: NavGroup[] = [
     items: [
       { value: 'clients', label: 'Clients' },
       { value: 'squads', label: 'Squads' },
-    ],
-  },
-  {
-    name: 'Content',
-    items: [
       { value: 'discover', label: 'Content' },
     ],
   },

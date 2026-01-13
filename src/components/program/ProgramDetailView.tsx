@@ -76,14 +76,10 @@ export function ProgramDetailView({
   const nextCall = prefetchedNextCall || hookNextCall;
   const storedChatChannelId = prefetchedCoachingData?.chatChannelId || hookChatChannelId;
   
-  // For 1:1 programs: compute fallback coaching channel ID if not stored
-  // Channel format: coaching-{userId}-{coachId}
-  const fallbackCoachingChannelId = useMemo(() => {
-    if (!isGroup && user?.id && coachingCoach?.id) {
-      return `coaching-${user.id}-${coachingCoach.id}`;
-    }
-    return null;
-  }, [isGroup, user?.id, coachingCoach?.id]);
+  // For 1:1 programs: the coaching channel ID should be stored server-side.
+  // We no longer compute a fallback here since it requires server-side hashing.
+  // If no stored channel ID exists, the user should trigger channel creation via the API.
+  const fallbackCoachingChannelId = null;
   
   // Use stored channel ID or fallback to computed one
   const chatChannelId = storedChatChannelId || fallbackCoachingChannelId;

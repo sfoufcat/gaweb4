@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient } from '@/lib/stream-server';
+import { generateCoachingChannelId } from '@/lib/chat-server';
 import type { ClientCoachingData, Program, ProgramEnrollment } from '@/types';
 
 /**
@@ -156,10 +157,8 @@ export async function POST() {
     ]);
 
     // Create the channel with a shorter ID (Stream Chat has 64 char limit)
-    // Use org suffix + user suffix to ensure uniqueness while staying under limit
-    const orgSuffix = organizationId.replace('org_', '').slice(0, 10);
-    const userSuffix = userId.replace('user_', '').slice(0, 10);
-    const chatChannelId = `coaching-${orgSuffix}-${userSuffix}`;
+    // Use hashed user IDs to ensure uniqueness while staying under limit
+    const chatChannelId = generateCoachingChannelId(userId, coachId);
     const channel = streamClient.channel('messaging', chatChannelId, {
       members: [userId, coachId],
       created_by_id: userId,

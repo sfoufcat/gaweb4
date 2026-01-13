@@ -15,6 +15,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { syncAllProgramTasks } from '@/lib/program-engine';
+import { generateCoachingChannelId } from '@/lib/chat-server';
 import Stripe from 'stripe';
 import type { 
   Program, 
@@ -288,7 +289,7 @@ async function createCoachingRelationship(
   let chatChannelId: string | null = null;
   try {
     const streamClient = await getStreamServerClient();
-    chatChannelId = `coaching-${userId}-${coachId}`;
+    chatChannelId = generateCoachingChannelId(userId, coachId);
     
     // Upsert both users
     const coachClerkUser = await clerk.users.getUser(coachId);

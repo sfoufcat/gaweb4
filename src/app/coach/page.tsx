@@ -856,32 +856,37 @@ export default function CoachPage() {
                   >
                     Squads
                   </TabsTrigger>
-                </TabsList>
-              </div>
-              
-              {/* === CONTENT SECTION === */}
-              <div className="flex flex-col">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1">Content</span>
-                <TabsList className="relative flex gap-1 p-1.5 bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl h-auto">
                   <TabsTrigger
                     value="discover"
+                    onMouseEnter={handleTabMouseEnter}
                     className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                   >
                     Content
                   </TabsTrigger>
-                  {!isLimitedOrgCoach && (
-                    <TabsTrigger
-                      value="onboarding"
-                      className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
-                    >
-                      Onboarding
-                    </TabsTrigger>
-                  )}
                 </TabsList>
               </div>
-              
+
               {!isLimitedOrgCoach && (
                 <>
+                  {/* === MARKETING SECTION === */}
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1">Marketing</span>
+                    <TabsList className="relative flex gap-1 p-1.5 bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl h-auto">
+                      <TabsTrigger
+                        value="analytics"
+                        className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                      >
+                        Analytics
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="funnels"
+                        className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                      >
+                        Funnels
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+
                   {/* === ENGAGEMENT SECTION === */}
                   <div className="flex flex-col">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1">Engagement</span>
@@ -904,24 +909,11 @@ export default function CoachPage() {
                       >
                         Referrals
                       </TabsTrigger>
-                    </TabsList>
-                  </div>
-                  
-                  {/* === MARKETING SECTION === */}
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a09a94] dark:text-[#6b7280] px-1 mb-1">Marketing</span>
-                    <TabsList className="relative flex gap-1 p-1.5 bg-[#f7f5f3] dark:bg-[#1a1d24] rounded-xl h-auto">
                       <TabsTrigger
-                        value="analytics"
+                        value="onboarding"
                         className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
                       >
-                        Analytics
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="funnels"
-                        className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
-                      >
-                        Funnels
+                        Onboarding
                       </TabsTrigger>
                     </TabsList>
                   </div>
