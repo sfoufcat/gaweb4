@@ -323,7 +323,7 @@ export function CoachLandingPage() {
                 linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
                 linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px)
               `,
-              backgroundSize: '40px 40px',
+              backgroundSize: '64px 64px',
               maskImage: 'radial-gradient(ellipse 80% 50% at 50% 30%, black 30%, transparent 70%)',
               WebkitMaskImage: 'radial-gradient(ellipse 80% 50% at 50% 30%, black 30%, transparent 70%)',
             }}
@@ -337,7 +337,7 @@ export function CoachLandingPage() {
                 linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
                 linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)
               `,
-              backgroundSize: '40px 40px',
+              backgroundSize: '64px 64px',
               maskImage: 'radial-gradient(ellipse 80% 50% at 50% 30%, black 30%, transparent 70%)',
               WebkitMaskImage: 'radial-gradient(ellipse 80% 50% at 50% 30%, black 30%, transparent 70%)',
             }}

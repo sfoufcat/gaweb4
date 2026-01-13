@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment, ClientViewContext, CohortViewContext } from '@/types';
 import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, Check, ChevronDown, ChevronRight, Pencil, Clock, Loader2 } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
+import { useInstanceIdLookup } from '@/hooks/useProgramInstanceBridge';
 import { Button } from '@/components/ui/button';
 import { DayCourseSelector } from './DayCourseSelector';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -115,6 +116,18 @@ export function DayEditor({
   const cohortIdValue = isCohortMode && cohortViewContext?.mode === 'cohort' ? cohortViewContext.cohortId : undefined;
   const clientContextId = clientEnrollmentId || cohortIdValue;
 
+  // Lookup instanceId if not provided (for migration support)
+  const { instanceId: lookedUpInstanceId, isLoading: instanceLookupLoading } = useInstanceIdLookup({
+    programId: programId || '',
+    enrollmentId: clientEnrollmentId,
+    cohortId: cohortIdValue,
+  });
+  
+  const effectiveInstanceId = instanceId || lookedUpInstanceId;
+  
+  // Determine if we're in a client/cohort context (not template mode)
+  const isInstanceContext = !!(cohortIdValue || clientEnrollmentId);
+
   // Fetch member breakdown for a task (lazy load)
   const fetchTaskMembers = useCallback(async (taskId: string, taskLabel: string) => {
     if (!isCohortMode || !cohortIdValue) return;
@@ -156,9 +169,9 @@ export function DayEditor({
   // Build API endpoint based on view context
   const getApiEndpoint = useCallback(() => {
     if (!programId) return '';
-    // Use instance-based API when available (migrated data)
-    if (instanceId) {
-      return `/api/instances/${instanceId}/days/${dayIndex}`;
+    // Use instance-based API when available (migrated or looked up)
+    if (effectiveInstanceId) {
+      return `/api/instances/${effectiveInstanceId}/days/${dayIndex}`;
     }
     const base = `${apiBasePath}/${programId}`;
     if (isClientMode && clientEnrollmentId) {
@@ -167,7 +180,7 @@ export function DayEditor({
       return `${base}/cohort-days`;
     }
     return `${base}/days`;
-  }, [apiBasePath, programId, instanceId, dayIndex, isClientMode, isCohortMode, clientEnrollmentId, cohortIdValue]);
+  }, [apiBasePath, programId, effectiveInstanceId, dayIndex, isClientMode, isCohortMode, clientEnrollmentId, cohortIdValue]);
 
   // Track last reset version to detect discard/save
   const lastResetVersion = useRef(editorContext?.resetVersion ?? 0);
@@ -256,6 +269,19 @@ export function DayEditor({
 
     // Register changes with context if available
     if (editorContext && changed && programId) {
+      // GUARD: In client/cohort mode, we MUST have an instanceId before registering changes
+      // Otherwise, the save would incorrectly go to the deprecated cohort-days/client-days API
+      if (isInstanceContext && !effectiveInstanceId) {
+        if (instanceLookupLoading) {
+          // Still loading - wait for instance to be found/created
+          console.log('[DAY_EDITOR] Waiting for instance lookup before registering change...');
+          return;
+        }
+        // Not loading but no instanceId - this shouldn't happen, but log it
+        console.warn('[DAY_EDITOR] In client/cohort mode but no instanceId available after lookup');
+        return;
+      }
+      
       // Build request body based on context
       let requestBody: Record<string, unknown> = {
         dayIndex,
@@ -293,7 +319,7 @@ export function DayEditor({
       const changeKey = editorContext.getChangeKey('day', entityId, clientContextId);
       editorContext.discardChange(changeKey);
     }
-  }, [formData, day, editorContext, programId, viewContext, clientContextId, getApiEndpoint, dayIndex, entityId, getDefaultFormData, isClientMode, isCohortMode, clientEnrollmentId, cohortIdValue]);
+  }, [formData, day, editorContext, programId, viewContext, clientContextId, getApiEndpoint, dayIndex, entityId, getDefaultFormData, isClientMode, isCohortMode, clientEnrollmentId, cohortIdValue, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
 
   // Pre-fetch member data for all tasks in cohort mode to show accurate badge counts
   // This runs only when cohort mode is active and tasks change
