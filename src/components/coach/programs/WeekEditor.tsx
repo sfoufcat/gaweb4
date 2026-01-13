@@ -636,13 +636,27 @@ export function WeekEditor({
     // Check if there's pending data in context for this week
     const contextPendingData = editorContext?.getPendingData('week', week.id, clientContextId);
 
+    console.log('[WeekEditor:resetEffect] Triggered:', {
+      weekId: week.id,
+      weekNumber: week.weekNumber,
+      hasPendingData: !!contextPendingData,
+      weekWeeklyTasksCount: week.weeklyTasks?.length ?? 0,
+      weekWeeklyTasks: week.weeklyTasks?.map(t => t.label),
+    });
+
     if (contextPendingData) {
       // Restore from pending data, merged with defaults to ensure all fields exist
+      console.log('[WeekEditor:resetEffect] Restoring from pending data');
       setFormData(mergePendingWithDefaults(contextPendingData));
       setHasChanges(true);
     } else {
       // Reset to week data
-      setFormData(getDefaultFormData());
+      const newFormData = getDefaultFormData();
+      console.log('[WeekEditor:resetEffect] Resetting to week data:', {
+        newFormDataTasksCount: newFormData.weeklyTasks?.length ?? 0,
+        newFormDataTasks: newFormData.weeklyTasks?.map(t => t.label),
+      });
+      setFormData(newFormData);
       setHasChanges(false);
       // CRITICAL: Set recentlyReset to prevent the change detection effect from
       // re-registering changes in the same render cycle. Without this, the change
@@ -659,6 +673,12 @@ export function WeekEditor({
   // Watch for reset version changes (discard/save from global buttons)
   useEffect(() => {
     if (editorContext && editorContext.resetVersion !== lastResetVersion.current) {
+      console.log('[WeekEditor:resetVersion] Reset version changed:', {
+        oldVersion: lastResetVersion.current,
+        newVersion: editorContext.resetVersion,
+        weekNumber: week.weekNumber,
+        weekId: week.id,
+      });
       lastResetVersion.current = editorContext.resetVersion;
       // Mark as recently reset to prevent re-registration during save->refresh cycle
       recentlyReset.current = true;
@@ -668,12 +688,13 @@ export function WeekEditor({
       setSaveStatus('idle');
       setEditedFields(new Set());
     }
-  }, [editorContext?.resetVersion]);
+  }, [editorContext?.resetVersion, week.weekNumber, week.id]);
 
   // Check for changes and register with context
   useEffect(() => {
     // Skip registration if we just reset (waiting for fresh data from API)
     if (recentlyReset.current) {
+      console.log('[WeekEditor:changeDetection] Skipping - recentlyReset is true, week:', week.weekNumber);
       recentlyReset.current = false;
       // CRITICAL: Do NOT revert formData to props here.
       // The prop 'week' is likely still stale (awaiting re-fetch).
@@ -685,9 +706,11 @@ export function WeekEditor({
     
     // Skip registration while context is currently saving
     if (editorContext?.isSaving) {
+      console.log('[WeekEditor:changeDetection] Skipping - context is saving');
       return;
     }
     
+    const tasksMatch = JSON.stringify(formData.weeklyTasks) === JSON.stringify(week.weeklyTasks || []);
     const changed =
       formData.name !== (week.name || '') ||
       formData.theme !== (week.theme || '') ||
@@ -697,11 +720,28 @@ export function WeekEditor({
       formData.distribution !== (week.distribution || 'spread') ||
       formData.coachRecordingUrl !== (week.coachRecordingUrl || '') ||
       formData.coachRecordingNotes !== (week.coachRecordingNotes || '') ||
-      JSON.stringify(formData.weeklyTasks) !== JSON.stringify(week.weeklyTasks || []) ||
+      !tasksMatch ||
       JSON.stringify(formData.currentFocus) !== JSON.stringify(week.currentFocus || []) ||
       JSON.stringify(formData.notes) !== JSON.stringify(week.notes || []) ||
       JSON.stringify(formData.linkedSummaryIds) !== JSON.stringify(week.linkedSummaryIds || []) ||
       JSON.stringify(formData.linkedCallEventIds) !== JSON.stringify(week.linkedCallEventIds || []);
+    
+    // Debug logging for change detection
+    if (changed) {
+      console.log('[WeekEditor:changeDetection] Changes detected for week', week.weekNumber, {
+        tasksMatch,
+        formDataTasksCount: formData.weeklyTasks?.length ?? 0,
+        weekTasksCount: week.weeklyTasks?.length ?? 0,
+        formDataTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
+        weekTasks: week.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
+        // Show which fields differ
+        nameMatch: formData.name === (week.name || ''),
+        themeMatch: formData.theme === (week.theme || ''),
+        promptMatch: formData.weeklyPrompt === (week.weeklyPrompt || ''),
+        distributionMatch: formData.distribution === (week.distribution || 'spread'),
+      });
+    }
+    
     setHasChanges(changed);
 
     // Register changes with context if available

@@ -380,6 +380,8 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
           pendingTasksCount: pendingTasks.length,
           viewContext: change.viewContext,
           createCohortContentAfter,
+          // Add task details for debugging
+          weeklyTasks: (body.weeklyTasks as unknown[])?.map((t: { id?: string; label?: string }) => ({ id: t.id, label: t.label })),
         });
 
         const response = await fetch(change.apiEndpoint, {
