@@ -223,11 +223,41 @@ export async function DELETE(
       console.error(`[COACH_ENROLLMENT_DELETE] Failed to delete habits (non-fatal):`, habitErr);
     }
 
-    console.log(`[COACH_ENROLLMENT_DELETE] Coach ${userId} removed user ${enrolledUserId} from program ${programId}, deleted ${habitsDeleted} habits`);
+    // 6. Delete program-sourced tasks for this user from this enrollment
+    let tasksDeleted = 0;
+    try {
+      // Query tasks by enrollment ID (most reliable) and also by programId as fallback
+      const tasksSnapshot = await adminDb
+        .collection('tasks')
+        .where('userId', '==', enrolledUserId)
+        .where('programEnrollmentId', '==', enrollmentId)
+        .get();
+
+      if (!tasksSnapshot.empty) {
+        // Batch delete in chunks of 500 (Firestore limit)
+        const docs = tasksSnapshot.docs;
+        for (let i = 0; i < docs.length; i += 500) {
+          const batch = adminDb.batch();
+          const chunk = docs.slice(i, i + 500);
+          for (const taskDoc of chunk) {
+            batch.delete(taskDoc.ref);
+          }
+          await batch.commit();
+        }
+        tasksDeleted = tasksSnapshot.size;
+        console.log(`[COACH_ENROLLMENT_DELETE] Deleted ${tasksDeleted} program tasks for user ${enrolledUserId}`);
+      }
+    } catch (taskErr) {
+      console.error(`[COACH_ENROLLMENT_DELETE] Failed to delete tasks (non-fatal):`, taskErr);
+    }
+
+    console.log(`[COACH_ENROLLMENT_DELETE] Coach ${userId} removed user ${enrolledUserId} from program ${programId}, deleted ${habitsDeleted} habits, ${tasksDeleted} tasks`);
 
     return NextResponse.json({
       success: true,
       message: 'User removed from program',
+      habitsDeleted,
+      tasksDeleted,
     });
   } catch (error) {
     console.error('[COACH_ENROLLMENT_DELETE] Error:', error);

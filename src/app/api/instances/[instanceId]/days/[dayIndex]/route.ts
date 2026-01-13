@@ -252,26 +252,32 @@ export async function PATCH(
       });
     }
 
-    // Sync tasks to user's tasks collection if this is an individual instance
-    if (data?.type === 'individual' && data?.userId) {
-      // Only sync if we have a valid calendar date
-      if (effectiveCalendarDate) {
-        await syncDayTasksToUser(instanceId, data.userId, globalDayIndex, updatedDay.tasks, effectiveCalendarDate, data.organizationId);
-      } else {
-        console.log(`[INSTANCE_DAY_PATCH] SKIPPING sync - no calendar date available (instance startDate: ${data?.startDate || 'NOT SET'})`);
+    // Skip sync if instance is not active (completed, stopped, paused)
+    const instanceStatus = data?.status;
+    if (instanceStatus && instanceStatus !== 'active') {
+      console.log(`[INSTANCE_DAY_PATCH] SKIPPING sync - instance status is ${instanceStatus}`);
+    } else {
+      // Sync tasks to user's tasks collection if this is an individual instance
+      if (data?.type === 'individual' && data?.userId) {
+        // Only sync if we have a valid calendar date
+        if (effectiveCalendarDate) {
+          await syncDayTasksToUser(instanceId, data.userId, globalDayIndex, updatedDay.tasks, effectiveCalendarDate, data.organizationId);
+        } else {
+          console.log(`[INSTANCE_DAY_PATCH] SKIPPING sync - no calendar date available (instance startDate: ${data?.startDate || 'NOT SET'})`);
+        }
       }
-    }
 
-    // Sync tasks to ALL cohort members if this is a cohort instance
-    if (data?.type === 'cohort' && data?.cohortId) {
-      // Only sync if we have a valid calendar date
-      if (!effectiveCalendarDate) {
-        console.log(`[INSTANCE_DAY_PATCH] SKIPPING sync - no calendar date available (instance startDate: ${data?.startDate || 'NOT SET'})`);
-      } else {
-        const enrollmentsSnap = await adminDb.collection('program_enrollments')
-          .where('cohortId', '==', data.cohortId)
-          .where('status', 'in', ['active', 'upcoming', 'completed'])
-          .get();
+      // Sync tasks to ALL cohort members if this is a cohort instance
+      if (data?.type === 'cohort' && data?.cohortId) {
+        // Only sync if we have a valid calendar date
+        if (!effectiveCalendarDate) {
+          console.log(`[INSTANCE_DAY_PATCH] SKIPPING sync - no calendar date available (instance startDate: ${data?.startDate || 'NOT SET'})`);
+        } else {
+          // Only sync to active/upcoming enrollments (not completed or stopped)
+          const enrollmentsSnap = await adminDb.collection('program_enrollments')
+            .where('cohortId', '==', data.cohortId)
+            .where('status', 'in', ['active', 'upcoming'])
+            .get();
 
         console.log(`[INSTANCE_DAY_PATCH] Syncing to ${enrollmentsSnap.docs.length} cohort members`, {
           globalDayIndex,
@@ -298,6 +304,7 @@ export async function PATCH(
             }
           })
         );
+        }
       }
     }
 

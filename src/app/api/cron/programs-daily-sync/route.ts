@@ -208,6 +208,12 @@ export async function GET(request: Request) {
             return;
           }
 
+          // Skip if instance is not active (completed, stopped, paused)
+          if (instance.status && instance.status !== 'active') {
+            skippedCount++;
+            return;
+          }
+
           // Sync TODAY's tasks
           const todayDay = findDayByCalendarDate(instance, todayStr);
           if (todayDay && todayDay.day.tasks.length > 0) {
