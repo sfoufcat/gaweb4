@@ -48,8 +48,6 @@ interface DayEditorProps {
   cohortTaskCompletion?: Map<string, CohortTaskCompletionData>;
   // Task completion tracking for individual clients
   clientTaskCompletion?: Map<string, ClientTaskCompletionData>;
-  // Whether completion data is still loading (prevents unchecked flash)
-  completionDataLoading?: boolean;
   // Completion threshold (default 50%)
   completionThreshold?: number;
   // Current date for task queries
