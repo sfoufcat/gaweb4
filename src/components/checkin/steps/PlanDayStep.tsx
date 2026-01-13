@@ -24,7 +24,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Pencil, Trash2 } from 'lucide-react';
+import { GripVertical, Pencil, Trash2, AlertCircle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTasks } from '@/hooks/useTasks';
 import { useDailyFocusLimit } from '@/hooks/useDailyFocusLimit';
@@ -290,6 +290,7 @@ export function PlanDayStep({ config, onComplete }: PlanDayStepProps) {
     focusTasks,
     backlogTasks,
     isLoading,
+    error: taskError,
     createTask,
     updateTask,
     deleteTask,
@@ -299,6 +300,19 @@ export function PlanDayStep({ config, onComplete }: PlanDayStepProps) {
 
   // Get org's daily focus limit
   const { limit: focusLimit } = useDailyFocusLimit();
+
+  // Local error state for displaying and auto-dismissing errors
+  const [displayError, setDisplayError] = useState<string | null>(null);
+
+  // Show task errors when they occur
+  useEffect(() => {
+    if (taskError) {
+      setDisplayError(taskError);
+      // Auto-dismiss after 5 seconds
+      const timer = setTimeout(() => setDisplayError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [taskError]);
 
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -540,6 +554,20 @@ export function PlanDayStep({ config, onComplete }: PlanDayStepProps) {
               {(config.heading as string) || 'Plan your day'}
             </h1>
           </div>
+
+          {/* Error Alert - shown when task operations fail */}
+          {displayError && (
+            <div className="mb-4 flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-800 dark:text-red-200 animate-in fade-in slide-in-from-top-2 duration-200">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <span className="flex-1 text-sm font-sans">{displayError}</span>
+              <button
+                onClick={() => setDisplayError(null)}
+                className="p-1 hover:bg-red-100 dark:hover:bg-red-800/30 rounded-full transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
           <DndContext
             sensors={sensors}

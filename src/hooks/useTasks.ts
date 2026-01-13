@@ -225,17 +225,23 @@ export function useTasks({ date }: UseTasksOptions): UseTasksReturn {
 
   // Reorder tasks (after drag and drop)
   const reorderTasks = useCallback(async (reorderedTasks: Task[]): Promise<boolean> => {
+    // Store previous state for potential rollback
+    let previousTasks: Task[] = [];
+
     // FIRST: Optimistically update the UI immediately
     setTasks((prevTasks) => {
+      // Save previous state for rollback
+      previousTasks = [...prevTasks];
+
       // Get the IDs of tasks being reordered
       const _reorderedIds = new Set(reorderedTasks.map(t => t.id));
-      
+
       // Keep tasks that aren't being reordered, update the ones that are
       const updatedTasks = prevTasks.map(task => {
         const reordered = reorderedTasks.find(rt => rt.id === task.id);
         return reordered || task;
       });
-      
+
       // Sort by listType and order
       updatedTasks.sort((a, b) => {
         if (a.listType === b.listType) {
@@ -243,35 +249,57 @@ export function useTasks({ date }: UseTasksOptions): UseTasksReturn {
         }
         return a.listType === 'focus' ? -1 : 1;
       });
-      
+
       return updatedTasks;
     });
 
     // THEN: Sync with server in the background
     try {
-      const updatePromises = reorderedTasks.map((task) =>
-        fetch(`/api/tasks/${task.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order: task.order, listType: task.listType }),
+      const updateResults = await Promise.all(
+        reorderedTasks.map(async (task) => {
+          const response = await fetch(`/api/tasks/${task.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order: task.order, listType: task.listType }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            return {
+              ok: false,
+              taskId: task.id,
+              taskTitle: task.title,
+              error: errorData.error || `HTTP ${response.status}`
+            };
+          }
+          return { ok: true, taskId: task.id };
         })
       );
 
-      const responses = await Promise.all(updatePromises);
-      const allSucceeded = responses.every((res) => res.ok);
+      const failedUpdates = updateResults.filter(r => !r.ok);
 
-      if (!allSucceeded) {
-        console.error('Some tasks failed to reorder on server');
-        // Optionally refetch to get server state
-        // await fetchTasks();
+      if (failedUpdates.length > 0) {
+        // Log detailed error information
+        console.error('[useTasks] Some tasks failed to reorder:', failedUpdates);
+
+        // Revert to previous state on failure
+        setTasks(previousTasks);
+
+        // Set a user-facing error message
+        const firstError = failedUpdates[0];
+        setError(`Failed to move task: ${firstError.error}`);
+
+        return false;
       }
 
-      return allSucceeded;
+      return true;
     } catch (err) {
-      console.error('Error reordering tasks:', err);
+      console.error('[useTasks] Error reordering tasks:', err);
+
+      // Revert to previous state on error
+      setTasks(previousTasks);
+
       setError(err instanceof Error ? err.message : 'Failed to reorder tasks');
-      // Optionally refetch to restore server state
-      // await fetchTasks();
       return false;
     }
   }, []);

@@ -315,6 +315,34 @@ export function CoachLandingPage() {
 
         {/* Hero Section */}
         <section ref={heroRef} className="relative pt-16 sm:pt-24 pb-20 overflow-hidden">
+          {/* Notebook grid background */}
+          <div
+            className="absolute inset-0 pointer-events-none dark:hidden"
+            style={{
+              backgroundImage: `
+                linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px)
+              `,
+              backgroundSize: '40px 40px',
+              maskImage: 'radial-gradient(ellipse 80% 50% at 50% 30%, black 30%, transparent 70%)',
+              WebkitMaskImage: 'radial-gradient(ellipse 80% 50% at 50% 30%, black 30%, transparent 70%)',
+            }}
+            aria-hidden="true"
+          />
+          {/* Dark mode notebook grid */}
+          <div
+            className="absolute inset-0 pointer-events-none hidden dark:block"
+            style={{
+              backgroundImage: `
+                linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)
+              `,
+              backgroundSize: '40px 40px',
+              maskImage: 'radial-gradient(ellipse 80% 50% at 50% 30%, black 30%, transparent 70%)',
+              WebkitMaskImage: 'radial-gradient(ellipse 80% 50% at 50% 30%, black 30%, transparent 70%)',
+            }}
+            aria-hidden="true"
+          />
           {/* Subtle gradient orbs - large, soft, stationary */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-gradient-to-br from-brand-accent/8 via-[#e8b923]/5 to-transparent rounded-full blur-3xl" />

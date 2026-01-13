@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -21,7 +21,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { ChevronDown, Sparkles, ListPlus, Loader2, Archive } from 'lucide-react';
+import { ChevronDown, Sparkles, ListPlus, Loader2, Archive, AlertCircle, X } from 'lucide-react';
 import { TaskItem } from './TaskItem';
 import { TaskSheetDefine } from './TaskSheetDefine';
 import { TaskSheetManage } from './TaskSheetManage';
@@ -84,6 +84,7 @@ export function DailyFocusSection({
     focusTasks,
     backlogTasks,
     isLoading,
+    error: taskError,
     createTask,
     updateTask,
     deleteTask,
@@ -91,6 +92,19 @@ export function DailyFocusSection({
     reorderTasks,
     fetchTasks,
   } = useTasks({ date: today });
+
+  // Local error state for displaying and auto-dismissing errors
+  const [displayError, setDisplayError] = useState<string | null>(null);
+
+  // Show task errors when they occur
+  useEffect(() => {
+    if (taskError) {
+      setDisplayError(taskError);
+      // Auto-dismiss after 5 seconds
+      const timer = setTimeout(() => setDisplayError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [taskError]);
   
   // Get enrollment for program badge
   const { hasEnrollment, enrollment, program } = useActiveEnrollment();
@@ -394,6 +408,20 @@ export function DailyFocusSection({
             </button>
           )}
         </div>
+
+        {/* Error Alert - shown when task operations fail */}
+        {displayError && (
+          <div className="mb-3 flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl text-red-800 dark:text-red-200 animate-in fade-in slide-in-from-top-2 duration-200">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span className="flex-1 text-sm font-sans">{displayError}</span>
+            <button
+              onClick={() => setDisplayError(null)}
+              className="p-1 hover:bg-red-100 dark:hover:bg-red-800/30 rounded-full transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Program Starts Pending Card */}
         {programPending && (programPending.startsTomorrow || programPending.startsToday) && (
