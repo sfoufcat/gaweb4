@@ -251,7 +251,25 @@ Key components updated:
 - `CoachProgramsTab` - uses `useInstanceIdLookup` hook to get instanceId
 - `useProgramInstanceBridge` - Bridge hook for gradual migration
 
-### OLD Architecture (Deprecated)
+### OLD Architecture (Deprecated) - DO NOT USE
+
+**⛔ CRITICAL: NEVER use these old field names or patterns:**
+- `programEnrollmentId` → Use `instanceId` instead
+- `programDayIndex` → Use `dayIndex` instead
+- `title` for task matching → Use `label` instead
+- Any functions from `program-engine.ts` → Use `/api/instances/` endpoints
+
+**Tasks collection field requirements (NEW SYSTEM ONLY):**
+```typescript
+// Required fields for program tasks:
+{
+  instanceId: string;      // Links to program_instances doc
+  dayIndex: number;        // Global day index (1-based across program)
+  label: string;           // Task label for matching
+  completed: boolean;      // Completion status
+  // ... other fields
+}
+```
 
 The following collections are fully deprecated:
 - `program_weeks` → Read as fallback only, new data goes to `programs.weeks[]`
