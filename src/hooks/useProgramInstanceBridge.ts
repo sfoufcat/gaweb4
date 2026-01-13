@@ -566,15 +566,20 @@ export function useInstanceIdLookup(options: {
 }) {
   const { programId, enrollmentId, cohortId } = options;
 
+  // CRITICAL: Only look up instance when we have an enrollmentId or cohortId
+  // In template mode (no enrollment/cohort), we should NOT use any instance data
+  const shouldLookup = !!(enrollmentId || cohortId);
+
   // Build lookup URL
   const lookupUrl = useMemo(() => {
+    if (!shouldLookup) return null; // Don't query in template mode
     const params = new URLSearchParams();
     params.set('programId', programId);
     if (enrollmentId) params.set('enrollmentId', enrollmentId);
     if (cohortId) params.set('cohortId', cohortId);
     params.set('limit', '1');
     return `/api/instances?${params.toString()}`;
-  }, [programId, enrollmentId, cohortId]);
+  }, [programId, enrollmentId, cohortId, shouldLookup]);
 
   const { data, isLoading } = useSWR(
     lookupUrl,
@@ -583,6 +588,8 @@ export function useInstanceIdLookup(options: {
   );
 
   const instanceId = useMemo(() => {
+    // In template mode, always return null (no instance)
+    if (!shouldLookup) return null;
     if (!data?.instances?.length) return null;
     const instance = data.instances[0];
 
@@ -591,11 +598,11 @@ export function useInstanceIdLookup(options: {
     if (cohortId && instance.cohortId !== cohortId) return null;
 
     return instance.id;
-  }, [data, enrollmentId, cohortId]);
+  }, [data, enrollmentId, cohortId, shouldLookup]);
 
   return {
     instanceId,
-    isLoading,
+    isLoading: shouldLookup ? isLoading : false,
     isMigrated: !!instanceId,
   };
 }
