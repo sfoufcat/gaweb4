@@ -675,6 +675,44 @@ export function WeekEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [week.id, weekDataFingerprint]); // Include fingerprint to detect data refreshes after save
 
+  // Track previous view context to detect changes
+  const lastViewContext = useRef(viewContext);
+  const lastClientContextId = useRef(clientContextId);
+
+  // CRITICAL: Reset form when view context changes (template ↔ client ↔ cohort)
+  // This ensures template changes don't persist when switching to client/cohort mode
+  useEffect(() => {
+    const viewContextChanged = viewContext !== lastViewContext.current;
+    const contextIdChanged = clientContextId !== lastClientContextId.current;
+
+    if (viewContextChanged || contextIdChanged) {
+      console.log('[WeekEditor] View context changed, resetting form:', {
+        prevView: lastViewContext.current,
+        newView: viewContext,
+        prevContextId: lastClientContextId.current,
+        newContextId: clientContextId,
+        weekNumber: week.weekNumber,
+      });
+
+      lastViewContext.current = viewContext;
+      lastClientContextId.current = clientContextId;
+
+      // Check for pending data in the NEW context
+      const contextPendingData = editorContext?.getPendingData('week', week.id, clientContextId);
+      if (contextPendingData) {
+        setFormData(mergePendingWithDefaults(contextPendingData));
+        setHasChanges(true);
+      } else {
+        // Reset to the week data for the new context
+        setFormData(getDefaultFormData());
+        setHasChanges(false);
+      }
+      setShowSyncButton(false);
+      setSaveStatus('idle');
+      setEditedFields(new Set());
+    }
+  }, [viewContext, clientContextId, editorContext, week.id, week.weekNumber, getDefaultFormData, mergePendingWithDefaults]);
+
   // Watch for reset version changes (discard/save from global buttons)
   useEffect(() => {
     if (editorContext && editorContext.resetVersion !== lastResetVersion.current) {

@@ -218,6 +218,10 @@ export function DayEditor({
     });
   }, [expandedTasks, formData.tasks, taskMemberData, loadingTasks, fetchTaskMembers]);
 
+  // Track previous view context to detect changes
+  const lastViewContext = useRef(viewContext);
+  const lastClientContextId = useRef(clientContextId);
+
   // Reset when day index changes
   useEffect(() => {
     if (dayIndex !== lastDayIndex.current) {
@@ -234,6 +238,37 @@ export function DayEditor({
       }
     }
   }, [dayIndex, getDefaultFormData, editorContext, clientContextId]);
+
+  // CRITICAL: Reset form when view context changes (template ↔ client ↔ cohort)
+  // This ensures template changes don't persist when switching to client/cohort mode
+  useEffect(() => {
+    const viewContextChanged = viewContext !== lastViewContext.current;
+    const contextIdChanged = clientContextId !== lastClientContextId.current;
+
+    if (viewContextChanged || contextIdChanged) {
+      console.log('[DayEditor] View context changed, resetting form:', {
+        prevView: lastViewContext.current,
+        newView: viewContext,
+        prevContextId: lastClientContextId.current,
+        newContextId: clientContextId,
+        dayIndex,
+      });
+
+      lastViewContext.current = viewContext;
+      lastClientContextId.current = clientContextId;
+
+      // Check for pending data in the NEW context
+      const contextPendingData = editorContext?.getPendingData('day', entityId, clientContextId);
+      if (contextPendingData) {
+        setFormData(contextPendingData as unknown as DayFormData);
+        setHasChanges(true);
+      } else {
+        // Reset to the day data for the new context
+        setFormData(getDefaultFormData());
+        setHasChanges(false);
+      }
+    }
+  }, [viewContext, clientContextId, editorContext, entityId, getDefaultFormData, dayIndex]);
 
   // Reset when the day data changes (from props) and there's no pending data
   useEffect(() => {
