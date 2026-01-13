@@ -4078,8 +4078,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     );
                   }
 
+                  // Generate key to force remount when context changes
+                  const weekEditorKey = isClientMode
+                    ? `week-${weekNumber}-client-${clientViewContext.mode === 'client' ? clientViewContext.enrollmentId || 'loading' : 'none'}`
+                    : isCohortMode
+                      ? `week-${weekNumber}-cohort-${cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId || 'loading' : 'none'}`
+                      : `week-${weekNumber}-template`;
+
                   return (
                     <WeekEditor
+                      key={weekEditorKey}
                       week={selectedWeek}
                       days={daysToUse.filter(d =>
                         d.dayIndex >= startDay && d.dayIndex <= endDay
@@ -4267,8 +4275,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   // Find the current day data
                   const currentDay = daysToUse.find(d => d.dayIndex === selectedDayIndex) || null;
 
+                  // Generate key to force remount when context changes
+                  // This ensures form state is reset when switching template/client/cohort
+                  const dayEditorKey = clientViewContext.mode === 'client'
+                    ? `day-${selectedDayIndex}-client-${clientViewContext.enrollmentId || 'loading'}`
+                    : cohortViewContext.mode === 'cohort'
+                      ? `day-${selectedDayIndex}-cohort-${cohortViewContext.cohortId || 'loading'}`
+                      : `day-${selectedDayIndex}-template`;
+
                   return (
                     <DayEditor
+                      key={dayEditorKey}
                       dayIndex={selectedDayIndex}
                       day={currentDay}
                       programId={selectedProgram?.id}
