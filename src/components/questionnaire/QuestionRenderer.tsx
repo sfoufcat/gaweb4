@@ -43,6 +43,11 @@ export function QuestionRenderer({ question, answer, error, onChange }: Question
     }
   };
 
+  // Info steps handle their own layout more compactly
+  if (question.type === 'info') {
+    return <InfoStep question={question} />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Question title */}
@@ -551,38 +556,55 @@ function MediaUploadQuestion({
   );
 }
 
-// Info step (display-only, no input)
+// Info step (display-only, no input) - compact layout
 function InfoStep({ question }: { question: QuestionnaireQuestion }) {
+  const hasMedia = !!question.mediaUrl;
+  const hasTitle = !!question.title;
+  const hasDescription = !!question.description;
+
+  // No content to display
+  if (!hasMedia && !hasTitle && !hasDescription) {
+    return null;
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
+      {/* Title - only if present */}
+      {hasTitle && (
+        <h3 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+          {question.title}
+        </h3>
+      )}
+
+      {/* Description */}
+      {hasDescription && (
+        <p className={cn(
+          "text-[#5f5a55] dark:text-[#b2b6c2] font-albert leading-relaxed",
+          !hasTitle && "text-base" // Slightly larger if it's the only text
+        )}>
+          {question.description}
+        </p>
+      )}
+
       {/* Media display */}
-      {question.mediaUrl && (
-        <div className="rounded-xl overflow-hidden">
+      {hasMedia && (
+        <div className="rounded-xl overflow-hidden mt-2">
           {question.mediaType === 'video' ? (
             <video
               src={question.mediaUrl}
               controls
-              className="w-full max-h-96 object-contain bg-black"
+              className="w-full max-h-80 object-contain bg-black"
             />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={question.mediaUrl}
               alt={question.title || 'Info image'}
-              className="w-full max-h-96 object-contain bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl"
+              className="w-full max-h-80 object-contain bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl"
             />
           )}
         </div>
       )}
-
-      {/* If there's only description but no title, show the description more prominently */}
-      {!question.title && question.description && (
-        <p className="text-lg text-[#1a1a1a] dark:text-[#f5f5f8] font-albert leading-relaxed">
-          {question.description}
-        </p>
-      )}
-
-      {/* Note: title and description are already rendered by QuestionRenderer wrapper */}
     </div>
   );
 }

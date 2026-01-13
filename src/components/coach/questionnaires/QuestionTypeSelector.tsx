@@ -122,8 +122,6 @@ const containerVariants = {
     transition: {
       duration: 0.2,
       ease: [0.4, 0, 0.2, 1] as const,
-      staggerChildren: 0.03,
-      delayChildren: 0.05,
     },
   },
   exit: {
@@ -132,17 +130,6 @@ const containerVariants = {
     y: -10,
     transition: {
       duration: 0.15,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.2,
     },
   },
 };
@@ -178,45 +165,36 @@ export function QuestionTypeSelector({ onSelect, onCancel }: QuestionTypeSelecto
       <div className="p-5 space-y-5">
         {/* Input Steps */}
         <div>
-          <motion.p
-            variants={itemVariants}
-            className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-3 uppercase tracking-wide"
-          >
+          <p className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-3 uppercase tracking-wide">
             {CATEGORY_LABELS.input}
-          </motion.p>
+          </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {inputSteps.map((option, index) => (
-              <StepButton key={option.type} option={option} onSelect={onSelect} index={index} />
+              <StepButton key={option.type} option={option} onSelect={onSelect} />
             ))}
           </div>
         </div>
 
         {/* Upload Steps */}
         <div>
-          <motion.p
-            variants={itemVariants}
-            className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-3 uppercase tracking-wide"
-          >
+          <p className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-3 uppercase tracking-wide">
             {CATEGORY_LABELS.upload}
-          </motion.p>
+          </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {uploadSteps.map((option, index) => (
-              <StepButton key={option.type} option={option} onSelect={onSelect} index={index} />
+              <StepButton key={option.type} option={option} onSelect={onSelect} />
             ))}
           </div>
         </div>
 
         {/* Content & Layout Steps */}
         <div>
-          <motion.p
-            variants={itemVariants}
-            className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-3 uppercase tracking-wide"
-          >
+          <p className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-3 uppercase tracking-wide">
             {CATEGORY_LABELS.content} & {CATEGORY_LABELS.layout}
-          </motion.p>
+          </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {[...contentSteps, ...layoutSteps].map((option, index) => (
-              <StepButton key={option.type} option={option} onSelect={onSelect} index={index} />
+              <StepButton key={option.type} option={option} onSelect={onSelect} />
             ))}
           </div>
         </div>
@@ -228,15 +206,12 @@ export function QuestionTypeSelector({ onSelect, onCancel }: QuestionTypeSelecto
 function StepButton({
   option,
   onSelect,
-  index,
 }: {
   option: StepOption;
   onSelect: (type: QuestionnaireQuestionType) => void;
-  index: number;
 }) {
   return (
     <motion.button
-      variants={itemVariants}
       onClick={() => onSelect(option.type)}
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}

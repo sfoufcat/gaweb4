@@ -13,8 +13,16 @@ interface QuestionnaireFormProps {
   submitting: boolean;
 }
 
+// A page is a group of questions between page breaks
+interface Page {
+  id: string;
+  questions: QuestionnaireQuestion[];
+  isPageBreak: boolean; // If true, this is a page break transition screen
+  pageBreakQuestion?: QuestionnaireQuestion; // The page break question for transition screens
+}
+
 export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: QuestionnaireFormProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [answers, setAnswers] = useState<Map<string, QuestionnaireAnswer>>(new Map());
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
 
@@ -80,31 +88,72 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
     return visible;
   }, [sortedQuestions, answers]);
 
-  // Count actual questions (excluding page breaks and info steps for display)
-  const actualQuestions = useMemo(() => {
-    return visibleQuestions.filter(q => q.type !== 'page_break' && q.type !== 'info');
-  }, [visibleQuestions]);
+  // Group questions into pages (split by page_break)
+  const pages = useMemo(() => {
+    const result: Page[] = [];
+    let currentQuestions: QuestionnaireQuestion[] = [];
 
-  // Calculate current "question number" for progress display
-  const currentQuestionNumber = useMemo(() => {
-    let count = 0;
-    for (let i = 0; i <= currentIndex && i < visibleQuestions.length; i++) {
-      const q = visibleQuestions[i];
-      if (q.type !== 'page_break' && q.type !== 'info') {
-        count++;
+    for (const question of visibleQuestions) {
+      if (question.type === 'page_break') {
+        // Save current page if it has questions
+        if (currentQuestions.length > 0) {
+          result.push({
+            id: `page-${result.length}`,
+            questions: currentQuestions,
+            isPageBreak: false,
+          });
+          currentQuestions = [];
+        }
+        // Add page break transition screen
+        result.push({
+          id: `pagebreak-${question.id}`,
+          questions: [],
+          isPageBreak: true,
+          pageBreakQuestion: question,
+        });
+      } else {
+        currentQuestions.push(question);
       }
     }
-    return count;
-  }, [currentIndex, visibleQuestions]);
 
-  const currentQuestion = visibleQuestions[currentIndex];
-  const isFirstQuestion = currentIndex === 0;
-  const isLastQuestion = currentIndex === visibleQuestions.length - 1;
-  const progress = ((currentIndex + 1) / visibleQuestions.length) * 100;
+    // Don't forget the last page
+    if (currentQuestions.length > 0) {
+      result.push({
+        id: `page-${result.length}`,
+        questions: currentQuestions,
+        isPageBreak: false,
+      });
+    }
 
-  // Check if current item is a page break
-  const isPageBreak = currentQuestion?.type === 'page_break';
-  const isInfoStep = currentQuestion?.type === 'info';
+    return result;
+  }, [visibleQuestions]);
+
+  // Count actual questions (excluding page breaks for display)
+  const actualQuestions = useMemo(() => {
+    return visibleQuestions.filter(q => q.type !== 'page_break');
+  }, [visibleQuestions]);
+
+  // Calculate progress
+  const currentPage = pages[currentPageIndex];
+  const isFirstPage = currentPageIndex === 0;
+  const isLastPage = currentPageIndex === pages.length - 1;
+  const progress = pages.length > 0 ? ((currentPageIndex + 1) / pages.length) * 100 : 0;
+
+  // Calculate which question number we're on for display
+  const currentQuestionNumber = useMemo(() => {
+    let count = 0;
+    for (let i = 0; i < currentPageIndex; i++) {
+      const page = pages[i];
+      if (!page.isPageBreak) {
+        count += page.questions.filter(q => q.type !== 'info').length;
+      }
+    }
+    // Add questions from current page (at least 1 if page has questions)
+    if (currentPage && !currentPage.isPageBreak && currentPage.questions.length > 0) {
+      count += 1;
+    }
+    return Math.max(1, count);
+  }, [pages, currentPageIndex, currentPage]);
 
   // Update answer for a question
   const updateAnswer = useCallback((questionId: string, value: QuestionnaireAnswer['value']) => {
@@ -129,125 +178,151 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
     });
   }, [sortedQuestions]);
 
-  // Validate current question
-  const validateCurrentQuestion = useCallback(() => {
-    if (!currentQuestion) return true;
-
-    // Page breaks and info steps don't need validation
-    if (currentQuestion.type === 'page_break' || currentQuestion.type === 'info') {
+  // Validate a single question
+  const validateQuestion = useCallback((question: QuestionnaireQuestion): boolean => {
+    // Info steps don't need validation
+    if (question.type === 'info') {
       return true;
     }
 
-    const answer = answers.get(currentQuestion.id);
+    const answer = answers.get(question.id);
 
-    if (currentQuestion.required) {
+    if (question.required) {
       if (!answer || answer.value === undefined || answer.value === null) {
-        setErrors(prev => new Map(prev).set(currentQuestion.id, 'This question is required'));
+        setErrors(prev => new Map(prev).set(question.id, 'This question is required'));
         return false;
       }
 
       // Additional validation based on type
       if (typeof answer.value === 'string' && answer.value.trim() === '') {
-        setErrors(prev => new Map(prev).set(currentQuestion.id, 'This question is required'));
+        setErrors(prev => new Map(prev).set(question.id, 'This question is required'));
         return false;
       }
 
       if (Array.isArray(answer.value) && answer.value.length === 0) {
-        setErrors(prev => new Map(prev).set(currentQuestion.id, 'Please select at least one option'));
+        setErrors(prev => new Map(prev).set(question.id, 'Please select at least one option'));
         return false;
       }
     }
 
     // Validate number range
-    if (currentQuestion.type === 'number' && answer?.value !== undefined) {
+    if (question.type === 'number' && answer?.value !== undefined) {
       const numValue = Number(answer.value);
-      if (currentQuestion.minValue !== undefined && numValue < currentQuestion.minValue) {
-        setErrors(prev => new Map(prev).set(currentQuestion.id, `Value must be at least ${currentQuestion.minValue}`));
+      if (question.minValue !== undefined && numValue < question.minValue) {
+        setErrors(prev => new Map(prev).set(question.id, `Value must be at least ${question.minValue}`));
         return false;
       }
-      if (currentQuestion.maxValue !== undefined && numValue > currentQuestion.maxValue) {
-        setErrors(prev => new Map(prev).set(currentQuestion.id, `Value must be at most ${currentQuestion.maxValue}`));
+      if (question.maxValue !== undefined && numValue > question.maxValue) {
+        setErrors(prev => new Map(prev).set(question.id, `Value must be at most ${question.maxValue}`));
         return false;
       }
     }
 
     // Validate scale range
-    if (currentQuestion.type === 'scale' && answer?.value !== undefined) {
+    if (question.type === 'scale' && answer?.value !== undefined) {
       const scaleValue = Number(answer.value);
-      const min = currentQuestion.minValue ?? 1;
-      const max = currentQuestion.maxValue ?? 5;
+      const min = question.minValue ?? 1;
+      const max = question.maxValue ?? 5;
       if (scaleValue < min || scaleValue > max) {
-        setErrors(prev => new Map(prev).set(currentQuestion.id, `Please select a value between ${min} and ${max}`));
+        setErrors(prev => new Map(prev).set(question.id, `Please select a value between ${min} and ${max}`));
         return false;
       }
     }
 
     return true;
-  }, [currentQuestion, answers]);
+  }, [answers]);
+
+  // Validate current page
+  const validateCurrentPage = useCallback(() => {
+    if (!currentPage || currentPage.isPageBreak) return true;
+
+    let allValid = true;
+    for (const question of currentPage.questions) {
+      if (!validateQuestion(question)) {
+        allValid = false;
+      }
+    }
+    return allValid;
+  }, [currentPage, validateQuestion]);
 
   // Handle navigation
   const goToNext = useCallback(() => {
-    if (!validateCurrentQuestion()) return;
+    if (!validateCurrentPage()) return;
 
-    if (isLastQuestion) {
+    if (isLastPage) {
       // Submit the form
       handleSubmit();
     } else {
-      setCurrentIndex(prev => Math.min(prev + 1, visibleQuestions.length - 1));
+      setCurrentPageIndex(prev => Math.min(prev + 1, pages.length - 1));
     }
-  }, [isLastQuestion, validateCurrentQuestion, visibleQuestions.length]);
+  }, [isLastPage, validateCurrentPage, pages.length]);
 
   const goToPrevious = useCallback(() => {
-    setCurrentIndex(prev => Math.max(prev - 1, 0));
+    setCurrentPageIndex(prev => Math.max(prev - 1, 0));
   }, []);
 
   // Handle form submission
   const handleSubmit = useCallback(async () => {
-    // Validate all required questions (skip page breaks and info steps)
+    // Validate all required questions (skip info steps)
     let hasErrors = false;
+    const newErrors = new Map<string, string>();
 
-    for (const question of visibleQuestions) {
-      if (question.type === 'page_break' || question.type === 'info') continue;
+    for (const question of actualQuestions) {
+      if (question.type === 'info') continue;
 
       const answer = answers.get(question.id);
 
       if (question.required) {
         if (!answer || answer.value === undefined || answer.value === null) {
-          setErrors(prev => new Map(prev).set(question.id, 'This question is required'));
+          newErrors.set(question.id, 'This question is required');
           hasErrors = true;
         } else if (typeof answer.value === 'string' && answer.value.trim() === '') {
-          setErrors(prev => new Map(prev).set(question.id, 'This question is required'));
+          newErrors.set(question.id, 'This question is required');
           hasErrors = true;
         } else if (Array.isArray(answer.value) && answer.value.length === 0) {
-          setErrors(prev => new Map(prev).set(question.id, 'Please select at least one option'));
+          newErrors.set(question.id, 'Please select at least one option');
           hasErrors = true;
         }
       }
     }
 
     if (hasErrors) {
-      // Find first question with error and navigate to it
-      for (let i = 0; i < visibleQuestions.length; i++) {
-        if (errors.has(visibleQuestions[i].id)) {
-          setCurrentIndex(i);
-          break;
+      setErrors(newErrors);
+      // Find first page with an error and navigate to it
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        if (!page.isPageBreak) {
+          for (const question of page.questions) {
+            if (newErrors.has(question.id)) {
+              setCurrentPageIndex(i);
+              return;
+            }
+          }
         }
       }
       return;
     }
 
-    // Convert answers map to array (only include actual answers, not page breaks)
+    // Convert answers map to array
     const answersArray = Array.from(answers.values());
     await onSubmit(answersArray);
-  }, [visibleQuestions, answers, errors, onSubmit]);
+  }, [actualQuestions, answers, pages, onSubmit]);
 
-  // Handle keyboard navigation
+  // Handle keyboard navigation (only for single-question pages)
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Don't auto-advance on Enter for pages with multiple questions
+    if (currentPage && !currentPage.isPageBreak && currentPage.questions.length > 1) {
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       goToNext();
     }
-  }, [goToNext]);
+  }, [goToNext, currentPage]);
+
+  // Check if current page is only info steps (no actual questions)
+  const isPageOnlyInfoSteps = currentPage && !currentPage.isPageBreak &&
+    currentPage.questions.every(q => q.type === 'info');
 
   return (
     <div className="min-h-screen flex flex-col" onKeyDown={handleKeyDown}>
@@ -276,20 +351,20 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
             {actualQuestions.length > 0 ? (
               <>Question {Math.min(currentQuestionNumber, actualQuestions.length)} of {actualQuestions.length}</>
             ) : (
-              <>Step {currentIndex + 1} of {visibleQuestions.length}</>
+              <>Step {currentPageIndex + 1} of {pages.length}</>
             )}
           </p>
         </div>
       </header>
 
       {/* Question area */}
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-2xl">
+      <main className="flex-1 px-6 py-8">
+        <div className="w-full max-w-2xl mx-auto">
           <AnimatePresence mode="wait">
-            {isPageBreak ? (
+            {currentPage?.isPageBreak ? (
               // Page Break Transition Screen
               <motion.div
-                key={`page-break-${currentQuestion.id}`}
+                key={currentPage.id}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
@@ -302,17 +377,17 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
                   transition={{ delay: 0.1, duration: 0.3 }}
                   className="space-y-6"
                 >
-                  {currentQuestion.title && (
+                  {currentPage.pageBreakQuestion?.title && (
                     <h2 className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                      {currentQuestion.title}
+                      {currentPage.pageBreakQuestion.title}
                     </h2>
                   )}
-                  {currentQuestion.description && (
+                  {currentPage.pageBreakQuestion?.description && (
                     <p className="text-lg text-[#5f5a55] dark:text-[#b2b6c2] font-albert max-w-md mx-auto">
-                      {currentQuestion.description}
+                      {currentPage.pageBreakQuestion.description}
                     </p>
                   )}
-                  {!currentQuestion.title && !currentQuestion.description && (
+                  {!currentPage.pageBreakQuestion?.title && !currentPage.pageBreakQuestion?.description && (
                     <div className="space-y-4">
                       <div className="w-16 h-16 mx-auto rounded-full bg-brand-accent/10 flex items-center justify-center">
                         <ArrowRight className="w-8 h-8 text-brand-accent" />
@@ -324,21 +399,26 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
                   )}
                 </motion.div>
               </motion.div>
-            ) : currentQuestion ? (
-              // Regular Question or Info Step
+            ) : currentPage && currentPage.questions.length > 0 ? (
+              // Page with questions - render all questions on this page
               <motion.div
-                key={currentQuestion.id}
+                key={currentPage.id}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
+                className="space-y-8"
               >
-                <QuestionRenderer
-                  question={currentQuestion}
-                  answer={answers.get(currentQuestion.id)}
-                  error={errors.get(currentQuestion.id)}
-                  onChange={(value) => updateAnswer(currentQuestion.id, value)}
-                />
+                {currentPage.questions.map((question, index) => (
+                  <div key={question.id}>
+                    <QuestionRenderer
+                      question={question}
+                      answer={answers.get(question.id)}
+                      error={errors.get(question.id)}
+                      onChange={(value) => updateAnswer(question.id, value)}
+                    />
+                  </div>
+                ))}
               </motion.div>
             ) : null}
           </AnimatePresence>
@@ -351,7 +431,7 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
           <Button
             variant="outline"
             onClick={goToPrevious}
-            disabled={isFirstQuestion || submitting}
+            disabled={isFirstPage || submitting}
             className="font-albert"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
@@ -368,12 +448,12 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Submitting...
               </>
-            ) : isLastQuestion ? (
+            ) : isLastPage ? (
               <>
                 <Send className="w-4 h-4 mr-2" />
                 Submit
               </>
-            ) : isPageBreak || isInfoStep ? (
+            ) : currentPage?.isPageBreak || isPageOnlyInfoSteps ? (
               <>
                 Continue
                 <ChevronRight className="w-4 h-4 ml-2" />

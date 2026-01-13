@@ -1206,8 +1206,12 @@ function ChatContent({
 
       for (const channelId of channelsToWatch) {
         try {
+          // Check if channel is already watched/active to avoid duplicate API calls
+          const cid = `messaging:${channelId}`;
+          if (client.activeChannels[cid]?.initialized) {
+            continue; // Already watching this channel
+          }
           const channel = client.channel('messaging', channelId);
-          // Always watch to ensure we get real-time events for unread counts
           await channel.watch();
         } catch (error) {
           console.warn(`Failed to watch channel ${channelId}`, error);
@@ -1312,6 +1316,19 @@ function ChatContent({
       const initChannel = async () => {
         try {
           console.log('Initializing channel:', initialChannelId);
+
+          // Check if channel is already in activeChannels to avoid duplicate watch calls
+          const cid = `messaging:${initialChannelId}`;
+          const existingChannel = client.activeChannels[cid];
+
+          if (existingChannel?.initialized) {
+            setActiveChannel(existingChannel);
+            setChannelInitialized(true);
+            onMobileViewChange('channel');
+            console.log('Channel initialized from cache');
+            return;
+          }
+
           const channel = client.channel('messaging', initialChannelId);
           await channel.watch();
           setActiveChannel(channel);
@@ -1339,15 +1356,31 @@ function ChatContent({
 
     try {
       console.log('Selecting channel:', channelId);
-      // Query for the channel to ensure it's properly initialized with all state
-      // Using queryChannels instead of client.channel() ensures we get the full channel state
+
+      // First, check if we already have this channel in activeChannels (already watched)
+      const cid = `messaging:${channelId}`;
+      const existingChannel = client.activeChannels[cid];
+
+      if (existingChannel) {
+        // Channel is already watched, just set it as active
+        setActiveChannel(existingChannel);
+        onMobileViewChange('channel');
+        return;
+      }
+
+      // Channel not in cache, need to query/watch it
+      // Use watch: false to avoid duplicate watch calls if channel was watched elsewhere
       const channels = await client.queryChannels(
         { type: 'messaging', id: channelId },
         {},
-        { limit: 1, state: true, watch: true }
+        { limit: 1, state: true, watch: false }
       );
 
       if (channels.length > 0) {
+        // Channel exists, watch it only if not already initialized
+        if (!channels[0].initialized) {
+          await channels[0].watch();
+        }
         setActiveChannel(channels[0]);
         onMobileViewChange('channel');
       } else {

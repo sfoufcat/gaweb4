@@ -211,7 +211,8 @@ export function useChatUnreadCounts() {
       // If we receive a notification for a channel we don't have locally, watch it
       if (event.channel_id && event.channel_type) {
         const cid = `${event.channel_type}:${event.channel_id}`;
-        if (!client.activeChannels[cid]) {
+        // Only watch if not already initialized
+        if (!client.activeChannels[cid]?.initialized) {
           try {
             const channel = client.channel(event.channel_type, event.channel_id);
             await channel.watch();
@@ -241,11 +242,15 @@ export function useChatUnreadCounts() {
     const handleAddedToChannel = async (event: Event) => {
       // When user is added to a new channel, ensure we watch it then recalculate
       if (event.channel_id && event.channel_type) {
-        try {
-          const channel = client.channel(event.channel_type, event.channel_id);
-          await channel.watch();
-        } catch (err) {
-          console.warn('Failed to watch new channel:', err);
+        const cid = `${event.channel_type}:${event.channel_id}`;
+        // Only watch if not already in activeChannels
+        if (!client.activeChannels[cid]?.initialized) {
+          try {
+            const channel = client.channel(event.channel_type, event.channel_id);
+            await channel.watch();
+          } catch (err) {
+            console.warn('Failed to watch new channel:', err);
+          }
         }
       }
       setTimeout(() => calculateCounts(), 100);

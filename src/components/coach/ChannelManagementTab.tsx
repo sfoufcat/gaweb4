@@ -20,12 +20,35 @@ import {
   ChevronDown,
   Link as LinkIcon,
   ExternalLink,
+  Bell,
+  Star,
+  Heart,
+  Bookmark,
+  Calendar,
+  Globe,
+  Zap,
+  Coffee,
 } from 'lucide-react';
 import Image from 'next/image';
 import type { OrgChannel, OrgChannelType, OrgCoachingPromo, CoachingPromoDestinationType } from '@/lib/org-channels';
 import type { Program, Funnel } from '@/types';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 // Icon map for channel types
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
@@ -33,13 +56,29 @@ const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   chat: <MessageSquare className="w-5 h-5" />,
   sparkles: <Sparkles className="w-5 h-5" />,
   hash: <Hash className="w-5 h-5" />,
+  bell: <Bell className="w-5 h-5" />,
+  star: <Star className="w-5 h-5" />,
+  heart: <Heart className="w-5 h-5" />,
+  bookmark: <Bookmark className="w-5 h-5" />,
+  calendar: <Calendar className="w-5 h-5" />,
+  globe: <Globe className="w-5 h-5" />,
+  zap: <Zap className="w-5 h-5" />,
+  coffee: <Coffee className="w-5 h-5" />,
 };
 
 const ICON_OPTIONS = [
+  { value: 'hash', label: 'Hash', icon: <Hash className="w-5 h-5" /> },
   { value: 'megaphone', label: 'Megaphone', icon: <Megaphone className="w-5 h-5" /> },
   { value: 'chat', label: 'Chat', icon: <MessageSquare className="w-5 h-5" /> },
   { value: 'sparkles', label: 'Sparkles', icon: <Sparkles className="w-5 h-5" /> },
-  { value: 'hash', label: 'Hash', icon: <Hash className="w-5 h-5" /> },
+  { value: 'bell', label: 'Bell', icon: <Bell className="w-5 h-5" /> },
+  { value: 'star', label: 'Star', icon: <Star className="w-5 h-5" /> },
+  { value: 'heart', label: 'Heart', icon: <Heart className="w-5 h-5" /> },
+  { value: 'bookmark', label: 'Bookmark', icon: <Bookmark className="w-5 h-5" /> },
+  { value: 'calendar', label: 'Calendar', icon: <Calendar className="w-5 h-5" /> },
+  { value: 'globe', label: 'Globe', icon: <Globe className="w-5 h-5" /> },
+  { value: 'zap', label: 'Zap', icon: <Zap className="w-5 h-5" /> },
+  { value: 'coffee', label: 'Coffee', icon: <Coffee className="w-5 h-5" /> },
 ];
 
 interface EditChannelModalProps {
@@ -51,6 +90,7 @@ interface EditChannelModalProps {
 }
 
 function EditChannelModal({ channel, isOpen, onClose, onSave, isNew }: EditChannelModalProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [icon, setIcon] = useState('hash');
@@ -102,173 +142,206 @@ function EditChannelModal({ channel, isOpen, onClose, onSave, isNew }: EditChann
     }
   };
 
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      
-      {/* Modal */}
-      <div className="relative bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-w-lg w-full mx-4 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
-          <h2 className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-            {isNew ? 'Add Channel' : 'Edit Channel'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors"
-          >
-            <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-          </button>
+  // Form content - shared between Dialog and Drawer
+  const formContent = (
+    <form onSubmit={handleSubmit} className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-5">
+        {/* Title */}
+        <div>
+          <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+            Title
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Channel name"
+            className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/50"
+            required
+          />
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Title */}
-          <div>
-            <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-              Title
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Channel name"
-              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/50"
-              required
-            />
-          </div>
+        {/* Subtitle */}
+        <div>
+          <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+            Subtitle <span className="text-[#8c8c8c] font-normal">(optional)</span>
+          </label>
+          <input
+            type="text"
+            value={subtitle}
+            onChange={(e) => setSubtitle(e.target.value)}
+            placeholder="Brief description"
+            className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/50"
+          />
+        </div>
 
-          {/* Subtitle */}
-          <div>
-            <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-              Subtitle <span className="text-[#8c8c8c] font-normal">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={subtitle}
-              onChange={(e) => setSubtitle(e.target.value)}
-              placeholder="Brief description"
-              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/50"
-            />
+        {/* Icon */}
+        <div>
+          <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+            Icon
+          </label>
+          <div className="grid grid-cols-6 gap-2">
+            {ICON_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setIcon(opt.value)}
+                className={`p-2.5 rounded-xl border transition-colors ${
+                  icon === opt.value
+                    ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
+                }`}
+                title={opt.label}
+              >
+                {opt.icon}
+              </button>
+            ))}
           </div>
+        </div>
 
-          {/* Icon */}
-          <div>
-            <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-              Icon
-            </label>
-            <div className="flex gap-2">
-              {ICON_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setIcon(opt.value)}
-                  className={`p-3 rounded-xl border transition-colors ${
-                    icon === opt.value
-                      ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
-                      : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
-                  }`}
-                >
-                  {opt.icon}
-                </button>
-              ))}
+        {/* Toggles */}
+        <div className="space-y-3">
+          {/* Pin to top */}
+          <label className="flex items-center justify-between cursor-pointer group">
+            <div className="flex items-center gap-3">
+              <Pin className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">Pin to top</span>
             </div>
-          </div>
-
-          {/* Toggles */}
-          <div className="space-y-3">
-            {/* Pin to top */}
-            <label className="flex items-center justify-between cursor-pointer group">
-              <div className="flex items-center gap-3">
-                <Pin className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">Pin to top</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPinned(!isPinned)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
-                  isPinned ? 'bg-brand-accent' : 'bg-[#e1ddd8] dark:bg-[#262b35]'
-                }`}
-              >
-                <span
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                    isPinned ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </label>
-
-            {/* Allow member messages */}
-            <label className="flex items-center justify-between cursor-pointer group">
-              <div className="flex items-center gap-3">
-                <MessageSquare className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">Allow members to send messages</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAllowMemberMessages(!allowMemberMessages)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
-                  allowMemberMessages ? 'bg-brand-accent' : 'bg-[#e1ddd8] dark:bg-[#262b35]'
-                }`}
-              >
-                <span
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                    allowMemberMessages ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </label>
-
-            {/* Allow calling */}
-            <label className="flex items-center justify-between cursor-pointer group">
-              <div className="flex items-center gap-3">
-                <Phone className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">Allow audio/video calls</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAllowCalling(!allowCalling)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
-                  allowCalling ? 'bg-brand-accent' : 'bg-[#e1ddd8] dark:bg-[#262b35]'
-                }`}
-              >
-                <span
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                    allowCalling ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </label>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
             <button
               type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] font-albert font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors"
+              onClick={() => setIsPinned(!isPinned)}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 ${
+                isPinned ? 'bg-brand-accent' : 'bg-[#d1cdc8] dark:bg-[#3a4150]'
+              }`}
             >
-              Cancel
+              <span
+                className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  isPinned ? 'translate-x-[18px]' : 'translate-x-0'
+                }`}
+              />
             </button>
+          </label>
+
+          {/* Allow member messages */}
+          <label className="flex items-center justify-between cursor-pointer group">
+            <div className="flex items-center gap-3">
+              <MessageSquare className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">Allow members to send messages</span>
+            </div>
             <button
-              type="submit"
-              disabled={saving || !title.trim()}
-              className="flex-1 px-4 py-2.5 rounded-xl bg-brand-accent font-albert font-medium text-brand-accent-foreground hover:bg-brand-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              type="button"
+              onClick={() => setAllowMemberMessages(!allowMemberMessages)}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 ${
+                allowMemberMessages ? 'bg-brand-accent' : 'bg-[#d1cdc8] dark:bg-[#3a4150]'
+              }`}
             >
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Check className="w-4 h-4" />
-              )}
-              {isNew ? 'Create' : 'Save'}
+              <span
+                className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  allowMemberMessages ? 'translate-x-[18px]' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </label>
+
+          {/* Allow calling */}
+          <label className="flex items-center justify-between cursor-pointer group">
+            <div className="flex items-center gap-3">
+              <Phone className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">Allow audio/video calls</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAllowCalling(!allowCalling)}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 ${
+                allowCalling ? 'bg-brand-accent' : 'bg-[#d1cdc8] dark:bg-[#3a4150]'
+              }`}
+            >
+              <span
+                className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  allowCalling ? 'translate-x-[18px]' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </label>
+        </div>
+      </div>
+
+      {/* Actions - Sticky footer */}
+      <div className="flex-shrink-0 px-4 md:px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 px-4 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving || !title.trim()}
+            className="flex-1 py-2.5 px-4 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          >
+            {saving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Check className="w-4 h-4" />
+            )}
+            {isNew ? 'Create' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+
+  if (!isOpen) return null;
+
+  // Desktop: Dialog
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden rounded-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
+            <DialogTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              {isNew ? 'Add Channel' : 'Edit Channel'}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+              {isNew ? 'Create a new channel for your organization' : 'Update your channel settings'}
+            </DialogDescription>
+          </DialogHeader>
+          {formContent}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Drawer (slide up bottom sheet)
+  return (
+    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent className="max-h-[90vh] flex flex-col">
+        <DrawerHeader className="px-4 pt-2 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
+          <div className="mx-auto w-12 h-1.5 rounded-full bg-[#e1ddd8] dark:bg-[#3a4150] mb-4" />
+          <div className="flex items-center justify-between">
+            <div>
+              <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                {isNew ? 'Add Channel' : 'Edit Channel'}
+              </DrawerTitle>
+              <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                {isNew ? 'Create a new channel' : 'Update channel settings'}
+              </DrawerDescription>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            >
+              <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </DrawerHeader>
+        {formContent}
+        {/* Safe area padding for mobile */}
+        <div className="h-6 flex-shrink-0" />
+      </DrawerContent>
+    </Drawer>
   );
 }
 

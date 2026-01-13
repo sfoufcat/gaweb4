@@ -1030,10 +1030,10 @@ export function AdminUsersTab({
                   placeholder="Search by name or email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-64 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190]"
+                  className="w-full sm:w-64 pl-9 pr-4 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
                 />
                 <svg
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190]"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -1048,7 +1048,7 @@ export function AdminUsersTab({
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:text-[#f5f5f8]"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1056,16 +1056,16 @@ export function AdminUsersTab({
                   </button>
                 )}
               </div>
-              
-              {/* Refresh Icon + Export + Add Button row on mobile */}
-              <div className="flex items-center gap-3">
+
+              {/* Refresh Icon + Export + Add Button row */}
+              <div className="flex items-center gap-2">
                 {/* Refresh Icon */}
                 <button
                   onClick={fetchUsers}
-                  className="p-2.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] active:bg-[#e8e5e1] dark:active:bg-[#1a1e27] rounded-lg border border-[#e1ddd8] dark:border-[#262b35] transition-colors"
+                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
                   title="Refresh"
                 >
-                  <RefreshCw className="w-5 h-5" />
+                  <RefreshCw className="w-4 h-4" />
                 </button>
 
                 {/* Export CSV Button */}
@@ -1073,15 +1073,15 @@ export function AdminUsersTab({
                   <button
                     onClick={handleExportCSV}
                     disabled={selectedUserIds.size === 0}
-                    className="p-2.5 sm:px-4 sm:py-2.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] active:bg-[#e8e5e1] dark:active:bg-[#1a1e27] rounded-lg border border-[#e1ddd8] dark:border-[#262b35] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                    className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
                     title={selectedUserIds.size === 0 ? 'Select users to export' : 'Export selected users to CSV'}
                   >
-                    <Download className="w-5 h-5 sm:w-4 sm:h-4 sm:mr-2" />
-                    <span className="hidden sm:inline font-albert font-medium">Export</span>
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">Export</span>
                   </button>
                 )}
 
-                {/* Add Clients Button - square on mobile, full on desktop */}
+                {/* Add Clients Button */}
                 {showInviteButton && (
                   <button
                     onClick={() => {
@@ -1091,11 +1091,11 @@ export function AdminUsersTab({
                       }
                       setShowInviteDialog(true);
                     }}
-                    className="p-2.5 sm:px-4 sm:py-2.5 bg-brand-accent hover:bg-brand-accent/90 active:bg-[#7a5639] dark:bg-brand-accent dark:hover:bg-brand-accent/90 dark:active:bg-[#96714d] text-white font-albert rounded-lg transition-colors flex items-center justify-center"
+                    className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
                     title="Add New Clients"
                   >
-                    <UserPlus className="w-5 h-5 sm:w-4 sm:h-4 sm:mr-2" />
-                    <span className="hidden sm:inline font-medium">Add New Clients</span>
+                    <UserPlus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Add New Clients</span>
                   </button>
                 )}
               </div>

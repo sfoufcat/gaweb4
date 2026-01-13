@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { X, Plus, Trash2, GripVertical } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import type { CheckInStep, CheckInStepType } from '@/types';
 
 interface CheckInStepConfigEditorProps {
@@ -57,9 +57,13 @@ export function CheckInStepConfigEditor({ step, onClose, onSave }: CheckInStepCo
         return <BreathingConfig config={config} updateConfig={updateConfig} />;
       case 'accept':
         return <AcceptConfig config={config} updateConfig={updateConfig} />;
+      case 'reframe':
       case 'reframe_input':
+        return <AIReframeConfig config={config} updateConfig={updateConfig} isOutput={false} />;
       case 'ai_reframe':
-        return <AIReframeConfig config={config} updateConfig={updateConfig} isOutput={step.type === 'ai_reframe'} />;
+      case 'ai_reframe_input':
+      case 'ai_reframe_output':
+        return <AIReframeConfig config={config} updateConfig={updateConfig} isOutput={true} />;
       case 'begin_manifest':
         return <BeginManifestConfig config={config} updateConfig={updateConfig} />;
       case 'visualization':
@@ -80,22 +84,32 @@ export function CheckInStepConfigEditor({ step, onClose, onSave }: CheckInStepCo
   if (!mounted) return null;
 
   return createPortal(
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
+    <>
+      {/* Backdrop */}
       <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-white dark:bg-[#171b22] rounded-2xl w-full max-w-lg shadow-xl border border-[#e1ddd8] dark:border-[#262b35] max-h-[90vh] overflow-hidden flex flex-col"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
+        onClick={onClose}
+      />
+
+      {/* Modal - slide up on mobile, centered on desktop */}
+      <motion.div
+        initial={{ opacity: 0, y: 100 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 100 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="fixed inset-x-0 bottom-0 md:inset-auto md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-white dark:bg-[#171b22] rounded-t-2xl md:rounded-2xl z-[100] max-h-[85dvh] md:max-h-[90vh] shadow-xl border-t md:border border-[#e1ddd8] dark:border-[#262b35] overflow-hidden flex flex-col"
       >
+        {/* Drag handle for mobile */}
+        <div className="flex justify-center pt-3 pb-1 md:hidden">
+          <div className="w-10 h-1 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full" />
+        </div>
+
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
-          <h2 className="text-xl font-semibold text-text-primary dark:text-[#f5f5f8]">
+        <div className="flex items-center justify-between px-6 py-4 md:p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
+          <h2 className="text-lg md:text-xl font-semibold text-text-primary dark:text-[#f5f5f8]">
             Configure Step
           </h2>
           <button
@@ -107,7 +121,7 @@ export function CheckInStepConfigEditor({ step, onClose, onSave }: CheckInStepCo
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+        <div className="px-6 py-4 md:p-6 space-y-5 md:space-y-6 overflow-y-auto flex-1">
           {/* Step name */}
           <div>
             <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
@@ -127,7 +141,7 @@ export function CheckInStepConfigEditor({ step, onClose, onSave }: CheckInStepCo
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-6 border-t border-[#e1ddd8] dark:border-[#262b35]">
+        <div className="flex gap-3 px-6 py-4 md:p-6 border-t border-[#e1ddd8] dark:border-[#262b35] pb-safe">
           <button
             type="button"
             onClick={onClose}
@@ -144,7 +158,7 @@ export function CheckInStepConfigEditor({ step, onClose, onSave }: CheckInStepCo
           </button>
         </div>
       </motion.div>
-    </motion.div>,
+    </>,
     document.body
   );
 }

@@ -1859,49 +1859,49 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
 
       {/* ===== LANGUAGE SUBTAB ===== */}
       {activeSubtab === 'language' && (
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Submenu - Horizontal on mobile, Vertical on desktop */}
-          <nav className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 md:w-44 flex-shrink-0 -mx-1 px-1">
+        <div className="space-y-6">
+          {/* Horizontal pill-style submenu */}
+          <div className="flex items-center gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
             <button
               type="button"
               onClick={() => setLanguageSubtab('menu')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
                 languageSubtab === 'menu'
-                  ? 'bg-brand-accent text-white shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
               }`}
             >
-              <Menu className="w-4 h-4" />
+              <Menu className="w-3.5 h-3.5" />
               Menu Items
             </button>
             <button
               type="button"
               onClick={() => setLanguageSubtab('features')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
                 languageSubtab === 'features'
-                  ? 'bg-brand-accent text-white shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
               }`}
             >
-              <ListChecks className="w-4 h-4" />
+              <ListChecks className="w-3.5 h-3.5" />
               Core Features
             </button>
             <button
               type="button"
               onClick={() => setLanguageSubtab('content')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
                 languageSubtab === 'content'
-                  ? 'bg-brand-accent text-white shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
               }`}
             >
-              <FileText className="w-4 h-4" />
+              <FileText className="w-3.5 h-3.5" />
               Content Types
             </button>
-          </nav>
+          </div>
 
           {/* Content area */}
-          <div className="flex-1 min-w-0">
+          <div>
             {/* Menu Items Section */}
             {languageSubtab === 'menu' && (
               <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">

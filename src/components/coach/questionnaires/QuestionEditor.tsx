@@ -335,7 +335,7 @@ export function QuestionEditor({
             type="text"
             value={question.title}
             onChange={e => onUpdate({ title: e.target.value })}
-            placeholder="Type your question here..."
+            placeholder={question.type === 'info' ? 'Add a title (optional)...' : question.type === 'page_break' ? 'Section title (optional)...' : 'Type your question here...'}
             className="w-full text-base font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-none outline-none placeholder-[#b2b6c2]"
           />
 
@@ -381,26 +381,28 @@ export function QuestionEditor({
       {/* Expanded Content */}
       {expanded && (
         <div className="space-y-4 pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]/50">
-          {/* Type & Required */}
-          <div className="flex items-center gap-4 flex-wrap">
-            <div>
-              <label className="block text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-1 font-albert">
-                Type
-              </label>
-              <select
-                value={question.type}
-                onChange={e => handleTypeChange(e.target.value as QuestionnaireQuestionType)}
-                className="px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-              >
-                {QUESTION_TYPES.map(type => (
-                  <option key={type.type} value={type.type}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
+          {/* Type & Required - Same Row */}
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              Type
+            </span>
+            <div className="flex items-center gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg">
+              {QUESTION_TYPES.map(type => (
+                <button
+                  key={type.type}
+                  onClick={() => handleTypeChange(type.type)}
+                  className={`px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-all ${
+                    question.type === type.type
+                      ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                  }`}
+                >
+                  {type.label}
+                </button>
+              ))}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-auto">
               <Switch
                 checked={question.required}
                 onCheckedChange={checked => onUpdate({ required: checked })}
