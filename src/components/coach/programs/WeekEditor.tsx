@@ -705,13 +705,25 @@ export function WeekEditor({
       setHasChanges(false);
       return; // Don't register changes this cycle
     }
-    
+
     // Skip registration while context is currently saving
     if (editorContext?.isSaving) {
       console.log('[WeekEditor:changeDetection] Skipping - context is saving');
       return;
     }
-    
+
+    // EARLY EXIT: Check if we've already processed this exact form data + week combination
+    // This prevents infinite loops when week prop doesn't update after save
+    const stateFingerprint = JSON.stringify({
+      formTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
+      weekTasks: week.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
+      weekId: week.id,
+    });
+    if (stateFingerprint === lastRegisteredFingerprint.current) {
+      // Already processed this exact state, skip to prevent infinite loop
+      return;
+    }
+
     const tasksMatch = JSON.stringify(formData.weeklyTasks) === JSON.stringify(week.weeklyTasks || []);
     const changed =
       formData.name !== (week.name || '') ||
@@ -791,14 +803,9 @@ export function WeekEditor({
         editorContext.discardChange(templateKey);
       }
 
-      // Create a fingerprint of the pending data to avoid re-registering the same data
-      // This prevents infinite loops when week prop doesn't update after save
-      const pendingFingerprint = JSON.stringify(pendingDataForContext);
-      if (pendingFingerprint === lastRegisteredFingerprint.current) {
-        // Already registered this exact data, skip to prevent infinite loop
-        return;
-      }
-      lastRegisteredFingerprint.current = pendingFingerprint;
+      // Update fingerprint to track that we've processed this state
+      // (Uses same format as early exit check above)
+      lastRegisteredFingerprint.current = stateFingerprint;
 
       editorContext.registerChange({
         entityType: 'week',

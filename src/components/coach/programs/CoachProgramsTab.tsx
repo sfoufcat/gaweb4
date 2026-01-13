@@ -299,16 +299,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         weeksCount: instance?.weeks?.length,
         weekNumbers: instance?.weeks?.map(w => w.weekNumber),
       });
-      // Log tasks in each day for debugging distribution
+      // Log weeklyTasks and day tasks for debugging
       if (instance?.weeks) {
         for (const week of instance.weeks) {
-          console.log(`[INSTANCE_DATA] Week ${week.weekNumber} days:`,
-            week.days?.map(d => ({
-              globalDayIndex: d.globalDayIndex,
-              tasksCount: d.tasks?.length || 0,
-              taskLabels: d.tasks?.map(t => t.label)
-            }))
-          );
+          // Log weeklyTasks (weekly tasks before distribution)
+          console.log(`[INSTANCE_DATA] Week ${week.weekNumber}:`, {
+            weeklyTasksCount: week.weeklyTasks?.length ?? 0,
+            weeklyTaskLabels: week.weeklyTasks?.map(t => t.label),
+            daysCount: week.days?.length ?? 0,
+          });
         }
       }
     }
