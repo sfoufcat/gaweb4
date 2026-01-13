@@ -1087,15 +1087,14 @@ export function SquadFormDialog({
   return (
     <Drawer open={open} onOpenChange={(open) => !open && onClose()}>
       <DrawerContent className="max-h-[90vh] flex flex-col">
-        <DrawerHeader className="px-4 pt-2 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
-          <div className="mx-auto w-12 h-1.5 rounded-full bg-[#e1ddd8] dark:bg-[#3a4150] mb-4" />
+        <DrawerHeader className="px-4 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                 {squad ? 'Edit Squad' : 'Create Squad'}
               </DrawerTitle>
-              <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-                {squad ? 'Update squad settings' : 'Create a new community'}
+              <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+                {squad ? 'Update squad settings' : 'Squads are perfect for evergreen groups, ongoing communities, or paid peer groups that don\'t follow a fixed program schedule.'}
               </DrawerDescription>
             </div>
             <button

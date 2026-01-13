@@ -8,12 +8,14 @@ interface QuestionOptionEditorProps {
   options: QuestionnaireOption[];
   onChange: (options: QuestionnaireOption[]) => void;
   allowImages?: boolean;
+  isMultiChoice?: boolean;
 }
 
 export function QuestionOptionEditor({
   options,
   onChange,
   allowImages = false,
+  isMultiChoice = false,
 }: QuestionOptionEditorProps) {
   // Add new option
   const handleAddOption = () => {
@@ -67,6 +69,7 @@ export function QuestionOptionEditor({
             onUpdate={updates => handleUpdateOption(option.id, updates)}
             onDelete={() => handleDeleteOption(option.id)}
             canDelete={options.length > 2}
+            isMultiChoice={isMultiChoice}
           />
         ))}
       </Reorder.Group>
@@ -87,11 +90,13 @@ function OptionItem({
   onUpdate,
   onDelete,
   canDelete,
+  isMultiChoice,
 }: {
   option: QuestionnaireOption;
   onUpdate: (updates: Partial<QuestionnaireOption>) => void;
   onDelete: () => void;
   canDelete: boolean;
+  isMultiChoice: boolean;
 }) {
   const dragControls = useDragControls();
 
@@ -111,8 +116,15 @@ function OptionItem({
       </div>
 
       {/* Option Input */}
-      <div className="flex-1 flex items-center gap-2">
-        <div className="w-4 h-4 rounded-full border-2 border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0" />
+      <div className="flex-1 flex items-center gap-2 min-w-0">
+        {/* Radio/Checkbox indicator - app-native styling */}
+        {isMultiChoice ? (
+          // Checkbox style for multi-choice
+          <div className="w-[18px] h-[18px] rounded-md border-2 border-[#d1cdc8] dark:border-[#3a4150] flex-shrink-0" />
+        ) : (
+          // Radio style for single-choice
+          <div className="w-[18px] h-[18px] rounded-full border-2 border-[#d1cdc8] dark:border-[#3a4150] flex-shrink-0" />
+        )}
         <input
           type="text"
           value={option.label}
@@ -126,7 +138,7 @@ function OptionItem({
             onUpdate({ label, value: value || option.value });
           }}
           placeholder="Option label"
-          className="flex-1 px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+          className="flex-1 min-w-0 px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
         />
       </div>
 
@@ -134,7 +146,7 @@ function OptionItem({
       <button
         onClick={onDelete}
         disabled={!canDelete}
-        className={`p-2 rounded-lg transition-colors ${
+        className={`p-2 rounded-lg transition-colors flex-shrink-0 ${
           canDelete
             ? 'opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/20'
             : 'opacity-0 cursor-not-allowed'

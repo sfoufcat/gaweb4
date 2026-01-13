@@ -424,8 +424,7 @@ function ClientPickerModal({
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DrawerContent className="max-h-[85vh] flex flex-col">
-        <DrawerHeader className="px-6 pt-4 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35]">
-          <div className="mx-auto w-12 h-1.5 rounded-full bg-[#e1ddd8] dark:bg-[#3a4150] mb-4" />
+        <DrawerHeader className="px-6 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35]">
           <DrawerTitle className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
             Select Client
           </DrawerTitle>

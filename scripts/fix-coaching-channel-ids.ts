@@ -13,22 +13,31 @@
  */
 
 import { createHash } from 'crypto';
-import { initializeApp, cert, getApps, App } from 'firebase-admin/app';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { StreamChat } from 'stream-chat';
 
 // Initialize Firebase Admin if not already initialized
 function getAdminDb(): Firestore {
-  let app: App;
   if (getApps().length === 0) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}');
-    app = initializeApp({
-      credential: cert(serviceAccount),
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+    if (!projectId || !clientEmail || !privateKey) {
+      console.error('Missing Firebase credentials. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY.');
+      process.exit(1);
+    }
+
+    initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        privateKey: privateKey.replace(/\\n/g, '\n'),
+      }),
     });
-  } else {
-    app = getApps()[0];
   }
-  return getFirestore(app);
+  return getFirestore();
 }
 
 // Generate the new shorter channel ID (must match the server-side function)

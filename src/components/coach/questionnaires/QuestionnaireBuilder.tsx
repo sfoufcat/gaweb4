@@ -503,7 +503,7 @@ function QuestionItem({
         </div>
 
         {/* Question Editor */}
-        <div className="flex-1 py-4 pr-4">
+        <div className="flex-1 min-w-0 py-4 pr-4">
           <QuestionEditor
             question={question}
             onUpdate={onUpdate}

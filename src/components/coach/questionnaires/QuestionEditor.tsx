@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Trash2, Copy, ChevronDown, ChevronUp, Image, Video, X, Upload, Loader2 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
+import { Trash2, Copy, X, Loader2 } from 'lucide-react';
 import { QuestionOptionEditor } from './QuestionOptionEditor';
 import { SkipLogicEditor } from './SkipLogicEditor';
 import type {
@@ -10,7 +9,7 @@ import type {
   QuestionnaireQuestionType,
   QuestionnaireOption,
 } from '@/types/questionnaire';
-import { getQuestionTypeInfo, QUESTION_TYPES } from '@/types/questionnaire';
+import { getQuestionTypeInfo } from '@/types/questionnaire';
 
 interface QuestionEditorProps {
   question: QuestionnaireQuestion;
@@ -27,44 +26,31 @@ export function QuestionEditor({
   onDuplicate,
   allQuestions,
 }: QuestionEditorProps) {
-  const [expanded, setExpanded] = useState(true);
   const [showSkipLogic, setShowSkipLogic] = useState(
     (question.skipLogic?.length || 0) > 0
   );
 
   const typeInfo = getQuestionTypeInfo(question.type);
 
-  // Handle type change
-  const handleTypeChange = (newType: QuestionnaireQuestionType) => {
-    const updates: Partial<QuestionnaireQuestion> = { type: newType };
-
-    // Reset type-specific fields
-    if (newType === 'single_choice' || newType === 'multi_choice') {
-      if (!question.options?.length) {
-        updates.options = [
-          { id: crypto.randomUUID(), label: 'Option 1', value: 'option_1', order: 0 },
-          { id: crypto.randomUUID(), label: 'Option 2', value: 'option_2', order: 1 },
-        ];
-      }
-    } else if (newType === 'scale') {
-      updates.minValue = question.minValue ?? 1;
-      updates.maxValue = question.maxValue ?? 5;
-      updates.scaleLabels = question.scaleLabels ?? { min: 'Low', max: 'High' };
-    }
-
-    onUpdate(updates);
-  };
-
   // Render type-specific configuration
   const renderTypeConfig = () => {
     switch (question.type) {
       case 'single_choice':
+        return (
+          <QuestionOptionEditor
+            options={question.options || []}
+            onChange={options => onUpdate({ options })}
+            allowImages
+            isMultiChoice={false}
+          />
+        );
       case 'multi_choice':
         return (
           <QuestionOptionEditor
             options={question.options || []}
             onChange={options => onUpdate({ options })}
             allowImages
+            isMultiChoice={true}
           />
         );
 
@@ -329,7 +315,7 @@ export function QuestionEditor({
     <div className="space-y-4">
       {/* Question Header */}
       <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {/* Question Title - Inline Editable */}
           <input
             type="text"
@@ -350,7 +336,7 @@ export function QuestionEditor({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <button
             onClick={onDuplicate}
             className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
@@ -358,65 +344,26 @@ export function QuestionEditor({
           >
             <Copy className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
           </button>
+          {/* Required Toggle */}
           <button
-            onClick={onDelete}
-            className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-            title="Delete"
+            type="button"
+            onClick={() => onUpdate({ required: !question.required })}
+            className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 ${
+              question.required ? 'bg-brand-accent' : 'bg-[#d1cdc8] dark:bg-[#3a4150]'
+            }`}
+            title={question.required ? 'Required' : 'Optional'}
           >
-            <Trash2 className="w-4 h-4 text-red-500" />
-          </button>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-          >
-            {expanded ? (
-              <ChevronUp className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-            )}
+            <span
+              className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                question.required ? 'translate-x-[18px]' : 'translate-x-0'
+              }`}
+            />
           </button>
         </div>
       </div>
 
-      {/* Expanded Content */}
-      {expanded && (
-        <div className="space-y-4 pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]/50">
-          {/* Type & Required - Same Row */}
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-              Type
-            </span>
-            <div className="flex items-center gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg">
-              {QUESTION_TYPES.map(type => (
-                <button
-                  key={type.type}
-                  onClick={() => handleTypeChange(type.type)}
-                  className={`px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-all ${
-                    question.type === type.type
-                      ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                  }`}
-                >
-                  {type.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2 ml-auto">
-              <Switch
-                checked={question.required}
-                onCheckedChange={checked => onUpdate({ required: checked })}
-                id={`required-${question.id}`}
-              />
-              <label
-                htmlFor={`required-${question.id}`}
-                className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer"
-              >
-                Required
-              </label>
-            </div>
-          </div>
-
+      {/* Content */}
+      <div className="space-y-4 pt-3">
           {/* Type-specific configuration */}
           {renderTypeConfig()}
 
@@ -441,8 +388,7 @@ export function QuestionEditor({
               )}
             </div>
           )}
-        </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -372,8 +372,7 @@ export function CheckInFlowEditorDialog({
   return (
     <Drawer open={true} onOpenChange={(open) => !open && onClose()}>
       <DrawerContent className="max-h-[90vh] flex flex-col">
-        <DrawerHeader className="px-4 pt-2 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
-          <div className="mx-auto w-12 h-1.5 rounded-full bg-[#e1ddd8] dark:bg-[#3a4150] mb-4" />
+        <DrawerHeader className="px-4 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">

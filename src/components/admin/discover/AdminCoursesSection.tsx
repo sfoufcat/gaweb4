@@ -1001,7 +1001,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
               </p>
             </div>
             
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-4">
               {/* Search */}
               <div className="relative">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9ca3af]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1015,50 +1015,59 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
                   className="pl-9 pr-4 py-1.5 w-48 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
                 />
               </div>
-              
+
               {/* Category Filter */}
               {categories.length > 0 && (
-                <select
-                  value={categoryFilter}
-                  onChange={e => setCategoryFilter(e.target.value)}
-                  className="appearance-none bg-transparent pl-0 pr-4 py-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:outline-none font-albert text-sm cursor-pointer"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0 center', backgroundSize: '12px' }}
+                <Select
+                  value={categoryFilter || 'all'}
+                  onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}
                 >
-                  <option value="">All Categories</option>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-auto px-3 py-1.5 min-w-[130px] bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 font-albert text-sm">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
 
               {/* Level Filter */}
               {levels.length > 0 && (
-                <select
-                  value={levelFilter}
-                  onChange={e => setLevelFilter(e.target.value)}
-                  className="appearance-none bg-transparent pl-0 pr-4 py-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:outline-none font-albert text-sm cursor-pointer"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0 center', backgroundSize: '12px' }}
+                <Select
+                  value={levelFilter || 'all'}
+                  onValueChange={(value) => setLevelFilter(value === 'all' ? '' : value)}
                 >
-                  <option value="">All Levels</option>
-                  {levels.map(level => (
-                    <option key={level} value={level}>{level}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-auto px-3 py-1.5 min-w-[110px] bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 font-albert text-sm">
+                    <SelectValue placeholder="All Levels" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    {levels.map(level => (
+                      <SelectItem key={level} value={level}>{level}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
 
               {/* Track Filter */}
-              <select
-                value={trackFilter}
-                onChange={e => setTrackFilter(e.target.value)}
-                className="appearance-none bg-transparent pl-0 pr-4 py-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:outline-none font-albert text-sm cursor-pointer"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0 center', backgroundSize: '12px' }}
+              <Select
+                value={trackFilter || 'all'}
+                onValueChange={(value) => setTrackFilter(value === 'all' ? '' : value)}
               >
-                <option value="">All Tracks</option>
-                <option value="none">No Track</option>
-                {TRACK_OPTIONS.filter(t => t.value).map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
+                <SelectTrigger className="h-auto px-3 py-1.5 min-w-[110px] bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 font-albert text-sm">
+                  <SelectValue placeholder="All Tracks" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Tracks</SelectItem>
+                  <SelectItem value="none">No Track</SelectItem>
+                  {TRACK_OPTIONS.filter(t => t.value).map(option => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               
               <button
                 onClick={() => { setCourseToEdit(null); setIsFormOpen(true); }}

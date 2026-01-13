@@ -118,13 +118,15 @@ export async function GET() {
 
     const { organizationId } = await requireCoachWithOrg();
 
-    console.log(`[COACH_QUESTIONNAIRES] Fetching questionnaires for organization: ${organizationId}`);
+    console.log(`[COACH_QUESTIONNAIRES_GET] Fetching questionnaires for organization: ${organizationId}`);
 
     const snapshot = await adminDb
       .collection('questionnaires')
       .where('organizationId', '==', organizationId)
       .orderBy('createdAt', 'desc')
       .get();
+
+    console.log(`[COACH_QUESTIONNAIRES_GET] Found ${snapshot.docs.length} questionnaires for org ${organizationId}`);
 
     const questionnaires = snapshot.docs.map(doc => {
       const data = doc.data();
@@ -230,7 +232,7 @@ export async function POST(request: NextRequest) {
 
     const docRef = await adminDb.collection('questionnaires').add(questionnaireData);
 
-    console.log(`[COACH_QUESTIONNAIRES] Created questionnaire ${docRef.id} in organization ${organizationId}`);
+    console.log(`[COACH_QUESTIONNAIRES_POST] Created questionnaire ${docRef.id} in organization ${organizationId}`);
 
     return NextResponse.json(
       {

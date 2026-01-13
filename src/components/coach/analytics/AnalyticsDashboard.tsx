@@ -93,25 +93,25 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics', initi
     <div>
       {/* Header with tabs and GA button */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all duration-200 ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium font-albert flex items-center gap-2 transition-all ${
                 activeTab === tab.id
-                  ? 'bg-brand-accent text-white shadow-md scale-[1.02]'
-                  : 'bg-[#e1ddd8]/50 text-[#5f5a55] hover:bg-[#e1ddd8] dark:bg-[#272d38]/50 dark:text-[#b2b6c2] dark:hover:bg-[#272d38] hover:scale-[1.01]'
+                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
               }`}
             >
-              <span className={`transition-transform duration-200 ${activeTab === tab.id ? 'scale-110' : ''}`}>
+              <span className="w-4 h-4">
                 {tab.icon}
               </span>
               {tab.label}
             </button>
           ))}
         </div>
-        
+
         <GAConnectButton apiBasePath={apiBasePath} />
       </div>
 
