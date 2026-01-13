@@ -296,23 +296,23 @@ export function FunnelEditorDialog({
 
   // Form content - shared between Dialog and Drawer
   const formContent = (
-    <form onSubmit={handleSubmit} className="flex flex-col h-full">
+    <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-5">
           {/* Target Type Toggle (only for create) */}
           {mode === 'create' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                   Funnel Target *
                 </label>
                 <div className="flex gap-2 p-1 bg-[#f5f3f0] dark:bg-[#1a1f27] rounded-lg">
                   <button
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, targetType: 'program', squadId: '', contentId: '' }))}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-albert font-medium transition-all ${
                       formData.targetType === 'program'
-                        ? 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8]'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                     }`}
                   >
                     <Layers className="w-4 h-4" />
@@ -321,10 +321,10 @@ export function FunnelEditorDialog({
                   <button
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, targetType: 'squad', programId: '', contentId: '' }))}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-albert font-medium transition-all ${
                       formData.targetType === 'squad'
-                        ? 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8]'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                     }`}
                   >
                     <UsersRound className="w-4 h-4" />
@@ -333,17 +333,17 @@ export function FunnelEditorDialog({
                   <button
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, targetType: 'content', programId: '', squadId: '' }))}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-albert font-medium transition-all ${
                       formData.targetType === 'content'
-                        ? 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8]'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                     }`}
                   >
                     <FileText className="w-4 h-4" />
                     Content
                   </button>
                 </div>
-                <p className="text-xs text-text-muted dark:text-[#7f8694] mt-2">
+                <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-2">
                   {getTargetDescription()}
                 </p>
               </div>
@@ -351,13 +351,13 @@ export function FunnelEditorDialog({
               {/* Program Selector (when targetType is program) */}
               {formData.targetType === 'program' && (
                 <div>
-                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                     Program *
                   </label>
                   <select
                     value={formData.programId}
                     onChange={(e) => setFormData(prev => ({ ...prev, programId: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8]"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                     required={formData.targetType === 'program'}
                   >
                     <option value="">Select a program</option>
@@ -373,13 +373,13 @@ export function FunnelEditorDialog({
               {/* Squad Selector (when targetType is squad) */}
               {formData.targetType === 'squad' && (
                 <div>
-                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                     Squad *
                   </label>
                   <select
                     value={formData.squadId}
                     onChange={(e) => setFormData(prev => ({ ...prev, squadId: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8]"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                     required={formData.targetType === 'squad'}
                   >
                     <option value="">Select a squad</option>
@@ -390,7 +390,7 @@ export function FunnelEditorDialog({
                     ))}
                   </select>
                   {squads.length === 0 && (
-                    <p className="text-xs text-amber-600 mt-1">
+                    <p className="text-xs text-amber-600 font-albert mt-1">
                       No squads available. Create a squad first.
                     </p>
                   )}
@@ -401,7 +401,7 @@ export function FunnelEditorDialog({
               {formData.targetType === 'content' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                       Content Type *
                     </label>
                     <div className="grid grid-cols-5 gap-2">
@@ -410,27 +410,27 @@ export function FunnelEditorDialog({
                           key={value}
                           type="button"
                           onClick={() => setFormData(prev => ({ ...prev, contentType: value, contentId: '' }))}
-                          className={`flex flex-col items-center gap-1 py-3 px-2 rounded-lg border transition-all ${
+                          className={`flex flex-col items-center gap-1 py-3 px-2 rounded-xl border transition-all ${
                             formData.contentType === value
-                              ? 'bg-brand-accent/10 border-brand-accent text-brand-accent dark:bg-brand-accent/10 dark:border-brand-accent dark:text-brand-accent'
-                              : 'bg-white dark:bg-[#1a1f27] border-[#e1ddd8] dark:border-[#262b35] text-text-secondary dark:text-[#b2b6c2] hover:border-brand-accent/50'
+                              ? 'bg-brand-accent/10 border-brand-accent text-brand-accent'
+                              : 'bg-white dark:bg-[#1a1f27] border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
                           }`}
                         >
                           <Icon className="w-5 h-5" />
-                          <span className="text-xs font-medium">{label}</span>
+                          <span className="text-xs font-albert font-medium">{label}</span>
                         </button>
                       ))}
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                       Select {CONTENT_TYPES.find(t => t.value === formData.contentType)?.label} *
                     </label>
                     <select
                       value={formData.contentId}
                       onChange={(e) => setFormData(prev => ({ ...prev, contentId: e.target.value }))}
-                      className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8]"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                       required={formData.targetType === 'content'}
                       disabled={isLoadingContent}
                     >
@@ -444,7 +444,7 @@ export function FunnelEditorDialog({
                       ))}
                     </select>
                     {!isLoadingContent && contentItems.length === 0 && (
-                      <p className="text-xs text-amber-600 mt-1">
+                      <p className="text-xs text-amber-600 font-albert mt-1">
                         No {formData.contentType}s available. Create one first in the Discover tab.
                       </p>
                     )}
@@ -456,7 +456,7 @@ export function FunnelEditorDialog({
 
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
               Name *
             </label>
             <input
@@ -464,29 +464,29 @@ export function FunnelEditorDialog({
               value={formData.name}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="e.g., Discovery Quiz"
-              className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8]"
+              className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
               required
             />
           </div>
 
           {/* Slug */}
           <div>
-            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
               URL Slug *
             </label>
             <div className="flex items-center">
-              <span className="px-3 py-2 bg-[#f5f3f0] dark:bg-[#1a1f27] border border-r-0 border-[#e1ddd8] dark:border-[#262b35] rounded-l-lg text-text-muted dark:text-[#7f8694] text-sm whitespace-nowrap">
+              <span className="px-3 py-2.5 bg-[#f5f3f0] dark:bg-[#1a1f27] border border-r-0 border-[#e1ddd8] dark:border-[#262b35] rounded-l-xl text-[#8c8c8c] dark:text-[#7f8694] text-sm font-albert whitespace-nowrap">
                 {getSlugPrefix()}
               </span>
               <input
                 type="text"
                 value={formData.slug}
-                onChange={(e) => setFormData(prev => ({ 
-                  ...prev, 
-                  slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') 
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')
                 }))}
                 placeholder="discovery-quiz"
-                className="flex-1 px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-r-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8]"
+                className="flex-1 px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-r-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                 required
               />
             </div>
@@ -494,7 +494,7 @@ export function FunnelEditorDialog({
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
               Description (optional)
             </label>
             <textarea
@@ -502,41 +502,67 @@ export function FunnelEditorDialog({
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Brief description for internal use"
               rows={2}
-              className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8] resize-none"
+              className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
             />
           </div>
 
           {/* Access Type */}
           <div>
-            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
               Access Type
             </label>
             <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="accessType"
-                  value="public"
-                  checked={formData.accessType === 'public'}
-                  onChange={(e) => setFormData(prev => ({ ...prev, accessType: e.target.value as 'public' | 'invite_only' }))}
-                  className="text-brand-accent focus:ring-brand-accent dark:ring-brand-accent"
-                />
-                <span className="text-text-primary dark:text-[#f5f5f8]">Public</span>
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <span className="relative flex items-center justify-center">
+                  <input
+                    type="radio"
+                    name="accessType"
+                    value="public"
+                    checked={formData.accessType === 'public'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, accessType: e.target.value as 'public' | 'invite_only' }))}
+                    className="sr-only"
+                  />
+                  <span className={`w-[18px] h-[18px] rounded-full border-2 transition-colors ${
+                    formData.accessType === 'public'
+                      ? 'border-brand-accent'
+                      : 'border-[#d1cdc8] dark:border-[#3a4150]'
+                  }`}>
+                    {formData.accessType === 'public' && (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <span className="w-2.5 h-2.5 rounded-full bg-brand-accent" />
+                      </span>
+                    )}
+                  </span>
+                </span>
+                <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm">Public</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="accessType"
-                  value="invite_only"
-                  checked={formData.accessType === 'invite_only'}
-                  onChange={(e) => setFormData(prev => ({ ...prev, accessType: e.target.value as 'public' | 'invite_only' }))}
-                  className="text-brand-accent focus:ring-brand-accent dark:ring-brand-accent"
-                />
-                <span className="text-text-primary dark:text-[#f5f5f8]">Invite Only</span>
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <span className="relative flex items-center justify-center">
+                  <input
+                    type="radio"
+                    name="accessType"
+                    value="invite_only"
+                    checked={formData.accessType === 'invite_only'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, accessType: e.target.value as 'public' | 'invite_only' }))}
+                    className="sr-only"
+                  />
+                  <span className={`w-[18px] h-[18px] rounded-full border-2 transition-colors ${
+                    formData.accessType === 'invite_only'
+                      ? 'border-brand-accent'
+                      : 'border-[#d1cdc8] dark:border-[#3a4150]'
+                  }`}>
+                    {formData.accessType === 'invite_only' && (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <span className="w-2.5 h-2.5 rounded-full bg-brand-accent" />
+                      </span>
+                    )}
+                  </span>
+                </span>
+                <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm">Invite Only</span>
               </label>
             </div>
-            <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
-              {formData.accessType === 'public' 
+            <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1">
+              {formData.accessType === 'public'
                 ? 'Anyone with the link can access this funnel'
                 : 'Only users with an invite code can access this funnel'}
             </p>
@@ -549,11 +575,11 @@ export function FunnelEditorDialog({
                 checked={formData.isDefault}
                 onChange={(checked) => setFormData(prev => ({ ...prev, isDefault: checked }))}
               />
-              <span className="text-text-primary dark:text-[#f5f5f8] cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, isDefault: !prev.isDefault }))}>
+              <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, isDefault: !prev.isDefault }))}>
                 Set as default funnel for this {formData.targetType === 'content' ? 'content item' : formData.targetType}
               </span>
             </div>
-            <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1 ml-6">
+            <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1 ml-6">
               {formData.targetType === 'squad'
                 ? 'The default funnel is used when users visit /join/squad/[slug] without specifying a funnel'
                 : formData.targetType === 'content'
@@ -563,25 +589,25 @@ export function FunnelEditorDialog({
           </div>
 
           {/* Tracking Settings (Collapsible) */}
-          <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg overflow-hidden">
+          <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
             <button
               type="button"
               onClick={() => setShowTrackingSettings(!showTrackingSettings)}
               className="w-full flex items-center justify-between p-4 bg-[#faf8f6] dark:bg-[#1a1f27] hover:bg-[#f5f3f0] dark:hover:bg-[#1e232c] transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Code className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+                <Code className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
                 <div className="text-left">
-                  <span className="font-medium text-text-primary dark:text-[#f5f5f8]">Tracking Pixels</span>
-                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-0.5">
+                  <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">Tracking Pixels</span>
+                  <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-0.5">
                     Meta Pixel, Google Analytics, custom code
                   </p>
                 </div>
               </div>
               {showTrackingSettings ? (
-                <ChevronUp className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+                <ChevronUp className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
               ) : (
-                <ChevronDown className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+                <ChevronDown className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
               )}
             </button>
 
@@ -589,7 +615,7 @@ export function FunnelEditorDialog({
               <div className="p-4 space-y-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
                 {/* Meta Pixel ID */}
                 <div>
-                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                     Meta Pixel ID
                   </label>
                   <input
@@ -600,16 +626,16 @@ export function FunnelEditorDialog({
                       tracking: { ...prev.tracking, metaPixelId: e.target.value }
                     }))}
                     placeholder="e.g., 1234567890"
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c]"
                   />
-                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
+                  <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1">
                     Facebook/Meta Pixel ID for conversion tracking
                   </p>
                 </div>
 
                 {/* Google Analytics ID */}
                 <div>
-                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                     Google Analytics ID
                   </label>
                   <input
@@ -620,16 +646,16 @@ export function FunnelEditorDialog({
                       tracking: { ...prev.tracking, googleAnalyticsId: e.target.value }
                     }))}
                     placeholder="e.g., G-XXXXXXXXXX"
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c]"
                   />
-                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
+                  <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1">
                     Google Analytics 4 measurement ID
                   </p>
                 </div>
 
                 {/* Google Ads ID */}
                 <div>
-                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                     Google Ads ID
                   </label>
                   <input
@@ -640,16 +666,16 @@ export function FunnelEditorDialog({
                       tracking: { ...prev.tracking, googleAdsId: e.target.value }
                     }))}
                     placeholder="e.g., AW-XXXXXXXXXX"
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c]"
                   />
-                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
+                  <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1">
                     Google Ads conversion tracking ID
                   </p>
                 </div>
 
                 {/* Custom Head HTML */}
                 <div>
-                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                     Custom Head Code
                   </label>
                   <textarea
@@ -660,16 +686,16 @@ export function FunnelEditorDialog({
                     }))}
                     placeholder="<!-- TikTok Pixel, Snapchat Pixel, etc. -->"
                     rows={3}
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent resize-none font-mono text-sm text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 resize-none font-mono text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c]"
                   />
-                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
+                  <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1">
                     Custom scripts injected in &lt;head&gt; - use for other tracking pixels
                   </p>
                 </div>
 
                 {/* Custom Body HTML */}
                 <div>
-                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                     Custom Body Code
                   </label>
                   <textarea
@@ -680,9 +706,9 @@ export function FunnelEditorDialog({
                     }))}
                     placeholder="<!-- Scripts that need to run in body -->"
                     rows={3}
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent resize-none font-mono text-sm text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 resize-none font-mono text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c]"
                   />
-                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
+                  <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1">
                     Custom scripts injected in &lt;body&gt;
                   </p>
                 </div>
@@ -692,7 +718,7 @@ export function FunnelEditorDialog({
 
           {/* Error */}
           {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm font-albert">
               {error}
             </div>
           )}
@@ -725,7 +751,7 @@ export function FunnelEditorDialog({
   if (isDesktop) {
     return (
       <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden rounded-2xl max-h-[85vh] flex flex-col">
+        <DialogContent className="max-w-2xl p-0 gap-0 rounded-2xl max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
             <DialogTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
               {mode === 'create' ? 'Create New Funnel' : 'Edit Funnel'}
