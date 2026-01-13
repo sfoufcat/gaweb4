@@ -395,47 +395,38 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const [pendingNavigationAction, setPendingNavigationAction] = useState<(() => void) | null>(null);
 
-  // Computed days array - use instance data (new system) or template days
+  // Computed days array - COMPLETELY SEPARATE: either instance data OR template data
+  // ARCHITECTURE: Template and instance are NEVER merged. They are separate data stores.
+  // - Template mode: shows programDays (template data only)
+  // - Client/cohort mode: shows instanceDays (instance data only)
   const daysToUse = useMemo(() => {
+    // Determine if we're in client/cohort mode (instance mode)
+    const isInstanceMode = !!(
+      (clientViewContext.mode === 'client' && clientViewContext.enrollmentId) ||
+      (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId)
+    );
+
     console.log('[DAYS_TO_USE] Computing:', {
+      isInstanceMode,
       hasInstance: !!instance,
       instanceDaysCount: instanceDays.length,
       programDaysCount: programDays.length,
+      clientMode: clientViewContext.mode,
+      cohortMode: cohortViewContext.mode,
     });
 
-    // Use instance data when available (cohort/client views)
-    if (instance && instanceDays.length > 0) {
-      console.log('[DAYS_TO_USE] Using INSTANCE branch');
-
-      // If no template days to merge with, return instance days directly
-      if (programDays.length === 0) {
-        console.log('[DAYS_TO_USE] No template days - returning instanceDays directly:', instanceDays.length);
-        return instanceDays;
-      }
-
-      // Merge instance days with template days
-      const mergedDays = [...programDays];
-      for (const instanceDay of instanceDays) {
-        const idx = mergedDays.findIndex(d => d.dayIndex === instanceDay.dayIndex);
-        console.log(`[DAYS_TO_USE] Merging instanceDay ${instanceDay.dayIndex}: found at idx ${idx}, tasks: ${instanceDay.tasks?.length || 0}`);
-        if (idx >= 0) {
-          mergedDays[idx] = {
-            ...mergedDays[idx],
-            tasks: instanceDay.tasks || [],
-            habits: instanceDay.habits || [],
-            title: instanceDay.title || mergedDays[idx].title,
-            summary: instanceDay.summary || mergedDays[idx].summary,
-            dailyPrompt: instanceDay.dailyPrompt || mergedDays[idx].dailyPrompt,
-          };
-        }
-      }
-      console.log('[DAYS_TO_USE] Merged result:', mergedDays.map(d => ({ dayIndex: d.dayIndex, tasksCount: d.tasks?.length || 0 })));
-      return mergedDays;
+    // INSTANCE MODE: Use ONLY instance days (no template mixing)
+    if (isInstanceMode) {
+      console.log('[DAYS_TO_USE] Using INSTANCE branch (no template merge)');
+      // Return instance days directly - no merging with template
+      // If instance has no days yet, return empty array (not template data!)
+      return instanceDays;
     }
 
-    // Template mode: use template days
+    // TEMPLATE MODE: Use ONLY template days
+    console.log('[DAYS_TO_USE] Using TEMPLATE branch');
     return programDays;
-  }, [programDays, instance, instanceDays]);
+  }, [programDays, instanceDays, clientViewContext, cohortViewContext, instance]);
 
   // Cycle selection state (for evergreen programs)
   const [selectedCycle, setSelectedCycle] = useState<number | undefined>(undefined);
@@ -755,20 +746,27 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   }, []);
 
   // Memoized weeks prop for sidebar to prevent re-render loops
+  // ARCHITECTURE: Template and instance are COMPLETELY SEPARATE - no mixing
   const sidebarWeeks = useMemo(() => {
-    // DEBUG: Log which source is being used
+    // Determine if we're in client/cohort mode (instance mode)
+    const isInstanceMode = !!(
+      (clientViewContext.mode === 'client' && clientViewContext.enrollmentId) ||
+      (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId)
+    );
+
     console.log('[SIDEBAR_WEEKS_SOURCE]', {
+      isInstanceMode,
       hasInstance: !!instance,
       instanceWeeksLength: instanceWeeks.length,
-      clientMode: clientViewContext.mode,
       programWeeksLength: programWeeks.length,
-      willUseInstance: !!(instance && instanceWeeks.length > 0),
-      willUseClientWeeks: clientViewContext.mode === 'client',
+      clientMode: clientViewContext.mode,
+      cohortMode: cohortViewContext.mode,
     });
 
-    // NEW SYSTEM: Use instance weeks when available
-    if (instance && instanceWeeks.length > 0) {
+    // INSTANCE MODE: Use ONLY instance weeks (no template fallback!)
+    if (isInstanceMode) {
       const now = new Date().toISOString();
+      // Return instance weeks - if empty, return empty array (NOT template data)
       return instanceWeeks.map((iw, idx) => ({
         id: iw.id,
         programId: iw.programId,
@@ -793,10 +791,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         updatedAt: now,
       } as ProgramWeek));
     }
-    // Client mode uses instance data (auto-created via useInstanceIdLookup)
-    // Fall back to programWeeks (template) while instance is loading
+
+    // TEMPLATE MODE: Use ONLY template weeks
     return programWeeks;
-  }, [clientViewContext.mode, programWeeks, instance, instanceWeeks]);
+  }, [clientViewContext, cohortViewContext, programWeeks, instance, instanceWeeks]);
 
   // Memoized selection prop for sidebar
   const sidebarSelectionProp = useMemo(() => {
