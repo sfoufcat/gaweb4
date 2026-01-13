@@ -403,13 +403,16 @@ export function WeekEditor({
   const editorContext = useProgramEditorOptional();
 
   // Lookup instanceId if not provided (for migration support)
-  const { instanceId: lookedUpInstanceId } = useInstanceIdLookup({
+  const { instanceId: lookedUpInstanceId, isLoading: instanceLookupLoading } = useInstanceIdLookup({
     programId: programId || '',
     enrollmentId,
     cohortId,
   });
   
   const effectiveInstanceId = instanceId || lookedUpInstanceId;
+  
+  // Determine if we're in a client/cohort context (not template mode)
+  const isInstanceContext = !!(cohortId || enrollmentId);
 
   // Determine view context for the editor
   const viewContext = isClientView ? 'client' : cohortId ? 'cohort' : 'template';
@@ -786,6 +789,19 @@ export function WeekEditor({
 
     // Register changes with context if available
     if (editorContext && changed && programId) {
+      // GUARD: In client/cohort mode, we MUST have an instanceId before registering changes
+      // Otherwise, the save would incorrectly go to the template endpoint
+      if (isInstanceContext && !effectiveInstanceId) {
+        if (instanceLookupLoading) {
+          // Still loading - wait for instance to be found/created
+          console.log('[WEEK_EDITOR] Waiting for instance lookup before registering change...');
+          return;
+        }
+        // Not loading but no instanceId - this shouldn't happen, but log it
+        console.warn('[WEEK_EDITOR] In client/cohort mode but no instanceId available after lookup');
+        return;
+      }
+      
       // Check if this is a temp week (doesn't exist in DB yet)
       const isTempWeek = week.id.startsWith('temp-');
       
@@ -864,7 +880,7 @@ export function WeekEditor({
       const changeKey = editorContext.getChangeKey('week', week.id, clientContextId);
       editorContext.discardChange(changeKey);
     }
-  }, [formData, week, editorContext, programId, viewContext, clientContextId, getApiEndpoint, editedFields, getDefaultFormData]);
+  }, [formData, week, editorContext, programId, viewContext, clientContextId, getApiEndpoint, editedFields, getDefaultFormData, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
 
   // handleSave is only used by the SyncToClientsDialog now
   const handleSave = async () => {
