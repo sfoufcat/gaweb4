@@ -23,19 +23,29 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    // Get organizationId from request headers (set by middleware based on domain)
-    const organizationId = request.headers.get('x-organization-id');
-    if (!organizationId) {
-      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
-    }
+    // Try to get organizationId from request headers (set by middleware based on domain)
+    // Middleware sets 'x-tenant-org-id' for tenant domains (subdomains and custom domains)
+    const organizationId = request.headers.get('x-tenant-org-id');
 
-    // Find questionnaire by slug and organization
-    const snapshot = await adminDb
-      .collection('questionnaires')
-      .where('organizationId', '==', organizationId)
-      .where('slug', '==', slug)
-      .limit(1)
-      .get();
+    // Find questionnaire by slug (optionally filtered by organization if available)
+    let snapshot;
+    if (organizationId) {
+      // If we have org context, use it for more specific lookup
+      snapshot = await adminDb
+        .collection('questionnaires')
+        .where('organizationId', '==', organizationId)
+        .where('slug', '==', slug)
+        .limit(1)
+        .get();
+    } else {
+      // If no org context, look up by slug globally
+      // This allows questionnaires to be accessed from any domain
+      snapshot = await adminDb
+        .collection('questionnaires')
+        .where('slug', '==', slug)
+        .limit(1)
+        .get();
+    }
 
     if (snapshot.empty) {
       return NextResponse.json({ error: 'Questionnaire not found' }, { status: 404 });

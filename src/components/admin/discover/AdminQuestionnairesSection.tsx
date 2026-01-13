@@ -48,9 +48,9 @@ export function AdminQuestionnairesSection({
   const [selectedQuestionnaire, setSelectedQuestionnaire] = useState<Questionnaire | null>(null);
 
   // Fetch questionnaires
-  const fetchQuestionnaires = useCallback(async () => {
+  const fetchQuestionnaires = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const response = await fetch(apiEndpoint);
       if (!response.ok) throw new Error('Failed to fetch questionnaires');
       const data = await response.json();
@@ -58,7 +58,7 @@ export function AdminQuestionnairesSection({
     } catch (error) {
       console.error('Error fetching questionnaires:', error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [apiEndpoint]);
 
@@ -135,7 +135,8 @@ export function AdminQuestionnairesSection({
       });
       if (!response.ok) throw new Error('Failed to create questionnaire');
       const newQuestionnaire = await response.json();
-      await fetchQuestionnaires();
+      // Don't show loading skeleton when refreshing after create
+      await fetchQuestionnaires(false);
       setSelectedQuestionnaire(newQuestionnaire);
       setViewMode('builder');
     } catch (error) {
@@ -162,7 +163,8 @@ export function AdminQuestionnairesSection({
   const handleBackToList = async () => {
     setViewMode('list');
     setSelectedQuestionnaire(null);
-    await fetchQuestionnaires();
+    // Don't show skeleton when coming back from builder - just refresh silently
+    await fetchQuestionnaires(false);
   };
 
   // Handle save from builder
@@ -233,57 +235,38 @@ export function AdminQuestionnairesSection({
         <div className="flex items-center gap-3">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" />
             <input
               type="text"
               placeholder="Search questionnaires..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 w-full sm:w-64 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#5f5a55] dark:placeholder-[#b2b6c2]"
+              className="pl-9 pr-4 py-1.5 w-48 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
             />
           </div>
 
           {/* Create Button */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          <button
+            onClick={handleCreate}
+            disabled={creating}
+            className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200 disabled:opacity-70"
           >
-            <Button
-              onClick={handleCreate}
-              disabled={creating}
-              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert font-medium whitespace-nowrap disabled:opacity-70"
-            >
-              <AnimatePresence mode="wait">
-                {creating ? (
-                  <motion.span
-                    key="creating"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    className="flex items-center"
-                  >
-                    <motion.span
-                      className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full"
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    />
-                    Creating...
-                  </motion.span>
-                ) : (
-                  <motion.span
-                    key="create"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    className="flex items-center"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Questionnaire
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </Button>
-          </motion.div>
+            {creating ? (
+              <>
+                <motion.span
+                  className="w-4 h-4 border-2 border-[#6b6560]/30 border-t-[#6b6560] dark:border-[#9ca3af]/30 dark:border-t-[#9ca3af] rounded-full"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                />
+                Creating...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" />
+                Create Questionnaire
+              </>
+            )}
+          </button>
         </div>
       </div>
 

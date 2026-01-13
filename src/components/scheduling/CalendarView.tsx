@@ -718,7 +718,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
           {mode === 'coach' && (
             <button
               onClick={() => setShowClientPicker(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-xl font-albert font-medium text-sm hover:bg-brand-accent/90 transition-colors"
+              className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
             >
               <Plus className="w-4 h-4" />
               Schedule Call
