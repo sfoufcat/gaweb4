@@ -188,8 +188,8 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                   )}
                 </div>
 
-                {/* Description - 2 lines max */}
-                <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-2 min-h-[2.625rem]">
+                {/* Description - 1 line max */}
+                <p className="text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed line-clamp-1">
                   {enrollment.program.description || (enrollment.program.type === 'individual'
                     ? 'One-on-one coaching program'
                     : enrollment.cohort?.name || 'Group coaching program')}
@@ -244,7 +244,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
             href="/discover"
             className="flex-shrink-0 w-[280px] sm:w-[340px] snap-start"
           >
-            <div className="glass-card border-dashed border-brand-accent/30 h-full min-h-[280px] flex items-center justify-center hover:border-brand-accent/60 transition-all group">
+            <div className="glass-card border-dashed border-brand-accent/30 h-full flex items-center justify-center hover:border-brand-accent/60 transition-all group">
               <div className="text-center p-4">
                 <div className="w-12 h-12 mx-auto rounded-full bg-brand-accent/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                   <MenuIcon iconKey={menuIcons.program} className="w-6 h-6 text-brand-accent" />
