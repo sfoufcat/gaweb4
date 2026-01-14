@@ -4,6 +4,13 @@ import { useState, useRef } from 'react';
 import { Trash2, Copy, X, Loader2 } from 'lucide-react';
 import { QuestionOptionEditor } from './QuestionOptionEditor';
 import { SkipLogicEditor } from './SkipLogicEditor';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type {
   QuestionnaireQuestion,
   QuestionnaireQuestionType,
@@ -254,34 +261,37 @@ export function QuestionEditor({
               <label className="block text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-1 font-albert">
                 Accepted File Types
               </label>
-              <select
+              <Select
                 value={question.acceptedFileTypes?.join(',') || '*/*'}
-                onChange={e => {
-                  const value = e.target.value;
+                onValueChange={value => {
                   onUpdate({
                     acceptedFileTypes: value === '*/*' ? ['*/*'] : value.split(','),
                   });
                 }}
-                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
               >
-                {question.type === 'media_upload' ? (
-                  <>
-                    <option value="image/*,video/*">Images & Videos</option>
-                    <option value="image/*">Images only</option>
-                    <option value="video/*">Videos only</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="*/*">All files</option>
-                    <option value="application/pdf">PDF only</option>
-                    <option value="image/*">Images only</option>
-                    <option value="application/pdf,image/*">PDF & Images</option>
-                    <option value=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
-                      Word Documents
-                    </option>
-                  </>
-                )}
-              </select>
+                <SelectTrigger className="w-full px-3 py-2 h-auto text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  <SelectValue placeholder="Select file types" />
+                </SelectTrigger>
+                <SelectContent>
+                  {question.type === 'media_upload' ? (
+                    <>
+                      <SelectItem value="image/*,video/*">Images & Videos</SelectItem>
+                      <SelectItem value="image/*">Images only</SelectItem>
+                      <SelectItem value="video/*">Videos only</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="*/*">All files</SelectItem>
+                      <SelectItem value="application/pdf">PDF only</SelectItem>
+                      <SelectItem value="image/*">Images only</SelectItem>
+                      <SelectItem value="application/pdf,image/*">PDF & Images</SelectItem>
+                      <SelectItem value=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                        Word Documents
+                      </SelectItem>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-1 font-albert">
@@ -337,13 +347,6 @@ export function QuestionEditor({
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={onDuplicate}
-            className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-            title="Duplicate"
-          >
-            <Copy className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-          </button>
           {/* Required Toggle */}
           <button
             type="button"
@@ -358,6 +361,22 @@ export function QuestionEditor({
                 question.required ? 'translate-x-[18px]' : 'translate-x-0'
               }`}
             />
+          </button>
+          {/* Duplicate */}
+          <button
+            onClick={onDuplicate}
+            className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            title="Duplicate"
+          >
+            <Copy className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+          </button>
+          {/* Delete */}
+          <button
+            onClick={onDelete}
+            className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-500 dark:hover:text-red-400" />
           </button>
         </div>
       </div>

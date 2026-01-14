@@ -1,6 +1,13 @@
 'use client';
 
 import { Plus, Trash2 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { QuestionnaireQuestion, SkipLogicRule } from '@/types/questionnaire';
 
 interface SkipLogicEditorProps {
@@ -77,57 +84,69 @@ export function SkipLogicEditor({
               key={rule.id}
               className="flex items-center gap-2 p-3 bg-white dark:bg-[#171b22] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]/50"
             >
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">If answer</span>
+              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">If answer</span>
 
               {/* Condition Type */}
-              <select
+              <Select
                 value={rule.conditionType}
-                onChange={e =>
+                onValueChange={value =>
                   handleUpdateRule(rule.id, {
-                    conditionType: e.target.value as SkipLogicRule['conditionType'],
+                    conditionType: value as SkipLogicRule['conditionType'],
                   })
                 }
-                className="px-2 py-1 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
               >
-                <option value="equals">equals</option>
-                <option value="not_equals">does not equal</option>
-                <option value="contains">contains</option>
-              </select>
+                <SelectTrigger className="w-auto px-2 py-1 h-auto text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="equals">equals</SelectItem>
+                  <SelectItem value="not_equals">does not equal</SelectItem>
+                  <SelectItem value="contains">contains</SelectItem>
+                </SelectContent>
+              </Select>
 
               {/* Condition Value (Option) */}
-              <select
+              <Select
                 value={rule.conditionValue}
-                onChange={e =>
-                  handleUpdateRule(rule.id, { conditionValue: e.target.value })
+                onValueChange={value =>
+                  handleUpdateRule(rule.id, { conditionValue: value })
                 }
-                className="flex-1 px-2 py-1 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
               >
-                {options.map(opt => (
-                  <option key={opt.id} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="flex-1 min-w-0 px-2 py-1 h-auto text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {options.map(opt => (
+                    <SelectItem key={opt.id} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">skip to</span>
+              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">skip to</span>
 
               {/* Skip To Question */}
-              <select
+              <Select
                 value={rule.skipToQuestionId || 'end'}
-                onChange={e =>
+                onValueChange={value =>
                   handleUpdateRule(rule.id, {
-                    skipToQuestionId: e.target.value === 'end' ? null : e.target.value,
+                    skipToQuestionId: value === 'end' ? null : value,
                   })
                 }
-                className="flex-1 px-2 py-1 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
               >
-                {laterQuestions.map(q => (
-                  <option key={q.id} value={q.id}>
-                    Q{q.order + 1}: {q.title || 'Untitled'}
-                  </option>
-                ))}
-                <option value="end">End (Submit)</option>
-              </select>
+                <SelectTrigger className="flex-1 min-w-0 px-2 py-1 h-auto text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {laterQuestions.map(q => (
+                    <SelectItem key={q.id} value={q.id}>
+                      Q{q.order + 1}: {q.title || 'Untitled'}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="end">End (Submit)</SelectItem>
+                </SelectContent>
+              </Select>
 
               {/* Delete */}
               <button

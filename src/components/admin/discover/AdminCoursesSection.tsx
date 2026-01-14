@@ -993,15 +993,15 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
         {/* Header */}
         <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-shrink-0">
               <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Courses</h2>
-              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
                 {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}
               </p>
             </div>
-            
-            <div className="flex flex-wrap items-center gap-4">
+
+            <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
               {/* Search */}
               <div className="relative">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9ca3af]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
