@@ -2757,46 +2757,6 @@ export function WeekEditor({
         </div>
       </CollapsibleSection>
 
-      {/* Days in Week (Reference Section) */}
-      <CollapsibleSection
-        title="Days in this Week"
-        icon={Calendar}
-        defaultOpen={false}
-      >
-        <div className="grid grid-cols-2 gap-2">
-          {Array.from({ length: week.endDayIndex - week.startDayIndex + 1 }, (_, i) => {
-            const dayIndex = week.startDayIndex + i;
-            const day = weekDays.find(d => d.dayIndex === dayIndex);
-            const hasContent = day && (day.tasks?.length > 0 || day.title);
-
-            return (
-              <button
-                key={dayIndex}
-                onClick={() => onDaySelect?.(dayIndex)}
-                className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors text-left"
-              >
-                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  Day {dayIndex}
-                </span>
-                {hasContent && <span className="text-green-500 text-xs">✓</span>}
-                {day?.title && (
-                  <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] truncate">
-                    {day.title}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Day Range Info */}
-        <div className="p-3 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg">
-          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            <span className="font-medium">Day range:</span> {week.startDayIndex} - {week.endDayIndex}
-          </p>
-        </div>
-      </CollapsibleSection>
-
       {/* Sync to Clients Dialog */}
       {programId && (
         <SyncToClientsDialog
