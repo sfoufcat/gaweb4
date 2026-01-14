@@ -1496,12 +1496,14 @@ export function WeekEditor({
           }
         } catch (compressError) {
           console.error('Compression failed:', compressError);
-          // If compression fails and file is too large, show error
-          if (recordingFile.size > MAX_TRANSCRIPTION_SIZE) {
-            throw new Error(`File is too large (${formatFileSize(recordingFile.size)}) and compression failed. Please use a file under 25MB or a shorter recording.`);
+          // Compression failed but Groq supports up to 100MB via URL, so continue with original
+          // Only fail if file exceeds Groq's 100MB URL limit
+          const GROQ_URL_LIMIT = 100 * 1024 * 1024;
+          if (recordingFile.size > GROQ_URL_LIMIT) {
+            throw new Error(`File is too large (${formatFileSize(recordingFile.size)}) and compression failed. Maximum file size is 100MB.`);
           }
-          // Otherwise continue with original file
-          console.log('Continuing with original file');
+          // Continue with original file - it's under Groq's URL limit
+          console.log(`[COMPRESSION] Failed but continuing with original file (${formatFileSize(recordingFile.size)} < 100MB limit)`);
         }
       } else if (canCompress(recordingFile)) {
         // Small file - just get duration for accurate credit calculation

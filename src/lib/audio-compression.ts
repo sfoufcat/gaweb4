@@ -6,7 +6,8 @@
  * avoiding server-side FFmpeg dependencies and staying under API limits.
  */
 
-import lamejs from 'lamejs';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const lamejs = require('lamejs');
 
 // Target settings for compressed audio
 const TARGET_SAMPLE_RATE = 16000; // 16kHz is sufficient for speech recognition
