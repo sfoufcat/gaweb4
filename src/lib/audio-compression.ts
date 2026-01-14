@@ -214,3 +214,26 @@ export function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+/**
+ * Get audio duration without full compression
+ * Useful for small files that don't need compression but still need duration for credits
+ */
+export async function getAudioDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio();
+    const url = URL.createObjectURL(file);
+
+    audio.addEventListener('loadedmetadata', () => {
+      URL.revokeObjectURL(url);
+      resolve(audio.duration);
+    });
+
+    audio.addEventListener('error', () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load audio metadata'));
+    });
+
+    audio.src = url;
+  });
+}

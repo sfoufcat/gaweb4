@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
       storagePath,
       fileName,
       fileSize,
+      durationSeconds, // Actual duration from client (if available from compression)
       clientUserId,
       cohortId,
       programEnrollmentId,
@@ -99,8 +100,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Estimate duration (rough estimate, 1 MB per minute for audio)
-      estimatedMinutes = Math.max(1, Math.ceil(fileSize / (1024 * 1024)));
+      // Use actual duration if provided (from client-side compression)
+      // Otherwise fall back to file size estimate (will be corrected after transcription)
+      if (durationSeconds && durationSeconds > 0) {
+        estimatedMinutes = Math.max(1, Math.ceil(durationSeconds / 60));
+      } else {
+        // Fallback: rough estimate based on file size (1 MB per minute for uncompressed audio)
+        estimatedMinutes = Math.max(1, Math.ceil(fileSize / (1024 * 1024)));
+      }
 
       // Check credits availability
       const { available, remainingMinutes } = await checkCreditsAvailable(
