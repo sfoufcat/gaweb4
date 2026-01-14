@@ -287,9 +287,7 @@ async function processRecording(
       throw new Error(transcriptionResult.error || 'Transcription failed');
     }
 
-    // Wait for transcription to complete
-    await waitForTranscription(orgId, transcriptionResult.transcriptionId);
-
+    // Transcription is now complete (transcribeCallWithGroq awaits by default)
     // Get transcription to extract duration
     const transcriptionDoc = await adminDb
       .collection('organizations')
@@ -543,43 +541,6 @@ async function processPdfUpload(
 
     console.error(`[RECORDING_PROCESS] Failed processing PDF ${recordingId}:`, error);
   }
-}
-
-/**
- * Wait for transcription to complete
- */
-async function waitForTranscription(
-  orgId: string,
-  transcriptionId: string,
-  maxAttempts = 120,
-  intervalMs = 5000
-): Promise<void> {
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const doc = await adminDb
-      .collection('organizations')
-      .doc(orgId)
-      .collection('platform_transcriptions')
-      .doc(transcriptionId)
-      .get();
-
-    if (!doc.exists) {
-      throw new Error('Transcription not found');
-    }
-
-    const status = doc.data()?.status;
-
-    if (status === 'completed') {
-      return;
-    }
-
-    if (status === 'failed') {
-      throw new Error(doc.data()?.error || 'Transcription failed');
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
-  }
-
-  throw new Error('Transcription timeout');
 }
 
 /**

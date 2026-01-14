@@ -124,13 +124,17 @@ async function transcribeWithGroq(audioUrl: string): Promise<TranscriptionResult
 
 /**
  * Transcribe a call recording using Groq (platform service)
- * This creates a transcription record and processes asynchronously
+ * This creates a transcription record and processes the transcription.
+ *
+ * @param waitForCompletion - If true, awaits the transcription to complete before returning.
+ *                            Use this in serverless environments where fire-and-forget won't work.
  */
 export async function transcribeCallWithGroq(
   orgId: string,
   callId: string,
   recordingUrl: string,
-  eventId?: string
+  eventId?: string,
+  waitForCompletion: boolean = true
 ): Promise<{ success: boolean; transcriptionId?: string; error?: string }> {
   try {
     // Create transcription record
@@ -151,10 +155,15 @@ export async function transcribeCallWithGroq(
     const docRef = await transcriptionsRef.add(transcriptionData);
     const transcriptionId = docRef.id;
 
-    // Process transcription asynchronously
-    processTranscription(orgId, transcriptionId, recordingUrl).catch((error) => {
-      console.error(`[PLATFORM-TRANSCRIPTION] Error processing ${transcriptionId}:`, error);
-    });
+    if (waitForCompletion) {
+      // Process transcription synchronously (for serverless environments)
+      await processTranscription(orgId, transcriptionId, recordingUrl);
+    } else {
+      // Process transcription asynchronously (fire-and-forget for long-running servers)
+      processTranscription(orgId, transcriptionId, recordingUrl).catch((error) => {
+        console.error(`[PLATFORM-TRANSCRIPTION] Error processing ${transcriptionId}:`, error);
+      });
+    }
 
     return { success: true, transcriptionId };
   } catch (error) {
