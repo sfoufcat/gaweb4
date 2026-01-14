@@ -1751,6 +1751,20 @@ export function WeekEditor({
             className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
           />
         </div>
+
+        {/* Weekly Prompt */}
+        <div>
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Weekly Prompt
+          </label>
+          <textarea
+            value={formData.weeklyPrompt}
+            onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); trackFieldEdit('syncPrompt'); }}
+            placeholder="Motivational message or guidance for this week..."
+            rows={2}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+          />
+        </div>
       </CollapsibleSection>
 
       {/* Tasks & Focus Section */}
@@ -2582,31 +2596,17 @@ export function WeekEditor({
         </div>
       </CollapsibleSection>
 
-      {/* Client Notes Section - collapsed by default */}
+      {/* Notes Section - collapsed by default */}
       <CollapsibleSection
-        title="Client Notes"
+        title="Notes"
         icon={ClipboardList}
         defaultOpen={false}
       >
-        {/* Weekly Prompt */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-            Weekly Prompt
-          </label>
-          <textarea
-            value={formData.weeklyPrompt}
-            onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); trackFieldEdit('syncPrompt'); }}
-            placeholder="Motivational message or guidance for this week..."
-            rows={2}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-          />
-        </div>
-
-        {/* Notes (max 3) */}
+        {/* Client Notes (max 3) */}
         <div className="mb-6">
           <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
             <FileText className="w-4 h-4 inline mr-1.5" />
-            Notes <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
+            Client Notes <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
           </label>
           <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
             Reminders or context for the client
