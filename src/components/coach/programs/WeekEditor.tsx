@@ -1545,6 +1545,32 @@ export function WeekEditor({
   // Check if we're in cohort mode (group program with cohort selected)
   const isCohortMode = programType === 'group' && !!cohortId;
 
+  // Cancel a stuck recording
+  const handleCancelRecording = async () => {
+    if (!pendingRecordingId) return;
+
+    try {
+      const response = await fetch(`/api/coach/recordings/${pendingRecordingId}/cancel`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to cancel recording');
+      }
+
+      // Reset all recording state
+      setRecordingStatus('idle');
+      setRecordingError(null);
+      setPendingRecordingId(null);
+      setDetailedStatus(null);
+      setRecordingFile(null);
+    } catch (err) {
+      console.error('Error cancelling recording:', err);
+      setRecordingError(err instanceof Error ? err.message : 'Failed to cancel');
+    }
+  };
+
   // Upload recording and optionally generate summary
   const handleUploadAndGenerateSummary = async () => {
     if (!recordingFile) return;
@@ -2256,7 +2282,17 @@ export function WeekEditor({
             </div>
           ) : recordingStatus === 'processing' || recordingStatus === 'background' ? (
             /* Processing/Background state - show detailed status with spinner */
-            <div className="p-4 border border-brand-accent/30 bg-brand-accent/5 rounded-lg">
+            <div className="p-4 border border-brand-accent/30 bg-brand-accent/5 rounded-lg relative">
+              {pendingRecordingId && (
+                <button
+                  onClick={handleCancelRecording}
+                  className="absolute top-2 right-2 p-1 text-[#8c8c8c] hover:text-red-500 transition-colors"
+                  aria-label="Cancel processing"
+                  title="Cancel processing"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
               <div className="flex items-center gap-3">
                 <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
                 <div>
