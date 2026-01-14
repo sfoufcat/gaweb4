@@ -447,7 +447,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
 
   // Get unique categories
   const categories = useMemo(() => {
-    const cats = new Set(articles.map(a => a.category).filter(Boolean));
+    const cats = new Set(articles.map(a => a.category).filter((c): c is string => Boolean(c)));
     return Array.from(cats).sort();
   }, [articles]);
 
