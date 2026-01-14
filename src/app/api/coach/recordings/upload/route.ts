@@ -25,6 +25,7 @@ const ACCEPTED_MIME_TYPES = [
   'audio/mp3',
   'audio/mp4',
   'audio/m4a',
+  'audio/x-m4a', // macOS/Safari often reports m4a files with this MIME type
   'audio/wav',
   'audio/webm',
   'audio/ogg',

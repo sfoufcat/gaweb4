@@ -15,7 +15,7 @@ import { useDiscountCode } from '@/hooks/useDiscountCode';
 import { DiscountCodeInput } from '@/components/checkout';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
-import { Dialog, DialogContent, DialogOverlay, DialogPortal } from '@/components/ui/dialog';
+import { Dialog } from '@/components/ui/dialog';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 // Saved payment method type
@@ -674,8 +674,7 @@ export function SquadPaymentModal({
     }
   };
 
-  if (!isOpen) return null;
-
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const stripeInstance = connectedAccountId ? getStripePromise(connectedAccountId) : null;
 
   const appearance: import('@stripe/stripe-js').Appearance = {
@@ -716,154 +715,153 @@ export function SquadPaymentModal({
     },
   };
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
-          />
+  // Shared content for both Dialog and Drawer
+  const content = (
+    <div className="p-6">
+      {/* Loading state */}
+      {loading && (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
+          <p className="mt-4 text-[#5f5a55] dark:text-[#b2b6c2]">
+            Setting up payment...
+          </p>
+        </div>
+      )}
 
-          {/* Modal */}
+      {/* Error state */}
+      {error && !loading && !showSavedCards && (
+        <div className="flex flex-col items-center justify-center py-8">
+          <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+            <AlertCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+            Something went wrong
+          </h3>
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] text-center mb-6">
+            {error}
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={createSubscriptionIntent}
+              className="px-4 py-2 text-sm font-medium text-white bg-brand-accent hover:bg-brand-accent/90 rounded-lg transition-colors"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Success state */}
+      {success && (
+        <div className="flex flex-col items-center justify-center py-12">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-0 flex items-center justify-center z-50 p-4"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4"
           >
-            <div className="bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                {/* Loading state */}
-                {loading && (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
-                    <p className="mt-4 text-[#5f5a55] dark:text-[#b2b6c2]">
-                      Setting up payment...
-                    </p>
-                  </div>
-                )}
-
-                {/* Error state */}
-                {error && !loading && !showSavedCards && (
-                  <div className="flex flex-col items-center justify-center py-8">
-                    <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-                      <AlertCircle className="w-8 h-8 text-red-500" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                      Something went wrong
-                    </h3>
-                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] text-center mb-6">
-                      {error}
-                    </p>
-                    <div className="flex gap-3">
-                      <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={createSubscriptionIntent}
-                        className="px-4 py-2 text-sm font-medium text-white bg-brand-accent hover:bg-brand-accent/90 rounded-lg transition-colors"
-                      >
-                        Try again
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Success state */}
-                {success && (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4"
-                    >
-                      <CheckCircle className="w-8 h-8 text-green-500" />
-                    </motion.div>
-                    <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                      Welcome to the squad!
-                    </h3>
-                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                      Your membership is now active.
-                    </p>
-                  </div>
-                )}
-
-                {/* Completing state */}
-                {completing && !success && (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
-                    <p className="mt-4 text-[#5f5a55] dark:text-[#b2b6c2]">
-                      Activating your membership...
-                    </p>
-                  </div>
-                )}
-
-                {/* Saved cards selection */}
-                {showSavedCards && savedMethods.length > 0 && !loading && !success && !completing && (
-                  <>
-                    {/* Error message for saved cards */}
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3"
-                      >
-                        <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
-                      </motion.div>
-                    )}
-                    <SavedCardsSelection
-                      savedMethods={savedMethods}
-                      selectedMethodId={selectedMethodId}
-                      onSelect={setSelectedMethodId}
-                      onAddNew={handleAddNewCard}
-                      onPay={handlePayWithSavedMethod}
-                      isProcessing={isProcessingSaved}
-                      squadName={squadName}
-                      priceInCents={priceInCents}
-                      basePriceInCents={basePriceInCents}
-                      currency={currency}
-                      billingInterval={billingInterval}
-                      onCancel={onClose}
-                      discount={discount}
-                    />
-                  </>
-                )}
-
-                {/* Payment form */}
-                {!showSavedCards && clientSecret && stripeInstance && !loading && !error && !success && !completing && (
-                  <Elements
-                    stripe={stripeInstance}
-                    options={{
-                      clientSecret,
-                      appearance,
-                    }}
-                  >
-                    <PaymentForm
-                      onSuccess={handlePaymentSuccess}
-                      onCancel={onClose}
-                      squadName={squadName}
-                      priceInCents={priceInCents}
-                      basePriceInCents={basePriceInCents}
-                      currency={currency}
-                      billingInterval={billingInterval}
-                      discount={discount}
-                    />
-                  </Elements>
-                )}
-              </div>
-            </div>
+            <CheckCircle className="w-8 h-8 text-green-500" />
           </motion.div>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+            Welcome to the squad!
+          </h3>
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+            Your membership is now active.
+          </p>
+        </div>
+      )}
+
+      {/* Completing state */}
+      {completing && !success && (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
+          <p className="mt-4 text-[#5f5a55] dark:text-[#b2b6c2]">
+            Activating your membership...
+          </p>
+        </div>
+      )}
+
+      {/* Saved cards selection */}
+      {showSavedCards && savedMethods.length > 0 && !loading && !success && !completing && (
+        <>
+          {/* Error message for saved cards */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3"
+            >
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+            </motion.div>
+          )}
+          <SavedCardsSelection
+            savedMethods={savedMethods}
+            selectedMethodId={selectedMethodId}
+            onSelect={setSelectedMethodId}
+            onAddNew={handleAddNewCard}
+            onPay={handlePayWithSavedMethod}
+            isProcessing={isProcessingSaved}
+            squadName={squadName}
+            priceInCents={priceInCents}
+            basePriceInCents={basePriceInCents}
+            currency={currency}
+            billingInterval={billingInterval}
+            onCancel={onClose}
+            discount={discount}
+          />
         </>
       )}
-    </AnimatePresence>
+
+      {/* Payment form */}
+      {!showSavedCards && clientSecret && stripeInstance && !loading && !error && !success && !completing && (
+        <Elements
+          stripe={stripeInstance}
+          options={{
+            clientSecret,
+            appearance,
+          }}
+        >
+          <PaymentForm
+            onSuccess={handlePaymentSuccess}
+            onCancel={onClose}
+            squadName={squadName}
+            priceInCents={priceInCents}
+            basePriceInCents={basePriceInCents}
+            currency={currency}
+            billingInterval={billingInterval}
+            discount={discount}
+          />
+        </Elements>
+      )}
+    </div>
+  );
+
+  // Desktop: Dialog with blurred backdrop that covers sidebar
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content className="fixed left-[50%] top-[50%] z-[10000] w-full max-w-md translate-x-[-50%] translate-y-[-50%] bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
+            {content}
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Drawer that slides up from bottom
+  return (
+    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent className="max-h-[90vh] overflow-y-auto">
+        {content}
+      </DrawerContent>
+    </Drawer>
   );
 }
