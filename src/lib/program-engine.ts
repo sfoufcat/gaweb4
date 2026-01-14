@@ -1139,32 +1139,45 @@ export async function removeUserFromSquadEntirely(
 
 /**
  * Get user's active enrollment from Programs v2 (program_enrollments collection)
- * 
+ *
  * Also handles "upcoming" enrollments that should be active based on cohort start date.
  * If the cohort's start date has arrived but status is still 'upcoming', this function
  * will update the status to 'active' and return the enrollment.
+ *
+ * @param userId - User ID to find enrollment for
+ * @param organizationId - Optional organization ID to filter by (for multi-tenant isolation)
  */
-export async function getActiveEnrollmentV2(userId: string): Promise<ProgramEnrollment | null> {
+export async function getActiveEnrollmentV2(userId: string, organizationId?: string | null): Promise<ProgramEnrollment | null> {
   // First try to find an active enrollment
-  const activeSnapshot = await adminDb
+  let activeQuery = adminDb
     .collection('program_enrollments')
     .where('userId', '==', userId)
-    .where('status', '==', 'active')
-    .limit(1)
-    .get();
-  
+    .where('status', '==', 'active');
+
+  // CRITICAL: Filter by organization for multi-tenant isolation
+  if (organizationId) {
+    activeQuery = activeQuery.where('organizationId', '==', organizationId);
+  }
+
+  const activeSnapshot = await activeQuery.limit(1).get();
+
   if (!activeSnapshot.empty) {
     const doc = activeSnapshot.docs[0];
     return { id: doc.id, ...doc.data() } as ProgramEnrollment;
   }
-  
+
   // If no active enrollment, check for "upcoming" that should be active
-  const upcomingSnapshot = await adminDb
+  let upcomingQuery = adminDb
     .collection('program_enrollments')
     .where('userId', '==', userId)
-    .where('status', '==', 'upcoming')
-    .limit(1)
-    .get();
+    .where('status', '==', 'upcoming');
+
+  // CRITICAL: Filter by organization for multi-tenant isolation
+  if (organizationId) {
+    upcomingQuery = upcomingQuery.where('organizationId', '==', organizationId);
+  }
+
+  const upcomingSnapshot = await upcomingQuery.limit(1).get();
   
   if (upcomingSnapshot.empty) return null;
   
@@ -1634,13 +1647,14 @@ export function calculateDateForDayIndex(
  */
 export async function syncProgramV2TasksForToday(
   userId: string,
-  todayDate?: string
+  todayDate?: string,
+  organizationId?: string | null
 ): Promise<SyncProgramTasksResult> {
   console.warn('[PROGRAM_ENGINE_V2] syncProgramV2TasksForToday is deprecated. Use syncProgramTasksForDay() instead.');
   const today = todayDate || new Date().toISOString().split('T')[0];
-  
-  // 1. Find active enrollment from program_enrollments
-  const enrollment = await getActiveEnrollmentV2(userId);
+
+  // 1. Find active enrollment from program_enrollments (filtered by org for multi-tenancy)
+  const enrollment = await getActiveEnrollmentV2(userId, organizationId);
   
   if (!enrollment) {
     return {
@@ -2069,14 +2083,15 @@ export async function queueWeeklyResyncForProgram(
  */
 export async function syncProgramTasksAuto(
   userId: string,
-  todayDate?: string
+  todayDate?: string,
+  organizationId?: string | null
 ): Promise<SyncProgramTasksResult | SyncWeeklyTasksResult> {
   // DEPRECATED: This function now delegates to syncProgramTasksForDay
   // The auto-detect logic has been removed - all programs now use day-level sync.
   console.warn('[PROGRAM_ENGINE] syncProgramTasksAuto is deprecated. Using syncProgramTasksForDay instead.');
-  
-  // Get the user's active enrollment
-  const enrollment = await getActiveEnrollmentV2(userId);
+
+  // Get the user's active enrollment (filtered by org for multi-tenancy)
+  const enrollment = await getActiveEnrollmentV2(userId, organizationId);
 
   if (!enrollment) {
     return {

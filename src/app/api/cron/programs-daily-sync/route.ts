@@ -37,7 +37,8 @@ async function syncInstanceDayTasksToUser(
   userId: string,
   dayIndex: number,
   tasks: ProgramInstanceTask[],
-  calendarDate: string
+  calendarDate: string,
+  organizationId: string | undefined
 ): Promise<number> {
   const batch = adminDb.batch();
   const now = new Date().toISOString();
@@ -81,6 +82,8 @@ async function syncInstanceDayTasksToUser(
         completedAt: null,
         createdAt: now,
         updatedAt: now,
+        // CRITICAL: Include organizationId for multi-tenant filtering
+        ...(organizationId && { organizationId }),
       });
       tasksCreated++;
     }
@@ -156,6 +159,7 @@ export async function GET(request: Request) {
       userId: string;
       programId: string;
       cohortId?: string;
+      organizationId?: string; // CRITICAL: Include for multi-tenant filtering
     }>;
 
     console.log(`[CRON_PROGRAMS_SYNC] Found ${enrollments.length} active enrollments`);
@@ -234,7 +238,8 @@ export async function GET(request: Request) {
                 enrollment.userId,
                 todayDay.globalDayIndex,
                 todayDay.day.tasks,
-                todayStr
+                todayStr,
+                enrollment.organizationId
               );
               if (tasksCreated > 0) {
                 syncedToday++;
@@ -266,7 +271,8 @@ export async function GET(request: Request) {
                 enrollment.userId,
                 tomorrowDay.globalDayIndex,
                 tomorrowDay.day.tasks,
-                tomorrowStr
+                tomorrowStr,
+                enrollment.organizationId
               );
               if (tasksCreated > 0) {
                 syncedTomorrow++;
