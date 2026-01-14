@@ -128,13 +128,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get the public URL for the uploaded file
+    // Get a signed read URL for the uploaded file
+    // Using signed URL instead of makePublic() for reliability - doesn't require public bucket policies
     const bucket = adminStorage.bucket();
     const fileRef = bucket.file(storagePath);
 
-    // Make file publicly accessible
-    await fileRef.makePublic();
-    const fileUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    // Generate signed URL for reading (expires in 1 hour - enough time for transcription)
+    const [fileUrl] = await fileRef.getSignedUrl({
+      version: 'v4',
+      action: 'read',
+      expires: Date.now() + 60 * 60 * 1000, // 1 hour
+    });
+
+    console.log(`[RECORDING_PROCESS] Generated signed read URL for transcription: ${storagePath}`);
 
     // Create uploaded recording record
     const recordingsRef = adminDb
