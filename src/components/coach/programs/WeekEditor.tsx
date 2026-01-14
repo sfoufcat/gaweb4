@@ -651,8 +651,6 @@ export function WeekEditor({
   const [pendingRecordingId, setPendingRecordingId] = useState<string | null>(null);
   // Detailed status from backend: 'uploaded' | 'transcribing' | 'summarizing' | 'completed' | 'failed'
   const [detailedStatus, setDetailedStatus] = useState<string | null>(null);
-  // Track dismissed recording IDs to avoid re-showing errors after user dismisses
-  const [dismissedRecordingIds, setDismissedRecordingIds] = useState<Set<string>>(new Set());
 
   // Check for in-progress recordings on mount and poll until complete
   // Supports both cohort mode (group programs) and 1:1 mode (individual programs)
@@ -686,12 +684,6 @@ export function WeekEditor({
         const data = await response.json();
         if (data.pendingRecording && !cancelled) {
           const recording = data.pendingRecording;
-
-          // Skip if this recording was already dismissed by the user
-          if (dismissedRecordingIds.has(recording.id)) {
-            return;
-          }
-
           setPendingRecordingId(recording.id);
 
           // If already failed, show error immediately
@@ -752,7 +744,7 @@ export function WeekEditor({
       cancelled = true;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [cohortId, week.id, clientUserId, enrollmentId, onSummaryGenerated, dismissedRecordingIds]);
+  }, [cohortId, week.id, clientUserId, enrollmentId, onSummaryGenerated]);
 
   // State for expanded tasks (to show member breakdown) - for cohort mode
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -2335,10 +2327,16 @@ export function WeekEditor({
             /* Error state with dismiss X */
             <div className="p-4 border border-red-500/30 bg-red-50 dark:bg-red-900/20 rounded-lg relative">
               <button
-                onClick={() => {
-                  // Add to dismissed set so it won't re-appear on subsequent checks
+                onClick={async () => {
+                  // Delete the failed recording from Firestore so it doesn't reappear on refresh
                   if (pendingRecordingId) {
-                    setDismissedRecordingIds(prev => new Set(prev).add(pendingRecordingId));
+                    try {
+                      await fetch(`/api/coach/recordings/${pendingRecordingId}/cancel`, {
+                        method: 'DELETE',
+                      });
+                    } catch (err) {
+                      console.error('Failed to delete recording:', err);
+                    }
                   }
                   setRecordingStatus('idle');
                   setRecordingError(null);
