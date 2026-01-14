@@ -10,12 +10,13 @@
  * Query params:
  * - date: YYYY-MM-DD (optional, defaults to today)
  * - includePast: "true" to include tasks from past dates (default: false)
+ * - orgId: Organization ID (optional override, useful for debugging)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { getEffectiveOrgId, getTenantOrgId } from '@/lib/tenant/context';
 
 interface OrphanTask {
   id: string;
@@ -38,16 +39,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const organizationId = await getEffectiveOrgId();
-    if (!organizationId) {
-      return NextResponse.json({
-        error: 'Must be on a tenant domain to use this endpoint',
-      }, { status: 400 });
-    }
-
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
     const includePast = searchParams.get('includePast') === 'true';
+    const orgIdOverride = searchParams.get('orgId');
+
+    // Get org from various sources for debugging
+    const tenantOrgId = await getTenantOrgId();
+    const effectiveOrgId = await getEffectiveOrgId();
+    const organizationId = orgIdOverride || effectiveOrgId;
+
+    // Debug info
+    console.log(`[CLEANUP_ORPHAN_TASKS] Debug: tenantOrgId=${tenantOrgId}, effectiveOrgId=${effectiveOrgId}, orgIdOverride=${orgIdOverride}`);
+
+    if (!organizationId) {
+      return NextResponse.json({
+        error: 'Could not determine organization ID',
+        debug: {
+          tenantOrgId,
+          effectiveOrgId,
+          orgIdOverride,
+        },
+        hint: 'Add ?orgId=YOUR_ORG_ID to override, or ensure you are on a tenant domain',
+      }, { status: 400 });
+    }
 
     console.log(`[CLEANUP_ORPHAN_TASKS] Checking for userId=${userId}, orgId=${organizationId}, date=${date}, includePast=${includePast}`);
 
@@ -108,6 +123,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       currentOrganizationId: organizationId,
+      debug: {
+        tenantOrgId,
+        effectiveOrgId,
+        orgIdOverride,
+      },
       date,
       includePast,
       summary: {
@@ -139,16 +159,20 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const organizationId = await getEffectiveOrgId();
-    if (!organizationId) {
-      return NextResponse.json({
-        error: 'Must be on a tenant domain to use this endpoint',
-      }, { status: 400 });
-    }
-
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
     const includePast = searchParams.get('includePast') === 'true';
+    const orgIdOverride = searchParams.get('orgId');
+
+    const effectiveOrgId = await getEffectiveOrgId();
+    const organizationId = orgIdOverride || effectiveOrgId;
+
+    if (!organizationId) {
+      return NextResponse.json({
+        error: 'Could not determine organization ID',
+        hint: 'Add ?orgId=YOUR_ORG_ID to override',
+      }, { status: 400 });
+    }
 
     console.log(`[CLEANUP_ORPHAN_TASKS] Deleting orphans for userId=${userId}, orgId=${organizationId}, date=${date}, includePast=${includePast}`);
 

@@ -25,7 +25,6 @@ import {
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -653,6 +652,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   // Handle leave warning dialog actions
   const handleLeaveWarningDiscard = useCallback(() => {
     editorContextRef.current.discardAllChanges();
+    // Reset ref immediately to prevent stale state when provider unmounts before re-render
+    editorContextRef.current.hasUnsavedChanges = false;
     setShowLeaveWarning(false);
     if (pendingNavigationAction) {
       pendingNavigationAction();
@@ -662,17 +663,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
   const handleLeaveWarningSave = useCallback(async () => {
     await editorContextRef.current.saveAllChanges();
+    // Reset ref immediately to prevent stale state when provider unmounts before re-render
+    editorContextRef.current.hasUnsavedChanges = false;
     setShowLeaveWarning(false);
     if (pendingNavigationAction) {
       pendingNavigationAction();
       setPendingNavigationAction(null);
     }
   }, [pendingNavigationAction]);
-
-  const handleLeaveWarningCancel = useCallback(() => {
-    setShowLeaveWarning(false);
-    setPendingNavigationAction(null);
-  }, []);
 
   // Get current enrollment's day index for "Jump to Today" feature
   const currentEnrollment = useMemo(() => {
@@ -6122,9 +6120,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleLeaveWarningCancel}>
-              Cancel
-            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLeaveWarningDiscard}
               className="bg-red-500 hover:bg-red-600 text-white"
