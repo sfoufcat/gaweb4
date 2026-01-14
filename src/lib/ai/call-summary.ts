@@ -9,7 +9,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { notifyUser } from '@/lib/notifications';
-import type { CallSummary, CallSummaryActionItem, SuggestedTask, ProgramEnrollment, ProgramWeek, ClientProgramWeek, Program } from '@/types';
+import type { CallSummary, CallSummaryActionItem, SuggestedTask, ProgramEnrollment, ProgramWeek, ClientProgramWeek, Program, ProgramInstance } from '@/types';
 
 // =============================================================================
 // CLIENT INITIALIZATION
@@ -178,6 +178,10 @@ export async function processCallSummary(
     recordingUrl?: string;
     callStartedAt: string;
     callEndedAt: string;
+    // Program instance linking
+    instanceId?: string;
+    weekIndex?: number;
+    dayIndex?: number;
   }
 ): Promise<{ success: boolean; summaryId?: string; error?: string }> {
   try {
@@ -225,6 +229,10 @@ export async function processCallSummary(
       clientUserId: context.clientUserId,
       programId: context.programId,
       programEnrollmentId: context.programEnrollmentId,
+      // Program instance linking (for displaying summary in program day/week)
+      instanceId: context.instanceId,
+      weekIndex: context.weekIndex,
+      dayIndex: context.dayIndex,
       recordingUrl: context.recordingUrl,
       recordingDurationSeconds: durationSeconds,
       summary: {
@@ -281,6 +289,10 @@ async function generateAndStoreSummary(
     programId?: string;
     programEnrollmentId?: string;
     programName?: string;
+    // Program instance linking
+    instanceId?: string;
+    weekIndex?: number;
+    dayIndex?: number;
   }
 ): Promise<void> {
   const summaryRef = adminDb
@@ -312,6 +324,11 @@ async function generateAndStoreSummary(
     // Create suggested tasks from action items for client
     if (context.clientUserId && result.actionItems.length > 0) {
       await createSuggestedTasks(orgId, summaryId, context.clientUserId, result.actionItems);
+    }
+
+    // Link summary to program instance week/day if applicable
+    if (context.instanceId && context.weekIndex !== undefined) {
+      await linkSummaryToInstance(summaryId, context.instanceId, context.weekIndex, context.dayIndex);
     }
 
     // Notify coach to fill week with this summary (if client has active enrollment)
@@ -369,6 +386,65 @@ async function createSuggestedTasks(
 
   await batch.commit();
   console.log(`[AI Call Summary] Created ${clientTasks.length} suggested tasks for summary ${summaryId}`);
+}
+
+/**
+ * Link a call summary to a program instance's week and day
+ */
+async function linkSummaryToInstance(
+  summaryId: string,
+  instanceId: string,
+  weekIndex: number,
+  dayIndex?: number
+): Promise<void> {
+  try {
+    const instanceRef = adminDb.collection('program_instances').doc(instanceId);
+    const instanceDoc = await instanceRef.get();
+
+    if (!instanceDoc.exists) {
+      console.log(`[AI Call Summary] Instance ${instanceId} not found, skipping linking`);
+      return;
+    }
+
+    const instanceData = instanceDoc.data() as ProgramInstance;
+    const weeks = [...(instanceData.weeks || [])];
+
+    if (!weeks[weekIndex]) {
+      console.log(`[AI Call Summary] Week ${weekIndex} not found in instance ${instanceId}`);
+      return;
+    }
+
+    // Add to week's linkedSummaryIds
+    const weekLinkedSummaryIds = weeks[weekIndex].linkedSummaryIds || [];
+    if (!weekLinkedSummaryIds.includes(summaryId)) {
+      weeks[weekIndex].linkedSummaryIds = [...weekLinkedSummaryIds, summaryId];
+    }
+
+    // If dayIndex is provided, also add to day's linkedSummaryIds
+    if (dayIndex !== undefined) {
+      const days = weeks[weekIndex].days || [];
+      const weekStartDayIndex = weeks[weekIndex].startDayIndex || 1;
+      const dayIndexInWeek = dayIndex - weekStartDayIndex;
+
+      if (days[dayIndexInWeek]) {
+        const dayLinkedSummaryIds = days[dayIndexInWeek].linkedSummaryIds || [];
+        if (!dayLinkedSummaryIds.includes(summaryId)) {
+          days[dayIndexInWeek].linkedSummaryIds = [...dayLinkedSummaryIds, summaryId];
+        }
+        weeks[weekIndex].days = days;
+      }
+    }
+
+    await instanceRef.update({
+      weeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    console.log(`[AI Call Summary] Linked summary ${summaryId} to instance ${instanceId} week ${weekIndex}${dayIndex !== undefined ? ` day ${dayIndex}` : ''}`);
+  } catch (error) {
+    console.error('[AI Call Summary] Error linking summary to instance:', error);
+    // Don't throw - this is a non-critical operation
+  }
 }
 
 /**

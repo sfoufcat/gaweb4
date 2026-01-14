@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { notifyCallProposed } from '@/lib/scheduling-notifications';
-import type { UnifiedEvent, ProposedTime, SchedulingStatus } from '@/types';
+import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
+import type { UnifiedEvent, ProposedTime, SchedulingStatus, ProgramInstance } from '@/types';
 
 /**
  * POST /api/scheduling/propose
@@ -21,6 +23,7 @@ import type { UnifiedEvent, ProposedTime, SchedulingStatus } from '@/types';
  * - respondBy?: string - ISO date deadline for response
  * - isRecurring?: boolean - Whether this is a recurring call
  * - recurrence?: RecurrencePattern - Recurrence settings if recurring
+ * - instanceId?: string - Program instance ID to link the call to
  */
 export async function POST(request: NextRequest) {
   try {
@@ -40,6 +43,7 @@ export async function POST(request: NextRequest) {
       respondBy,
       isRecurring = false,
       recurrence,
+      instanceId: bodyInstanceId,
     } = body;
 
     // Validate required fields
@@ -108,11 +112,70 @@ export async function POST(request: NextRequest) {
       .collection('coach_availability')
       .doc(organizationId)
       .get();
-    const timezone = availabilityDoc.exists 
+    const timezone = availabilityDoc.exists
       ? (availabilityDoc.data()?.timezone || 'America/New_York')
       : 'America/New_York';
 
     const now = new Date().toISOString();
+
+    // Program instance linking - calculate week/day if instanceId is provided
+    let instanceId: string | undefined = bodyInstanceId;
+    let weekIndex: number | undefined;
+    let dayIndex: number | undefined;
+    let instanceData: ProgramInstance | null = null;
+    let programId: string | undefined;
+
+    // Use the first proposed time for calculating program day
+    const firstProposedStart = proposedTimes[0]?.startDateTime;
+
+    if (instanceId && firstProposedStart) {
+      try {
+        // Fetch the program instance to get start date and program info
+        const instanceDoc = await adminDb.collection('program_instances').doc(instanceId).get();
+        if (instanceDoc.exists) {
+          instanceData = instanceDoc.data() as ProgramInstance;
+          programId = instanceData.programId;
+
+          // We need program info to get totalDays and includeWeekends
+          if (instanceData.programId) {
+            const programDoc = await adminDb.collection('programs').doc(instanceData.programId).get();
+            if (programDoc.exists) {
+              const programData = programDoc.data();
+              const totalDays = programData?.lengthDays || 30;
+              const includeWeekends = programData?.includeWeekends !== false;
+              const instanceStartDate = instanceData.startDate;
+
+              if (instanceStartDate) {
+                // Extract date part from startDateTime (it's in ISO format)
+                const eventDate = new Date(firstProposedStart).toISOString().split('T')[0];
+
+                const dayInfo = calculateProgramDayForDate(
+                  instanceStartDate,
+                  eventDate,
+                  totalDays,
+                  includeWeekends
+                );
+
+                if (dayInfo) {
+                  weekIndex = dayInfo.weekIndex;
+                  dayIndex = dayInfo.globalDayIndex; // Use global day index (1-based across program)
+                  console.log(`[SCHEDULING_PROPOSE] Calculated program position: week ${weekIndex}, day ${dayIndex}`);
+                } else {
+                  console.log(`[SCHEDULING_PROPOSE] Event date ${eventDate} is outside program range`);
+                }
+              }
+            }
+          }
+        } else {
+          console.log(`[SCHEDULING_PROPOSE] Instance ${instanceId} not found, skipping program linking`);
+          instanceId = undefined;
+        }
+      } catch (err) {
+        console.error('[SCHEDULING_PROPOSE] Error calculating program day:', err);
+        // Don't fail the request, just skip program linking
+        instanceId = undefined;
+      }
+    }
 
     // Create proposed time objects
     const formattedProposedTimes: ProposedTime[] = proposedTimes.map((time: { startDateTime: string; endDateTime: string }, index: number) => ({
@@ -146,6 +209,11 @@ export async function POST(request: NextRequest) {
       approvalType: 'none',
       status: 'pending_approval', // Needs client acceptance
       organizationId,
+      programId: programId || undefined,
+      // Program instance linking (for 1:1 calls linked to program days)
+      instanceId: instanceId || undefined,
+      weekIndex,
+      dayIndex,
       isRecurring,
       recurrence: isRecurring ? recurrence : undefined,
       createdByUserId: userId,
@@ -169,6 +237,51 @@ export async function POST(request: NextRequest) {
     };
 
     await eventRef.set(eventData);
+
+    // Link event to program instance week/day if applicable
+    if (instanceId && weekIndex !== undefined && dayIndex !== undefined && instanceData) {
+      try {
+        const instanceRef = adminDb.collection('program_instances').doc(instanceId);
+        const instanceDoc = await instanceRef.get();
+
+        if (instanceDoc.exists) {
+          const currentData = instanceDoc.data() as ProgramInstance;
+          const weeks = [...(currentData.weeks || [])];
+
+          if (weeks[weekIndex]) {
+            // Add to week's linkedCallEventIds
+            const weekLinkedCallEventIds = weeks[weekIndex].linkedCallEventIds || [];
+            if (!weekLinkedCallEventIds.includes(eventRef.id)) {
+              weeks[weekIndex].linkedCallEventIds = [...weekLinkedCallEventIds, eventRef.id];
+            }
+
+            // Find the day within the week and add to linkedEventIds
+            const days = weeks[weekIndex].days || [];
+            // dayIndex is globalDayIndex (1-based), we need to find the day within this week
+            const weekStartDayIndex = weeks[weekIndex].startDayIndex || 1;
+            const dayIndexInWeek = dayIndex - weekStartDayIndex;
+
+            if (days[dayIndexInWeek]) {
+              const dayLinkedEventIds = days[dayIndexInWeek].linkedEventIds || [];
+              if (!dayLinkedEventIds.includes(eventRef.id)) {
+                days[dayIndexInWeek].linkedEventIds = [...dayLinkedEventIds, eventRef.id];
+              }
+              weeks[weekIndex].days = days;
+            }
+
+            await instanceRef.update({
+              weeks,
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+
+            console.log(`[SCHEDULING_PROPOSE] Linked event ${eventRef.id} to instance ${instanceId} week ${weekIndex} day ${dayIndex}`);
+          }
+        }
+      } catch (err) {
+        console.error('[SCHEDULING_PROPOSE] Error linking event to instance:', err);
+        // Don't fail the request, the event was created successfully
+      }
+    }
 
     // Send notification to client about proposed call
     try {

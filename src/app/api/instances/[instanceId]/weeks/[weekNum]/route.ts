@@ -460,6 +460,11 @@ export async function PATCH(
     if (body.coachRecordingNotes !== undefined) updatedWeek.coachRecordingNotes = body.coachRecordingNotes?.trim() || undefined;
     if (body.linkedSummaryIds !== undefined) updatedWeek.linkedSummaryIds = body.linkedSummaryIds;
     if (body.linkedCallEventIds !== undefined) updatedWeek.linkedCallEventIds = body.linkedCallEventIds;
+    // Update linked content (resources attached to this week)
+    if (body.linkedArticleIds !== undefined) updatedWeek.linkedArticleIds = body.linkedArticleIds || [];
+    if (body.linkedDownloadIds !== undefined) updatedWeek.linkedDownloadIds = body.linkedDownloadIds || [];
+    if (body.linkedLinkIds !== undefined) updatedWeek.linkedLinkIds = body.linkedLinkIds || [];
+    if (body.linkedQuestionnaireIds !== undefined) updatedWeek.linkedQuestionnaireIds = body.linkedQuestionnaireIds || [];
     if (body.distribution !== undefined) updatedWeek.distribution = body.distribution;
     if (body.weeklyHabits !== undefined) updatedWeek.weeklyHabits = body.weeklyHabits;
     if (body.manualNotes !== undefined) updatedWeek.manualNotes = body.manualNotes?.trim() || undefined;

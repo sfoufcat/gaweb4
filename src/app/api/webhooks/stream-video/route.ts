@@ -241,6 +241,21 @@ async function handleRecordingReady(payload: StreamWebhookPayload): Promise<void
     const clientUserId = call.custom?.clientUserId || participants.find(p => p.user_id !== hostUserId)?.user_id;
     const clientName = participants.find(p => p.user_id === clientUserId)?.user?.name;
 
+    // Fetch event to get program instance linking fields
+    let instanceId: string | undefined;
+    let weekIndex: number | undefined;
+    let dayIndex: number | undefined;
+
+    if (eventId) {
+      const eventDoc = await adminDb.collection('events').doc(eventId).get();
+      if (eventDoc.exists) {
+        const eventData = eventDoc.data();
+        instanceId = eventData?.instanceId;
+        weekIndex = eventData?.weekIndex;
+        dayIndex = eventData?.dayIndex;
+      }
+    }
+
     // Start transcription
     const transcriptionResult = await transcribeCallWithGroq(
       organizationId,
@@ -274,6 +289,10 @@ async function handleRecordingReady(payload: StreamWebhookPayload): Promise<void
         recordingUrl,
         callStartedAt: call.created_at,
         callEndedAt: call.ended_at || new Date().toISOString(),
+        // Program instance linking
+        instanceId,
+        weekIndex,
+        dayIndex,
       }
     );
 

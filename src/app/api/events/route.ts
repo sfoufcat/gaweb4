@@ -22,9 +22,10 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { scheduleEventJobs } from '@/lib/event-notifications';
 import { generateRecurringInstances } from '@/lib/event-recurrence';
+import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
 import { generateDemoEvents } from '@/lib/demo-data';
-import type { UnifiedEvent, EventType, EventScope, EventStatus } from '@/types';
+import type { UnifiedEvent, EventType, EventScope, EventStatus, ProgramInstance } from '@/types';
 
 // ============================================================================
 // GET - List Events
@@ -196,6 +197,60 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
 
+    // Program instance linking - calculate week/day if instanceId is provided
+    let instanceId: string | undefined = body.instanceId;
+    let weekIndex: number | undefined;
+    let dayIndex: number | undefined;
+    let instanceData: ProgramInstance | null = null;
+
+    if (instanceId && body.startDateTime) {
+      try {
+        // Fetch the program instance to get start date and program info
+        const instanceDoc = await adminDb.collection('program_instances').doc(instanceId).get();
+        if (instanceDoc.exists) {
+          instanceData = instanceDoc.data() as ProgramInstance;
+
+          // We need program info to get totalDays and includeWeekends
+          if (instanceData.programId) {
+            const programDoc = await adminDb.collection('programs').doc(instanceData.programId).get();
+            if (programDoc.exists) {
+              const programData = programDoc.data();
+              const totalDays = programData?.lengthDays || 30;
+              const includeWeekends = programData?.includeWeekends !== false;
+              const instanceStartDate = instanceData.startDate;
+
+              if (instanceStartDate) {
+                // Extract date part from startDateTime (it's in ISO format)
+                const eventDate = body.startDateTime.split('T')[0];
+
+                const dayInfo = calculateProgramDayForDate(
+                  instanceStartDate,
+                  eventDate,
+                  totalDays,
+                  includeWeekends
+                );
+
+                if (dayInfo) {
+                  weekIndex = dayInfo.weekIndex;
+                  dayIndex = dayInfo.globalDayIndex; // Use global day index (1-based across program)
+                  console.log(`[EVENTS_POST] Calculated program position: week ${weekIndex}, day ${dayIndex}`);
+                } else {
+                  console.log(`[EVENTS_POST] Event date ${eventDate} is outside program range`);
+                }
+              }
+            }
+          }
+        } else {
+          console.log(`[EVENTS_POST] Instance ${instanceId} not found, skipping program linking`);
+          instanceId = undefined;
+        }
+      } catch (err) {
+        console.error('[EVENTS_POST] Error calculating program day:', err);
+        // Don't fail the request, just skip program linking
+        instanceId = undefined;
+      }
+    }
+
     // Auto-populate programIds from programId if not explicitly provided
     // This ensures the program content API's array-contains query finds the events
     let programIds: string[] = body.programIds || [];
@@ -245,11 +300,16 @@ export async function POST(request: NextRequest) {
       visibility: body.visibility || 'squad_only',
       
       organizationId: organizationId || body.organizationId || undefined,
-      programId: body.programId || undefined,
+      programId: body.programId || instanceData?.programId || undefined,
       programIds,
       squadId: body.squadId || undefined,
       cohortId: body.cohortId || undefined,
-      
+
+      // Program instance linking (for 1:1 calls linked to program days)
+      instanceId: instanceId || undefined,
+      weekIndex: weekIndex,
+      dayIndex: dayIndex,
+
       isRecurring: body.isRecurring || false,
       recurrence: body.recurrence || undefined,
       parentEventId: undefined,
@@ -326,6 +386,52 @@ export async function POST(request: NextRequest) {
     // If recurring, generate initial instances
     if (eventData.isRecurring && eventData.recurrence) {
       await generateRecurringInstances(createdEvent);
+    }
+
+    // Link event to program instance week/day if applicable
+    if (instanceId && weekIndex !== undefined && dayIndex !== undefined && instanceData) {
+      try {
+        // Update the instance document to add event to week's linkedCallEventIds and day's linkedEventIds
+        const instanceRef = adminDb.collection('program_instances').doc(instanceId);
+        const instanceDoc = await instanceRef.get();
+
+        if (instanceDoc.exists) {
+          const currentData = instanceDoc.data() as ProgramInstance;
+          const weeks = [...(currentData.weeks || [])];
+
+          if (weeks[weekIndex]) {
+            // Add to week's linkedCallEventIds
+            const weekLinkedCallEventIds = weeks[weekIndex].linkedCallEventIds || [];
+            if (!weekLinkedCallEventIds.includes(eventId)) {
+              weeks[weekIndex].linkedCallEventIds = [...weekLinkedCallEventIds, eventId];
+            }
+
+            // Find the day within the week and add to linkedEventIds
+            const days = weeks[weekIndex].days || [];
+            // dayIndex is globalDayIndex (1-based), we need to find the day within this week
+            const weekStartDayIndex = weeks[weekIndex].startDayIndex || 1;
+            const dayIndexInWeek = dayIndex - weekStartDayIndex;
+
+            if (days[dayIndexInWeek]) {
+              const dayLinkedEventIds = days[dayIndexInWeek].linkedEventIds || [];
+              if (!dayLinkedEventIds.includes(eventId)) {
+                days[dayIndexInWeek].linkedEventIds = [...dayLinkedEventIds, eventId];
+              }
+              weeks[weekIndex].days = days;
+            }
+
+            await instanceRef.update({
+              weeks,
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+
+            console.log(`[EVENTS_POST] Linked event ${eventId} to instance ${instanceId} week ${weekIndex} day ${dayIndex}`);
+          }
+        }
+      } catch (err) {
+        console.error('[EVENTS_POST] Error linking event to instance:', err);
+        // Don't fail the request, the event was created successfully
+      }
     }
 
     console.log(`[EVENTS_POST] Created event ${eventId} (${body.eventType})`);

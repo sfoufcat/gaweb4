@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { notifyCallAccepted, notifyCallDeclined, notifyCallCounterProposed } from '@/lib/scheduling-notifications';
 import { getIntegration } from '@/lib/integrations/token-manager';
 import { createGoogleCalendarEvent } from '@/lib/integrations/google-calendar';
 import { createOutlookCalendarEvent } from '@/lib/integrations/outlook-calendar';
-import type { UnifiedEvent, ProposedTime, SchedulingStatus, EventScheduledJob, EventJobType, CoachAvailability, ClientCoachingData } from '@/types';
+import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
+import type { UnifiedEvent, ProposedTime, SchedulingStatus, EventScheduledJob, EventJobType, CoachAvailability, ClientCoachingData, ProgramInstance } from '@/types';
 
 /**
  * POST /api/scheduling/respond
@@ -151,6 +153,17 @@ export async function POST(request: NextRequest) {
         } catch (syncErr) {
           console.error('[SCHEDULING_RESPOND] Failed to sync to clientCoachingData:', syncErr);
           // Don't fail the request if sync fails
+        }
+      }
+
+      // Link event to program instance if instanceId is set
+      // Recalculate week/day based on confirmed time (in case it changed)
+      if (event.instanceId) {
+        try {
+          await linkEventToInstance(eventRef.id, event.instanceId, selectedTime.startDateTime);
+        } catch (linkErr) {
+          console.error('[SCHEDULING_RESPOND] Failed to link event to instance:', linkErr);
+          // Don't fail the request if linking fails
         }
       }
 
@@ -470,5 +483,95 @@ async function syncToClientCoachingData(event: UnifiedEvent) {
   });
 
   console.log(`[SCHEDULING_RESPOND] Synced to clientCoachingData for ${coachingDocId}`);
+}
+
+/**
+ * Link a confirmed event to its program instance
+ * Calculates week/day based on the confirmed time and updates both the event and instance
+ */
+async function linkEventToInstance(eventId: string, instanceId: string, confirmedStartDateTime: string) {
+  // Fetch the instance to get program info
+  const instanceDoc = await adminDb.collection('program_instances').doc(instanceId).get();
+  if (!instanceDoc.exists) {
+    console.log(`[SCHEDULING_RESPOND] Instance ${instanceId} not found, skipping linking`);
+    return;
+  }
+
+  const instanceData = instanceDoc.data() as ProgramInstance;
+  if (!instanceData.programId) {
+    console.log(`[SCHEDULING_RESPOND] Instance ${instanceId} has no programId, skipping linking`);
+    return;
+  }
+
+  // Fetch program to get totalDays and includeWeekends
+  const programDoc = await adminDb.collection('programs').doc(instanceData.programId).get();
+  if (!programDoc.exists) {
+    console.log(`[SCHEDULING_RESPOND] Program ${instanceData.programId} not found, skipping linking`);
+    return;
+  }
+
+  const programData = programDoc.data();
+  const totalDays = programData?.lengthDays || 30;
+  const includeWeekends = programData?.includeWeekends !== false;
+  const instanceStartDate = instanceData.startDate;
+
+  if (!instanceStartDate) {
+    console.log(`[SCHEDULING_RESPOND] Instance ${instanceId} has no start date, skipping linking`);
+    return;
+  }
+
+  // Calculate week/day for the confirmed time
+  const eventDate = new Date(confirmedStartDateTime).toISOString().split('T')[0];
+  const dayInfo = calculateProgramDayForDate(
+    instanceStartDate,
+    eventDate,
+    totalDays,
+    includeWeekends
+  );
+
+  if (!dayInfo) {
+    console.log(`[SCHEDULING_RESPOND] Event date ${eventDate} is outside program range, skipping linking`);
+    return;
+  }
+
+  const { weekIndex, globalDayIndex: dayIndex } = dayInfo;
+
+  // Update the event with calculated week/day
+  await adminDb.collection('events').doc(eventId).update({
+    weekIndex,
+    dayIndex,
+    updatedAt: new Date().toISOString(),
+  });
+
+  // Update the instance's week and day linkedEventIds
+  const weeks = [...(instanceData.weeks || [])];
+
+  if (weeks[weekIndex]) {
+    // Add to week's linkedCallEventIds
+    const weekLinkedCallEventIds = weeks[weekIndex].linkedCallEventIds || [];
+    if (!weekLinkedCallEventIds.includes(eventId)) {
+      weeks[weekIndex].linkedCallEventIds = [...weekLinkedCallEventIds, eventId];
+    }
+
+    // Find the day within the week and add to linkedEventIds
+    const days = weeks[weekIndex].days || [];
+    const weekStartDayIndex = weeks[weekIndex].startDayIndex || 1;
+    const dayIndexInWeek = dayIndex - weekStartDayIndex;
+
+    if (days[dayIndexInWeek]) {
+      const dayLinkedEventIds = days[dayIndexInWeek].linkedEventIds || [];
+      if (!dayLinkedEventIds.includes(eventId)) {
+        days[dayIndexInWeek].linkedEventIds = [...dayLinkedEventIds, eventId];
+      }
+      weeks[weekIndex].days = days;
+    }
+
+    await adminDb.collection('program_instances').doc(instanceId).update({
+      weeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    console.log(`[SCHEDULING_RESPOND] Linked event ${eventId} to instance ${instanceId} week ${weekIndex} day ${dayIndex}`);
+  }
 }
 

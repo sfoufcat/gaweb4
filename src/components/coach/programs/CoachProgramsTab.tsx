@@ -4451,11 +4451,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         ) : viewMode === 'enrollments' ? (
           // Enrollments View
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                 View and manage enrolled users
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between sm:justify-end gap-3">
                 <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                   {programEnrollments.filter(e => e.status === 'active' || e.status === 'upcoming').length} active
                 </span>
@@ -4671,21 +4671,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         ) : viewMode === 'landing' ? (
           // Landing Page Editor
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  Customize your program landing page with compelling content
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                Customize your program landing page with compelling content
+              </p>
+              <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
                 <button
                   onClick={() => setIsAILandingPageModalOpen(true)}
                   className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
                 >
                   <Sparkles className="w-4 h-4" />
-                  Generate with AI
+                  <span className="hidden sm:inline">Generate with AI</span>
+                  <span className="sm:hidden">AI</span>
                 </button>
-                <Button 
+                <Button
                   onClick={async () => {
                     const success = await handleSaveLandingPage();
                     if (success) {

@@ -725,7 +725,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
         )}
         
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
               Squads
@@ -736,7 +736,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
           </div>
           <div className="flex items-center gap-3">
             {/* Search Input */}
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-initial">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9ca3af]" />
               <input
                 type="text"
@@ -748,7 +748,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
                     setSquadFilter('all');
                   }
                 }}
-                className="pl-9 pr-8 py-1.5 w-48 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
+                className="pl-9 pr-8 py-1.5 w-full sm:w-48 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
               />
               {searchQuery && (
                 <button
@@ -759,7 +759,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
                 </button>
               )}
             </div>
-            
+
             {!isDemoMode && (
               <Button
                 variant="ghost"
@@ -773,7 +773,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
                   setEditingSquad(null);
                   setIsSquadModalOpen(true);
                 }}
-                className="text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-medium font-albert transition-colors duration-200 text-[15px] !px-2.5"
+                className="text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-medium font-albert transition-colors duration-200 text-[15px] !px-2.5 flex-shrink-0"
               >
                 <Plus className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">New Squad</span>
@@ -786,44 +786,44 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
         {displaySquads.length > 0 && (
           <div className="flex flex-col gap-3 mb-6">
             {/* Primary Filter: Segmented Control - Standalone first, All at end */}
-            <div className="flex items-center gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
-              <button
-                onClick={() => setSquadFilter('standalone')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 ${
-                  squadFilter === 'standalone'
-                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                Standalone ({standaloneCount})
-              </button>
-              {programCount > 0 && (
+            <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
+              <div className="flex items-center gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
                 <button
-                  onClick={() => setSquadFilter('program-all')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 ${
-                    squadFilter === 'program-all' || squadFilter === 'program-group' || squadFilter === 'program-individual'
+                  onClick={() => setSquadFilter('standalone')}
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 whitespace-nowrap ${
+                    squadFilter === 'standalone'
                       ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                   }`}
                 >
-                  <Target className="w-3.5 h-3.5" />
-                  Program Communities ({programCount})
+                  <Users className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Standalone</span> ({standaloneCount})
                 </button>
-              )}
-              <button
-                onClick={() => setSquadFilter('all')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
-                  squadFilter === 'all'
-                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                }`}
-              >
-                All ({displaySquads.length})
-              </button>
+                {programCount > 0 && (
+                  <button
+                    onClick={() => setSquadFilter('program-all')}
+                    className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 whitespace-nowrap ${
+                      squadFilter === 'program-all' || squadFilter === 'program-group' || squadFilter === 'program-individual'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                    }`}
+                  >
+                    <Target className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Program</span> ({programCount})
+                  </button>
+                )}
+                <button
+                  onClick={() => setSquadFilter('all')}
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all whitespace-nowrap ${
+                    squadFilter === 'all'
+                      ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                  }`}
+                >
+                  All ({displaySquads.length})
+                </button>
+              </div>
             </div>
-
-
           </div>
         )}
 

@@ -508,3 +508,62 @@ export function calculateTotalCalendarWeeks(
 ): number {
   return calculateCalendarWeeks(enrollmentStartDate, programLengthDays, includeWeekends).length;
 }
+
+/**
+ * Calculate the program week and day indices for a given target date.
+ *
+ * Given an instance/enrollment start date and a target date (e.g., when a call is scheduled),
+ * this function determines which program week and day the target date falls on.
+ *
+ * @param instanceStartDate - ISO date string when the program instance started
+ * @param targetDate - ISO date string for the date to locate (e.g., call date)
+ * @param totalDays - Total program days (content days, not calendar days)
+ * @param includeWeekends - Whether program includes weekend days
+ * @returns Object with weekIndex (0-based), dayIndex (1-7 within week), globalDayIndex (1-based across program)
+ *          Returns null if target date is outside the program range or on a weekend for weekday-only programs
+ *
+ * @example
+ * // Program starts Jan 1, call scheduled for Jan 8 (weekdays only)
+ * calculateProgramDayForDate('2024-01-01', '2024-01-08', 30, false)
+ * // Returns: { weekIndex: 1, dayIndex: 1, globalDayIndex: 6 }
+ */
+export function calculateProgramDayForDate(
+  instanceStartDate: string,
+  targetDate: string,
+  totalDays: number,
+  includeWeekends: boolean
+): { weekIndex: number; dayIndex: number; globalDayIndex: number } | null {
+  // Get the global day index for the target date
+  const targetDateObj = parseDate(targetDate);
+  const globalDayIndex = dateToDayIndex(instanceStartDate, targetDateObj, includeWeekends);
+
+  // Check if target is before program start or on weekend for weekday-only programs
+  if (globalDayIndex <= 0) {
+    return null;
+  }
+
+  // Check if target is beyond program end
+  if (globalDayIndex > totalDays) {
+    return null;
+  }
+
+  // Get all calendar weeks to find which week this day falls in
+  const calendarWeeks = calculateCalendarWeeks(instanceStartDate, totalDays, includeWeekends);
+
+  // Find the week that contains this global day index
+  for (let weekIdx = 0; weekIdx < calendarWeeks.length; weekIdx++) {
+    const week = calendarWeeks[weekIdx];
+    if (globalDayIndex >= week.startDayIndex && globalDayIndex <= week.endDayIndex) {
+      // Calculate day index within the week (1-based)
+      const dayIndexInWeek = globalDayIndex - week.startDayIndex + 1;
+      return {
+        weekIndex: weekIdx,
+        dayIndex: dayIndexInWeek,
+        globalDayIndex: globalDayIndex,
+      };
+    }
+  }
+
+  // Should not reach here if weeks are calculated correctly
+  return null;
+}

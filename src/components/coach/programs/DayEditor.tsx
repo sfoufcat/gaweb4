@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment, ClientViewContext, CohortViewContext } from '@/types';
-import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, ChevronDown, ChevronRight, Pencil, Loader2 } from 'lucide-react';
+import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment, ClientViewContext, CohortViewContext, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire } from '@/types';
+import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, ChevronDown, ChevronRight, Pencil, Loader2, BookOpen, Download, Link2, FileQuestion } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { useInstanceIdLookup } from '@/hooks/useProgramInstanceBridge';
 import { Button } from '@/components/ui/button';
@@ -60,6 +60,11 @@ interface DayEditorProps {
   saveError?: string | null;
   // NEW: Instance ID for migrated data (uses new unified API when present)
   instanceId?: string | null;
+  // Available content for linking (passed from parent)
+  availableArticles?: DiscoverArticle[];
+  availableDownloads?: DiscoverDownload[];
+  availableLinks?: DiscoverLink[];
+  availableQuestionnaires?: Questionnaire[];
 }
 
 // Form data type
@@ -70,6 +75,11 @@ export interface DayFormData {
   tasks: ProgramTaskTemplate[];
   habits: ProgramHabitTemplate[];
   courseAssignments: DayCourseAssignment[];
+  // Linked content
+  linkedArticleIds: string[];
+  linkedDownloadIds: string[];
+  linkedLinkIds: string[];
+  linkedQuestionnaireIds: string[];
 }
 
 /**
@@ -93,6 +103,10 @@ export function DayEditor({
   saving = false,
   saveError,
   instanceId,
+  availableArticles = [],
+  availableDownloads = [],
+  availableLinks = [],
+  availableQuestionnaires = [],
 }: DayEditorProps) {
   // Program editor context for centralized save
   const editorContext = useProgramEditorOptional();
@@ -202,6 +216,10 @@ export function DayEditor({
   const dayTasks = day?.tasks || [];
   const dayHabits = day?.habits || [];
   const dayCourseAssignments = day?.courseAssignments || [];
+  const dayLinkedArticleIds = day?.linkedArticleIds || [];
+  const dayLinkedDownloadIds = day?.linkedDownloadIds || [];
+  const dayLinkedLinkIds = day?.linkedLinkIds || [];
+  const dayLinkedQuestionnaireIds = day?.linkedQuestionnaireIds || [];
 
   // Get default form data from day
   const getDefaultFormData = useCallback((): DayFormData => ({
@@ -211,7 +229,11 @@ export function DayEditor({
     tasks: dayTasks,
     habits: dayHabits,
     courseAssignments: dayCourseAssignments,
-  }), [dayTitle, daySummary, dayDailyPrompt, dayTasks, dayHabits, dayCourseAssignments]);
+    linkedArticleIds: dayLinkedArticleIds,
+    linkedDownloadIds: dayLinkedDownloadIds,
+    linkedLinkIds: dayLinkedLinkIds,
+    linkedQuestionnaireIds: dayLinkedQuestionnaireIds,
+  }), [dayTitle, daySummary, dayDailyPrompt, dayTasks, dayHabits, dayCourseAssignments, dayLinkedArticleIds, dayLinkedDownloadIds, dayLinkedLinkIds, dayLinkedQuestionnaireIds]);
 
   // Check for pending data from context
   const entityId = `day-${dayIndex}`;
@@ -258,6 +280,10 @@ export function DayEditor({
           tasks: day?.tasks || [],
           habits: day?.habits || [],
           courseAssignments: day?.courseAssignments || [],
+          linkedArticleIds: day?.linkedArticleIds || [],
+          linkedDownloadIds: day?.linkedDownloadIds || [],
+          linkedLinkIds: day?.linkedLinkIds || [],
+          linkedQuestionnaireIds: day?.linkedQuestionnaireIds || [],
         });
         setHasChanges(false);
       }
@@ -297,6 +323,10 @@ export function DayEditor({
           tasks: day?.tasks || [],
           habits: day?.habits || [],
           courseAssignments: day?.courseAssignments || [],
+          linkedArticleIds: day?.linkedArticleIds || [],
+          linkedDownloadIds: day?.linkedDownloadIds || [],
+          linkedLinkIds: day?.linkedLinkIds || [],
+          linkedQuestionnaireIds: day?.linkedQuestionnaireIds || [],
         });
         setHasChanges(false);
       }
@@ -329,6 +359,10 @@ export function DayEditor({
         tasks: day?.tasks || [],
         habits: day?.habits || [],
         courseAssignments: day?.courseAssignments || [],
+        linkedArticleIds: day?.linkedArticleIds || [],
+        linkedDownloadIds: day?.linkedDownloadIds || [],
+        linkedLinkIds: day?.linkedLinkIds || [],
+        linkedQuestionnaireIds: day?.linkedQuestionnaireIds || [],
       });
       setHasChanges(false);
     }
@@ -347,6 +381,10 @@ export function DayEditor({
         tasks: day?.tasks || [],
         habits: day?.habits || [],
         courseAssignments: day?.courseAssignments || [],
+        linkedArticleIds: day?.linkedArticleIds || [],
+        linkedDownloadIds: day?.linkedDownloadIds || [],
+        linkedLinkIds: day?.linkedLinkIds || [],
+        linkedQuestionnaireIds: day?.linkedQuestionnaireIds || [],
       });
       setHasChanges(false);
     }
@@ -363,6 +401,10 @@ export function DayEditor({
       tasks: dayTasks,
       habits: dayHabits,
       courseAssignments: dayCourseAssignments,
+      linkedArticleIds: dayLinkedArticleIds,
+      linkedDownloadIds: dayLinkedDownloadIds,
+      linkedLinkIds: dayLinkedLinkIds,
+      linkedQuestionnaireIds: dayLinkedQuestionnaireIds,
     };
     const changed =
       formData.title !== defaultData.title ||
@@ -370,7 +412,11 @@ export function DayEditor({
       formData.dailyPrompt !== defaultData.dailyPrompt ||
       JSON.stringify(formData.tasks) !== JSON.stringify(defaultData.tasks) ||
       JSON.stringify(formData.habits) !== JSON.stringify(defaultData.habits) ||
-      JSON.stringify(formData.courseAssignments) !== JSON.stringify(defaultData.courseAssignments);
+      JSON.stringify(formData.courseAssignments) !== JSON.stringify(defaultData.courseAssignments) ||
+      JSON.stringify(formData.linkedArticleIds) !== JSON.stringify(defaultData.linkedArticleIds) ||
+      JSON.stringify(formData.linkedDownloadIds) !== JSON.stringify(defaultData.linkedDownloadIds) ||
+      JSON.stringify(formData.linkedLinkIds) !== JSON.stringify(defaultData.linkedLinkIds) ||
+      JSON.stringify(formData.linkedQuestionnaireIds) !== JSON.stringify(defaultData.linkedQuestionnaireIds);
     setHasChanges(changed);
 
     // Register changes with context if available
@@ -488,6 +534,80 @@ export function DayEditor({
       habits: prev.habits.filter((_, i) => i !== index),
     }));
   };
+
+  // Link management functions for articles
+  const addArticleLink = (articleId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      linkedArticleIds: [...prev.linkedArticleIds, articleId],
+    }));
+  };
+
+  const removeArticleLink = (articleId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      linkedArticleIds: prev.linkedArticleIds.filter(id => id !== articleId),
+    }));
+  };
+
+  // Link management functions for downloads
+  const addDownloadLink = (downloadId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      linkedDownloadIds: [...prev.linkedDownloadIds, downloadId],
+    }));
+  };
+
+  const removeDownloadLink = (downloadId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      linkedDownloadIds: prev.linkedDownloadIds.filter(id => id !== downloadId),
+    }));
+  };
+
+  // Link management functions for links
+  const addLinkLink = (linkId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      linkedLinkIds: [...prev.linkedLinkIds, linkId],
+    }));
+  };
+
+  const removeLinkLink = (linkId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      linkedLinkIds: prev.linkedLinkIds.filter(id => id !== linkId),
+    }));
+  };
+
+  // Link management functions for questionnaires
+  const addQuestionnaireLink = (questionnaireId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      linkedQuestionnaireIds: [...prev.linkedQuestionnaireIds, questionnaireId],
+    }));
+  };
+
+  const removeQuestionnaireLink = (questionnaireId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      linkedQuestionnaireIds: prev.linkedQuestionnaireIds.filter(id => id !== questionnaireId),
+    }));
+  };
+
+  // Filter available items to exclude already linked ones
+  const availableArticlesToLink = availableArticles.filter(
+    a => !formData.linkedArticleIds.includes(a.id)
+  );
+  const availableDownloadsToLink = availableDownloads.filter(
+    d => !formData.linkedDownloadIds.includes(d.id)
+  );
+  const availableLinksToLink = availableLinks.filter(
+    l => !formData.linkedLinkIds.includes(l.id)
+  );
+  const availableQuestionnairesToLink = availableQuestionnaires.filter(
+    q => !formData.linkedQuestionnaireIds.includes(q.id)
+  );
 
   // Focus count warning check
   const focusCount = formData.tasks.filter(t => t.isPrimary).length;
@@ -948,6 +1068,190 @@ export function DayEditor({
           currentAssignments={formData.courseAssignments}
           onChange={(assignments) => setFormData({ ...formData, courseAssignments: assignments })}
         />
+      </div>
+
+      {/* Resources Section */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <label className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            Linked Resources
+          </label>
+        </div>
+        
+        <div className="space-y-4">
+          {/* Articles */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Articles</span>
+            </div>
+            {formData.linkedArticleIds.map(articleId => {
+              const article = availableArticles.find(a => a.id === articleId);
+              return (
+                <div key={articleId} className="flex items-center gap-2 p-2 bg-[#f3f1ef] dark:bg-[#1d222b] rounded-lg">
+                  <BookOpen className="w-4 h-4 text-brand-accent" />
+                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                    {article?.title || articleId}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeArticleLink(articleId)}
+                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-[#a7a39e] hover:text-red-500"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
+            {availableArticlesToLink.length > 0 && (
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) addArticleLink(e.target.value);
+                }}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm"
+              >
+                <option value="">Add article...</option>
+                {availableArticlesToLink.map(a => (
+                  <option key={a.id} value={a.id}>{a.title}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Downloads */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Download className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Downloads</span>
+            </div>
+            {formData.linkedDownloadIds.map(downloadId => {
+              const download = availableDownloads.find(d => d.id === downloadId);
+              return (
+                <div key={downloadId} className="flex items-center gap-2 p-2 bg-[#f3f1ef] dark:bg-[#1d222b] rounded-lg">
+                  <Download className="w-4 h-4 text-brand-accent" />
+                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                    {download?.title || downloadId}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeDownloadLink(downloadId)}
+                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-[#a7a39e] hover:text-red-500"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
+            {availableDownloadsToLink.length > 0 && (
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) addDownloadLink(e.target.value);
+                }}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm"
+              >
+                <option value="">Add download...</option>
+                {availableDownloadsToLink.map(d => (
+                  <option key={d.id} value={d.id}>{d.title}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Links */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Link2 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Links</span>
+            </div>
+            {formData.linkedLinkIds.map(linkId => {
+              const link = availableLinks.find(l => l.id === linkId);
+              return (
+                <div key={linkId} className="flex items-center gap-2 p-2 bg-[#f3f1ef] dark:bg-[#1d222b] rounded-lg">
+                  <Link2 className="w-4 h-4 text-brand-accent" />
+                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                    {link?.title || linkId}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeLinkLink(linkId)}
+                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-[#a7a39e] hover:text-red-500"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
+            {availableLinksToLink.length > 0 && (
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) addLinkLink(e.target.value);
+                }}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm"
+              >
+                <option value="">Add link...</option>
+                {availableLinksToLink.map(l => (
+                  <option key={l.id} value={l.id}>{l.title}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Questionnaires */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <FileQuestion className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Questionnaires</span>
+            </div>
+            {formData.linkedQuestionnaireIds.map(questionnaireId => {
+              const questionnaire = availableQuestionnaires.find(q => q.id === questionnaireId);
+              return (
+                <div key={questionnaireId} className="flex items-center gap-2 p-2 bg-[#f3f1ef] dark:bg-[#1d222b] rounded-lg">
+                  <FileQuestion className="w-4 h-4 text-brand-accent" />
+                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                    {questionnaire?.title || questionnaireId}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeQuestionnaireLink(questionnaireId)}
+                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-[#a7a39e] hover:text-red-500"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
+            {availableQuestionnairesToLink.length > 0 && (
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) addQuestionnaireLink(e.target.value);
+                }}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm"
+              >
+                <option value="">Add questionnaire...</option>
+                {availableQuestionnairesToLink.map(q => (
+                  <option key={q.id} value={q.id}>{q.title}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Empty state when no content available */}
+          {availableArticles.length === 0 && availableDownloads.length === 0 && 
+           availableLinks.length === 0 && availableQuestionnaires.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-6 text-center border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
+              <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                No resources available to link
+              </p>
+              <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-1">
+                Create articles, downloads, links, or questionnaires in your Discover section first
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Error display */}

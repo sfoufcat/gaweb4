@@ -77,8 +77,12 @@ export async function GET(request: NextRequest) {
     clientsQuery = clientsQuery.limit(limit + 1);
 
     const clientsSnapshot = await clientsQuery.get();
-    const hasNextPage = clientsSnapshot.docs.length > limit;
-    const docs = hasNextPage ? clientsSnapshot.docs.slice(0, limit) : clientsSnapshot.docs;
+
+    // Filter out the current user (coach shouldn't see themselves as a client)
+    const allDocs = clientsSnapshot.docs.filter(doc => doc.data().userId !== userId);
+
+    const hasNextPage = allDocs.length > limit;
+    const docs = hasNextPage ? allDocs.slice(0, limit) : allDocs;
 
     // Separate clients into those with cached data and those without
     const clientsWithCache: ClientResponse[] = [];

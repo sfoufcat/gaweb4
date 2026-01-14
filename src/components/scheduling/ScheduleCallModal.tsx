@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   X,
   Calendar,
@@ -15,9 +15,13 @@ import {
   AlertCircle,
   Repeat,
   Globe,
+  BookOpen,
+  Link2,
 } from 'lucide-react';
 import { useAvailableSlots } from '@/hooks/useAvailability';
 import { useSchedulingActions } from '@/hooks/useScheduling';
+import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
+import type { ProgramEnrollment, ProgramInstance } from '@/types';
 
 interface ScheduleCallModalProps {
   isOpen: boolean;
@@ -54,6 +58,18 @@ interface ProposedTimeSlot {
   endTime: string;
 }
 
+// Response from /api/scheduling/client-enrollment
+interface ClientEnrollmentData {
+  enrollment: ProgramEnrollment | null;
+  program: {
+    id: string;
+    name: string;
+    lengthDays: number;
+    includeWeekends: boolean;
+  } | null;
+  instance: ProgramInstance | null;
+}
+
 /**
  * ScheduleCallModal
  * 
@@ -88,6 +104,37 @@ export function ScheduleCallModal({
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
 
+  // Program linking state
+  const [enrollmentData, setEnrollmentData] = useState<ClientEnrollmentData | null>(null);
+  const [enrollmentLoading, setEnrollmentLoading] = useState(false);
+  const [linkToProgram, setLinkToProgram] = useState(false);
+
+  // Fetch client's active 1:1 enrollment when modal opens
+  useEffect(() => {
+    if (!isOpen || !clientId) return;
+
+    const fetchEnrollment = async () => {
+      setEnrollmentLoading(true);
+      try {
+        const response = await fetch(`/api/scheduling/client-enrollment?clientId=${clientId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setEnrollmentData(data);
+          // Auto-enable linking if client has an active enrollment with instance
+          if (data.instance) {
+            setLinkToProgram(true);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch client enrollment:', err);
+      } finally {
+        setEnrollmentLoading(false);
+      }
+    };
+
+    fetchEnrollment();
+  }, [isOpen, clientId]);
+
   // Date range for available slots (next 30 days)
   const dateRange = useMemo(() => {
     const start = new Date();
@@ -121,6 +168,27 @@ export function ScheduleCallModal({
 
   // Available dates
   const availableDates = useMemo(() => Object.keys(slotsByDate).sort(), [slotsByDate]);
+
+  // Calculate program week/day for the first proposed slot (when linking is enabled)
+  const calculatedProgramDay = useMemo(() => {
+    if (!linkToProgram || !enrollmentData?.instance || !enrollmentData?.program || proposedSlots.length === 0) {
+      return null;
+    }
+
+    const firstSlotDate = proposedSlots[0].date;
+    const instanceStartDate = enrollmentData.instance.startDate;
+
+    if (!instanceStartDate) return null;
+
+    const dayInfo = calculateProgramDayForDate(
+      instanceStartDate,
+      firstSlotDate,
+      enrollmentData.program.lengthDays,
+      enrollmentData.program.includeWeekends
+    );
+
+    return dayInfo;
+  }, [linkToProgram, enrollmentData, proposedSlots]);
 
   // Add a proposed time slot
   const addProposedSlot = useCallback(() => {
@@ -160,6 +228,11 @@ export function ScheduleCallModal({
         };
       });
 
+      // Determine instanceId if linking to program
+      const instanceId = linkToProgram && enrollmentData?.instance?.id
+        ? enrollmentData.instance.id
+        : undefined;
+
       await proposeCall({
         clientId,
         proposedTimes,
@@ -177,6 +250,7 @@ export function ScheduleCallModal({
           timezone,
           startDate: proposedSlots[0].date,
         } : undefined,
+        instanceId,
       });
 
       onSuccess?.();
@@ -455,6 +529,54 @@ export function ScheduleCallModal({
                     </button>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Program Linking (only shown if client has active 1:1 enrollment) */}
+          {!enrollmentLoading && enrollmentData?.program && enrollmentData?.instance && (
+            <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+              <div className="px-4 py-3 bg-[#f3f1ef] dark:bg-[#1e222a] border-b border-[#e1ddd8] dark:border-[#262b35]">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                  <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    Program Linking
+                  </span>
+                </div>
+              </div>
+              <div className="p-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={linkToProgram}
+                    onChange={(e) => setLinkToProgram(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-[#d1cdc8] dark:border-[#3a4150] text-brand-accent focus:ring-brand-accent focus:ring-offset-0"
+                  />
+                  <div>
+                    <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      Link to {enrollmentData.program.name}
+                    </span>
+                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                      Associate this call with the client&apos;s program timeline
+                    </p>
+                  </div>
+                </label>
+
+                {/* Show calculated week/day when linked and times selected */}
+                {linkToProgram && proposedSlots.length > 0 && (
+                  <div className="mt-3 flex items-center gap-2 p-2 bg-brand-accent/5 dark:bg-brand-accent/10 rounded-lg">
+                    <Link2 className="w-4 h-4 text-brand-accent" />
+                    {calculatedProgramDay ? (
+                      <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        Will be linked to <strong>Week {calculatedProgramDay.weekIndex + 1}</strong>, <strong>Day {calculatedProgramDay.globalDayIndex}</strong>
+                      </span>
+                    ) : (
+                      <span className="text-sm text-[#a7a39e] dark:text-[#7d8190]">
+                        Selected date is outside program range
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

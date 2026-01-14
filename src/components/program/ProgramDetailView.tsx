@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2, Calendar, Clock, MapPin, Target, StickyNote, BookOpen } from 'lucide-react';
+import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2, Calendar, Clock, MapPin, Target, StickyNote, BookOpen, Download, Link2, FileQuestion } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import { useProgramContent } from '@/hooks/useProgramContent';
@@ -189,6 +189,18 @@ export function ProgramDetailView({
     const skipWeekends = program.includeWeekends === false;
     const todayIsWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
+    // Helper to extract day data including linked resources
+    const getDayData = (dayIndex: number) => {
+      const day = days.find(d => d.dayIndex === dayIndex);
+      return {
+        tasks: day?.tasks || [],
+        linkedArticleIds: day?.linkedArticleIds || [],
+        linkedDownloadIds: day?.linkedDownloadIds || [],
+        linkedLinkIds: day?.linkedLinkIds || [],
+        linkedQuestionnaireIds: day?.linkedQuestionnaireIds || [],
+      };
+    };
+
     if (skipWeekends && todayIsWeekend) {
       // On weekend with weekends disabled: show Mon, Tue, Wed
       // Days until Monday: Sunday (0) = 1 day, Saturday (6) = 2 days
@@ -199,17 +211,17 @@ export function ProgramDetailView({
         {
           dayIndex: mondayDayIndex,
           label: 'Monday',
-          tasks: days.find(d => d.dayIndex === mondayDayIndex)?.tasks || [],
+          ...getDayData(mondayDayIndex),
         },
         {
           dayIndex: mondayDayIndex + 1,
           label: 'Tuesday',
-          tasks: days.find(d => d.dayIndex === mondayDayIndex + 1)?.tasks || [],
+          ...getDayData(mondayDayIndex + 1),
         },
         {
           dayIndex: mondayDayIndex + 2,
           label: 'Wednesday',
-          tasks: days.find(d => d.dayIndex === mondayDayIndex + 2)?.tasks || [],
+          ...getDayData(mondayDayIndex + 2),
         },
       ];
     }
@@ -219,17 +231,17 @@ export function ProgramDetailView({
       {
         dayIndex: baseDayIndex,
         label: 'Today',
-        tasks: days.find(d => d.dayIndex === baseDayIndex)?.tasks || [],
+        ...getDayData(baseDayIndex),
       },
       {
         dayIndex: baseDayIndex + 1,
         label: 'Tomorrow',
-        tasks: days.find(d => d.dayIndex === baseDayIndex + 1)?.tasks || [],
+        ...getDayData(baseDayIndex + 1),
       },
       {
         dayIndex: baseDayIndex + 2,
         label: dayNames[(dayOfWeek + 2) % 7],
-        tasks: days.find(d => d.dayIndex === baseDayIndex + 2)?.tasks || [],
+        ...getDayData(baseDayIndex + 2),
       },
     ];
   }, [progress.currentDay, days, isPreStart, program.includeWeekends]);
@@ -852,6 +864,7 @@ export function ProgramDetailView({
                         className="overflow-hidden"
                       >
                         <div className="px-5 pb-5 pt-1">
+                          {/* Tasks */}
                           <div className="space-y-2.5">
                             {dayFocus.tasks.map((task, i) => (
                               <div 
@@ -869,6 +882,92 @@ export function ProgramDetailView({
                               </div>
                             ))}
                           </div>
+
+                          {/* Linked Resources */}
+                          {(dayFocus.linkedArticleIds.length > 0 || 
+                            dayFocus.linkedDownloadIds.length > 0 || 
+                            dayFocus.linkedLinkIds.length > 0 ||
+                            dayFocus.linkedQuestionnaireIds.length > 0) && (
+                            <div className="mt-4 pt-4 border-t border-[#e8e4df] dark:border-[#262b35]">
+                              <span className="text-[12px] font-medium text-text-muted dark:text-[#7d8190] uppercase tracking-wider mb-2 block">
+                                Resources
+                              </span>
+                              <div className="space-y-2">
+                                {/* Articles */}
+                                {dayFocus.linkedArticleIds.map(articleId => {
+                                  const article = articles.find(a => a.id === articleId);
+                                  if (!article) return null;
+                                  return (
+                                    <Link
+                                      key={articleId}
+                                      href={`/discover/articles/${articleId}`}
+                                      className="flex items-center gap-2 p-2 rounded-lg bg-[#f3f1ef] dark:bg-[#262b35] hover:bg-[#ebe7e2] dark:hover:bg-[#2d333f] transition-colors"
+                                    >
+                                      <BookOpen className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                                      <span className="text-sm text-text-secondary dark:text-[#b2b6c2] truncate">
+                                        {article.title}
+                                      </span>
+                                    </Link>
+                                  );
+                                })}
+
+                                {/* Downloads */}
+                                {dayFocus.linkedDownloadIds.map(downloadId => {
+                                  const download = downloads.find(d => d.id === downloadId);
+                                  if (!download) return null;
+                                  return (
+                                    <a
+                                      key={downloadId}
+                                      href={download.fileUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 p-2 rounded-lg bg-[#f3f1ef] dark:bg-[#262b35] hover:bg-[#ebe7e2] dark:hover:bg-[#2d333f] transition-colors"
+                                    >
+                                      <Download className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                                      <span className="text-sm text-text-secondary dark:text-[#b2b6c2] truncate">
+                                        {download.title}
+                                      </span>
+                                    </a>
+                                  );
+                                })}
+
+                                {/* Links */}
+                                {dayFocus.linkedLinkIds.map(linkId => {
+                                  const link = links.find(l => l.id === linkId);
+                                  if (!link) return null;
+                                  return (
+                                    <a
+                                      key={linkId}
+                                      href={link.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 p-2 rounded-lg bg-[#f3f1ef] dark:bg-[#262b35] hover:bg-[#ebe7e2] dark:hover:bg-[#2d333f] transition-colors"
+                                    >
+                                      <Link2 className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                                      <span className="text-sm text-text-secondary dark:text-[#b2b6c2] truncate">
+                                        {link.title}
+                                      </span>
+                                      <ExternalLink className="w-3 h-3 text-text-muted dark:text-[#7d8190] flex-shrink-0 ml-auto" />
+                                    </a>
+                                  );
+                                })}
+
+                                {/* Questionnaires */}
+                                {dayFocus.linkedQuestionnaireIds.map(questionnaireId => (
+                                  <Link
+                                    key={questionnaireId}
+                                    href={`/q/${questionnaireId}`}
+                                    className="flex items-center gap-2 p-2 rounded-lg bg-[#f3f1ef] dark:bg-[#262b35] hover:bg-[#ebe7e2] dark:hover:bg-[#2d333f] transition-colors"
+                                  >
+                                    <FileQuestion className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                                    <span className="text-sm text-text-secondary dark:text-[#b2b6c2] truncate">
+                                      Questionnaire
+                                    </span>
+                                  </Link>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     )}

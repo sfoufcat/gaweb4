@@ -209,6 +209,14 @@ export async function PATCH(
     if (body.habits !== undefined) updatedDay.habits = body.habits || [];
     if (body.courseAssignments !== undefined) updatedDay.courseAssignments = body.courseAssignments || [];
 
+    // Update linked content (resources attached to this day)
+    if (body.linkedEventIds !== undefined) updatedDay.linkedEventIds = body.linkedEventIds || [];
+    if (body.linkedSummaryIds !== undefined) updatedDay.linkedSummaryIds = body.linkedSummaryIds || [];
+    if (body.linkedArticleIds !== undefined) updatedDay.linkedArticleIds = body.linkedArticleIds || [];
+    if (body.linkedDownloadIds !== undefined) updatedDay.linkedDownloadIds = body.linkedDownloadIds || [];
+    if (body.linkedLinkIds !== undefined) updatedDay.linkedLinkIds = body.linkedLinkIds || [];
+    if (body.linkedQuestionnaireIds !== undefined) updatedDay.linkedQuestionnaireIds = body.linkedQuestionnaireIds || [];
+
     // Update tasks - merge day tasks with existing week-distributed tasks
     // Day tasks (source !== 'week') come from the request body
     // Week tasks (source === 'week') are preserved from existing day

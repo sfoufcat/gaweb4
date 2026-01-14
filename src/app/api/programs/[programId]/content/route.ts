@@ -392,13 +392,23 @@ export async function GET(
       .where('dayIndex', 'in', dayIndices)
       .get();
 
-    const days = daysSnapshot.docs.map(doc => ({
-      dayIndex: doc.data().dayIndex,
-      tasks: (doc.data().tasks || []).map((task: { label?: string; id?: string; [key: string]: unknown }) => ({
-        ...task,
-        title: task.label || '',  // Map label to title for frontend compatibility
-      })),
-    }));
+    const days = daysSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        dayIndex: data.dayIndex,
+        tasks: (data.tasks || []).map((task: { label?: string; id?: string; [key: string]: unknown }) => ({
+          ...task,
+          title: task.label || '',  // Map label to title for frontend compatibility
+        })),
+        // Include linked resource IDs for client view
+        linkedArticleIds: data.linkedArticleIds || [],
+        linkedDownloadIds: data.linkedDownloadIds || [],
+        linkedLinkIds: data.linkedLinkIds || [],
+        linkedQuestionnaireIds: data.linkedQuestionnaireIds || [],
+        linkedEventIds: data.linkedEventIds || [],
+        linkedSummaryIds: data.linkedSummaryIds || [],
+      };
+    });
 
     console.log(`[PROGRAM_CONTENT] Results for program ${programId}:`, {
       courses: courses.length,

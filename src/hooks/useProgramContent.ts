@@ -34,6 +34,13 @@ export interface ProgramDayTask {
 export interface ProgramDay {
   dayIndex: number;
   tasks: ProgramDayTask[];
+  // Linked resource IDs
+  linkedArticleIds?: string[];
+  linkedDownloadIds?: string[];
+  linkedLinkIds?: string[];
+  linkedQuestionnaireIds?: string[];
+  linkedEventIds?: string[];
+  linkedSummaryIds?: string[];
 }
 
 export interface ProgramContentResponse {

@@ -128,8 +128,8 @@ function SavedCardsForFunnel({
   return (
     <div className="space-y-6">
       {/* Plan summary */}
-      <div className="bg-[#faf8f6] rounded-2xl p-6">
-        <div className="flex justify-between items-center mb-4">
+      <div className="bg-white rounded-2xl border border-[#e1ddd8] p-6">
+        <div className="flex justify-between items-center">
           <div>
             <h3 className="font-medium text-text-primary">{programName}</h3>
             <p className="text-sm text-text-secondary flex items-center gap-1.5">
@@ -146,7 +146,7 @@ function SavedCardsForFunnel({
 
         {/* Subscription info box for recurring */}
         {isRecurring && (
-          <div className="border-t border-[#e1ddd8] pt-4 mb-4 space-y-2">
+          <div className="border-t border-[#e1ddd8] pt-4 mt-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-text-secondary">Billing</span>
               <span className="text-text-primary font-medium">{getBillingDisplayName(billingInterval)}</span>
@@ -159,7 +159,7 @@ function SavedCardsForFunnel({
         )}
 
         {features && features.length > 0 && (
-          <div className={`${isRecurring ? '' : 'border-t border-[#e1ddd8] pt-4 '}space-y-2`}>
+          <div className={`border-t border-[#e1ddd8] pt-4 mt-4 space-y-2`}>
             {features.map((feature, i) => (
               <div key={i} className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-brand-accent" />
@@ -344,8 +344,8 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Plan summary */}
-      <div className="bg-[#faf8f6] rounded-2xl p-6">
-        <div className="flex justify-between items-center mb-4">
+      <div className="bg-white rounded-2xl border border-[#e1ddd8] p-6">
+        <div className="flex justify-between items-center">
           <div>
             <h3 className="font-medium text-text-primary">{programName}</h3>
             <p className="text-sm text-text-secondary flex items-center gap-1.5">
@@ -362,7 +362,7 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
 
         {/* Subscription info box for recurring */}
         {isRecurring && (
-          <div className="border-t border-[#e1ddd8] pt-4 mb-4 space-y-2">
+          <div className="border-t border-[#e1ddd8] pt-4 mt-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-text-secondary">Billing</span>
               <span className="text-text-primary font-medium">{getBillingDisplayName(billingInterval)}</span>
@@ -375,7 +375,7 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
         )}
 
         {features && features.length > 0 && (
-          <div className={`${isRecurring ? '' : 'border-t border-[#e1ddd8] pt-4 '}space-y-2`}>
+          <div className={`border-t border-[#e1ddd8] pt-4 mt-4 space-y-2`}>
             {features.map((feature, i) => (
               <div key={i} className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-brand-accent" />

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment, ProgramCohort } from '@/types';
-import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
+import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment, ProgramCohort, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire } from '@/types';
+import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -47,6 +47,11 @@ interface WeekEditorProps {
   // Available items for manual linking
   availableCallSummaries?: CallSummary[];
   availableEvents?: UnifiedEvent[];
+  // Resources - articles, downloads, links, questionnaires
+  availableArticles?: DiscoverArticle[];
+  availableDownloads?: DiscoverDownload[];
+  availableLinks?: DiscoverLink[];
+  availableQuestionnaires?: Questionnaire[];
   // Client view mode (for 1:1 programs)
   isClientView?: boolean;
   clientName?: string;
@@ -412,6 +417,10 @@ export function WeekEditor({
   isSaving = false,
   availableCallSummaries = [],
   availableEvents = [],
+  availableArticles = [],
+  availableDownloads = [],
+  availableLinks = [],
+  availableQuestionnaires = [],
   isClientView = false,
   clientName,
   clientUserId,
@@ -491,6 +500,11 @@ export function WeekEditor({
     coachRecordingNotes: string;
     linkedSummaryIds: string[];
     linkedCallEventIds: string[];
+    // Resources - linked content
+    linkedArticleIds: string[];
+    linkedDownloadIds: string[];
+    linkedLinkIds: string[];
+    linkedQuestionnaireIds: string[];
   };
 
   // Memoize week data as primitives to prevent infinite loops from object reference changes
@@ -507,6 +521,10 @@ export function WeekEditor({
   const weekCoachRecordingNotes = week.coachRecordingNotes || '';
   const weekLinkedSummaryIds = week.linkedSummaryIds || [];
   const weekLinkedCallEventIds = week.linkedCallEventIds || [];
+  const weekLinkedArticleIds = week.linkedArticleIds || [];
+  const weekLinkedDownloadIds = week.linkedDownloadIds || [];
+  const weekLinkedLinkIds = week.linkedLinkIds || [];
+  const weekLinkedQuestionnaireIds = week.linkedQuestionnaireIds || [];
 
   const getDefaultFormData = useCallback((): WeekFormData => ({
     name: weekName,
@@ -522,7 +540,11 @@ export function WeekEditor({
     coachRecordingNotes: weekCoachRecordingNotes,
     linkedSummaryIds: weekLinkedSummaryIds,
     linkedCallEventIds: weekLinkedCallEventIds,
-  }), [weekName, weekTheme, weekDescription, weekWeeklyPrompt, weekWeeklyTasks, weekCurrentFocus, weekNotes, weekManualNotes, weekDistribution, weekCoachRecordingUrl, weekCoachRecordingNotes, weekLinkedSummaryIds, weekLinkedCallEventIds]);
+    linkedArticleIds: weekLinkedArticleIds,
+    linkedDownloadIds: weekLinkedDownloadIds,
+    linkedLinkIds: weekLinkedLinkIds,
+    linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
+  }), [weekName, weekTheme, weekDescription, weekWeeklyPrompt, weekWeeklyTasks, weekCurrentFocus, weekNotes, weekManualNotes, weekDistribution, weekCoachRecordingUrl, weekCoachRecordingNotes, weekLinkedSummaryIds, weekLinkedCallEventIds, weekLinkedArticleIds, weekLinkedDownloadIds, weekLinkedLinkIds, weekLinkedQuestionnaireIds]);
 
   // Merge pending data with defaults to ensure all fields exist
   // Uses memoized primitive values instead of getDefaultFormData to avoid dependency loops
@@ -541,6 +563,10 @@ export function WeekEditor({
       coachRecordingNotes: weekCoachRecordingNotes,
       linkedSummaryIds: weekLinkedSummaryIds,
       linkedCallEventIds: weekLinkedCallEventIds,
+      linkedArticleIds: weekLinkedArticleIds,
+      linkedDownloadIds: weekLinkedDownloadIds,
+      linkedLinkIds: weekLinkedLinkIds,
+      linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
     };
     return {
       ...defaults,
@@ -551,8 +577,12 @@ export function WeekEditor({
       notes: (pending.notes as string[]) || defaults.notes,
       linkedSummaryIds: (pending.linkedSummaryIds as string[]) || defaults.linkedSummaryIds,
       linkedCallEventIds: (pending.linkedCallEventIds as string[]) || defaults.linkedCallEventIds,
+      linkedArticleIds: (pending.linkedArticleIds as string[]) || defaults.linkedArticleIds,
+      linkedDownloadIds: (pending.linkedDownloadIds as string[]) || defaults.linkedDownloadIds,
+      linkedLinkIds: (pending.linkedLinkIds as string[]) || defaults.linkedLinkIds,
+      linkedQuestionnaireIds: (pending.linkedQuestionnaireIds as string[]) || defaults.linkedQuestionnaireIds,
     };
-  }, [weekName, weekTheme, weekDescription, weekWeeklyPrompt, weekWeeklyTasks, weekCurrentFocus, weekNotes, weekManualNotes, weekDistribution, weekCoachRecordingUrl, weekCoachRecordingNotes, weekLinkedSummaryIds, weekLinkedCallEventIds]);
+  }, [weekName, weekTheme, weekDescription, weekWeeklyPrompt, weekWeeklyTasks, weekCurrentFocus, weekNotes, weekManualNotes, weekDistribution, weekCoachRecordingUrl, weekCoachRecordingNotes, weekLinkedSummaryIds, weekLinkedCallEventIds, weekLinkedArticleIds, weekLinkedDownloadIds, weekLinkedLinkIds, weekLinkedQuestionnaireIds]);
 
 
   // Create a fingerprint of week data that changes when content changes from API refresh
@@ -572,8 +602,12 @@ export function WeekEditor({
       coachRecordingNotes: week.coachRecordingNotes,
       linkedSummaryIds: week.linkedSummaryIds,
       linkedCallEventIds: week.linkedCallEventIds,
+      linkedArticleIds: week.linkedArticleIds,
+      linkedDownloadIds: week.linkedDownloadIds,
+      linkedLinkIds: week.linkedLinkIds,
+      linkedQuestionnaireIds: week.linkedQuestionnaireIds,
     });
-  }, [week.name, week.theme, week.description, week.weeklyTasks, week.currentFocus, week.notes, week.manualNotes, week.weeklyPrompt, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.linkedSummaryIds, week.linkedCallEventIds]);
+  }, [week.name, week.theme, week.description, week.weeklyTasks, week.currentFocus, week.notes, week.manualNotes, week.weeklyPrompt, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.linkedSummaryIds, week.linkedCallEventIds, week.linkedArticleIds, week.linkedDownloadIds, week.linkedLinkIds, week.linkedQuestionnaireIds]);
 
   const [formData, setFormData] = useState<WeekFormData>(() => {
     // Initialize from pending data if available
@@ -743,6 +777,10 @@ export function WeekEditor({
         coachRecordingNotes: week.coachRecordingNotes || '',
         linkedSummaryIds: week.linkedSummaryIds || [],
         linkedCallEventIds: week.linkedCallEventIds || [],
+        linkedArticleIds: weekLinkedArticleIds,
+        linkedDownloadIds: weekLinkedDownloadIds,
+        linkedLinkIds: weekLinkedLinkIds,
+        linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
       };
       const merged: WeekFormData = {
         ...defaults,
@@ -753,6 +791,10 @@ export function WeekEditor({
         notes: (contextPendingData.notes as string[]) || defaults.notes,
         linkedSummaryIds: (contextPendingData.linkedSummaryIds as string[]) || defaults.linkedSummaryIds,
         linkedCallEventIds: (contextPendingData.linkedCallEventIds as string[]) || defaults.linkedCallEventIds,
+        linkedArticleIds: (contextPendingData.linkedArticleIds as string[]) || defaults.linkedArticleIds,
+        linkedDownloadIds: (contextPendingData.linkedDownloadIds as string[]) || defaults.linkedDownloadIds,
+        linkedLinkIds: (contextPendingData.linkedLinkIds as string[]) || defaults.linkedLinkIds,
+        linkedQuestionnaireIds: (contextPendingData.linkedQuestionnaireIds as string[]) || defaults.linkedQuestionnaireIds,
       };
       setFormData(merged);
       setHasChanges(true);
@@ -772,6 +814,10 @@ export function WeekEditor({
         coachRecordingNotes: week.coachRecordingNotes || '',
         linkedSummaryIds: week.linkedSummaryIds || [],
         linkedCallEventIds: week.linkedCallEventIds || [],
+        linkedArticleIds: weekLinkedArticleIds,
+        linkedDownloadIds: weekLinkedDownloadIds,
+        linkedLinkIds: weekLinkedLinkIds,
+        linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
       };
       console.log('[WeekEditor:resetEffect] Resetting to week data:', {
         newFormDataTasksCount: newFormData.weeklyTasks?.length ?? 0,
@@ -828,6 +874,10 @@ export function WeekEditor({
           coachRecordingNotes: week.coachRecordingNotes || '',
           linkedSummaryIds: week.linkedSummaryIds || [],
           linkedCallEventIds: week.linkedCallEventIds || [],
+          linkedArticleIds: weekLinkedArticleIds,
+          linkedDownloadIds: weekLinkedDownloadIds,
+          linkedLinkIds: weekLinkedLinkIds,
+          linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
         };
         const merged: WeekFormData = {
           ...defaults,
@@ -837,6 +887,10 @@ export function WeekEditor({
           notes: (contextPendingData.notes as string[]) || defaults.notes,
           linkedSummaryIds: (contextPendingData.linkedSummaryIds as string[]) || defaults.linkedSummaryIds,
           linkedCallEventIds: (contextPendingData.linkedCallEventIds as string[]) || defaults.linkedCallEventIds,
+          linkedArticleIds: (contextPendingData.linkedArticleIds as string[]) || defaults.linkedArticleIds,
+          linkedDownloadIds: (contextPendingData.linkedDownloadIds as string[]) || defaults.linkedDownloadIds,
+          linkedLinkIds: (contextPendingData.linkedLinkIds as string[]) || defaults.linkedLinkIds,
+          linkedQuestionnaireIds: (contextPendingData.linkedQuestionnaireIds as string[]) || defaults.linkedQuestionnaireIds,
         };
         setFormData(merged);
         setHasChanges(true);
@@ -856,6 +910,10 @@ export function WeekEditor({
           coachRecordingNotes: week.coachRecordingNotes || '',
           linkedSummaryIds: week.linkedSummaryIds || [],
           linkedCallEventIds: week.linkedCallEventIds || [],
+          linkedArticleIds: weekLinkedArticleIds,
+          linkedDownloadIds: weekLinkedDownloadIds,
+          linkedLinkIds: weekLinkedLinkIds,
+          linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
         });
         setHasChanges(false);
       }
@@ -1097,6 +1155,10 @@ export function WeekEditor({
         coachRecordingNotes: formData.coachRecordingNotes || undefined,
         linkedSummaryIds: formData.linkedSummaryIds.length > 0 ? formData.linkedSummaryIds : undefined,
         linkedCallEventIds: formData.linkedCallEventIds.length > 0 ? formData.linkedCallEventIds : undefined,
+        linkedArticleIds: formData.linkedArticleIds.length > 0 ? formData.linkedArticleIds : undefined,
+        linkedDownloadIds: formData.linkedDownloadIds.length > 0 ? formData.linkedDownloadIds : undefined,
+        linkedLinkIds: formData.linkedLinkIds.length > 0 ? formData.linkedLinkIds : undefined,
+        linkedQuestionnaireIds: formData.linkedQuestionnaireIds.length > 0 ? formData.linkedQuestionnaireIds : undefined,
       });
       setHasChanges(false);
       setSaveStatus('saved');
@@ -1150,12 +1212,92 @@ export function WeekEditor({
     });
   };
 
+  // Link management for articles
+  const addArticleLink = (articleId: string) => {
+    if (!formData.linkedArticleIds.includes(articleId)) {
+      setFormData({
+        ...formData,
+        linkedArticleIds: [...formData.linkedArticleIds, articleId],
+      });
+    }
+  };
+
+  const removeArticleLink = (articleId: string) => {
+    setFormData({
+      ...formData,
+      linkedArticleIds: formData.linkedArticleIds.filter(id => id !== articleId),
+    });
+  };
+
+  // Link management for downloads
+  const addDownloadLink = (downloadId: string) => {
+    if (!formData.linkedDownloadIds.includes(downloadId)) {
+      setFormData({
+        ...formData,
+        linkedDownloadIds: [...formData.linkedDownloadIds, downloadId],
+      });
+    }
+  };
+
+  const removeDownloadLink = (downloadId: string) => {
+    setFormData({
+      ...formData,
+      linkedDownloadIds: formData.linkedDownloadIds.filter(id => id !== downloadId),
+    });
+  };
+
+  // Link management for links
+  const addLinkLink = (linkId: string) => {
+    if (!formData.linkedLinkIds.includes(linkId)) {
+      setFormData({
+        ...formData,
+        linkedLinkIds: [...formData.linkedLinkIds, linkId],
+      });
+    }
+  };
+
+  const removeLinkLink = (linkId: string) => {
+    setFormData({
+      ...formData,
+      linkedLinkIds: formData.linkedLinkIds.filter(id => id !== linkId),
+    });
+  };
+
+  // Link management for questionnaires
+  const addQuestionnaireLink = (questionnaireId: string) => {
+    if (!formData.linkedQuestionnaireIds.includes(questionnaireId)) {
+      setFormData({
+        ...formData,
+        linkedQuestionnaireIds: [...formData.linkedQuestionnaireIds, questionnaireId],
+      });
+    }
+  };
+
+  const removeQuestionnaireLink = (questionnaireId: string) => {
+    setFormData({
+      ...formData,
+      linkedQuestionnaireIds: formData.linkedQuestionnaireIds.filter(id => id !== questionnaireId),
+    });
+  };
+
   // Filter available items to exclude already linked ones
   const availableSummariesToLink = availableCallSummaries.filter(
     s => !formData.linkedSummaryIds.includes(s.id)
   );
   const availableEventsToLink = availableEvents.filter(
     e => !formData.linkedCallEventIds.includes(e.id)
+  );
+  const availableArticlesToLink = availableArticles.filter(
+    a => !formData.linkedArticleIds.includes(a.id)
+  );
+  const availableDownloadsToLink = availableDownloads.filter(
+    d => !formData.linkedDownloadIds.includes(d.id)
+  );
+  const availableLinksToLink = availableLinks.filter(
+    l => !formData.linkedLinkIds.includes(l.id)
+  );
+  const availableQuestionnairesToLink = availableQuestionnaires.filter(
+    q => !formData.linkedQuestionnaireIds.includes(q.id)
   );
 
   // Task management
@@ -2061,6 +2203,266 @@ export function WeekEditor({
             No call events available to link
           </p>
         )}
+        </div>
+      </CollapsibleSection>
+
+      {/* Resources Section - Articles, Downloads, Links, Questionnaires */}
+      <CollapsibleSection
+        title="Resources"
+        icon={BookOpen}
+        description="Content to share with clients during this week"
+        defaultOpen={false}
+      >
+        {/* Linked Articles */}
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <FileText className="w-4 h-4 inline mr-1.5" />
+            Articles
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Reading materials and guides for this week
+          </p>
+
+          {/* Currently linked articles */}
+          {formData.linkedArticleIds.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {formData.linkedArticleIds.map((articleId) => {
+                const article = availableArticles.find(a => a.id === articleId);
+                return (
+                  <div
+                    key={articleId}
+                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                  >
+                    <FileText className="w-4 h-4 text-brand-accent" />
+                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {article?.title || `Article ${articleId.slice(0, 8)}...`}
+                    </span>
+                    <button
+                      onClick={() => removeArticleLink(articleId)}
+                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add article dropdown */}
+          {availableArticlesToLink.length > 0 && (
+            <select
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  addArticleLink(e.target.value);
+                }
+              }}
+            >
+              <option value="">Add an article...</option>
+              {availableArticlesToLink.map((article) => (
+                <option key={article.id} value={article.id}>
+                  {article.title}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {formData.linkedArticleIds.length === 0 && availableArticlesToLink.length === 0 && (
+            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
+              No articles available to link
+            </p>
+          )}
+        </div>
+
+        {/* Linked Downloads */}
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <Download className="w-4 h-4 inline mr-1.5" />
+            Downloads
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Files and templates clients can download
+          </p>
+
+          {/* Currently linked downloads */}
+          {formData.linkedDownloadIds.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {formData.linkedDownloadIds.map((downloadId) => {
+                const download = availableDownloads.find(d => d.id === downloadId);
+                return (
+                  <div
+                    key={downloadId}
+                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                  >
+                    <Download className="w-4 h-4 text-brand-accent" />
+                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {download?.title || `Download ${downloadId.slice(0, 8)}...`}
+                    </span>
+                    <button
+                      onClick={() => removeDownloadLink(downloadId)}
+                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add download dropdown */}
+          {availableDownloadsToLink.length > 0 && (
+            <select
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  addDownloadLink(e.target.value);
+                }
+              }}
+            >
+              <option value="">Add a download...</option>
+              {availableDownloadsToLink.map((download) => (
+                <option key={download.id} value={download.id}>
+                  {download.title}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {formData.linkedDownloadIds.length === 0 && availableDownloadsToLink.length === 0 && (
+            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
+              No downloads available to link
+            </p>
+          )}
+        </div>
+
+        {/* Linked Links */}
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <Link2 className="w-4 h-4 inline mr-1.5" />
+            External Links
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Helpful websites and external resources
+          </p>
+
+          {/* Currently linked links */}
+          {formData.linkedLinkIds.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {formData.linkedLinkIds.map((linkId) => {
+                const link = availableLinks.find(l => l.id === linkId);
+                return (
+                  <div
+                    key={linkId}
+                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                  >
+                    <Link2 className="w-4 h-4 text-brand-accent" />
+                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {link?.title || `Link ${linkId.slice(0, 8)}...`}
+                    </span>
+                    <button
+                      onClick={() => removeLinkLink(linkId)}
+                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add link dropdown */}
+          {availableLinksToLink.length > 0 && (
+            <select
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  addLinkLink(e.target.value);
+                }
+              }}
+            >
+              <option value="">Add a link...</option>
+              {availableLinksToLink.map((link) => (
+                <option key={link.id} value={link.id}>
+                  {link.title}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {formData.linkedLinkIds.length === 0 && availableLinksToLink.length === 0 && (
+            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
+              No links available
+            </p>
+          )}
+        </div>
+
+        {/* Linked Questionnaires */}
+        <div>
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <FileQuestion className="w-4 h-4 inline mr-1.5" />
+            Questionnaires
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Forms and surveys for clients to complete
+          </p>
+
+          {/* Currently linked questionnaires */}
+          {formData.linkedQuestionnaireIds.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {formData.linkedQuestionnaireIds.map((questionnaireId) => {
+                const questionnaire = availableQuestionnaires.find(q => q.id === questionnaireId);
+                return (
+                  <div
+                    key={questionnaireId}
+                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                  >
+                    <FileQuestion className="w-4 h-4 text-brand-accent" />
+                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {questionnaire?.title || `Questionnaire ${questionnaireId.slice(0, 8)}...`}
+                    </span>
+                    <button
+                      onClick={() => removeQuestionnaireLink(questionnaireId)}
+                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add questionnaire dropdown */}
+          {availableQuestionnairesToLink.length > 0 && (
+            <select
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  addQuestionnaireLink(e.target.value);
+                }
+              }}
+            >
+              <option value="">Add a questionnaire...</option>
+              {availableQuestionnairesToLink.map((questionnaire) => (
+                <option key={questionnaire.id} value={questionnaire.id}>
+                  {questionnaire.title}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {formData.linkedQuestionnaireIds.length === 0 && availableQuestionnairesToLink.length === 0 && (
+            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
+              No questionnaires available
+            </p>
+          )}
         </div>
       </CollapsibleSection>
 

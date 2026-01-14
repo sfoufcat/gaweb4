@@ -880,6 +880,14 @@ export interface ProgramDay {
   scheduledItems?: ScheduledItem[]; // Calls, courses, assignments for this day
   courseAssignments?: DayCourseAssignment[]; // Course content assigned to this day
 
+  // Linked content (resources attached to this day)
+  linkedEventIds?: string[];           // UnifiedEvent IDs linked to this day
+  linkedSummaryIds?: string[];         // CallSummary IDs linked to this day
+  linkedArticleIds?: string[];         // DiscoverArticle IDs
+  linkedDownloadIds?: string[];        // DiscoverDownload IDs
+  linkedLinkIds?: string[];            // DiscoverLink IDs
+  linkedQuestionnaireIds?: string[];   // Questionnaire IDs
+
   // AI fill tracking
   fillSource?: WeekFillSource; // How this day's content was generated
 
@@ -1162,6 +1170,12 @@ export interface ProgramWeek {
   // Call summaries and notes
   linkedSummaryIds?: string[]; // CallSummary IDs linked to this week
   manualNotes?: string; // Coach's manual notes for this week
+
+  // Linked content (resources attached to this week)
+  linkedArticleIds?: string[];         // DiscoverArticle IDs
+  linkedDownloadIds?: string[];        // DiscoverDownload IDs
+  linkedLinkIds?: string[];            // DiscoverLink IDs
+  linkedQuestionnaireIds?: string[];   // Questionnaire IDs
 
   // Coach recordings (uploaded by coach)
   coachRecordingUrl?: string; // URL to uploaded recording file
@@ -4765,7 +4779,14 @@ export interface UnifiedEvent {
   programIds?: string[];      // Multiple programs (for discover events)
   squadId?: string;           // Squad association
   cohortId?: string;          // Cohort association
-  
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PROGRAM INSTANCE LINKING (for 1:1 coaching calls linked to program days)
+  // ═══════════════════════════════════════════════════════════════════════════
+  instanceId?: string;        // program_instances doc ID
+  weekIndex?: number;         // 0-based week number in program
+  dayIndex?: number;          // 1-based global day index in program
+
   // ═══════════════════════════════════════════════════════════════════════════
   // RECURRENCE
   // ═══════════════════════════════════════════════════════════════════════════
@@ -5602,6 +5623,10 @@ export interface CallSummary {
   programId?: string;
   programEnrollmentId?: string;
   squadId?: string;
+  // Program instance linking (for displaying summary in program day/week)
+  instanceId?: string;                 // program_instances doc ID
+  weekIndex?: number;                  // 0-based week number in program
+  dayIndex?: number;                   // 1-based global day index in program
 
   // Recording
   recordingUrl?: string;             // Audio recording URL
@@ -5839,6 +5864,13 @@ export interface ProgramInstanceDay {
   tasks: ProgramInstanceTask[];
   habits?: ProgramHabitTemplate[];
   courseAssignments?: DayCourseAssignment[];
+  // Linked content (resources attached to this day)
+  linkedEventIds?: string[];           // UnifiedEvent IDs linked to this day
+  linkedSummaryIds?: string[];         // CallSummary IDs linked to this day
+  linkedArticleIds?: string[];         // DiscoverArticle IDs
+  linkedDownloadIds?: string[];        // DiscoverDownload IDs
+  linkedLinkIds?: string[];            // DiscoverLink IDs
+  linkedQuestionnaireIds?: string[];   // Questionnaire IDs
   // Customization tracking
   hasLocalChanges?: boolean;     // True if coach has customized this day
 }
@@ -5872,6 +5904,11 @@ export interface ProgramInstanceWeek {
   coachRecordingNotes?: string;
   linkedSummaryIds?: string[];
   linkedCallEventIds?: string[];
+  // Linked content (resources attached to this week)
+  linkedArticleIds?: string[];         // DiscoverArticle IDs
+  linkedDownloadIds?: string[];        // DiscoverDownload IDs
+  linkedLinkIds?: string[];            // DiscoverLink IDs
+  linkedQuestionnaireIds?: string[];   // Questionnaire IDs
   manualNotes?: string;          // Coach's manual notes
   // Distribution settings
   distribution?: TaskDistribution;
@@ -5944,6 +5981,21 @@ export interface UnifiedTaskFields {
   createdByCoachId?: string;     // Coach who created this task (if source === 'coach')
   assignedToDate?: string;       // Date coach assigned it to
 }
+
+
+// Re-export discover types for convenience
+export type {
+  DiscoverArticle,
+  DiscoverDownload,
+  DiscoverLink,
+  ArticleType,
+  DownloadFileType,
+  PurchasableContentType,
+  ContentFeature,
+  ContentTestimonial,
+  ContentFaq,
+  ContentPricingFields,
+} from './discover';
 
 // Note: These fields should be merged into the existing Task interface
 // during migration. For now, they're defined separately to avoid breaking changes.

@@ -152,6 +152,8 @@ interface ProposeCallOptions {
     startDate: string;
     endDate?: string;
   };
+  // Program instance linking (Phase 3)
+  instanceId?: string;
 }
 
 interface RequestCallOptions {

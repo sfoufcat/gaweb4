@@ -152,6 +152,8 @@ export async function PATCH(
       'visibility', 'maxAttendees', 'coverImageUrl', 'bulletPoints', 'additionalInfo',
       'recordingUrl', 'chatChannelId', 'sendChatReminders',
       'recurrence', 'isRecurring',
+      // Program instance linking fields
+      'instanceId', 'weekIndex', 'dayIndex',
     ];
 
     for (const field of allowedFields) {

@@ -170,6 +170,62 @@ export async function DELETE(
       }
     }
 
+    // 2b. Delete future program tasks for this user from this enrollment's instance
+    // This prevents phantom tasks from appearing after enrollment is stopped
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      // Find the instance for this enrollment (cohort or individual)
+      let instanceId: string | null = null;
+
+      if (enrollment.cohortId) {
+        // Cohort enrollment - find cohort instance
+        const cohortInstance = await adminDb
+          .collection('program_instances')
+          .where('cohortId', '==', enrollment.cohortId)
+          .where('type', '==', 'cohort')
+          .limit(1)
+          .get();
+        if (!cohortInstance.empty) {
+          instanceId = cohortInstance.docs[0].id;
+        }
+      } else {
+        // Individual enrollment - find individual instance
+        const indivInstance = await adminDb
+          .collection('program_instances')
+          .where('enrollmentId', '==', enrollmentId)
+          .where('type', '==', 'individual')
+          .limit(1)
+          .get();
+        if (!indivInstance.empty) {
+          instanceId = indivInstance.docs[0].id;
+        }
+      }
+
+      if (instanceId) {
+        // Delete future uncompleted tasks from this instance for this user
+        const futureTasks = await adminDb
+          .collection('tasks')
+          .where('userId', '==', enrolledUserId)
+          .where('instanceId', '==', instanceId)
+          .where('date', '>=', todayStr)
+          .where('completed', '==', false)
+          .get();
+
+        if (!futureTasks.empty) {
+          const deleteBatch = adminDb.batch();
+          futureTasks.docs.forEach(doc => {
+            deleteBatch.delete(doc.ref);
+          });
+          await deleteBatch.commit();
+          console.log(`[COACH_ENROLLMENT_DELETE] Deleted ${futureTasks.size} future tasks for user ${enrolledUserId} from instance ${instanceId}`);
+        }
+      }
+    } catch (taskErr) {
+      console.error(`[COACH_ENROLLMENT_DELETE] Failed to delete future tasks (non-fatal):`, taskErr);
+      // Continue - enrollment is already stopped
+    }
+
     // 3. Clear user's current program reference if this was their active enrollment
     try {
       const userDoc = await adminDb.collection('users').doc(enrolledUserId).get();
