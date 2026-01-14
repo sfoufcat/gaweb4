@@ -875,6 +875,7 @@ function ChatContent({
     archivedChannelIds,
     explicitlyUnpinnedChannelIds,
     unarchiveChannel,
+    getPreference,
   } = useChatPreferences();
 
   // Archived view state - track which tab's archive to show
@@ -1408,10 +1409,12 @@ function ChatContent({
     onMobileViewChange('list');
   }, [onMobileViewChange]);
 
-  // Custom channel preview filter - exclude special channels from list
+  // Custom channel preview filter - exclude special channels from list AND sort pinned to top
   const customChannelFilter = useCallback((channels: StreamChannel[]) => {
     const orgChannelIds = new Set(orgChannels.map(c => c.streamChannelId));
-    return channels.filter(ch => {
+
+    // First, filter channels
+    const filtered = channels.filter(ch => {
       const channelId = ch.id;
 
       // Filter out archived channels
@@ -1442,7 +1445,37 @@ function ChatContent({
       }
       return true;
     });
-  }, [orgChannels, isCoach, archivedChannelIds]);
+
+    // Then, sort to put pinned channels at the top
+    // Pinned channels are sorted by pinnedAt (most recent first)
+    // Non-pinned channels maintain their original order (sorted by last_message_at from Stream)
+    return filtered.sort((a, b) => {
+      const aId = a.id || '';
+      const bId = b.id || '';
+      const aIsPinned = pinnedChannelIds.has(aId);
+      const bIsPinned = pinnedChannelIds.has(bId);
+
+      // If both pinned or both unpinned, sort by last message time (maintaining Stream's order)
+      if (aIsPinned === bIsPinned) {
+        if (aIsPinned) {
+          // Both pinned - sort by pinnedAt (most recent first)
+          const aPinnedAt = getPreference(aId)?.pinnedAt;
+          const bPinnedAt = getPreference(bId)?.pinnedAt;
+          if (aPinnedAt && bPinnedAt) {
+            return new Date(bPinnedAt).getTime() - new Date(aPinnedAt).getTime();
+          }
+          // If one doesn't have pinnedAt, put the one with it first
+          if (aPinnedAt) return -1;
+          if (bPinnedAt) return 1;
+        }
+        // Both unpinned - maintain original order (last_message_at from Stream)
+        return 0;
+      }
+
+      // Pinned channels come before unpinned
+      return aIsPinned ? -1 : 1;
+    });
+  }, [orgChannels, isCoach, archivedChannelIds, pinnedChannelIds, getPreference]);
 
   // Determine whether to show message input
   const showMessageInput = !isAnnouncementsChannel || canPostInAnnouncements;
