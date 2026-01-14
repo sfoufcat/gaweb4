@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment, ProgramCohort, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';
-import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap } from 'lucide-react';
+import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -1840,73 +1840,83 @@ export function WeekEditor({
           </div>
         </CollapsibleSection>
 
-      {/* Client Notes Section - collapsed by default */}
+      {/* Sessions Section - Linked Calls, Call Summaries, Recordings */}
       <CollapsibleSection
-        title="Client Notes"
-        icon={ClipboardList}
+        title="Sessions"
+        icon={Video}
+        description="Calls, recordings, and summaries"
         defaultOpen={false}
       >
-        {/* Weekly Prompt */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-            Weekly Prompt
-          </label>
-          <textarea
-            value={formData.weeklyPrompt}
-            onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); trackFieldEdit('syncPrompt'); }}
-            placeholder="Motivational message or guidance for this week..."
-            rows={2}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-          />
-        </div>
-
-        {/* Notes (max 3) */}
-        <div>
+        {/* Linked Call Events - Now at the top */}
+        <div className="mb-6">
           <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <FileText className="w-4 h-4 inline mr-1.5" />
-            Notes <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
+            <Phone className="w-4 h-4 inline mr-1.5" />
+            Linked Calls
           </label>
           <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-            Reminders or context for the client
+            Scheduled or completed calls associated with this week
           </p>
-          <div className="space-y-2 mb-3">
-            {formData.notes.map((note, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-              >
-                <span className="w-2 h-2 rounded-full bg-[#a7a39e]" />
-                <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  {note}
-                </span>
-                <button
-                  onClick={() => removeNote(index)}
-                  className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-          {formData.notes.length < 3 && (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addNote()}
-                placeholder="Add note..."
-                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-              />
-              <Button onClick={addNote} variant="outline" size="sm">
-                <Plus className="w-4 h-4" />
-              </Button>
+
+          {/* Currently linked events */}
+          {formData.linkedCallEventIds.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {formData.linkedCallEventIds.map((eventId) => {
+                const event = availableEvents.find(e => e.id === eventId);
+                return (
+                  <div
+                    key={eventId}
+                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                  >
+                    <Calendar className="w-4 h-4 text-brand-accent" />
+                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {event?.title || `Event ${eventId.slice(0, 8)}...`}
+                    </span>
+                    {event?.startDateTime && (
+                      <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                        {new Date(event.startDateTime).toLocaleDateString()}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => removeEventLink(eventId)}
+                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
+          )}
+
+          {/* Add event dropdown */}
+          {availableEventsToLink.length > 0 && (
+            <select
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  addEventLink(e.target.value);
+                }
+              }}
+            >
+              <option value="">Add a call event...</option>
+              {availableEventsToLink.map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.title || 'Call'} - {event.startDateTime ? new Date(event.startDateTime).toLocaleDateString() : 'No date'}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {formData.linkedCallEventIds.length === 0 && availableEventsToLink.length === 0 && (
+            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
+              No call events available to link
+            </p>
           )}
         </div>
 
         {/* Linked Call Summaries */}
-        <div>
+        <div className="mb-6">
           <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
             <MessageSquare className="w-4 h-4 inline mr-1.5" />
             Linked Call Summaries
@@ -1979,29 +1989,6 @@ export function WeekEditor({
               No call summaries available to link
             </p>
           )}
-        </div>
-      </CollapsibleSection>
-
-      {/* Coach Private Section */}
-      <CollapsibleSection
-        title="Coach Private"
-        icon={EyeOff}
-        description="Not visible to clients"
-        defaultOpen={false}
-      >
-        {/* Coach's Manual Notes */}
-        <div>
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <StickyNote className="w-4 h-4 inline mr-1.5" />
-            Coach Notes
-          </label>
-          <textarea
-            value={formData.manualNotes}
-            onChange={(e) => setFormData({ ...formData, manualNotes: e.target.value })}
-            placeholder="Add your notes from calls, observations, or planning..."
-            rows={4}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-          />
         </div>
 
         {/* Coach Recording Upload */}
@@ -2208,74 +2195,6 @@ export function WeekEditor({
           {recordingError && recordingStatus === 'idle' && (
             <p className="mt-2 text-sm text-red-600 dark:text-red-400">{recordingError}</p>
           )}
-        </div>
-
-        {/* Linked Call Events */}
-        <div>
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <Phone className="w-4 h-4 inline mr-1.5" />
-            Linked Calls
-          </label>
-        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-          Scheduled or completed calls associated with this week
-        </p>
-
-        {/* Currently linked events */}
-        {formData.linkedCallEventIds.length > 0 && (
-          <div className="space-y-2 mb-3">
-            {formData.linkedCallEventIds.map((eventId) => {
-              const event = availableEvents.find(e => e.id === eventId);
-              return (
-                <div
-                  key={eventId}
-                  className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-                >
-                  <Calendar className="w-4 h-4 text-brand-accent" />
-                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                    {event?.title || `Event ${eventId.slice(0, 8)}...`}
-                  </span>
-                  {event?.startDateTime && (
-                    <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                      {new Date(event.startDateTime).toLocaleDateString()}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => removeEventLink(eventId)}
-                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Add event dropdown */}
-        {availableEventsToLink.length > 0 && (
-          <select
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-            value=""
-            onChange={(e) => {
-              if (e.target.value) {
-                addEventLink(e.target.value);
-              }
-            }}
-          >
-            <option value="">Add a call event...</option>
-            {availableEventsToLink.map((event) => (
-              <option key={event.id} value={event.id}>
-                {event.title || 'Call'} - {event.startDateTime ? new Date(event.startDateTime).toLocaleDateString() : 'No date'}
-              </option>
-            ))}
-          </select>
-        )}
-
-        {formData.linkedCallEventIds.length === 0 && availableEventsToLink.length === 0 && (
-          <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
-            No call events available to link
-          </p>
-        )}
         </div>
       </CollapsibleSection>
 
@@ -2763,6 +2682,95 @@ export function WeekEditor({
               No courses available
             </p>
           )}
+        </div>
+      </CollapsibleSection>
+
+      {/* Client Notes Section - collapsed by default */}
+      <CollapsibleSection
+        title="Client Notes"
+        icon={ClipboardList}
+        defaultOpen={false}
+      >
+        {/* Weekly Prompt */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Weekly Prompt
+          </label>
+          <textarea
+            value={formData.weeklyPrompt}
+            onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); trackFieldEdit('syncPrompt'); }}
+            placeholder="Motivational message or guidance for this week..."
+            rows={2}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+          />
+        </div>
+
+        {/* Notes (max 3) */}
+        <div>
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <FileText className="w-4 h-4 inline mr-1.5" />
+            Notes <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Reminders or context for the client
+          </p>
+          <div className="space-y-2 mb-3">
+            {formData.notes.map((note, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+              >
+                <span className="w-2 h-2 rounded-full bg-[#a7a39e]" />
+                <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  {note}
+                </span>
+                <button
+                  onClick={() => removeNote(index)}
+                  className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          {formData.notes.length < 3 && (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addNote()}
+                placeholder="Add note..."
+                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+              />
+              <Button onClick={addNote} variant="outline" size="sm">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </CollapsibleSection>
+
+      {/* Coach Private Section */}
+      <CollapsibleSection
+        title="Coach Private"
+        icon={EyeOff}
+        description="Not visible to clients"
+        defaultOpen={false}
+      >
+        {/* Coach's Manual Notes */}
+        <div>
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <StickyNote className="w-4 h-4 inline mr-1.5" />
+            Coach Notes
+          </label>
+          <textarea
+            value={formData.manualNotes}
+            onChange={(e) => setFormData({ ...formData, manualNotes: e.target.value })}
+            placeholder="Add your notes from calls, observations, or planning..."
+            rows={4}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+          />
         </div>
       </CollapsibleSection>
 

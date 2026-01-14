@@ -94,15 +94,39 @@ export async function GET() {
         ? (customer.invoice_settings?.default_payment_method as string | null)
         : null;
 
-    // Map to response format
-    const paymentMethods: CoachSavedPaymentMethod[] = paymentMethodsResult.data.map((pm) => ({
-      id: pm.id,
-      brand: pm.card?.brand || 'unknown',
-      last4: pm.card?.last4 || '****',
-      expMonth: pm.card?.exp_month || 0,
-      expYear: pm.card?.exp_year || 0,
-      isDefault: pm.id === defaultPaymentMethodId,
-    }));
+    // Deduplicate cards by fingerprint (same physical card) or by brand+last4+exp combo
+    // Keep the most recently created one (first in Stripe's list, which is ordered by created desc)
+    const seenFingerprints = new Set<string>();
+    const seenCardKeys = new Set<string>();
+
+    const paymentMethods: CoachSavedPaymentMethod[] = paymentMethodsResult.data
+      .filter((pm) => {
+        // Prefer fingerprint for deduplication (unique per physical card)
+        const fingerprint = pm.card?.fingerprint;
+        if (fingerprint) {
+          if (seenFingerprints.has(fingerprint)) {
+            return false; // Skip duplicate
+          }
+          seenFingerprints.add(fingerprint);
+          return true;
+        }
+
+        // Fallback: dedupe by brand + last4 + expiration
+        const cardKey = `${pm.card?.brand}-${pm.card?.last4}-${pm.card?.exp_month}-${pm.card?.exp_year}`;
+        if (seenCardKeys.has(cardKey)) {
+          return false; // Skip duplicate
+        }
+        seenCardKeys.add(cardKey);
+        return true;
+      })
+      .map((pm) => ({
+        id: pm.id,
+        brand: pm.card?.brand || 'unknown',
+        last4: pm.card?.last4 || '****',
+        expMonth: pm.card?.exp_month || 0,
+        expYear: pm.card?.exp_year || 0,
+        isDefault: pm.id === defaultPaymentMethodId,
+      }));
 
     console.log(`[COACH_PAYMENT_METHODS] Found ${paymentMethods.length} payment methods for org ${organizationId}`);
 

@@ -879,8 +879,10 @@ export function ProgramPaymentModal({
   // Mobile: Drawer that slides up from bottom
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="max-h-[90vh] overflow-y-auto">
-        {content}
+      <DrawerContent className="pb-safe">
+        <div className="max-h-[85vh] overflow-y-auto">
+          {content}
+        </div>
       </DrawerContent>
     </Drawer>
   );

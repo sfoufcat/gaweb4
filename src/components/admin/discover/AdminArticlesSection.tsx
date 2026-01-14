@@ -576,7 +576,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                   value={categoryFilter || 'all'}
                   onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}
                 >
-                  <SelectTrigger className="h-auto px-3 py-1.5 min-w-[130px] bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 font-albert text-sm">
+                  <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 font-albert text-sm gap-1.5 !justify-start">
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
@@ -587,12 +587,12 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                   </SelectContent>
                 </Select>
               )}
-              
+
               <button
                 onClick={() => { setArticleToEdit(null); setIsFormOpen(true); }}
-                className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
+                className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200 whitespace-nowrap"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Create Article
