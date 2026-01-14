@@ -81,7 +81,7 @@ export function FrequencySelector({
       {/* Options Modal - Responsive */}
       {showOptions && (
         <div 
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end md:items-center md:justify-center" 
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[10000] flex items-end md:items-center md:justify-center" 
           onClick={() => setShowOptions(false)}
         >
           {/* Modal Content */}

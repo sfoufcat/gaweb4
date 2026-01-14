@@ -111,12 +111,12 @@ export function PostSettingsModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 animate-backdrop-fade-in"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10000] animate-backdrop-fade-in"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 pointer-events-none">
+      <div className="fixed inset-0 z-[10000] flex items-end md:items-center justify-center p-0 md:p-4 pointer-events-none">
         <div 
           className="w-full md:w-full md:max-w-md bg-white dark:bg-[#171b22] rounded-t-2xl md:rounded-2xl shadow-xl max-h-[85dvh] flex flex-col overflow-hidden pointer-events-auto animate-modal-slide-up md:animate-modal-zoom-in"
           onClick={(e) => e.stopPropagation()}

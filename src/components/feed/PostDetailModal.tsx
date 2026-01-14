@@ -57,12 +57,12 @@ export function PostDetailModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 animate-backdrop-fade-in"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10000] animate-backdrop-fade-in"
         onClick={onClose}
       />
 
       {/* Modal Container */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pointer-events-none">
         <div 
           className="w-full max-w-3xl bg-white dark:bg-[#171b22] rounded-2xl shadow-xl max-h-[90vh] flex flex-col overflow-hidden pointer-events-auto animate-modal-zoom-in"
           onClick={(e) => e.stopPropagation()}

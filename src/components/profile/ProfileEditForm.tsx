@@ -417,7 +417,7 @@ export function ProfileEditForm({ initialData, clerkUser, onSave, onCancel, from
         <button
           type="submit"
           disabled={isLoading || isUploadingAvatar}
-          className="w-full py-3 px-6 bg-button-primary text-white rounded-[32px] font-sans font-bold text-base tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:bg-[#1a1a1a]/90 transition-colors disabled:opacity-50"
+          className="w-full py-3 px-6 bg-brand-accent dark:bg-brand-accent text-white rounded-[32px] font-sans font-bold text-base tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 transition-colors disabled:opacity-50"
         >
           {isUploadingAvatar ? 'Uploading picture...' : isLoading ? 'Saving...' : 'Save'}
         </button>

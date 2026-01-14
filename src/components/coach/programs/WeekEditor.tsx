@@ -76,6 +76,8 @@ interface WeekEditorProps {
   onSummaryGenerated?: (summaryId: string) => void;
   // Callback when a summary is regenerated/updated
   onSummaryUpdated?: (summary: CallSummary) => void;
+  // Callback when a summary is deleted
+  onSummaryDeleted?: (summaryId: string) => void;
   // Cohort task completion for weekly tasks (aggregate)
   cohortWeeklyTaskCompletion?: Map<string, CohortWeeklyTaskCompletionData>;
   // Completion threshold
@@ -442,6 +444,7 @@ export function WeekEditor({
   cohorts = [],
   onSummaryGenerated,
   onSummaryUpdated,
+  onSummaryDeleted,
   cohortWeeklyTaskCompletion = new Map(),
   completionThreshold = 50,
   instanceId,
@@ -1318,6 +1321,34 @@ export function WeekEditor({
     });
   };
 
+  // Delete a call summary entirely (from database)
+  const deleteSummary = async (summaryId: string) => {
+    try {
+      const response = await fetch(`/api/coach/call-summaries/${summaryId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete summary');
+      }
+
+      // Remove from linked summaries if it was linked
+      if (formData.linkedSummaryIds.includes(summaryId)) {
+        setFormData({
+          ...formData,
+          linkedSummaryIds: formData.linkedSummaryIds.filter(id => id !== summaryId),
+        });
+      }
+
+      // Notify parent to refresh the available summaries list
+      onSummaryDeleted?.(summaryId);
+    } catch (error) {
+      console.error('Error deleting summary:', error);
+      // Could add toast notification here
+    }
+  };
+
   // Link management for call events
   const addEventLink = (eventId: string) => {
     if (!formData.linkedCallEventIds.includes(eventId)) {
@@ -1421,9 +1452,23 @@ export function WeekEditor({
   };
 
   // Filter available items to exclude already linked ones
-  const availableSummariesToLink = availableCallSummaries.filter(
-    s => !formData.linkedSummaryIds.includes(s.id)
-  );
+  // Helper to get timestamp from various date formats for sorting
+  const getTimestamp = (dateValue: unknown): number => {
+    if (!dateValue) return 0;
+    if (typeof dateValue === 'string') {
+      return new Date(dateValue).getTime();
+    } else if (dateValue instanceof Date) {
+      return dateValue.getTime();
+    } else if (typeof dateValue === 'object' && dateValue !== null && 'seconds' in dateValue) {
+      return (dateValue as { seconds: number }).seconds * 1000;
+    }
+    return 0;
+  };
+
+  // Filter and sort summaries by date (most recent first)
+  const availableSummariesToLink = availableCallSummaries
+    .filter(s => !formData.linkedSummaryIds.includes(s.id))
+    .sort((a, b) => getTimestamp(b.createdAt) - getTimestamp(a.createdAt));
   const availableEventsToLink = availableEvents.filter(
     e => !formData.linkedCallEventIds.includes(e.id)
   );
@@ -2206,12 +2251,15 @@ export function WeekEditor({
                 label: 'Available Summaries',
                 items: availableSummariesToLink.map(s => ({
                   id: s.id,
-                  title: getSummaryLabel(s),
+                  title: clientName || cohortName || `Summary ${s.id.slice(0, 8)}...`,
+                  subtitle: formatSummaryDate(s.createdAt) || undefined,
                 })),
                 iconClassName: 'text-brand-accent',
               },
             ]}
             onSelect={addSummaryLink}
+            onDelete={deleteSummary}
+            pageSize={10}
           />
 
           {formData.linkedSummaryIds.length === 0 && availableSummariesToLink.length === 0 && (

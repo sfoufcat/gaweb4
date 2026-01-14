@@ -42,14 +42,16 @@ interface DiscoverProgram {
 
 export function ProgramDiscovery() {
   const { programLower } = useMenuTitles();
-  
+
   const [groupPrograms, setGroupPrograms] = useState<DiscoverProgram[]>([]);
   const [individualPrograms, setIndividualPrograms] = useState<DiscoverProgram[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Fetch available programs
   useEffect(() => {
     const fetchPrograms = async () => {
       try {
+        setIsLoading(true);
         const response = await fetch('/api/discover/programs');
         if (!response.ok) throw new Error('Failed to fetch programs');
 
@@ -67,6 +69,8 @@ export function ProgramDiscovery() {
         setIndividualPrograms(availableIndividual);
       } catch (err) {
         console.error('Error fetching programs:', err);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -75,6 +79,32 @@ export function ProgramDiscovery() {
 
   // Derive hasPrograms from array lengths (no separate state needed)
   const hasPrograms = groupPrograms.length > 0 || individualPrograms.length > 0;
+
+  // Show loading skeleton while fetching to prevent flash of empty state
+  if (isLoading) {
+    return (
+      <div className="pt-6 pb-32 animate-pulse">
+        {/* Header skeleton */}
+        <div className="mb-8">
+          <div className="h-10 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded mb-2" />
+          <div className="h-5 w-80 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+        </div>
+        {/* Section skeleton */}
+        <div className="mb-8">
+          <div className="h-8 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded mb-4" />
+          <div className="grid gap-4">
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-white dark:bg-[#171b22] rounded-2xl p-4 border border-[#e1ddd8] dark:border-[#262b35]">
+                <div className="h-40 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl mb-4" />
+                <div className="h-6 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded mb-2" />
+                <div className="h-4 w-1/2 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // No programs available - show empty state with "Discover more content" CTA
   if (!hasPrograms) {

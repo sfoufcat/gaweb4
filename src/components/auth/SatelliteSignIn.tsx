@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth, useUser, useClerk } from '@clerk/nextjs';
 import { OAuthButton } from './OAuthButton';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface SatelliteSignInProps {
   subdomain: string;
@@ -31,6 +32,7 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
   const { isSignedIn, isLoaded } = useAuth();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -69,9 +71,9 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
   };
   
   const returnUrl = getReturnUrl();
-  
-  // Pass redirectUrl to iframe so it can include it in postMessage
-  const iframeSrc = `${subdomainBase}/sign-in/embedded?origin=${encodeURIComponent(currentOrigin)}&redirectUrl=${encodeURIComponent(redirectUrl)}`;
+
+  // Pass redirectUrl and theme to iframe so it can apply the same theme and include redirectUrl in postMessage
+  const iframeSrc = `${subdomainBase}/sign-in/embedded?origin=${encodeURIComponent(currentOrigin)}&redirectUrl=${encodeURIComponent(redirectUrl)}&theme=${theme}`;
 
   // Handle OAuth - redirect to subdomain which handles Clerk OAuth
   const handleOAuth = (provider: 'oauth_google' | 'oauth_apple') => {

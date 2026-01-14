@@ -166,12 +166,12 @@ export function CreateStoryModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black z-50"
+        className="fixed inset-0 bg-black z-[10000]"
         onClick={handleClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex flex-col">
+      <div className="fixed inset-0 z-[10000] flex flex-col">
         {/* Hidden file input */}
         <input
           ref={fileInputRef}

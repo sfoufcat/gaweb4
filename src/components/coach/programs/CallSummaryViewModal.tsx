@@ -47,12 +47,12 @@ export function CallSummaryViewModal({
   onSummaryUpdated,
   entityName,
 }: CallSummaryViewModalProps) {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState<boolean | null>(null); // null = not yet determined
   const [fetchingTasks, setFetchingTasks] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
-  // Detect mobile viewport
+  // Detect mobile viewport - only runs on client
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -74,11 +74,11 @@ export function CallSummaryViewModal({
     return (Date.now() - createdTime) / (1000 * 60);
   }, []);
 
-  const isStuck = summary?.status === 'processing' && getAgeMinutes(summary.createdAt) > STUCK_TIMEOUT_MINUTES;
-  const canRegenerate = summary?.status === 'failed' || isStuck;
+  // Only calculate isStuck if summary exists
+  const isStuck = summary?.status === 'processing' && summary?.createdAt && getAgeMinutes(summary.createdAt) > STUCK_TIMEOUT_MINUTES;
 
   // Handle regenerate
-  const handleRegenerate = async () => {
+  const handleRegenerate = useCallback(async () => {
     if (!summary?.id || regenerating) return;
 
     setRegenerating(true);
@@ -106,9 +106,9 @@ export function CallSummaryViewModal({
     } finally {
       setRegenerating(false);
     }
-  };
+  }, [summary?.id, regenerating, onSummaryUpdated]);
 
-  const handleFetchTasks = async () => {
+  const handleFetchTasks = useCallback(async () => {
     if (!summary || !onFetchTasks) return;
 
     setFetchingTasks(true);
@@ -156,7 +156,7 @@ export function CallSummaryViewModal({
     } finally {
       setFetchingTasks(false);
     }
-  };
+  }, [summary, onFetchTasks, onClose]);
 
   // Handle both ISO string and Firestore Timestamp objects
   const formatDate = (dateValue: string | { seconds: number; nanoseconds: number } | Date | null | undefined): string => {
@@ -433,6 +433,11 @@ export function CallSummaryViewModal({
       )}
     </div>
   );
+
+  // Don't render until we know if we're on mobile or desktop (prevents hydration mismatch)
+  if (isMobile === null) {
+    return null;
+  }
 
   // Mobile: use Drawer (slide up)
   if (isMobile) {

@@ -102,6 +102,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* iOS Safari full-viewport background fix - ensures bg extends behind browser bar */
+html {
+  background-color: hsl(var(--app-bg));
+  min-height: 100%;
+  /* Extend bg into safe areas for seamless edge-to-edge display */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  margin: calc(-1 * env(safe-area-inset-top)) calc(-1 * env(safe-area-inset-right)) calc(-1 * env(safe-area-inset-bottom)) calc(-1 * env(safe-area-inset-left));
+}
+
+html.dark {
+  background-color: hsl(var(--app-bg));
+}
+
+body {
+  /* Use min-height: 100dvh to fill the dynamic viewport (accounts for iOS Safari bar) */
+  min-height: 100dvh;
+  /* Fallback for browsers that don't support dvh */
+  min-height: 100vh;
+  background-color: hsl(var(--app-bg));
+}
+
+@supports (min-height: 100dvh) {
+  body {
+    min-height: 100dvh;
+  }
+}
+
 @layer utilities {
   /* Safe Area Insets for iOS Safari edge-to-edge display */
   .pt-safe {

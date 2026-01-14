@@ -630,16 +630,22 @@ export async function GET(request: Request) {
         const membersSnapshot = memberResults[idx];
         if (squadDoc.exists) {
           const squadData = { id: squadDoc.id, ...squadDoc.data() } as Squad;
-          const membersData = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SquadMember));
 
-          // Set legacy fields for backwards compatibility
-          squads.premium = { squad: squadData, members: membersData };
-
-          // Set new fields based on whether squad has a programId
-          if (squadData.programId) {
-            squads.program = { squad: squadData, members: membersData };
+          // Security check: Only show squad if it belongs to the current organization
+          if (squadData.organizationId && squadData.organizationId !== organizationId) {
+            console.warn(`[SECURITY] User ${userId} attempted to access squad ${squadDoc.id} from different organization`);
           } else {
-            squads.standalone = { squad: squadData, members: membersData };
+            const membersData = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SquadMember));
+
+            // Set legacy fields for backwards compatibility
+            squads.premium = { squad: squadData, members: membersData };
+
+            // Set new fields based on whether squad has a programId
+            if (squadData.programId) {
+              squads.program = { squad: squadData, members: membersData };
+            } else {
+              squads.standalone = { squad: squadData, members: membersData };
+            }
           }
         }
         idx++;
@@ -650,17 +656,23 @@ export async function GET(request: Request) {
         const membersSnapshot = memberResults[idx];
         if (squadDoc.exists) {
           const squadData = { id: squadDoc.id, ...squadDoc.data() } as Squad;
-          const membersData = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SquadMember));
 
-          // Set legacy fields for backwards compatibility
-          squads.standard = { squad: squadData, members: membersData };
+          // Security check: Only show squad if it belongs to the current organization
+          if (squadData.organizationId && squadData.organizationId !== organizationId) {
+            console.warn(`[SECURITY] User ${userId} attempted to access squad ${squadDoc.id} from different organization`);
+          } else {
+            const membersData = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SquadMember));
 
-          // Set new fields based on whether squad has a programId
-          // Only set if not already set by premium squad
-          if (squadData.programId && !squads.program.squad) {
-            squads.program = { squad: squadData, members: membersData };
-          } else if (!squadData.programId && !squads.standalone.squad) {
-            squads.standalone = { squad: squadData, members: membersData };
+            // Set legacy fields for backwards compatibility
+            squads.standard = { squad: squadData, members: membersData };
+
+            // Set new fields based on whether squad has a programId
+            // Only set if not already set by premium squad
+            if (squadData.programId && !squads.program.squad) {
+              squads.program = { squad: squadData, members: membersData };
+            } else if (!squadData.programId && !squads.standalone.squad) {
+              squads.standalone = { squad: squadData, members: membersData };
+            }
           }
         }
       }

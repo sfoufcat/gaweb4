@@ -378,17 +378,17 @@ export default function ProgramDetailPage() {
   return (
     <div className="min-h-[100dvh] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col">
       {/* Hero Section - Rounded Card Style */}
-      <div className="relative pt-4 px-4 sm:px-6 lg:px-10">
-        {/* Decorative blur elements */}
-        <div 
-          className="absolute -top-20 -right-20 w-64 h-64 rounded-full blur-3xl opacity-40"
+      <div className="relative pt-4 px-4 sm:px-6 lg:px-10 overflow-hidden">
+        {/* Decorative blur elements - hidden on mobile to prevent cutoff, scaled for responsiveness */}
+        <div
+          className="absolute -top-10 -right-10 sm:-top-20 sm:-right-20 w-32 h-32 sm:w-64 sm:h-64 rounded-full blur-3xl opacity-30 sm:opacity-40 pointer-events-none"
           style={{ background: `radial-gradient(circle, ${hexToRgba(accentLight, 0.6)}, transparent)` }}
         />
-        <div 
-          className="absolute -bottom-10 -left-10 w-48 h-48 rounded-full blur-3xl opacity-30"
+        <div
+          className="absolute -bottom-5 -left-5 sm:-bottom-10 sm:-left-10 w-24 h-24 sm:w-48 sm:h-48 rounded-full blur-3xl opacity-20 sm:opacity-30 pointer-events-none"
           style={{ background: `radial-gradient(circle, ${hexToRgba(accentDark, 0.5)}, transparent)` }}
         />
-        <div 
+        <div
           className="h-[200px] sm:h-[260px] w-full relative rounded-[40px] overflow-hidden"
           style={{ background: `linear-gradient(135deg, ${hexToRgba(accentLight, 0.25)}, ${hexToRgba(accentLightHover, 0.08)}, ${hexToRgba(accentDark, 0.15)})` }}
         >
