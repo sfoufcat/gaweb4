@@ -13,6 +13,10 @@ import { Lock, X, Loader2, CheckCircle, AlertCircle, Repeat, CreditCard, Plus, C
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDiscountCode } from '@/hooks/useDiscountCode';
 import { DiscountCodeInput } from '@/components/checkout';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { Dialog, DialogContent, DialogOverlay, DialogPortal } from '@/components/ui/dialog';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 // Saved payment method type
 interface SavedPaymentMethod {

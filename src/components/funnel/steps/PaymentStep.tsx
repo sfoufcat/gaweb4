@@ -188,7 +188,7 @@ function SavedCardsForFunnel({
         )}
 
         {/* Discount code input */}
-        <div className="border-t border-[#e1ddd8] pt-4 mt-4">
+        <div className="pt-4 mt-2">
           <DiscountCodeInput discount={discount} compact />
         </div>
       </div>
@@ -422,7 +422,7 @@ function PaymentForm({ onSuccess, programName, priceInCents, basePriceInCents, c
         )}
 
         {/* Discount code input */}
-        <div className="border-t border-[#e1ddd8] pt-4 mt-4">
+        <div className="pt-4 mt-2">
           <DiscountCodeInput discount={discount} compact />
         </div>
       </div>
