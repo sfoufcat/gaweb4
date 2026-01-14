@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment, ClientViewContext, CohortViewContext, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire } from '@/types';
-import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, ChevronDown, ChevronRight, Pencil, Loader2, BookOpen, Download, Link2, FileQuestion } from 'lucide-react';
+import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, ChevronDown, ChevronRight, Pencil, Loader2, BookOpen, Download, Link2, FileQuestion, FileText } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { useInstanceIdLookup } from '@/hooks/useProgramInstanceBridge';
 import { Button } from '@/components/ui/button';
 import { DayCourseSelector } from './DayCourseSelector';
+import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -609,6 +610,27 @@ export function DayEditor({
     q => !formData.linkedQuestionnaireIds.includes(q.id)
   );
 
+  // Categorize resources by program attachment
+  const programArticles = availableArticlesToLink.filter(
+    a => a.programIds?.includes(programId || '')
+  );
+  const platformArticles = availableArticlesToLink.filter(
+    a => !a.programIds?.includes(programId || '')
+  );
+  const programDownloads = availableDownloadsToLink.filter(
+    d => d.programIds?.includes(programId || '')
+  );
+  const platformDownloads = availableDownloadsToLink.filter(
+    d => !d.programIds?.includes(programId || '')
+  );
+  const programLinks = availableLinksToLink.filter(
+    l => l.programIds?.includes(programId || '')
+  );
+  const platformLinks = availableLinksToLink.filter(
+    l => !l.programIds?.includes(programId || '')
+  );
+  // Note: Questionnaires don't have programIds - they're always platform-level
+
   // Focus count warning check
   const focusCount = formData.tasks.filter(t => t.isPrimary).length;
   const showFocusWarning = focusCount > dailyFocusSlots;
@@ -1070,189 +1092,330 @@ export function DayEditor({
         />
       </div>
 
-      {/* Resources Section */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <label className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            Linked Resources
+      {/* Resources Section - Articles, Downloads, Links, Questionnaires */}
+      <CollapsibleSection
+        title="Resources"
+        icon={BookOpen}
+        description="Content to share with clients for this day"
+        defaultOpen={false}
+      >
+        {/* Linked Articles */}
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <FileText className="w-4 h-4 inline mr-1.5" />
+            Articles
           </label>
-        </div>
-        
-        <div className="space-y-4">
-          {/* Articles */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-              <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Articles</span>
-            </div>
-            {formData.linkedArticleIds.map(articleId => {
-              const article = availableArticles.find(a => a.id === articleId);
-              return (
-                <div key={articleId} className="flex items-center gap-2 p-2 bg-[#f3f1ef] dark:bg-[#1d222b] rounded-lg">
-                  <BookOpen className="w-4 h-4 text-brand-accent" />
-                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                    {article?.title || articleId}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeArticleLink(articleId)}
-                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-[#a7a39e] hover:text-red-500"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              );
-            })}
-            {availableArticlesToLink.length > 0 && (
-              <select
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) addArticleLink(e.target.value);
-                }}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm"
-              >
-                <option value="">Add article...</option>
-                {availableArticlesToLink.map(a => (
-                  <option key={a.id} value={a.id}>{a.title}</option>
-                ))}
-              </select>
-            )}
-          </div>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Reading materials and guides for this day
+          </p>
 
-          {/* Downloads */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Download className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-              <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Downloads</span>
-            </div>
-            {formData.linkedDownloadIds.map(downloadId => {
-              const download = availableDownloads.find(d => d.id === downloadId);
-              return (
-                <div key={downloadId} className="flex items-center gap-2 p-2 bg-[#f3f1ef] dark:bg-[#1d222b] rounded-lg">
-                  <Download className="w-4 h-4 text-brand-accent" />
-                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                    {download?.title || downloadId}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeDownloadLink(downloadId)}
-                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-[#a7a39e] hover:text-red-500"
+          {/* Currently linked articles */}
+          {formData.linkedArticleIds.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {formData.linkedArticleIds.map((articleId) => {
+                const article = availableArticles.find(a => a.id === articleId);
+                return (
+                  <div
+                    key={articleId}
+                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
                   >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              );
-            })}
-            {availableDownloadsToLink.length > 0 && (
-              <select
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) addDownloadLink(e.target.value);
-                }}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm"
-              >
-                <option value="">Add download...</option>
-                {availableDownloadsToLink.map(d => (
-                  <option key={d.id} value={d.id}>{d.title}</option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Links */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Link2 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-              <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Links</span>
-            </div>
-            {formData.linkedLinkIds.map(linkId => {
-              const link = availableLinks.find(l => l.id === linkId);
-              return (
-                <div key={linkId} className="flex items-center gap-2 p-2 bg-[#f3f1ef] dark:bg-[#1d222b] rounded-lg">
-                  <Link2 className="w-4 h-4 text-brand-accent" />
-                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                    {link?.title || linkId}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeLinkLink(linkId)}
-                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-[#a7a39e] hover:text-red-500"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              );
-            })}
-            {availableLinksToLink.length > 0 && (
-              <select
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) addLinkLink(e.target.value);
-                }}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm"
-              >
-                <option value="">Add link...</option>
-                {availableLinksToLink.map(l => (
-                  <option key={l.id} value={l.id}>{l.title}</option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Questionnaires */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <FileQuestion className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-              <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Questionnaires</span>
-            </div>
-            {formData.linkedQuestionnaireIds.map(questionnaireId => {
-              const questionnaire = availableQuestionnaires.find(q => q.id === questionnaireId);
-              return (
-                <div key={questionnaireId} className="flex items-center gap-2 p-2 bg-[#f3f1ef] dark:bg-[#1d222b] rounded-lg">
-                  <FileQuestion className="w-4 h-4 text-brand-accent" />
-                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                    {questionnaire?.title || questionnaireId}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeQuestionnaireLink(questionnaireId)}
-                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-[#a7a39e] hover:text-red-500"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              );
-            })}
-            {availableQuestionnairesToLink.length > 0 && (
-              <select
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) addQuestionnaireLink(e.target.value);
-                }}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm"
-              >
-                <option value="">Add questionnaire...</option>
-                {availableQuestionnairesToLink.map(q => (
-                  <option key={q.id} value={q.id}>{q.title}</option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Empty state when no content available */}
-          {availableArticles.length === 0 && availableDownloads.length === 0 && 
-           availableLinks.length === 0 && availableQuestionnaires.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-6 text-center border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
-              <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
-                No resources available to link
-              </p>
-              <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-1">
-                Create articles, downloads, links, or questionnaires in your Discover section first
-              </p>
+                    <FileText className="w-4 h-4 text-brand-accent" />
+                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {article?.title || `Article ${articleId.slice(0, 8)}...`}
+                    </span>
+                    <button
+                      onClick={() => removeArticleLink(articleId)}
+                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
+
+          {/* Add article dropdown */}
+          {availableArticlesToLink.length > 0 && (
+            <select
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  addArticleLink(e.target.value);
+                }
+              }}
+            >
+              <option value="">Add an article...</option>
+              {programArticles.length > 0 && (
+                <optgroup label="Program Content">
+                  {programArticles.map((article) => (
+                    <option key={article.id} value={article.id}>
+                      {article.title}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {platformArticles.length > 0 && (
+                <optgroup label="Platform Content">
+                  {platformArticles.map((article) => (
+                    <option key={article.id} value={article.id}>
+                      {article.title}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+          )}
+          <a
+            href="/coach?tab=discover"
+            className="text-sm text-brand-accent hover:underline mt-2 inline-block"
+          >
+            + Create new article
+          </a>
+
+          {formData.linkedArticleIds.length === 0 && availableArticlesToLink.length === 0 && (
+            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
+              No articles available to link
+            </p>
+          )}
         </div>
-      </div>
+
+        {/* Linked Downloads */}
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <Download className="w-4 h-4 inline mr-1.5" />
+            Downloads
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Files and templates clients can download
+          </p>
+
+          {/* Currently linked downloads */}
+          {formData.linkedDownloadIds.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {formData.linkedDownloadIds.map((downloadId) => {
+                const download = availableDownloads.find(d => d.id === downloadId);
+                return (
+                  <div
+                    key={downloadId}
+                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                  >
+                    <Download className="w-4 h-4 text-brand-accent" />
+                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {download?.title || `Download ${downloadId.slice(0, 8)}...`}
+                    </span>
+                    <button
+                      onClick={() => removeDownloadLink(downloadId)}
+                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add download dropdown */}
+          {availableDownloadsToLink.length > 0 && (
+            <select
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  addDownloadLink(e.target.value);
+                }
+              }}
+            >
+              <option value="">Add a download...</option>
+              {programDownloads.length > 0 && (
+                <optgroup label="Program Content">
+                  {programDownloads.map((download) => (
+                    <option key={download.id} value={download.id}>
+                      {download.title}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {platformDownloads.length > 0 && (
+                <optgroup label="Platform Content">
+                  {platformDownloads.map((download) => (
+                    <option key={download.id} value={download.id}>
+                      {download.title}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+          )}
+          <a
+            href="/coach?tab=discover"
+            className="text-sm text-brand-accent hover:underline mt-2 inline-block"
+          >
+            + Create new download
+          </a>
+
+          {formData.linkedDownloadIds.length === 0 && availableDownloadsToLink.length === 0 && (
+            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
+              No downloads available to link
+            </p>
+          )}
+        </div>
+
+        {/* Linked Links */}
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <Link2 className="w-4 h-4 inline mr-1.5" />
+            External Links
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Helpful websites and external resources
+          </p>
+
+          {/* Currently linked links */}
+          {formData.linkedLinkIds.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {formData.linkedLinkIds.map((linkId) => {
+                const link = availableLinks.find(l => l.id === linkId);
+                return (
+                  <div
+                    key={linkId}
+                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                  >
+                    <Link2 className="w-4 h-4 text-brand-accent" />
+                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {link?.title || `Link ${linkId.slice(0, 8)}...`}
+                    </span>
+                    <button
+                      onClick={() => removeLinkLink(linkId)}
+                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add link dropdown */}
+          {availableLinksToLink.length > 0 && (
+            <select
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  addLinkLink(e.target.value);
+                }
+              }}
+            >
+              <option value="">Add a link...</option>
+              {programLinks.length > 0 && (
+                <optgroup label="Program Content">
+                  {programLinks.map((link) => (
+                    <option key={link.id} value={link.id}>
+                      {link.title}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {platformLinks.length > 0 && (
+                <optgroup label="Platform Content">
+                  {platformLinks.map((link) => (
+                    <option key={link.id} value={link.id}>
+                      {link.title}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+          )}
+          <a
+            href="/coach?tab=discover"
+            className="text-sm text-brand-accent hover:underline mt-2 inline-block"
+          >
+            + Create new link
+          </a>
+
+          {formData.linkedLinkIds.length === 0 && availableLinksToLink.length === 0 && (
+            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
+              No links available
+            </p>
+          )}
+        </div>
+
+        {/* Linked Questionnaires */}
+        <div>
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <FileQuestion className="w-4 h-4 inline mr-1.5" />
+            Questionnaires
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Forms and surveys for clients to complete
+          </p>
+
+          {/* Currently linked questionnaires */}
+          {formData.linkedQuestionnaireIds.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {formData.linkedQuestionnaireIds.map((questionnaireId) => {
+                const questionnaire = availableQuestionnaires.find(q => q.id === questionnaireId);
+                return (
+                  <div
+                    key={questionnaireId}
+                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                  >
+                    <FileQuestion className="w-4 h-4 text-brand-accent" />
+                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {questionnaire?.title || `Questionnaire ${questionnaireId.slice(0, 8)}...`}
+                    </span>
+                    <button
+                      onClick={() => removeQuestionnaireLink(questionnaireId)}
+                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add questionnaire dropdown */}
+          {availableQuestionnairesToLink.length > 0 && (
+            <select
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  addQuestionnaireLink(e.target.value);
+                }
+              }}
+            >
+              <option value="">Add a questionnaire...</option>
+              <optgroup label="Platform Content">
+                {availableQuestionnairesToLink.map((questionnaire) => (
+                  <option key={questionnaire.id} value={questionnaire.id}>
+                    {questionnaire.title}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          )}
+          <a
+            href="/coach?tab=discover"
+            className="text-sm text-brand-accent hover:underline mt-2 inline-block"
+          >
+            + Create new questionnaire
+          </a>
+
+          {formData.linkedQuestionnaireIds.length === 0 && availableQuestionnairesToLink.length === 0 && (
+            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
+              No questionnaires available
+            </p>
+          )}
+        </div>
+      </CollapsibleSection>
 
       {/* Error display */}
       {saveError && (

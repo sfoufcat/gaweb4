@@ -11,6 +11,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, X, Loader2, CheckCircle, AlertCircle, CreditCard, Plus, CircleCheck, Shield } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useDiscountCode } from '@/hooks/useDiscountCode';
+import { DiscountCodeInput } from '@/components/checkout';
 
 // Saved payment method type
 interface SavedPaymentMethod {
@@ -77,9 +79,12 @@ function SavedCardsSelection({
   onPay,
   isProcessing,
   programName,
-  priceInCents,
+  originalPriceCents,
+  discountAmount,
+  totalPriceCents,
   currency,
   onCancel,
+  discount,
 }: {
   savedMethods: SavedPaymentMethod[];
   selectedMethodId: string | null;
@@ -88,9 +93,12 @@ function SavedCardsSelection({
   onPay: () => void;
   isProcessing: boolean;
   programName: string;
-  priceInCents: number;
+  originalPriceCents: number;
+  discountAmount: number;
+  totalPriceCents: number;
   currency: string;
   onCancel: () => void;
+  discount: ReturnType<typeof useDiscountCode>;
 }) {
   return (
     <div className="space-y-6">
@@ -101,7 +109,14 @@ function SavedCardsSelection({
             Enroll in {programName}
           </h2>
           <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-            {formatPrice(priceInCents, currency)} one-time payment
+            {discountAmount > 0 ? (
+              <span className="flex items-center gap-2">
+                <span className="line-through">{formatPrice(originalPriceCents, currency)}</span>
+                <span className="text-green-600 dark:text-green-400 font-medium">{formatPrice(totalPriceCents, currency)}</span>
+              </span>
+            ) : (
+              `${formatPrice(totalPriceCents, currency)} one-time payment`
+            )}
           </p>
         </div>
         <button
@@ -172,16 +187,31 @@ function SavedCardsSelection({
         </button>
       </div>
 
+      {/* Discount Code Input */}
+      {originalPriceCents > 0 && (
+        <DiscountCodeInput discount={discount} compact />
+      )}
+
       {/* Order summary */}
       <div className="p-4 bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Program</span>
           <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">{programName}</span>
         </div>
+        {discountAmount > 0 && discount.validationResult?.discountCode && (
+          <div className="flex justify-between text-sm">
+            <span className="text-green-600 dark:text-green-400">
+              Discount ({discount.validationResult.discountCode.code})
+            </span>
+            <span className="text-green-600 dark:text-green-400 font-medium">
+              -{formatPrice(discountAmount, currency)}
+            </span>
+          </div>
+        )}
         <div className="flex justify-between text-sm pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
           <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">Total</span>
           <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-semibold">
-            {formatPrice(priceInCents, currency)}
+            {formatPrice(totalPriceCents, currency)}
           </span>
         </div>
       </div>
@@ -201,7 +231,7 @@ function SavedCardsSelection({
         ) : (
           <>
             <Lock className="w-4 h-4" />
-            Pay {formatPrice(priceInCents, currency)}
+            Pay {formatPrice(totalPriceCents, currency)}
           </>
         )}
       </button>
@@ -219,11 +249,14 @@ interface PaymentFormProps {
   onSuccess: (paymentIntentId: string) => void;
   onCancel: () => void;
   programName: string;
-  priceInCents: number;
+  originalPriceCents: number;
+  discountAmount: number;
+  totalPriceCents: number;
   currency: string;
+  discount: ReturnType<typeof useDiscountCode>;
 }
 
-function PaymentForm({ onSuccess, onCancel, programName, priceInCents, currency }: PaymentFormProps) {
+function PaymentForm({ onSuccess, onCancel, programName, originalPriceCents, discountAmount, totalPriceCents, currency, discount }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -269,7 +302,14 @@ function PaymentForm({ onSuccess, onCancel, programName, priceInCents, currency 
             Enroll in {programName}
           </h2>
           <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-            {formatPrice(priceInCents, currency)} one-time payment
+            {discountAmount > 0 ? (
+              <span className="flex items-center gap-2">
+                <span className="line-through">{formatPrice(originalPriceCents, currency)}</span>
+                <span className="text-green-600 dark:text-green-400 font-medium">{formatPrice(totalPriceCents, currency)}</span>
+              </span>
+            ) : (
+              `${formatPrice(totalPriceCents, currency)} one-time payment`
+            )}
           </p>
         </div>
         <button
@@ -315,10 +355,20 @@ function PaymentForm({ onSuccess, onCancel, programName, priceInCents, currency 
           <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Program</span>
           <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">{programName}</span>
         </div>
+        {discountAmount > 0 && discount.validationResult?.discountCode && (
+          <div className="flex justify-between text-sm">
+            <span className="text-green-600 dark:text-green-400">
+              Discount ({discount.validationResult.discountCode.code})
+            </span>
+            <span className="text-green-600 dark:text-green-400 font-medium">
+              -{formatPrice(discountAmount, currency)}
+            </span>
+          </div>
+        )}
         <div className="flex justify-between text-sm pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
           <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">Total</span>
           <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-semibold">
-            {formatPrice(priceInCents, currency)}
+            {formatPrice(totalPriceCents, currency)}
           </span>
         </div>
       </div>
@@ -337,7 +387,7 @@ function PaymentForm({ onSuccess, onCancel, programName, priceInCents, currency 
         ) : (
           <>
             <Lock className="w-4 h-4" />
-            Pay {formatPrice(priceInCents, currency)}
+            Pay {formatPrice(totalPriceCents, currency)}
           </>
         )}
       </button>
@@ -394,6 +444,13 @@ export function ProgramPaymentModal({
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
+  // Discount code hook
+  const discount = useDiscountCode({
+    organizationId: organizationId || '',
+    originalAmountCents: priceInCents + orderBumpTotal,
+    programId,
+  });
+
   // Payment intent state (for new card flow)
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
@@ -410,7 +467,10 @@ export function ProgramPaymentModal({
   const [success, setSuccess] = useState(false);
   const [completing, setCompleting] = useState(false);
 
-  const totalAmount = priceInCents + orderBumpTotal;
+  // Calculate total with discount
+  const subtotal = priceInCents + orderBumpTotal;
+  const discountAmount = discount.hasValidDiscount ? discount.validationResult!.discountAmountCents || 0 : 0;
+  const totalAmount = Math.max(0, subtotal - discountAmount);
 
   // Fetch saved payment methods
   const fetchSavedMethods = useCallback(async () => {
@@ -506,6 +566,7 @@ export function ProgramPaymentModal({
           joinCommunity,
           startDate,
           orderBumps,
+          discountCode: discount.hasValidDiscount ? discount.code : undefined,
         }),
       });
 
@@ -547,6 +608,7 @@ export function ProgramPaymentModal({
           joinCommunity,
           startDate,
           orderBumps,
+          discountCode: discount.hasValidDiscount ? discount.code : undefined,
         }),
       });
 
@@ -776,9 +838,12 @@ export function ProgramPaymentModal({
                       onPay={handlePayWithSavedMethod}
                       isProcessing={isProcessingSaved}
                       programName={programName}
-                      priceInCents={totalAmount}
+                      originalPriceCents={subtotal}
+                      discountAmount={discountAmount}
+                      totalPriceCents={totalAmount}
                       currency={currency}
                       onCancel={onClose}
+                      discount={discount}
                     />
                   </>
                 )}
@@ -802,8 +867,11 @@ export function ProgramPaymentModal({
                         onSuccess={handlePaymentSuccess}
                         onCancel={onClose}
                         programName={programName}
-                        priceInCents={totalAmount}
+                        originalPriceCents={subtotal}
+                        discountAmount={discountAmount}
+                        totalPriceCents={totalAmount}
                         currency={currency}
+                        discount={discount}
                       />
                     </Elements>
                   )}

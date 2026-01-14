@@ -42,7 +42,7 @@ export function CheckInStepConfigEditor({ step, onClose, onSave }: CheckInStepCo
         return <MoodScaleConfig config={config} updateConfig={updateConfig} />;
       case 'single_select':
       case 'multi_select':
-        return <SelectConfig config={config} updateConfig={updateConfig} isMulti={step.type === 'multi_select'} />;
+        return <SelectConfig config={config} updateConfig={updateConfig} />;
       case 'open_text':
         return <OpenTextConfig config={config} updateConfig={updateConfig} />;
       case 'task_planner':
@@ -205,22 +205,15 @@ function MoodScaleConfig({ config, updateConfig }: { config: Record<string, unkn
 }
 
 // Config component for single/multi select
-function SelectConfig({ config, updateConfig, isMulti }: { config: Record<string, unknown>; updateConfig: (key: string, value: unknown) => void; isMulti: boolean }) {
+// NOTE: fieldName and option values are fixed and cannot be edited by coaches
+// Only the question and option labels (display text) can be customized
+function SelectConfig({ config, updateConfig }: { config: Record<string, unknown>; updateConfig: (key: string, value: unknown) => void }) {
   const options = (config.options as { id: string; label: string; value: string }[]) || [];
 
-  const addOption = () => {
-    const newId = Date.now().toString();
-    updateConfig('options', [...options, { id: newId, label: '', value: '' }]);
-  };
-
-  const updateOption = (id: string, field: string, value: string) => {
+  const updateOptionLabel = (id: string, label: string) => {
     updateConfig('options', options.map(opt => 
-      opt.id === id ? { ...opt, [field]: value } : opt
+      opt.id === id ? { ...opt, label } : opt
     ));
-  };
-
-  const removeOption = (id: string) => {
-    updateConfig('options', options.filter(opt => opt.id !== id));
   };
 
   return (
@@ -238,46 +231,24 @@ function SelectConfig({ config, updateConfig, isMulti }: { config: Record<string
       </div>
       <div>
         <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
-          Options
+          Option Labels
         </label>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {options.map((option, index) => (
-            <div key={option.id} className="flex gap-2">
+            <div key={option.id} className="space-y-1">
               <input
                 type="text"
                 value={option.label}
-                onChange={(e) => updateOption(option.id, 'label', e.target.value)}
+                onChange={(e) => updateOptionLabel(option.id, e.target.value)}
                 placeholder={`Option ${index + 1}`}
-                className="flex-1 px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] text-sm focus:outline-none focus:border-brand-accent"
+                className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] text-sm focus:outline-none focus:border-brand-accent"
               />
-              <button
-                onClick={() => removeOption(option.id)}
-                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <p className="text-xs text-text-muted dark:text-[#666d7c] pl-1">
+                {option.value}
+              </p>
             </div>
           ))}
-          <button
-            onClick={addOption}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-brand-accent hover:bg-brand-accent/10 rounded-lg"
-          >
-            <Plus className="w-4 h-4" />
-            Add Option
-          </button>
         </div>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
-          Field Name
-        </label>
-        <input
-          type="text"
-          value={(config.fieldName as string) || ''}
-          onChange={(e) => updateConfig('fieldName', e.target.value)}
-          placeholder="e.g., answer"
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent"
-        />
       </div>
     </div>
   );
@@ -869,21 +840,15 @@ function ExplainerConfig({ config, updateConfig }: { config: Record<string, unkn
 // ============================================
 
 // Config component for on_track_scale (Weekly: On Track Check)
+// NOTE: Option values (off_track, not_sure, on_track) are fixed and cannot be edited by coaches
+// Only labels (display text) can be customized
 function OnTrackScaleConfig({ config, updateConfig }: { config: Record<string, unknown>; updateConfig: (key: string, value: unknown) => void }) {
   const options = (config.options as { value: string; label: string; gradient: string }[]) || [];
 
-  const addOption = () => {
-    updateConfig('options', [...options, { value: '', label: '', gradient: 'linear-gradient(180deg, rgba(100, 200, 100, 0.2), rgba(100, 200, 100, 0.05))' }]);
-  };
-
-  const updateOption = (index: number, field: string, value: string) => {
+  const updateOptionLabel = (index: number, label: string) => {
     const newOptions = [...options];
-    newOptions[index] = { ...newOptions[index], [field]: value };
+    newOptions[index] = { ...newOptions[index], label };
     updateConfig('options', newOptions);
-  };
-
-  const removeOption = (index: number) => {
-    updateConfig('options', options.filter((_, i) => i !== index));
   };
 
   return (
@@ -914,42 +879,23 @@ function OnTrackScaleConfig({ config, updateConfig }: { config: Record<string, u
       </div>
       <div>
         <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
-          Options (3 states: No / Maybe / Yes)
+          Option Labels (3 states: No / Maybe / Yes)
         </label>
         <div className="space-y-3">
           {options.map((option, index) => (
-            <div key={index} className="flex gap-2 items-start">
-              <div className="flex-1 space-y-2">
-                <input
-                  type="text"
-                  value={option.label}
-                  onChange={(e) => updateOption(index, 'label', e.target.value)}
-                  placeholder="Label (e.g., No, Maybe, Yes)"
-                  className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] text-sm focus:outline-none focus:border-brand-accent"
-                />
-                <input
-                  type="text"
-                  value={option.value}
-                  onChange={(e) => updateOption(index, 'value', e.target.value)}
-                  placeholder="Value (e.g., off_track, somewhat, on_track)"
-                  className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] text-sm focus:outline-none focus:border-brand-accent"
-                />
-              </div>
-              <button
-                onClick={() => removeOption(index)}
-                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+            <div key={index} className="space-y-1">
+              <input
+                type="text"
+                value={option.label}
+                onChange={(e) => updateOptionLabel(index, e.target.value)}
+                placeholder="Label (e.g., No, Maybe, Yes)"
+                className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] text-sm focus:outline-none focus:border-brand-accent"
+              />
+              <p className="text-xs text-text-muted dark:text-[#666d7c] pl-1">
+                {option.value}
+              </p>
             </div>
           ))}
-          <button
-            onClick={addOption}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-brand-accent hover:bg-brand-accent/10 rounded-lg"
-          >
-            <Plus className="w-4 h-4" />
-            Add Option
-          </button>
         </div>
       </div>
     </div>
@@ -957,6 +903,7 @@ function OnTrackScaleConfig({ config, updateConfig }: { config: Record<string, u
 }
 
 // Config component for voice_text (Weekly: What Went Well, Biggest Obstacles, Next Week Plan)
+// NOTE: fieldName is fixed and cannot be edited by coaches - only display text can be customized
 function VoiceTextConfig({ config, updateConfig }: { config: Record<string, unknown>; updateConfig: (key: string, value: unknown) => void }) {
   return (
     <div className="space-y-4">
@@ -981,18 +928,6 @@ function VoiceTextConfig({ config, updateConfig }: { config: Record<string, unkn
           value={(config.placeholder as string) || ''}
           onChange={(e) => updateConfig('placeholder', e.target.value)}
           placeholder="Share your wins..."
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
-          Field Name
-        </label>
-        <input
-          type="text"
-          value={(config.fieldName as string) || ''}
-          onChange={(e) => updateConfig('fieldName', e.target.value)}
-          placeholder="e.g., whatWentWell, obstacles, nextWeekPlan"
           className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent"
         />
       </div>
@@ -1027,6 +962,7 @@ function VoiceTextConfig({ config, updateConfig }: { config: Record<string, unkn
 }
 
 // Config component for weekly_focus (Weekly: Weekly Focus)
+// NOTE: fieldName is fixed and cannot be edited by coaches - only display text can be customized
 function WeeklyFocusConfig({ config, updateConfig }: { config: Record<string, unknown>; updateConfig: (key: string, value: unknown) => void }) {
   return (
     <div className="space-y-4">
@@ -1051,18 +987,6 @@ function WeeklyFocusConfig({ config, updateConfig }: { config: Record<string, un
           value={(config.placeholder as string) || ''}
           onChange={(e) => updateConfig('placeholder', e.target.value)}
           placeholder="Describe your main focus..."
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
-          Field Name
-        </label>
-        <input
-          type="text"
-          value={(config.fieldName as string) || ''}
-          onChange={(e) => updateConfig('fieldName', e.target.value)}
-          placeholder="e.g., weeklyFocus"
           className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent"
         />
       </div>
@@ -1199,21 +1123,14 @@ function MomentumProgressConfig({ config, updateConfig }: { config: Record<strin
 // ============================================
 
 // Config component for evening_mood (Evening: 5-state mood slider)
+// NOTE: Option values are fixed and cannot be edited by coaches - only labels (display text) can be customized
 function EveningMoodConfig({ config, updateConfig }: { config: Record<string, unknown>; updateConfig: (key: string, value: unknown) => void }) {
   const options = (config.options as { value: string; label: string; gradient: string }[]) || [];
 
-  const addOption = () => {
-    updateConfig('options', [...options, { value: '', label: '', gradient: 'linear-gradient(180deg, rgba(100, 200, 100, 0.2), rgba(100, 200, 100, 0.05))' }]);
-  };
-
-  const updateOption = (index: number, field: string, value: string) => {
+  const updateOptionLabel = (index: number, label: string) => {
     const newOptions = [...options];
-    newOptions[index] = { ...newOptions[index], [field]: value };
+    newOptions[index] = { ...newOptions[index], label };
     updateConfig('options', newOptions);
-  };
-
-  const removeOption = (index: number) => {
-    updateConfig('options', options.filter((_, i) => i !== index));
   };
 
   return (
@@ -1232,42 +1149,23 @@ function EveningMoodConfig({ config, updateConfig }: { config: Record<string, un
       </div>
       <div>
         <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
-          Options (5 states: Tough Day → Great Day)
+          Option Labels (5 states: Tough Day → Great Day)
         </label>
         <div className="space-y-3">
           {options.map((option, index) => (
-            <div key={index} className="flex gap-2 items-start">
-              <div className="flex-1 space-y-2">
-                <input
-                  type="text"
-                  value={option.label}
-                  onChange={(e) => updateOption(index, 'label', e.target.value)}
-                  placeholder="Label (e.g., Tough Day, Great Day)"
-                  className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] text-sm focus:outline-none focus:border-brand-accent"
-                />
-                <input
-                  type="text"
-                  value={option.value}
-                  onChange={(e) => updateOption(index, 'value', e.target.value)}
-                  placeholder="Value (e.g., tough_day, great_day)"
-                  className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] text-sm focus:outline-none focus:border-brand-accent"
-                />
-              </div>
-              <button
-                onClick={() => removeOption(index)}
-                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+            <div key={index} className="space-y-1">
+              <input
+                type="text"
+                value={option.label}
+                onChange={(e) => updateOptionLabel(index, e.target.value)}
+                placeholder="Label (e.g., Tough Day, Great Day)"
+                className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] text-sm focus:outline-none focus:border-brand-accent"
+              />
+              <p className="text-xs text-text-muted dark:text-[#666d7c] pl-1">
+                {option.value}
+              </p>
             </div>
           ))}
-          <button
-            onClick={addOption}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-brand-accent hover:bg-brand-accent/10 rounded-lg"
-          >
-            <Plus className="w-4 h-4" />
-            Add Option
-          </button>
         </div>
       </div>
     </div>
@@ -1275,6 +1173,7 @@ function EveningMoodConfig({ config, updateConfig }: { config: Record<string, un
 }
 
 // Config component for evening_reflection (Evening: Text with voice input)
+// NOTE: fieldName is fixed and cannot be edited by coaches - only display text can be customized
 function EveningReflectionConfig({ config, updateConfig }: { config: Record<string, unknown>; updateConfig: (key: string, value: unknown) => void }) {
   return (
     <div className="space-y-4">
@@ -1299,18 +1198,6 @@ function EveningReflectionConfig({ config, updateConfig }: { config: Record<stri
           value={(config.placeholder as string) || ''}
           onChange={(e) => updateConfig('placeholder', e.target.value)}
           placeholder="Share your thoughts..."
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
-          Field Name
-        </label>
-        <input
-          type="text"
-          value={(config.fieldName as string) || ''}
-          onChange={(e) => updateConfig('fieldName', e.target.value)}
-          placeholder="e.g., eveningReflection"
           className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent"
         />
       </div>

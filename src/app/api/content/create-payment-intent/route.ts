@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
-import type { OrgSettings, ContentPurchaseType, OrderBumpProductType, OrderBumpContentType } from '@/types';
+import type { OrgSettings, ContentPurchaseType, OrderBumpProductType, OrderBumpContentType, DiscountCode, DiscountContentType } from '@/types';
 
 /** Order bump selection from client */
 interface OrderBumpSelection {
@@ -166,12 +166,132 @@ async function hasExistingPurchase(
 }
 
 /**
+ * Validate and calculate discount for content purchase
+ */
+async function validateDiscountCode(
+  code: string,
+  organizationId: string,
+  contentId: string,
+  contentType: ContentPurchaseType,
+  userId: string,
+  originalAmountCents: number
+): Promise<{ valid: boolean; discountCode?: DiscountCode; discountAmountCents: number; error?: string }> {
+  if (!code?.trim()) {
+    return { valid: false, discountAmountCents: 0 };
+  }
+
+  const normalizedCode = code.trim().toUpperCase();
+
+  // Look up the discount code
+  const codeSnapshot = await adminDb
+    .collection('discount_codes')
+    .where('organizationId', '==', organizationId)
+    .where('code', '==', normalizedCode)
+    .limit(1)
+    .get();
+
+  if (codeSnapshot.empty) {
+    return { valid: false, discountAmountCents: 0, error: 'Invalid discount code' };
+  }
+
+  const codeDoc = codeSnapshot.docs[0];
+  const discountCode = {
+    id: codeDoc.id,
+    ...codeDoc.data(),
+  } as DiscountCode;
+
+  // Validate the code
+  if (!discountCode.isActive) {
+    return { valid: false, discountAmountCents: 0, error: 'This discount code is no longer active' };
+  }
+
+  if (discountCode.startsAt && new Date(discountCode.startsAt) > new Date()) {
+    return { valid: false, discountAmountCents: 0, error: 'This discount code is not yet active' };
+  }
+
+  if (discountCode.expiresAt && new Date(discountCode.expiresAt) < new Date()) {
+    return { valid: false, discountAmountCents: 0, error: 'This discount code has expired' };
+  }
+
+  if (discountCode.maxUses != null && discountCode.useCount >= discountCode.maxUses) {
+    return { valid: false, discountAmountCents: 0, error: 'This discount code has reached its maximum uses' };
+  }
+
+  // Check per-user limit
+  if (discountCode.maxUsesPerUser) {
+    const userUsages = await adminDb
+      .collection('discount_code_usages')
+      .where('discountCodeId', '==', discountCode.id)
+      .where('userId', '==', userId)
+      .count()
+      .get();
+
+    if (userUsages.data().count >= discountCode.maxUsesPerUser) {
+      return { valid: false, discountAmountCents: 0, error: 'You have already used this discount code the maximum number of times' };
+    }
+  }
+
+  // Check applicability for content
+  const isContent = true;
+  const discountContentType = contentType as DiscountContentType;
+
+  switch (discountCode.applicableTo) {
+    case 'programs':
+    case 'squads':
+      return { valid: false, discountAmountCents: 0, error: 'This discount code is not valid for content purchases' };
+
+    case 'content':
+      if (discountCode.contentTypes?.length && !discountCode.contentTypes.includes(discountContentType)) {
+        return { valid: false, discountAmountCents: 0, error: `This discount code is not valid for ${contentType}s` };
+      }
+      break;
+
+    case 'custom':
+      const hasContentRestrictions = discountCode.contentIds && discountCode.contentIds.length > 0;
+      const hasContentTypeRestrictions = discountCode.contentTypes && discountCode.contentTypes.length > 0;
+      const hasProgramRestrictions = discountCode.programIds && discountCode.programIds.length > 0;
+      const hasSquadRestrictions = discountCode.squadIds && discountCode.squadIds.length > 0;
+
+      // If there are program or squad restrictions but no content restrictions, this code doesn't apply to content
+      if ((hasProgramRestrictions || hasSquadRestrictions) && !hasContentRestrictions && !hasContentTypeRestrictions) {
+        return { valid: false, discountAmountCents: 0, error: 'This discount code is not valid for content purchases' };
+      }
+
+      // Check specific content ID restrictions
+      if (hasContentRestrictions && !discountCode.contentIds!.includes(contentId)) {
+        return { valid: false, discountAmountCents: 0, error: 'This discount code is not valid for this content' };
+      }
+
+      // Check content type restrictions
+      if (hasContentTypeRestrictions && !discountCode.contentTypes!.includes(discountContentType)) {
+        return { valid: false, discountAmountCents: 0, error: `This discount code is not valid for ${contentType}s` };
+      }
+      break;
+
+    case 'all':
+      // Valid for everything
+      break;
+  }
+
+  // Calculate discount amount
+  let discountAmountCents: number;
+  if (discountCode.type === 'percentage') {
+    discountAmountCents = Math.round(originalAmountCents * (discountCode.value / 100));
+  } else {
+    discountAmountCents = Math.min(discountCode.value, originalAmountCents);
+  }
+
+  return { valid: true, discountCode, discountAmountCents };
+}
+
+/**
  * POST /api/content/create-payment-intent
- * 
+ *
  * Body:
  * - contentType: 'event' | 'article' | 'course' | 'download' | 'link'
  * - contentId: string
  * - orderBumps?: Array of order bump selections
+ * - discountCode?: string - Optional discount code to apply
  * - checkOnly?: boolean - If true, only return org info without creating intent
  */
 export async function POST(request: NextRequest) {
@@ -183,10 +303,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { contentType, contentId, orderBumps, checkOnly } = body as {
+    const { contentType, contentId, orderBumps, discountCode: discountCodeInput, checkOnly } = body as {
       contentType: ContentPurchaseType;
       contentId: string;
       orderBumps?: OrderBumpSelection[];
+      discountCode?: string;
       checkOnly?: boolean;
     };
 
@@ -318,10 +439,34 @@ export async function POST(request: NextRequest) {
       console.log(`[CONTENT_PAYMENT_INTENT] Order bumps: ${validatedOrderBumps.length} items, total: $${(orderBumpTotalCents / 100).toFixed(2)}`);
     }
 
-    // Calculate total amount including order bumps
-    const totalAmount = content.priceInCents + orderBumpTotalCents;
+    // Validate and apply discount code if provided
+    let discountAmountCents = 0;
+    let appliedDiscountCode: DiscountCode | undefined;
 
-    // Calculate platform fee on total
+    if (discountCodeInput) {
+      const subtotalBeforeDiscount = content.priceInCents + orderBumpTotalCents;
+      const discountResult = await validateDiscountCode(
+        discountCodeInput,
+        content.organizationId,
+        contentId,
+        contentType,
+        userId,
+        subtotalBeforeDiscount
+      );
+
+      if (discountResult.valid && discountResult.discountCode) {
+        discountAmountCents = discountResult.discountAmountCents;
+        appliedDiscountCode = discountResult.discountCode;
+        console.log(`[CONTENT_PAYMENT_INTENT] Applied discount code ${appliedDiscountCode.code}: -$${(discountAmountCents / 100).toFixed(2)}`);
+      } else if (discountResult.error) {
+        return NextResponse.json({ error: discountResult.error }, { status: 400 });
+      }
+    }
+
+    // Calculate total amount including order bumps minus discount
+    const totalAmount = Math.max(0, content.priceInCents + orderBumpTotalCents - discountAmountCents);
+
+    // Calculate platform fee on total (after discount)
     const platformFeePercent = orgSettings?.platformFeePercent ?? 1;
     const applicationFeeAmount = Math.round(totalAmount * (platformFeePercent / 100));
 
@@ -370,6 +515,10 @@ export async function POST(request: NextRequest) {
       type: 'content_purchase',
       // Include order bumps in metadata
       orderBumps: validatedOrderBumps.length > 0 ? JSON.stringify(validatedOrderBumps) : '',
+      // Include discount code info
+      discountCode: appliedDiscountCode?.code || '',
+      discountCodeId: appliedDiscountCode?.id || '',
+      discountAmountCents: discountAmountCents.toString(),
     };
 
     // Build description
@@ -397,7 +546,7 @@ export async function POST(request: NextRequest) {
     );
 
     console.log(
-      `[CONTENT_PAYMENT_INTENT] Created payment intent ${paymentIntent.id} for ${contentType}/${contentId} user ${userId}, total: $${(totalAmount / 100).toFixed(2)} (content: $${(content.priceInCents / 100).toFixed(2)}, bumps: $${(orderBumpTotalCents / 100).toFixed(2)})`
+      `[CONTENT_PAYMENT_INTENT] Created payment intent ${paymentIntent.id} for ${contentType}/${contentId} user ${userId}, total: $${(totalAmount / 100).toFixed(2)} (content: $${(content.priceInCents / 100).toFixed(2)}, bumps: $${(orderBumpTotalCents / 100).toFixed(2)}, discount: -$${(discountAmountCents / 100).toFixed(2)})`
     );
 
     return NextResponse.json({
@@ -407,6 +556,8 @@ export async function POST(request: NextRequest) {
       priceInCents: content.priceInCents,
       totalAmount,
       orderBumpTotalCents,
+      discountAmountCents,
+      discountCode: appliedDiscountCode?.code,
       currency: content.currency || 'usd',
     });
   } catch (error) {

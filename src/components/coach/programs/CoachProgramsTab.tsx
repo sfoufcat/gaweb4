@@ -12,7 +12,8 @@ import { WeekFillModal } from './WeekFillModal';
 import { ProgramSettingsModal, ProgramSettingsButton } from './ProgramSettingsModal';
 import { DayCourseSelector } from './DayCourseSelector';
 import { ProgramScheduleEditor } from './ProgramScheduleEditor';
-import type { DiscoverCourse } from '@/types/discover';
+import type { DiscoverCourse, DiscoverArticle, DiscoverDownload, DiscoverLink } from '@/types/discover';
+import type { Questionnaire } from '@/types/questionnaire';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -193,6 +194,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [availableCallSummaries, setAvailableCallSummaries] = useState<CallSummary[]>([]);
   const [availableEvents, setAvailableEvents] = useState<UnifiedEvent[]>([]);
   const [organizationCourses, setOrganizationCourses] = useState<DiscoverCourse[]>([]);
+  // Available resources for linking
+  const [availableArticles, setAvailableArticles] = useState<DiscoverArticle[]>([]);
+  const [availableDownloads, setAvailableDownloads] = useState<DiscoverDownload[]>([]);
+  const [availableLinks, setAvailableLinks] = useState<DiscoverLink[]>([]);
+  const [availableQuestionnaires, setAvailableQuestionnaires] = useState<Questionnaire[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(1);
   const [sidebarSelection, setSidebarSelection] = useState<SidebarSelection | null>(null);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1])); // Week 1 expanded by default
@@ -1448,11 +1454,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         setProgramModules(modules);
         setProgramWeeks(weeks);
 
-        // Fetch available call summaries and events for manual linking
+        // Fetch available call summaries, events, and resources for manual linking
         try {
-          const [summariesRes, eventsRes] = await Promise.all([
+          const [summariesRes, eventsRes, articlesRes, downloadsRes, linksRes, questionnairesRes] = await Promise.all([
             fetch(`/api/coach/call-summaries?programId=${programId}`),
             fetch(`/api/programs/${programId}/events`),
+            fetch('/api/coach/org-discover/articles'),
+            fetch('/api/coach/org-discover/downloads'),
+            fetch('/api/coach/org-discover/links'),
+            fetch('/api/coach/questionnaires'),
           ]);
 
           if (summariesRes.ok) {
@@ -1472,10 +1482,43 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           } else {
             setAvailableEvents([]);
           }
+
+          // Set available resources for linking
+          if (articlesRes.ok) {
+            const articlesData = await articlesRes.json();
+            setAvailableArticles(articlesData.articles || []);
+          } else {
+            setAvailableArticles([]);
+          }
+
+          if (downloadsRes.ok) {
+            const downloadsData = await downloadsRes.json();
+            setAvailableDownloads(downloadsData.downloads || []);
+          } else {
+            setAvailableDownloads([]);
+          }
+
+          if (linksRes.ok) {
+            const linksData = await linksRes.json();
+            setAvailableLinks(linksData.links || []);
+          } else {
+            setAvailableLinks([]);
+          }
+
+          if (questionnairesRes.ok) {
+            const questionnairesData = await questionnairesRes.json();
+            setAvailableQuestionnaires(questionnairesData.questionnaires || []);
+          } else {
+            setAvailableQuestionnaires([]);
+          }
         } catch (linkDataErr) {
-          console.error('Error fetching call summaries/events:', linkDataErr);
+          console.error('Error fetching call summaries/events/resources:', linkDataErr);
           setAvailableCallSummaries([]);
           setAvailableEvents([]);
+          setAvailableArticles([]);
+          setAvailableDownloads([]);
+          setAvailableLinks([]);
+          setAvailableQuestionnaires([]);
         }
       } catch (err) {
         console.error('Error fetching modules/weeks:', err);
@@ -4265,6 +4308,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       isSaving={saving}
                       availableCallSummaries={availableCallSummaries}
                       availableEvents={availableEvents}
+                      availableArticles={availableArticles}
+                      availableDownloads={availableDownloads}
+                      availableLinks={availableLinks}
+                      availableQuestionnaires={availableQuestionnaires}
+                      availableCourses={organizationCourses}
                       isClientView={isClientMode}
                       clientName={isClientMode ? clientViewContext.userName : undefined}
                       clientUserId={isClientMode ? clientViewContext.userId : undefined}
@@ -4328,6 +4376,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       saveError={saveError}
                       saving={saving}
                       instanceId={instanceId}
+                      availableArticles={availableArticles}
+                      availableDownloads={availableDownloads}
+                      availableLinks={availableLinks}
+                      availableQuestionnaires={availableQuestionnaires}
                     />
                   );
                 })()

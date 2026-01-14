@@ -47,8 +47,9 @@ import {
   CircleCheck,
 } from 'lucide-react';
 import type { PurchasableContentType } from '@/types/discover';
-import type { OrderBumpConfig, OrderBump } from '@/types';
-import { OrderBumpList, calculateBumpTotal } from '@/components/checkout';
+import type { OrderBumpConfig, OrderBump, DiscountContentType } from '@/types';
+import { OrderBumpList, calculateBumpTotal, DiscountCodeInput } from '@/components/checkout';
+import { useDiscountCode } from '@/hooks/useDiscountCode';
 
 // Saved payment method type
 interface SavedPaymentMethod {
@@ -524,6 +525,7 @@ function PreviewContent({
   hasSavedCards,
   selectedBumpIds,
   onBumpSelectionChange,
+  discount,
 }: {
   content: ContentPurchaseSheetProps['content'];
   onPurchase: () => void;
@@ -532,14 +534,17 @@ function PreviewContent({
   hasSavedCards?: boolean;
   selectedBumpIds: string[];
   onBumpSelectionChange: (ids: string[]) => void;
+  discount: ReturnType<typeof useDiscountCode>;
 }) {
   const { colors } = useBrandingValues();
   const ContentIcon = getContentTypeIcon(content.type);
-  
-  // Calculate total with bumps
+
+  // Calculate total with bumps and discount
   const bumps = content.orderBumps?.enabled ? content.orderBumps.bumps : [];
   const bumpTotal = calculateBumpTotal(bumps, selectedBumpIds);
-  const totalPrice = content.priceInCents + bumpTotal;
+  const subtotal = content.priceInCents + bumpTotal;
+  const discountAmount = discount.hasValidDiscount ? discount.validationResult!.discountAmountCents : 0;
+  const totalPrice = Math.max(0, subtotal - discountAmount);
   
   return (
     <div className="flex flex-col">
@@ -634,21 +639,38 @@ function PreviewContent({
             />
           </div>
         )}
+
+        {/* Discount Code Input - only show for paid content */}
+        {content.priceInCents > 0 && (
+          <div className="mt-5">
+            <DiscountCodeInput discount={discount} />
+          </div>
+        )}
       </div>
-      
+
       {/* Price & CTA */}
       <div className="border-t border-[#e8e4df] dark:border-[#262b35] bg-[#faf9f7] dark:bg-[#11141b] px-5 sm:px-6 py-5">
-        {/* Show itemized pricing if bumps are selected */}
-        {selectedBumpIds.length > 0 ? (
+        {/* Show itemized pricing if bumps or discount are applied */}
+        {(selectedBumpIds.length > 0 || discountAmount > 0) ? (
           <div className="mb-4 space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-text-secondary dark:text-[#b2b6c2]">{content.type.charAt(0).toUpperCase() + content.type.slice(1)}</span>
               <span className="text-text-primary dark:text-[#f5f5f8]">{formatPrice(content.priceInCents, content.currency)}</span>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-text-secondary dark:text-[#b2b6c2]">Add-ons ({selectedBumpIds.length})</span>
-              <span className="text-text-primary dark:text-[#f5f5f8]">+{formatPrice(bumpTotal, content.currency)}</span>
-            </div>
+            {selectedBumpIds.length > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-text-secondary dark:text-[#b2b6c2]">Add-ons ({selectedBumpIds.length})</span>
+                <span className="text-text-primary dark:text-[#f5f5f8]">+{formatPrice(bumpTotal, content.currency)}</span>
+              </div>
+            )}
+            {discountAmount > 0 && discount.validationResult?.discountCode && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-green-600 dark:text-green-400 flex items-center gap-1.5">
+                  Discount ({discount.validationResult.discountCode.code})
+                </span>
+                <span className="text-green-600 dark:text-green-400">-{formatPrice(discountAmount, content.currency)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
               <span className="font-medium text-text-primary dark:text-[#f5f5f8]">Total</span>
               <span className="text-xl font-bold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]" style={{ color: colors.accentLight }}>
@@ -790,6 +812,7 @@ function SheetContent({
   setSelectedBumpIds,
   isDemoMode,
   openSignupModal,
+  discount,
 }: {
   content: ContentPurchaseSheetProps['content'];
   step: PurchaseStep;
@@ -807,6 +830,7 @@ function SheetContent({
   setSelectedBumpIds: (ids: string[]) => void;
   isDemoMode: boolean;
   openSignupModal: () => void;
+  discount: ReturnType<typeof useDiscountCode>;
 }) {
   const router = useRouter();
   const { isSignedIn } = useAuth();
@@ -815,7 +839,7 @@ function SheetContent({
   const isDark = theme === 'dark';
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Track if this is the initial mount to skip animation on first open
   const isInitialMount = useRef(true);
   useEffect(() => {
@@ -988,6 +1012,7 @@ function SheetContent({
               hasSavedCards={savedMethods.length > 0}
               selectedBumpIds={selectedBumpIds}
               onBumpSelectionChange={setSelectedBumpIds}
+              discount={discount}
             />
           </motion.div>
         )}
@@ -1164,9 +1189,17 @@ export function ContentPurchaseSheet({
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(content.organizationId || null);
   const [selectedBumpIds, setSelectedBumpIds] = useState<string[]>([]);
-  
+
   // Detect desktop vs mobile to render only one component
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+
+  // Discount code hook
+  const discount = useDiscountCode({
+    organizationId: organizationId || '',
+    originalAmountCents: content.priceInCents,
+    contentId: content.id,
+    contentType: content.type as DiscountContentType,
+  });
 
   // Fetch saved payment methods when sheet opens
   const fetchSavedMethods = useCallback(async () => {
@@ -1233,11 +1266,12 @@ export function ContentPurchaseSheet({
         setError(null);
         setSelectedMethodId(null);
         setSelectedBumpIds([]);
+        discount.clearDiscount();
         // Don't reset savedMethods and organizationId - they can be reused
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [open]);
+  }, [open, discount]);
 
   // Create payment intent when entering loading step
   useEffect(() => {
@@ -1251,6 +1285,17 @@ export function ContentPurchaseSheet({
           body: JSON.stringify({
             contentType: content.type,
             contentId: content.id,
+            orderBumps: selectedBumpIds.length > 0 ? selectedBumpIds.map(id => {
+              const bump = content.orderBumps?.bumps?.find(b => b.id === id);
+              if (!bump) return null;
+              return {
+                productType: bump.productType,
+                productId: bump.productId,
+                contentType: bump.contentType,
+                discountPercent: bump.discountPercent,
+              };
+            }).filter(Boolean) : undefined,
+            discountCode: discount.hasValidDiscount ? discount.code : undefined,
           }),
         });
 
@@ -1279,7 +1324,8 @@ export function ContentPurchaseSheet({
     };
 
     createPaymentIntent();
-  }, [step, open, content.type, content.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- Only run when step changes to loading
+  }, [step, open]);
 
   const sheetContent = (
     <SheetContent
@@ -1299,6 +1345,7 @@ export function ContentPurchaseSheet({
       setSelectedBumpIds={setSelectedBumpIds}
       isDemoMode={isDemoMode}
       openSignupModal={openSignupModal}
+      discount={discount}
     />
   );
   

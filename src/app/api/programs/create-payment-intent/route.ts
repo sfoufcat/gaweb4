@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
     let appliedDiscountCode: string | null = null;
 
     // Apply discount code if provided
+    let discountCodeId: string | null = null;
     if (discountCode) {
       const discountResult = await validateAndApplyDiscount(
         discountCode,
@@ -110,7 +111,11 @@ export async function POST(request: NextRequest) {
       if (discountResult.valid) {
         finalPriceCents = discountResult.finalAmountCents;
         discountAmountCents = discountResult.discountAmountCents;
-        appliedDiscountCode = discountCode;
+        appliedDiscountCode = discountCode.trim().toUpperCase();
+        discountCodeId = discountResult.discountCodeId || null;
+      } else if (discountResult.error) {
+        // Return error if discount code is invalid
+        return NextResponse.json({ error: discountResult.error }, { status: 400 });
       }
     }
 
@@ -201,6 +206,7 @@ export async function POST(request: NextRequest) {
           joinCommunity: joinCommunity.toString(),
           startDate: startDate || '',
           discountCode: appliedDiscountCode || '',
+          discountCodeId: discountCodeId || '',
           discountAmountCents: discountAmountCents.toString(),
           orderBumps: orderBumps ? JSON.stringify(orderBumps) : '',
         },
@@ -215,6 +221,10 @@ export async function POST(request: NextRequest) {
       connectedAccountId: orgSettings.stripeConnectAccountId,
       paymentIntentId: paymentIntent.id,
       amount: totalAmountCents,
+      originalPriceCents: program.priceInCents,
+      discountAmountCents,
+      discountCode: appliedDiscountCode,
+      orderBumpTotal,
       currency: program.currency || 'usd',
       programName: program.name,
       cohortName: cohort?.name,
@@ -227,7 +237,7 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Validate and apply discount code
+ * Validate and apply discount code for programs
  */
 async function validateAndApplyDiscount(
   code: string,
@@ -239,15 +249,17 @@ async function validateAndApplyDiscount(
   valid: boolean;
   finalAmountCents: number;
   discountAmountCents: number;
+  discountCodeId?: string;
   error?: string;
 }> {
   try {
+    const normalizedCode = code.trim().toUpperCase();
+
     // Find the discount code
     const discountsSnapshot = await adminDb
       .collection('discount_codes')
       .where('organizationId', '==', organizationId)
-      .where('code', '==', code.toUpperCase())
-      .where('isActive', '==', true)
+      .where('code', '==', normalizedCode)
       .limit(1)
       .get();
 
@@ -258,34 +270,101 @@ async function validateAndApplyDiscount(
     const discountDoc = discountsSnapshot.docs[0];
     const discount = discountDoc.data();
 
+    // Check if active
+    if (!discount.isActive) {
+      return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'This discount code is no longer active' };
+    }
+
+    // Check start date
+    if (discount.startsAt && new Date(discount.startsAt) > new Date()) {
+      return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'This discount code is not yet active' };
+    }
+
     // Check expiration
     if (discount.expiresAt && new Date(discount.expiresAt) < new Date()) {
-      return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'Discount code has expired' };
+      return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'This discount code has expired' };
     }
 
     // Check usage limit
-    if (discount.maxUses && discount.useCount >= discount.maxUses) {
-      return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'Discount code usage limit reached' };
+    if (discount.maxUses != null && discount.useCount >= discount.maxUses) {
+      return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'This discount code has reached its maximum uses' };
     }
 
-    // Check if it applies to this program
-    if (discount.applicableProducts && discount.applicableProducts.length > 0) {
-      if (!discount.applicableProducts.includes(programId)) {
-        return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'Discount code not valid for this program' };
+    // Check per-user limit
+    if (discount.maxUsesPerUser) {
+      const userUsages = await adminDb
+        .collection('discount_code_usages')
+        .where('discountCodeId', '==', discountDoc.id)
+        .where('userId', '==', userId)
+        .count()
+        .get();
+
+      if (userUsages.data().count >= discount.maxUsesPerUser) {
+        return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'You have already used this discount code the maximum number of times' };
       }
+    }
+
+    // Check applicability
+    switch (discount.applicableTo) {
+      case 'squads':
+      case 'content':
+        return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'This discount code is not valid for programs' };
+
+      case 'programs':
+        // Valid for programs - check if specific program IDs are restricted
+        if (discount.programIds?.length && !discount.programIds.includes(programId)) {
+          return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'This discount code is not valid for this program' };
+        }
+        break;
+
+      case 'custom':
+        // Check if program restrictions exist
+        const hasProgramRestrictions = discount.programIds && discount.programIds.length > 0;
+        const hasSquadRestrictions = discount.squadIds && discount.squadIds.length > 0;
+        const hasContentRestrictions = discount.contentIds && discount.contentIds.length > 0;
+
+        // If only squad or content restrictions exist, this code doesn't apply to programs
+        if ((hasSquadRestrictions || hasContentRestrictions) && !hasProgramRestrictions) {
+          return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'This discount code is not valid for programs' };
+        }
+
+        // Check if this specific program is in the allowed list
+        if (hasProgramRestrictions && !discount.programIds.includes(programId)) {
+          return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'This discount code is not valid for this program' };
+        }
+        break;
+
+      case 'all':
+        // Valid for everything
+        break;
+
+      default:
+        // Legacy support for applicableProducts
+        if (discount.applicableProducts && discount.applicableProducts.length > 0) {
+          if (!discount.applicableProducts.includes(programId)) {
+            return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'This discount code is not valid for this program' };
+          }
+        }
     }
 
     // Calculate discount
     let discountAmountCents = 0;
-    if (discount.discountType === 'percentage') {
-      discountAmountCents = Math.round(originalAmountCents * (discount.discountValue / 100));
+    if (discount.type === 'percentage' || discount.discountType === 'percentage') {
+      const value = discount.value ?? discount.discountValue ?? 0;
+      discountAmountCents = Math.round(originalAmountCents * (value / 100));
     } else {
-      discountAmountCents = Math.min(discount.discountValue, originalAmountCents);
+      const value = discount.value ?? discount.discountValue ?? 0;
+      discountAmountCents = Math.min(value, originalAmountCents);
     }
 
     const finalAmountCents = Math.max(0, originalAmountCents - discountAmountCents);
 
-    return { valid: true, finalAmountCents, discountAmountCents };
+    return {
+      valid: true,
+      finalAmountCents,
+      discountAmountCents,
+      discountCodeId: discountDoc.id,
+    };
   } catch (error) {
     console.error('[VALIDATE_DISCOUNT] Error:', error);
     return { valid: false, finalAmountCents: originalAmountCents, discountAmountCents: 0, error: 'Failed to validate discount' };

@@ -186,7 +186,7 @@ function EditChannelModal({ channel, isOpen, onClose, onSave, isNew }: EditChann
                 key={opt.value}
                 type="button"
                 onClick={() => setIcon(opt.value)}
-                className={`p-2.5 rounded-xl border transition-colors ${
+                className={`aspect-square flex items-center justify-center rounded-xl border transition-colors ${
                   icon === opt.value
                     ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
                     : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent/50'
@@ -318,23 +318,19 @@ function EditChannelModal({ channel, isOpen, onClose, onSave, isNew }: EditChann
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DrawerContent className="max-h-[90vh] flex flex-col">
-        <DrawerHeader className="px-4 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                {isNew ? 'Add Channel' : 'Edit Channel'}
-              </DrawerTitle>
-              <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-                {isNew ? 'Create a new channel' : 'Update channel settings'}
-              </DrawerDescription>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-            >
-              <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-            </button>
-          </div>
+        <DrawerHeader className="px-4 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0 text-left">
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+          >
+            <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+          </button>
+          <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            {isNew ? 'Add Channel' : 'Edit Channel'}
+          </DrawerTitle>
+          <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+            {isNew ? 'Create a new channel' : 'Update channel settings'}
+          </DrawerDescription>
         </DrawerHeader>
         {formContent}
         {/* Safe area padding for mobile */}
@@ -418,6 +414,7 @@ interface EditCoachingPromoModalProps {
 }
 
 function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, onSave }: EditCoachingPromoModalProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -540,30 +537,9 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
     }
   };
 
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      
-      {/* Modal */}
-      <div className="relative bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-w-lg w-full mx-4 max-h-[90vh] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
-          <h2 className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-            Edit Coaching Promo
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors"
-          >
-            <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-          </button>
-        </div>
-
-        {/* Form - Scrollable */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+  // Form content shared between dialog and drawer
+  const formContent = (
+    <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           {/* Title */}
           <div>
             <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
@@ -819,8 +795,50 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
             </button>
           </div>
         </form>
-      </div>
-    </div>
+  );
+
+  // Desktop: Dialog (centered modal)
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden rounded-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
+            <DialogTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              Edit Coaching Promo
+            </DialogTitle>
+            <DialogDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+              Update your coaching promo settings
+            </DialogDescription>
+          </DialogHeader>
+          {formContent}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Drawer (slide up bottom sheet)
+  return (
+    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent className="max-h-[90vh] flex flex-col">
+        <DrawerHeader className="px-4 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0 text-left">
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+          >
+            <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+          </button>
+          <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            Edit Coaching Promo
+          </DrawerTitle>
+          <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+            Update your coaching promo settings
+          </DrawerDescription>
+        </DrawerHeader>
+        {formContent}
+        {/* Safe area padding for mobile */}
+        <div className="h-6 flex-shrink-0" />
+      </DrawerContent>
+    </Drawer>
   );
 }
 

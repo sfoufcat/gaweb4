@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { Plus, Trash2, Edit2, Copy, Tag, Percent, DollarSign, Calendar, Users, Check, X, ChevronDown, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, Transition } from '@headlessui/react';
-import { Fragment } from 'react';
+import { Dialog as HeadlessDialog, Transition } from '@headlessui/react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { DiscountCode, DiscountType, DiscountApplicableTo, Program, Squad } from '@/types';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 
@@ -36,6 +38,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   
   // Multi-select dropdown state
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -609,408 +612,418 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
         </div>
       )}
 
-      {/* Create/Edit Modal */}
-      <Transition appear show={isModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => !saving && setIsModalOpen(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-          </Transition.Child>
+      {/* Create/Edit Modal - Form Content */}
+      {(() => {
+        const modalContent = (
+          <div className="space-y-4">
+            {/* Code */}
+            <div>
+              <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                Code *
+              </label>
+              <input
+                type="text"
+                value={formData.code}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/\s/g, '') })}
+                placeholder="e.g., SAVE20"
+                disabled={!!editingCode}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-mono font-albert disabled:opacity-50"
+              />
+            </div>
 
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
+            {/* Name (optional) */}
+            <div>
+              <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                Name (optional)
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Summer Sale"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+              />
+            </div>
+
+            {/* Type and Value */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                  Type
+                </label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value as DiscountType })}
+                  disabled={!!editingCode && editingCode.useCount > 0}
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert disabled:opacity-50"
+                >
+                  <option value="percentage">Percentage (%)</option>
+                  <option value="fixed">Fixed Amount ($)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                  Value
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5f5a55]">
+                    {formData.type === 'percentage' ? '%' : '$'}
+                  </span>
+                  <input
+                    type="number"
+                    value={formData.type === 'fixed' ? formData.value / 100 : formData.value}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      value: formData.type === 'fixed' 
+                        ? Math.round(parseFloat(e.target.value || '0') * 100)
+                        : parseInt(e.target.value || '0')
+                    })}
+                    min="0"
+                    max={formData.type === 'percentage' ? 100 : undefined}
+                    disabled={!!editingCode && editingCode.useCount > 0}
+                    className="w-full pl-8 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert disabled:opacity-50"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Applicable To */}
+            <div>
+              <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                Applies To
+              </label>
+              <select
+                value={formData.applicableTo}
+                onChange={(e) => {
+                  const newValue = e.target.value as DiscountApplicableTo;
+                  setFormData({ 
+                    ...formData, 
+                    applicableTo: newValue,
+                    // Clear selections when switching away from custom
+                    programIds: newValue === 'custom' ? formData.programIds : [],
+                    squadIds: newValue === 'custom' ? formData.squadIds : [],
+                  });
+                }}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
               >
-                <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 p-6 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
-                  <Dialog.Title className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
-                    {editingCode ? 'Edit Discount Code' : 'Create Discount Code'}
-                  </Dialog.Title>
+                <option value="all">All Programs & Squads</option>
+                <option value="programs">Programs Only</option>
+                <option value="squads">Squads Only</option>
+                <option value="custom">Custom Selection</option>
+              </select>
+            </div>
 
-                  <div className="space-y-4">
-                    {/* Code */}
-                    <div>
-                      <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                        Code *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.code}
-                        onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/\s/g, '') })}
-                        placeholder="e.g., SAVE20"
-                        disabled={!!editingCode}
-                        className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-mono font-albert disabled:opacity-50"
-                      />
-                    </div>
-
-                    {/* Name (optional) */}
-                    <div>
-                      <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                        Name (optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="e.g., Summer Sale"
-                        className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                      />
-                    </div>
-
-                    {/* Type and Value */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                          Type
-                        </label>
-                        <select
-                          value={formData.type}
-                          onChange={(e) => setFormData({ ...formData, type: e.target.value as DiscountType })}
-                          disabled={!!editingCode && editingCode.useCount > 0}
-                          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert disabled:opacity-50"
+            {/* Custom Selection Multi-Select */}
+            {formData.applicableTo === 'custom' && (
+              <div ref={dropdownRef}>
+                <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                  Select Programs & Squads
+                </label>
+                
+                {/* Selected items as pills */}
+                {getSelectedItems().length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {getSelectedItems().map(item => (
+                      <span
+                        key={`${item.type}-${item.id}`}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                          item.type === 'program'
+                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                        }`}
+                      >
+                        {item.name}
+                        <button
+                          type="button"
+                          onClick={() => toggleItem(item)}
+                          className="hover:opacity-70"
                         >
-                          <option value="percentage">Percentage (%)</option>
-                          <option value="fixed">Fixed Amount ($)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                          Value
-                        </label>
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Dropdown trigger */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-left flex items-center justify-between"
+                  >
+                    <span className="text-[#5f5a55] dark:text-[#b2b6c2]">
+                      {getSelectedItems().length === 0 
+                        ? 'Click to select programs or squads...'
+                        : `${getSelectedItems().length} selected`
+                      }
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-[#5f5a55] transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Dropdown menu */}
+                  {isDropdownOpen && (
+                    <div className="absolute z-10 mt-1 w-full bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg shadow-lg max-h-64 overflow-hidden">
+                      {/* Search input */}
+                      <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5f5a55]">
-                            {formData.type === 'percentage' ? '%' : '$'}
-                          </span>
+                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55]" />
                           <input
-                            type="number"
-                            value={formData.type === 'fixed' ? formData.value / 100 : formData.value}
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              value: formData.type === 'fixed' 
-                                ? Math.round(parseFloat(e.target.value || '0') * 100)
-                                : parseInt(e.target.value || '0')
-                            })}
-                            min="0"
-                            max={formData.type === 'percentage' ? 100 : undefined}
-                            disabled={!!editingCode && editingCode.useCount > 0}
-                            className="w-full pl-8 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert disabled:opacity-50"
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search..."
+                            className="w-full pl-8 pr-3 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8]"
                           />
                         </div>
                       </div>
-                    </div>
 
-                    {/* Applicable To */}
-                    <div>
-                      <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                        Applies To
-                      </label>
-                      <select
-                        value={formData.applicableTo}
-                        onChange={(e) => {
-                          const newValue = e.target.value as DiscountApplicableTo;
-                          setFormData({ 
-                            ...formData, 
-                            applicableTo: newValue,
-                            // Clear selections when switching away from custom
-                            programIds: newValue === 'custom' ? formData.programIds : [],
-                            squadIds: newValue === 'custom' ? formData.squadIds : [],
-                          });
-                        }}
-                        className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                      >
-                        <option value="all">All Programs & Squads</option>
-                        <option value="programs">Programs Only</option>
-                        <option value="squads">Squads Only</option>
-                        <option value="custom">Custom Selection</option>
-                      </select>
-                    </div>
-
-                    {/* Custom Selection Multi-Select */}
-                    {formData.applicableTo === 'custom' && (
-                      <div ref={dropdownRef}>
-                        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                          Select Programs & Squads
-                        </label>
-                        
-                        {/* Selected items as pills */}
-                        {getSelectedItems().length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-2">
-                            {getSelectedItems().map(item => (
-                              <span
-                                key={`${item.type}-${item.id}`}
-                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                                  item.type === 'program'
-                                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                                }`}
-                              >
-                                {item.name}
-                                <button
-                                  type="button"
-                                  onClick={() => toggleItem(item)}
-                                  className="hover:opacity-70"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </span>
-                            ))}
+                      {/* Items list */}
+                      <div className="overflow-y-auto max-h-48">
+                        {loadingItems ? (
+                          <div className="p-4 text-center text-sm text-[#5f5a55]">
+                            Loading...
                           </div>
-                        )}
-
-                        {/* Dropdown trigger */}
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-left flex items-center justify-between"
-                          >
-                            <span className="text-[#5f5a55] dark:text-[#b2b6c2]">
-                              {getSelectedItems().length === 0 
-                                ? 'Click to select programs or squads...'
-                                : `${getSelectedItems().length} selected`
-                              }
-                            </span>
-                            <ChevronDown className={`w-4 h-4 text-[#5f5a55] transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                          </button>
-
-                          {/* Dropdown menu */}
-                          {isDropdownOpen && (
-                            <div className="absolute z-10 mt-1 w-full bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg shadow-lg max-h-64 overflow-hidden">
-                              {/* Search input */}
-                              <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-                                <div className="relative">
-                                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55]" />
-                                  <input
-                                    type="text"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    placeholder="Search..."
-                                    className="w-full pl-8 pr-3 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8]"
-                                  />
+                        ) : filteredItems.length === 0 ? (
+                          <div className="p-4 text-center text-sm text-[#5f5a55]">
+                            {searchTerm ? 'No matching items' : 'No programs or squads available'}
+                          </div>
+                        ) : (
+                          <>
+                            {/* Programs section */}
+                            {filteredItems.filter(i => i.type === 'program').length > 0 && (
+                              <div>
+                                <div className="px-3 py-1.5 text-xs font-semibold text-[#5f5a55] dark:text-[#b2b6c2] bg-[#f5f3f0] dark:bg-[#11141b]">
+                                  Programs
                                 </div>
-                              </div>
-
-                              {/* Items list */}
-                              <div className="overflow-y-auto max-h-48">
-                                {loadingItems ? (
-                                  <div className="p-4 text-center text-sm text-[#5f5a55]">
-                                    Loading...
-                                  </div>
-                                ) : filteredItems.length === 0 ? (
-                                  <div className="p-4 text-center text-sm text-[#5f5a55]">
-                                    {searchTerm ? 'No matching items' : 'No programs or squads available'}
-                                  </div>
-                                ) : (
-                                  <>
-                                    {/* Programs section */}
-                                    {filteredItems.filter(i => i.type === 'program').length > 0 && (
-                                      <div>
-                                        <div className="px-3 py-1.5 text-xs font-semibold text-[#5f5a55] dark:text-[#b2b6c2] bg-[#f5f3f0] dark:bg-[#11141b]">
-                                          Programs
-                                        </div>
-                                        {filteredItems.filter(i => i.type === 'program').map(item => (
-                                          <button
-                                            key={`program-${item.id}`}
-                                            type="button"
-                                            onClick={() => toggleItem(item)}
-                                            className="w-full px-3 py-2 text-left text-sm hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] flex items-center justify-between"
-                                          >
-                                            <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{item.name}</span>
-                                            {isItemSelected(item) && (
-                                              <Check className="w-4 h-4 text-brand-accent" />
-                                            )}
-                                          </button>
-                                        ))}
-                                      </div>
+                                {filteredItems.filter(i => i.type === 'program').map(item => (
+                                  <button
+                                    key={`program-${item.id}`}
+                                    type="button"
+                                    onClick={() => toggleItem(item)}
+                                    className="w-full px-3 py-2 text-left text-sm hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] flex items-center justify-between"
+                                  >
+                                    <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{item.name}</span>
+                                    {isItemSelected(item) && (
+                                      <Check className="w-4 h-4 text-brand-accent" />
                                     )}
-
-                                    {/* Squads section */}
-                                    {filteredItems.filter(i => i.type === 'squad').length > 0 && (
-                                      <div>
-                                        <div className="px-3 py-1.5 text-xs font-semibold text-[#5f5a55] dark:text-[#b2b6c2] bg-[#f5f3f0] dark:bg-[#11141b]">
-                                          Squads
-                                        </div>
-                                        {filteredItems.filter(i => i.type === 'squad').map(item => (
-                                          <button
-                                            key={`squad-${item.id}`}
-                                            type="button"
-                                            onClick={() => toggleItem(item)}
-                                            className="w-full px-3 py-2 text-left text-sm hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] flex items-center justify-between"
-                                          >
-                                            <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{item.name}</span>
-                                            {isItemSelected(item) && (
-                                              <Check className="w-4 h-4 text-brand-accent" />
-                                            )}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </>
-                                )}
+                                  </button>
+                                ))}
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                            )}
 
-                    {/* Max Uses and Expiration */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                          Max Uses
-                        </label>
-                        <input
-                          type="number"
-                          value={formData.maxUses}
-                          onChange={(e) => setFormData({ ...formData, maxUses: e.target.value ? parseInt(e.target.value) : '' })}
-                          placeholder="Unlimited"
-                          min="1"
-                          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                          Expires
-                        </label>
-                        <input
-                          type="date"
-                          value={formData.expiresAt}
-                          onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
-                          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                        />
+                            {/* Squads section */}
+                            {filteredItems.filter(i => i.type === 'squad').length > 0 && (
+                              <div>
+                                <div className="px-3 py-1.5 text-xs font-semibold text-[#5f5a55] dark:text-[#b2b6c2] bg-[#f5f3f0] dark:bg-[#11141b]">
+                                  Squads
+                                </div>
+                                {filteredItems.filter(i => i.type === 'squad').map(item => (
+                                  <button
+                                    key={`squad-${item.id}`}
+                                    type="button"
+                                    onClick={() => toggleItem(item)}
+                                    className="w-full px-3 py-2 text-left text-sm hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] flex items-center justify-between"
+                                  >
+                                    <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{item.name}</span>
+                                    {isItemSelected(item) && (
+                                      <Check className="w-4 h-4 text-brand-accent" />
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
+                  )}
+                </div>
+              </div>
+            )}
 
-                    {/* Active toggle */}
-                    <div className="flex items-center justify-between p-3 bg-[#f5f3f0] dark:bg-[#11141b] rounded-lg">
-                      <div>
-                        <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Active</span>
-                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">Code can be redeemed</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
-                        className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
-                          formData.isActive ? 'bg-brand-accent' : 'bg-[#d1ccc6] dark:bg-[#3a3f4a]'
-                        }`}
-                      >
-                        <span
-                          className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                            formData.isActive ? 'translate-x-5' : ''
-                          }`}
-                        />
-                      </button>
-                    </div>
+            {/* Max Uses and Expiration */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                  Max Uses
+                </label>
+                <input
+                  type="number"
+                  value={formData.maxUses}
+                  onChange={(e) => setFormData({ ...formData, maxUses: e.target.value ? parseInt(e.target.value) : '' })}
+                  placeholder="Unlimited"
+                  min="1"
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                  Expires
+                </label>
+                <input
+                  type="date"
+                  value={formData.expiresAt}
+                  onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                />
+              </div>
+            </div>
 
-                    {formError && (
-                      <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                        <p className="text-sm text-red-600 dark:text-red-400 font-albert">{formError}</p>
-                      </div>
-                    )}
+            {/* Active toggle */}
+            <div className="flex items-center justify-between p-3 bg-[#f5f3f0] dark:bg-[#11141b] rounded-lg">
+              <div>
+                <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Active</span>
+                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">Code can be redeemed</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
+                className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
+                  formData.isActive ? 'bg-brand-accent' : 'bg-[#d1ccc6] dark:bg-[#3a3f4a]'
+                }`}
+              >
+                <span
+                  className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                    formData.isActive ? 'translate-x-5' : ''
+                  }`}
+                />
+              </button>
+            </div>
 
-                    {/* Actions */}
-                    <div className="flex gap-3 pt-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsModalOpen(false)}
-                        disabled={saving}
-                        className="flex-1 border-[#e1ddd8] dark:border-[#262b35]"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleSave}
-                        disabled={saving || !formData.code.trim()}
-                        className="flex-1 bg-brand-accent hover:bg-brand-accent/90 text-white"
-                      >
-                        {saving ? 'Saving...' : editingCode ? 'Update' : 'Create'}
-                      </Button>
-                    </div>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
+            {formError && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-600 dark:text-red-400 font-albert">{formError}</p>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsModalOpen(false)}
+                disabled={saving}
+                className="flex-1 border-[#e1ddd8] dark:border-[#262b35]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={saving || !formData.code.trim()}
+                className="flex-1 bg-brand-accent hover:bg-brand-accent/90 text-white"
+              >
+                {saving ? 'Saving...' : editingCode ? 'Update' : 'Create'}
+              </Button>
             </div>
           </div>
-        </Dialog>
-      </Transition>
+        );
+
+        // Desktop: Use Dialog (centered modal)
+        if (isDesktop) {
+          return (
+            <Dialog open={isModalOpen} onOpenChange={(open) => !saving && setIsModalOpen(open)}>
+              <DialogContent className="max-w-2xl p-0 flex flex-col max-h-[90vh]" hideCloseButton>
+                <DialogHeader className="px-6 py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                  <DialogTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    {editingCode ? 'Edit Discount Code' : 'Create Discount Code'}
+                  </DialogTitle>
+                </DialogHeader>
+                <button
+                  onClick={() => !saving && setIsModalOpen(false)}
+                  className="absolute right-4 top-4 p-2 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                </button>
+                <div className="px-6 py-4 overflow-y-auto flex-1">
+                  {modalContent}
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+        }
+
+        // Mobile: Use Drawer (slide-up)
+        return (
+          <Drawer open={isModalOpen} onOpenChange={(open) => !saving && setIsModalOpen(open)} shouldScaleBackground={false}>
+            <DrawerContent className="max-h-[85dvh] flex flex-col">
+              <DrawerHeader className="px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                <DrawerTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  {editingCode ? 'Edit Discount Code' : 'Create Discount Code'}
+                </DrawerTitle>
+              </DrawerHeader>
+              <div className="px-6 py-4 overflow-y-auto flex-1 pb-safe">
+                {modalContent}
+              </div>
+            </DrawerContent>
+          </Drawer>
+        );
+      })()}
 
       {/* Delete Confirmation Modal */}
-      <Transition appear show={!!deleteConfirm} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => setDeleteConfirm(null)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-          </Transition.Child>
+      {(() => {
+        const deleteContent = (
+          <>
+            <p className="text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
+              Are you sure you want to delete the discount code <strong>{deleteConfirm?.code}</strong>?
+              {deleteConfirm && deleteConfirm.useCount > 0 && (
+                <span className="block mt-2 text-amber-600 dark:text-amber-400">
+                  This code has been used {deleteConfirm.useCount} time(s).
+                </span>
+              )}
+            </p>
 
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+                className="flex-1 border-[#e1ddd8] dark:border-[#262b35]"
               >
-                <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 p-6 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
-                  <Dialog.Title className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
-                    Delete Discount Code?
-                  </Dialog.Title>
-                  
-                  <p className="text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
-                    Are you sure you want to delete the discount code <strong>{deleteConfirm?.code}</strong>?
-                    {deleteConfirm && deleteConfirm.useCount > 0 && (
-                      <span className="block mt-2 text-amber-600 dark:text-amber-400">
-                        This code has been used {deleteConfirm.useCount} time(s).
-                      </span>
-                    )}
-                  </p>
-
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setDeleteConfirm(null)}
-                      disabled={deleting}
-                      className="flex-1 border-[#e1ddd8] dark:border-[#262b35]"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleDelete}
-                      disabled={deleting}
-                      className="flex-1 bg-red-500 hover:bg-red-600 text-white"
-                    >
-                      {deleting ? 'Deleting...' : 'Delete'}
-                    </Button>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </Button>
             </div>
-          </div>
-        </Dialog>
-      </Transition>
+          </>
+        );
+
+        // Desktop: Use Dialog
+        if (isDesktop) {
+          return (
+            <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    Delete Discount Code?
+                  </DialogTitle>
+                </DialogHeader>
+                {deleteContent}
+              </DialogContent>
+            </Dialog>
+          );
+        }
+
+        // Mobile: Use Drawer
+        return (
+          <Drawer open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)} shouldScaleBackground={false}>
+            <DrawerContent className="max-h-[50dvh]">
+              <DrawerHeader className="px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                <DrawerTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  Delete Discount Code?
+                </DrawerTitle>
+              </DrawerHeader>
+              <div className="px-6 py-4 pb-safe">
+                {deleteContent}
+              </div>
+            </DrawerContent>
+          </Drawer>
+        );
+      })()}
 
     </div>
   );

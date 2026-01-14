@@ -10,13 +10,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { DiscountCode, OrgSettings } from '@/types';
+import type { DiscountCode, DiscountContentType, OrgSettings } from '@/types';
 
 interface ValidateRequest {
   code: string;
   organizationId: string;
   programId?: string;
   squadId?: string;
+  contentId?: string;
+  contentType?: DiscountContentType;
   originalAmountCents: number;
 }
 
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
     const body: ValidateRequest = await request.json();
     const { userId } = await auth();
 
-    const { code, organizationId, programId, squadId, originalAmountCents } = body;
+    const { code, organizationId, programId, squadId, contentId, contentType, originalAmountCents } = body;
 
     if (!code?.trim()) {
       return NextResponse.json<ValidateResponse>({ 
@@ -95,10 +97,10 @@ export async function POST(request: NextRequest) {
     } as DiscountCode;
 
     // Validate the code
-    const validationError = await validateDiscountCode(discountCode, userId, programId, squadId);
+    const validationError = await validateDiscountCode(discountCode, userId, programId, squadId, contentId, contentType);
     if (validationError) {
-      return NextResponse.json<ValidateResponse>({ 
-        valid: false, 
+      return NextResponse.json<ValidateResponse>({
+        valid: false,
         error: validationError,
       });
     }
@@ -177,7 +179,9 @@ async function validateDiscountCode(
   code: DiscountCode,
   userId: string | null,
   programId?: string,
-  squadId?: string
+  squadId?: string,
+  contentId?: string,
+  contentType?: DiscountContentType
 ): Promise<string | null> {
   // Check if active
   if (!code.isActive) {
@@ -213,35 +217,79 @@ async function validateDiscountCode(
     }
   }
 
-  // Check applicability
-  if (code.applicableTo === 'programs' && !programId) {
-    return 'This discount code is only valid for programs';
-  }
-  if (code.applicableTo === 'squads' && !squadId) {
-    return 'This discount code is only valid for squads';
-  }
-  
-  // For custom selection, check if the item is in the allowed list
-  if (code.applicableTo === 'custom') {
-    const hasProgramRestrictions = code.programIds && code.programIds.length > 0;
-    const hasSquadRestrictions = code.squadIds && code.squadIds.length > 0;
-    
-    // Check if the current item matches any of the allowed programs or squads
-    const programMatches = programId && hasProgramRestrictions && code.programIds!.includes(programId);
-    const squadMatches = squadId && hasSquadRestrictions && code.squadIds!.includes(squadId);
-    
-    // If we have restrictions but neither matches, the code is invalid for this item
-    if ((hasProgramRestrictions || hasSquadRestrictions) && !programMatches && !squadMatches) {
-      return 'This discount code is not valid for this item';
-    }
+  // Check applicability based on what's being purchased
+  const isProgram = !!programId;
+  const isSquad = !!squadId;
+  const isContent = !!contentId && !!contentType;
+
+  switch (code.applicableTo) {
+    case 'programs':
+      if (!isProgram) {
+        return 'This discount code is only valid for programs';
+      }
+      break;
+
+    case 'squads':
+      if (!isSquad) {
+        return 'This discount code is only valid for squads';
+      }
+      break;
+
+    case 'content':
+      if (!isContent) {
+        return 'This discount code is only valid for content purchases';
+      }
+      // Check if content type is in allowed types
+      if (code.contentTypes?.length && contentType && !code.contentTypes.includes(contentType)) {
+        return `This discount code is not valid for ${contentType}s`;
+      }
+      break;
+
+    case 'custom':
+      // For custom selection, check if the item is in the allowed list
+      const hasProgramRestrictions = code.programIds && code.programIds.length > 0;
+      const hasSquadRestrictions = code.squadIds && code.squadIds.length > 0;
+      const hasContentRestrictions = code.contentIds && code.contentIds.length > 0;
+      const hasContentTypeRestrictions = code.contentTypes && code.contentTypes.length > 0;
+
+      // Check if the current item matches any of the allowed items
+      const programMatches = isProgram && hasProgramRestrictions && code.programIds!.includes(programId);
+      const squadMatches = isSquad && hasSquadRestrictions && code.squadIds!.includes(squadId);
+      const contentMatches = isContent && hasContentRestrictions && code.contentIds!.includes(contentId);
+      const contentTypeMatches = isContent && hasContentTypeRestrictions && contentType && code.contentTypes!.includes(contentType);
+
+      // If we have specific item restrictions, check if this item matches
+      if (hasProgramRestrictions || hasSquadRestrictions || hasContentRestrictions) {
+        if (!programMatches && !squadMatches && !contentMatches) {
+          return 'This discount code is not valid for this item';
+        }
+      }
+
+      // If we only have content type restrictions (no specific IDs), check content type
+      if (!hasProgramRestrictions && !hasSquadRestrictions && !hasContentRestrictions && hasContentTypeRestrictions) {
+        if (!isContent) {
+          return 'This discount code is only valid for content purchases';
+        }
+        if (!contentTypeMatches) {
+          return `This discount code is not valid for ${contentType}s`;
+        }
+      }
+      break;
+
+    case 'all':
+      // Valid for everything
+      break;
   }
 
-  // Check specific program/squad restrictions (for backwards compatibility with codes that have programIds/squadIds set with other applicableTo values)
-  if (programId && code.programIds?.length && !code.programIds.includes(programId)) {
+  // Additional specific ID checks (for backwards compatibility)
+  if (isProgram && code.programIds?.length && !code.programIds.includes(programId)) {
     return 'This discount code is not valid for this program';
   }
-  if (squadId && code.squadIds?.length && !code.squadIds.includes(squadId)) {
+  if (isSquad && code.squadIds?.length && !code.squadIds.includes(squadId)) {
     return 'This discount code is not valid for this squad';
+  }
+  if (isContent && code.contentIds?.length && !code.contentIds.includes(contentId)) {
+    return 'This discount code is not valid for this content';
   }
 
   return null;

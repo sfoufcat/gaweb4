@@ -1176,6 +1176,7 @@ export interface ProgramWeek {
   linkedDownloadIds?: string[];        // DiscoverDownload IDs
   linkedLinkIds?: string[];            // DiscoverLink IDs
   linkedQuestionnaireIds?: string[];   // Questionnaire IDs
+  linkedCourseIds?: string[];          // DiscoverCourse IDs
 
   // Coach recordings (uploaded by coach)
   coachRecordingUrl?: string; // URL to uploaded recording file
@@ -4499,10 +4500,11 @@ export interface SquadAnalyticsSummary {
 // =============================================================================
 
 export type DiscountType = 'percentage' | 'fixed';
-export type DiscountApplicableTo = 'all' | 'programs' | 'squads' | 'custom';
+export type DiscountApplicableTo = 'all' | 'programs' | 'squads' | 'content' | 'custom';
+export type DiscountContentType = 'event' | 'article' | 'course' | 'download' | 'link';
 
 /**
- * Discount Code - Reusable discount codes for programs and squads
+ * Discount Code - Reusable discount codes for programs, squads, and content
  * Stored in Firestore 'discount_codes' collection
  */
 export interface DiscountCode {
@@ -4510,28 +4512,30 @@ export interface DiscountCode {
   organizationId: string;        // Clerk Organization ID
   code: string;                  // Uppercase code e.g., "ALUMNI20"
   name?: string;                 // Optional friendly name
-  
+
   // Discount configuration
   type: DiscountType;            // 'percentage' or 'fixed'
   value: number;                 // 20 for 20% or 2000 for $20.00
-  
+
   // Applicability
-  applicableTo: DiscountApplicableTo;  // 'all', 'programs', 'squads', or 'custom'
-  programIds?: string[];         // Specific programs (if empty, applies to all)
-  squadIds?: string[];           // Specific squads (if empty, applies to all)
-  
+  applicableTo: DiscountApplicableTo;  // 'all', 'programs', 'squads', 'content', or 'custom'
+  programIds?: string[];         // Specific programs (if applicableTo is 'custom')
+  squadIds?: string[];           // Specific squads (if applicableTo is 'custom')
+  contentIds?: string[];         // Specific content items (if applicableTo is 'custom')
+  contentTypes?: DiscountContentType[]; // Content types this applies to (if applicableTo is 'content' or 'custom')
+
   // Usage limits
   maxUses?: number | null;       // null = unlimited
   useCount: number;              // Current redemption count
   maxUsesPerUser?: number;       // null = unlimited per user
-  
+
   // Validity period
   startsAt?: string | null;      // null = immediately active
   expiresAt?: string | null;     // null = never expires
-  
+
   // Status
   isActive: boolean;             // Can be manually disabled
-  
+
   // Tracking
   createdBy: string;             // Coach userId who created it
   createdAt: string;
@@ -4547,17 +4551,19 @@ export interface DiscountCodeUsage {
   discountCodeId: string;
   userId: string;
   organizationId: string;
-  
+
   // What was discounted
   programId?: string;
   squadId?: string;
   enrollmentId?: string;         // Link to program_enrollments
-  
+  contentId?: string;            // Link to content item
+  contentType?: DiscountContentType; // Type of content purchased
+
   // Discount applied
   originalAmountCents: number;
   discountAmountCents: number;
   finalAmountCents: number;
-  
+
   createdAt: string;
 }
 
@@ -5909,6 +5915,7 @@ export interface ProgramInstanceWeek {
   linkedDownloadIds?: string[];        // DiscoverDownload IDs
   linkedLinkIds?: string[];            // DiscoverLink IDs
   linkedQuestionnaireIds?: string[];   // Questionnaire IDs
+  linkedCourseIds?: string[];          // DiscoverCourse IDs
   manualNotes?: string;          // Coach's manual notes
   // Distribution settings
   distribution?: TaskDistribution;
