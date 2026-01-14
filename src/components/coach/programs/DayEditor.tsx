@@ -1147,7 +1147,6 @@ export function DayEditor({
 
           {/* Add article dropdown */}
           <Select
-            value=""
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -1246,7 +1245,6 @@ export function DayEditor({
 
           {/* Add download dropdown */}
           <Select
-            value=""
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -1345,7 +1343,6 @@ export function DayEditor({
 
           {/* Add link dropdown */}
           <Select
-            value=""
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -1444,7 +1441,6 @@ export function DayEditor({
 
           {/* Add questionnaire dropdown */}
           <Select
-            value=""
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';

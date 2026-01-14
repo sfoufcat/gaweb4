@@ -129,18 +129,18 @@ export function RecordingUpload({
               const response = JSON.parse(xhr.responseText);
               resolve(response);
             } catch {
-              reject(new Error('Invalid response'));
+              reject(new Error('Invalid response from server'));
             }
           } else {
             try {
               const error = JSON.parse(xhr.responseText);
-              reject(new Error(error.error || 'Upload failed'));
+              reject(new Error(error.error || `Upload failed (${xhr.status})`));
             } catch {
-              reject(new Error('Upload failed'));
+              reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText?.slice(0, 100) || 'Unknown error'}`));
             }
           }
         };
-        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.onerror = () => reject(new Error('Network error - please check your connection'));
       });
 
       xhr.open('POST', '/api/coach/recordings/upload');

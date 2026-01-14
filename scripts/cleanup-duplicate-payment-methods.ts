@@ -6,27 +6,46 @@
  * for each unique fingerprint.
  *
  * Usage:
- *   npx ts-node scripts/cleanup-duplicate-payment-methods.ts [--dry-run] [--account=ACCOUNT_ID]
+ *   npx ts-node scripts/cleanup-duplicate-payment-methods.ts --dry-run
+ *   npx ts-node scripts/cleanup-duplicate-payment-methods.ts
+ *   npx ts-node scripts/cleanup-duplicate-payment-methods.ts --account=acct_xxxxx
  *
  * Options:
  *   --dry-run    Show what would be deleted without actually deleting
  *   --account    Only process a specific connected account ID
  */
 
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import Stripe from 'stripe';
-import * as admin from 'firebase-admin';
+import * as dotenv from 'dotenv';
 
-// Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-  });
+dotenv.config();
+
+// Initialize Firebase Admin
+if (!process.env.FIREBASE_PROJECT_ID) {
+  console.error('❌ Missing Firebase environment variables');
+  console.error('   Make sure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY are set');
+  process.exit(1);
 }
 
-const adminDb = admin.firestore();
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.error('❌ Missing STRIPE_SECRET_KEY');
+  process.exit(1);
+}
+
+const app = initializeApp({
+  credential: cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  }),
+});
+
+const db = getFirestore(app);
 
 // Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-02-24.acacia',
 });
 
@@ -93,7 +112,7 @@ async function getConnectedAccounts(): Promise<string[]> {
   const accounts: string[] = [];
 
   // Get all org_settings with stripeConnectAccountId
-  const orgSettingsSnapshot = await adminDb
+  const orgSettingsSnapshot = await db
     .collection('org_settings')
     .where('stripeConnectAccountId', '!=', null)
     .get();
@@ -112,7 +131,7 @@ async function getCustomersForAccount(stripeAccountId: string): Promise<string[]
   const customers: string[] = [];
 
   // Get all users with this connected account customer ID
-  const usersSnapshot = await adminDb.collection('users').get();
+  const usersSnapshot = await db.collection('users').get();
 
   for (const doc of usersSnapshot.docs) {
     const connectedCustomerIds = doc.data().stripeConnectedCustomerIds || {};

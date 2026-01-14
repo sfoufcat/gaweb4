@@ -706,7 +706,7 @@ function CourseFormDialog({
                     value={formData.level || 'none'}
                     onValueChange={(value) => setFormData(prev => ({ ...prev, level: value === 'none' ? '' : value }))}
                   >
-                    <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent ring-offset-0 dark:ring-brand-accent font-albert bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8]">
                       <SelectValue placeholder="Select level..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -1022,7 +1022,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
                   value={categoryFilter || 'all'}
                   onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}
                 >
-                  <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 font-albert text-sm gap-1.5 !justify-start">
+                  <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 ring-offset-0 font-albert text-sm gap-1.5 !justify-start">
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1040,7 +1040,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
                   value={levelFilter || 'all'}
                   onValueChange={(value) => setLevelFilter(value === 'all' ? '' : value)}
                 >
-                  <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 font-albert text-sm gap-1.5 !justify-start">
+                  <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 ring-offset-0 font-albert text-sm gap-1.5 !justify-start">
                     <SelectValue placeholder="All Levels" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1057,7 +1057,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
                 value={trackFilter || 'all'}
                 onValueChange={(value) => setTrackFilter(value === 'all' ? '' : value)}
               >
-                <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 font-albert text-sm gap-1.5 !justify-start">
+                <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 ring-offset-0 font-albert text-sm gap-1.5 !justify-start">
                   <SelectValue placeholder="All Tracks" />
                 </SelectTrigger>
                 <SelectContent>

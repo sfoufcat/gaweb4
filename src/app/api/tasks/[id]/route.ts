@@ -78,17 +78,6 @@ export async function PATCH(
       updates.completed = body.status === 'completed';
       if (body.status === 'completed') {
         updates.completedAt = new Date().toISOString();
-
-        // Update lastActivityAt for analytics (non-blocking)
-        if (organizationId) {
-          updateLastActivity(userId, organizationId, 'task').catch(err => {
-            console.error('[TASKS] Failed to update lastActivityAt:', err);
-          });
-          // Update activity status for real-time status updates (non-blocking)
-          updateClientActivityStatus(organizationId, userId).catch(err => {
-            console.error('[TASKS] Failed to update activity status:', err);
-          });
-        }
       } else {
         // Clear completedAt when uncompleting
         updates.completedAt = undefined;
@@ -143,6 +132,17 @@ export async function PATCH(
     await taskRef.update(updates);
 
     const updatedTask: Task = { ...existingTask, ...updates } as Task;
+
+    // Update activity analytics AFTER task is committed to Firestore
+    // This ensures resolveActivity() finds the completed task when querying
+    if (body.status === 'completed' && organizationId) {
+      updateLastActivity(userId, organizationId, 'task').catch(err => {
+        console.error('[TASKS] Failed to update lastActivityAt:', err);
+      });
+      updateClientActivityStatus(organizationId, userId).catch(err => {
+        console.error('[TASKS] Failed to update activity status:', err);
+      });
+    }
 
     // NOTE: Cohort task completion tracking now uses the NEW system:
     // - Tasks have `completed` boolean field (set above when status changes)

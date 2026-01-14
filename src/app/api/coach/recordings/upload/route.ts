@@ -26,11 +26,15 @@ const ACCEPTED_MIME_TYPES = [
   'audio/mp4',
   'audio/m4a',
   'audio/x-m4a', // macOS/Safari often reports m4a files with this MIME type
+  'audio/aac', // AAC audio (sometimes reported for m4a)
+  'audio/x-aac', // AAC variant
   'audio/wav',
+  'audio/x-wav', // WAV variant
   'audio/webm',
   'audio/ogg',
   'video/mp4', // Allow video files (will only use audio)
   'video/webm',
+  'video/quicktime', // MOV files
   'application/pdf', // PDF documents for text extraction
 ];
 
@@ -90,12 +94,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file type
-    if (!ACCEPTED_MIME_TYPES.includes(file.type)) {
+    // Also check by file extension as a fallback for browsers that report wrong MIME types
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    const validExtensions = ['.mp3', '.m4a', '.wav', '.webm', '.ogg', '.mp4', '.mov', '.pdf'];
+
+    if (!ACCEPTED_MIME_TYPES.includes(file.type) && !validExtensions.includes(fileExtension)) {
+      console.log(`[RECORDING_UPLOAD] Rejected file type: ${file.type}, extension: ${fileExtension}`);
       return NextResponse.json(
-        { error: `Invalid file type: ${file.type}` },
+        { error: `Invalid file type: ${file.type}. Accepted formats: ${validExtensions.join(', ')}` },
         { status: 400 }
       );
     }
+
+    // Log actual MIME type for debugging
+    console.log(`[RECORDING_UPLOAD] Accepting file: ${file.name}, type: ${file.type}, extension: ${fileExtension}`);
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {

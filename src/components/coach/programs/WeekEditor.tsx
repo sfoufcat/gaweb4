@@ -1507,18 +1507,18 @@ export function WeekEditor({
               const response = JSON.parse(xhr.responseText);
               resolve(response);
             } catch {
-              reject(new Error('Invalid response'));
+              reject(new Error('Invalid response from server'));
             }
           } else {
             try {
               const error = JSON.parse(xhr.responseText);
-              reject(new Error(error.error || 'Upload failed'));
+              reject(new Error(error.error || `Upload failed (${xhr.status})`));
             } catch {
-              reject(new Error('Upload failed'));
+              reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText?.slice(0, 100) || 'Unknown error'}`));
             }
           }
         };
-        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.onerror = () => reject(new Error('Network error - please check your connection'));
       });
 
       xhr.open('POST', '/api/coach/recordings/upload');
@@ -2243,7 +2243,6 @@ export function WeekEditor({
 
           {/* Add article dropdown */}
           <Select
-            value=""
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -2342,7 +2341,6 @@ export function WeekEditor({
 
           {/* Add download dropdown */}
           <Select
-            value=""
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -2441,7 +2439,6 @@ export function WeekEditor({
 
           {/* Add link dropdown */}
           <Select
-            value=""
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -2540,7 +2537,6 @@ export function WeekEditor({
 
           {/* Add questionnaire dropdown */}
           <Select
-            value=""
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -2623,7 +2619,6 @@ export function WeekEditor({
 
           {/* Add course dropdown */}
           <Select
-            value=""
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';

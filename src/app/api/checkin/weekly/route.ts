@@ -200,18 +200,7 @@ export async function PATCH(request: NextRequest) {
     // If marking as completed, set completedAt
     if (updates.completedAt === true) {
       updatedData.completedAt = new Date().toISOString();
-      
-      // Update lastActivityAt for analytics (non-blocking)
-      if (organizationId) {
-        updateLastActivity(userId, organizationId, 'weekly').catch(err => {
-          console.error('[WEEKLY_CHECKIN] Failed to update lastActivityAt:', err);
-        });
-        // Update activity status for real-time status updates (non-blocking)
-        updateClientActivityStatus(organizationId, userId).catch(err => {
-          console.error('[WEEKLY_CHECKIN] Failed to update activity status:', err);
-        });
-      }
-      
+
       // Save to reflections collection for goal page (org-scoped) - only if we have org context
       if (organizationId) {
         const progressChange = (existingData.progress || 0) - (existingData.previousProgress || 0);
@@ -302,6 +291,17 @@ export async function PATCH(request: NextRequest) {
 
     await checkInRef.update(updatedData);
     const updatedDoc = await checkInRef.get();
+
+    // Update activity analytics AFTER check-in is committed to Firestore
+    // This ensures resolveActivity() finds the completed check-in when querying
+    if (updates.completedAt === true && organizationId) {
+      updateLastActivity(userId, organizationId, 'weekly').catch(err => {
+        console.error('[WEEKLY_CHECKIN] Failed to update lastActivityAt:', err);
+      });
+      updateClientActivityStatus(organizationId, userId).catch(err => {
+        console.error('[WEEKLY_CHECKIN] Failed to update activity status:', err);
+      });
+    }
 
     return NextResponse.json({ checkIn: { id: updatedDoc.id, ...updatedDoc.data() } });
   } catch (error) {
