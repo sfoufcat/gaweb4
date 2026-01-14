@@ -11,6 +11,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, X, Loader2, CheckCircle, AlertCircle, Repeat, CreditCard, Plus, CircleCheck, Shield } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useDiscountCode } from '@/hooks/useDiscountCode';
+import { DiscountCodeInput } from '@/components/checkout';
 
 // Saved payment method type
 interface SavedPaymentMethod {
@@ -90,9 +92,11 @@ function SavedCardsSelection({
   isProcessing,
   squadName,
   priceInCents,
+  basePriceInCents,
   currency,
   billingInterval,
   onCancel,
+  discount,
 }: {
   savedMethods: SavedPaymentMethod[];
   selectedMethodId: string | null;
@@ -102,10 +106,14 @@ function SavedCardsSelection({
   isProcessing: boolean;
   squadName: string;
   priceInCents: number;
+  basePriceInCents: number;
   currency: string;
   billingInterval: string;
   onCancel: () => void;
+  discount: ReturnType<typeof useDiscountCode>;
 }) {
+  const hasDiscount = discount.hasValidDiscount;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -149,7 +157,7 @@ function SavedCardsSelection({
             <div className="w-12 h-8 bg-gradient-to-br from-gray-600 to-gray-800 rounded-md flex items-center justify-center">
               <CreditCard className="w-5 h-5 text-white" />
             </div>
-            
+
             {/* Card info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -189,6 +197,11 @@ function SavedCardsSelection({
         </button>
       </div>
 
+      {/* Discount code input */}
+      {basePriceInCents > 0 && (
+        <DiscountCodeInput discount={discount} compact />
+      )}
+
       {/* Subscription info */}
       <div className="p-4 bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl space-y-2">
         <div className="flex justify-between text-sm">
@@ -199,9 +212,22 @@ function SavedCardsSelection({
           <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Billing</span>
           <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium capitalize">{billingInterval}</span>
         </div>
+        {hasDiscount && (
+          <div className="flex justify-between text-sm">
+            <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Discount</span>
+            <span className="text-green-600 dark:text-green-400 font-medium">{discount.displayDiscount}</span>
+          </div>
+        )}
         <div className="flex justify-between text-sm pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
           <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">Total today</span>
-          <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-semibold">{formatPrice(priceInCents, currency)}</span>
+          <div className="text-right">
+            {hasDiscount && (
+              <span className="text-sm text-[#a7a39e] dark:text-[#7d8190] line-through mr-2">
+                {formatPrice(basePriceInCents, currency)}
+              </span>
+            )}
+            <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-semibold">{formatPrice(priceInCents, currency)}</span>
+          </div>
         </div>
       </div>
 
@@ -239,15 +265,19 @@ interface PaymentFormProps {
   onCancel: () => void;
   squadName: string;
   priceInCents: number;
+  basePriceInCents: number;
   currency: string;
   billingInterval: string;
+  discount: ReturnType<typeof useDiscountCode>;
 }
 
-function PaymentForm({ onSuccess, onCancel, squadName, priceInCents, currency, billingInterval }: PaymentFormProps) {
+function PaymentForm({ onSuccess, onCancel, squadName, priceInCents, basePriceInCents, currency, billingInterval, discount }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const hasDiscount = discount.hasValidDiscount;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -333,6 +363,11 @@ function PaymentForm({ onSuccess, onCancel, squadName, priceInCents, currency, b
         )}
       </AnimatePresence>
 
+      {/* Discount code input */}
+      {basePriceInCents > 0 && (
+        <DiscountCodeInput discount={discount} compact />
+      )}
+
       {/* Subscription info */}
       <div className="p-4 bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl space-y-2">
         <div className="flex justify-between text-sm">
@@ -343,9 +378,22 @@ function PaymentForm({ onSuccess, onCancel, squadName, priceInCents, currency, b
           <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Billing</span>
           <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium capitalize">{billingInterval}</span>
         </div>
+        {hasDiscount && (
+          <div className="flex justify-between text-sm">
+            <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Discount</span>
+            <span className="text-green-600 dark:text-green-400 font-medium">{discount.displayDiscount}</span>
+          </div>
+        )}
         <div className="flex justify-between text-sm pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
           <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">Total today</span>
-          <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-semibold">{formatPrice(priceInCents, currency)}</span>
+          <div className="text-right">
+            {hasDiscount && (
+              <span className="text-sm text-[#a7a39e] dark:text-[#7d8190] line-through mr-2">
+                {formatPrice(basePriceInCents, currency)}
+              </span>
+            )}
+            <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-semibold">{formatPrice(priceInCents, currency)}</span>
+          </div>
         </div>
       </div>
 
@@ -369,8 +417,9 @@ function PaymentForm({ onSuccess, onCancel, squadName, priceInCents, currency, b
       </button>
 
       {/* Security note */}
-      <p className="text-center text-xs text-[#a7a39e] dark:text-[#7d8190]">
-        🔒 Secure payment powered by Stripe. Cancel anytime.
+      <p className="text-center text-xs text-[#a7a39e] dark:text-[#7d8190] flex items-center justify-center gap-1">
+        <Shield className="w-3 h-3" />
+        Secure payment powered by Stripe. Cancel anytime.
       </p>
     </form>
   );
@@ -394,25 +443,35 @@ export function SquadPaymentModal({
   onSuccess,
   squadId,
   squadName,
-  priceInCents,
+  priceInCents: basePriceInCents,
   currency,
   billingInterval,
   organizationId,
 }: SquadPaymentModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  
+
+  // Discount code support
+  const discount = useDiscountCode({
+    organizationId: organizationId || '',
+    originalAmountCents: basePriceInCents,
+    squadId,
+  });
+
+  // Final price after discount
+  const priceInCents = discount.hasValidDiscount ? discount.finalPrice : basePriceInCents;
+
   // Payment intent state (for new card flow)
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
-  
+
   // Saved payment methods state
   const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
   const [showSavedCards, setShowSavedCards] = useState(true);
   const [isProcessingSaved, setIsProcessingSaved] = useState(false);
-  
+
   // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -766,9 +825,11 @@ export function SquadPaymentModal({
                       isProcessing={isProcessingSaved}
                       squadName={squadName}
                       priceInCents={priceInCents}
+                      basePriceInCents={basePriceInCents}
                       currency={currency}
                       billingInterval={billingInterval}
                       onCancel={onClose}
+                      discount={discount}
                     />
                   </>
                 )}
@@ -787,8 +848,10 @@ export function SquadPaymentModal({
                       onCancel={onClose}
                       squadName={squadName}
                       priceInCents={priceInCents}
+                      basePriceInCents={basePriceInCents}
                       currency={currency}
                       billingInterval={billingInterval}
+                      discount={discount}
                     />
                   </Elements>
                 )}
