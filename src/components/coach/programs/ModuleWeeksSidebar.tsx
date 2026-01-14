@@ -385,9 +385,15 @@ export function ModuleWeeksSidebar({
   const canReorderModules = !isClientView && !isCohortView;
   // Weeks are calendar-aligned and cannot be reordered (they represent fixed Mon-Fri slots)
   const canReorderWeeks = false;
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(
-    new Set(modules.map(m => m.id))
-  );
+  // For client/cohort views, modules will be collapsed by default and only the active one expanded
+  // For template view, all modules are expanded
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(() => {
+    // Initial state: expand all for template, empty for client/cohort (will be set by useEffect)
+    if (isClientView || isCohortView) {
+      return new Set<string>();
+    }
+    return new Set(modules.map(m => m.id));
+  });
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
   const [moduleToDelete, setModuleToDelete] = useState<ProgramModule | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -420,10 +426,13 @@ export function ModuleWeeksSidebar({
     return () => setMounted(false);
   }, []);
 
-  // Expand all modules by default when modules change
+  // Expand all modules by default when modules change (only in template mode)
+  // For client/cohort views, module expansion is handled by the auto-expand useEffect
   React.useEffect(() => {
-    setExpandedModules(new Set(modules.map(m => m.id)));
-  }, [modules.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!isClientView && !isCohortView) {
+      setExpandedModules(new Set(modules.map(m => m.id)));
+    }
+  }, [modules.length, isClientView, isCohortView]); // eslint-disable-line react-hooks/exhaustive-deps
 
   
 
@@ -765,6 +774,10 @@ export function ModuleWeeksSidebar({
         hasInitializedExpansion.current = true;
         const lastWeek = displayWeeks[displayWeeks.length - 1];
         setExpandedWeeks(new Set([lastWeek.weekNum]));
+        // Only expand the module containing the last week
+        if (lastWeek.moduleId && (isClientView || isCohortView)) {
+          setExpandedModules(new Set([lastWeek.moduleId]));
+        }
         return;
       }
 
@@ -772,6 +785,11 @@ export function ModuleWeeksSidebar({
       if (viewStatus === 'upcoming') {
         hasInitializedExpansion.current = true;
         setExpandedWeeks(new Set([1]));
+        // Only expand the module containing week 1
+        const firstWeek = displayWeeks[0];
+        if (firstWeek?.moduleId && (isClientView || isCohortView)) {
+          setExpandedModules(new Set([firstWeek.moduleId]));
+        }
         return;
       }
 
@@ -791,27 +809,45 @@ export function ModuleWeeksSidebar({
       // Expand the current week
       setExpandedWeeks(new Set([currentWeek.weekNum]));
 
-      // Ensure the module containing this week is expanded
+      // For client/cohort views, ONLY expand the module containing this week (collapse others)
+      // For template view, keep all modules expanded
       if (currentWeek.moduleId) {
-        setExpandedModules(prev => {
-          const next = new Set(prev);
-          next.add(currentWeek.moduleId!);
-          return next;
-        });
+        if (isClientView || isCohortView) {
+          // Collapse all modules except the current one
+          setExpandedModules(new Set([currentWeek.moduleId]));
+        } else {
+          // Template mode: just ensure current module is expanded
+          setExpandedModules(prev => {
+            const next = new Set(prev);
+            next.add(currentWeek.moduleId!);
+            return next;
+          });
+        }
       }
 
-      // Auto-select the current day using ref to avoid dependency issues
-      onSelectRef.current({
-        type: 'day',
-        dayIndex: currentDayIndex,
-        weekId: currentWeek.storedWeekId,
-        moduleId: currentWeek.moduleId,
-      });
+      // Auto-select the current WEEK (not day) for a cleaner initial view
+      // Users can then drill down to specific days if needed
+      if (currentWeek.storedWeekId) {
+        onSelectRef.current({
+          type: 'week',
+          id: currentWeek.storedWeekId,
+          weekNumber: currentWeek.templateWeekNumber ?? currentWeek.weekNum,
+          moduleId: currentWeek.moduleId,
+        });
+      } else {
+        // Fallback to day selection if no stored week
+        onSelectRef.current({
+          type: 'day',
+          dayIndex: currentDayIndex,
+          weekId: currentWeek.storedWeekId,
+          moduleId: currentWeek.moduleId,
+        });
+      }
     } else {
       // currentDayIndex is outside program range - default to week 1
       setExpandedWeeks(new Set([1]));
     }
-  }, [currentDayIndex, displayWeeks, viewStatus]); // Removed expandedWeeks.size and onSelect
+  }, [currentDayIndex, displayWeeks, viewStatus, isClientView, isCohortView]); // Removed expandedWeeks.size and onSelect
 
   // Sorted modules for rendering
   const sortedModules = useMemo(() =>

@@ -26,6 +26,7 @@ import {
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -677,6 +678,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       setPendingNavigationAction(null);
     }
   }, [pendingNavigationAction]);
+
+  // Handle cancel/dismiss of leave warning dialog (clicking outside, pressing Escape, or clicking Cancel)
+  // This should NOT navigate - just close the dialog and clear the pending action
+  const handleLeaveWarningCancel = useCallback(() => {
+    setShowLeaveWarning(false);
+    setPendingNavigationAction(null);
+  }, []);
 
   // Get current enrollment's day index for "Jump to Today" feature
   const currentEnrollment = useMemo(() => {
@@ -6186,7 +6194,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       />
 
       {/* Leave Warning Dialog for Unsaved Changes */}
-      <AlertDialog open={showLeaveWarning} onOpenChange={setShowLeaveWarning}>
+      <AlertDialog
+        open={showLeaveWarning}
+        onOpenChange={(open) => {
+          // When dialog is dismissed (Escape key), cancel the operation
+          if (!open) {
+            handleLeaveWarningCancel();
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
@@ -6195,6 +6211,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleLeaveWarningCancel}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLeaveWarningDiscard}
               className="bg-red-500 hover:bg-red-600 text-white"

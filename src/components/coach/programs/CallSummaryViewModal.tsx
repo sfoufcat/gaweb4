@@ -159,6 +159,7 @@ export function CallSummaryViewModal({
   }, [summary, onFetchTasks, onClose]);
 
   // Handle both ISO string and Firestore Timestamp objects
+  // Format: "Jan 14th at 14:30"
   const formatDate = (dateValue: string | { seconds: number; nanoseconds: number } | Date | null | undefined): string => {
     if (!dateValue) return '';
 
@@ -176,19 +177,33 @@ export function CallSummaryViewModal({
 
     if (isNaN(date.getTime())) return '';
 
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    // Format date part: "Jan 14th"
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const day = date.getDate();
+    const daySuffix = (d: number) => {
+      if (d > 3 && d < 21) return 'th';
+      switch (d % 10) {
+        case 1: return 'st';
+        case 2: return 'nd';
+        case 3: return 'rd';
+        default: return 'th';
+      }
+    };
+
+    // Format time part: "14:30"
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+
+    return `${month} ${day}${daySuffix(day)} at ${hours}:${minutes}`;
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const createdAtValue = summary?.createdAt as any;
   const formattedDate = formatDate(createdAtValue);
 
+  // Title format: "Nour Shaaban, Jan 14th at 14:30"
   const summaryTitle = entityName
-    ? `${entityName}${formattedDate ? ` - ${formattedDate}` : ''}`
+    ? `${entityName}${formattedDate ? `, ${formattedDate}` : ''}`
     : formattedDate
     ? `Summary from ${formattedDate}`
     : 'Call Summary';

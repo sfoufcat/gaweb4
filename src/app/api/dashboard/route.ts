@@ -632,8 +632,14 @@ export async function GET(request: Request) {
           const squadData = { id: squadDoc.id, ...squadDoc.data() } as Squad;
 
           // Security check: Only show squad if it belongs to the current organization
-          if (squadData.organizationId && squadData.organizationId !== organizationId) {
-            console.warn(`[SECURITY] User ${userId} attempted to access squad ${squadDoc.id} from different organization`);
+          // When on a tenant org: squad must have matching organizationId
+          // When not on a tenant org: squad must have no organizationId (personal/platform squads)
+          const squadBelongsToCurrentContext = organizationId
+            ? squadData.organizationId === organizationId
+            : !squadData.organizationId;
+
+          if (!squadBelongsToCurrentContext) {
+            console.warn(`[SECURITY] User ${userId} attempted to access squad ${squadDoc.id} from different organization context`);
           } else {
             const membersData = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SquadMember));
 
@@ -658,8 +664,14 @@ export async function GET(request: Request) {
           const squadData = { id: squadDoc.id, ...squadDoc.data() } as Squad;
 
           // Security check: Only show squad if it belongs to the current organization
-          if (squadData.organizationId && squadData.organizationId !== organizationId) {
-            console.warn(`[SECURITY] User ${userId} attempted to access squad ${squadDoc.id} from different organization`);
+          // When on a tenant org: squad must have matching organizationId
+          // When not on a tenant org: squad must have no organizationId (personal/platform squads)
+          const squadBelongsToCurrentContext = organizationId
+            ? squadData.organizationId === organizationId
+            : !squadData.organizationId;
+
+          if (!squadBelongsToCurrentContext) {
+            console.warn(`[SECURITY] User ${userId} attempted to access squad ${squadDoc.id} from different organization context`);
           } else {
             const membersData = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SquadMember));
 

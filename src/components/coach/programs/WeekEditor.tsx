@@ -1516,6 +1516,7 @@ export function WeekEditor({
   // Note: Questionnaires don't have programIds - they're always platform-level
 
   // Helper to format date from various formats (ISO string, Firestore Timestamp, Date)
+  // Format: "Jan 14th at 14:30"
   const formatSummaryDate = useCallback((dateValue: unknown): string => {
     if (!dateValue) return '';
 
@@ -1533,7 +1534,24 @@ export function WeekEditor({
 
     if (isNaN(date.getTime())) return '';
 
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    // Format date part: "Jan 14th"
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const day = date.getDate();
+    const daySuffix = (d: number) => {
+      if (d > 3 && d < 21) return 'th';
+      switch (d % 10) {
+        case 1: return 'st';
+        case 2: return 'nd';
+        case 3: return 'rd';
+        default: return 'th';
+      }
+    };
+
+    // Format time part: "14:30"
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+
+    return `${month} ${day}${daySuffix(day)} at ${hours}:${minutes}`;
   }, []);
 
   // Helper to generate summary label with entity name and date

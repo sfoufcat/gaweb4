@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import { DiscardConfirmationModal } from './ConfirmationModal';
@@ -49,6 +49,16 @@ export function CreatePostModal({
   const [showPollComposer, setShowPollComposer] = useState(false);
   const [attachedPoll, setAttachedPoll] = useState<ChatPollState | null>(null);
 
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }
+  }, [isOpen]);
 
   const hasContent = (content?.text?.trim()) || images.length > 0 || videoUrl || attachedPoll;
   const canAddImage = images.length < MAX_IMAGES && !videoUrl;
@@ -266,18 +276,18 @@ export function CreatePostModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10000] animate-backdrop-fade-in"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10001] animate-backdrop-fade-in"
         onClick={handleClose}
       />
 
-      {/* Modal Container - uses flex centering on desktop */}
-      <div className="fixed inset-0 z-[10000] flex items-end md:items-center justify-center p-0 md:p-4 pointer-events-none">
-        <div 
-          className="w-full md:w-full md:max-w-2xl bg-white dark:bg-[#171b22] rounded-t-2xl md:rounded-2xl shadow-xl max-h-[85dvh] flex flex-col overflow-hidden pointer-events-auto animate-modal-slide-up md:animate-modal-zoom-in"
+      {/* Modal Container - uses flex centering on desktop, full screen on mobile */}
+      <div className="fixed inset-0 z-[10001] flex items-end md:items-center justify-center p-0 md:p-4 pointer-events-none">
+        <div
+          className="w-full md:w-full md:max-w-2xl bg-white dark:bg-[#171b22] md:rounded-2xl shadow-xl h-[100dvh] md:h-auto md:max-h-[85dvh] flex flex-col overflow-hidden pointer-events-auto animate-modal-slide-up md:animate-modal-zoom-in"
           onClick={(e) => e.stopPropagation()}
         >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#e8e4df] dark:border-[#262b35]">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-[#e8e4df] dark:border-[#262b35]" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top, 1rem))' }}>
           <button
             onClick={handleClose}
             className="text-[15px] text-[#8a857f] hover:text-[#5f5a55] transition-colors"

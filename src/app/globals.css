@@ -102,31 +102,34 @@
 @tailwind components;
 @tailwind utilities;
 
-/* iOS Safari full-viewport background fix - ensures bg extends behind browser bar */
+/*
+ * iOS Safari full-viewport background fix
+ * With viewport-fit: cover, Safari extends the viewport into the safe areas.
+ * We use a fixed pseudo-element to fill the safe area at the bottom.
+ */
 html {
-  background-color: hsl(var(--app-bg));
-  min-height: 100%;
-  /* Extend bg into safe areas for seamless edge-to-edge display */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  margin: calc(-1 * env(safe-area-inset-top)) calc(-1 * env(safe-area-inset-right)) calc(-1 * env(safe-area-inset-bottom)) calc(-1 * env(safe-area-inset-left));
-}
-
-html.dark {
-  background-color: hsl(var(--app-bg));
+  background: hsl(var(--app-bg));
 }
 
 body {
-  /* Use min-height: 100dvh to fill the dynamic viewport (accounts for iOS Safari bar) */
-  min-height: 100dvh;
-  /* Fallback for browsers that don't support dvh */
-  min-height: 100vh;
-  background-color: hsl(var(--app-bg));
+  background: hsl(var(--app-bg));
 }
 
-@supports (min-height: 100dvh) {
-  body {
-    min-height: 100dvh;
-  }
+/*
+ * This pseudo-element fills the iOS safe area at the bottom (home indicator area)
+ * with the app background color, preventing the black gap behind Safari's toolbar.
+ * Only appears on mobile (hidden on desktop via media query in component or naturally doesn't show)
+ */
+body::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-bottom, 0px);
+  background: hsl(var(--app-bg));
+  z-index: 9999;
+  pointer-events: none;
 }
 
 @layer utilities {

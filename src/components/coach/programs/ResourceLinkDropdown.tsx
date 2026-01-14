@@ -40,7 +40,16 @@ export function ResourceLinkDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Reset page when dropdown closes
   useEffect(() => {
@@ -88,16 +97,29 @@ export function ResourceLinkDropdown({
     setIsOpen(false);
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
     e.stopPropagation(); // Prevent selecting the item
-    if (!onDelete) return;
+    console.log('[ResourceLinkDropdown] Delete clicked for id:', id);
+    if (!onDelete || deletingId) {
+      console.log('[ResourceLinkDropdown] Delete blocked - onDelete:', !!onDelete, 'deletingId:', deletingId);
+      return;
+    }
 
     setDeletingId(id);
-    try {
-      await onDelete(id);
-    } finally {
-      setDeletingId(null);
-    }
+    console.log('[ResourceLinkDropdown] Calling onDelete...');
+
+    // Call onDelete and handle the promise
+    Promise.resolve(onDelete(id))
+      .then(() => {
+        console.log('[ResourceLinkDropdown] Delete completed successfully');
+      })
+      .catch((err) => {
+        console.error('[ResourceLinkDropdown] Delete failed:', err);
+      })
+      .finally(() => {
+        setDeletingId(null);
+      });
   };
 
   const handleCreateNew = () => {
@@ -208,9 +230,10 @@ export function ResourceLinkDropdown({
                     onClick={(e) => handleDelete(e, item.id)}
                     disabled={deletingId === item.id}
                     className={cn(
-                      "p-1 rounded-md transition-colors flex-shrink-0",
-                      "opacity-0 group-hover:opacity-100",
+                      "p-1.5 rounded-md transition-colors flex-shrink-0 z-10",
                       "text-[#a7a39e] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20",
+                      // On desktop: show on hover, on mobile: always visible
+                      !isMobile && "opacity-0 group-hover:opacity-100",
                       deletingId === item.id && "opacity-50 cursor-not-allowed"
                     )}
                     aria-label="Delete"
