@@ -1,23 +1,24 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, MessageSquare, ListTodo, Check, Plus } from 'lucide-react';
+import { X, Loader2, MessageSquare, ListTodo, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
+  DrawerDescription,
   DrawerClose,
 } from '@/components/ui/drawer';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import type { CallSummary, ProgramTaskTemplate } from '@/types';
 
 interface CallSummaryViewModalProps {
@@ -110,7 +111,16 @@ export function CallSummaryViewModal({
     });
   };
 
-  const SummaryContent = () => (
+  const summaryTitle = entityName
+    ? `${entityName} - ${summary?.createdAt ? formatDate(summary.createdAt) : 'Summary'}`
+    : summary?.createdAt
+    ? `Summary from ${formatDate(summary.createdAt)}`
+    : 'Call Summary';
+
+  const showFetchButton = onFetchTasks && summary?.status === 'completed' && summary.actionItems?.length > 0;
+
+  // Render the summary content (inline, not as a separate component)
+  const renderSummaryContent = () => (
     <div className="space-y-4 max-h-[60vh] overflow-y-auto">
       {summary?.status === 'completed' && summary.summary ? (
         <>
@@ -280,7 +290,7 @@ export function CallSummaryViewModal({
       ) : null}
 
       {/* Fetch Tasks Button - shown in content for mobile drawer */}
-      {isMobile && onFetchTasks && summary?.status === 'completed' && summary.actionItems?.length > 0 && (
+      {isMobile && showFetchButton && (
         <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
           <Button
             onClick={handleFetchTasks}
@@ -299,12 +309,6 @@ export function CallSummaryViewModal({
     </div>
   );
 
-  const summaryTitle = entityName
-    ? `${entityName} - ${summary?.createdAt ? formatDate(summary.createdAt) : 'Summary'}`
-    : summary?.createdAt
-    ? `Summary from ${formatDate(summary.createdAt)}`
-    : 'Call Summary';
-
   // Mobile: use Drawer (slide up)
   if (isMobile) {
     return (
@@ -322,9 +326,12 @@ export function CallSummaryViewModal({
                 </Button>
               </DrawerClose>
             </div>
+            <DrawerDescription className="sr-only">
+              View call summary details and action items
+            </DrawerDescription>
           </DrawerHeader>
           <div className="p-4 overflow-y-auto">
-            <SummaryContent />
+            {renderSummaryContent()}
           </div>
         </DrawerContent>
       </Drawer>
@@ -340,10 +347,13 @@ export function CallSummaryViewModal({
             <MessageSquare className="h-5 w-5 text-brand-accent" />
             {summaryTitle}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            View call summary details and action items
+          </DialogDescription>
         </DialogHeader>
-        <SummaryContent />
+        {renderSummaryContent()}
         {/* Fetch Tasks Button - shown in footer for desktop dialog */}
-        {onFetchTasks && summary?.status === 'completed' && summary.actionItems?.length > 0 && (
+        {showFetchButton && (
           <div className="flex justify-end pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
             <Button
               onClick={handleFetchTasks}

@@ -2056,6 +2056,8 @@ export function WeekEditor({
         </CollapsibleSection>
 
       {/* Sessions Section - Linked Calls, Call Summaries, Recordings */}
+      {/* Hidden in template view - only shown when viewing a specific cohort or client */}
+      {(isClientView || isCohortMode) && (
       <CollapsibleSection
         title="Sessions"
         icon={Video}
@@ -2437,6 +2439,7 @@ export function WeekEditor({
           )}
         </div>
       </CollapsibleSection>
+      )}
 
       {/* Resources Section - Articles, Downloads, Links, Questionnaires */}
       <CollapsibleSection
