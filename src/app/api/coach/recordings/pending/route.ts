@@ -1,7 +1,10 @@
 /**
  * Check for Pending Recordings API
  *
- * Returns any in-progress recording for a given cohort/week combination.
+ * Returns any in-progress recording for a given context:
+ * - Cohort mode: cohortId + weekId
+ * - 1:1 mode: clientUserId (+ optional enrollmentId)
+ *
  * Used to show processing status when coach returns to a page.
  */
 
@@ -15,9 +18,9 @@ import type { UserRole, OrgRole, ClerkPublicMetadata } from '@/types';
 /**
  * GET /api/coach/recordings/pending
  *
- * Query params:
- * - cohortId: Cohort ID to check
- * - weekId: Week ID to check
+ * Query params (provide one of these combinations):
+ * - cohortId + weekId: For cohort/group mode
+ * - clientUserId (+ optional enrollmentId): For 1:1 mode
  */
 export async function GET(request: NextRequest) {
   try {
@@ -43,24 +46,53 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const cohortId = searchParams.get('cohortId');
     const weekId = searchParams.get('weekId');
+    const clientUserId = searchParams.get('clientUserId');
+    const enrollmentId = searchParams.get('enrollmentId');
 
-    if (!cohortId || !weekId) {
-      return NextResponse.json({ error: 'cohortId and weekId are required' }, { status: 400 });
+    // Need either cohort context or client context
+    if (!cohortId && !clientUserId) {
+      return NextResponse.json(
+        { error: 'Either cohortId+weekId or clientUserId is required' },
+        { status: 400 }
+      );
     }
 
-    // Query for any in-progress recordings for this cohort/week
     const recordingsRef = adminDb
       .collection('organizations')
       .doc(organizationId)
       .collection('uploaded_recordings');
 
-    const pendingQuery = await recordingsRef
-      .where('cohortId', '==', cohortId)
-      .where('weekId', '==', weekId)
-      .where('status', 'in', ['uploaded', 'transcribing', 'summarizing'])
-      .orderBy('createdAt', 'desc')
-      .limit(1)
-      .get();
+    // Include 'failed' status to show errors on page refresh
+    const statusesToCheck = ['uploaded', 'transcribing', 'summarizing', 'failed'];
+
+    let pendingQuery;
+
+    if (cohortId && weekId) {
+      // Cohort mode: query by cohortId + weekId
+      pendingQuery = await recordingsRef
+        .where('cohortId', '==', cohortId)
+        .where('weekId', '==', weekId)
+        .where('status', 'in', statusesToCheck)
+        .orderBy('createdAt', 'desc')
+        .limit(1)
+        .get();
+    } else if (clientUserId) {
+      // 1:1 mode: query by clientUserId (and optionally enrollmentId)
+      let query = recordingsRef
+        .where('clientUserId', '==', clientUserId)
+        .where('status', 'in', statusesToCheck);
+
+      if (enrollmentId) {
+        query = query.where('programEnrollmentId', '==', enrollmentId);
+      }
+
+      pendingQuery = await query
+        .orderBy('createdAt', 'desc')
+        .limit(1)
+        .get();
+    } else {
+      return NextResponse.json({ pendingRecording: null });
+    }
 
     if (pendingQuery.empty) {
       return NextResponse.json({ pendingRecording: null });
@@ -69,11 +101,24 @@ export async function GET(request: NextRequest) {
     const doc = pendingQuery.docs[0];
     const data = doc.data();
 
+    // For failed recordings, only show if failed within the last hour
+    // (to avoid showing old failures forever)
+    if (data.status === 'failed') {
+      const updatedAt = data.updatedAt?.toDate?.();
+      if (updatedAt) {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        if (updatedAt < oneHourAgo) {
+          return NextResponse.json({ pendingRecording: null });
+        }
+      }
+    }
+
     return NextResponse.json({
       pendingRecording: {
         id: doc.id,
         status: data.status,
         fileName: data.fileName,
+        error: data.processingError || null,
         createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
       },
     });

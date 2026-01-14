@@ -1637,6 +1637,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     }
   }, [apiBasePath]);
 
+  // Refetch call summaries (called when a new summary is generated in background)
+  const refetchCallSummaries = useCallback(async () => {
+    if (!selectedProgram) return;
+    try {
+      const summariesRes = await fetch(`/api/coach/call-summaries?programId=${selectedProgram.id}`);
+      if (summariesRes.ok) {
+        const summariesData = await summariesRes.json();
+        setAvailableCallSummaries(summariesData.summaries || []);
+      }
+    } catch (err) {
+      console.error('Error refetching call summaries:', err);
+    }
+  }, [selectedProgram]);
+
   // Refresh client/cohort data handler
   const handleRefreshData = useCallback(async () => {
     if (!selectedProgram) return;
@@ -4333,6 +4347,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       cohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined}
                       cohortName={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortName : undefined}
                       instanceId={instanceId}
+                      onSummaryGenerated={refetchCallSummaries}
                     />
                   );
                 })()

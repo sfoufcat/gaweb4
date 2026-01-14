@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment, ProgramCohort, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';
-import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video } from 'lucide-react';
+import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video, AlertCircle } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -651,30 +651,54 @@ export function WeekEditor({
   const [pendingRecordingId, setPendingRecordingId] = useState<string | null>(null);
 
   // Check for in-progress recordings on mount and poll until complete
+  // Supports both cohort mode (group programs) and 1:1 mode (individual programs)
   useEffect(() => {
-    if (!cohortId || !week.id) return;
+    // Need either cohort context or client context
+    const hasCohortContext = cohortId && week.id;
+    const hasClientContext = clientUserId;
+
+    if (!hasCohortContext && !hasClientContext) return;
 
     let pollInterval: NodeJS.Timeout | null = null;
     let cancelled = false;
 
     const checkPendingRecordings = async () => {
       try {
-        // Fetch any in-progress recordings for this week
-        const response = await fetch(
-          `/api/coach/recordings/pending?cohortId=${cohortId}&weekId=${week.id}`
-        );
+        // Build query params based on context
+        const params = new URLSearchParams();
+        if (cohortId && week.id) {
+          params.set('cohortId', cohortId);
+          params.set('weekId', week.id);
+        } else if (clientUserId) {
+          params.set('clientUserId', clientUserId);
+          if (enrollmentId) {
+            params.set('enrollmentId', enrollmentId);
+          }
+        }
+
+        const response = await fetch(`/api/coach/recordings/pending?${params.toString()}`);
         if (!response.ok || cancelled) return;
 
         const data = await response.json();
         if (data.pendingRecording && !cancelled) {
-          setPendingRecordingId(data.pendingRecording.id);
+          const recording = data.pendingRecording;
+          setPendingRecordingId(recording.id);
+
+          // If already failed, show error immediately
+          if (recording.status === 'failed') {
+            setRecordingStatus('error');
+            setRecordingError(recording.error || 'Processing failed');
+            return;
+          }
+
+          // Show background processing state
           setRecordingStatus('background');
 
           // Start polling for completion
           pollInterval = setInterval(async () => {
             if (cancelled) return;
             try {
-              const statusRes = await fetch(`/api/coach/recordings/${data.pendingRecording.id}/status`);
+              const statusRes = await fetch(`/api/coach/recordings/${recording.id}/status`);
               if (!statusRes.ok) return;
               const statusData = await statusRes.json();
 
@@ -682,6 +706,10 @@ export function WeekEditor({
                 setRecordingStatus('completed');
                 setPendingRecordingId(null);
                 if (pollInterval) clearInterval(pollInterval);
+                // Refetch call summaries to show the new summary
+                if (statusData.callSummaryId) {
+                  onSummaryGenerated?.(statusData.callSummaryId);
+                }
                 // Reset to idle after showing success
                 setTimeout(() => {
                   if (!cancelled) setRecordingStatus('idle');
@@ -708,7 +736,7 @@ export function WeekEditor({
       cancelled = true;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [cohortId, week.id]);
+  }, [cohortId, week.id, clientUserId, enrollmentId, onSummaryGenerated]);
 
   // State for expanded tasks (to show member breakdown) - for cohort mode
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -1496,9 +1524,9 @@ export function WeekEditor({
       setRecordingError('Invalid file type. Please upload an audio or video file.');
       return;
     }
-    // Validate file size (500MB max)
-    if (file.size > 500 * 1024 * 1024) {
-      setRecordingError('File too large. Maximum size is 500MB.');
+    // Validate file size (100MB max - Groq limit on paid tier)
+    if (file.size > 100 * 1024 * 1024) {
+      setRecordingError('File too large. Maximum size is 100MB.');
       return;
     }
     setRecordingFile(file);
@@ -2192,34 +2220,32 @@ export function WeekEditor({
               </div>
             </div>
           ) : recordingStatus === 'error' ? (
-            /* Error state */
-            <div className="space-y-3">
-              <div className="p-4 border border-red-500/30 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <X className="w-5 h-5 text-red-600" />
-                  <div>
-                    <p className="text-sm font-medium text-red-800 dark:text-red-300">
-                      {recordingError?.includes('Insufficient credits') ? 'Insufficient credits' : 'Upload failed'}
-                    </p>
-                    <p className="text-xs text-red-600 dark:text-red-400">
-                      {recordingError?.includes('Insufficient credits') ? (
-                        <a href="/coach/plan" className="underline hover:text-red-700 dark:hover:text-red-300">
-                          Upgrade your plan or buy extra credits
-                        </a>
-                      ) : (
-                        recordingError || 'An error occurred'
-                      )}
-                    </p>
-                  </div>
+            /* Error state with dismiss X */
+            <div className="p-4 border border-red-500/30 bg-red-50 dark:bg-red-900/20 rounded-lg relative">
+              <button
+                onClick={() => { setRecordingStatus('idle'); setRecordingError(null); setPendingRecordingId(null); }}
+                className="absolute top-2 right-2 p-1 text-red-400 hover:text-red-600 transition-colors"
+                aria-label="Dismiss"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="flex items-start gap-3 pr-6">
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                    {recordingError?.includes('Insufficient credits') ? 'Insufficient credits' : 'Processing failed'}
+                  </p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    {recordingError?.includes('Insufficient credits') ? (
+                      <a href="/coach/plan" className="underline hover:text-red-700 dark:hover:text-red-300">
+                        Upgrade your plan or buy extra credits
+                      </a>
+                    ) : (
+                      recordingError || 'An error occurred while processing the recording'
+                    )}
+                  </p>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => { setRecordingStatus('idle'); setRecordingError(null); }}
-                className="w-full"
-              >
-                Try Again
-              </Button>
             </div>
           ) : !isClientView && !isCohortMode ? (
             /* Template mode: Show disabled overlay */
@@ -2242,7 +2268,7 @@ export function WeekEditor({
                 Drag & drop or click to upload
               </p>
               <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
-                MP3, MP4, WAV, M4A, or WebM up to 500MB
+                MP3, MP4, WAV, M4A, or WebM up to 100MB
               </p>
               <input
                 type="file"
