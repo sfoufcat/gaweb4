@@ -271,6 +271,8 @@ export default function CoachPage() {
     if (window.location.pathname !== '/coach') return;
 
     const url = new URL(window.location.href);
+    // Always ensure tab=discover is set when changing discover subtabs
+    url.searchParams.set('tab', 'discover');
     if (subTab && subTab !== 'events') {
       url.searchParams.set('discoverSubTab', subTab);
     } else {
@@ -285,6 +287,8 @@ export default function CoachPage() {
     if (window.location.pathname !== '/coach') return;
 
     const url = new URL(window.location.href);
+    // Always ensure tab=customize is set when changing customize subtabs
+    url.searchParams.set('tab', 'customize');
     if (subtab && subtab !== 'branding') {
       url.searchParams.set('customizeSubtab', subtab);
     } else {
@@ -299,6 +303,8 @@ export default function CoachPage() {
     if (window.location.pathname !== '/coach') return;
 
     const url = new URL(window.location.href);
+    // Always ensure tab=analytics is set when changing analytics subtabs
+    url.searchParams.set('tab', 'analytics');
     if (subTab && subTab !== 'clients') {
       url.searchParams.set('analyticsSubTab', subTab);
     } else {
@@ -313,6 +319,8 @@ export default function CoachPage() {
     if (window.location.pathname !== '/coach') return;
 
     const url = new URL(window.location.href);
+    // Always ensure tab=analytics is set when changing analytics squad
+    url.searchParams.set('tab', 'analytics');
     if (squadId) {
       url.searchParams.set('analyticsSquadId', squadId);
     } else {
