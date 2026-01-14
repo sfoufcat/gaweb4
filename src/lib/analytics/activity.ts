@@ -396,6 +396,63 @@ export async function getOrgActivitySummary(
   };
 }
 
+// ============================================================================
+// REAL-TIME ACTIVITY STATUS UPDATE
+// ============================================================================
+
+/**
+ * Update a user's activity status in org_memberships after an activity event.
+ * This provides real-time status updates instead of waiting for the daily cron.
+ * 
+ * Call this after:
+ * - Task completion
+ * - Habit progress
+ * - Morning/evening check-in
+ * - Weekly reflection
+ * 
+ * This is a fire-and-forget operation - errors are logged but not thrown.
+ */
+export async function updateClientActivityStatus(
+  orgId: string,
+  userId: string
+): Promise<void> {
+  try {
+    // Find the user's org_membership document
+    const membershipSnapshot = await adminDb
+      .collection('org_memberships')
+      .where('organizationId', '==', orgId)
+      .where('userId', '==', userId)
+      .limit(1)
+      .get();
+
+    if (membershipSnapshot.empty) {
+      console.warn(`[ACTIVITY_UPDATE] No membership found for user ${userId} in org ${orgId}`);
+      return;
+    }
+
+    const membershipDoc = membershipSnapshot.docs[0];
+
+    // Compute current activity status
+    const result = await resolveActivity({ orgId, userId });
+    const now = new Date().toISOString();
+
+    // Update the membership document
+    await membershipDoc.ref.update({
+      activityStatus: result.status,
+      atRisk: result.atRisk,
+      lastActivityAt: result.activitySignals.lastActivityAt?.toISOString() || null,
+      primaryActivityType: result.activitySignals.primarySignal,
+      daysActiveInPeriod: result.activitySignals.daysActiveInPeriod,
+      activityUpdatedAt: now,
+    });
+
+    console.log(`[ACTIVITY_UPDATE] Updated user ${userId} in org ${orgId}: status=${result.status}, atRisk=${result.atRisk}`);
+  } catch (error) {
+    // Fire-and-forget - log but don't throw
+    console.error(`[ACTIVITY_UPDATE] Failed to update activity for user ${userId} in org ${orgId}:`, error);
+  }
+}
+
 
 
 

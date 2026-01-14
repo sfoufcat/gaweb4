@@ -42,7 +42,7 @@
     },
     {
       "path": "/api/analytics/cron/client-analytics",
-      "schedule": "15 2 * * *"
+      "schedule": "15 */4 * * *"
     },
     {
       "path": "/api/cron/process-email-queue",

@@ -13,8 +13,10 @@
  *   - squadId: filter by specific squad
  *   - limit: max clients to return (default 100)
  * 
- * IMPORTANT: This endpoint computes activity status in REAL-TIME using the Activity Resolver.
- * It does NOT rely on cached/stale data.
+ * SINGLE SOURCE OF TRUTH: This endpoint reads cached activity status from org_memberships.
+ * Activity status is updated:
+ * - In real-time when users complete activities (tasks, habits, check-ins)
+ * - Every 4 hours by cron job for downgrade detection (thriving→active→inactive)
  * 
  * NOTE: Admins (coaches, super_coaches) are ALWAYS excluded from client analytics.
  * This endpoint only shows regular members (clients).
@@ -23,7 +25,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import { batchResolveActivity } from '@/lib/analytics';
 import { withDemoMode } from '@/lib/demo-api';
 import type { HealthStatus } from '@/lib/analytics/constants';
 
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
           activeRate: 0,
         },
         clients: [],
-        computed: 'live',
+        computed: 'cached',
       });
     }
 
@@ -168,17 +169,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // COMPUTE ACTIVITY STATUS IN REAL-TIME using the Activity Resolver
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const activityResults = await batchResolveActivity(
-      organizationId, 
-      uniqueUserIds.slice(0, limit), 
-      sevenDaysAgo
-    );
+    // USE CACHED ACTIVITY STATUS from org_memberships (single source of truth)
+    // Status is updated in real-time by activity events and every 4 hours by cron
 
-    // Build client list with real activity data
+    // Build client list with cached activity data
     const clients: ClientActivityData[] = [];
     let thrivingCount = 0;
     let activeCount = 0;
@@ -189,14 +183,13 @@ export async function GET(request: NextRequest) {
       const data = doc.data();
       const userId = data.userId;
       const user = userMap.get(userId);
-      const activity = activityResults.get(userId);
 
-      // Use real computed status from Activity Resolver
-      const status = activity?.status || 'inactive';
-      const atRisk = activity?.atRisk || false;
-      const lastActivityAt = activity?.activitySignals.lastActivityAt?.toISOString() || null;
-      const primarySignal = activity?.activitySignals.primarySignal || null;
-      const daysActiveInPeriod = activity?.activitySignals.daysActiveInPeriod || 0;
+      // Use cached status from org_memberships (updated by events + cron)
+      const status: HealthStatus = data.activityStatus || 'inactive';
+      const atRisk = data.atRisk || false;
+      const lastActivityAt = data.lastActivityAt || null;
+      const primarySignal = data.primaryActivityType || null;
+      const daysActiveInPeriod = data.daysActiveInPeriod || 0;
 
       // Count for summary
       if (status === 'thriving') thrivingCount++;
@@ -204,7 +197,7 @@ export async function GET(request: NextRequest) {
       else inactiveCount++;
       if (atRisk) atRiskCount++;
 
-      // Apply status filter AFTER computing status
+      // Apply status filter AFTER reading status
       if (statusFilter !== 'all') {
         if (statusFilter === 'at-risk' && !atRisk) continue;
         if (statusFilter !== 'at-risk' && status !== statusFilter) continue;
@@ -263,7 +256,7 @@ export async function GET(request: NextRequest) {
         activeRate,
       },
       clients: clients.slice(0, limit),
-      computed: 'live',
+      computed: 'cached',
       count: clients.length,
     });
   } catch (error) {

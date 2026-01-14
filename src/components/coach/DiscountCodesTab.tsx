@@ -7,7 +7,7 @@ import { Dialog as HeadlessDialog, Transition } from '@headlessui/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import type { DiscountCode, DiscountType, DiscountApplicableTo, Program, Squad } from '@/types';
+import type { DiscountCode, DiscountType, DiscountApplicableTo, DiscountContentType, Program, Squad, SellableContent } from '@/types';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 
 interface DiscountCodesTabProps {
@@ -17,7 +17,8 @@ interface DiscountCodesTabProps {
 interface SelectableItem {
   id: string;
   name: string;
-  type: 'program' | 'squad';
+  type: 'program' | 'squad' | 'content';
+  contentType?: DiscountContentType;
 }
 
 export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: DiscountCodesTabProps) {
@@ -26,9 +27,10 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Available programs and squads for custom selection
+  // Available programs, squads, and content for custom selection
   const [availablePrograms, setAvailablePrograms] = useState<Program[]>([]);
   const [availableSquads, setAvailableSquads] = useState<Squad[]>([]);
+  const [availableContent, setAvailableContent] = useState<SellableContent[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
   
   // Modal states
@@ -54,6 +56,8 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
     applicableTo: DiscountApplicableTo;
     programIds: string[];
     squadIds: string[];
+    contentIds: string[];
+    contentTypes: DiscountContentType[];
     maxUses: number | '';
     expiresAt: string;
     isActive: boolean;
@@ -65,13 +69,15 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
     applicableTo: 'all',
     programIds: [],
     squadIds: [],
+    contentIds: [],
+    contentTypes: [],
     maxUses: '',
     expiresAt: '',
     isActive: true,
   });
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Fetch programs and squads for custom selection
+  // Fetch programs, squads, and content for custom selection
   const fetchProgramsAndSquads = useCallback(async () => {
     try {
       setLoadingItems(true);
@@ -84,13 +90,19 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
           { id: 'demo-squad-1', name: 'Alpha Achievers' } as Squad,
           { id: 'demo-squad-2', name: 'Growth Warriors' } as Squad
         ]);
+        setAvailableContent([
+          { id: 'demo-content-1', title: 'Fitness Fundamentals Course', type: 'course', priceInCents: 4999 } as SellableContent,
+          { id: 'demo-content-2', title: 'Nutrition Guide PDF', type: 'download', priceInCents: 1999 } as SellableContent,
+          { id: 'demo-content-3', title: 'Live Q&A Session', type: 'event', priceInCents: 2999 } as SellableContent,
+        ]);
         setLoadingItems(false);
         return;
       }
 
-      const [programsRes, squadsRes] = await Promise.all([
+      const [programsRes, squadsRes, contentRes] = await Promise.all([
         fetch('/api/coach/org-programs'),
         fetch('/api/coach/squads'),
+        fetch('/api/coach/content?sellable=true'),
       ]);
 
       if (programsRes.ok) {
@@ -102,8 +114,15 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
         const squadsData = await squadsRes.json();
         setAvailableSquads(squadsData.squads || []);
       }
+
+      if (contentRes.ok) {
+        const contentData = await contentRes.json();
+        // Filter to only sellable content (has a price)
+        const sellableContent = (contentData.content || []).filter((c: SellableContent) => c.priceInCents && c.priceInCents > 0);
+        setAvailableContent(sellableContent);
+      }
     } catch (err) {
-      console.error('Error fetching programs/squads:', err);
+      console.error('Error fetching programs/squads/content:', err);
     } finally {
       setLoadingItems(false);
     }
@@ -204,6 +223,8 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
         applicableTo: code.applicableTo,
         programIds: code.programIds || [],
         squadIds: code.squadIds || [],
+        contentIds: code.contentIds || [],
+        contentTypes: code.contentTypes || [],
         maxUses: code.maxUses || '',
         expiresAt: code.expiresAt ? code.expiresAt.split('T')[0] : '',
         isActive: code.isActive,
@@ -220,6 +241,8 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
         applicableTo: 'all',
         programIds: [],
         squadIds: [],
+        contentIds: [],
+        contentTypes: [],
         maxUses: '',
         expiresAt: '',
         isActive: true,
@@ -242,16 +265,23 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
       setFormError(null);
 
       // Validate custom selection has at least one item
-      if (formData.applicableTo === 'custom' && formData.programIds.length === 0 && formData.squadIds.length === 0) {
-        setFormError('Please select at least one program or squad for custom targeting');
+      if (formData.applicableTo === 'custom' && formData.programIds.length === 0 && formData.squadIds.length === 0 && formData.contentIds.length === 0) {
+        setFormError('Please select at least one program, squad, or content item for custom targeting');
         setSaving(false);
         return;
       }
 
-      const url = editingCode 
+      // Validate content selection has at least one item
+      if (formData.applicableTo === 'content' && formData.contentIds.length === 0 && formData.contentTypes.length === 0) {
+        setFormError('Please select at least one content item or content type');
+        setSaving(false);
+        return;
+      }
+
+      const url = editingCode
         ? `${apiBasePath}/${editingCode.id}`
         : apiBasePath;
-      
+
       const response = await fetch(url, {
         method: editingCode ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -259,9 +289,11 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
           ...formData,
           maxUses: formData.maxUses || null,
           expiresAt: formData.expiresAt || null,
-          // Only send programIds/squadIds if custom selection
-          programIds: formData.applicableTo === 'custom' ? formData.programIds : null,
-          squadIds: formData.applicableTo === 'custom' ? formData.squadIds : null,
+          // Only send programIds/squadIds/contentIds based on applicableTo
+          programIds: (formData.applicableTo === 'custom' || formData.applicableTo === 'programs') ? formData.programIds : null,
+          squadIds: (formData.applicableTo === 'custom' || formData.applicableTo === 'squads') ? formData.squadIds : null,
+          contentIds: (formData.applicableTo === 'custom' || formData.applicableTo === 'content') ? formData.contentIds : null,
+          contentTypes: (formData.applicableTo === 'custom' || formData.applicableTo === 'content') ? formData.contentTypes : null,
         }),
       });
 
@@ -324,11 +356,17 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
     return `$${(code.value / 100).toFixed(2)}`;
   };
 
-  // Get all selectable items (programs + squads) for the multi-select
+  // Get all selectable items (programs + squads + content) for the multi-select
   const getSelectableItems = (): SelectableItem[] => {
     const items: SelectableItem[] = [];
     availablePrograms.forEach(p => items.push({ id: p.id, name: p.name, type: 'program' }));
     availableSquads.forEach(s => items.push({ id: s.id, name: s.name, type: 'squad' }));
+    availableContent.forEach(c => items.push({
+      id: c.id,
+      name: c.title,
+      type: 'content',
+      contentType: c.type as DiscountContentType,
+    }));
     return items;
   };
 
@@ -339,9 +377,10 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
 
   // Check if an item is selected
   const isItemSelected = (item: SelectableItem) => {
-    return item.type === 'program' 
-      ? formData.programIds.includes(item.id)
-      : formData.squadIds.includes(item.id);
+    if (item.type === 'program') return formData.programIds.includes(item.id);
+    if (item.type === 'squad') return formData.squadIds.includes(item.id);
+    if (item.type === 'content') return formData.contentIds.includes(item.id);
+    return false;
   };
 
   // Toggle item selection
@@ -353,12 +392,19 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
           ? prev.programIds.filter(id => id !== item.id)
           : [...prev.programIds, item.id],
       }));
-    } else {
+    } else if (item.type === 'squad') {
       setFormData(prev => ({
         ...prev,
         squadIds: prev.squadIds.includes(item.id)
           ? prev.squadIds.filter(id => id !== item.id)
           : [...prev.squadIds, item.id],
+      }));
+    } else if (item.type === 'content') {
+      setFormData(prev => ({
+        ...prev,
+        contentIds: prev.contentIds.includes(item.id)
+          ? prev.contentIds.filter(id => id !== item.id)
+          : [...prev.contentIds, item.id],
       }));
     }
   };
@@ -374,6 +420,15 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
       const squad = availableSquads.find(s => s.id === id);
       if (squad) items.push({ id: squad.id, name: squad.name, type: 'squad' });
     });
+    formData.contentIds.forEach(id => {
+      const content = availableContent.find(c => c.id === id);
+      if (content) items.push({
+        id: content.id,
+        name: content.title,
+        type: 'content',
+        contentType: content.type as DiscountContentType,
+      });
+    });
     return items;
   };
 
@@ -382,12 +437,15 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
     if (code.applicableTo === 'all') return 'All Products';
     if (code.applicableTo === 'programs') return 'Programs Only';
     if (code.applicableTo === 'squads') return 'Squads Only';
+    if (code.applicableTo === 'content') return 'Content Only';
     if (code.applicableTo === 'custom') {
       const programCount = code.programIds?.length || 0;
       const squadCount = code.squadIds?.length || 0;
+      const contentCount = code.contentIds?.length || 0;
       const parts: string[] = [];
       if (programCount > 0) parts.push(`${programCount} program${programCount > 1 ? 's' : ''}`);
       if (squadCount > 0) parts.push(`${squadCount} squad${squadCount > 1 ? 's' : ''}`);
+      if (contentCount > 0) parts.push(`${contentCount} content item${contentCount > 1 ? 's' : ''}`);
       return parts.length > 0 ? parts.join(', ') : 'Custom Selection';
     }
     return 'Unknown';
@@ -406,6 +464,12 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
       code.squadIds.forEach(id => {
         const squad = availableSquads.find(s => s.id === id);
         if (squad) names.push(squad.name);
+      });
+    }
+    if (code.contentIds) {
+      code.contentIds.forEach(id => {
+        const content = availableContent.find(c => c.id === id);
+        if (content) names.push(content.title);
       });
     }
     return names;
@@ -583,6 +647,8 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                     ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                     : code.applicableTo === 'squads'
                     ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    : code.applicableTo === 'content'
+                    ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
                     : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                 }`}>
                   {getApplicabilityLabel(code)}
@@ -696,28 +762,31 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                 value={formData.applicableTo}
                 onChange={(e) => {
                   const newValue = e.target.value as DiscountApplicableTo;
-                  setFormData({ 
-                    ...formData, 
+                  setFormData({
+                    ...formData,
                     applicableTo: newValue,
-                    // Clear selections when switching away from custom
-                    programIds: newValue === 'custom' ? formData.programIds : [],
-                    squadIds: newValue === 'custom' ? formData.squadIds : [],
+                    // Clear selections when switching away from custom/content
+                    programIds: (newValue === 'custom' || newValue === 'programs') ? formData.programIds : [],
+                    squadIds: (newValue === 'custom' || newValue === 'squads') ? formData.squadIds : [],
+                    contentIds: (newValue === 'custom' || newValue === 'content') ? formData.contentIds : [],
+                    contentTypes: (newValue === 'custom' || newValue === 'content') ? formData.contentTypes : [],
                   });
                 }}
                 className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
               >
-                <option value="all">All Programs & Squads</option>
+                <option value="all">All Products</option>
                 <option value="programs">Programs Only</option>
                 <option value="squads">Squads Only</option>
+                <option value="content">Content Only</option>
                 <option value="custom">Custom Selection</option>
               </select>
             </div>
 
-            {/* Custom Selection Multi-Select */}
-            {formData.applicableTo === 'custom' && (
+            {/* Custom Selection Multi-Select - also show for content selection */}
+            {(formData.applicableTo === 'custom' || formData.applicableTo === 'content') && (
               <div ref={dropdownRef}>
                 <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                  Select Programs & Squads
+                  {formData.applicableTo === 'content' ? 'Select Content Items' : 'Select Programs, Squads & Content'}
                 </label>
                 
                 {/* Selected items as pills */}
@@ -729,7 +798,9 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                         className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                           item.type === 'program'
                             ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                            : item.type === 'squad'
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                            : 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
                         }`}
                       >
                         {item.name}
@@ -753,8 +824,10 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                     className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-left flex items-center justify-between"
                   >
                     <span className="text-[#5f5a55] dark:text-[#b2b6c2]">
-                      {getSelectedItems().length === 0 
-                        ? 'Click to select programs or squads...'
+                      {getSelectedItems().length === 0
+                        ? formData.applicableTo === 'content'
+                          ? 'Click to select content items...'
+                          : 'Click to select items...'
                         : `${getSelectedItems().length} selected`
                       }
                     </span>
@@ -786,12 +859,12 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                           </div>
                         ) : filteredItems.length === 0 ? (
                           <div className="p-4 text-center text-sm text-[#5f5a55]">
-                            {searchTerm ? 'No matching items' : 'No programs or squads available'}
+                            {searchTerm ? 'No matching items' : formData.applicableTo === 'content' ? 'No sellable content available' : 'No items available'}
                           </div>
                         ) : (
                           <>
-                            {/* Programs section */}
-                            {filteredItems.filter(i => i.type === 'program').length > 0 && (
+                            {/* Programs section - hide if content only mode */}
+                            {formData.applicableTo !== 'content' && filteredItems.filter(i => i.type === 'program').length > 0 && (
                               <div>
                                 <div className="px-3 py-1.5 text-xs font-semibold text-[#5f5a55] dark:text-[#b2b6c2] bg-[#f5f3f0] dark:bg-[#11141b]">
                                   Programs
@@ -812,8 +885,8 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                               </div>
                             )}
 
-                            {/* Squads section */}
-                            {filteredItems.filter(i => i.type === 'squad').length > 0 && (
+                            {/* Squads section - hide if content only mode */}
+                            {formData.applicableTo !== 'content' && filteredItems.filter(i => i.type === 'squad').length > 0 && (
                               <div>
                                 <div className="px-3 py-1.5 text-xs font-semibold text-[#5f5a55] dark:text-[#b2b6c2] bg-[#f5f3f0] dark:bg-[#11141b]">
                                   Squads
@@ -828,6 +901,35 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                                     <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{item.name}</span>
                                     {isItemSelected(item) && (
                                       <Check className="w-4 h-4 text-brand-accent" />
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Content section */}
+                            {filteredItems.filter(i => i.type === 'content').length > 0 && (
+                              <div>
+                                <div className="px-3 py-1.5 text-xs font-semibold text-[#5f5a55] dark:text-[#b2b6c2] bg-[#f5f3f0] dark:bg-[#11141b]">
+                                  Content
+                                </div>
+                                {filteredItems.filter(i => i.type === 'content').map(item => (
+                                  <button
+                                    key={`content-${item.id}`}
+                                    type="button"
+                                    onClick={() => toggleItem(item)}
+                                    className="w-full px-3 py-2 text-left text-sm hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] flex items-center justify-between"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{item.name}</span>
+                                      {item.contentType && (
+                                        <span className="text-xs px-1.5 py-0.5 rounded bg-[#e1ddd8] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] capitalize">
+                                          {item.contentType}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {isItemSelected(item) && (
+                                      <Check className="w-4 h-4 text-brand-accent flex-shrink-0" />
                                     )}
                                   </button>
                                 ))}

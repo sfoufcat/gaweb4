@@ -5,6 +5,7 @@ import { updateAlignmentForToday } from '@/lib/alignment';
 import { sendTasksCompletedNotification } from '@/lib/notifications';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { updateLastActivity } from '@/lib/analytics/lastActivity';
+import { updateClientActivityStatus } from '@/lib/analytics/activity';
 import type { Task, UpdateTaskRequest } from '@/types';
 
 /**
@@ -82,6 +83,10 @@ export async function PATCH(
         if (organizationId) {
           updateLastActivity(userId, organizationId, 'task').catch(err => {
             console.error('[TASKS] Failed to update lastActivityAt:', err);
+          });
+          // Update activity status for real-time status updates (non-blocking)
+          updateClientActivityStatus(organizationId, userId).catch(err => {
+            console.error('[TASKS] Failed to update activity status:', err);
           });
         }
       } else {

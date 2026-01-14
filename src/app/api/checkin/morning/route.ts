@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { updateAlignmentForToday } from '@/lib/alignment';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { updateLastActivity } from '@/lib/analytics/lastActivity';
+import { updateClientActivityStatus } from '@/lib/analytics/activity';
 import type { MorningCheckIn } from '@/types';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
 
@@ -231,6 +232,10 @@ export async function PATCH(request: NextRequest) {
         // Update lastActivityAt for analytics (non-blocking)
         updateLastActivity(userId, organizationId, 'checkin').catch(err => {
           console.error('[MORNING_CHECKIN] Failed to update lastActivityAt:', err);
+        });
+        // Update activity status for real-time status updates (non-blocking)
+        updateClientActivityStatus(organizationId, userId).catch(err => {
+          console.error('[MORNING_CHECKIN] Failed to update activity status:', err);
         });
       } catch (alignmentError) {
         // Don't fail the check-in if alignment update fails

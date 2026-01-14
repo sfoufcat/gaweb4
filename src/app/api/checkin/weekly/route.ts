@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { summarizeWeeklyFocus } from '@/lib/anthropic';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { updateLastActivity } from '@/lib/analytics/lastActivity';
+import { updateClientActivityStatus } from '@/lib/analytics/activity';
 import type { WeeklyReflectionCheckIn } from '@/types';
 
 // Get the week identifier (Monday of the current week)
@@ -204,6 +205,10 @@ export async function PATCH(request: NextRequest) {
       if (organizationId) {
         updateLastActivity(userId, organizationId, 'weekly').catch(err => {
           console.error('[WEEKLY_CHECKIN] Failed to update lastActivityAt:', err);
+        });
+        // Update activity status for real-time status updates (non-blocking)
+        updateClientActivityStatus(organizationId, userId).catch(err => {
+          console.error('[WEEKLY_CHECKIN] Failed to update activity status:', err);
         });
       }
       

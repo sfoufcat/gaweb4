@@ -5,6 +5,7 @@ import { sendWeeklyReflectionNotification } from '@/lib/notifications';
 import { isFridayInTimezone, DEFAULT_TIMEZONE } from '@/lib/timezone';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { updateLastActivity } from '@/lib/analytics/lastActivity';
+import { updateClientActivityStatus } from '@/lib/analytics/activity';
 import type { Task, EveningCheckIn, EveningEmotionalState } from '@/types';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
 
@@ -320,6 +321,10 @@ export async function PATCH(request: NextRequest) {
       if (organizationId) {
         updateLastActivity(userId, organizationId, 'checkin').catch(err => {
           console.error('[EVENING_CHECKIN] Failed to update lastActivityAt:', err);
+        });
+        // Update activity status for real-time status updates (non-blocking)
+        updateClientActivityStatus(organizationId, userId).catch(err => {
+          console.error('[EVENING_CHECKIN] Failed to update activity status:', err);
         });
       }
       
