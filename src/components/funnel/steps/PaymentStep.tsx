@@ -13,6 +13,8 @@ import { Lock, CreditCard, Check, ArrowLeft, Plus, CircleCheck, Shield, Loader2,
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@clerk/nextjs';
 import type { FunnelStepConfigPayment } from '@/types';
+import { useDiscountCode } from '@/hooks/useDiscountCode';
+import { DiscountCodeInput } from '@/components/checkout';
 
 // CSS variable helper - uses values set by FunnelClient
 const primaryVar = 'var(--funnel-primary, var(--brand-accent-light))';
@@ -50,6 +52,7 @@ interface PaymentStepProps {
   onBack?: () => void;
   data: Record<string, unknown>;
   program: {
+    id: string;
     name: string;
     priceInCents: number;
     currency: string;
@@ -97,11 +100,13 @@ function SavedCardsForFunnel({
   onPay,
   isProcessing,
   priceInCents,
+  basePriceInCents,
   currency,
   programName,
   features,
   subscriptionEnabled,
   billingInterval,
+  discount,
 }: {
   savedMethods: SavedPaymentMethod[];
   selectedMethodId: string | null;
@@ -110,11 +115,13 @@ function SavedCardsForFunnel({
   onPay: () => void;
   isProcessing: boolean;
   priceInCents: number;
+  basePriceInCents: number;
   currency: string;
   programName: string;
   features?: string[];
   subscriptionEnabled?: boolean;
   billingInterval?: 'monthly' | 'quarterly' | 'yearly';
+  discount: ReturnType<typeof useDiscountCode>;
 }) {
   const formatPrice = (cents: number, curr: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -124,6 +131,7 @@ function SavedCardsForFunnel({
   };
 
   const isRecurring = subscriptionEnabled && billingInterval;
+  const hasDiscount = discount.hasValidDiscount;
 
   return (
     <div className="space-y-6">
@@ -138,9 +146,19 @@ function SavedCardsForFunnel({
             </p>
           </div>
           <div className="text-right">
+            {hasDiscount && (
+              <p className="font-albert text-sm text-text-tertiary line-through">
+                {formatPrice(basePriceInCents, currency)}
+              </p>
+            )}
             <p className="font-albert text-2xl font-semibold text-text-primary">
               {formatPrice(priceInCents, currency)}{isRecurring && getIntervalLabel(billingInterval)}
             </p>
+            {hasDiscount && (
+              <p className="text-sm text-green-600 font-medium">
+                {discount.displayDiscount}
+              </p>
+            )}
           </div>
         </div>
 
@@ -168,6 +186,11 @@ function SavedCardsForFunnel({
             ))}
           </div>
         )}
+
+        {/* Discount code input */}
+        <div className="border-t border-[#e1ddd8] pt-4 mt-4">
+          <DiscountCodeInput discount={discount} compact />
+        </div>
       </div>
 
       {/* Saved cards */}
@@ -271,14 +294,16 @@ interface PaymentFormProps {
   onSuccess: (paymentIntentId: string, paymentMethodId?: string) => void;
   programName: string;
   priceInCents: number;
+  basePriceInCents: number;
   currency: string;
   features?: string[];
   organizationId?: string;
   subscriptionEnabled?: boolean;
   billingInterval?: 'monthly' | 'quarterly' | 'yearly';
+  discount: ReturnType<typeof useDiscountCode>;
 }
 
-function PaymentForm({ onSuccess, programName, priceInCents, currency, features, organizationId, subscriptionEnabled, billingInterval }: PaymentFormProps) {
+function PaymentForm({ onSuccess, programName, priceInCents, basePriceInCents, currency, features, organizationId, subscriptionEnabled, billingInterval, discount }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -286,6 +311,7 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
   const [saveCard, setSaveCard] = useState(true); // Auto-checked
 
   const isRecurring = subscriptionEnabled && billingInterval;
+  const hasDiscount = discount.hasValidDiscount;
 
   const formatPrice = (cents: number, curr: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -317,10 +343,10 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
       setIsProcessing(false);
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
       // Extract payment method ID for upsells (it's a string ID, not the full object)
-      const paymentMethodId = typeof paymentIntent.payment_method === 'string' 
-        ? paymentIntent.payment_method 
+      const paymentMethodId = typeof paymentIntent.payment_method === 'string'
+        ? paymentIntent.payment_method
         : paymentIntent.payment_method?.toString();
-      
+
       // If user chose not to save card, delete it after successful payment
       if (!saveCard && organizationId && paymentMethodId) {
         try {
@@ -354,9 +380,19 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
             </p>
           </div>
           <div className="text-right">
+            {hasDiscount && (
+              <p className="font-albert text-sm text-text-tertiary line-through">
+                {formatPrice(basePriceInCents, currency)}
+              </p>
+            )}
             <p className="font-albert text-2xl font-semibold text-text-primary">
               {formatPrice(priceInCents, currency)}{isRecurring && getIntervalLabel(billingInterval)}
             </p>
+            {hasDiscount && (
+              <p className="text-sm text-green-600 font-medium">
+                {discount.displayDiscount}
+              </p>
+            )}
           </div>
         </div>
 
@@ -384,6 +420,11 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
             ))}
           </div>
         )}
+
+        {/* Discount code input */}
+        <div className="border-t border-[#e1ddd8] pt-4 mt-4">
+          <DiscountCodeInput discount={discount} compact />
+        </div>
       </div>
 
       {/* Payment Element */}
@@ -506,13 +547,23 @@ export function PaymentStep({
   // Guest checkout: saved cards are not available
   const canShowSavedCards = authLoaded && isSignedIn && organizationId;
 
-  // Determine price
-  const priceInCents = config.useProgramPricing 
-    ? program.priceInCents 
+  // Determine base price (before discounts)
+  const basePriceInCents = config.useProgramPricing
+    ? program.priceInCents
     : (config.priceInCents || program.priceInCents);
-  
+
   const currency = program.currency || 'usd';
   const stripePriceId = config.stripePriceId || program.stripePriceId;
+
+  // Discount code support
+  const discount = useDiscountCode({
+    organizationId: organizationId || '',
+    originalAmountCents: basePriceInCents,
+    programId: program.id,
+  });
+
+  // Final price after discount
+  const priceInCents = discount.hasValidDiscount ? discount.finalPrice : basePriceInCents;
 
   // Fetch saved payment methods - only for authenticated users
   const fetchSavedMethods = useCallback(async () => {
@@ -701,8 +752,15 @@ export function PaymentStep({
     onComplete({
       stripePaymentIntentId: paymentIntentId,
       paidAmount: priceInCents,
+      originalAmount: basePriceInCents,
       connectedAccountId: accountId || connectedAccountId,
       ...(finalSubscriptionId && { stripeSubscriptionId: finalSubscriptionId }),
+      // Include discount info if used
+      ...(discount.hasValidDiscount && discount.validationResult?.discountCode && {
+        discountCode: discount.validationResult.discountCode.code,
+        discountCodeId: discount.validationResult.discountCode.id,
+        discountAmount: discount.validationResult.discountAmountCents,
+      }),
     });
   };
 
@@ -816,11 +874,13 @@ export function PaymentStep({
             onPay={handlePayWithSavedMethod}
             isProcessing={isProcessingSaved}
             priceInCents={priceInCents}
+            basePriceInCents={basePriceInCents}
             currency={currency}
             programName={program.name}
             features={config.features}
             subscriptionEnabled={program.subscriptionEnabled}
             billingInterval={program.billingInterval}
+            discount={discount}
           />
         </motion.div>
       </div>
@@ -891,16 +951,18 @@ export function PaymentStep({
             }}
           >
             <PaymentForm
-              onSuccess={(paymentIntentId, paymentMethodId) => 
+              onSuccess={(paymentIntentId, paymentMethodId) =>
                 handlePaymentSuccess(paymentIntentId, connectedAccountId, paymentMethodId)
               }
               programName={program.name}
               priceInCents={priceInCents}
+              basePriceInCents={basePriceInCents}
               currency={currency}
               features={config.features}
               organizationId={organizationId}
               subscriptionEnabled={program.subscriptionEnabled}
               billingInterval={program.billingInterval}
+              discount={discount}
             />
           </Elements>
         </motion.div>

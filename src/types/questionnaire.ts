@@ -142,6 +142,11 @@ export interface Questionnaire {
   /** Always true - responses must be linked to authenticated users */
   requireAuth: true;
 
+  // ---- Program association ----
+
+  /** Program IDs this questionnaire is associated with (for content gating) */
+  programIds?: string[];
+
   // ---- Styling (optional) ----
 
   /** Cover image URL for the questionnaire header */

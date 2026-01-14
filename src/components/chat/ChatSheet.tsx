@@ -141,6 +141,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     canPin,
     canArchive,
     canDelete,
+    getPreference,
   } = useChatPreferences();
 
   // State for archived view - track which tab's archive to show
@@ -265,7 +266,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     return <MessageCircle className="w-5 h-5 text-text-secondary" />;
   };
 
-  // Sort channels: user-pinned first, then coaching for clients (unless explicitly unpinned), then unread, then by last message time
+  // Sort channels: user-pinned first (by pinnedAt), then coaching for clients (unless explicitly unpinned), then unread, then by last message time
   const sortedChannels = useMemo(() => {
     // First filter out archived channels
     const visibleChannels = channels.filter(c =>
@@ -278,6 +279,17 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       const bPinned = pinnedChannelIds.has(b.id);
       if (aPinned && !bPinned) return -1;
       if (!aPinned && bPinned) return 1;
+
+      // If both are user-pinned, sort by pinnedAt (most recent first)
+      if (aPinned && bPinned) {
+        const aPinnedAt = getPreference(a.id)?.pinnedAt;
+        const bPinnedAt = getPreference(b.id)?.pinnedAt;
+        if (aPinnedAt && bPinnedAt) {
+          return new Date(bPinnedAt).getTime() - new Date(aPinnedAt).getTime();
+        }
+        if (aPinnedAt) return -1;
+        if (bPinnedAt) return 1;
+      }
 
       // Coaching channels pinned to top ONLY for clients (not coaches)
       // UNLESS the user has explicitly unpinned them
@@ -296,7 +308,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       }
       return 0;
     });
-  }, [channels, isCoach, pinnedChannelIds, archivedChannelIds, explicitlyUnpinnedChannelIds]);
+  }, [channels, isCoach, pinnedChannelIds, archivedChannelIds, explicitlyUnpinnedChannelIds, getPreference]);
 
   // Filter channels into main vs direct
   // For coaches: coaching channels go in Direct tab (like DMs with clients)

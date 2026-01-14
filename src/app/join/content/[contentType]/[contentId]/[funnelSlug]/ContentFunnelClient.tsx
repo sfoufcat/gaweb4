@@ -405,6 +405,7 @@ export default function ContentFunnelClient({
             program={contentAsProgram}
             skipPayment={skipPayment}
             isFirstStep={currentStepIndex === 0}
+            organizationId={organization.id}
           />
         );
 

@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Reorder, useDragControls, motion, AnimatePresence } from 'framer-motion';
 import { Plus, GripVertical, ArrowLeft, Settings, Copy, Check, Send, X, CheckCircle2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { QuestionEditor } from './QuestionEditor';
 import { QuestionTypeSelector } from './QuestionTypeSelector';
 import type {
@@ -35,12 +39,15 @@ export function QuestionnaireBuilder({
   const [allowMultipleResponses, setAllowMultipleResponses] = useState(
     questionnaire.allowMultipleResponses
   );
+  const [programIds, setProgramIds] = useState<string[]>(questionnaire.programIds || []);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -53,9 +60,10 @@ export function QuestionnaireBuilder({
       description !== (questionnaire.description || '') ||
       JSON.stringify(questions) !== JSON.stringify(questionnaire.questions) ||
       isActive !== questionnaire.isActive ||
-      allowMultipleResponses !== questionnaire.allowMultipleResponses;
+      allowMultipleResponses !== questionnaire.allowMultipleResponses ||
+      JSON.stringify(programIds) !== JSON.stringify(questionnaire.programIds || []);
     setHasUnsavedChanges(hasChanges);
-  }, [title, description, questions, isActive, allowMultipleResponses, questionnaire]);
+  }, [title, description, questions, isActive, allowMultipleResponses, programIds, questionnaire]);
 
   // Auto-save debounced
   const debouncedSave = useCallback(
@@ -97,6 +105,7 @@ export function QuestionnaireBuilder({
         questions,
         isActive: true, // Always set to active when manually saving/publishing
         allowMultipleResponses,
+        programIds,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -140,6 +149,12 @@ export function QuestionnaireBuilder({
       debouncedSave({ allowMultipleResponses });
     }
   }, [allowMultipleResponses, questionnaire.allowMultipleResponses, debouncedSave]);
+
+  useEffect(() => {
+    if (JSON.stringify(programIds) !== JSON.stringify(questionnaire.programIds || [])) {
+      debouncedSave({ programIds });
+    }
+  }, [programIds, questionnaire.programIds, debouncedSave]);
 
   // Add new question
   const handleAddQuestion = (type: QuestionnaireQuestionType) => {
@@ -301,70 +316,19 @@ export function QuestionnaireBuilder({
         </div>
       </div>
 
-      {/* Settings Panel - Slide down */}
-      <AnimatePresence>
-        {showSettings && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden border-b border-[#e1ddd8] dark:border-[#262b35]/50 bg-white dark:bg-[#171b22]"
-          >
-            <div className="max-w-4xl mx-auto px-6 py-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  Settings
-                </h3>
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="p-1 rounded hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-                >
-                  <X className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                </button>
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                      Active
-                    </h4>
-                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-                      When active, the questionnaire can receive responses
-                    </p>
-                  </div>
-                  <Switch
-                    checked={isActive}
-                    onCheckedChange={setIsActive}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                      Allow Multiple Responses
-                    </h4>
-                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-                      Allow the same user to submit multiple times
-                    </p>
-                  </div>
-                  <Switch
-                    checked={allowMultipleResponses}
-                    onCheckedChange={setAllowMultipleResponses}
-                  />
-                </div>
-                <div className="pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]/50">
-                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                    Shareable Link:{' '}
-                    <code className="bg-[#f3f1ef] dark:bg-[#262b35] px-2 py-0.5 rounded text-[#1a1a1a] dark:text-[#f5f5f8]">
-                      {typeof window !== 'undefined' ? window.location.origin : ''}/q/{questionnaire.slug}
-                    </code>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Settings Modal - Dialog on desktop, Drawer on mobile */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        isDesktop={isDesktop}
+        isActive={isActive}
+        setIsActive={setIsActive}
+        allowMultipleResponses={allowMultipleResponses}
+        setAllowMultipleResponses={setAllowMultipleResponses}
+        programIds={programIds}
+        setProgramIds={setProgramIds}
+        shareableLink={typeof window !== 'undefined' ? `${window.location.origin}/q/${questionnaire.slug}` : `/q/${questionnaire.slug}`}
+      />
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-6 py-8">
@@ -422,6 +386,118 @@ export function QuestionnaireBuilder({
         </div>
       </div>
     </div>
+  );
+}
+
+// Settings Modal Component
+function SettingsModal({
+  isOpen,
+  onClose,
+  isDesktop,
+  isActive,
+  setIsActive,
+  allowMultipleResponses,
+  setAllowMultipleResponses,
+  programIds,
+  setProgramIds,
+  shareableLink,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  isDesktop: boolean;
+  isActive: boolean;
+  setIsActive: (value: boolean) => void;
+  allowMultipleResponses: boolean;
+  setAllowMultipleResponses: (value: boolean) => void;
+  programIds: string[];
+  setProgramIds: (value: string[]) => void;
+  shareableLink: string;
+}) {
+  const content = (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+          Settings
+        </h3>
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+        >
+          <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+        </button>
+      </div>
+
+      <div className="space-y-5">
+        {/* Active toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              Active
+            </h4>
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+              When active, the questionnaire can receive responses
+            </p>
+          </div>
+          <Switch checked={isActive} onCheckedChange={setIsActive} />
+        </div>
+
+        {/* Allow Multiple Responses toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              Allow Multiple Responses
+            </h4>
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+              Allow the same user to submit multiple times
+            </p>
+          </div>
+          <Switch checked={allowMultipleResponses} onCheckedChange={setAllowMultipleResponses} />
+        </div>
+
+        {/* Program Association */}
+        <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]/50">
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+            Programs
+          </label>
+          <ProgramSelector
+            value={programIds}
+            onChange={setProgramIds}
+            placeholder="Select programs for this questionnaire..."
+            programsApiEndpoint="/api/coach/org-programs"
+          />
+        </div>
+
+        {/* Shareable Link */}
+        <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]/50">
+          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+            Shareable Link:{' '}
+            <code className="bg-[#f3f1ef] dark:bg-[#262b35] px-2 py-0.5 rounded text-[#1a1a1a] dark:text-[#f5f5f8]">
+              {shareableLink}
+            </code>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Desktop: Use Dialog (centered modal)
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-md p-0" hideCloseButton>
+          {content}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Use Drawer (slide-up)
+  return (
+    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()} shouldScaleBackground={false}>
+      <DrawerContent className="max-h-[85dvh]">
+        {content}
+      </DrawerContent>
+    </Drawer>
   );
 }
 

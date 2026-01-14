@@ -1456,13 +1456,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
         // Fetch available call summaries, events, and resources for manual linking
         try {
-          const [summariesRes, eventsRes, articlesRes, downloadsRes, linksRes, questionnairesRes] = await Promise.all([
+          const [summariesRes, eventsRes, articlesRes, downloadsRes, linksRes, questionnairesRes, coursesRes] = await Promise.all([
             fetch(`/api/coach/call-summaries?programId=${programId}`),
             fetch(`/api/programs/${programId}/events`),
             fetch('/api/coach/org-discover/articles'),
             fetch('/api/coach/org-discover/downloads'),
             fetch('/api/coach/org-discover/links'),
             fetch('/api/coach/questionnaires'),
+            fetch('/api/coach/org-discover/courses'),
           ]);
 
           if (summariesRes.ok) {
@@ -1511,6 +1512,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           } else {
             setAvailableQuestionnaires([]);
           }
+
+          if (coursesRes.ok) {
+            const coursesData = await coursesRes.json();
+            setOrganizationCourses(coursesData.courses || []);
+          } else {
+            setOrganizationCourses([]);
+          }
         } catch (linkDataErr) {
           console.error('Error fetching call summaries/events/resources:', linkDataErr);
           setAvailableCallSummaries([]);
@@ -1519,6 +1527,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           setAvailableDownloads([]);
           setAvailableLinks([]);
           setAvailableQuestionnaires([]);
+          setOrganizationCourses([]);
         }
       } catch (err) {
         console.error('Error fetching modules/weeks:', err);

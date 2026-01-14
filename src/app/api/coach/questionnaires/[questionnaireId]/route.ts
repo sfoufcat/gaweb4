@@ -137,6 +137,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       'questions',
       'isActive',
       'allowMultipleResponses',
+      'programIds',
       'coverImageUrl',
       'accentColor',
       'responseCount',

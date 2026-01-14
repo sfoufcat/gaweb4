@@ -564,6 +564,7 @@ export default function FunnelClient({
             {...commonProps}
             config={stepConfig.config as FunnelStepConfigPayment}
             skipPayment={skipPayment}
+            organizationId={organization.id}
           />
         );
       

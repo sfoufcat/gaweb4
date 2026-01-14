@@ -407,16 +407,18 @@ export default function SquadFunnelClient({
         );
       case 'payment':
         return (
-          <PaymentStep 
-            {...commonProps} 
+          <PaymentStep
+            {...commonProps}
             config={stepConfig.config as FunnelStepConfigPayment}
             // For squad funnels, pass squad info instead of program
             program={{
+              id: squad.id,
               name: squad.name,
               priceInCents: 0, // Will be configured per funnel/squad
               currency: 'usd',
             }}
             skipPayment={false}
+            organizationId={organization.id}
           />
         );
       case 'goal_setting':

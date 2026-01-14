@@ -1136,43 +1136,40 @@ export function DayEditor({
           )}
 
           {/* Add article dropdown */}
-          {availableArticlesToLink.length > 0 && (
-            <select
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-              value=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  addArticleLink(e.target.value);
-                }
-              }}
-            >
-              <option value="">Add an article...</option>
-              {programArticles.length > 0 && (
-                <optgroup label="Program Content">
-                  {programArticles.map((article) => (
-                    <option key={article.id} value={article.id}>
-                      {article.title}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {platformArticles.length > 0 && (
-                <optgroup label="Platform Content">
-                  {platformArticles.map((article) => (
-                    <option key={article.id} value={article.id}>
-                      {article.title}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          )}
-          <a
-            href="/coach?tab=discover"
-            className="text-sm text-brand-accent hover:underline mt-2 inline-block"
+          <select
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+            value=""
+            onChange={(e) => {
+              if (e.target.value === '__create_new__') {
+                window.location.href = '/coach?tab=discover';
+              } else if (e.target.value) {
+                addArticleLink(e.target.value);
+              }
+            }}
           >
-            + Create new article
-          </a>
+            <option value="">Add an article...</option>
+            {programArticles.length > 0 && (
+              <optgroup label="Program Content">
+                {programArticles.map((article) => (
+                  <option key={article.id} value={article.id}>
+                    {article.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {platformArticles.length > 0 && (
+              <optgroup label="Platform Content">
+                {platformArticles.map((article) => (
+                  <option key={article.id} value={article.id}>
+                    {article.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <option value="__create_new__" className="text-brand-accent font-medium">
+              + Create new article
+            </option>
+          </select>
 
           {formData.linkedArticleIds.length === 0 && availableArticlesToLink.length === 0 && (
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
@@ -1218,43 +1215,40 @@ export function DayEditor({
           )}
 
           {/* Add download dropdown */}
-          {availableDownloadsToLink.length > 0 && (
-            <select
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-              value=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  addDownloadLink(e.target.value);
-                }
-              }}
-            >
-              <option value="">Add a download...</option>
-              {programDownloads.length > 0 && (
-                <optgroup label="Program Content">
-                  {programDownloads.map((download) => (
-                    <option key={download.id} value={download.id}>
-                      {download.title}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {platformDownloads.length > 0 && (
-                <optgroup label="Platform Content">
-                  {platformDownloads.map((download) => (
-                    <option key={download.id} value={download.id}>
-                      {download.title}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          )}
-          <a
-            href="/coach?tab=discover"
-            className="text-sm text-brand-accent hover:underline mt-2 inline-block"
+          <select
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+            value=""
+            onChange={(e) => {
+              if (e.target.value === '__create_new__') {
+                window.location.href = '/coach?tab=discover';
+              } else if (e.target.value) {
+                addDownloadLink(e.target.value);
+              }
+            }}
           >
-            + Create new download
-          </a>
+            <option value="">Add a download...</option>
+            {programDownloads.length > 0 && (
+              <optgroup label="Program Content">
+                {programDownloads.map((download) => (
+                  <option key={download.id} value={download.id}>
+                    {download.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {platformDownloads.length > 0 && (
+              <optgroup label="Platform Content">
+                {platformDownloads.map((download) => (
+                  <option key={download.id} value={download.id}>
+                    {download.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <option value="__create_new__" className="text-brand-accent font-medium">
+              + Create new download
+            </option>
+          </select>
 
           {formData.linkedDownloadIds.length === 0 && availableDownloadsToLink.length === 0 && (
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
@@ -1300,43 +1294,40 @@ export function DayEditor({
           )}
 
           {/* Add link dropdown */}
-          {availableLinksToLink.length > 0 && (
-            <select
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-              value=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  addLinkLink(e.target.value);
-                }
-              }}
-            >
-              <option value="">Add a link...</option>
-              {programLinks.length > 0 && (
-                <optgroup label="Program Content">
-                  {programLinks.map((link) => (
-                    <option key={link.id} value={link.id}>
-                      {link.title}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {platformLinks.length > 0 && (
-                <optgroup label="Platform Content">
-                  {platformLinks.map((link) => (
-                    <option key={link.id} value={link.id}>
-                      {link.title}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          )}
-          <a
-            href="/coach?tab=discover"
-            className="text-sm text-brand-accent hover:underline mt-2 inline-block"
+          <select
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+            value=""
+            onChange={(e) => {
+              if (e.target.value === '__create_new__') {
+                window.location.href = '/coach?tab=discover';
+              } else if (e.target.value) {
+                addLinkLink(e.target.value);
+              }
+            }}
           >
-            + Create new link
-          </a>
+            <option value="">Add a link...</option>
+            {programLinks.length > 0 && (
+              <optgroup label="Program Content">
+                {programLinks.map((link) => (
+                  <option key={link.id} value={link.id}>
+                    {link.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {platformLinks.length > 0 && (
+              <optgroup label="Platform Content">
+                {platformLinks.map((link) => (
+                  <option key={link.id} value={link.id}>
+                    {link.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <option value="__create_new__" className="text-brand-accent font-medium">
+              + Create new link
+            </option>
+          </select>
 
           {formData.linkedLinkIds.length === 0 && availableLinksToLink.length === 0 && (
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
@@ -1382,17 +1373,19 @@ export function DayEditor({
           )}
 
           {/* Add questionnaire dropdown */}
-          {availableQuestionnairesToLink.length > 0 && (
-            <select
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-              value=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  addQuestionnaireLink(e.target.value);
-                }
-              }}
-            >
-              <option value="">Add a questionnaire...</option>
+          <select
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+            value=""
+            onChange={(e) => {
+              if (e.target.value === '__create_new__') {
+                window.location.href = '/coach?tab=discover';
+              } else if (e.target.value) {
+                addQuestionnaireLink(e.target.value);
+              }
+            }}
+          >
+            <option value="">Add a questionnaire...</option>
+            {availableQuestionnairesToLink.length > 0 && (
               <optgroup label="Platform Content">
                 {availableQuestionnairesToLink.map((questionnaire) => (
                   <option key={questionnaire.id} value={questionnaire.id}>
@@ -1400,14 +1393,11 @@ export function DayEditor({
                   </option>
                 ))}
               </optgroup>
-            </select>
-          )}
-          <a
-            href="/coach?tab=discover"
-            className="text-sm text-brand-accent hover:underline mt-2 inline-block"
-          >
-            + Create new questionnaire
-          </a>
+            )}
+            <option value="__create_new__" className="text-brand-accent font-medium">
+              + Create new questionnaire
+            </option>
+          </select>
 
           {formData.linkedQuestionnaireIds.length === 0 && availableQuestionnairesToLink.length === 0 && (
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
