@@ -144,25 +144,34 @@ export function ResourceLinkDropdown({
               )
             ))}
 
-            {/* Separator before create new */}
-            {(hasItems || onCreateNew) && onCreateNew && (
+            {/* Separator before create new - only if there are items */}
+            {hasItems && onCreateNew && (
               <div className="h-px bg-[#e1ddd8] dark:bg-[#262b35] mx-2" />
             )}
 
-            {/* Create new option */}
+            {/* Create new option - always show if provided */}
             {onCreateNew && (
               <button
                 type="button"
                 onClick={handleCreateNew}
                 className={cn(
-                  "w-full flex items-center gap-2 px-3 py-2 text-sm text-left",
+                  "w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left",
                   "hover:bg-[#f7f5f3] dark:hover:bg-[#1e222a] transition-colors",
-                  "text-brand-accent font-albert"
+                  "text-brand-accent font-albert font-medium"
                 )}
               >
                 <Plus className="w-4 h-4 flex-shrink-0" />
                 <span>{createNewLabel}</span>
               </button>
+            )}
+
+            {/* Empty state when no items and no create option */}
+            {!hasItems && !onCreateNew && (
+              <div className="px-3 py-4 text-center">
+                <span className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
+                  No items available
+                </span>
+              </div>
             )}
           </div>
         </div>

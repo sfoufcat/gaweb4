@@ -19,8 +19,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { ResourceLinkDropdown } from './ResourceLinkDropdown';
-// Client-side compression for faster uploads and reduced bandwidth costs
-import { compressAudioFile, needsCompression, canCompress, formatFileSize, getAudioDuration } from '@/lib/audio-compression';
+// Audio utilities for duration detection
+import { getAudioDuration } from '@/lib/audio-compression';
 
 interface EnrollmentWithUser extends ProgramEnrollment {
   user?: {
@@ -646,9 +646,69 @@ export function WeekEditor({
   // Recording upload and summary generation state
   const [recordingFile, setRecordingFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [recordingStatus, setRecordingStatus] = useState<'idle' | 'compressing' | 'uploading' | 'processing' | 'background' | 'completed' | 'error'>('idle');
+  const [recordingStatus, setRecordingStatus] = useState<'idle' | 'uploading' | 'processing' | 'background' | 'completed' | 'error'>('idle');
   const [recordingError, setRecordingError] = useState<string | null>(null);
-  const [compressionProgress, setCompressionProgress] = useState(0);
+  const [pendingRecordingId, setPendingRecordingId] = useState<string | null>(null);
+
+  // Check for in-progress recordings on mount and poll until complete
+  useEffect(() => {
+    if (!cohortId || !week.id) return;
+
+    let pollInterval: NodeJS.Timeout | null = null;
+    let cancelled = false;
+
+    const checkPendingRecordings = async () => {
+      try {
+        // Fetch any in-progress recordings for this week
+        const response = await fetch(
+          `/api/coach/recordings/pending?cohortId=${cohortId}&weekId=${week.id}`
+        );
+        if (!response.ok || cancelled) return;
+
+        const data = await response.json();
+        if (data.pendingRecording && !cancelled) {
+          setPendingRecordingId(data.pendingRecording.id);
+          setRecordingStatus('background');
+
+          // Start polling for completion
+          pollInterval = setInterval(async () => {
+            if (cancelled) return;
+            try {
+              const statusRes = await fetch(`/api/coach/recordings/${data.pendingRecording.id}/status`);
+              if (!statusRes.ok) return;
+              const statusData = await statusRes.json();
+
+              if (statusData.status === 'completed') {
+                setRecordingStatus('completed');
+                setPendingRecordingId(null);
+                if (pollInterval) clearInterval(pollInterval);
+                // Reset to idle after showing success
+                setTimeout(() => {
+                  if (!cancelled) setRecordingStatus('idle');
+                }, 3000);
+              } else if (statusData.status === 'failed') {
+                setRecordingStatus('error');
+                setRecordingError(statusData.error || 'Processing failed');
+                setPendingRecordingId(null);
+                if (pollInterval) clearInterval(pollInterval);
+              }
+            } catch (err) {
+              console.error('Error polling recording status:', err);
+            }
+          }, 5000);
+        }
+      } catch (err) {
+        console.error('Error checking pending recordings:', err);
+      }
+    };
+
+    checkPendingRecordings();
+
+    return () => {
+      cancelled = true;
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [cohortId, week.id]);
 
   // State for expanded tasks (to show member breakdown) - for cohort mode
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -1464,56 +1524,25 @@ export function WeekEditor({
     try {
       setRecordingError(null);
 
-      // Determine if we need to compress the file (over 25MB for faster uploads)
-      const MAX_TRANSCRIPTION_SIZE = 25 * 1024 * 1024; // 25MB
-      let fileToUpload: File | Blob = recordingFile;
-      let fileName = recordingFile.name;
-      let fileType = recordingFile.type;
-      let fileSize = recordingFile.size;
-      let durationSeconds: number | undefined;
-
-      // Compress if file is too large and is a compressible audio/video type
-      if (needsCompression(recordingFile) && canCompress(recordingFile)) {
-        setRecordingStatus('compressing');
-        setCompressionProgress(0);
-
-        try {
-          const result = await compressAudioFile(recordingFile, (progress) => {
-            setCompressionProgress(progress.progress);
-          });
-
-          fileToUpload = result.blob;
-          fileName = recordingFile.name.replace(/\.[^.]+$/, '.mp3');
-          fileType = 'audio/mp3';
-          fileSize = result.blob.size;
-          durationSeconds = result.durationSeconds; // Get actual duration from compression
-
-          console.log(`[COMPRESSION] Compressed ${formatFileSize(result.originalSize)} → ${formatFileSize(result.compressedSize)} (${result.compressionRatio.toFixed(1)}x, ${Math.round(durationSeconds)}s)`);
-
-          // If still too large after compression, warn user
-          if (fileSize > MAX_TRANSCRIPTION_SIZE) {
-            throw new Error(`File is still too large after compression (${formatFileSize(fileSize)}). Please use a shorter recording.`);
-          }
-        } catch (compressError) {
-          console.error('Compression failed:', compressError);
-          // Compression failed but Groq supports up to 100MB via URL, so continue with original
-          // Only fail if file exceeds Groq's 100MB URL limit
-          const GROQ_URL_LIMIT = 100 * 1024 * 1024;
-          if (recordingFile.size > GROQ_URL_LIMIT) {
-            throw new Error(`File is too large (${formatFileSize(recordingFile.size)}) and compression failed. Maximum file size is 100MB.`);
-          }
-          // Continue with original file - it's under Groq's URL limit
-          console.log(`[COMPRESSION] Failed but continuing with original file (${formatFileSize(recordingFile.size)} < 100MB limit)`);
-        }
-      } else if (canCompress(recordingFile)) {
-        // Small file - just get duration for accurate credit calculation
-        try {
-          durationSeconds = await getAudioDuration(recordingFile);
-          console.log(`[DURATION] File duration: ${Math.round(durationSeconds)}s`);
-        } catch (durationError) {
-          console.warn('Could not get duration, will estimate from file size:', durationError);
-        }
+      // Check file size limit (Groq supports up to 100MB via URL)
+      const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+      if (recordingFile.size > MAX_FILE_SIZE) {
+        throw new Error(`File is too large (${(recordingFile.size / (1024 * 1024)).toFixed(1)}MB). Maximum file size is 100MB.`);
       }
+
+      // Get duration for accurate credit calculation
+      let durationSeconds: number | undefined;
+      try {
+        durationSeconds = await getAudioDuration(recordingFile);
+        console.log(`[UPLOAD] File: ${recordingFile.name}, Size: ${(recordingFile.size / (1024 * 1024)).toFixed(1)}MB, Duration: ${Math.round(durationSeconds)}s`);
+      } catch (durationError) {
+        console.warn('Could not get duration, will estimate from file size:', durationError);
+      }
+
+      // File info for upload
+      const fileName = recordingFile.name;
+      const fileType = recordingFile.type || 'audio/mpeg';
+      const fileSize = recordingFile.size;
 
       setRecordingStatus('uploading');
       setUploadProgress(0);
@@ -1559,13 +1588,13 @@ export function WeekEditor({
 
       xhr.open('PUT', uploadUrl);
       xhr.setRequestHeader('Content-Type', fileType);
-      xhr.send(fileToUpload);
+      xhr.send(recordingFile);
 
       await uploadPromise;
 
       setRecordingStatus('processing');
 
-      // Step 3: Trigger processing (use compressed file info + duration for accurate credits)
+      // Step 3: Trigger processing (pass duration for accurate credit calculation)
       const processResponse = await fetch('/api/coach/recordings/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2116,25 +2145,6 @@ export function WeekEditor({
                 </p>
               )}
             </div>
-          ) : recordingStatus === 'compressing' ? (
-            /* Compressing state */
-            <div className="p-4 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg">
-              <div className="flex items-center gap-3 mb-2">
-                <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
-                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  Compressing audio... {compressionProgress}%
-                </span>
-              </div>
-              <div className="w-full h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-brand-accent transition-all duration-300"
-                  style={{ width: `${compressionProgress}%` }}
-                />
-              </div>
-              <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] mt-2">
-                Large files are compressed for faster transcription
-              </p>
-            </div>
           ) : recordingStatus === 'uploading' ? (
             /* Uploading state */
             <div className="p-4 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg">
@@ -2151,40 +2161,20 @@ export function WeekEditor({
                 />
               </div>
             </div>
-          ) : recordingStatus === 'processing' ? (
-            /* Processing state - brief moment before background */
+          ) : recordingStatus === 'processing' || recordingStatus === 'background' ? (
+            /* Processing/Background state - keep spinner, show "you can leave" message */
             <div className="p-4 border border-brand-accent/30 bg-brand-accent/5 rounded-lg">
               <div className="flex items-center gap-3">
                 <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
                 <div>
                   <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Starting transcription...
+                    Generating AI summary...
                   </p>
-                </div>
-              </div>
-            </div>
-          ) : recordingStatus === 'background' ? (
-            /* Background processing state - coach can navigate away */
-            <div className="p-4 border border-blue-500/30 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-blue-600" />
-                <div>
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                    Upload complete! Processing in background
-                  </p>
-                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                  <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
                     You can leave this page. The summary will appear in Linked Call Summaries when ready.
                   </p>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setRecordingStatus('idle')}
-                className="mt-3"
-              >
-                Upload Another
-              </Button>
             </div>
           ) : recordingStatus === 'completed' ? (
             /* Completed state */
