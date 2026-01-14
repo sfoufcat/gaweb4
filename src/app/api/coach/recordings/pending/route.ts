@@ -67,30 +67,35 @@ export async function GET(request: NextRequest) {
 
     let pendingQuery;
 
-    if (cohortId && weekId) {
-      // Cohort mode: query by cohortId + weekId
-      pendingQuery = await recordingsRef
-        .where('cohortId', '==', cohortId)
-        .where('weekId', '==', weekId)
-        .where('status', 'in', statusesToCheck)
-        .orderBy('createdAt', 'desc')
-        .limit(1)
-        .get();
-    } else if (clientUserId) {
-      // 1:1 mode: query by clientUserId (and optionally enrollmentId)
-      let query = recordingsRef
-        .where('clientUserId', '==', clientUserId)
-        .where('status', 'in', statusesToCheck);
+    try {
+      if (cohortId && weekId) {
+        // Cohort mode: query by cohortId + weekId
+        // Note: Using limit without orderBy to avoid needing composite index
+        // Then filter/sort in memory since we only expect 0-1 results typically
+        pendingQuery = await recordingsRef
+          .where('cohortId', '==', cohortId)
+          .where('weekId', '==', weekId)
+          .where('status', 'in', statusesToCheck)
+          .limit(5)
+          .get();
+      } else if (clientUserId) {
+        // 1:1 mode: query by clientUserId (and optionally enrollmentId)
+        let query = recordingsRef
+          .where('clientUserId', '==', clientUserId)
+          .where('status', 'in', statusesToCheck);
 
-      if (enrollmentId) {
-        query = query.where('programEnrollmentId', '==', enrollmentId);
+        if (enrollmentId) {
+          query = query.where('programEnrollmentId', '==', enrollmentId);
+        }
+
+        pendingQuery = await query
+          .limit(5)
+          .get();
+      } else {
+        return NextResponse.json({ pendingRecording: null });
       }
-
-      pendingQuery = await query
-        .orderBy('createdAt', 'desc')
-        .limit(1)
-        .get();
-    } else {
+    } catch (queryErr) {
+      console.error('[PENDING_RECORDINGS] Query error:', queryErr);
       return NextResponse.json({ pendingRecording: null });
     }
 

@@ -564,10 +564,11 @@ async function waitForTranscription(
 }
 
 /**
- * Update cohort_week_content with recording URL and summary ID
+ * Update program_instances week with recording URL and summary ID
+ * Uses the new instance-based system instead of cohort_week_content
  */
 async function updateCohortWeekContent(
-  orgId: string,
+  _orgId: string,
   cohortContext: CohortContext,
   recordingUrl: string,
   summaryId: string
@@ -575,53 +576,61 @@ async function updateCohortWeekContent(
   try {
     const { cohortId, programId, weekId } = cohortContext;
 
-    // Check if content already exists
-    const existingQuery = await adminDb
-      .collection('cohort_week_content')
+    // Find the program instance for this cohort
+    const instanceQuery = await adminDb
+      .collection('program_instances')
       .where('cohortId', '==', cohortId)
-      .where('programWeekId', '==', weekId)
+      .where('programId', '==', programId)
       .limit(1)
       .get();
 
-    if (!existingQuery.empty) {
-      // Update existing content
-      const docId = existingQuery.docs[0].id;
-      const existingData = existingQuery.docs[0].data();
-
-      // Add summary ID to linked summaries if not already present
-      const linkedSummaryIds = existingData.linkedSummaryIds || [];
-      if (!linkedSummaryIds.includes(summaryId)) {
-        linkedSummaryIds.push(summaryId);
-      }
-
-      await adminDb.collection('cohort_week_content').doc(docId).update({
-        coachRecordingUrl: recordingUrl,
-        linkedSummaryIds,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-
-      console.log(`[COHORT_WEEK_CONTENT] Updated content ${docId} with recording`);
-    } else {
-      // Create new content
-      const newContent = {
-        cohortId,
-        programWeekId: weekId,
-        programId,
-        organizationId: orgId,
-        coachRecordingUrl: recordingUrl,
-        coachRecordingNotes: null,
-        linkedSummaryIds: [summaryId],
-        linkedCallEventIds: [],
-        manualNotes: null,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      };
-
-      const docRef = await adminDb.collection('cohort_week_content').add(newContent);
-      console.log(`[COHORT_WEEK_CONTENT] Created content ${docRef.id} with recording`);
+    if (instanceQuery.empty) {
+      console.log(`[COHORT_WEEK_CONTENT] No instance found for cohort ${cohortId}, skipping link`);
+      return;
     }
+
+    const instanceDoc = instanceQuery.docs[0];
+    const instanceData = instanceDoc.data();
+    const weeks = instanceData.weeks || [];
+
+    // Find the week by weekId (can be weekNumber as string or week.id)
+    let weekIndex = -1;
+    if (/^\d+$/.test(weekId)) {
+      // weekId is a weekNumber
+      const weekNum = parseInt(weekId, 10);
+      weekIndex = weeks.findIndex((w: { weekNumber: number }) => w.weekNumber === weekNum);
+    } else {
+      // weekId is the week's id field
+      weekIndex = weeks.findIndex((w: { id?: string }) => w.id === weekId);
+    }
+
+    if (weekIndex === -1) {
+      console.log(`[COHORT_WEEK_CONTENT] Week ${weekId} not found in instance ${instanceDoc.id}`);
+      return;
+    }
+
+    // Update the week with recording URL and summary ID
+    const existingLinkedSummaryIds = weeks[weekIndex].linkedSummaryIds || [];
+    if (!existingLinkedSummaryIds.includes(summaryId)) {
+      existingLinkedSummaryIds.push(summaryId);
+    }
+
+    weeks[weekIndex] = {
+      ...weeks[weekIndex],
+      coachRecordingUrl: recordingUrl,
+      linkedSummaryIds: existingLinkedSummaryIds,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Update the instance
+    await adminDb.collection('program_instances').doc(instanceDoc.id).update({
+      weeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    console.log(`[COHORT_WEEK_CONTENT] Updated instance ${instanceDoc.id} week ${weekId} with recording and summary ${summaryId}`);
   } catch (error) {
-    console.error('[COHORT_WEEK_CONTENT] Error updating content:', error);
+    console.error('[COHORT_WEEK_CONTENT] Error updating instance:', error);
     // Don't throw - this is a secondary operation and shouldn't fail the main upload
   }
 }
