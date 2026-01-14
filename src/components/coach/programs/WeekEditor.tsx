@@ -2337,7 +2337,7 @@ export function WeekEditor({
                   {programArticles.map((article) => (
                     <DropdownMenuItem
                       key={article.id}
-                      onClick={() => addArticleLink(article.id)}
+                      onSelect={() => addArticleLink(article.id)}
                       className="cursor-pointer"
                     >
                       <FileText className="w-4 h-4 mr-2 text-brand-accent" />
@@ -2355,7 +2355,7 @@ export function WeekEditor({
                   {platformArticles.map((article) => (
                     <DropdownMenuItem
                       key={article.id}
-                      onClick={() => addArticleLink(article.id)}
+                      onSelect={() => addArticleLink(article.id)}
                       className="cursor-pointer"
                     >
                       <FileText className="w-4 h-4 mr-2 text-[#8c8c8c]" />
@@ -2366,7 +2366,7 @@ export function WeekEditor({
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => window.location.href = '/coach?tab=discover'}
+                onSelect={() => { window.location.href = '/coach?tab=discover'; }}
                 className="cursor-pointer text-brand-accent"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -2435,7 +2435,7 @@ export function WeekEditor({
                   {programDownloads.map((download) => (
                     <DropdownMenuItem
                       key={download.id}
-                      onClick={() => addDownloadLink(download.id)}
+                      onSelect={() => addDownloadLink(download.id)}
                       className="cursor-pointer"
                     >
                       <Download className="w-4 h-4 mr-2 text-brand-accent" />
@@ -2453,7 +2453,7 @@ export function WeekEditor({
                   {platformDownloads.map((download) => (
                     <DropdownMenuItem
                       key={download.id}
-                      onClick={() => addDownloadLink(download.id)}
+                      onSelect={() => addDownloadLink(download.id)}
                       className="cursor-pointer"
                     >
                       <Download className="w-4 h-4 mr-2 text-[#8c8c8c]" />
@@ -2464,7 +2464,7 @@ export function WeekEditor({
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => window.location.href = '/coach?tab=discover'}
+                onSelect={() => { window.location.href = '/coach?tab=discover'; }}
                 className="cursor-pointer text-brand-accent"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -2533,7 +2533,7 @@ export function WeekEditor({
                   {programLinks.map((link) => (
                     <DropdownMenuItem
                       key={link.id}
-                      onClick={() => addLinkLink(link.id)}
+                      onSelect={() => addLinkLink(link.id)}
                       className="cursor-pointer"
                     >
                       <Link2 className="w-4 h-4 mr-2 text-brand-accent" />
@@ -2551,7 +2551,7 @@ export function WeekEditor({
                   {platformLinks.map((link) => (
                     <DropdownMenuItem
                       key={link.id}
-                      onClick={() => addLinkLink(link.id)}
+                      onSelect={() => addLinkLink(link.id)}
                       className="cursor-pointer"
                     >
                       <Link2 className="w-4 h-4 mr-2 text-[#8c8c8c]" />
@@ -2562,7 +2562,7 @@ export function WeekEditor({
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => window.location.href = '/coach?tab=discover'}
+                onSelect={() => { window.location.href = '/coach?tab=discover'; }}
                 className="cursor-pointer text-brand-accent"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -2631,7 +2631,7 @@ export function WeekEditor({
                   {availableQuestionnairesToLink.map((questionnaire) => (
                     <DropdownMenuItem
                       key={questionnaire.id}
-                      onClick={() => addQuestionnaireLink(questionnaire.id)}
+                      onSelect={() => addQuestionnaireLink(questionnaire.id)}
                       className="cursor-pointer"
                     >
                       <FileQuestion className="w-4 h-4 mr-2 text-[#8c8c8c]" />
@@ -2642,7 +2642,7 @@ export function WeekEditor({
                 </>
               )}
               <DropdownMenuItem
-                onClick={() => window.location.href = '/coach?tab=discover'}
+                onSelect={() => { window.location.href = '/coach?tab=discover'; }}
                 className="cursor-pointer text-brand-accent"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -2711,7 +2711,7 @@ export function WeekEditor({
                   {programCourses.map((course) => (
                     <DropdownMenuItem
                       key={course.id}
-                      onClick={() => addCourseLink(course.id)}
+                      onSelect={() => addCourseLink(course.id)}
                       className="cursor-pointer"
                     >
                       <GraduationCap className="w-4 h-4 mr-2 text-brand-accent" />
@@ -2729,7 +2729,7 @@ export function WeekEditor({
                   {platformCourses.map((course) => (
                     <DropdownMenuItem
                       key={course.id}
-                      onClick={() => addCourseLink(course.id)}
+                      onSelect={() => addCourseLink(course.id)}
                       className="cursor-pointer"
                     >
                       <GraduationCap className="w-4 h-4 mr-2 text-[#8c8c8c]" />
@@ -2740,7 +2740,7 @@ export function WeekEditor({
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => window.location.href = '/coach?tab=discover'}
+                onSelect={() => { window.location.href = '/coach?tab=discover'; }}
                 className="cursor-pointer text-brand-accent"
               >
                 <Plus className="w-4 h-4 mr-2" />

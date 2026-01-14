@@ -1160,7 +1160,7 @@ export function DayEditor({
                   {programArticles.map((article) => (
                     <DropdownMenuItem
                       key={article.id}
-                      onClick={() => addArticleLink(article.id)}
+                      onSelect={() => addArticleLink(article.id)}
                       className="cursor-pointer"
                     >
                       <FileText className="w-4 h-4 mr-2 text-brand-accent" />
@@ -1178,7 +1178,7 @@ export function DayEditor({
                   {platformArticles.map((article) => (
                     <DropdownMenuItem
                       key={article.id}
-                      onClick={() => addArticleLink(article.id)}
+                      onSelect={() => addArticleLink(article.id)}
                       className="cursor-pointer"
                     >
                       <FileText className="w-4 h-4 mr-2 text-[#8c8c8c]" />
@@ -1189,7 +1189,7 @@ export function DayEditor({
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => window.location.href = '/coach?tab=discover'}
+                onSelect={() => { window.location.href = '/coach?tab=discover'; }}
                 className="cursor-pointer text-brand-accent"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -1258,7 +1258,7 @@ export function DayEditor({
                   {programDownloads.map((download) => (
                     <DropdownMenuItem
                       key={download.id}
-                      onClick={() => addDownloadLink(download.id)}
+                      onSelect={() => addDownloadLink(download.id)}
                       className="cursor-pointer"
                     >
                       <Download className="w-4 h-4 mr-2 text-brand-accent" />
@@ -1276,7 +1276,7 @@ export function DayEditor({
                   {platformDownloads.map((download) => (
                     <DropdownMenuItem
                       key={download.id}
-                      onClick={() => addDownloadLink(download.id)}
+                      onSelect={() => addDownloadLink(download.id)}
                       className="cursor-pointer"
                     >
                       <Download className="w-4 h-4 mr-2 text-[#8c8c8c]" />
@@ -1287,7 +1287,7 @@ export function DayEditor({
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => window.location.href = '/coach?tab=discover'}
+                onSelect={() => { window.location.href = '/coach?tab=discover'; }}
                 className="cursor-pointer text-brand-accent"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -1356,7 +1356,7 @@ export function DayEditor({
                   {programLinks.map((link) => (
                     <DropdownMenuItem
                       key={link.id}
-                      onClick={() => addLinkLink(link.id)}
+                      onSelect={() => addLinkLink(link.id)}
                       className="cursor-pointer"
                     >
                       <Link2 className="w-4 h-4 mr-2 text-brand-accent" />
@@ -1374,7 +1374,7 @@ export function DayEditor({
                   {platformLinks.map((link) => (
                     <DropdownMenuItem
                       key={link.id}
-                      onClick={() => addLinkLink(link.id)}
+                      onSelect={() => addLinkLink(link.id)}
                       className="cursor-pointer"
                     >
                       <Link2 className="w-4 h-4 mr-2 text-[#8c8c8c]" />
@@ -1385,7 +1385,7 @@ export function DayEditor({
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => window.location.href = '/coach?tab=discover'}
+                onSelect={() => { window.location.href = '/coach?tab=discover'; }}
                 className="cursor-pointer text-brand-accent"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -1454,7 +1454,7 @@ export function DayEditor({
                   {availableQuestionnairesToLink.map((questionnaire) => (
                     <DropdownMenuItem
                       key={questionnaire.id}
-                      onClick={() => addQuestionnaireLink(questionnaire.id)}
+                      onSelect={() => addQuestionnaireLink(questionnaire.id)}
                       className="cursor-pointer"
                     >
                       <FileQuestion className="w-4 h-4 mr-2 text-[#8c8c8c]" />
@@ -1465,7 +1465,7 @@ export function DayEditor({
                 </>
               )}
               <DropdownMenuItem
-                onClick={() => window.location.href = '/coach?tab=discover'}
+                onSelect={() => { window.location.href = '/coach?tab=discover'; }}
                 className="cursor-pointer text-brand-accent"
               >
                 <Plus className="w-4 h-4 mr-2" />
