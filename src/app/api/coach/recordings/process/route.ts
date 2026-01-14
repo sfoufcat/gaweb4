@@ -5,6 +5,9 @@
  * Triggers transcription and summary generation.
  */
 
+// Allow up to 5 minutes for processing (transcription + summary generation)
+export const maxDuration = 300;
+
 import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebase-admin';
@@ -181,40 +184,56 @@ export async function POST(request: NextRequest) {
       ? { cohortId, programId, weekId }
       : null;
 
-    // Process asynchronously based on file type
-    if (isFilePdf) {
-      processPdfUpload(
-        organizationId,
+    // Process synchronously (awaited) so Vercel keeps the function alive
+    // The client polls for status updates while this runs
+    try {
+      if (isFilePdf) {
+        await processPdfUpload(
+          organizationId,
+          recordingId,
+          storagePath,
+          fileUrl,
+          userId,
+          clientUserId,
+          programEnrollmentId,
+          cohortContext
+        );
+      } else {
+        await processRecording(
+          organizationId,
+          recordingId,
+          fileUrl,
+          userId,
+          clientUserId,
+          programEnrollmentId,
+          estimatedMinutes,
+          cohortContext
+        );
+      }
+
+      // Get the final status to return
+      const finalDoc = await recordingsRef.doc(recordingId).get();
+      const finalData = finalDoc.data();
+
+      return NextResponse.json({
+        success: finalData?.status === 'completed',
         recordingId,
-        storagePath,
-        fileUrl,
-        userId,
-        clientUserId,
-        programEnrollmentId,
-        cohortContext
-      ).catch((error) => {
-        console.error(`[RECORDING_PROCESS] Error processing PDF ${recordingId}:`, error);
+        callSummaryId: finalData?.callSummaryId || null,
+        status: finalData?.status || 'unknown',
+        message: finalData?.status === 'completed'
+          ? 'Recording processed successfully.'
+          : finalData?.processingError || 'Processing completed with issues.',
       });
-    } else {
-      processRecording(
-        organizationId,
+    } catch (processError) {
+      console.error(`[RECORDING_PROCESS] Processing error for ${recordingId}:`, processError);
+      // Return success: true because the recording was created, even if processing failed
+      // The status endpoint will show the failure
+      return NextResponse.json({
+        success: true,
         recordingId,
-        fileUrl,
-        userId,
-        clientUserId,
-        programEnrollmentId,
-        estimatedMinutes,
-        cohortContext
-      ).catch((error) => {
-        console.error(`[RECORDING_PROCESS] Error processing ${recordingId}:`, error);
+        message: 'Recording received but processing encountered an error.',
       });
     }
-
-    return NextResponse.json({
-      success: true,
-      recordingId,
-      message: 'Recording received. Processing will begin shortly.',
-    });
   } catch (error) {
     console.error('[RECORDING_PROCESS] Error:', error);
     return NextResponse.json(

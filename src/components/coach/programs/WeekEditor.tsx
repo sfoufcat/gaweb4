@@ -649,6 +649,8 @@ export function WeekEditor({
   const [recordingStatus, setRecordingStatus] = useState<'idle' | 'uploading' | 'processing' | 'background' | 'completed' | 'error'>('idle');
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [pendingRecordingId, setPendingRecordingId] = useState<string | null>(null);
+  // Detailed status from backend: 'uploaded' | 'transcribing' | 'summarizing' | 'completed' | 'failed'
+  const [detailedStatus, setDetailedStatus] = useState<string | null>(null);
 
   // Check for in-progress recordings on mount and poll until complete
   // Supports both cohort mode (group programs) and 1:1 mode (individual programs)
@@ -691,8 +693,9 @@ export function WeekEditor({
             return;
           }
 
-          // Show background processing state
+          // Show background processing state with detailed status
           setRecordingStatus('background');
+          setDetailedStatus(recording.status);
 
           // Start polling for completion
           pollInterval = setInterval(async () => {
@@ -702,9 +705,13 @@ export function WeekEditor({
               if (!statusRes.ok) return;
               const statusData = await statusRes.json();
 
+              // Update detailed status for UI
+              setDetailedStatus(statusData.status);
+
               if (statusData.status === 'completed') {
                 setRecordingStatus('completed');
                 setPendingRecordingId(null);
+                setDetailedStatus(null);
                 if (pollInterval) clearInterval(pollInterval);
                 // Refetch call summaries to show the new summary
                 if (statusData.callSummaryId) {
@@ -718,6 +725,7 @@ export function WeekEditor({
                 setRecordingStatus('error');
                 setRecordingError(statusData.error || 'Processing failed');
                 setPendingRecordingId(null);
+                setDetailedStatus(null);
                 if (pollInterval) clearInterval(pollInterval);
               }
             } catch (err) {
@@ -1621,23 +1629,78 @@ export function WeekEditor({
       await uploadPromise;
 
       setRecordingStatus('processing');
+      setDetailedStatus('uploaded');
+      setRecordingFile(null);
 
-      // Step 3: Trigger processing (pass duration for accurate credit calculation)
+      // Step 3: Trigger processing - server runs for up to 5 minutes
+      // Client waits for response, but if they refresh, pending check picks it up
+      const processBody = {
+        storagePath,
+        fileName,
+        fileSize,
+        durationSeconds,
+        clientUserId: clientUserId || undefined,
+        cohortId: cohortId || undefined,
+        programEnrollmentId: enrollmentId || undefined,
+        programId: cohortId && programId ? programId : undefined,
+        weekId: cohortId && programId ? week.id : undefined,
+      };
+
+      // Start polling for status updates in parallel (to show transcribing/summarizing)
+      let statusPollInterval: NodeJS.Timeout | null = null;
+      let currentRecordingId: string | null = null;
+
+      // Build query params for pending check
+      const pendingParams = new URLSearchParams();
+      if (cohortId && week.id) {
+        pendingParams.set('cohortId', cohortId);
+        pendingParams.set('weekId', week.id);
+      } else if (clientUserId) {
+        pendingParams.set('clientUserId', clientUserId);
+        if (enrollmentId) pendingParams.set('enrollmentId', enrollmentId);
+      }
+
+      // Start polling after a short delay (to let server create the doc)
+      const pollTimeout = setTimeout(async () => {
+        // Get the recording ID first
+        try {
+          const pendingRes = await fetch(`/api/coach/recordings/pending?${pendingParams.toString()}`);
+          if (pendingRes.ok) {
+            const pendingData = await pendingRes.json();
+            if (pendingData.pendingRecording) {
+              currentRecordingId = pendingData.pendingRecording.id;
+              setDetailedStatus(pendingData.pendingRecording.status);
+            }
+          }
+        } catch (e) {
+          console.error('Error getting pending recording:', e);
+        }
+
+        // Poll for status updates every 3 seconds
+        statusPollInterval = setInterval(async () => {
+          if (!currentRecordingId) return;
+          try {
+            const statusRes = await fetch(`/api/coach/recordings/${currentRecordingId}/status`);
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              setDetailedStatus(statusData.status);
+            }
+          } catch (e) {
+            // Ignore polling errors
+          }
+        }, 3000);
+      }, 1500);
+
+      // Wait for the process response (runs in parallel with polling)
       const processResponse = await fetch('/api/coach/recordings/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          storagePath,
-          fileName,
-          fileSize,
-          durationSeconds, // Pass actual duration for accurate credit calculation
-          clientUserId: clientUserId || undefined,
-          cohortId: cohortId || undefined,
-          programEnrollmentId: enrollmentId || undefined,
-          programId: cohortId && programId ? programId : undefined,
-          weekId: cohortId && programId ? week.id : undefined,
-        }),
+        body: JSON.stringify(processBody),
       });
+
+      // Stop polling
+      clearTimeout(pollTimeout);
+      if (statusPollInterval) clearInterval(statusPollInterval);
 
       if (!processResponse.ok) {
         const errorData = await processResponse.json().catch(() => ({}));
@@ -1646,19 +1709,21 @@ export function WeekEditor({
 
       const result = await processResponse.json();
 
-      if (!result.success) {
-        throw new Error(result.error || 'Processing failed');
+      if (result.status === 'failed' || !result.success) {
+        throw new Error(result.message || 'Processing failed');
       }
 
-      // Processing happens in background - coach can navigate away
-      // Backend will auto-link summary to cohort_week_content when complete
-      setRecordingStatus('background');
-      setRecordingFile(null);
+      // Processing complete!
+      setRecordingStatus('completed');
+      setDetailedStatus(null);
 
-      // Call callback if provided (for any additional handling)
-      if (result.recordingId) {
-        onSummaryGenerated?.(result.recordingId);
+      // Refetch call summaries to show the new summary
+      if (result.callSummaryId) {
+        onSummaryGenerated?.(result.callSummaryId);
       }
+
+      // Reset to idle after showing success
+      setTimeout(() => setRecordingStatus('idle'), 3000);
     } catch (err) {
       console.error('Error uploading recording:', err);
       setRecordingError(err instanceof Error ? err.message : 'Upload failed');
@@ -2190,13 +2255,16 @@ export function WeekEditor({
               </div>
             </div>
           ) : recordingStatus === 'processing' || recordingStatus === 'background' ? (
-            /* Processing/Background state - keep spinner, show "you can leave" message */
+            /* Processing/Background state - show detailed status with spinner */
             <div className="p-4 border border-brand-accent/30 bg-brand-accent/5 rounded-lg">
               <div className="flex items-center gap-3">
                 <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
                 <div>
                   <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Generating AI summary...
+                    {detailedStatus === 'uploaded' && 'Processing upload...'}
+                    {detailedStatus === 'transcribing' && 'Transcribing audio...'}
+                    {detailedStatus === 'summarizing' && 'Generating AI summary...'}
+                    {!detailedStatus && 'Processing...'}
                   </p>
                   <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
                     You can leave this page. The summary will appear in Linked Call Summaries when ready.
