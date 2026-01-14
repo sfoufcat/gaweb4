@@ -66,7 +66,7 @@ function computeEndDateTime(event: UnifiedEvent): string | null {
  * Query params:
  * - startDate: ISO date (required) - start of date range
  * - endDate: ISO date (required) - end of date range
- * - types?: string - comma-separated event types to filter (coaching_1on1, squad_call, workshop, etc.)
+ * - types?: string - comma-separated event types to filter (coaching_1on1, squad_call, community_event)
  * - status?: string - comma-separated statuses to filter (confirmed, proposed, etc.)
  * - role?: 'host' | 'attendee' | 'all' - Filter by user's role (default: all)
  */

@@ -122,8 +122,6 @@ function EventCard({ event }: { event: UnifiedEvent }) {
     switch (event.eventType) {
       case 'squad_call':
         return { label: 'Squad Call', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' };
-      case 'workshop':
-        return { label: 'Workshop', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' };
       case 'community_event':
         return { label: 'Event', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' };
       case 'coaching_1on1':

@@ -89,11 +89,6 @@ const EVENT_TYPE_COLORS: Record<string, { bg: string; border: string; text: stri
     border: 'border-blue-300 dark:border-blue-700',
     text: 'text-blue-700 dark:text-blue-300',
   },
-  workshop: {
-    bg: 'bg-purple-100 dark:bg-purple-900/20',
-    border: 'border-purple-300 dark:border-purple-700',
-    text: 'text-purple-700 dark:text-purple-300',
-  },
   community_event: {
     bg: 'bg-green-100 dark:bg-green-900/20',
     border: 'border-green-300 dark:border-green-700',

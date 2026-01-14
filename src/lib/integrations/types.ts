@@ -603,7 +603,7 @@ export interface CalendarSyncRecord {
   provider: 'google_calendar' | 'outlook_calendar';
   
   // Internal event reference
-  internalEventType: 'coaching_session' | 'squad_call' | 'workshop' | 'event';
+  internalEventType: 'coaching_session' | 'squad_call' | 'community_event' | 'event';
   internalEventId: string;
   
   // External calendar reference

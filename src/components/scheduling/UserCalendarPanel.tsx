@@ -71,7 +71,6 @@ function DateSeparator({ date }: { date: Date }) {
 const EVENT_TYPE_INFO: Record<string, { label: string; icon: typeof Video; color: string }> = {
   coaching_1on1: { label: '1-on-1 Call', icon: User, color: 'text-brand-accent' },
   squad_call: { label: 'Squad Call', icon: Users, color: 'text-blue-500' },
-  workshop: { label: 'Workshop', icon: Video, color: 'text-purple-500' },
   community_event: { label: 'Event', icon: Calendar, color: 'text-green-500' },
 };
 

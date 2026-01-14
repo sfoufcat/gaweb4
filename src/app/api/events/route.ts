@@ -6,7 +6,7 @@
  * 
  * Supports filtering by:
  * - scope (global, organization, program, squad, private)
- * - eventType (workshop, community_event, squad_call, coaching_1on1)
+ * - eventType (community_event, squad_call, coaching_1on1)
  * - squadId
  * - programId
  * - status

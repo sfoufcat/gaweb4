@@ -47,7 +47,7 @@ interface GoogleCalendarEvent {
 
 interface InternalEvent {
   id: string;
-  type: 'coaching_session' | 'squad_call' | 'workshop' | 'event';
+  type: 'coaching_session' | 'squad_call' | 'community_event' | 'event';
   title: string;
   description?: string;
   location?: string;

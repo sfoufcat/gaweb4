@@ -2340,7 +2340,7 @@ export interface DemoEvent {
   locationLabel: string;
   meetingLink?: string;
   coverImageUrl?: string;
-  eventType: 'workshop' | 'community_event' | 'squad_call' | 'coaching_1on1';
+  eventType: 'community_event' | 'squad_call' | 'coaching_1on1';
   scope: 'global' | 'organization' | 'program' | 'squad' | 'private';
   participantModel: 'open' | 'invite_only' | 'approval';
   approvalType: 'none' | 'host' | 'voting';
@@ -2413,7 +2413,7 @@ export function generateDemoEvents(): DemoEvent[] {
       locationLabel: 'Live Webinar',
       meetingLink: 'https://zoom.us/j/demo789012',
       coverImageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=400&fit=crop',
-      eventType: 'workshop',
+      eventType: 'community_event',
       scope: 'organization',
       participantModel: 'open',
       approvalType: 'none',
@@ -2497,7 +2497,7 @@ export function generateDemoEvents(): DemoEvent[] {
       locationLabel: 'Live Workshop',
       meetingLink: 'https://zoom.us/j/demo111222',
       coverImageUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&h=400&fit=crop',
-      eventType: 'workshop',
+      eventType: 'community_event',
       scope: 'organization',
       participantModel: 'open',
       approvalType: 'none',
@@ -2553,7 +2553,7 @@ export function generateDemoCalendarEvents(startDateStr?: string | null, endDate
   const eventTemplates = [
     { title: 'Weekly Group Coaching', type: 'squad_call', duration: 60, time: '14:00' },
     { title: '1:1 Coaching Session', type: 'coaching_1on1', duration: 45, time: '10:00' },
-    { title: 'Mindset Workshop', type: 'workshop', duration: 90, time: '11:00' },
+    { title: 'Mindset Workshop', type: 'community_event', duration: 90, time: '11:00' },
     { title: 'Community Q&A', type: 'community_event', duration: 60, time: '16:00' },
     { title: 'Morning Accountability Call', type: 'squad_call', duration: 30, time: '08:00' },
   ];

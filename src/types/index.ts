@@ -4633,9 +4633,8 @@ export interface ReferralWithDetails extends Referral {
 /**
  * Event Type - Classification of what kind of event this is
  */
-export type EventType = 
-  | 'workshop'           // Discover workshops/webinars
-  | 'community_event'    // General community events
+export type EventType =
+  | 'community_event'    // Broad events (workshops, webinars, community events) - appears in Discover
   | 'squad_call'         // Squad group calls (coach or peer)
   | 'coaching_1on1';     // Individual coaching sessions
 
