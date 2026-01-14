@@ -252,16 +252,20 @@ export async function processCallSummary(
     const summaryRef = await summariesRef.add(summaryData);
     const summaryId = summaryRef.id;
 
-    // Generate summary asynchronously
-    generateAndStoreSummary(
-      orgId,
-      summaryId,
-      transcription.transcript,
-      durationSeconds,
-      context
-    ).catch((error) => {
+    // Generate summary synchronously to ensure it completes before returning
+    // This prevents silent failures when serverless functions timeout
+    try {
+      await generateAndStoreSummary(
+        orgId,
+        summaryId,
+        transcription.transcript,
+        durationSeconds,
+        context
+      );
+    } catch (error) {
       console.error(`[AI Call Summary] Error generating summary ${summaryId}:`, error);
-    });
+      // Status will be 'failed' from generateAndStoreSummary's catch block
+    }
 
     return { success: true, summaryId };
   } catch (error) {

@@ -74,6 +74,8 @@ interface WeekEditorProps {
   cohorts?: ProgramCohort[];
   // Callback when a new summary is generated
   onSummaryGenerated?: (summaryId: string) => void;
+  // Callback when a summary is regenerated/updated
+  onSummaryUpdated?: (summary: CallSummary) => void;
   // Cohort task completion for weekly tasks (aggregate)
   cohortWeeklyTaskCompletion?: Map<string, CohortWeeklyTaskCompletionData>;
   // Completion threshold
@@ -439,6 +441,7 @@ export function WeekEditor({
   enrollments = [],
   cohorts = [],
   onSummaryGenerated,
+  onSummaryUpdated,
   cohortWeeklyTaskCompletion = new Map(),
   completionThreshold = 50,
   instanceId,
@@ -1467,12 +1470,31 @@ export function WeekEditor({
   );
   // Note: Questionnaires don't have programIds - they're always platform-level
 
+  // Helper to format date from various formats (ISO string, Firestore Timestamp, Date)
+  const formatSummaryDate = useCallback((dateValue: unknown): string => {
+    if (!dateValue) return '';
+
+    let date: Date;
+    if (typeof dateValue === 'string') {
+      date = new Date(dateValue);
+    } else if (dateValue instanceof Date) {
+      date = dateValue;
+    } else if (typeof dateValue === 'object' && dateValue !== null && 'seconds' in dateValue) {
+      // Firestore Timestamp
+      date = new Date((dateValue as { seconds: number }).seconds * 1000);
+    } else {
+      return '';
+    }
+
+    if (isNaN(date.getTime())) return '';
+
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }, []);
+
   // Helper to generate summary label with entity name and date
   const getSummaryLabel = useCallback((summary: CallSummary) => {
     const entityName = clientName || cohortName;
-    const dateStr = summary.createdAt
-      ? new Date(summary.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      : '';
+    const dateStr = formatSummaryDate(summary.createdAt);
 
     if (entityName && dateStr) {
       return `${entityName} - ${dateStr}`;
@@ -1483,7 +1505,7 @@ export function WeekEditor({
     } else {
       return `Summary ${summary.id.slice(0, 8)}...`;
     }
-  }, [clientName, cohortName]);
+  }, [clientName, cohortName, formatSummaryDate]);
 
   // Task management
   const addTask = () => {
@@ -2205,6 +2227,12 @@ export function WeekEditor({
           isOpen={!!viewingSummary}
           onClose={() => setViewingSummary(null)}
           onFetchTasks={addTasksFromSummary}
+          onSummaryUpdated={(updatedSummary) => {
+            // Update local state so the modal shows the new data
+            setViewingSummary(updatedSummary);
+            // Notify parent to refresh the available summaries list
+            onSummaryUpdated?.(updatedSummary);
+          }}
           entityName={clientName || cohortName}
         />
 

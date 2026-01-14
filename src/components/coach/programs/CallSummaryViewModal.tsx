@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, Loader2, MessageSquare, ListTodo, Plus } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Loader2, MessageSquare, ListTodo, Plus, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,8 +26,12 @@ interface CallSummaryViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   onFetchTasks?: (tasks: ProgramTaskTemplate[]) => void;
+  onSummaryUpdated?: (summary: CallSummary) => void; // Callback when summary is regenerated
   entityName?: string; // Client or cohort name
 }
+
+// Timeout threshold in minutes - summaries stuck longer than this can be regenerated
+const STUCK_TIMEOUT_MINUTES = 5;
 
 /**
  * CallSummaryViewModal
@@ -40,10 +44,13 @@ export function CallSummaryViewModal({
   isOpen,
   onClose,
   onFetchTasks,
+  onSummaryUpdated,
   entityName,
 }: CallSummaryViewModalProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [fetchingTasks, setFetchingTasks] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
   // Detect mobile viewport
   useEffect(() => {
@@ -52,6 +59,54 @@ export function CallSummaryViewModal({
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Calculate if summary is stuck in processing
+  const getAgeMinutes = useCallback((createdAt: unknown): number => {
+    if (!createdAt) return 0;
+    let createdTime: number;
+    if (typeof createdAt === 'object' && createdAt !== null && 'seconds' in createdAt) {
+      createdTime = (createdAt as { seconds: number }).seconds * 1000;
+    } else if (typeof createdAt === 'string') {
+      createdTime = new Date(createdAt).getTime();
+    } else {
+      return 0;
+    }
+    return (Date.now() - createdTime) / (1000 * 60);
+  }, []);
+
+  const isStuck = summary?.status === 'processing' && getAgeMinutes(summary.createdAt) > STUCK_TIMEOUT_MINUTES;
+  const canRegenerate = summary?.status === 'failed' || isStuck;
+
+  // Handle regenerate
+  const handleRegenerate = async () => {
+    if (!summary?.id || regenerating) return;
+
+    setRegenerating(true);
+    setRegenerateError(null);
+
+    try {
+      const response = await fetch(`/api/coach/call-summaries/${summary.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'regenerate' }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to regenerate summary');
+      }
+
+      if (data.summary && onSummaryUpdated) {
+        onSummaryUpdated(data.summary);
+      }
+    } catch (error) {
+      console.error('Error regenerating summary:', error);
+      setRegenerateError(error instanceof Error ? error.message : 'Failed to regenerate');
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   const handleFetchTasks = async () => {
     if (!summary || !onFetchTasks) return;
@@ -103,18 +158,39 @@ export function CallSummaryViewModal({
     }
   };
 
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  // Handle both ISO string and Firestore Timestamp objects
+  const formatDate = (dateValue: string | { seconds: number; nanoseconds: number } | Date | null | undefined): string => {
+    if (!dateValue) return '';
+
+    let date: Date;
+    if (typeof dateValue === 'string') {
+      date = new Date(dateValue);
+    } else if (dateValue instanceof Date) {
+      date = dateValue;
+    } else if (typeof dateValue === 'object' && 'seconds' in dateValue) {
+      // Firestore Timestamp
+      date = new Date(dateValue.seconds * 1000);
+    } else {
+      return '';
+    }
+
+    if (isNaN(date.getTime())) return '';
+
+    return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     });
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const createdAtValue = summary?.createdAt as any;
+  const formattedDate = formatDate(createdAtValue);
+
   const summaryTitle = entityName
-    ? `${entityName} - ${summary?.createdAt ? formatDate(summary.createdAt) : 'Summary'}`
-    : summary?.createdAt
-    ? `Summary from ${formatDate(summary.createdAt)}`
+    ? `${entityName}${formattedDate ? ` - ${formattedDate}` : ''}`
+    : formattedDate
+    ? `Summary from ${formattedDate}`
     : 'Call Summary';
 
   const showFetchButton = onFetchTasks && summary?.status === 'completed' && summary.actionItems?.length > 0;
@@ -277,15 +353,64 @@ export function CallSummaryViewModal({
           )}
         </>
       ) : summary?.status === 'processing' ? (
-        <div className="flex items-center gap-2 text-sm text-[#8c8c8c] dark:text-[#7d8190] py-4">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Generating summary...</span>
+        <div className="flex flex-col items-center gap-3 text-sm text-[#8c8c8c] dark:text-[#7d8190] py-4">
+          {isStuck ? (
+            <>
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <span className="text-amber-600 dark:text-amber-400">Summary generation appears to be stuck</span>
+              <span className="text-xs text-center">
+                The summary has been processing for over {STUCK_TIMEOUT_MINUTES} minutes.
+                You can try regenerating it.
+              </span>
+              <Button
+                onClick={handleRegenerate}
+                disabled={regenerating}
+                variant="outline"
+                size="sm"
+                className="mt-2"
+              >
+                {regenerating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Regenerate Summary
+              </Button>
+              {regenerateError && (
+                <p className="text-xs text-red-500 mt-1">{regenerateError}</p>
+              )}
+            </>
+          ) : (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Summary is being generated...</span>
+              <span className="text-xs">This usually takes 30-60 seconds. Please check back shortly.</span>
+            </>
+          )}
         </div>
       ) : summary?.status === 'failed' ? (
-        <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-          <p className="text-sm text-red-600 dark:text-red-400">
-            {summary.processingError || 'Failed to generate summary'}
-          </p>
+        <div className="flex flex-col items-center gap-3 py-4">
+          <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg w-full">
+            <p className="text-sm text-red-600 dark:text-red-400 text-center">
+              {summary.processingError || 'Failed to generate summary'}
+            </p>
+          </div>
+          <Button
+            onClick={handleRegenerate}
+            disabled={regenerating}
+            variant="outline"
+            size="sm"
+          >
+            {regenerating ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Try Again
+          </Button>
+          {regenerateError && (
+            <p className="text-xs text-red-500">{regenerateError}</p>
+          )}
         </div>
       ) : null}
 
