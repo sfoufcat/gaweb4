@@ -65,18 +65,20 @@ async function transcribeWithGroq(audioUrl: string): Promise<TranscriptionResult
 
   // Use URL parameter instead of file upload to support up to 100MB files
   // This is the recommended approach for larger files per Groq docs
+  // Note: Groq requires multipart/form-data even for URL-based uploads
+  const formData = new FormData();
+  formData.append('url', audioUrl);
+  formData.append('model', 'whisper-large-v3-turbo');
+  formData.append('response_format', 'verbose_json');
+  formData.append('timestamp_granularities[]', 'segment');
+
   const response = await fetch(GROQ_API_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
+      // Don't set Content-Type - fetch will set it automatically with boundary for FormData
     },
-    body: JSON.stringify({
-      url: audioUrl,
-      model: 'whisper-large-v3-turbo',
-      response_format: 'verbose_json',
-      timestamp_granularities: ['segment'],
-    }),
+    body: formData,
   });
 
   if (!response.ok) {
