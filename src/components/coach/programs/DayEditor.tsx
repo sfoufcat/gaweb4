@@ -10,6 +10,14 @@ import { DayCourseSelector } from './DayCourseSelector';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 // Extended completion data for cohort tasks
@@ -1136,40 +1144,59 @@ export function DayEditor({
           )}
 
           {/* Add article dropdown */}
-          <select
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-            value=""
-            onChange={(e) => {
-              if (e.target.value === '__create_new__') {
-                window.location.href = '/coach?tab=discover';
-              } else if (e.target.value) {
-                addArticleLink(e.target.value);
-              }
-            }}
-          >
-            <option value="">Add an article...</option>
-            {programArticles.length > 0 && (
-              <optgroup label="Program Content">
-                {programArticles.map((article) => (
-                  <option key={article.id} value={article.id}>
-                    {article.title}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            {platformArticles.length > 0 && (
-              <optgroup label="Platform Content">
-                {platformArticles.map((article) => (
-                  <option key={article.id} value={article.id}>
-                    {article.title}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            <option value="__create_new__" className="text-brand-accent font-medium">
-              + Create new article
-            </option>
-          </select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center justify-between px-3 py-2.5 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors">
+                <span className="text-[#8c8c8c] dark:text-[#7d8190]">Add an article...</span>
+                <ChevronDown className="w-4 h-4 text-[#8c8c8c]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[300px] overflow-y-auto">
+              {programArticles.length > 0 && (
+                <>
+                  <DropdownMenuLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
+                    Program Content
+                  </DropdownMenuLabel>
+                  {programArticles.map((article) => (
+                    <DropdownMenuItem
+                      key={article.id}
+                      onClick={() => addArticleLink(article.id)}
+                      className="cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4 mr-2 text-brand-accent" />
+                      {article.title}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              {platformArticles.length > 0 && (
+                <>
+                  {programArticles.length > 0 && <DropdownMenuSeparator />}
+                  <DropdownMenuLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
+                    Platform Content
+                  </DropdownMenuLabel>
+                  {platformArticles.map((article) => (
+                    <DropdownMenuItem
+                      key={article.id}
+                      onClick={() => addArticleLink(article.id)}
+                      className="cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4 mr-2 text-[#8c8c8c]" />
+                      {article.title}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => window.location.href = '/coach?tab=discover'}
+                className="cursor-pointer text-brand-accent"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create new article
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {formData.linkedArticleIds.length === 0 && availableArticlesToLink.length === 0 && (
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
@@ -1215,40 +1242,59 @@ export function DayEditor({
           )}
 
           {/* Add download dropdown */}
-          <select
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-            value=""
-            onChange={(e) => {
-              if (e.target.value === '__create_new__') {
-                window.location.href = '/coach?tab=discover';
-              } else if (e.target.value) {
-                addDownloadLink(e.target.value);
-              }
-            }}
-          >
-            <option value="">Add a download...</option>
-            {programDownloads.length > 0 && (
-              <optgroup label="Program Content">
-                {programDownloads.map((download) => (
-                  <option key={download.id} value={download.id}>
-                    {download.title}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            {platformDownloads.length > 0 && (
-              <optgroup label="Platform Content">
-                {platformDownloads.map((download) => (
-                  <option key={download.id} value={download.id}>
-                    {download.title}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            <option value="__create_new__" className="text-brand-accent font-medium">
-              + Create new download
-            </option>
-          </select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center justify-between px-3 py-2.5 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors">
+                <span className="text-[#8c8c8c] dark:text-[#7d8190]">Add a download...</span>
+                <ChevronDown className="w-4 h-4 text-[#8c8c8c]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[300px] overflow-y-auto">
+              {programDownloads.length > 0 && (
+                <>
+                  <DropdownMenuLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
+                    Program Content
+                  </DropdownMenuLabel>
+                  {programDownloads.map((download) => (
+                    <DropdownMenuItem
+                      key={download.id}
+                      onClick={() => addDownloadLink(download.id)}
+                      className="cursor-pointer"
+                    >
+                      <Download className="w-4 h-4 mr-2 text-brand-accent" />
+                      {download.title}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              {platformDownloads.length > 0 && (
+                <>
+                  {programDownloads.length > 0 && <DropdownMenuSeparator />}
+                  <DropdownMenuLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
+                    Platform Content
+                  </DropdownMenuLabel>
+                  {platformDownloads.map((download) => (
+                    <DropdownMenuItem
+                      key={download.id}
+                      onClick={() => addDownloadLink(download.id)}
+                      className="cursor-pointer"
+                    >
+                      <Download className="w-4 h-4 mr-2 text-[#8c8c8c]" />
+                      {download.title}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => window.location.href = '/coach?tab=discover'}
+                className="cursor-pointer text-brand-accent"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create new download
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {formData.linkedDownloadIds.length === 0 && availableDownloadsToLink.length === 0 && (
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
@@ -1294,40 +1340,59 @@ export function DayEditor({
           )}
 
           {/* Add link dropdown */}
-          <select
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-            value=""
-            onChange={(e) => {
-              if (e.target.value === '__create_new__') {
-                window.location.href = '/coach?tab=discover';
-              } else if (e.target.value) {
-                addLinkLink(e.target.value);
-              }
-            }}
-          >
-            <option value="">Add a link...</option>
-            {programLinks.length > 0 && (
-              <optgroup label="Program Content">
-                {programLinks.map((link) => (
-                  <option key={link.id} value={link.id}>
-                    {link.title}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            {platformLinks.length > 0 && (
-              <optgroup label="Platform Content">
-                {platformLinks.map((link) => (
-                  <option key={link.id} value={link.id}>
-                    {link.title}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            <option value="__create_new__" className="text-brand-accent font-medium">
-              + Create new link
-            </option>
-          </select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center justify-between px-3 py-2.5 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors">
+                <span className="text-[#8c8c8c] dark:text-[#7d8190]">Add a link...</span>
+                <ChevronDown className="w-4 h-4 text-[#8c8c8c]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[300px] overflow-y-auto">
+              {programLinks.length > 0 && (
+                <>
+                  <DropdownMenuLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
+                    Program Content
+                  </DropdownMenuLabel>
+                  {programLinks.map((link) => (
+                    <DropdownMenuItem
+                      key={link.id}
+                      onClick={() => addLinkLink(link.id)}
+                      className="cursor-pointer"
+                    >
+                      <Link2 className="w-4 h-4 mr-2 text-brand-accent" />
+                      {link.title}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              {platformLinks.length > 0 && (
+                <>
+                  {programLinks.length > 0 && <DropdownMenuSeparator />}
+                  <DropdownMenuLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
+                    Platform Content
+                  </DropdownMenuLabel>
+                  {platformLinks.map((link) => (
+                    <DropdownMenuItem
+                      key={link.id}
+                      onClick={() => addLinkLink(link.id)}
+                      className="cursor-pointer"
+                    >
+                      <Link2 className="w-4 h-4 mr-2 text-[#8c8c8c]" />
+                      {link.title}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => window.location.href = '/coach?tab=discover'}
+                className="cursor-pointer text-brand-accent"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create new link
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {formData.linkedLinkIds.length === 0 && availableLinksToLink.length === 0 && (
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
@@ -1373,31 +1438,41 @@ export function DayEditor({
           )}
 
           {/* Add questionnaire dropdown */}
-          <select
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-            value=""
-            onChange={(e) => {
-              if (e.target.value === '__create_new__') {
-                window.location.href = '/coach?tab=discover';
-              } else if (e.target.value) {
-                addQuestionnaireLink(e.target.value);
-              }
-            }}
-          >
-            <option value="">Add a questionnaire...</option>
-            {availableQuestionnairesToLink.length > 0 && (
-              <optgroup label="Platform Content">
-                {availableQuestionnairesToLink.map((questionnaire) => (
-                  <option key={questionnaire.id} value={questionnaire.id}>
-                    {questionnaire.title}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            <option value="__create_new__" className="text-brand-accent font-medium">
-              + Create new questionnaire
-            </option>
-          </select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center justify-between px-3 py-2.5 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors">
+                <span className="text-[#8c8c8c] dark:text-[#7d8190]">Add a questionnaire...</span>
+                <ChevronDown className="w-4 h-4 text-[#8c8c8c]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[300px] overflow-y-auto">
+              {availableQuestionnairesToLink.length > 0 && (
+                <>
+                  <DropdownMenuLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
+                    Platform Content
+                  </DropdownMenuLabel>
+                  {availableQuestionnairesToLink.map((questionnaire) => (
+                    <DropdownMenuItem
+                      key={questionnaire.id}
+                      onClick={() => addQuestionnaireLink(questionnaire.id)}
+                      className="cursor-pointer"
+                    >
+                      <FileQuestion className="w-4 h-4 mr-2 text-[#8c8c8c]" />
+                      {questionnaire.title}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem
+                onClick={() => window.location.href = '/coach?tab=discover'}
+                className="cursor-pointer text-brand-accent"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create new questionnaire
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {formData.linkedQuestionnaireIds.length === 0 && availableQuestionnairesToLink.length === 0 && (
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
