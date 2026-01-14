@@ -52,6 +52,10 @@ const GROQ_API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 /**
  * Transcribe audio using Groq Whisper Large V3 Turbo
  * This is the cheapest option at $0.04/hr
+ *
+ * Note: Groq supports up to 100MB for files provided via URL (paid tier).
+ * We use the URL parameter to avoid the 25MB direct upload limit.
+ * See: https://groq.com/blog/largest-most-capable-asr-model-now-faster-on-groqcloud
  */
 async function transcribeWithGroq(audioUrl: string): Promise<TranscriptionResult> {
   const apiKey = process.env.GROQ_API_KEY;
@@ -59,31 +63,31 @@ async function transcribeWithGroq(audioUrl: string): Promise<TranscriptionResult
     throw new Error('GROQ_API_KEY environment variable is not set');
   }
 
-  // Download the audio file
-  const audioResponse = await fetch(audioUrl);
-  if (!audioResponse.ok) {
-    throw new Error(`Failed to download audio: ${audioResponse.statusText}`);
-  }
-
-  const audioBlob = await audioResponse.blob();
-
-  // Create form data for Groq API
-  const formData = new FormData();
-  formData.append('file', audioBlob, 'audio.mp3');
-  formData.append('model', 'whisper-large-v3-turbo');
-  formData.append('response_format', 'verbose_json');
-  formData.append('timestamp_granularities[]', 'segment');
-
+  // Use URL parameter instead of file upload to support up to 100MB files
+  // This is the recommended approach for larger files per Groq docs
   const response = await fetch(GROQ_API_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
     },
-    body: formData,
+    body: JSON.stringify({
+      url: audioUrl,
+      model: 'whisper-large-v3-turbo',
+      response_format: 'verbose_json',
+      timestamp_granularities: ['segment'],
+    }),
   });
 
   if (!response.ok) {
     const error = await response.text();
+    // Provide cleaner error messages for common errors
+    if (error.includes('request_too_large') || error.includes('Request Entity Too Large')) {
+      throw new Error(
+        'File size exceeds the limit for transcription. ' +
+        'Please use a shorter recording or compress the audio.'
+      );
+    }
     throw new Error(`Groq transcription failed: ${error}`);
   }
 

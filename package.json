@@ -69,6 +69,7 @@
     "jose": "^6.1.2",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
+    "lamejs": "^1.2.1",
     "linkify-react": "^4.3.2",
     "linkifyjs": "^4.3.2",
     "lucide-react": "^0.554.0",

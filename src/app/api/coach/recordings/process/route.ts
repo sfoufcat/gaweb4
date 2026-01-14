@@ -81,10 +81,24 @@ export async function POST(request: NextRequest) {
 
     const isFilePdf = isPdf(fileName);
 
-    // For audio/video: check and deduct credits
-    // For PDFs: FREE, skip credit check
+    // For audio/video: check file size and credits
+    // For PDFs: FREE, skip credit and size checks
+    // Note: Groq supports up to 100MB via URL, but client compresses large files
+    // to reduce upload time and bandwidth costs
+    const MAX_UPLOAD_SIZE = 100 * 1024 * 1024; // 100MB max (Groq URL limit)
     let estimatedMinutes = 0;
     if (!isFilePdf) {
+      // Sanity check - reject files over Groq's limit
+      if (fileSize > MAX_UPLOAD_SIZE) {
+        const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(1);
+        return NextResponse.json(
+          {
+            error: `File size (${fileSizeMB}MB) exceeds the 100MB limit.`,
+          },
+          { status: 413 }
+        );
+      }
+
       // Estimate duration (rough estimate, 1 MB per minute for audio)
       estimatedMinutes = Math.max(1, Math.ceil(fileSize / (1024 * 1024)));
 

@@ -19,6 +19,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { ResourceLinkDropdown } from './ResourceLinkDropdown';
+// Client-side compression for faster uploads and reduced bandwidth costs
+import { compressAudioFile, needsCompression, canCompress, formatFileSize } from '@/lib/audio-compression';
 
 interface EnrollmentWithUser extends ProgramEnrollment {
   user?: {
@@ -644,8 +646,9 @@ export function WeekEditor({
   // Recording upload and summary generation state
   const [recordingFile, setRecordingFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [recordingStatus, setRecordingStatus] = useState<'idle' | 'uploading' | 'processing' | 'generating' | 'completed' | 'error'>('idle');
+  const [recordingStatus, setRecordingStatus] = useState<'idle' | 'compressing' | 'uploading' | 'processing' | 'generating' | 'completed' | 'error'>('idle');
   const [recordingError, setRecordingError] = useState<string | null>(null);
+  const [compressionProgress, setCompressionProgress] = useState(0);
 
   // State for expanded tasks (to show member breakdown) - for cohort mode
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -1452,25 +1455,65 @@ export function WeekEditor({
 
     // For summary generation, we need either a client context (individual) or cohort context (group)
     if (!clientUserId && !cohortId) {
-      setRecordingError(programType === 'group' 
-        ? 'Please select a cohort to upload recordings' 
+      setRecordingError(programType === 'group'
+        ? 'Please select a cohort to upload recordings'
         : 'Please select a client view to generate summaries');
       return;
     }
 
     try {
+      setRecordingError(null);
+
+      // Determine if we need to compress the file (over 25MB for transcription)
+      const MAX_TRANSCRIPTION_SIZE = 25 * 1024 * 1024; // 25MB
+      let fileToUpload: File | Blob = recordingFile;
+      let fileName = recordingFile.name;
+      let fileType = recordingFile.type;
+      let fileSize = recordingFile.size;
+
+      // Compress if file is too large and is a compressible audio/video type
+      if (needsCompression(recordingFile) && canCompress(recordingFile)) {
+        setRecordingStatus('compressing');
+        setCompressionProgress(0);
+
+        try {
+          const result = await compressAudioFile(recordingFile, (progress) => {
+            setCompressionProgress(progress.progress);
+          });
+
+          fileToUpload = result.blob;
+          fileName = recordingFile.name.replace(/\.[^.]+$/, '.mp3');
+          fileType = 'audio/mp3';
+          fileSize = result.blob.size;
+
+          console.log(`[COMPRESSION] Compressed ${formatFileSize(result.originalSize)} → ${formatFileSize(result.compressedSize)} (${result.compressionRatio.toFixed(1)}x)`);
+
+          // If still too large after compression, warn user
+          if (fileSize > MAX_TRANSCRIPTION_SIZE) {
+            throw new Error(`File is still too large after compression (${formatFileSize(fileSize)}). Please use a shorter recording.`);
+          }
+        } catch (compressError) {
+          console.error('Compression failed:', compressError);
+          // If compression fails and file is too large, show error
+          if (recordingFile.size > MAX_TRANSCRIPTION_SIZE) {
+            throw new Error(`File is too large (${formatFileSize(recordingFile.size)}) and compression failed. Please use a file under 25MB or a shorter recording.`);
+          }
+          // Otherwise continue with original file
+          console.log('Continuing with original file');
+        }
+      }
+
       setRecordingStatus('uploading');
       setUploadProgress(0);
-      setRecordingError(null);
 
       // Step 1: Get signed URL for direct upload
       const signedUrlResponse = await fetch('/api/coach/recordings/get-upload-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fileName: recordingFile.name,
-          fileType: recordingFile.type,
-          fileSize: recordingFile.size,
+          fileName,
+          fileType,
+          fileSize,
         }),
       });
 
@@ -1503,21 +1546,21 @@ export function WeekEditor({
       });
 
       xhr.open('PUT', uploadUrl);
-      xhr.setRequestHeader('Content-Type', recordingFile.type);
-      xhr.send(recordingFile);
+      xhr.setRequestHeader('Content-Type', fileType);
+      xhr.send(fileToUpload);
 
       await uploadPromise;
 
       setRecordingStatus('processing');
 
-      // Step 3: Trigger processing
+      // Step 3: Trigger processing (use compressed file info)
       const processResponse = await fetch('/api/coach/recordings/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           storagePath,
-          fileName: recordingFile.name,
-          fileSize: recordingFile.size,
+          fileName,
+          fileSize,
           clientUserId: clientUserId || undefined,
           cohortId: cohortId || undefined,
           programEnrollmentId: enrollmentId || undefined,
@@ -2083,6 +2126,25 @@ export function WeekEditor({
                     : 'Switch to a client view to generate AI summaries'}
                 </p>
               )}
+            </div>
+          ) : recordingStatus === 'compressing' ? (
+            /* Compressing state */
+            <div className="p-4 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg">
+              <div className="flex items-center gap-3 mb-2">
+                <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
+                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  Compressing audio... {compressionProgress}%
+                </span>
+              </div>
+              <div className="w-full h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand-accent transition-all duration-300"
+                  style={{ width: `${compressionProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] mt-2">
+                Large files are compressed for faster transcription
+              </p>
             </div>
           ) : recordingStatus === 'uploading' ? (
             /* Uploading state */
