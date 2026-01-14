@@ -170,6 +170,18 @@ export async function DELETE(
       }
     }
 
+    // 2a. For individual programs with client community, remove from community squad
+    // Individual programs don't store squadId on enrollment - they use clientCommunitySquadId on the program
+    if (program.type === 'individual' && program.clientCommunitySquadId && enrollment.joinedCommunity) {
+      try {
+        await removeUserFromSquadEntirely(enrolledUserId, program.clientCommunitySquadId);
+        console.log(`[COACH_ENROLLMENT_DELETE] Removed user ${enrolledUserId} from client community squad ${program.clientCommunitySquadId}`);
+      } catch (communityErr) {
+        console.error(`[COACH_ENROLLMENT_DELETE] Failed to remove from client community squad (non-fatal):`, communityErr);
+        // Continue - enrollment is already stopped
+      }
+    }
+
     // 2b. Delete future program tasks for this user from this enrollment's instance
     // This prevents phantom tasks from appearing after enrollment is stopped
     try {
@@ -307,6 +319,72 @@ export async function DELETE(
       console.error(`[COACH_ENROLLMENT_DELETE] Failed to delete tasks (non-fatal):`, taskErr);
     }
 
+    // 7. For individual programs, clean up coaching relationship data
+    if (program.type === 'individual') {
+      try {
+        const coachingDocId = `${program.organizationId}_${enrolledUserId}`;
+        const coachingDoc = await adminDb.collection('clientCoachingData').doc(coachingDocId).get();
+        
+        if (coachingDoc.exists) {
+          // Update coaching data to mark as inactive instead of deleting
+          // This preserves history while indicating the relationship is stopped
+          await coachingDoc.ref.update({
+            status: 'stopped',
+            stoppedAt: now,
+            updatedAt: now,
+          });
+          console.log(`[COACH_ENROLLMENT_DELETE] Marked coaching data as stopped for user ${enrolledUserId}`);
+        }
+
+        // Update user's coaching flags
+        const userDoc = await adminDb.collection('users').doc(enrolledUserId).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          // Only clear coaching flags if this user's coach matches the org owner
+          if (userData?.coachId) {
+            await userDoc.ref.update({
+              coaching: false,
+              coachingStatus: 'stopped',
+              updatedAt: now,
+            });
+            console.log(`[COACH_ENROLLMENT_DELETE] Updated user coaching status to stopped`);
+          }
+        }
+
+        // Update org_memberships
+        const membershipDocId = `${program.organizationId}_${enrolledUserId}`;
+        const membershipDoc = await adminDb.collection('org_memberships').doc(membershipDocId).get();
+        if (membershipDoc.exists) {
+          await membershipDoc.ref.update({
+            coaching: false,
+            coachingStatus: 'stopped',
+            updatedAt: now,
+          });
+          console.log(`[COACH_ENROLLMENT_DELETE] Updated org membership coaching status`);
+        }
+
+        // Update Clerk user metadata
+        try {
+          const clerk = await clerkClient();
+          const currentUser = await clerk.users.getUser(enrolledUserId);
+          const existingMetadata = (currentUser.publicMetadata as Record<string, unknown>) || {};
+          
+          await clerk.users.updateUserMetadata(enrolledUserId, {
+            publicMetadata: {
+              ...existingMetadata,
+              coaching: false,
+              coachingStatus: 'stopped',
+            },
+          });
+          console.log(`[COACH_ENROLLMENT_DELETE] Updated Clerk metadata for user ${enrolledUserId}`);
+        } catch (clerkErr) {
+          console.error(`[COACH_ENROLLMENT_DELETE] Failed to update Clerk metadata (non-fatal):`, clerkErr);
+        }
+      } catch (coachingErr) {
+        console.error(`[COACH_ENROLLMENT_DELETE] Failed to clean up coaching data (non-fatal):`, coachingErr);
+      }
+    }
+
     console.log(`[COACH_ENROLLMENT_DELETE] Coach ${userId} removed user ${enrolledUserId} from program ${programId}, deleted ${habitsDeleted} habits, ${tasksDeleted} tasks`);
 
     return NextResponse.json({
@@ -439,6 +517,95 @@ export async function PATCH(
         }
       } catch (squadErr) {
         console.error(`[COACH_ENROLLMENT_RESUME] Failed to re-add to squad (non-fatal):`, squadErr);
+      }
+    }
+
+    // 2a. For individual programs, re-add to client community squad if they had joined
+    if (program.type === 'individual' && program.clientCommunitySquadId && enrollment.joinedCommunity) {
+      try {
+        const { FieldValue } = await import('firebase-admin/firestore');
+        const { getStreamServerClient } = await import('@/lib/stream-server');
+        const squadDoc = await adminDb.collection('squads').doc(program.clientCommunitySquadId).get();
+
+        if (squadDoc.exists) {
+          const squadData = squadDoc.data();
+          const memberIds = squadData?.memberIds || [];
+
+          // Add user back to squad if not already there
+          if (!memberIds.includes(enrolledUserId)) {
+            await squadDoc.ref.update({
+              memberIds: FieldValue.arrayUnion(enrolledUserId),
+              updatedAt: now,
+            });
+            console.log(`[COACH_ENROLLMENT_RESUME] Re-added user ${enrolledUserId} to client community squad ${program.clientCommunitySquadId}`);
+          }
+
+          // Re-add to Stream chat channel if exists
+          if (squadData?.chatChannelId) {
+            try {
+              const streamClient = await getStreamServerClient();
+              const channel = streamClient.channel('messaging', squadData.chatChannelId);
+              await channel.addMembers([enrolledUserId]);
+              console.log(`[COACH_ENROLLMENT_RESUME] Re-added user ${enrolledUserId} to client community Stream channel`);
+            } catch (streamErr) {
+              console.error(`[COACH_ENROLLMENT_RESUME] Failed to re-add to client community Stream channel (non-fatal):`, streamErr);
+            }
+          }
+        }
+      } catch (communityErr) {
+        console.error(`[COACH_ENROLLMENT_RESUME] Failed to re-add to client community squad (non-fatal):`, communityErr);
+      }
+    }
+
+    // 2b. For individual programs, restore coaching relationship data
+    if (program.type === 'individual') {
+      try {
+        const coachingDocId = `${program.organizationId}_${enrolledUserId}`;
+        const coachingDoc = await adminDb.collection('clientCoachingData').doc(coachingDocId).get();
+        
+        if (coachingDoc.exists) {
+          await coachingDoc.ref.update({
+            status: 'active',
+            resumedAt: now,
+            updatedAt: now,
+          });
+          console.log(`[COACH_ENROLLMENT_RESUME] Restored coaching data for user ${enrolledUserId}`);
+        }
+
+        // Restore user's coaching flags
+        await adminDb.collection('users').doc(enrolledUserId).update({
+          coaching: true,
+          coachingStatus: 'active',
+          updatedAt: now,
+        });
+
+        // Restore org_memberships
+        const membershipDocId = `${program.organizationId}_${enrolledUserId}`;
+        await adminDb.collection('org_memberships').doc(membershipDocId).update({
+          coaching: true,
+          coachingStatus: 'active',
+          updatedAt: now,
+        });
+
+        // Update Clerk user metadata
+        try {
+          const clerk = await clerkClient();
+          const currentUser = await clerk.users.getUser(enrolledUserId);
+          const existingMetadata = (currentUser.publicMetadata as Record<string, unknown>) || {};
+          
+          await clerk.users.updateUserMetadata(enrolledUserId, {
+            publicMetadata: {
+              ...existingMetadata,
+              coaching: true,
+              coachingStatus: 'active',
+            },
+          });
+          console.log(`[COACH_ENROLLMENT_RESUME] Restored Clerk metadata for user ${enrolledUserId}`);
+        } catch (clerkErr) {
+          console.error(`[COACH_ENROLLMENT_RESUME] Failed to update Clerk metadata (non-fatal):`, clerkErr);
+        }
+      } catch (coachingErr) {
+        console.error(`[COACH_ENROLLMENT_RESUME] Failed to restore coaching data (non-fatal):`, coachingErr);
       }
     }
 

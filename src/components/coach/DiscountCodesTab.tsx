@@ -7,7 +7,15 @@ import { Dialog as HeadlessDialog, Transition } from '@headlessui/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import type { DiscountCode, DiscountType, DiscountApplicableTo, DiscountContentType, Program, Squad, SellableContent } from '@/types';
+import type { DiscountCode, DiscountType, DiscountApplicableTo, DiscountContentType, Program, Squad } from '@/types';
+
+// Local type for sellable content items (events, articles, courses, downloads, links with prices)
+interface SellableContent {
+  id: string;
+  title: string;
+  type: DiscountContentType;
+  priceInCents: number;
+}
 import { useDemoMode } from '@/contexts/DemoModeContext';
 
 interface DiscountCodesTabProps {
