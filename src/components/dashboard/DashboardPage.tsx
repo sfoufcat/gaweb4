@@ -2051,9 +2051,9 @@ export function DashboardPage() {
         <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px] mb-3">
           {mySquadTitle}
         </h2>
-        <SquadCarousel 
-          premiumSquad={dashboardSquads?.premium || { squad: null, members: [] }}
-          standardSquad={dashboardSquads?.standard || { squad: null, members: [] }}
+        <SquadCarousel
+          programSquad={dashboardSquads?.program || { squad: null, members: [] }}
+          standaloneSquad={dashboardSquads?.standalone || { squad: null, members: [] }}
           isLoading={squadLoading}
           squadTitle={mySquadTitle}
           squadTerm={squadTerm}
@@ -2062,7 +2062,7 @@ export function DashboardPage() {
       </div>
 
       {/* Request Call with Coach - Only show if user has a squad with a coach */}
-      {!isCoachUser && (dashboardSquads?.premium?.squad?.hasCoach || dashboardSquads?.standard?.squad?.hasCoach) && (
+      {!isCoachUser && (dashboardSquads?.program?.squad?.coachId || dashboardSquads?.standalone?.squad?.coachId) && (
         <div className="mt-6">
           <RequestCallCard 
             coachName={coachTitle || 'Coach'}

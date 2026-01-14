@@ -574,18 +574,29 @@ export async function GET(request: Request) {
     // =========================================================================
     // PROCESS SQUAD DATA
     // =========================================================================
-    const squads: { premium: { squad: Squad | null; members: SquadMember[] }; standard: { squad: Squad | null; members: SquadMember[] } } = {
+    // New model: "program" = squad tied to a program, "standalone" = squad without program
+    // Old model (deprecated): "premium" = paid/coached squad, "standard" = free squad
+    // We return both for backwards compatibility
+    const squads: {
+      premium: { squad: Squad | null; members: SquadMember[] };
+      standard: { squad: Squad | null; members: SquadMember[] };
+      program: { squad: Squad | null; members: SquadMember[] };
+      standalone: { squad: Squad | null; members: SquadMember[] };
+    } = {
       premium: { squad: null, members: [] },
       standard: { squad: null, members: [] },
+      program: { squad: null, members: [] },
+      standalone: { squad: null, members: [] },
     };
-    
+
+    // Legacy field names (premiumSquadId, standardSquadId) still supported
     const premiumSquadId = orgMembershipData?.premiumSquadId || baseUserData?.premiumSquadId;
     const standardSquadId = orgMembershipData?.standardSquadId || baseUserData?.standardSquadId;
-    
+
     if (premiumSquadId || standardSquadId) {
       const squadFetches: Promise<FirebaseFirestore.DocumentSnapshot>[] = [];
       const memberFetches: Promise<FirebaseFirestore.QuerySnapshot>[] = [];
-      
+
       if (premiumSquadId) {
         squadFetches.push(adminDb.collection('squads').doc(premiumSquadId).get());
         memberFetches.push(
@@ -596,7 +607,7 @@ export async function GET(request: Request) {
             .get()
         );
       }
-      
+
       if (standardSquadId) {
         squadFetches.push(adminDb.collection('squads').doc(standardSquadId).get());
         memberFetches.push(
@@ -607,33 +618,50 @@ export async function GET(request: Request) {
             .get()
         );
       }
-      
+
       const [squadResults, memberResults] = await Promise.all([
         Promise.all(squadFetches),
         Promise.all(memberFetches),
       ]);
-      
+
       let idx = 0;
       if (premiumSquadId) {
         const squadDoc = squadResults[idx];
         const membersSnapshot = memberResults[idx];
         if (squadDoc.exists) {
-          squads.premium = {
-            squad: { id: squadDoc.id, ...squadDoc.data() } as Squad,
-            members: membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SquadMember)),
-          };
+          const squadData = { id: squadDoc.id, ...squadDoc.data() } as Squad;
+          const membersData = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SquadMember));
+
+          // Set legacy fields for backwards compatibility
+          squads.premium = { squad: squadData, members: membersData };
+
+          // Set new fields based on whether squad has a programId
+          if (squadData.programId) {
+            squads.program = { squad: squadData, members: membersData };
+          } else {
+            squads.standalone = { squad: squadData, members: membersData };
+          }
         }
         idx++;
       }
-      
+
       if (standardSquadId) {
         const squadDoc = squadResults[idx];
         const membersSnapshot = memberResults[idx];
         if (squadDoc.exists) {
-          squads.standard = {
-            squad: { id: squadDoc.id, ...squadDoc.data() } as Squad,
-            members: membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SquadMember)),
-          };
+          const squadData = { id: squadDoc.id, ...squadDoc.data() } as Squad;
+          const membersData = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SquadMember));
+
+          // Set legacy fields for backwards compatibility
+          squads.standard = { squad: squadData, members: membersData };
+
+          // Set new fields based on whether squad has a programId
+          // Only set if not already set by premium squad
+          if (squadData.programId && !squads.program.squad) {
+            squads.program = { squad: squadData, members: membersData };
+          } else if (!squadData.programId && !squads.standalone.squad) {
+            squads.standalone = { squad: squadData, members: membersData };
+          }
         }
       }
     }

@@ -104,8 +104,14 @@ export interface DashboardData {
     upcoming: ProgramEnrollmentWithDetails[];
   };
   squads: {
+    /** @deprecated Use program instead */
     premium: { squad: Squad | null; members: SquadMember[] };
+    /** @deprecated Use standalone instead */
     standard: { squad: Squad | null; members: SquadMember[] };
+    /** Squad tied to a program (has programId) */
+    program?: { squad: Squad | null; members: SquadMember[] };
+    /** Standalone squad (no programId) */
+    standalone?: { squad: Squad | null; members: SquadMember[] };
   };
   // Carousel cards data (program prompt + discover recommendation)
   carouselCards?: CarouselCardsData;

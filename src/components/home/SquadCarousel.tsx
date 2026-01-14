@@ -15,15 +15,33 @@ interface SquadData {
 }
 
 interface SquadCarouselProps {
-  premiumSquad: SquadData;
-  standardSquad: SquadData;
+  /** @deprecated Use programSquad instead */
+  premiumSquad?: SquadData;
+  /** @deprecated Use standaloneSquad instead */
+  standardSquad?: SquadData;
+  /** Squad tied to a program (has programId) */
+  programSquad?: SquadData;
+  /** Standalone squad (no programId) */
+  standaloneSquad?: SquadData;
   isLoading?: boolean;
   squadTitle?: string;
   squadTerm?: string;
   isCoach?: boolean;
 }
 
-export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTitle = 'My Cohort', squadTerm = 'Squad', isCoach = false }: SquadCarouselProps) {
+export function SquadCarousel({
+  premiumSquad,
+  standardSquad,
+  programSquad,
+  standaloneSquad,
+  isLoading,
+  squadTitle = 'My Cohort',
+  squadTerm = 'Squad',
+  isCoach = false
+}: SquadCarouselProps) {
+  // Support both old (premium/standard) and new (program/standalone) prop names
+  const resolvedProgramSquad = programSquad ?? premiumSquad ?? { squad: null, members: [] };
+  const resolvedStandaloneSquad = standaloneSquad ?? standardSquad ?? { squad: null, members: [] };
   // Lowercase version for use in sentences
   const squadTermLower = squadTerm.toLowerCase();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -47,10 +65,11 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
   }, [isMobile, router]);
   
   // Build list of squads that exist
+  // Type is determined by whether the squad has a programId (program squad) or not (standalone squad)
   const squads = [
-    premiumSquad.squad && { ...premiumSquad, type: 'premium' as const },
-    standardSquad.squad && { ...standardSquad, type: 'standard' as const },
-  ].filter(Boolean) as (SquadData & { type: 'premium' | 'standard' })[];
+    resolvedProgramSquad.squad && { ...resolvedProgramSquad, type: 'program' as const },
+    resolvedStandaloneSquad.squad && { ...resolvedStandaloneSquad, type: 'standalone' as const },
+  ].filter(Boolean) as (SquadData & { type: 'program' | 'standalone' })[];
   
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
@@ -168,9 +187,9 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
               <h3 className="font-albert font-semibold text-[18px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px] truncate">
                 {squad.name}
               </h3>
-              {type === 'premium' && (
+              {type === 'program' && (
                 <span className="glass-badge px-2 py-0.5 bg-amber-500/90 text-white rounded-full text-[10px] font-semibold">
-                  Premium
+                  Program
                 </span>
               )}
             </div>
@@ -257,12 +276,12 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
                   {/* Badge - top left */}
                   <div className="absolute top-3 left-3 z-20">
                     <span className={`glass-badge px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
-                      type === 'premium'
+                      type === 'program'
                         ? 'bg-amber-500/90 text-white'
                         : 'bg-emerald-500/90 text-white'
                     }`}>
                       <Users className="w-3 h-3" />
-                      {type === 'premium' ? 'Premium' : squadTerm}
+                      {type === 'program' ? 'Program' : squadTerm}
                     </span>
                   </div>
                   

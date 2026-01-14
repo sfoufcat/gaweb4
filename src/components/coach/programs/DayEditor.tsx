@@ -10,17 +10,8 @@ import { DayCourseSelector } from './DayCourseSelector';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-  SelectSeparator,
-} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { ResourceLinkDropdown } from './ResourceLinkDropdown';
 
 // Extended completion data for cohort tasks
 interface CohortTaskCompletionData {
@@ -1146,60 +1137,25 @@ export function DayEditor({
           )}
 
           {/* Add article dropdown */}
-          <Select
-            key={`article-select-${formData.linkedArticleIds.length}`}
-            onValueChange={(value) => {
-              if (value === '__create__') {
-                window.location.href = '/coach?tab=discover';
-              } else if (value) {
-                addArticleLink(value);
-              }
-            }}
-          >
-            <SelectTrigger className="w-full border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b]">
-              <SelectValue placeholder="Add an article..." />
-            </SelectTrigger>
-            <SelectContent>
-              {programArticles.length > 0 && (
-                <SelectGroup>
-                  <SelectLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
-                    Program Content
-                  </SelectLabel>
-                  {programArticles.map((article) => (
-                    <SelectItem key={article.id} value={article.id}>
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-brand-accent" />
-                        {article.title}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-              {platformArticles.length > 0 && (
-                <SelectGroup>
-                  {programArticles.length > 0 && <SelectSeparator />}
-                  <SelectLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
-                    Platform Content
-                  </SelectLabel>
-                  {platformArticles.map((article) => (
-                    <SelectItem key={article.id} value={article.id}>
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-[#8c8c8c]" />
-                        {article.title}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-              <SelectSeparator />
-              <SelectItem value="__create__" className="text-brand-accent">
-                <div className="flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Create new article
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <ResourceLinkDropdown
+            placeholder="Add an article..."
+            icon={FileText}
+            groups={[
+              {
+                label: 'Program Content',
+                items: programArticles.map(a => ({ id: a.id, title: a.title })),
+                iconClassName: 'text-brand-accent',
+              },
+              {
+                label: 'Platform Content',
+                items: platformArticles.map(a => ({ id: a.id, title: a.title })),
+                iconClassName: 'text-[#8c8c8c]',
+              },
+            ]}
+            onSelect={addArticleLink}
+            onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
+            createNewLabel="Create new article"
+          />
 
           {formData.linkedArticleIds.length === 0 && availableArticlesToLink.length === 0 && (
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
@@ -1245,60 +1201,25 @@ export function DayEditor({
           )}
 
           {/* Add download dropdown */}
-          <Select
-            key={`download-select-${formData.linkedDownloadIds.length}`}
-            onValueChange={(value) => {
-              if (value === '__create__') {
-                window.location.href = '/coach?tab=discover';
-              } else if (value) {
-                addDownloadLink(value);
-              }
-            }}
-          >
-            <SelectTrigger className="w-full border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b]">
-              <SelectValue placeholder="Add a download..." />
-            </SelectTrigger>
-            <SelectContent>
-              {programDownloads.length > 0 && (
-                <SelectGroup>
-                  <SelectLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
-                    Program Content
-                  </SelectLabel>
-                  {programDownloads.map((download) => (
-                    <SelectItem key={download.id} value={download.id}>
-                      <div className="flex items-center gap-2">
-                        <Download className="w-4 h-4 text-brand-accent" />
-                        {download.title}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-              {platformDownloads.length > 0 && (
-                <SelectGroup>
-                  {programDownloads.length > 0 && <SelectSeparator />}
-                  <SelectLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
-                    Platform Content
-                  </SelectLabel>
-                  {platformDownloads.map((download) => (
-                    <SelectItem key={download.id} value={download.id}>
-                      <div className="flex items-center gap-2">
-                        <Download className="w-4 h-4 text-[#8c8c8c]" />
-                        {download.title}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-              <SelectSeparator />
-              <SelectItem value="__create__" className="text-brand-accent">
-                <div className="flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Create new download
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <ResourceLinkDropdown
+            placeholder="Add a download..."
+            icon={Download}
+            groups={[
+              {
+                label: 'Program Content',
+                items: programDownloads.map(d => ({ id: d.id, title: d.title })),
+                iconClassName: 'text-brand-accent',
+              },
+              {
+                label: 'Platform Content',
+                items: platformDownloads.map(d => ({ id: d.id, title: d.title })),
+                iconClassName: 'text-[#8c8c8c]',
+              },
+            ]}
+            onSelect={addDownloadLink}
+            onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
+            createNewLabel="Create new download"
+          />
 
           {formData.linkedDownloadIds.length === 0 && availableDownloadsToLink.length === 0 && (
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
@@ -1344,60 +1265,25 @@ export function DayEditor({
           )}
 
           {/* Add link dropdown */}
-          <Select
-            key={`link-select-${formData.linkedLinkIds.length}`}
-            onValueChange={(value) => {
-              if (value === '__create__') {
-                window.location.href = '/coach?tab=discover';
-              } else if (value) {
-                addLinkLink(value);
-              }
-            }}
-          >
-            <SelectTrigger className="w-full border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b]">
-              <SelectValue placeholder="Add a link..." />
-            </SelectTrigger>
-            <SelectContent>
-              {programLinks.length > 0 && (
-                <SelectGroup>
-                  <SelectLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
-                    Program Content
-                  </SelectLabel>
-                  {programLinks.map((link) => (
-                    <SelectItem key={link.id} value={link.id}>
-                      <div className="flex items-center gap-2">
-                        <Link2 className="w-4 h-4 text-brand-accent" />
-                        {link.title}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-              {platformLinks.length > 0 && (
-                <SelectGroup>
-                  {programLinks.length > 0 && <SelectSeparator />}
-                  <SelectLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
-                    Platform Content
-                  </SelectLabel>
-                  {platformLinks.map((link) => (
-                    <SelectItem key={link.id} value={link.id}>
-                      <div className="flex items-center gap-2">
-                        <Link2 className="w-4 h-4 text-[#8c8c8c]" />
-                        {link.title}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-              <SelectSeparator />
-              <SelectItem value="__create__" className="text-brand-accent">
-                <div className="flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Create new link
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <ResourceLinkDropdown
+            placeholder="Add a link..."
+            icon={Link2}
+            groups={[
+              {
+                label: 'Program Content',
+                items: programLinks.map(l => ({ id: l.id, title: l.title })),
+                iconClassName: 'text-brand-accent',
+              },
+              {
+                label: 'Platform Content',
+                items: platformLinks.map(l => ({ id: l.id, title: l.title })),
+                iconClassName: 'text-[#8c8c8c]',
+              },
+            ]}
+            onSelect={addLinkLink}
+            onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
+            createNewLabel="Create new link"
+          />
 
           {formData.linkedLinkIds.length === 0 && availableLinksToLink.length === 0 && (
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
@@ -1443,44 +1329,20 @@ export function DayEditor({
           )}
 
           {/* Add questionnaire dropdown */}
-          <Select
-            key={`questionnaire-select-${formData.linkedQuestionnaireIds.length}`}
-            onValueChange={(value) => {
-              if (value === '__create__') {
-                window.location.href = '/coach?tab=discover';
-              } else if (value) {
-                addQuestionnaireLink(value);
-              }
-            }}
-          >
-            <SelectTrigger className="w-full border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b]">
-              <SelectValue placeholder="Add a questionnaire..." />
-            </SelectTrigger>
-            <SelectContent>
-              {availableQuestionnairesToLink.length > 0 && (
-                <SelectGroup>
-                  <SelectLabel className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-semibold uppercase tracking-wider">
-                    Platform Content
-                  </SelectLabel>
-                  {availableQuestionnairesToLink.map((questionnaire) => (
-                    <SelectItem key={questionnaire.id} value={questionnaire.id}>
-                      <div className="flex items-center gap-2">
-                        <FileQuestion className="w-4 h-4 text-[#8c8c8c]" />
-                        {questionnaire.title}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-              <SelectSeparator />
-              <SelectItem value="__create__" className="text-brand-accent">
-                <div className="flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Create new questionnaire
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <ResourceLinkDropdown
+            placeholder="Add a questionnaire..."
+            icon={FileQuestion}
+            groups={[
+              {
+                label: 'Platform Content',
+                items: availableQuestionnairesToLink.map(q => ({ id: q.id, title: q.title })),
+                iconClassName: 'text-[#8c8c8c]',
+              },
+            ]}
+            onSelect={addQuestionnaireLink}
+            onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
+            createNewLabel="Create new questionnaire"
+          />
 
           {formData.linkedQuestionnaireIds.length === 0 && availableQuestionnairesToLink.length === 0 && (
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">

@@ -198,24 +198,28 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                 {/* Progress or Status */}
                 <div className="mt-auto pt-3 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
                   {enrollment.status === 'active' ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                    <div className="flex items-center gap-3">
+                      {/* Progress bar */}
+                      <div className="flex-1 h-2 bg-[#e1ddd8]/40 dark:bg-[#272d38]/60 rounded-full overflow-hidden shadow-inner">
+                        <div
+                          className="h-full bg-brand-accent rounded-full transition-all duration-500 ease-out shadow-sm"
+                          style={{
+                            width: `${Math.max(enrollment.progress.percentComplete, 2)}%`,
+                          }}
+                        />
+                      </div>
+                      {/* Day and percentage info */}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-[11px] text-[#5f5a55] dark:text-[#b2b6c2] whitespace-nowrap">
                           {enrollment.progress.isEvergreen && enrollment.progress.cycleNumber ? (
-                            <>Cycle {enrollment.progress.cycleNumber} • Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays}</>
+                            <>C{enrollment.progress.cycleNumber} Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays}</>
                           ) : (
                             <>Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays}</>
                           )}
                         </span>
-                        <span className="text-[12px] font-medium text-brand-accent">
+                        <span className="text-[11px] font-semibold text-brand-accent">
                           {enrollment.progress.percentComplete}%
                         </span>
-                      </div>
-                      <div className="h-1.5 bg-[#e1ddd8]/60 dark:bg-[#272d38] rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-brand-accent rounded-full transition-all"
-                          style={{ width: `${enrollment.progress.percentComplete}%` }}
-                        />
                       </div>
                     </div>
                   ) : hasStarted ? (
