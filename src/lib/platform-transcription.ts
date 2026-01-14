@@ -218,6 +218,9 @@ async function processTranscription(
     });
 
     console.error(`[PLATFORM-TRANSCRIPTION] Failed transcription ${transcriptionId}:`, error);
+
+    // Re-throw so callers know transcription failed (especially in serverless where we await)
+    throw error;
   }
 }
 
