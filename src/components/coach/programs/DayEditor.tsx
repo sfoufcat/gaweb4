@@ -1147,6 +1147,7 @@ export function DayEditor({
 
           {/* Add article dropdown */}
           <Select
+            key={`article-select-${formData.linkedArticleIds.length}`}
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -1245,6 +1246,7 @@ export function DayEditor({
 
           {/* Add download dropdown */}
           <Select
+            key={`download-select-${formData.linkedDownloadIds.length}`}
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -1343,6 +1345,7 @@ export function DayEditor({
 
           {/* Add link dropdown */}
           <Select
+            key={`link-select-${formData.linkedLinkIds.length}`}
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -1441,6 +1444,7 @@ export function DayEditor({
 
           {/* Add questionnaire dropdown */}
           <Select
+            key={`questionnaire-select-${formData.linkedQuestionnaireIds.length}`}
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';

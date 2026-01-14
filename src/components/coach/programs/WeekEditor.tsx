@@ -1472,25 +1472,25 @@ export function WeekEditor({
       setUploadProgress(0);
       setRecordingError(null);
 
-      const formDataUpload = new FormData();
-      formDataUpload.append('file', recordingFile);
-      // For individual programs, use clientUserId; for group programs, use cohortId
-      if (clientUserId) {
-        formDataUpload.append('clientUserId', clientUserId);
-      }
-      if (cohortId) {
-        formDataUpload.append('cohortId', cohortId);
-      }
-      if (enrollmentId) {
-        formDataUpload.append('programEnrollmentId', enrollmentId);
-      }
-      // For cohort mode, also send programId and weekId for cohort_week_content storage
-      if (cohortId && programId) {
-        formDataUpload.append('programId', programId);
-        formDataUpload.append('weekId', week.id);
+      // Step 1: Get signed URL for direct upload
+      const signedUrlResponse = await fetch('/api/coach/recordings/get-upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: recordingFile.name,
+          fileType: recordingFile.type,
+          fileSize: recordingFile.size,
+        }),
+      });
+
+      if (!signedUrlResponse.ok) {
+        const errorData = await signedUrlResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to get upload URL (${signedUrlResponse.status})`);
       }
 
-      // Upload with progress tracking
+      const { uploadUrl, storagePath } = await signedUrlResponse.json();
+
+      // Step 2: Upload directly to Firebase Storage with progress tracking
       const xhr = new XMLHttpRequest();
 
       xhr.upload.addEventListener('progress', (e) => {
@@ -1500,35 +1500,50 @@ export function WeekEditor({
         }
       });
 
-      const uploadPromise = new Promise<{ success: boolean; recordingId?: string; error?: string }>((resolve, reject) => {
+      const uploadPromise = new Promise<void>((resolve, reject) => {
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const response = JSON.parse(xhr.responseText);
-              resolve(response);
-            } catch {
-              reject(new Error('Invalid response from server'));
-            }
+            resolve();
           } else {
-            try {
-              const error = JSON.parse(xhr.responseText);
-              reject(new Error(error.error || `Upload failed (${xhr.status})`));
-            } catch {
-              reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText?.slice(0, 100) || 'Unknown error'}`));
-            }
+            reject(new Error(`Direct upload failed (${xhr.status})`));
           }
         };
         xhr.onerror = () => reject(new Error('Network error - please check your connection'));
       });
 
-      xhr.open('POST', '/api/coach/recordings/upload');
-      xhr.send(formDataUpload);
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', recordingFile.type);
+      xhr.send(recordingFile);
+
+      await uploadPromise;
 
       setRecordingStatus('processing');
-      const result = await uploadPromise;
+
+      // Step 3: Trigger processing
+      const processResponse = await fetch('/api/coach/recordings/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storagePath,
+          fileName: recordingFile.name,
+          fileSize: recordingFile.size,
+          clientUserId: clientUserId || undefined,
+          cohortId: cohortId || undefined,
+          programEnrollmentId: enrollmentId || undefined,
+          programId: cohortId && programId ? programId : undefined,
+          weekId: cohortId && programId ? week.id : undefined,
+        }),
+      });
+
+      if (!processResponse.ok) {
+        const errorData = await processResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Processing failed (${processResponse.status})`);
+      }
+
+      const result = await processResponse.json();
 
       if (!result.success) {
-        throw new Error(result.error || 'Upload failed');
+        throw new Error(result.error || 'Processing failed');
       }
 
       setRecordingStatus('generating');
@@ -2243,6 +2258,7 @@ export function WeekEditor({
 
           {/* Add article dropdown */}
           <Select
+            key={`article-select-${formData.linkedArticleIds.length}`}
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -2341,6 +2357,7 @@ export function WeekEditor({
 
           {/* Add download dropdown */}
           <Select
+            key={`download-select-${formData.linkedDownloadIds.length}`}
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -2439,6 +2456,7 @@ export function WeekEditor({
 
           {/* Add link dropdown */}
           <Select
+            key={`link-select-${formData.linkedLinkIds.length}`}
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -2537,6 +2555,7 @@ export function WeekEditor({
 
           {/* Add questionnaire dropdown */}
           <Select
+            key={`questionnaire-select-${formData.linkedQuestionnaireIds.length}`}
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -2619,6 +2638,7 @@ export function WeekEditor({
 
           {/* Add course dropdown */}
           <Select
+            key={`course-select-${formData.linkedCourseIds.length}`}
             onValueChange={(value) => {
               if (value === '__create__') {
                 window.location.href = '/coach?tab=discover';
@@ -2701,7 +2721,7 @@ export function WeekEditor({
         </div>
 
         {/* Notes (max 3) */}
-        <div>
+        <div className="mb-6">
           <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
             <FileText className="w-4 h-4 inline mr-1.5" />
             Notes <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
@@ -2744,20 +2764,13 @@ export function WeekEditor({
             </div>
           )}
         </div>
-      </CollapsibleSection>
 
-      {/* Coach Private Section */}
-      <CollapsibleSection
-        title="Coach Private"
-        icon={EyeOff}
-        description="Not visible to clients"
-        defaultOpen={false}
-      >
-        {/* Coach's Manual Notes */}
+        {/* Private Notes - Coach only */}
         <div>
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
             <StickyNote className="w-4 h-4 inline mr-1.5" />
-            Coach Notes
+            Private Notes
+            <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-normal ml-2">Not visible to clients</span>
           </label>
           <textarea
             value={formData.manualNotes}

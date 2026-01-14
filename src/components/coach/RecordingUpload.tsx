@@ -108,11 +108,25 @@ export function RecordingUpload({
       setProgress(0);
       setError(null);
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('clientUserId', clientId);
+      // Step 1: Get signed URL for direct upload
+      const signedUrlResponse = await fetch('/api/coach/recordings/get-upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+        }),
+      });
 
-      // Upload with progress tracking
+      if (!signedUrlResponse.ok) {
+        const errorData = await signedUrlResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to get upload URL (${signedUrlResponse.status})`);
+      }
+
+      const { uploadUrl, storagePath } = await signedUrlResponse.json();
+
+      // Step 2: Upload directly to Firebase Storage with progress tracking
       const xhr = new XMLHttpRequest();
 
       xhr.upload.addEventListener('progress', (e) => {
@@ -122,37 +136,52 @@ export function RecordingUpload({
         }
       });
 
-      const uploadPromise = new Promise<{ summaryId: string }>((resolve, reject) => {
+      const uploadPromise = new Promise<void>((resolve, reject) => {
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const response = JSON.parse(xhr.responseText);
-              resolve(response);
-            } catch {
-              reject(new Error('Invalid response from server'));
-            }
+            resolve();
           } else {
-            try {
-              const error = JSON.parse(xhr.responseText);
-              reject(new Error(error.error || `Upload failed (${xhr.status})`));
-            } catch {
-              reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText?.slice(0, 100) || 'Unknown error'}`));
-            }
+            reject(new Error(`Direct upload failed (${xhr.status})`));
           }
         };
         xhr.onerror = () => reject(new Error('Network error - please check your connection'));
       });
 
-      xhr.open('POST', '/api/coach/recordings/upload');
-      xhr.send(formData);
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.send(file);
+
+      await uploadPromise;
 
       setStatus('processing');
-      const result = await uploadPromise;
+
+      // Step 3: Trigger processing
+      const processResponse = await fetch('/api/coach/recordings/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storagePath,
+          fileName: file.name,
+          fileSize: file.size,
+          clientUserId: clientId,
+        }),
+      });
+
+      if (!processResponse.ok) {
+        const errorData = await processResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Processing failed (${processResponse.status})`);
+      }
+
+      const result = await processResponse.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Processing failed');
+      }
 
       setStatus('completed');
 
-      if (onUploadComplete && result.summaryId) {
-        onUploadComplete(result.summaryId);
+      if (onUploadComplete && result.recordingId) {
+        onUploadComplete(result.recordingId);
       }
     } catch (err) {
       console.error('Error uploading recording:', err);
