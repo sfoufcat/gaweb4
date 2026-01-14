@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { ResourceLinkDropdown } from './ResourceLinkDropdown';
+import { CallSummaryViewModal } from './CallSummaryViewModal';
 // Audio utilities for duration detection
 import { getAudioDuration } from '@/lib/audio-compression';
 
@@ -651,6 +652,9 @@ export function WeekEditor({
   const [pendingRecordingId, setPendingRecordingId] = useState<string | null>(null);
   // Detailed status from backend: 'uploaded' | 'transcribing' | 'summarizing' | 'completed' | 'failed'
   const [detailedStatus, setDetailedStatus] = useState<string | null>(null);
+
+  // Summary view modal state
+  const [viewingSummary, setViewingSummary] = useState<CallSummary | null>(null);
 
   // Check for in-progress recordings on mount and poll until complete
   // Supports both cohort mode (group programs) and 1:1 mode (individual programs)
@@ -1463,6 +1467,24 @@ export function WeekEditor({
   );
   // Note: Questionnaires don't have programIds - they're always platform-level
 
+  // Helper to generate summary label with entity name and date
+  const getSummaryLabel = useCallback((summary: CallSummary) => {
+    const entityName = clientName || cohortName;
+    const dateStr = summary.createdAt
+      ? new Date(summary.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '';
+
+    if (entityName && dateStr) {
+      return `${entityName} - ${dateStr}`;
+    } else if (entityName) {
+      return entityName;
+    } else if (dateStr) {
+      return `Summary from ${dateStr}`;
+    } else {
+      return `Summary ${summary.id.slice(0, 8)}...`;
+    }
+  }, [clientName, cohortName]);
+
   // Task management
   const addTask = () => {
     if (!newTask.trim()) return;
@@ -1482,6 +1504,13 @@ export function WeekEditor({
       ...formData,
       weeklyTasks: formData.weeklyTasks.filter((_, i) => i !== index),
     });
+    trackFieldEdit('syncTasks');
+  };
+
+  // Add multiple tasks at once (from summary action items)
+  const addTasksFromSummary = (tasks: ProgramTaskTemplate[]) => {
+    if (tasks.length === 0) return;
+    setFormData({ ...formData, weeklyTasks: [...formData.weeklyTasks, ...tasks] });
     trackFieldEdit('syncTasks');
   };
 
@@ -2116,23 +2145,22 @@ export function WeekEditor({
             <div className="space-y-2 mb-3">
               {formData.linkedSummaryIds.map((summaryId) => {
                 const summary = availableCallSummaries.find(s => s.id === summaryId);
-                const summaryLabel = summary?.summary?.executive
-                  ? summary.summary.executive.slice(0, 50) + (summary.summary.executive.length > 50 ? '...' : '')
-                  : `Summary ${summaryId.slice(0, 8)}...`;
+                const summaryLabel = summary ? getSummaryLabel(summary) : `Summary ${summaryId.slice(0, 8)}...`;
                 return (
                   <div
                     key={summaryId}
                     className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
                   >
-                    <MessageSquare className="w-4 h-4 text-brand-accent" />
+                    <MessageSquare className="w-4 h-4 text-brand-accent flex-shrink-0" />
                     <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
                       {summaryLabel}
                     </span>
-                    {summary?.createdAt && (
-                      <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                        {new Date(summary.createdAt).toLocaleDateString()}
-                      </span>
-                    )}
+                    <button
+                      onClick={() => summary && setViewingSummary(summary)}
+                      className="text-xs text-brand-accent hover:underline font-medium"
+                    >
+                      View
+                    </button>
                     <button
                       onClick={() => removeSummaryLink(summaryId)}
                       className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -2145,37 +2173,38 @@ export function WeekEditor({
             </div>
           )}
 
-          {/* Add summary dropdown */}
-          {availableSummariesToLink.length > 0 && (
-            <select
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-              value=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  addSummaryLink(e.target.value);
-                }
-              }}
-            >
-              <option value="">Add a call summary...</option>
-              {availableSummariesToLink.map((summary) => {
-                const label = summary.summary?.executive
-                  ? summary.summary.executive.slice(0, 40) + (summary.summary.executive.length > 40 ? '...' : '')
-                  : `Summary from ${new Date(summary.createdAt).toLocaleDateString()}`;
-                return (
-                  <option key={summary.id} value={summary.id}>
-                    {label}
-                  </option>
-                );
-              })}
-            </select>
-          )}
+          {/* Add summary dropdown - using ResourceLinkDropdown */}
+          <ResourceLinkDropdown
+            placeholder="Add a call summary..."
+            icon={MessageSquare}
+            groups={[
+              {
+                label: 'Available Summaries',
+                items: availableSummariesToLink.map(s => ({
+                  id: s.id,
+                  title: getSummaryLabel(s),
+                })),
+                iconClassName: 'text-brand-accent',
+              },
+            ]}
+            onSelect={addSummaryLink}
+          />
 
           {formData.linkedSummaryIds.length === 0 && availableSummariesToLink.length === 0 && (
-            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
+            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
               No call summaries available to link
             </p>
           )}
         </div>
+
+        {/* Summary View Modal */}
+        <CallSummaryViewModal
+          summary={viewingSummary}
+          isOpen={!!viewingSummary}
+          onClose={() => setViewingSummary(null)}
+          onFetchTasks={addTasksFromSummary}
+          entityName={clientName || cohortName}
+        />
 
         {/* Coach Recording Upload */}
         <div>
