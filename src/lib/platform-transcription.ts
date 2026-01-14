@@ -63,22 +63,21 @@ async function transcribeWithGroq(audioUrl: string): Promise<TranscriptionResult
     throw new Error('GROQ_API_KEY environment variable is not set');
   }
 
-  // Use URL parameter with JSON body to support up to 100MB files (dev tier)
-  // JSON format is required for URL-based requests per Groq docs
-  const requestBody = {
-    url: audioUrl,
-    model: 'whisper-large-v3-turbo',
-    response_format: 'verbose_json',
-    timestamp_granularities: ['segment'],
-  };
+  // Use URL parameter with multipart/form-data to support up to 100MB files (dev tier)
+  // Groq requires multipart/form-data even for URL-based requests
+  const formData = new FormData();
+  formData.append('url', audioUrl);
+  formData.append('model', 'whisper-large-v3-turbo');
+  formData.append('response_format', 'verbose_json');
+  formData.append('timestamp_granularities[]', 'segment');
 
   const response = await fetch(GROQ_API_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
+      // Don't set Content-Type - fetch will set it automatically with boundary for FormData
     },
-    body: JSON.stringify(requestBody),
+    body: formData,
   });
 
   if (!response.ok) {
