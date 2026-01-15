@@ -133,7 +133,7 @@ export function CallSummaryViewModal({
       // If no action items, try to extract from key discussion points
       if (tasks.length === 0 && summary.summary?.keyDiscussionPoints?.length) {
         // Take up to 2 key points as potential tasks
-        const points = summary.summary.keyDiscussionPoints.slice(0, 2);
+        const points = summary.summary?.keyDiscussionPoints?.slice(0, 2) || [];
         for (const point of points) {
           // Only use points that sound actionable (contain action verbs)
           const actionVerbs = ['work on', 'focus', 'practice', 'complete', 'finish', 'start', 'continue', 'develop', 'improve', 'implement', 'create', 'build'];
@@ -226,25 +226,25 @@ export function CallSummaryViewModal({
       {summary.status === 'completed' && summary.summary ? (
         <>
           {/* Executive Summary */}
-          {summary.summary.executive && (
+          {summary.summary?.executive && (
             <div>
               <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                 Summary
               </h4>
               <p className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2] leading-relaxed">
-                {summary.summary.executive}
+                {summary.summary?.executive}
               </p>
             </div>
           )}
 
           {/* Key Discussion Points */}
-          {summary.summary.keyDiscussionPoints?.length > 0 && (
+          {summary.summary?.keyDiscussionPoints?.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                 Key Discussion Points
               </h4>
               <ul className="space-y-1.5">
-                {summary.summary.keyDiscussionPoints.map((point, index) => (
+                {summary.summary?.keyDiscussionPoints?.map((point, index) => (
                   <li
                     key={index}
                     className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2] flex gap-2"
@@ -258,25 +258,25 @@ export function CallSummaryViewModal({
           )}
 
           {/* Client Progress */}
-          {summary.summary.clientProgress && (
+          {summary.summary?.clientProgress && (
             <div>
               <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                 Client Progress
               </h4>
               <p className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2]">
-                {summary.summary.clientProgress}
+                {summary.summary?.clientProgress}
               </p>
             </div>
           )}
 
           {/* Challenges */}
-          {summary.summary.challenges && summary.summary.challenges.length > 0 && (
+          {summary.summary?.challenges && summary.summary.challenges.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                 Challenges
               </h4>
               <ul className="space-y-1">
-                {summary.summary.challenges.map((challenge, index) => (
+                {summary.summary?.challenges?.map((challenge, index) => (
                   <li
                     key={index}
                     className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2] flex gap-2"
@@ -290,13 +290,13 @@ export function CallSummaryViewModal({
           )}
 
           {/* Breakthroughs */}
-          {summary.summary.breakthroughs && summary.summary.breakthroughs.length > 0 && (
+          {summary.summary?.breakthroughs && summary.summary.breakthroughs.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                 Breakthroughs
               </h4>
               <ul className="space-y-1">
-                {summary.summary.breakthroughs.map((breakthrough, index) => (
+                {summary.summary?.breakthroughs?.map((breakthrough, index) => (
                   <li
                     key={index}
                     className="text-sm text-green-600 dark:text-green-400 flex gap-2"
@@ -347,13 +347,13 @@ export function CallSummaryViewModal({
           )}
 
           {/* Coaching Notes */}
-          {summary.summary.coachingNotes && (
+          {summary.summary?.coachingNotes && (
             <div className="p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg">
               <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-1">
                 Coaching Notes
               </h4>
               <p className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2]">
-                {summary.summary.coachingNotes}
+                {summary.summary?.coachingNotes}
               </p>
             </div>
           )}

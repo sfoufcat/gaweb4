@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { GraduationCap, X, ChevronDown, ChevronRight, Play, Clock, Layers } from 'lucide-react';
+import { GraduationCap, X, ChevronDown, ChevronRight, Play, Clock, Layers, Pencil } from 'lucide-react';
 import type { DayCourseAssignment } from '@/types';
 import type { DiscoverCourse, CourseModule } from '@/types/discover';
 import { ResourceLinkDropdown } from './ResourceLinkDropdown';
@@ -26,6 +26,9 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
   // Track selected modules/lessons for the currently selected course
   const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set());
   const [selectedLessons, setSelectedLessons] = useState<Set<string>>(new Set());
+
+  // Track which assignment is being edited
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
 
   // Get course by ID
   const getCourse = (courseId: string) => availableCourses.find(c => c.id === courseId);
@@ -147,41 +150,80 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
     const course = getCourse(assignment.courseId);
     if (!course) return null;
 
-    // Get selected module/lesson names for display
-    let selectedContent: string[] = [];
-
-    if (assignment.moduleIds && assignment.moduleIds.length > 0 && course.modules) {
-      const moduleNames = assignment.moduleIds
-        .map(id => course.modules?.find(m => m.id === id)?.title)
-        .filter(Boolean) as string[];
-      selectedContent = moduleNames;
-    } else if (assignment.lessonIds && assignment.lessonIds.length > 0 && course.modules) {
-      // Find lesson names across all modules
-      const lessonNames: string[] = [];
-      for (const module of course.modules) {
-        if (module.lessons) {
-          for (const lesson of module.lessons) {
-            if (assignment.lessonIds.includes(lesson.id)) {
-              lessonNames.push(lesson.title);
-            }
-          }
-        }
-      }
-      selectedContent = lessonNames;
-    }
+    // Build display showing both modules and lessons
+    const moduleCount = assignment.moduleIds?.length || 0;
+    const lessonCount = assignment.lessonIds?.length || 0;
 
     let subtext = '';
-    if (selectedContent.length > 0) {
-      if (selectedContent.length <= 2) {
-        subtext = selectedContent.join(', ');
-      } else {
-        subtext = `${selectedContent.slice(0, 2).join(', ')} +${selectedContent.length - 2} more`;
-      }
-    } else {
+
+    if (moduleCount === 0 && lessonCount === 0) {
       subtext = 'Full course';
+    } else {
+      const parts: string[] = [];
+
+      if (moduleCount > 0) {
+        parts.push(`${moduleCount} module${moduleCount !== 1 ? 's' : ''}`);
+      }
+
+      if (lessonCount > 0) {
+        parts.push(`${lessonCount} lesson${lessonCount !== 1 ? 's' : ''}`);
+      }
+
+      subtext = parts.join(', ');
     }
 
     return { course, subtext };
+  };
+
+  // Start editing an existing assignment
+  const handleEdit = (assignment: DayCourseAssignment) => {
+    setEditingCourseId(assignment.courseId);
+    setSelectedModules(new Set(assignment.moduleIds || []));
+    setSelectedLessons(new Set(assignment.lessonIds || []));
+    // Expand all modules that have selected lessons
+    if (assignment.lessonIds && assignment.lessonIds.length > 0) {
+      const course = getCourse(assignment.courseId);
+      if (course?.modules) {
+        const modulesToExpand = new Set<string>();
+        for (const module of course.modules) {
+          if (module.lessons?.some(l => assignment.lessonIds?.includes(l.id))) {
+            modulesToExpand.add(module.id);
+          }
+        }
+        setExpandedModules(modulesToExpand);
+      }
+    } else {
+      setExpandedModules(new Set());
+    }
+  };
+
+  // Save edits to an existing assignment
+  const handleSaveEdit = () => {
+    if (!editingCourseId) return;
+
+    const updatedAssignment: DayCourseAssignment = {
+      courseId: editingCourseId,
+      moduleIds: selectedModules.size > 0 ? Array.from(selectedModules) : undefined,
+      lessonIds: selectedLessons.size > 0 ? Array.from(selectedLessons) : undefined,
+    };
+
+    onChange(currentAssignments.map(a =>
+      a.courseId === editingCourseId ? updatedAssignment : a
+    ));
+
+    // Reset edit state
+    setEditingCourseId(null);
+    setSelectedModules(new Set());
+    setSelectedLessons(new Set());
+    setExpandedModules(new Set());
+  };
+
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setEditingCourseId(null);
+    setSelectedModules(new Set());
+    setSelectedLessons(new Set());
+    setExpandedModules(new Set());
   };
 
   const selectedCourse = selectedCourseId ? getCourse(selectedCourseId) : null;
@@ -194,34 +236,132 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
           {currentAssignments.map(assignment => {
             const display = getAssignmentDisplay(assignment);
             if (!display) return null;
+            const isEditing = editingCourseId === assignment.courseId;
 
             return (
-              <div
-                key={assignment.courseId}
-                className="flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#1d222b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]"
-              >
-                {display.course.coverImageUrl && (
-                  <img
-                    src={display.course.coverImageUrl}
-                    alt={display.course.title}
-                    className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate font-albert">
-                    {display.course.title}
-                  </p>
-                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert truncate">
-                    {display.subtext}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemove(assignment.courseId)}
-                  className="p-1.5 text-[#a7a39e] dark:text-[#7d8190] hover:text-red-500 dark:hover:text-red-400 transition-colors"
+              <div key={assignment.courseId} className="space-y-2">
+                <div
+                  className="flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#1d222b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]"
                 >
-                  <X className="w-4 h-4" />
-                </button>
+                  {display.course.coverImageUrl && (
+                    <img
+                      src={display.course.coverImageUrl}
+                      alt={display.course.title}
+                      className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate font-albert">
+                      {display.course.title}
+                    </p>
+                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert truncate">
+                      {display.subtext}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => isEditing ? handleCancelEdit() : handleEdit(assignment)}
+                    className={`p-1.5 transition-colors ${isEditing ? 'text-brand-accent' : 'text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent'}`}
+                    title={isEditing ? 'Cancel editing' : 'Edit selection'}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(assignment.courseId)}
+                    className="p-1.5 text-[#a7a39e] dark:text-[#7d8190] hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                    title="Remove course"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Edit panel for this assignment */}
+                {isEditing && (
+                  <div className="ml-4 p-4 bg-white dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35] space-y-4">
+                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                      Select specific content (leave empty for full course)
+                    </p>
+                    {display.course.modules && display.course.modules.length > 0 && (
+                      <div className="max-h-64 overflow-y-auto space-y-1 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-2 bg-[#faf8f6] dark:bg-[#1d222b]">
+                        {display.course.modules.map((module) => (
+                          <div key={module.id}>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => toggleModuleExpand(module.id)}
+                                className="p-1 hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded"
+                              >
+                                {expandedModules.has(module.id) ? (
+                                  <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                                )}
+                              </button>
+                              <div
+                                className="flex items-center gap-2 flex-1 cursor-pointer"
+                                onClick={() => toggleModuleSelection(module)}
+                              >
+                                <BrandedCheckbox
+                                  checked={selectedModules.has(module.id)}
+                                  onChange={() => {}}
+                                />
+                                <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                                  {module.title}
+                                </span>
+                                <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                                  ({module.lessons?.length || 0} lessons)
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Lessons */}
+                            {expandedModules.has(module.id) && module.lessons && (
+                              <div className="ml-8 mt-1 space-y-1">
+                                {module.lessons.map((lesson) => (
+                                  <div
+                                    key={lesson.id}
+                                    className="flex items-center gap-2 py-1 cursor-pointer"
+                                    onClick={() => toggleLessonSelection(lesson.id, module.id, module)}
+                                  >
+                                    <BrandedCheckbox
+                                      checked={selectedLessons.has(lesson.id)}
+                                      onChange={() => {}}
+                                    />
+                                    <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                                      {lesson.title}
+                                    </span>
+                                    {lesson.durationMinutes && (
+                                      <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                                        {lesson.durationMinutes}min
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="px-3 py-1.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors font-albert"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveEdit}
+                        className="px-3 py-1.5 text-sm bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors font-albert"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -313,7 +453,7 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
                       >
                         <BrandedCheckbox
                           checked={selectedModules.has(module.id)}
-                          onChange={() => toggleModuleSelection(module)}
+                          onChange={() => {}}
                         />
                         <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                           {module.title}
@@ -335,7 +475,7 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
                           >
                             <BrandedCheckbox
                               checked={selectedLessons.has(lesson.id)}
-                              onChange={() => toggleLessonSelection(lesson.id, module.id, module)}
+                              onChange={() => {}}
                             />
                             <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                               {lesson.title}
