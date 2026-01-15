@@ -167,7 +167,7 @@ export default async function RootLayout({
           />
         </head>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} ${albertSans.variable} antialiased min-h-screen text-text-primary transition-colors duration-300`}
+          className={`${geistSans.variable} ${geistMono.variable} ${albertSans.variable} antialiased min-h-screen bg-app-bg text-text-primary transition-colors duration-300`}
           data-layout={layoutMode}
           suppressHydrationWarning
         >

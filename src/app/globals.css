@@ -105,10 +105,13 @@
 /*
  * iOS Safari full-viewport content extension
  * With viewport-fit: cover, Safari extends the viewport into the safe areas.
- * html/body are transparent so content flows naturally into safe areas.
+ * On mobile, html/body are transparent so content flows naturally into safe areas.
+ * On desktop (lg+), body gets the app background color.
  */
-html, body {
-  background-color: transparent;
+@media (max-width: 1023px) {
+  html, body {
+    background-color: transparent !important;
+  }
 }
 
 
