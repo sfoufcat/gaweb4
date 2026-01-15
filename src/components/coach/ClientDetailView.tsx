@@ -35,6 +35,7 @@ import {
   BarChart3,
   GraduationCap,
   Loader2,
+  Info,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -45,6 +46,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
 import {
   Select,
   SelectContent,
@@ -73,7 +88,47 @@ import {
   formatCoachingStatus,
   getCoachingStatusBadgeColor,
 } from '@/lib/admin-utils-shared';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
+
+// Support needs options (same as onboarding page)
+const SUPPORT_NEEDS_LABELS: Record<string, string> = {
+  daily_checkins: 'Consistent daily check-ins',
+  accountability: 'Accountability (people who notice if I slip)',
+  clear_system: 'A clear system for priorities & daily tasks',
+  expert_guidance: 'Expert guidance & resources',
+  inspiration: 'Simply being regularly inspired',
+};
+
+// Onboarding answer labels
+const WORKDAY_STYLE_LABELS: Record<string, string> = {
+  chaotic: 'Chaotic',
+  busy: 'Busy',
+  productive: 'Productive',
+  disciplined: 'Disciplined',
+};
+
+const PEER_ACCOUNTABILITY_LABELS: Record<string, string> = {
+  alone: 'Working alone',
+  no_daily_system: 'No daily system',
+  inconsistent: 'Inconsistent',
+  strong_accountability: 'Strong accountability',
+};
+
+const BUSINESS_STAGE_LABELS: Record<string, string> = {
+  just_starting: 'Just starting',
+  building_momentum: 'Building momentum',
+  growing_steadily: 'Growing steadily',
+  leveling_up: 'Leveling up',
+  reinventing: 'Reinventing',
+};
+
+const GOAL_IMPACT_LABELS: Record<string, string> = {
+  transformational: 'Transformational',
+  a_lot: 'A lot',
+  somewhat: 'Somewhat',
+  a_little: 'A little',
+};
 
 // Common timezones for the dropdown
 const COMMON_TIMEZONES = [
@@ -96,19 +151,24 @@ const COMMON_TIMEZONES = [
 
 const LOCATION_PRESETS = ['Chat', 'Zoom', 'Google Meet', 'Microsoft Teams'];
 
-// Emotional state colors for sentiment graph
+// Emotional state colors for sentiment graph and pills
+// Note: text color should contrast with bg (white text on colored bg)
 const EMOTIONAL_STATE_COLORS: Record<string, { bg: string; text: string; value: number }> = {
-  energized: { bg: 'bg-emerald-500', text: 'text-emerald-500', value: 5 },
-  confident: { bg: 'bg-green-500', text: 'text-green-500', value: 4 },
-  neutral: { bg: 'bg-amber-500', text: 'text-amber-500', value: 3 },
-  uncertain: { bg: 'bg-orange-500', text: 'text-orange-500', value: 2 },
-  stuck: { bg: 'bg-red-500', text: 'text-red-500', value: 1 },
-  // Evening states
-  great_day: { bg: 'bg-emerald-500', text: 'text-emerald-500', value: 5 },
-  good_day: { bg: 'bg-green-500', text: 'text-green-500', value: 4 },
-  steady: { bg: 'bg-amber-500', text: 'text-amber-500', value: 3 },
-  mixed: { bg: 'bg-orange-500', text: 'text-orange-500', value: 2 },
-  tough_day: { bg: 'bg-red-500', text: 'text-red-500', value: 1 },
+  // Morning states (7-state scale from EmotionalSlider)
+  energized: { bg: 'bg-emerald-500', text: 'text-white', value: 7 },
+  confident: { bg: 'bg-green-500', text: 'text-white', value: 6 },
+  steady: { bg: 'bg-teal-500', text: 'text-white', value: 5 },
+  neutral: { bg: 'bg-amber-500', text: 'text-white', value: 4 },
+  uncertain: { bg: 'bg-orange-500', text: 'text-white', value: 3 },
+  uneasy: { bg: 'bg-orange-600', text: 'text-white', value: 2 },
+  low_stuck: { bg: 'bg-red-500', text: 'text-white', value: 1 },
+  stuck: { bg: 'bg-red-500', text: 'text-white', value: 1 }, // alias for low_stuck
+  // Evening states (5-state scale)
+  great_day: { bg: 'bg-emerald-500', text: 'text-white', value: 5 },
+  amazing: { bg: 'bg-emerald-500', text: 'text-white', value: 5 }, // alias
+  good_day: { bg: 'bg-green-500', text: 'text-white', value: 4 },
+  mixed: { bg: 'bg-orange-500', text: 'text-white', value: 2 },
+  tough_day: { bg: 'bg-red-500', text: 'text-white', value: 1 },
 };
 
 // Activity status colors
@@ -147,6 +207,13 @@ interface UserData {
   tier?: string;
   coachingStatus?: string;
   coaching?: boolean;
+  onboarding?: {
+    supportNeeds?: string[];
+    workdayStyle?: string;
+    peerAccountability?: string;
+    businessStage?: string;
+    goalImpact?: string;
+  };
 }
 
 // Comprehensive data types
@@ -231,6 +298,142 @@ interface SquadInfo {
 }
 
 /**
+ * SupportNeedsModal - Shows client's onboarding answers
+ */
+interface SupportNeedsModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onboarding?: UserData['onboarding'];
+  clientName?: string;
+}
+
+function SupportNeedsModal({ open, onOpenChange, onboarding, clientName }: SupportNeedsModalProps) {
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
+  const content = (
+    <div className="space-y-5">
+      {/* Support Needs */}
+      {onboarding?.supportNeeds && onboarding.supportNeeds.length > 0 && (
+        <div>
+          <h4 className="font-albert text-sm font-medium text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3">
+            What would support them most
+          </h4>
+          <div className="space-y-2">
+            {onboarding.supportNeeds.map((need, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-3 p-3 bg-gradient-to-br from-brand-accent/5 to-[#8c6245]/5 dark:from-[#b8896a]/10 dark:to-brand-accent/5 rounded-xl border border-brand-accent/20"
+              >
+                <div className="w-6 h-6 rounded-lg bg-brand-accent flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  {SUPPORT_NEEDS_LABELS[need] || need}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Other onboarding answers */}
+      {(onboarding?.workdayStyle || onboarding?.peerAccountability || onboarding?.businessStage || onboarding?.goalImpact) && (
+        <div>
+          <h4 className="font-albert text-sm font-medium text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3">
+            Other insights
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {onboarding?.workdayStyle && (
+              <div className="p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                <p className="font-albert text-xs text-[#8c8c8c] dark:text-[#7d8190] mb-1">Workday Style</p>
+                <p className="font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">
+                  {WORKDAY_STYLE_LABELS[onboarding.workdayStyle] || onboarding.workdayStyle}
+                </p>
+              </div>
+            )}
+            {onboarding?.peerAccountability && (
+              <div className="p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                <p className="font-albert text-xs text-[#8c8c8c] dark:text-[#7d8190] mb-1">Accountability</p>
+                <p className="font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">
+                  {PEER_ACCOUNTABILITY_LABELS[onboarding.peerAccountability] || onboarding.peerAccountability}
+                </p>
+              </div>
+            )}
+            {onboarding?.businessStage && (
+              <div className="p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                <p className="font-albert text-xs text-[#8c8c8c] dark:text-[#7d8190] mb-1">Business Stage</p>
+                <p className="font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">
+                  {BUSINESS_STAGE_LABELS[onboarding.businessStage] || onboarding.businessStage}
+                </p>
+              </div>
+            )}
+            {onboarding?.goalImpact && (
+              <div className="p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                <p className="font-albert text-xs text-[#8c8c8c] dark:text-[#7d8190] mb-1">Goal Impact</p>
+                <p className="font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">
+                  {GOAL_IMPACT_LABELS[onboarding.goalImpact] || onboarding.goalImpact}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!onboarding?.supportNeeds?.length && !onboarding?.workdayStyle && !onboarding?.peerAccountability && !onboarding?.businessStage && !onboarding?.goalImpact && (
+        <div className="text-center py-8">
+          <Info className="w-10 h-10 text-[#c4bfb9] dark:text-[#7d8190] mx-auto mb-3" />
+          <p className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">
+            No onboarding answers available
+          </p>
+          <p className="font-albert text-[13px] text-[#8c8c8c] dark:text-[#7d8190] mt-1">
+            This client hasn&apos;t completed the onboarding quiz yet.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader className="text-left border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+            <DrawerTitle className="font-albert">
+              {clientName ? `${clientName}'s` : 'Client'} Onboarding Answers
+            </DrawerTitle>
+            <DrawerDescription>
+              Insights from their onboarding questionnaire
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="p-4 overflow-y-auto">
+            {content}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-albert">
+            {clientName ? `${clientName}'s` : 'Client'} Onboarding Answers
+          </DialogTitle>
+          <DialogDescription>
+            Insights from their onboarding questionnaire
+          </DialogDescription>
+        </DialogHeader>
+        {content}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
  * ClientDetailView
  * 
  * Comprehensive client profile showing:
@@ -285,7 +488,10 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   
   // DM Modal state
   const [showDMModal, setShowDMModal] = useState(false);
-  
+
+  // Support needs modal state
+  const [showSupportNeedsModal, setShowSupportNeedsModal] = useState(false);
+
   // Squad update state
   const [updatingSquad, setUpdatingSquad] = useState(false);
 
@@ -1191,7 +1397,21 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             {/* Current Goal */}
             {user?.goal ? (
               <div className="p-4 bg-gradient-to-br from-brand-accent/5 to-[#8c6245]/5 dark:from-[#b8896a]/10 dark:to-brand-accent/5 rounded-xl border border-brand-accent/20">
-                <p className="font-albert text-xs text-brand-accent uppercase tracking-wider mb-2 font-medium">Current Goal</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-albert text-xs text-brand-accent uppercase tracking-wider font-medium">Current Goal</p>
+                  {user?.onboarding && (user.onboarding.supportNeeds?.length || user.onboarding.workdayStyle || user.onboarding.peerAccountability || user.onboarding.businessStage || user.onboarding.goalImpact) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowSupportNeedsModal(true);
+                      }}
+                      className="p-1.5 rounded-lg hover:bg-brand-accent/10 transition-colors group"
+                      title="View onboarding answers"
+                    >
+                      <Info className="w-4 h-4 text-brand-accent/60 group-hover:text-brand-accent transition-colors" />
+                    </button>
+                  )}
+                </div>
                 <p className="font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">{user.goal}</p>
                 {user.goalTargetDate && (
                   <p className="font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-2">
@@ -1275,9 +1495,10 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           <div className="px-5 pb-5">
             <div className="flex items-end justify-between gap-2 h-32">
               {sentimentData.map((day, idx) => {
-                const morningValue = day.morning ? EMOTIONAL_STATE_COLORS[day.morning]?.value || 3 : 0;
+                const morningValue = day.morning ? EMOTIONAL_STATE_COLORS[day.morning]?.value || 4 : 0;
                 const eveningValue = day.evening ? EMOTIONAL_STATE_COLORS[day.evening]?.value || 3 : 0;
-                const morningHeight = morningValue ? (morningValue / 5) * 100 : 0;
+                // Morning uses 7-point scale, evening uses 5-point scale
+                const morningHeight = morningValue ? (morningValue / 7) * 100 : 0;
                 const eveningHeight = eveningValue ? (eveningValue / 5) * 100 : 0;
                 
                 return (
@@ -1441,20 +1662,23 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                         </span>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           checkin.onTrackStatus === 'on_track' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                          checkin.onTrackStatus === 'slightly_behind' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                          checkin.onTrackStatus === 'not_sure' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
                           'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                         }`}>
-                          {checkin.onTrackStatus.replace('_', ' ')}
+                          {checkin.onTrackStatus.replace(/_/g, ' ')}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-brand-accent rounded-full"
-                            style={{ width: `${checkin.progress}%` }}
-                          />
+                      <div>
+                        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">Goal progress:</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-brand-accent rounded-full"
+                              style={{ width: `${checkin.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">{checkin.progress}%</span>
                         </div>
-                        <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">{checkin.progress}%</span>
                       </div>
                       {checkin.whatWentWell && (
                         <div>
@@ -2138,6 +2362,14 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           channelId={coachingData?.chatChannelId}
         />
       )}
+
+      {/* Support Needs Modal */}
+      <SupportNeedsModal
+        open={showSupportNeedsModal}
+        onOpenChange={setShowSupportNeedsModal}
+        onboarding={user?.onboarding}
+        clientName={user?.firstName || user?.name?.split(' ')[0]}
+      />
 
     </div>
   );

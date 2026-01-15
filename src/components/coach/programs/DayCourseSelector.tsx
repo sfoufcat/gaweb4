@@ -246,40 +246,50 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
             <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
               Select Course
             </label>
-            {loading ? (
-              <div className="h-10 bg-[#e1ddd8]/50 dark:bg-[#262b35]/50 rounded-lg animate-pulse" />
-            ) : error ? (
-              <p className="text-sm text-red-500 dark:text-red-400 font-albert">
-                {error}
-              </p>
-            ) : courses.length === 0 ? (
-              <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
-                No courses available. Create courses in the Discover section first.
-              </p>
-            ) : (
-              <Select
-                value={selectedCourseId ?? undefined}
-                onValueChange={(value) => {
-                  setSelectedCourseId(value);
-                  setSelectedModules(new Set());
-                  setSelectedLessons(new Set());
-                  setExpandedModules(new Set());
-                }}
-              >
-                <SelectTrigger className="w-full border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  <SelectValue placeholder="Choose a course..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses
-                    .filter(c => !currentAssignments.some(a => a.courseId === c.id))
-                    .map(course => (
+            {(() => {
+              if (loading) {
+                return <div className="h-10 bg-[#e1ddd8]/50 dark:bg-[#262b35]/50 rounded-lg animate-pulse" />;
+              }
+              if (error) {
+                return (
+                  <p className="text-sm text-red-500 dark:text-red-400 font-albert">
+                    {error}
+                  </p>
+                );
+              }
+              const availableCourses = courses.filter(c => !currentAssignments.some(a => a.courseId === c.id));
+              if (availableCourses.length === 0) {
+                return (
+                  <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                    {courses.length === 0 
+                      ? 'No courses available. Create courses in the Discover section first.'
+                      : 'All courses have been assigned.'}
+                  </p>
+                );
+              }
+              return (
+                <Select
+                  value={selectedCourseId ?? undefined}
+                  onValueChange={(value) => {
+                    setSelectedCourseId(value);
+                    setSelectedModules(new Set());
+                    setSelectedLessons(new Set());
+                    setExpandedModules(new Set());
+                  }}
+                >
+                  <SelectTrigger className="w-full border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    <SelectValue placeholder="Choose a course..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableCourses.map(course => (
                       <SelectItem key={course.id} value={course.id}>
                         {course.title}
                       </SelectItem>
                     ))}
-                </SelectContent>
-              </Select>
-            )}
+                  </SelectContent>
+                </Select>
+              );
+            })()}
           </div>
 
           {/* Course preview with module/lesson selection */}
