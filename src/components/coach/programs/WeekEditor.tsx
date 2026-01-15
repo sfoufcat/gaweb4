@@ -20,6 +20,7 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { ResourceLinkDropdown } from './ResourceLinkDropdown';
 import { CallSummaryViewModal } from './CallSummaryViewModal';
+import { CreditPurchaseModal } from '@/components/coach/CreditPurchaseModal';
 // Audio utilities for duration detection
 import { getAudioDuration } from '@/lib/audio-compression';
 
@@ -662,6 +663,9 @@ export function WeekEditor({
   // Summary view modal state
   const [viewingSummary, setViewingSummary] = useState<CallSummary | null>(null);
 
+  // Credit purchase modal state (for insufficient credits error)
+  const [showCreditModal, setShowCreditModal] = useState(false);
+
   // Check for in-progress recordings on mount and poll until complete
   // Supports both cohort mode (group programs) and 1:1 mode (individual programs)
   useEffect(() => {
@@ -755,6 +759,14 @@ export function WeekEditor({
       if (pollInterval) clearInterval(pollInterval);
     };
   }, [cohortId, week.id, clientUserId, enrollmentId, onSummaryGenerated]);
+
+  // When recording fails with insufficient credits, bypass beforeunload warning
+  // User can't proceed anyway - no reason to show "unsaved changes" warning
+  useEffect(() => {
+    if (recordingError?.includes('Insufficient credits') && editorContext) {
+      editorContext.setBypassBeforeUnload(true);
+    }
+  }, [recordingError, editorContext]);
 
   // State for expanded tasks (to show member breakdown) - for cohort mode
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -2302,6 +2314,19 @@ export function WeekEditor({
           entityName={clientName || cohortName}
         />
 
+        {/* Credit Purchase Modal */}
+        <CreditPurchaseModal
+          open={showCreditModal}
+          onOpenChange={setShowCreditModal}
+          onPurchaseComplete={() => {
+            // Clear the error state so user can retry
+            setRecordingError(null);
+            setRecordingStatus('idle');
+            // Reset bypass flag since credits were purchased
+            editorContext?.setBypassBeforeUnload(false);
+          }}
+        />
+
         {/* Coach Recording Upload */}
         <div>
           <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
@@ -2472,22 +2497,31 @@ export function WeekEditor({
               >
                 <X className="w-4 h-4" />
               </button>
-              <div className="flex items-start gap-3 pr-6">
-                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-red-800 dark:text-red-300">
-                    {recordingError?.includes('Insufficient credits') ? 'Insufficient credits' : 'Processing failed'}
-                  </p>
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                    {recordingError?.includes('Insufficient credits') ? (
-                      <a href="/coach/plan" className="underline hover:text-red-700 dark:hover:text-red-300">
-                        Upgrade your plan or buy extra credits
-                      </a>
-                    ) : (
-                      recordingError || 'An error occurred while processing the recording'
-                    )}
-                  </p>
+              <div className="flex items-start justify-between gap-3 pr-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                      {recordingError?.includes('Insufficient credits') ? 'Insufficient credits' : 'Processing failed'}
+                    </p>
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                      {recordingError?.includes('Insufficient credits') ? (
+                        'You need more credits to generate this summary'
+                      ) : (
+                        recordingError || 'An error occurred while processing the recording'
+                      )}
+                    </p>
+                  </div>
                 </div>
+                {recordingError?.includes('Insufficient credits') && (
+                  <Button
+                    size="sm"
+                    onClick={() => setShowCreditModal(true)}
+                    className="shrink-0 bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 h-auto"
+                  >
+                    Buy Credits
+                  </Button>
+                )}
               </div>
             </div>
           ) : !isClientView && !isCohortMode ? (

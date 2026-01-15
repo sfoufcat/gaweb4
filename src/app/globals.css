@@ -115,22 +115,6 @@ body {
   background: hsl(var(--app-bg));
 }
 
-/*
- * This pseudo-element fills the iOS safe area at the bottom (home indicator area)
- * with the app background color, preventing the black gap behind Safari's toolbar.
- * Only appears on mobile (hidden on desktop via media query in component or naturally doesn't show)
- */
-body::after {
-  content: '';
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: env(safe-area-inset-bottom, 0px);
-  background: hsl(var(--app-bg));
-  z-index: 9999;
-  pointer-events: none;
-}
 
 @layer utilities {
   /* Safe Area Insets for iOS Safari edge-to-edge display */
@@ -165,14 +149,23 @@ body::after {
     margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   }
 
-  /* Main content wrapper with safe area extension (mobile only) */
+  /* Main content wrapper with safe area extension (mobile only)
+   * Uses negative margin + padding technique to extend background into safe areas
+   * while keeping text/content inset so it's not obscured by browser chrome.
+   */
   .main-content-safe {
     min-height: 100dvh;
+    /* TOP: extend background into status bar area */
+    padding-top: env(safe-area-inset-top, 0px);
+    margin-top: calc(-1 * env(safe-area-inset-top, 0px));
+    /* BOTTOM: extend background into home indicator area */
     padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
     margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   }
   @media (min-width: 1024px) {
     .main-content-safe {
+      padding-top: 0;
+      margin-top: 0;
       padding-bottom: 0;
       margin-bottom: 0;
     }

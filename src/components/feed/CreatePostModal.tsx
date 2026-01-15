@@ -274,20 +274,26 @@ export function CreatePostModal({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - only visible on desktop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10001] animate-backdrop-fade-in"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10001] animate-backdrop-fade-in hidden md:block"
         onClick={handleClose}
       />
 
-      {/* Modal Container - uses flex centering on desktop, full screen on mobile */}
-      <div className="fixed inset-0 z-[10001] flex items-end md:items-center justify-center p-0 md:p-4 pointer-events-none">
+      {/* Modal - Full screen on mobile, centered card on desktop */}
+      <div
+        className="fixed inset-0 z-[10001] md:flex md:items-center md:justify-center md:p-4"
+        onClick={handleClose}
+      >
         <div
-          className="w-full md:w-full md:max-w-2xl bg-white dark:bg-[#171b22] md:rounded-2xl shadow-xl h-[100dvh] md:h-auto md:max-h-[85dvh] flex flex-col overflow-hidden pointer-events-auto animate-modal-slide-up md:animate-modal-zoom-in"
+          className="h-full w-full md:h-auto md:max-h-[85vh] md:w-full md:max-w-2xl bg-white dark:bg-[#171b22] md:rounded-2xl shadow-xl flex flex-col overflow-hidden animate-modal-slide-up md:animate-modal-zoom-in"
           onClick={(e) => e.stopPropagation()}
         >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-[#e8e4df] dark:border-[#262b35]" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top, 1rem))' }}>
+        <div
+          className="flex-shrink-0 flex items-center justify-between px-4 py-4 border-b border-[#e8e4df] dark:border-[#262b35]"
+          style={{ paddingTop: 'max(1rem, env(safe-area-inset-top, 1rem))' }}
+        >
           <button
             onClick={handleClose}
             className="text-[15px] text-[#8a857f] hover:text-[#5f5a55] transition-colors"
@@ -311,7 +317,7 @@ export function CreatePostModal({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 overscroll-contain">
           {/* User info */}
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
@@ -464,7 +470,10 @@ export function CreatePostModal({
         </div>
 
         {/* Footer - Media buttons (for attachments separate from inline images) */}
-        <div className="p-4 border-t border-[#e8e4df] dark:border-[#262b35]">
+        <div
+          className="flex-shrink-0 p-4 border-t border-[#e8e4df] dark:border-[#262b35]"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}
+        >
           <div className="flex items-center gap-2">
             {/* Hidden file input */}
             <input
@@ -539,10 +548,10 @@ export function CreatePostModal({
       {showDemoMessage && (
         <>
           <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10002]"
             onClick={() => setShowDemoMessage(false)}
           />
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
+          <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 pointer-events-none">
             <div 
               className="bg-white dark:bg-[#171b22] rounded-2xl p-6 shadow-xl max-w-sm w-full pointer-events-auto animate-modal-zoom-in"
               onClick={(e) => e.stopPropagation()}

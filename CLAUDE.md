@@ -43,6 +43,37 @@ npm run doppler:sync     # Download secrets to .env.local
 - **AI**: Anthropic Claude API
 - **Secrets**: Doppler (required for development)
 
+## iOS Safari Safe Area Handling
+
+**IMPORTANT**: When dealing with iOS Safari safe areas (status bar, home indicator), use the **content extension** approach, NOT colored fill overlays.
+
+### Correct Pattern: Negative Margin + Padding
+```css
+.main-content-safe {
+  /* TOP: extend background into status bar area */
+  padding-top: env(safe-area-inset-top, 0px);
+  margin-top: calc(-1 * env(safe-area-inset-top, 0px));
+  /* BOTTOM: extend background into home indicator area */
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+}
+```
+
+**How it works:**
+- **Padding** keeps text/content inset so it's not obscured by browser chrome
+- **Negative margin** pulls the background edge back so it extends into the safe area
+- Result: Background flows behind Safari's UI, content stays readable
+
+### DO NOT:
+- Add fixed divs/pseudo-elements to fill safe areas with solid colors
+- Use `body::before` or `body::after` for safe area fills
+- Create React components that overlay safe areas with bg colors
+
+### Key Files:
+- `src/app/globals.css` - `.main-content-safe` class with the correct pattern
+- `src/components/layout/ConditionalMain.tsx` - Wrapper that uses `main-content-safe`
+- `src/app/layout.tsx` - Has `viewportFit: 'cover'` in viewport config
+
 ## Architecture
 
 ### Multi-Tenancy Model

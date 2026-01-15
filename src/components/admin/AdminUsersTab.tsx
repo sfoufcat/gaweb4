@@ -1022,7 +1022,7 @@ export function AdminUsersTab({
               </p>
             </div>
             
-            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full lg:w-auto">
+            <div className="flex flex-row flex-wrap items-center gap-3 w-full lg:w-auto">
               {/* Search */}
               <div className="relative flex-1 sm:flex-none">
                 <input

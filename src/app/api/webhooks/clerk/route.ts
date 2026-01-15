@@ -105,7 +105,8 @@ async function getOrgSettings(organizationId: string): Promise<OrgSettings> {
 }
 
 /**
- * Create an org_membership for a user
+ * Create or update an org_membership for a user
+ * Checks for existing membership to prevent duplicates
  */
 async function createOrgMembership(
   userId: string,
@@ -113,7 +114,35 @@ async function createOrgMembership(
   settings: OrgSettings
 ): Promise<OrgMembership> {
   const now = new Date().toISOString();
-  
+
+  // Check for existing membership to prevent duplicates
+  const existingMembership = await adminDb
+    .collection('org_memberships')
+    .where('userId', '==', userId)
+    .where('organizationId', '==', organizationId)
+    .limit(1)
+    .get();
+
+  if (!existingMembership.empty) {
+    // Update existing membership instead of creating duplicate
+    const existingDoc = existingMembership.docs[0];
+    const existingData = existingDoc.data() as OrgMembership;
+
+    await existingDoc.ref.update({
+      isActive: true,
+      updatedAt: now,
+      // Only update tier/track/squad if not already set
+      ...(existingData.tier === undefined && { tier: settings.defaultTier }),
+      ...(existingData.track === undefined && { track: settings.defaultTrack }),
+      ...(existingData.squadId === undefined && settings.autoJoinSquadId && { squadId: settings.autoJoinSquadId }),
+    });
+
+    console.log(`[CLERK_WEBHOOK] Updated existing org_membership ${existingDoc.id} for user ${userId} in org ${organizationId}`);
+
+    return { ...existingData, id: existingDoc.id, isActive: true, updatedAt: now };
+  }
+
+  // Create new membership only if none exists
   const membership: OrgMembership = {
     id: '', // Will be set after creation
     userId,
@@ -131,15 +160,15 @@ async function createOrgMembership(
     createdAt: now,
     updatedAt: now,
   };
-  
+
   const docRef = await adminDb.collection('org_memberships').add(membership);
   membership.id = docRef.id;
-  
+
   // Update with ID
   await docRef.update({ id: docRef.id });
-  
+
   console.log(`[CLERK_WEBHOOK] Created org_membership ${docRef.id} for user ${userId} in org ${organizationId}`);
-  
+
   return membership;
 }
 

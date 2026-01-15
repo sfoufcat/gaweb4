@@ -403,26 +403,27 @@ export async function getOrgActivitySummary(
 /**
  * Update a user's activity status in org_memberships after an activity event.
  * This provides real-time status updates instead of waiting for the daily cron.
- * 
+ *
  * Call this after:
  * - Task completion
  * - Habit progress
  * - Morning/evening check-in
  * - Weekly reflection
- * 
+ *
  * This is a fire-and-forget operation - errors are logged but not thrown.
+ *
+ * NOTE: This function updates ALL matching membership docs (to handle legacy duplicates).
  */
 export async function updateClientActivityStatus(
   orgId: string,
   userId: string
 ): Promise<void> {
   try {
-    // Find the user's org_membership document
+    // Find ALL org_membership documents for this user/org (to handle duplicates)
     const membershipSnapshot = await adminDb
       .collection('org_memberships')
       .where('organizationId', '==', orgId)
       .where('userId', '==', userId)
-      .limit(1)
       .get();
 
     if (membershipSnapshot.empty) {
@@ -430,23 +431,29 @@ export async function updateClientActivityStatus(
       return;
     }
 
-    const membershipDoc = membershipSnapshot.docs[0];
+    // Warn if duplicates exist
+    if (membershipSnapshot.size > 1) {
+      console.warn(`[ACTIVITY_UPDATE] Found ${membershipSnapshot.size} duplicate memberships for user ${userId} in org ${orgId}`);
+    }
 
     // Compute current activity status
     const result = await resolveActivity({ orgId, userId });
     const now = new Date().toISOString();
 
-    // Update the membership document
-    await membershipDoc.ref.update({
+    const updateData = {
       activityStatus: result.status,
       atRisk: result.atRisk,
       lastActivityAt: result.activitySignals.lastActivityAt?.toISOString() || null,
       primaryActivityType: result.activitySignals.primarySignal,
       daysActiveInPeriod: result.activitySignals.daysActiveInPeriod,
       activityUpdatedAt: now,
-    });
+    };
 
-    console.log(`[ACTIVITY_UPDATE] Updated user ${userId} in org ${orgId}: status=${result.status}, atRisk=${result.atRisk}`);
+    // Update ALL matching membership documents
+    const updatePromises = membershipSnapshot.docs.map(doc => doc.ref.update(updateData));
+    await Promise.all(updatePromises);
+
+    console.log(`[ACTIVITY_UPDATE] Updated ${membershipSnapshot.size} doc(s) for user ${userId} in org ${orgId}: status=${result.status}, atRisk=${result.atRisk}`);
   } catch (error) {
     // Fire-and-forget - log but don't throw
     console.error(`[ACTIVITY_UPDATE] Failed to update activity for user ${userId} in org ${orgId}:`, error);

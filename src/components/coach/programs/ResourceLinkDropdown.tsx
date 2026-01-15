@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,7 +42,9 @@ export function ResourceLinkDropdown({
   const [currentPage, setCurrentPage] = useState(0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   // Detect mobile viewport
   useEffect(() => {
@@ -50,6 +53,18 @@ export function ResourceLinkDropdown({
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4, // 4px gap (mt-1)
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, [isOpen]);
 
   // Reset page when dropdown closes
   useEffect(() => {
@@ -61,7 +76,11 @@ export function ResourceLinkDropdown({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      // Check if click is outside both the dropdown menu and the trigger button
+      const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(target);
+      const isOutsideTrigger = triggerRef.current && !triggerRef.current.contains(target);
+      if (isOutsideDropdown && isOutsideTrigger) {
         setIsOpen(false);
       }
     };
@@ -101,7 +120,8 @@ export function ResourceLinkDropdown({
     e.preventDefault();
     e.stopPropagation(); // Prevent selecting the item
     console.log('[ResourceLinkDropdown] Delete clicked for id:', id);
-    if (!onDelete || deletingId) {
+    // Only block if this specific item is already being deleted
+    if (!onDelete || deletingId === id) {
       console.log('[ResourceLinkDropdown] Delete blocked - onDelete:', !!onDelete, 'deletingId:', deletingId);
       return;
     }
@@ -159,36 +179,23 @@ export function ResourceLinkDropdown({
     }
   };
 
-  return (
-    <div ref={dropdownRef} className="relative w-full">
-      {/* Trigger button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "flex h-10 w-full items-center justify-between rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] px-3 py-2 text-sm",
-          "hover:bg-[#f7f5f3] dark:hover:bg-[#1e222a] transition-colors",
-          "focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-0",
-          "text-[#8c8c8c] dark:text-[#7d8190] font-albert"
-        )}
-      >
-        <span>{placeholder}</span>
-        <ChevronDown className={cn(
-          "h-4 w-4 opacity-50 transition-transform duration-200",
-          isOpen && "rotate-180"
-        )} />
-      </button>
-
-      {/* Dropdown menu */}
-      {isOpen && (
-        <div
-          className={cn(
-            "absolute top-full left-0 right-0 mt-1 z-[10001]",
-            "border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]",
-            "shadow-lg rounded-xl overflow-hidden",
-            "animate-in fade-in-0 zoom-in-95 duration-150"
-          )}
-        >
+  // Render dropdown menu in a portal to escape overflow-hidden containers
+  const dropdownMenu = isOpen && typeof document !== 'undefined' ? createPortal(
+    <div
+      ref={dropdownRef}
+      style={{
+        position: 'absolute',
+        top: dropdownPosition.top,
+        left: dropdownPosition.left,
+        width: dropdownPosition.width,
+      }}
+      className={cn(
+        "z-[10001]",
+        "border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]",
+        "shadow-lg rounded-xl overflow-hidden",
+        "animate-in fade-in-0 zoom-in-95 duration-150"
+      )}
+    >
           <div className="max-h-[400px] overflow-y-auto">
             {/* Group header - show only first group label if we have paginated items */}
             {paginatedItems.length > 0 && (
@@ -309,8 +316,33 @@ export function ResourceLinkDropdown({
               </div>
             )}
           </div>
-        </div>
-      )}
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div className="relative w-full">
+      {/* Trigger button */}
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "flex h-10 w-full items-center justify-between rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] px-3 py-2 text-sm",
+          "hover:bg-[#f7f5f3] dark:hover:bg-[#1e222a] transition-colors",
+          "focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-0",
+          "text-[#8c8c8c] dark:text-[#7d8190] font-albert"
+        )}
+      >
+        <span>{placeholder}</span>
+        <ChevronDown className={cn(
+          "h-4 w-4 opacity-50 transition-transform duration-200",
+          isOpen && "rotate-180"
+        )} />
+      </button>
+
+      {/* Dropdown menu rendered via portal */}
+      {dropdownMenu}
     </div>
   );
 }

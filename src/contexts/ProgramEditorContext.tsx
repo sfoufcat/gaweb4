@@ -61,6 +61,10 @@ interface ProgramEditorContextType {
   // Version counter - increments on discard/save to signal editors to reset
   resetVersion: number;
 
+  // Bypass beforeunload warning (e.g., when there's a credits error)
+  bypassBeforeUnload: boolean;
+  setBypassBeforeUnload: (bypass: boolean) => void;
+
   // Actions
   registerChange: (change: PendingChange) => void;
   updateChange: (key: string, data: Record<string, unknown>, editedFields?: string[]) => void;
@@ -107,6 +111,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
+  const [bypassBeforeUnload, setBypassBeforeUnload] = useState(false);
 
   // Update programId when prop changes
   useEffect(() => {
@@ -119,11 +124,15 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
   useEffect(() => {
     setPendingChanges(new Map());
     setSaveError(null);
+    setBypassBeforeUnload(false);
   }, [currentProgramId]);
 
-  // Browser beforeunload warning
+  // Browser beforeunload warning (only for actual page unload, not in-app navigation)
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Skip if bypass is enabled (e.g., credits error - user can't proceed anyway)
+      if (bypassBeforeUnload) return;
+
       if (pendingChanges.size > 0) {
         e.preventDefault();
         e.returnValue = '';
@@ -132,7 +141,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [pendingChanges.size]);
+  }, [pendingChanges.size, bypassBeforeUnload]);
 
   const hasUnsavedChanges = pendingChanges.size > 0;
   const unsavedCount = pendingChanges.size;
@@ -560,6 +569,8 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     isSaving,
     saveError,
     resetVersion,
+    bypassBeforeUnload,
+    setBypassBeforeUnload,
     registerChange,
     updateChange,
     discardChange,
@@ -578,6 +589,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     isSaving,
     saveError,
     resetVersion,
+    bypassBeforeUnload,
     registerChange,
     updateChange,
     discardChange,

@@ -754,6 +754,20 @@ export function ModuleWeeksSidebar({
     }
   }, [viewStatus]);
 
+  // Helper: find module for a week with fallback to first module containing weeks
+  const findModuleForWeek = React.useCallback((week: CalculatedWeek | undefined): string | undefined => {
+    // If week has moduleId, use it
+    if (week?.moduleId) return week.moduleId;
+    // Fallback: find first module that has weeks assigned (from weeksByModule)
+    if (modules.length > 0) {
+      const firstModuleWithWeeks = modules.find(m =>
+        weeksByModule.get(m.id)?.length ?? 0 > 0
+      );
+      return firstModuleWithWeeks?.id || modules[0].id;
+    }
+    return undefined;
+  }, [modules, weeksByModule]);
+
   React.useEffect(() => {
     if (hasInitializedExpansion.current) return;
     if (displayWeeks.length === 0) return;
@@ -774,9 +788,10 @@ export function ModuleWeeksSidebar({
         hasInitializedExpansion.current = true;
         const lastWeek = displayWeeks[displayWeeks.length - 1];
         setExpandedWeeks(new Set([lastWeek.weekNum]));
-        // Only expand the module containing the last week
-        if (lastWeek.moduleId && (isClientView || isCohortView)) {
-          setExpandedModules(new Set([lastWeek.moduleId]));
+        // Only expand the module containing the last week (with fallback)
+        const targetModuleId = findModuleForWeek(lastWeek);
+        if (targetModuleId && (isClientView || isCohortView)) {
+          setExpandedModules(new Set([targetModuleId]));
         }
         return;
       }
@@ -785,10 +800,11 @@ export function ModuleWeeksSidebar({
       if (viewStatus === 'upcoming') {
         hasInitializedExpansion.current = true;
         setExpandedWeeks(new Set([1]));
-        // Only expand the module containing week 1
+        // Only expand the module containing week 1 (with fallback)
         const firstWeek = displayWeeks[0];
-        if (firstWeek?.moduleId && (isClientView || isCohortView)) {
-          setExpandedModules(new Set([firstWeek.moduleId]));
+        const targetModuleId = findModuleForWeek(firstWeek);
+        if (targetModuleId && (isClientView || isCohortView)) {
+          setExpandedModules(new Set([targetModuleId]));
         }
         return;
       }
@@ -811,15 +827,16 @@ export function ModuleWeeksSidebar({
 
       // For client/cohort views, ONLY expand the module containing this week (collapse others)
       // For template view, keep all modules expanded
-      if (currentWeek.moduleId) {
+      const targetModuleId = findModuleForWeek(currentWeek);
+      if (targetModuleId) {
         if (isClientView || isCohortView) {
           // Collapse all modules except the current one
-          setExpandedModules(new Set([currentWeek.moduleId]));
+          setExpandedModules(new Set([targetModuleId]));
         } else {
           // Template mode: just ensure current module is expanded
           setExpandedModules(prev => {
             const next = new Set(prev);
-            next.add(currentWeek.moduleId!);
+            next.add(targetModuleId);
             return next;
           });
         }
@@ -832,7 +849,7 @@ export function ModuleWeeksSidebar({
           type: 'week',
           id: currentWeek.storedWeekId,
           weekNumber: currentWeek.templateWeekNumber ?? currentWeek.weekNum,
-          moduleId: currentWeek.moduleId,
+          moduleId: targetModuleId,
         });
       } else {
         // Fallback to day selection if no stored week
@@ -840,14 +857,14 @@ export function ModuleWeeksSidebar({
           type: 'day',
           dayIndex: currentDayIndex,
           weekId: currentWeek.storedWeekId,
-          moduleId: currentWeek.moduleId,
+          moduleId: targetModuleId,
         });
       }
     } else {
       // currentDayIndex is outside program range - default to week 1
       setExpandedWeeks(new Set([1]));
     }
-  }, [currentDayIndex, displayWeeks, viewStatus, isClientView, isCohortView]); // Removed expandedWeeks.size and onSelect
+  }, [currentDayIndex, displayWeeks, viewStatus, isClientView, isCohortView, findModuleForWeek]); // Added findModuleForWeek
 
   // Sorted modules for rendering
   const sortedModules = useMemo(() =>

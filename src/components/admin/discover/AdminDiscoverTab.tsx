@@ -68,7 +68,7 @@ export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover', initialS
               }`}
             >
               {tab.icon}
-              <span className="hidden sm:inline">{tab.label}</span>
+              {tab.label}
             </button>
           ))}
         </div>

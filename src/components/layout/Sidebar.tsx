@@ -607,15 +607,6 @@ export function Sidebar() {
         </nav>
       </div>
 
-      {/* iOS Safari Safe Area Fill - positioned at true viewport bottom with max z-index */}
-      <div
-        className="lg:hidden fixed left-0 right-0 bottom-0 bg-app-bg pointer-events-none"
-        style={{
-          height: 'env(safe-area-inset-bottom, 0px)',
-          zIndex: 99999,
-        }}
-        aria-hidden="true"
-      />
     </>
   );
 }
