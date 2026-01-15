@@ -573,6 +573,8 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       // Set comprehensive data
       setTasks(data.tasks || []);
       setHabits(data.habits || []);
+      console.log('[MoodChart Debug] Morning checkins from API:', data.morningCheckins);
+      console.log('[MoodChart Debug] Evening checkins from API:', data.eveningCheckins);
       setMorningCheckins(data.morningCheckins || []);
       setEveningCheckins(data.eveningCheckins || []);
       setWeeklyCheckins(data.weeklyCheckins || []);
@@ -1156,6 +1158,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   // Get sentiment data for graph (last 7 days)
   const sentimentData = useMemo(() => {
+    console.log('[MoodChart Debug] Building sentiment data, morningCheckins:', morningCheckins.length, 'eveningCheckins:', eveningCheckins.length);
     const last7Days = [];
     const today = new Date();
     for (let i = 6; i >= 0; i--) {
@@ -1170,6 +1173,10 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       const morningCheckin = morningCheckins.find(c => c.date === dateStr);
       const eveningCheckin = eveningCheckins.find(c => c.date === dateStr);
 
+      if (morningCheckin) {
+        console.log('[MoodChart Debug] Found morning checkin for', dateStr, ':', morningCheckin.emotionalState);
+      }
+
       last7Days.push({
         date: dateStr,
         dayLabel: date.toLocaleDateString('en-US', { weekday: 'short' }),
@@ -1177,6 +1184,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         evening: eveningCheckin?.emotionalState || null,
       });
     }
+    console.log('[MoodChart Debug] Final sentiment data:', last7Days);
     return last7Days;
   }, [morningCheckins, eveningCheckins]);
 
