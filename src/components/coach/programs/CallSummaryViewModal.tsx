@@ -317,28 +317,28 @@ export function CallSummaryViewModal({
                 Action Items ({summary.actionItems.length})
               </h4>
               <ul className="space-y-2">
-                {summary.actionItems.map((item) => (
+                {summary.actionItems.map((item, index) => (
                   <li
-                    key={item.id}
+                    key={item?.id || index}
                     className="flex items-start gap-2 text-sm"
                   >
                     <Badge
                       variant={
-                        item.priority === 'high'
+                        item?.priority === 'high'
                           ? 'destructive'
-                          : item.priority === 'medium'
+                          : item?.priority === 'medium'
                           ? 'default'
                           : 'secondary'
                       }
                       className="text-xs shrink-0"
                     >
-                      {item.priority}
+                      {item?.priority || 'medium'}
                     </Badge>
                     <span className="flex-1 text-[#5c5c5c] dark:text-[#b2b6c2]">
-                      {item.description}
+                      {item?.description || 'No description'}
                     </span>
                     <Badge variant="outline" className="text-xs shrink-0">
-                      {item.assignedTo}
+                      {item?.assignedTo || 'client'}
                     </Badge>
                   </li>
                 ))}
@@ -359,7 +359,7 @@ export function CallSummaryViewModal({
           )}
 
           {/* Follow-up Questions */}
-          {summary.followUpQuestions && summary.followUpQuestions.length > 0 && (
+          {Array.isArray(summary.followUpQuestions) && summary.followUpQuestions.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                 Follow-up Questions

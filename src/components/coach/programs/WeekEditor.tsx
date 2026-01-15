@@ -2594,13 +2594,29 @@ export function WeekEditor({
       </CollapsibleSection>
       )}
 
-      {/* Resources Section - Articles, Downloads, Links, Questionnaires */}
+      {/* Resources Section - Courses, Articles, Downloads, Links, Questionnaires */}
       <CollapsibleSection
         title="Resources"
         icon={BookOpen}
         description="Content to share with clients during this week"
         defaultOpen={false}
       >
+        {/* Courses */}
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <GraduationCap className="w-4 h-4 inline mr-1.5" />
+            Courses
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Learning courses for clients to complete this week
+          </p>
+          <DayCourseSelector
+            currentAssignments={formData.courseAssignments}
+            onChange={handleCourseAssignmentsChange}
+            availableCourses={availableCourses}
+          />
+        </div>
+
         {/* Linked Articles */}
         <div className="mb-6">
           <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
@@ -2851,20 +2867,6 @@ export function WeekEditor({
             </p>
           )}
         </div>
-      </CollapsibleSection>
-
-      {/* Courses Section - separate from resources due to different handling */}
-      <CollapsibleSection
-        title="Courses"
-        icon={GraduationCap}
-        description="Learning courses for clients to complete this week"
-        defaultOpen={false}
-      >
-        <DayCourseSelector
-          currentAssignments={formData.courseAssignments}
-          onChange={handleCourseAssignmentsChange}
-          availableCourses={availableCourses}
-        />
       </CollapsibleSection>
 
       {/* Notes Section - collapsed by default */}

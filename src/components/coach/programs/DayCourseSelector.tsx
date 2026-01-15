@@ -380,8 +380,6 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
           },
         ]}
         onSelect={handleCourseSelect}
-        onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
-        createNewLabel="Create new course"
       />
 
       {/* Course preview with module/lesson selection - shows when course selected */}

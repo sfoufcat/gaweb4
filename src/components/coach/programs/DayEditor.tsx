@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment, ClientViewContext, CohortViewContext, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';
-import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, ChevronDown, ChevronRight, Pencil, Loader2, BookOpen, Download, Link2, FileQuestion, FileText } from 'lucide-react';
+import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, ChevronDown, ChevronRight, Pencil, Loader2, BookOpen, Download, Link2, FileQuestion, FileText, GraduationCap } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { useInstanceIdLookup } from '@/hooks/useProgramInstanceBridge';
 import { Button } from '@/components/ui/button';
@@ -1083,27 +1083,29 @@ export function DayEditor({
         </div>
       )}
 
-      {/* Course Assignments */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <label className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            Assigned Courses
-          </label>
-        </div>
-        <DayCourseSelector
-          currentAssignments={formData.courseAssignments}
-          onChange={(assignments) => setFormData({ ...formData, courseAssignments: assignments })}
-          availableCourses={availableCourses}
-        />
-      </div>
-
-      {/* Resources Section - Articles, Downloads, Links, Questionnaires */}
+      {/* Resources Section - Courses, Articles, Downloads, Links, Questionnaires */}
       <CollapsibleSection
         title="Resources"
         icon={BookOpen}
         description="Content to share with clients for this day"
         defaultOpen={false}
       >
+        {/* Courses */}
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+            <GraduationCap className="w-4 h-4 inline mr-1.5" />
+            Courses
+          </label>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+            Learning courses for clients to complete this day
+          </p>
+          <DayCourseSelector
+            currentAssignments={formData.courseAssignments}
+            onChange={(assignments) => setFormData({ ...formData, courseAssignments: assignments })}
+            availableCourses={availableCourses}
+          />
+        </div>
+
         {/* Linked Articles */}
         <div className="mb-6">
           <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
