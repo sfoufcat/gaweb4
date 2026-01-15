@@ -145,24 +145,9 @@ html, body {
     margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   }
 
-  /* Main content wrapper with safe area extension (mobile only)
-   * Uses negative margin + padding technique to extend background into safe areas
-   * while keeping text/content inset so it's not obscured by browser chrome.
-   */
+  /* Main content wrapper - minimal, lets content flow naturally */
   .main-content-safe {
     min-height: 100dvh;
-    /* No top padding/margin - content flows naturally under Safari's translucent status bar */
-    /* BOTTOM: extend into home indicator area */
-    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
-    margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
-  }
-  @media (min-width: 1024px) {
-    .main-content-safe {
-      padding-top: 0;
-      margin-top: 0;
-      padding-bottom: 0;
-      margin-bottom: 0;
-    }
   }
 
   /* Dynamic viewport height for iOS Safari edge-to-edge */

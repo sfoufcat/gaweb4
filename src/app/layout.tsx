@@ -108,6 +108,9 @@ export default async function RootLayout({
     >
       <html lang="en" suppressHydrationWarning>
         <head>
+          {/* iOS Safari: translucent status bar so content flows behind it (same as marketing site) */}
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
           {/* Critical CSS for layout - prevents layout shift by being in initial HTML */}
           <style dangerouslySetInnerHTML={{
             __html: `

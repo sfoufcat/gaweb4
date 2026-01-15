@@ -13,7 +13,7 @@ import { ReactNode } from 'react';
  */
 export function ConditionalMain({ children }: { children: ReactNode }) {
   return (
-    <main className="main-content-safe bg-app-bg">
+    <main className="main-content-safe">
       {children}
     </main>
   );
