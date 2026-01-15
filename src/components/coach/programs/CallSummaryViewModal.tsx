@@ -47,7 +47,8 @@ export function CallSummaryViewModal({
   onSummaryUpdated,
   entityName,
 }: CallSummaryViewModalProps) {
-  const [isMobile, setIsMobile] = useState<boolean | null>(null); // null = not yet determined
+  const [isMobile, setIsMobile] = useState(false); // Default to desktop
+  const [hasMounted, setHasMounted] = useState(false);
   const [fetchingTasks, setFetchingTasks] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
@@ -55,13 +56,20 @@ export function CallSummaryViewModal({
   // Detect mobile viewport - only runs on client, once on mount
   useEffect(() => {
     setIsMobile(window.innerWidth < 768);
+    setHasMounted(true);
     const checkMobile = () => {
-      const newIsMobile = window.innerWidth < 768;
-      setIsMobile(newIsMobile);
+      setIsMobile(window.innerWidth < 768);
     };
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, []); // Empty dependency array - only run on mount
+  }, []);
+
+  // Stable callback for dialog/drawer open state changes
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  }, [onClose]);
 
   // Calculate if summary is stuck in processing
   const getAgeMinutes = useCallback((createdAt: unknown): number => {
@@ -463,15 +471,15 @@ export function CallSummaryViewModal({
     );
   };
 
-  // Don't render until we know if we're on mobile or desktop (prevents hydration mismatch)
-  if (isMobile === null) {
+  // Don't render until mounted (prevents hydration mismatch)
+  if (!hasMounted) {
     return null;
   }
 
   // Mobile: use Drawer (slide up)
   if (isMobile) {
     return (
-      <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <Drawer open={isOpen} onOpenChange={handleOpenChange}>
         <DrawerContent className="max-h-[85vh]">
           <DrawerHeader className="border-b border-[#e1ddd8] dark:border-[#262b35]">
             <div className="flex items-center justify-between">
@@ -499,7 +507,7 @@ export function CallSummaryViewModal({
 
   // Desktop: use Dialog
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

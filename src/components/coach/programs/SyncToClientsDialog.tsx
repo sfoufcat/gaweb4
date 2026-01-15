@@ -145,6 +145,21 @@ export function SyncToClientsDialog({
     setSyncFields(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
+  /**
+   * Look up the program instance for an enrollment (auto-creates if missing)
+   */
+  const getInstanceForEnrollment = async (enrollmentId: string): Promise<string | null> => {
+    // GET /api/instances auto-creates instance if one doesn't exist
+    const res = await fetch(
+      `/api/instances?programId=${programId}&enrollmentId=${enrollmentId}&limit=1`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      return data.instances?.[0]?.id || null;
+    }
+    return null;
+  };
+
   const handleSync = async () => {
     setError(null);
     setSuccess(null);
@@ -177,23 +192,58 @@ export function SyncToClientsDialog({
         preserveRecordings: preserveClientData,
       };
 
-      const response = await fetch(`/api/coach/org-programs/${programId}/sync-template`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          enrollmentIds: targetMode === 'all' ? 'all' : Array.from(selectedEnrollmentIds),
-          weekNumbers: [weekNumber],
-          syncOptions,
-        }),
-      });
+      // Determine which enrollments to sync
+      const enrollmentsToSync = targetMode === 'all'
+        ? activeEnrollments
+        : activeEnrollments.filter(e => selectedEnrollmentIds.has(e.id));
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to sync template');
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      // Sync each enrollment using the new instance-based API
+      for (const enrollment of enrollmentsToSync) {
+        try {
+          // Get or create the instance for this enrollment
+          const instanceId = await getInstanceForEnrollment(enrollment.id);
+          if (!instanceId) {
+            errors.push(`Failed to get instance for ${getClientName(enrollment)}`);
+            errorCount++;
+            continue;
+          }
+
+          // Sync template to this instance
+          const syncRes = await fetch(`/api/instances/${instanceId}/sync-template`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              weekNumbers: [weekNumber],
+              syncOptions,
+              distributeAfterSync: syncFields.syncTasks, // Distribute if tasks were synced
+            }),
+          });
+
+          if (syncRes.ok) {
+            successCount++;
+          } else {
+            const data = await syncRes.json().catch(() => ({}));
+            errors.push(`${getClientName(enrollment)}: ${data.error || 'Sync failed'}`);
+            errorCount++;
+          }
+        } catch (err) {
+          errors.push(`${getClientName(enrollment)}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          errorCount++;
+        }
       }
 
-      const result = await response.json();
-      setSuccess(result.message || 'Template synced to clients');
+      // Show result
+      if (successCount > 0 && errorCount === 0) {
+        setSuccess(`Synced Week ${weekNumber} to ${successCount} client${successCount > 1 ? 's' : ''}`);
+      } else if (successCount > 0) {
+        setSuccess(`Synced to ${successCount} client${successCount > 1 ? 's' : ''}, ${errorCount} failed`);
+      } else {
+        throw new Error(errors[0] || 'Failed to sync template');
+      }
 
       // Close after a short delay to show success
       setTimeout(() => {
