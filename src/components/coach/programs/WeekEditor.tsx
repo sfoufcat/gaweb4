@@ -2859,70 +2859,67 @@ export function WeekEditor({
             </p>
           )}
         </div>
+      </CollapsibleSection>
 
-        {/* Linked Courses */}
-        <div>
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <GraduationCap className="w-4 h-4 inline mr-1.5" />
-            Courses
-          </label>
-          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-            Learning courses for clients to complete this week
-          </p>
-
-          {/* Currently linked courses */}
-          {formData.linkedCourseIds.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {formData.linkedCourseIds.map((courseId) => {
-                const course = availableCourses.find(c => c.id === courseId);
-                return (
-                  <div
-                    key={courseId}
-                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+      {/* Courses Section - separate from resources due to different handling */}
+      <CollapsibleSection
+        title="Courses"
+        icon={GraduationCap}
+        description="Learning courses for clients to complete this week"
+        defaultOpen={false}
+      >
+        {/* Currently linked courses */}
+        {formData.linkedCourseIds.length > 0 && (
+          <div className="space-y-2 mb-3">
+            {formData.linkedCourseIds.map((courseId) => {
+              const course = availableCourses.find(c => c.id === courseId);
+              return (
+                <div
+                  key={courseId}
+                  className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                >
+                  <GraduationCap className="w-4 h-4 text-brand-accent" />
+                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                    {course?.title || `Course ${courseId.slice(0, 8)}...`}
+                  </span>
+                  <button
+                    onClick={() => removeCourseLink(courseId)}
+                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <GraduationCap className="w-4 h-4 text-brand-accent" />
-                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                      {course?.title || `Course ${courseId.slice(0, 8)}...`}
-                    </span>
-                    <button
-                      onClick={() => removeCourseLink(courseId)}
-                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-          {/* Add course dropdown */}
-          <ResourceLinkDropdown
-            placeholder="Add a course..."
-            icon={GraduationCap}
-            groups={[
-              {
-                label: 'Program Content',
-                items: programCourses.map(c => ({ id: c.id, title: c.title })),
-                iconClassName: 'text-brand-accent',
-              },
-              {
-                label: 'Platform Content',
-                items: platformCourses.map(c => ({ id: c.id, title: c.title })),
-                iconClassName: 'text-[#8c8c8c]',
-              },
-            ]}
-            onSelect={addCourseLink}
-            onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
-            createNewLabel="Create new course"
-          />
+        {/* Add course dropdown */}
+        <ResourceLinkDropdown
+          placeholder="Add a course..."
+          icon={GraduationCap}
+          groups={[
+            {
+              label: 'Program Content',
+              items: programCourses.map(c => ({ id: c.id, title: c.title })),
+              iconClassName: 'text-brand-accent',
+            },
+            {
+              label: 'Platform Content',
+              items: platformCourses.map(c => ({ id: c.id, title: c.title })),
+              iconClassName: 'text-[#8c8c8c]',
+            },
+          ]}
+          onSelect={addCourseLink}
+          onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
+          createNewLabel="Create new course"
+        />
 
-          {formData.linkedCourseIds.length === 0 && availableCoursesToLink.length === 0 && (
-            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
-              No courses available
-            </p>
-          )}
-        </div>
+        {formData.linkedCourseIds.length === 0 && availableCoursesToLink.length === 0 && (
+          <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
+            No courses available
+          </p>
+        )}
       </CollapsibleSection>
 
       {/* Notes Section - collapsed by default */}

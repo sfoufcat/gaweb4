@@ -94,14 +94,24 @@ export async function GET(request: Request) {
       organizationId = tenantOrgId;
       console.log(`[ORG_BRANDING_GET] Using tenant org from header: ${organizationId}`);
     } else if (requestedOrgId) {
-      // Priority 2: Explicit org ID requested - only allow for super_admin
-      const { sessionClaims } = await auth();
-      const role = (sessionClaims?.publicMetadata as { role?: UserRole } | undefined)?.role;
-      if (role === 'super_admin') {
+      // Priority 2: Explicit org ID requested
+      // Allow for: super_admin OR internal middleware requests (x-internal-request header)
+      const isInternalRequest = headersList.get('x-internal-request') === 'true';
+
+      if (isInternalRequest) {
+        // Internal request from middleware (e.g., mobile app org resolution)
         organizationId = requestedOrgId;
-        console.log(`[ORG_BRANDING_GET] Super admin accessing org: ${organizationId}`);
+        console.log(`[ORG_BRANDING_GET] Internal request for org: ${organizationId}`);
       } else {
-        console.log(`[ORG_BRANDING_GET] Rejected orgId param for non-super_admin`);
+        // External request - only allow for super_admin
+        const { sessionClaims } = await auth();
+        const role = (sessionClaims?.publicMetadata as { role?: UserRole } | undefined)?.role;
+        if (role === 'super_admin') {
+          organizationId = requestedOrgId;
+          console.log(`[ORG_BRANDING_GET] Super admin accessing org: ${organizationId}`);
+        } else {
+          console.log(`[ORG_BRANDING_GET] Rejected orgId param for non-super_admin`);
+        }
       }
     }
     
@@ -120,10 +130,34 @@ export async function GET(request: Request) {
     // Fetch branding from Firestore
     const brandingDoc = await adminDb.collection('org_branding').doc(organizationId).get();
 
+    // Fetch subdomain for mobile app support (when orgId is passed directly)
+    let subdomain: string | undefined;
+    let feedEnabled = false;
+    if (requestedOrgId) {
+      try {
+        const domainSnapshot = await adminDb
+          .collection('org_domains')
+          .where('organizationId', '==', organizationId)
+          .limit(1)
+          .get();
+        if (!domainSnapshot.empty) {
+          subdomain = domainSnapshot.docs[0].data()?.subdomain;
+        }
+
+        // Also fetch feedEnabled for mobile apps
+        const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+        feedEnabled = orgSettingsDoc.exists ? (orgSettingsDoc.data()?.feedEnabled === true) : false;
+      } catch (fetchError) {
+        console.warn('[ORG_BRANDING_GET] Failed to fetch subdomain/settings:', fetchError);
+      }
+    }
+
     if (!brandingDoc.exists) {
       return NextResponse.json({
         branding: getDefaultBranding(organizationId),
         isDefault: true,
+        ...(subdomain && { subdomain }),
+        ...(requestedOrgId && { feedEnabled }),
       });
     }
 
@@ -132,6 +166,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       branding,
       isDefault: false,
+      ...(subdomain && { subdomain }),
+      ...(requestedOrgId && { feedEnabled }),
     });
   } catch (error) {
     console.error('[ORG_BRANDING_GET_ERROR]', error);

@@ -690,7 +690,52 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       console.warn(`[MIDDLEWARE] Dev tenant override "${devOverride}" not found`);
       return NextResponse.redirect(new URL('/tenant-not-found', request.url));
     }
-  } else {
+  }
+  // Mobile app support: Accept x-org-id header for tenant context
+  // Flutter/native apps don't have subdomains, so they pass org ID directly
+  // Membership is verified by Clerk session claims later in middleware (line ~1039)
+  else if (request.headers.get('x-org-id')) {
+    const mobileOrgId = request.headers.get('x-org-id')!;
+    tenantOrgId = mobileOrgId;
+    isTenantMode = true;
+
+    // Try to fetch branding via API (looks up by orgId)
+    // This ensures mobile apps get proper branding context
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/org/branding?orgId=${mobileOrgId}`, {
+        method: 'GET',
+        headers: { 'x-internal-request': 'true' },
+        signal: AbortSignal.timeout(2000),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.subdomain) {
+          tenantSubdomain = data.subdomain;
+        }
+        if (data.branding) {
+          tenantConfigData = {
+            organizationId: mobileOrgId,
+            subdomain: data.subdomain || '',
+            branding: data.branding,
+            coachingPromo: data.coachingPromo,
+            feedEnabled: data.feedEnabled,
+            programEmptyStateBehavior: data.programEmptyStateBehavior,
+            squadEmptyStateBehavior: data.squadEmptyStateBehavior,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+      }
+    } catch (error) {
+      // Branding fetch failed - continue without it
+      // Mobile app will still work, just without SSR branding
+      console.warn(`[MIDDLEWARE] Mobile branding fetch failed for org ${mobileOrgId}:`, error);
+    }
+
+    console.log(`[MIDDLEWARE] Mobile request with x-org-id: ${mobileOrgId}`);
+  }
+  else {
     // Parse hostname
     const parsed = parseHost(hostname);
     

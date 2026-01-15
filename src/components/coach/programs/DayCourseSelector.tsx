@@ -1,9 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, X, BookOpen, ChevronDown, ChevronRight, Play, Clock, Layers } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronRight, Play, Clock, Layers } from 'lucide-react';
 import type { DayCourseAssignment } from '@/types';
-import type { DiscoverCourse, CourseModule, CourseLesson } from '@/types/discover';
+import type { DiscoverCourse, CourseModule } from '@/types/discover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface DayCourseSelectorProps {
   currentAssignments: DayCourseAssignment[];
@@ -250,25 +257,28 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
                 No courses available. Create courses in the Discover section first.
               </p>
             ) : (
-              <select
+              <Select
                 value={selectedCourseId || ''}
-                onChange={(e) => {
-                  setSelectedCourseId(e.target.value || null);
+                onValueChange={(value) => {
+                  setSelectedCourseId(value || null);
                   setSelectedModules(new Set());
                   setSelectedLessons(new Set());
                   setExpandedModules(new Set());
                 }}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
               >
-                <option value="">Choose a course...</option>
-                {courses
-                  .filter(c => !currentAssignments.some(a => a.courseId === c.id))
-                  .map(course => (
-                    <option key={course.id} value={course.id}>
-                      {course.title}
-                    </option>
-                  ))}
-              </select>
+                <SelectTrigger className="w-full border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  <SelectValue placeholder="Choose a course..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses
+                    .filter(c => !currentAssignments.some(a => a.courseId === c.id))
+                    .map(course => (
+                      <SelectItem key={course.id} value={course.id}>
+                        {course.title}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             )}
           </div>
 
