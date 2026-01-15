@@ -298,9 +298,31 @@ interface ClientActivityScore {
   primarySignal: string | null;
 }
 
+interface ClientSession {
+  id: string;
+  title: string;
+  startDateTime: string;
+  endDateTime?: string;
+  timezone: string;
+  durationMinutes?: number;
+  eventType: 'coaching_1on1' | 'squad_call' | 'community_event';
+  locationType: 'online' | 'in_person' | 'chat';
+  locationLabel: string;
+  meetingLink?: string;
+  status: string;
+  programId?: string;
+  programName?: string;
+  squadId?: string;
+  squadName?: string;
+  cohortId?: string;
+  clientUserId?: string;
+  hostUserId?: string;
+}
+
 interface SquadInfo {
   id: string;
   name: string;
+  programId?: string | null;
 }
 
 /**
@@ -455,8 +477,9 @@ function SupportNeedsModal({ open, onOpenChange, onboarding, clientName }: Suppo
 export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   const router = useRouter();
   const { isDemoMode, openSignupModal } = useDemoMode();
-  
-  
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
+
   // Data states
   const [user, setUser] = useState<UserData | null>(null);
   const [coachingData, setCoachingData] = useState<ClientCoachingData | null>(null);
@@ -476,9 +499,12 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   const [programEnrollments, setProgramEnrollments] = useState<ClientProgramEnrollment[]>([]);
   const [activityScore, setActivityScore] = useState<ClientActivityScore | null>(null);
   const [streak, setStreak] = useState(0);
-  
+  const [upcomingSessions, setUpcomingSessions] = useState<ClientSession[]>([]);
+  const [pastSessions, setPastSessions] = useState<ClientSession[]>([]);
+
   // UI states
   const [showPastPrograms, setShowPastPrograms] = useState(false);
+  const [showPastSessionsModal, setShowPastSessionsModal] = useState(false);
   const [checkinTab, setCheckinTab] = useState<'morning' | 'evening' | 'weekly'>('morning');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     goal: true,
@@ -573,8 +599,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       // Set comprehensive data
       setTasks(data.tasks || []);
       setHabits(data.habits || []);
-      console.log('[MoodChart Debug] Morning checkins from API:', data.morningCheckins);
-      console.log('[MoodChart Debug] Evening checkins from API:', data.eveningCheckins);
       setMorningCheckins(data.morningCheckins || []);
       setEveningCheckins(data.eveningCheckins || []);
       setWeeklyCheckins(data.weeklyCheckins || []);
@@ -582,6 +606,8 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       setActivityScore(data.activityScore || null);
       setCoachNotes(data.coachNotes || '');
       setStreak(data.streak || 0);
+      setUpcomingSessions(data.upcomingSessions || []);
+      setPastSessions(data.pastSessions || []);
 
       // Use hasActiveCoaching from API response (includes 1:1 program enrollment check)
       const userHasActiveCoaching = data.hasActiveCoaching ?? (
@@ -1158,7 +1184,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   // Get sentiment data for graph (last 7 days)
   const sentimentData = useMemo(() => {
-    console.log('[MoodChart Debug] Building sentiment data, morningCheckins:', morningCheckins.length, 'eveningCheckins:', eveningCheckins.length);
     const last7Days = [];
     const today = new Date();
     for (let i = 6; i >= 0; i--) {
@@ -1173,10 +1198,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       const morningCheckin = morningCheckins.find(c => c.date === dateStr);
       const eveningCheckin = eveningCheckins.find(c => c.date === dateStr);
 
-      if (morningCheckin) {
-        console.log('[MoodChart Debug] Found morning checkin for', dateStr, ':', morningCheckin.emotionalState);
-      }
-
       last7Days.push({
         date: dateStr,
         dayLabel: date.toLocaleDateString('en-US', { weekday: 'short' }),
@@ -1184,7 +1205,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         evening: eveningCheckin?.emotionalState || null,
       });
     }
-    console.log('[MoodChart Debug] Final sentiment data:', last7Days);
     return last7Days;
   }, [morningCheckins, eveningCheckins]);
 
@@ -1342,13 +1362,13 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           </div>
 
           {/* Quick Actions */}
-          <div className="flex flex-wrap sm:flex-col gap-2 shrink-0">
+          <div className="flex flex-wrap sm:flex-row items-center gap-2 shrink-0">
             <button
               onClick={() => setShowDMModal(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+              className="inline-flex items-center justify-center w-10 h-10 bg-brand-accent hover:bg-brand-accent/90 rounded-full text-white transition-colors"
+              title="Send message"
             >
-              <MessageCircle className="w-4 h-4" />
-              Chat
+              <MessageCircle className="w-5 h-5" />
             </button>
             {hasCoaching && (
               <button
@@ -1395,6 +1415,100 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           </div>
           <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{user?.goalProgress || 0}%</p>
         </div>
+      </div>
+
+      {/* Next Sessions Card */}
+      <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-brand-accent" />
+            <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
+              Upcoming Sessions
+            </h3>
+            {upcomingSessions.length > 0 && (
+              <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                ({upcomingSessions.length})
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {pastSessions.length > 0 && (
+              <button
+                onClick={() => setShowPastSessionsModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
+              >
+                <History className="w-3.5 h-3.5" />
+                Past ({pastSessions.length})
+              </button>
+            )}
+            <button
+              onClick={() => setShowCallModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Schedule
+            </button>
+          </div>
+        </div>
+
+        {upcomingSessions.length > 0 ? (
+          <div className="space-y-3">
+            {upcomingSessions.slice(0, 5).map((session) => (
+              <div key={session.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                        {session.title}
+                      </span>
+                      {/* Session type badge */}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        session.eventType === 'coaching_1on1'
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                      }`}>
+                        {session.eventType === 'coaching_1on1' ? '1:1' : 'Group'}
+                      </span>
+                    </div>
+                    <p className="font-albert text-[13px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                      {formatCallTime(session.startDateTime, session.timezone)}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1.5 text-[12px] text-[#8c8c8c] dark:text-[#7d8190]">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {session.locationLabel}
+                      </span>
+                      {session.programName && (
+                        <span className="flex items-center gap-1">
+                          <GraduationCap className="w-3 h-3" />
+                          {session.programName}
+                        </span>
+                      )}
+                      {session.squadName && (
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {session.squadName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {upcomingSessions.length > 5 && (
+              <p className="text-center text-[12px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                +{upcomingSessions.length - 5} more sessions
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-6">
+            <Calendar className="w-10 h-10 mx-auto mb-2 text-[#c4bfb9] dark:text-[#7d8190]" />
+            <p className="font-albert text-[14px] text-[#8c8c8c] dark:text-[#7d8190]">
+              No upcoming sessions scheduled
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Goal and Identity Section */}
@@ -1512,59 +1626,92 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         </button>
         {expandedSections.sentiment && (
           <div className="px-5 pb-5">
-            <div className="flex items-end justify-between gap-2 h-32">
-              {sentimentData.map((day, idx) => {
-                const morningValue = day.morning ? EMOTIONAL_STATE_COLORS[day.morning]?.value || 4 : 0;
-                const eveningValue = day.evening ? EMOTIONAL_STATE_COLORS[day.evening]?.value || 3 : 0;
-                // Morning uses 7-point scale, evening uses 5-point scale
-                const morningHeight = morningValue ? (morningValue / 7) * 100 : 0;
-                const eveningHeight = eveningValue ? (eveningValue / 5) * 100 : 0;
-                
-                return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="flex gap-1 h-24 items-end">
-                      {/* Morning bar */}
-                      <div className="w-3 h-full relative group flex items-end">
-                        {morningValue > 0 && (
-                          <>
-                            <div
-                              className={`w-full rounded-t transition-all ${EMOTIONAL_STATE_COLORS[day.morning!]?.bg || 'bg-gray-300'}`}
-                              style={{ height: `${morningHeight}%` }}
-                            />
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[#1a1a1a] text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                              AM: {day.morning?.replace(/_/g, ' ')}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      {/* Evening bar */}
-                      <div className="w-3 h-full relative group flex items-end">
-                        {eveningValue > 0 && (
-                          <>
-                            <div
-                              className={`w-full rounded-t transition-all ${EMOTIONAL_STATE_COLORS[day.evening!]?.bg || 'bg-gray-300'}`}
-                              style={{ height: `${eveningHeight}%` }}
-                            />
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[#1a1a1a] text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                              PM: {day.evening?.replace(/_/g, ' ')}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">{day.dayLabel}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex items-center justify-center gap-4 mt-4">
-              <div className="flex items-center gap-1.5">
-                <Sun className="w-3.5 h-3.5 text-amber-500" />
-                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Morning</span>
+            {/* Chart container with subtle grid background */}
+            <div className="relative bg-gradient-to-b from-[#faf8f6]/50 to-transparent dark:from-[#11141b]/50 rounded-xl p-4">
+              {/* Horizontal grid lines */}
+              <div className="absolute inset-4 flex flex-col justify-between pointer-events-none">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="w-full h-px bg-[#e1ddd8]/40 dark:bg-[#262b35]/40" />
+                ))}
               </div>
-              <div className="flex items-center gap-1.5">
-                <Moon className="w-3.5 h-3.5 text-indigo-500" />
-                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Evening</span>
+
+              {/* Bars container */}
+              <div className="relative flex items-end justify-around h-36">
+                {sentimentData.map((day, idx) => {
+                  const morningValue = day.morning ? EMOTIONAL_STATE_COLORS[day.morning]?.value || 4 : 0;
+                  const eveningValue = day.evening ? EMOTIONAL_STATE_COLORS[day.evening]?.value || 3 : 0;
+                  // Morning uses 7-point scale, evening uses 5-point scale
+                  const morningHeight = morningValue ? (morningValue / 7) * 100 : 0;
+                  const eveningHeight = eveningValue ? (eveningValue / 5) * 100 : 0;
+                  const hasMorning = morningValue > 0;
+                  const hasEvening = eveningValue > 0;
+
+                  return (
+                    <div key={idx} className="flex flex-col items-center">
+                      <div className="flex gap-1.5 h-28 items-end mb-2">
+                        {/* Morning bar */}
+                        <div className="relative group">
+                          <div
+                            className={`w-4 rounded-md transition-all duration-300 ease-out ${
+                              hasMorning
+                                ? 'bg-gradient-to-t from-teal-600 to-teal-400 shadow-sm hover:shadow-md hover:shadow-teal-500/20'
+                                : 'bg-[#e9e5e0] dark:bg-[#262b35]'
+                            }`}
+                            style={{
+                              height: hasMorning ? `${Math.max(morningHeight, 12)}%` : '8px',
+                              opacity: hasMorning ? 1 : 0.4
+                            }}
+                          />
+                          {hasMorning && (
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-[#1a1a1a]/90 backdrop-blur-sm text-white text-[11px] rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap z-10 shadow-lg pointer-events-none">
+                              <div className="flex items-center gap-1.5">
+                                <Sun className="w-3 h-3 text-amber-400" />
+                                <span className="capitalize">{day.morning?.replace(/_/g, ' ')}</span>
+                              </div>
+                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#1a1a1a]/90 rotate-45" />
+                            </div>
+                          )}
+                        </div>
+                        {/* Evening bar */}
+                        <div className="relative group">
+                          <div
+                            className={`w-4 rounded-md transition-all duration-300 ease-out ${
+                              hasEvening
+                                ? 'bg-gradient-to-t from-orange-600 to-orange-400 shadow-sm hover:shadow-md hover:shadow-orange-500/20'
+                                : 'bg-[#e9e5e0] dark:bg-[#262b35]'
+                            }`}
+                            style={{
+                              height: hasEvening ? `${Math.max(eveningHeight, 12)}%` : '8px',
+                              opacity: hasEvening ? 1 : 0.4
+                            }}
+                          />
+                          {hasEvening && (
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-[#1a1a1a]/90 backdrop-blur-sm text-white text-[11px] rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap z-10 shadow-lg pointer-events-none">
+                              <div className="flex items-center gap-1.5">
+                                <Moon className="w-3 h-3 text-indigo-400" />
+                                <span className="capitalize">{day.evening?.replace(/_/g, ' ')}</span>
+                              </div>
+                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#1a1a1a]/90 rotate-45" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-[#5f5a55] dark:text-[#b2b6c2] font-albert font-medium">{day.dayLabel}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center justify-center gap-6 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-sm bg-gradient-to-t from-teal-600 to-teal-400" />
+                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert font-medium">Morning</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-sm bg-gradient-to-t from-orange-600 to-orange-400" />
+                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert font-medium">Evening</span>
               </div>
             </div>
           </div>
@@ -2020,286 +2167,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         })()}
       </div>
 
-      {/* One-on-One Coaching Section */}
-      <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-brand-accent" />
-          <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
-            One-on-One Coaching
-            {activeIndividualProgram && (
-              <span className="text-[#8c8c8c] dark:text-[#7d8190] font-normal ml-1">
-                ({activeIndividualProgram.programName})
-              </span>
-            )}
-          </h3>
-        </div>
-
-        {!hasCoaching ? (
-          // No coaching message
-          <div className="text-center py-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f3f1ef] dark:bg-[#11141b] flex items-center justify-center">
-              <Users className="w-8 h-8 text-[#c4bfb9] dark:text-[#7d8190]" />
-            </div>
-            <p className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">
-              This client does not have one-on-one coaching.
-            </p>
-          </div>
-        ) : (
-          // Coaching features
-          <div className="space-y-6">
-            {/* Next Call Card */}
-            <div className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-brand-accent" />
-                  <span className="font-albert text-[15px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Next Call
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowCallModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-accent hover:bg-white dark:hover:bg-[#171b22] rounded-full transition-colors"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                  {hasUpcomingCall ? 'Edit' : 'Schedule'}
-                </button>
-              </div>
-
-              {hasUpcomingCall && coachingData?.nextCall ? (
-                <div className="space-y-1">
-                  <p className="font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    {formatCallTime(coachingData.nextCall.datetime!, coachingData.nextCall.timezone)}
-                  </p>
-                  <p className="font-albert text-[13px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                    Location: {coachingData.nextCall.location}
-                  </p>
-                </div>
-              ) : (
-                <p className="font-albert text-[14px] text-[#8c8c8c] dark:text-[#7d8190]">
-                  No call scheduled yet.
-                </p>
-              )}
-            </div>
-
-            {/* Focus Areas */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Target className="w-5 h-5 text-brand-accent" />
-                <span className="font-albert text-[15px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  Current Focus
-                </span>
-              </div>
-
-              <div className="space-y-2 mb-3">
-                {focusAreas.map((focus, index) => (
-                  <div key={index} className="flex items-start gap-2 group">
-                    <span className="text-brand-accent mt-0.5">–</span>
-                    <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] flex-1">{focus}</span>
-                    <button
-                      onClick={() => handleRemoveFocusArea(index)}
-                      className="p-1 opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newFocusArea}
-                  onChange={(e) => setNewFocusArea(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddFocusArea()}
-                  placeholder="Add focus area..."
-                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
-                />
-                <button
-                  onClick={handleAddFocusArea}
-                  disabled={!newFocusArea.trim()}
-                  className="px-3 py-2 bg-[#f3f1ef] dark:bg-[#11141b] hover:bg-[#e9e5e0] dark:hover:bg-[#171b22] rounded-lg transition-colors disabled:opacity-50"
-                >
-                  <Plus className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                </button>
-              </div>
-            </div>
-
-            {/* Action Items */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <ClipboardList className="w-5 h-5 text-brand-accent" />
-                <span className="font-albert text-[15px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  Action Items
-                </span>
-              </div>
-
-              <div className="space-y-2 mb-3">
-                {actionItems.map((item) => (
-                  <div key={item.id} className="flex items-start gap-2 group">
-                    <span className={`mt-0.5 ${item.completed ? 'text-brand-accent' : 'text-[#c4bfb9] dark:text-[#7d8190]'}`}>
-                      {item.completed ? '✓' : '○'}
-                    </span>
-                    <span className={`font-albert text-[14px] flex-1 ${
-                      item.completed ? 'text-[#8c8c8c] dark:text-[#7d8190] line-through' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-                    }`}>
-                      {item.text}
-                    </span>
-                    <button
-                      onClick={() => handleRemoveActionItem(item.id)}
-                      className="p-1 opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newActionItem}
-                  onChange={(e) => setNewActionItem(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddActionItem()}
-                  placeholder="Add action item..."
-                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
-                />
-                <button
-                  onClick={handleAddActionItem}
-                  disabled={!newActionItem.trim()}
-                  className="px-3 py-2 bg-[#f3f1ef] dark:bg-[#11141b] hover:bg-[#e9e5e0] dark:hover:bg-[#171b22] rounded-lg transition-colors disabled:opacity-50"
-                >
-                  <Plus className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                </button>
-              </div>
-            </div>
-
-            {/* Resources */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <BookOpen className="w-5 h-5 text-brand-accent" />
-                <span className="font-albert text-[15px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  Resources
-                </span>
-              </div>
-
-              <div className="space-y-2 mb-3">
-                {resources.map((resource) => (
-                  <div key={resource.id} className="flex items-start gap-2 group p-2 rounded-lg hover:bg-[#faf8f6] dark:hover:bg-[#11141b]">
-                    <div className="flex-1">
-                      <a 
-                        href={resource.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="font-albert text-[14px] text-brand-accent hover:underline"
-                      >
-                        {resource.title}
-                      </a>
-                      {resource.description && (
-                        <p className="font-albert text-[12px] text-[#8c8c8c] dark:text-[#7d8190] mt-0.5">{resource.description}</p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleRemoveResource(resource.id)}
-                      className="p-1 opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-2 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-                <input
-                  type="text"
-                  value={newResourceTitle}
-                  onChange={(e) => setNewResourceTitle(e.target.value)}
-                  placeholder="Resource title..."
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
-                />
-                <input
-                  type="url"
-                  value={newResourceUrl}
-                  onChange={(e) => setNewResourceUrl(e.target.value)}
-                  placeholder="URL..."
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
-                />
-                <input
-                  type="text"
-                  value={newResourceDescription}
-                  onChange={(e) => setNewResourceDescription(e.target.value)}
-                  placeholder="Description (optional)..."
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
-                />
-                <button
-                  onClick={handleAddResource}
-                  disabled={!newResourceTitle.trim() || !newResourceUrl.trim()}
-                  className="w-full px-3 py-2 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent dark:hover:bg-brand-accent/90 text-white rounded-lg font-albert text-[14px] font-medium transition-colors disabled:opacity-50"
-                >
-                  Add Resource
-                </button>
-              </div>
-            </div>
-
-            {/* Session History */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <History className="w-5 h-5 text-brand-accent" />
-                  <span className="font-albert text-[15px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Session History
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowSessionModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add Session
-                </button>
-              </div>
-
-              {coachingData?.sessionHistory && coachingData.sessionHistory.length > 0 ? (
-                <ul className="space-y-2">
-                  {coachingData.sessionHistory.slice().reverse().map((session) => (
-                    <li key={session.id} className="p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-                      <p className="font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                        {session.title}
-                      </p>
-                      <p className="font-albert text-[12px] text-[#8c8c8c] dark:text-[#7d8190]">
-                        {new Date(session.date).toLocaleDateString('en-US', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </p>
-                      {session.summary && (
-                        <p className="font-albert text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mt-2">{session.summary}</p>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="font-albert text-[14px] text-[#8c8c8c] dark:text-[#7d8190] text-center py-4">
-                  No sessions recorded yet.
-                </p>
-              )}
-            </div>
-
-            {/* Save Changes Button */}
-            <div className="flex justify-end pt-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-              <button
-                onClick={handleSaveCoachingChanges}
-                disabled={saving}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent dark:hover:bg-brand-accent/90 rounded-full font-albert text-[15px] font-medium text-white transition-colors disabled:opacity-50"
-              >
-                <Save className="w-5 h-5" />
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Call Scheduling Modal */}
       {user && (
         <ScheduleCallModal
@@ -2468,6 +2335,143 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         onboarding={user?.onboarding}
         clientName={user?.firstName || user?.name?.split(' ')[0]}
       />
+
+      {/* Past Sessions Modal */}
+      {isMobile ? (
+        <Drawer open={showPastSessionsModal} onOpenChange={setShowPastSessionsModal}>
+          <DrawerContent className="max-h-[85vh]">
+            <DrawerHeader className="border-b border-[#e1ddd8] dark:border-[#262b35]">
+              <DrawerTitle className="font-albert text-[18px] font-semibold tracking-[-0.5px]">
+                Past Sessions
+              </DrawerTitle>
+              <DrawerDescription className="font-albert text-[13px] text-[#8c8c8c] dark:text-[#7d8190]">
+                {pastSessions.length} previous session{pastSessions.length !== 1 ? 's' : ''}
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="p-4 overflow-y-auto max-h-[calc(85vh-80px)]">
+              {pastSessions.length > 0 ? (
+                <div className="space-y-3">
+                  {pastSessions.map((session) => (
+                    <div key={session.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                              {session.title}
+                            </span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                              session.eventType === 'coaching_1on1'
+                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                            }`}>
+                              {session.eventType === 'coaching_1on1' ? '1:1' : 'Group'}
+                            </span>
+                          </div>
+                          <p className="font-albert text-[13px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                            {formatCallTime(session.startDateTime, session.timezone)}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1.5 text-[12px] text-[#8c8c8c] dark:text-[#7d8190]">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {session.locationLabel}
+                            </span>
+                            {session.programName && (
+                              <span className="flex items-center gap-1">
+                                <GraduationCap className="w-3 h-3" />
+                                {session.programName}
+                              </span>
+                            )}
+                            {session.squadName && (
+                              <span className="flex items-center gap-1">
+                                <Users className="w-3 h-3" />
+                                {session.squadName}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <History className="w-10 h-10 mx-auto mb-2 text-[#c4bfb9] dark:text-[#7d8190]" />
+                  <p className="font-albert text-[14px] text-[#8c8c8c] dark:text-[#7d8190]">
+                    No past sessions yet
+                  </p>
+                </div>
+              )}
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={showPastSessionsModal} onOpenChange={setShowPastSessionsModal}>
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="font-albert text-[18px] font-semibold tracking-[-0.5px]">
+                Past Sessions
+              </DialogTitle>
+              <DialogDescription className="font-albert text-[13px] text-[#8c8c8c] dark:text-[#7d8190]">
+                {pastSessions.length} previous session{pastSessions.length !== 1 ? 's' : ''}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="overflow-y-auto flex-1 pr-2">
+              {pastSessions.length > 0 ? (
+                <div className="space-y-3">
+                  {pastSessions.map((session) => (
+                    <div key={session.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                              {session.title}
+                            </span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                              session.eventType === 'coaching_1on1'
+                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                            }`}>
+                              {session.eventType === 'coaching_1on1' ? '1:1' : 'Group'}
+                            </span>
+                          </div>
+                          <p className="font-albert text-[13px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                            {formatCallTime(session.startDateTime, session.timezone)}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1.5 text-[12px] text-[#8c8c8c] dark:text-[#7d8190]">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {session.locationLabel}
+                            </span>
+                            {session.programName && (
+                              <span className="flex items-center gap-1">
+                                <GraduationCap className="w-3 h-3" />
+                                {session.programName}
+                              </span>
+                            )}
+                            {session.squadName && (
+                              <span className="flex items-center gap-1">
+                                <Users className="w-3 h-3" />
+                                {session.squadName}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <History className="w-10 h-10 mx-auto mb-2 text-[#c4bfb9] dark:text-[#7d8190]" />
+                  <p className="font-albert text-[14px] text-[#8c8c8c] dark:text-[#7d8190]">
+                    No past sessions yet
+                  </p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
     </div>
   );

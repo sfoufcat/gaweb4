@@ -105,6 +105,29 @@ interface ClientActivityScore {
   primarySignal: string | null;
 }
 
+interface ClientSession {
+  id: string;
+  title: string;
+  startDateTime: string;
+  endDateTime?: string;
+  timezone: string;
+  durationMinutes?: number;
+  eventType: 'coaching_1on1' | 'squad_call' | 'community_event';
+  locationType: 'online' | 'in_person' | 'chat';
+  locationLabel: string;
+  meetingLink?: string;
+  status: string;
+  // Context info
+  programId?: string;
+  programName?: string;
+  squadId?: string;
+  squadName?: string;
+  cohortId?: string;
+  // For 1:1
+  clientUserId?: string;
+  hostUserId?: string;
+}
+
 /**
  * GET /api/coaching/clients/[clientId]
  * Fetches comprehensive coaching data for a specific client
@@ -423,6 +446,7 @@ export async function GET(
       weeklyCheckinsSnapshot,
       programEnrollmentsSnapshot,
       coachNotesDoc,
+      coaching1on1EventsSnapshot,
     ] = await Promise.all([
       // Tasks - last 30 days
       adminDb.collection('tasks')
@@ -472,6 +496,16 @@ export async function GET(
       // Coach notes about this client
       adminDb.collection('coach_client_notes')
         .doc(`${organizationId}_${userId}_${clientId}`)
+        .get(),
+
+      // Client's events (both 1:1 coaching and squad calls they're part of)
+      // Get 1:1 coaching events for this client
+      adminDb.collection('events')
+        .where('organizationId', '==', organizationId)
+        .where('clientUserId', '==', clientId)
+        .where('eventType', '==', 'coaching_1on1')
+        .orderBy('startDateTime', 'desc')
+        .limit(50)
         .get(),
     ]);
 
@@ -627,6 +661,37 @@ export async function GET(
     // Get coach notes
     const coachNotes = coachNotesDoc.exists ? coachNotesDoc.data()?.notes || '' : '';
 
+    // Process coaching 1:1 events into sessions
+    const now = new Date().toISOString();
+    const coaching1on1Sessions: ClientSession[] = coaching1on1EventsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        title: data.title || '1:1 Coaching Call',
+        startDateTime: data.startDateTime,
+        endDateTime: data.endDateTime,
+        timezone: data.timezone || 'UTC',
+        durationMinutes: data.durationMinutes || 60,
+        eventType: 'coaching_1on1' as const,
+        locationType: data.locationType || 'online',
+        locationLabel: data.locationLabel || 'Online',
+        meetingLink: data.meetingLink,
+        status: data.status || 'scheduled',
+        programId: data.programId,
+        programName: programMap.get(data.programId)?.name,
+        clientUserId: data.clientUserId,
+        hostUserId: data.hostUserId,
+      };
+    });
+
+    // Separate into upcoming and past sessions
+    const upcomingSessions = coaching1on1Sessions
+      .filter(s => s.startDateTime >= now)
+      .sort((a, b) => a.startDateTime.localeCompare(b.startDateTime));
+    const pastSessions = coaching1on1Sessions
+      .filter(s => s.startDateTime < now)
+      .sort((a, b) => b.startDateTime.localeCompare(a.startDateTime));
+
     // Calculate streak from alignment data
     let streak = 0;
     try {
@@ -669,6 +734,9 @@ export async function GET(
       activityScore,
       coachNotes,
       streak,
+      // Sessions
+      upcomingSessions,
+      pastSessions,
     });
   } catch (error) {
     console.error('[COACHING_CLIENT_GET_ERROR]', error);
