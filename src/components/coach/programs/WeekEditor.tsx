@@ -1129,10 +1129,16 @@ export function WeekEditor({
 
     // EARLY EXIT: Check if we've already processed this exact form data + week combination
     // This prevents infinite loops when week prop doesn't update after save
+    // IMPORTANT: Include ALL fields that can change (not just tasks) to ensure changes are detected
     const stateFingerprint = JSON.stringify({
       formTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
       weekTasks: week.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
       weekId: week.id,
+      // Include linked content IDs to detect when summaries/events are added/removed
+      formLinkedSummaryIds: formData.linkedSummaryIds,
+      weekLinkedSummaryIds: week.linkedSummaryIds,
+      formLinkedCallEventIds: formData.linkedCallEventIds,
+      weekLinkedCallEventIds: week.linkedCallEventIds,
     });
     if (stateFingerprint === lastRegisteredFingerprint.current) {
       // Already processed this exact state, skip to prevent infinite loop
@@ -1290,8 +1296,8 @@ export function WeekEditor({
         distribution: formData.distribution,
         coachRecordingUrl: formData.coachRecordingUrl || undefined,
         coachRecordingNotes: formData.coachRecordingNotes || undefined,
-        linkedSummaryIds: formData.linkedSummaryIds.length > 0 ? formData.linkedSummaryIds : undefined,
-        linkedCallEventIds: formData.linkedCallEventIds.length > 0 ? formData.linkedCallEventIds : undefined,
+        linkedSummaryIds: formData.linkedSummaryIds, // Send empty array to clear, not undefined
+        linkedCallEventIds: formData.linkedCallEventIds, // Send empty array to clear, not undefined
         linkedArticleIds: formData.linkedArticleIds.length > 0 ? formData.linkedArticleIds : undefined,
         linkedDownloadIds: formData.linkedDownloadIds.length > 0 ? formData.linkedDownloadIds : undefined,
         linkedLinkIds: formData.linkedLinkIds.length > 0 ? formData.linkedLinkIds : undefined,
@@ -2497,32 +2503,42 @@ export function WeekEditor({
               >
                 <X className="w-4 h-4" />
               </button>
-              <div className="flex items-start justify-between gap-3 pr-6">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-red-800 dark:text-red-300">
-                      {recordingError?.includes('Insufficient credits') ? 'Insufficient credits' : 'Processing failed'}
-                    </p>
-                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                      {recordingError?.includes('Insufficient credits') ? (
-                        'You need more credits to generate this summary'
-                      ) : (
-                        recordingError || 'An error occurred while processing the recording'
-                      )}
-                    </p>
+              {recordingError?.includes('Insufficient credits') ? (
+                /* Insufficient credits - special layout with buy button */
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 pr-6">
+                  <div className="flex items-start gap-3 flex-1">
+                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                        Insufficient credits
+                      </p>
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                        You need more credits to generate this summary
+                      </p>
+                    </div>
                   </div>
-                </div>
-                {recordingError?.includes('Insufficient credits') && (
                   <Button
                     size="sm"
                     onClick={() => setShowCreditModal(true)}
-                    className="shrink-0 bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 h-auto"
+                    className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white text-xs px-4 py-2 h-auto font-medium shadow-sm"
                   >
                     Buy Credits
                   </Button>
-                )}
-              </div>
+                </div>
+              ) : (
+                /* Generic error */
+                <div className="flex items-start gap-3 pr-6">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                      Processing failed
+                    </p>
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                      {recordingError || 'An error occurred while processing the recording'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           ) : !isClientView && !isCohortMode ? (
             /* Template mode: Show disabled overlay */

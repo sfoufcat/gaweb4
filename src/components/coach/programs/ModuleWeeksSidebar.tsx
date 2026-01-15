@@ -385,15 +385,8 @@ export function ModuleWeeksSidebar({
   const canReorderModules = !isClientView && !isCohortView;
   // Weeks are calendar-aligned and cannot be reordered (they represent fixed Mon-Fri slots)
   const canReorderWeeks = false;
-  // For client/cohort views, modules will be collapsed by default and only the active one expanded
-  // For template view, all modules are expanded
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(() => {
-    // Initial state: expand all for template, empty for client/cohort (will be set by useEffect)
-    if (isClientView || isCohortView) {
-      return new Set<string>();
-    }
-    return new Set(modules.map(m => m.id));
-  });
+  // All modes start with modules collapsed - auto-expand logic will expand active module for client/cohort
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
   const [moduleToDelete, setModuleToDelete] = useState<ProgramModule | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -426,15 +419,7 @@ export function ModuleWeeksSidebar({
     return () => setMounted(false);
   }, []);
 
-  // Expand all modules by default when modules change (only in template mode)
-  // For client/cohort views, module expansion is handled by the auto-expand useEffect
-  React.useEffect(() => {
-    if (!isClientView && !isCohortView) {
-      setExpandedModules(new Set(modules.map(m => m.id)));
-    }
-  }, [modules.length, isClientView, isCohortView]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  
 
   // Auto-calculate weeks based on program length
   const calculatedWeeks = useMemo((): CalculatedWeek[] => {
@@ -773,13 +758,10 @@ export function ModuleWeeksSidebar({
     if (displayWeeks.length === 0) return;
 
     if (!currentDayIndex) {
-      // Template mode: default to week 1
+      // Template mode: keep everything collapsed (user can manually expand)
       if (viewStatus === 'template') {
-        // Always mark as initialized in template mode, only expand if needed
         hasInitializedExpansion.current = true;
-        if (expandedWeeks.size === 0) {
-          setExpandedWeeks(new Set([1]));
-        }
+        // Don't auto-expand anything in template mode
         return;
       }
 

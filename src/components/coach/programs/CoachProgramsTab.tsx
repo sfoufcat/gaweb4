@@ -1948,50 +1948,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     }
   }, [programWeeks, sidebarSelection, clientViewContext.mode]);
 
-  // Jump to current week when a client is selected (for 1:1 programs)
-  // Also jump to current week for cohorts in group programs
-  // NOTE: Sidebar auto-expand logic in ModuleWeeksSidebar also handles this, but we set it here too for consistency
-  useEffect(() => {
-    if (selectedProgram?.type === 'individual' && clientViewContext.mode === 'client' && currentEnrollment?.currentDayIndex && currentEnrollment.currentDayIndex > 0) {
-      // Find the week containing today's day index
-      const currentDayIdx = currentEnrollment.currentDayIndex;
-      const daysPerWeek = selectedProgram.includeWeekends !== false ? 7 : 5;
-      const currentWeekNumber = Math.ceil(currentDayIdx / daysPerWeek);
-      const currentWeek = sidebarWeeks.find(w => w.weekNumber === currentWeekNumber);
-
-      if (currentWeek) {
-        // Set sidebar selection to current week (not day)
-        setSidebarSelection({ type: 'week', id: currentWeek.id, weekNumber: currentWeek.weekNumber, moduleId: currentWeek.moduleId });
-        setExpandedWeeks(new Set([currentWeek.weekNumber]));
-      } else {
-        // Fallback to first week if current week not found
-        const firstWeek = sidebarWeeks[0];
-        if (firstWeek) {
-          setSidebarSelection({ type: 'week', id: firstWeek.id, weekNumber: firstWeek.weekNumber, moduleId: firstWeek.moduleId });
-          setExpandedWeeks(new Set([firstWeek.weekNumber]));
-        }
-      }
-    } else if (selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort') {
-      // For cohorts, find current week based on cohortCurrentDayIndex or fall back to first week
-      if (cohortCurrentDayIndex && cohortCurrentDayIndex > 0 && sidebarWeeks.length > 0) {
-        const daysPerWeek = selectedProgram.includeWeekends !== false ? 7 : 5;
-        const currentWeekNumber = Math.ceil(cohortCurrentDayIndex / daysPerWeek);
-        const currentWeek = sidebarWeeks.find(w => w.weekNumber === currentWeekNumber);
-
-        if (currentWeek) {
-          setSidebarSelection({ type: 'week', id: currentWeek.id, weekNumber: currentWeek.weekNumber, moduleId: currentWeek.moduleId });
-          setExpandedWeeks(new Set([currentWeek.weekNumber]));
-        }
-      } else if (sidebarWeeks.length > 0) {
-        // Fallback: select first week for upcoming/completed cohorts
-        const firstWeek = [...sidebarWeeks].sort((a, b) => a.weekNumber - b.weekNumber)[0];
-        if (firstWeek) {
-          setSidebarSelection({ type: 'week', id: firstWeek.id, weekNumber: firstWeek.weekNumber, moduleId: firstWeek.moduleId });
-          setExpandedWeeks(new Set([firstWeek.weekNumber]));
-        }
-      }
-    }
-  }, [clientViewContext.mode, cohortViewContext.mode, currentEnrollment?.currentDayIndex, selectedProgram?.type, selectedProgram?.includeWeekends, sidebarWeeks, cohortCurrentDayIndex]);
+  // NOTE: Week auto-selection for client/cohort is handled by ModuleWeeksSidebar's auto-expand logic
+  // which correctly finds weeks by day range (startDay <= currentDayIndex <= endDay)
+  // This accounts for Onboarding weeks (week 0) and other special weeks
 
   // Load day data when day index changes (use client days when in client mode, cohort days when in cohort mode)
   useEffect(() => {

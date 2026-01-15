@@ -660,12 +660,7 @@ export function CreditPurchaseModal({
                         ${getPricePerCredit(pack)} per call
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-semibold">{pack.priceFormatted}</p>
-                      {selectedPack?.size === pack.size && (
-                        <Check className="h-4 w-4 ml-auto mt-1" style={{ color: accentColor }} />
-                      )}
-                    </div>
+                    <p className="text-lg font-semibold">{pack.priceFormatted}</p>
                   </div>
                 </button>
               ))}
