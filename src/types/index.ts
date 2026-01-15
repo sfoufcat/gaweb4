@@ -1176,7 +1176,8 @@ export interface ProgramWeek {
   linkedDownloadIds?: string[];        // DiscoverDownload IDs
   linkedLinkIds?: string[];            // DiscoverLink IDs
   linkedQuestionnaireIds?: string[];   // Questionnaire IDs
-  linkedCourseIds?: string[];          // DiscoverCourse IDs
+  linkedCourseIds?: string[];          // DiscoverCourse IDs (deprecated, use courseAssignments)
+  courseAssignments?: DayCourseAssignment[]; // Course assignments with module/lesson selection
 
   // Coach recordings (uploaded by coach)
   coachRecordingUrl?: string; // URL to uploaded recording file
@@ -5915,7 +5916,8 @@ export interface ProgramInstanceWeek {
   linkedDownloadIds?: string[];        // DiscoverDownload IDs
   linkedLinkIds?: string[];            // DiscoverLink IDs
   linkedQuestionnaireIds?: string[];   // Questionnaire IDs
-  linkedCourseIds?: string[];          // DiscoverCourse IDs
+  linkedCourseIds?: string[];          // DiscoverCourse IDs (deprecated, use courseAssignments)
+  courseAssignments?: DayCourseAssignment[]; // Course assignments with module/lesson selection
   manualNotes?: string;          // Coach's manual notes
   // Distribution settings
   distribution?: TaskDistribution;

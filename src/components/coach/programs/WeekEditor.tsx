@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment, ProgramCohort, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire } from '@/types';
+import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment, ProgramCohort, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire, DayCourseAssignment } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';
 import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video, AlertCircle } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
@@ -20,6 +20,7 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { ResourceLinkDropdown } from './ResourceLinkDropdown';
 import { CallSummaryViewModal } from './CallSummaryViewModal';
+import { DayCourseSelector } from './DayCourseSelector';
 import { CreditPurchaseModal } from '@/components/coach/CreditPurchaseModal';
 // Audio utilities for duration detection
 import { getAudioDuration } from '@/lib/audio-compression';
@@ -519,7 +520,7 @@ export function WeekEditor({
     linkedDownloadIds: string[];
     linkedLinkIds: string[];
     linkedQuestionnaireIds: string[];
-    linkedCourseIds: string[];
+    courseAssignments: DayCourseAssignment[];
   };
 
   // Memoize week data as primitives to prevent infinite loops from object reference changes
@@ -540,7 +541,7 @@ export function WeekEditor({
   const weekLinkedDownloadIds = week.linkedDownloadIds || [];
   const weekLinkedLinkIds = week.linkedLinkIds || [];
   const weekLinkedQuestionnaireIds = week.linkedQuestionnaireIds || [];
-  const weekLinkedCourseIds = week.linkedCourseIds || [];
+  const weekCourseAssignments: DayCourseAssignment[] = week.courseAssignments || [];
 
   const getDefaultFormData = useCallback((): WeekFormData => ({
     name: weekName,
@@ -560,8 +561,8 @@ export function WeekEditor({
     linkedDownloadIds: weekLinkedDownloadIds,
     linkedLinkIds: weekLinkedLinkIds,
     linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
-    linkedCourseIds: weekLinkedCourseIds,
-  }), [weekName, weekTheme, weekDescription, weekWeeklyPrompt, weekWeeklyTasks, weekCurrentFocus, weekNotes, weekManualNotes, weekDistribution, weekCoachRecordingUrl, weekCoachRecordingNotes, weekLinkedSummaryIds, weekLinkedCallEventIds, weekLinkedArticleIds, weekLinkedDownloadIds, weekLinkedLinkIds, weekLinkedQuestionnaireIds]);
+    courseAssignments: weekCourseAssignments,
+  }), [weekName, weekTheme, weekDescription, weekWeeklyPrompt, weekWeeklyTasks, weekCurrentFocus, weekNotes, weekManualNotes, weekDistribution, weekCoachRecordingUrl, weekCoachRecordingNotes, weekLinkedSummaryIds, weekLinkedCallEventIds, weekLinkedArticleIds, weekLinkedDownloadIds, weekLinkedLinkIds, weekLinkedQuestionnaireIds, weekCourseAssignments]);
 
   // Merge pending data with defaults to ensure all fields exist
   // Uses memoized primitive values instead of getDefaultFormData to avoid dependency loops
@@ -584,7 +585,7 @@ export function WeekEditor({
       linkedDownloadIds: weekLinkedDownloadIds,
       linkedLinkIds: weekLinkedLinkIds,
       linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
-    linkedCourseIds: weekLinkedCourseIds,
+      courseAssignments: weekCourseAssignments,
     };
     return {
       ...defaults,
@@ -599,9 +600,9 @@ export function WeekEditor({
       linkedDownloadIds: (pending.linkedDownloadIds as string[]) || defaults.linkedDownloadIds,
       linkedLinkIds: (pending.linkedLinkIds as string[]) || defaults.linkedLinkIds,
       linkedQuestionnaireIds: (pending.linkedQuestionnaireIds as string[]) || defaults.linkedQuestionnaireIds,
-      linkedCourseIds: (pending.linkedCourseIds as string[]) || defaults.linkedCourseIds,
+      courseAssignments: (pending.courseAssignments as DayCourseAssignment[]) || defaults.courseAssignments,
     };
-  }, [weekName, weekTheme, weekDescription, weekWeeklyPrompt, weekWeeklyTasks, weekCurrentFocus, weekNotes, weekManualNotes, weekDistribution, weekCoachRecordingUrl, weekCoachRecordingNotes, weekLinkedSummaryIds, weekLinkedCallEventIds, weekLinkedArticleIds, weekLinkedDownloadIds, weekLinkedLinkIds, weekLinkedQuestionnaireIds]);
+  }, [weekName, weekTheme, weekDescription, weekWeeklyPrompt, weekWeeklyTasks, weekCurrentFocus, weekNotes, weekManualNotes, weekDistribution, weekCoachRecordingUrl, weekCoachRecordingNotes, weekLinkedSummaryIds, weekLinkedCallEventIds, weekLinkedArticleIds, weekLinkedDownloadIds, weekLinkedLinkIds, weekLinkedQuestionnaireIds, weekCourseAssignments]);
 
 
   // Create a fingerprint of week data that changes when content changes from API refresh
@@ -625,9 +626,9 @@ export function WeekEditor({
       linkedDownloadIds: week.linkedDownloadIds,
       linkedLinkIds: week.linkedLinkIds,
       linkedQuestionnaireIds: week.linkedQuestionnaireIds,
-      linkedCourseIds: week.linkedCourseIds,
+      courseAssignments: week.courseAssignments,
     });
-  }, [week.name, week.theme, week.description, week.weeklyTasks, week.currentFocus, week.notes, week.manualNotes, week.weeklyPrompt, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.linkedSummaryIds, week.linkedCallEventIds, week.linkedArticleIds, week.linkedDownloadIds, week.linkedLinkIds, week.linkedQuestionnaireIds, week.linkedCourseIds]);
+  }, [week.name, week.theme, week.description, week.weeklyTasks, week.currentFocus, week.notes, week.manualNotes, week.weeklyPrompt, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.linkedSummaryIds, week.linkedCallEventIds, week.linkedArticleIds, week.linkedDownloadIds, week.linkedLinkIds, week.linkedQuestionnaireIds, week.courseAssignments]);
 
   const [formData, setFormData] = useState<WeekFormData>(() => {
     // Initialize from pending data if available
@@ -912,7 +913,7 @@ export function WeekEditor({
         linkedDownloadIds: weekLinkedDownloadIds,
         linkedLinkIds: weekLinkedLinkIds,
         linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
-    linkedCourseIds: weekLinkedCourseIds,
+        courseAssignments: weekCourseAssignments,
       };
       const merged: WeekFormData = {
         ...defaults,
@@ -927,7 +928,7 @@ export function WeekEditor({
         linkedDownloadIds: (contextPendingData.linkedDownloadIds as string[]) || defaults.linkedDownloadIds,
         linkedLinkIds: (contextPendingData.linkedLinkIds as string[]) || defaults.linkedLinkIds,
         linkedQuestionnaireIds: (contextPendingData.linkedQuestionnaireIds as string[]) || defaults.linkedQuestionnaireIds,
-          linkedCourseIds: (contextPendingData.linkedCourseIds as string[]) || defaults.linkedCourseIds,
+        courseAssignments: (contextPendingData.courseAssignments as DayCourseAssignment[]) || defaults.courseAssignments,
       };
       setFormData(merged);
       setHasChanges(true);
@@ -951,7 +952,7 @@ export function WeekEditor({
         linkedDownloadIds: weekLinkedDownloadIds,
         linkedLinkIds: weekLinkedLinkIds,
         linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
-    linkedCourseIds: weekLinkedCourseIds,
+        courseAssignments: weekCourseAssignments,
       };
       console.log('[WeekEditor:resetEffect] Resetting to week data:', {
         newFormDataTasksCount: newFormData.weeklyTasks?.length ?? 0,
@@ -1012,7 +1013,7 @@ export function WeekEditor({
           linkedDownloadIds: weekLinkedDownloadIds,
           linkedLinkIds: weekLinkedLinkIds,
           linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
-    linkedCourseIds: weekLinkedCourseIds,
+          courseAssignments: weekCourseAssignments,
         };
         const merged: WeekFormData = {
           ...defaults,
@@ -1026,7 +1027,7 @@ export function WeekEditor({
           linkedDownloadIds: (contextPendingData.linkedDownloadIds as string[]) || defaults.linkedDownloadIds,
           linkedLinkIds: (contextPendingData.linkedLinkIds as string[]) || defaults.linkedLinkIds,
           linkedQuestionnaireIds: (contextPendingData.linkedQuestionnaireIds as string[]) || defaults.linkedQuestionnaireIds,
-          linkedCourseIds: (contextPendingData.linkedCourseIds as string[]) || defaults.linkedCourseIds,
+          courseAssignments: (contextPendingData.courseAssignments as DayCourseAssignment[]) || defaults.courseAssignments,
         };
         setFormData(merged);
         setHasChanges(true);
@@ -1050,7 +1051,7 @@ export function WeekEditor({
           linkedDownloadIds: weekLinkedDownloadIds,
           linkedLinkIds: weekLinkedLinkIds,
           linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
-    linkedCourseIds: weekLinkedCourseIds,
+          courseAssignments: weekCourseAssignments,
         });
         setHasChanges(false);
       }
@@ -1164,7 +1165,7 @@ export function WeekEditor({
       JSON.stringify(formData.linkedDownloadIds) !== JSON.stringify(week.linkedDownloadIds || []) ||
       JSON.stringify(formData.linkedLinkIds) !== JSON.stringify(week.linkedLinkIds || []) ||
       JSON.stringify(formData.linkedQuestionnaireIds) !== JSON.stringify(week.linkedQuestionnaireIds || []) ||
-      JSON.stringify(formData.linkedCourseIds) !== JSON.stringify(week.linkedCourseIds || []);
+      JSON.stringify(formData.courseAssignments) !== JSON.stringify(week.courseAssignments || []);
     
     // Debug logging for change detection
     if (changed) {
@@ -1307,7 +1308,7 @@ export function WeekEditor({
         linkedDownloadIds: formData.linkedDownloadIds.length > 0 ? formData.linkedDownloadIds : undefined,
         linkedLinkIds: formData.linkedLinkIds.length > 0 ? formData.linkedLinkIds : undefined,
         linkedQuestionnaireIds: formData.linkedQuestionnaireIds.length > 0 ? formData.linkedQuestionnaireIds : undefined,
-        linkedCourseIds: formData.linkedCourseIds.length > 0 ? formData.linkedCourseIds : undefined,
+        courseAssignments: formData.courseAssignments.length > 0 ? formData.courseAssignments : undefined,
       });
       setHasChanges(false);
       setSaveStatus('saved');
@@ -1457,20 +1458,11 @@ export function WeekEditor({
     });
   };
 
-  // Link management for courses
-  const addCourseLink = (courseId: string) => {
-    if (!formData.linkedCourseIds.includes(courseId)) {
-      setFormData({
-        ...formData,
-        linkedCourseIds: [...formData.linkedCourseIds, courseId],
-      });
-    }
-  };
-
-  const removeCourseLink = (courseId: string) => {
+  // Course assignments handler (using DayCourseSelector)
+  const handleCourseAssignmentsChange = (assignments: DayCourseAssignment[]) => {
     setFormData({
       ...formData,
-      linkedCourseIds: formData.linkedCourseIds.filter(id => id !== courseId),
+      courseAssignments: assignments,
     });
   };
 
@@ -1508,7 +1500,7 @@ export function WeekEditor({
     q => !formData.linkedQuestionnaireIds.includes(q.id)
   );
   const availableCoursesToLink = availableCourses.filter(
-    c => !formData.linkedCourseIds.includes(c.id)
+    c => !formData.courseAssignments.some(a => a.courseId === c.id)
   );
 
   // Categorize resources by program attachment
@@ -2868,58 +2860,10 @@ export function WeekEditor({
         description="Learning courses for clients to complete this week"
         defaultOpen={false}
       >
-        {/* Currently linked courses */}
-        {formData.linkedCourseIds.length > 0 && (
-          <div className="space-y-2 mb-3">
-            {formData.linkedCourseIds.map((courseId) => {
-              const course = availableCourses.find(c => c.id === courseId);
-              return (
-                <div
-                  key={courseId}
-                  className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-                >
-                  <GraduationCap className="w-4 h-4 text-brand-accent" />
-                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                    {course?.title || `Course ${courseId.slice(0, 8)}...`}
-                  </span>
-                  <button
-                    onClick={() => removeCourseLink(courseId)}
-                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Add course dropdown */}
-        <ResourceLinkDropdown
-          placeholder="Add a course..."
-          icon={GraduationCap}
-          groups={[
-            {
-              label: 'Program Content',
-              items: programCourses.map(c => ({ id: c.id, title: c.title })),
-              iconClassName: 'text-brand-accent',
-            },
-            {
-              label: 'Platform Content',
-              items: platformCourses.map(c => ({ id: c.id, title: c.title })),
-              iconClassName: 'text-[#8c8c8c]',
-            },
-          ]}
-          onSelect={addCourseLink}
-          onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
-          createNewLabel="Create new course"
+        <DayCourseSelector
+          currentAssignments={formData.courseAssignments}
+          onChange={handleCourseAssignmentsChange}
         />
-
-        {formData.linkedCourseIds.length === 0 && availableCoursesToLink.length === 0 && (
-          <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
-            No courses available
-          </p>
-        )}
       </CollapsibleSection>
 
       {/* Notes Section - collapsed by default */}

@@ -167,6 +167,7 @@ export async function PATCH(
     if (body.linkedLinkIds !== undefined) updatedWeek.linkedLinkIds = body.linkedLinkIds || [];
     if (body.linkedQuestionnaireIds !== undefined) updatedWeek.linkedQuestionnaireIds = body.linkedQuestionnaireIds || [];
     if (body.linkedCourseIds !== undefined) updatedWeek.linkedCourseIds = body.linkedCourseIds || [];
+    if (body.courseAssignments !== undefined) updatedWeek.courseAssignments = body.courseAssignments || [];
     if (body.manualNotes !== undefined) updatedWeek.manualNotes = body.manualNotes?.trim() || undefined;
     if (body.fillSource !== undefined) updatedWeek.fillSource = body.fillSource || undefined;
     if (body.distribution !== undefined) updatedWeek.distribution = body.distribution || 'spread';

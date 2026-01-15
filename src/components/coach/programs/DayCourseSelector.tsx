@@ -258,9 +258,9 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
               </p>
             ) : (
               <Select
-                value={selectedCourseId || ''}
+                value={selectedCourseId ?? undefined}
                 onValueChange={(value) => {
-                  setSelectedCourseId(value || null);
+                  setSelectedCourseId(value);
                   setSelectedModules(new Set());
                   setSelectedLessons(new Set());
                   setExpandedModules(new Set());
