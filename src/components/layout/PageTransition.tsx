@@ -3,6 +3,14 @@
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 
+/**
+ * PageTransition - Handles page transitions with optional animations
+ *
+ * NOTE: Background is handled by html/body in globals.css to properly extend
+ * into iOS Safari safe areas. Do NOT add fixed inset-0 background divs here
+ * as they would cover the safe areas with a solid color instead of letting
+ * content flow behind the browser chrome.
+ */
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
@@ -20,30 +28,24 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
   // For pages with fixed positioning, render without animation
   if (skipAnimation) {
     return (
-      <>
-        <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] -z-10" />
-        <div className="min-h-screen relative">
-          {children}
-        </div>
-      </>
+      <div className="min-h-screen relative">
+        {children}
+      </div>
     );
   }
 
   return (
-    <>
-      <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] -z-10" />
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0, y: isFullWidthPage ? 0 : 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{
-          duration: 0.25,
-          ease: [0.25, 0.1, 0.25, 1]
-        }}
-        className={`min-h-screen relative ${isFullWidthPage ? '' : 'max-w-7xl mx-auto p-4 sm:p-6 lg:p-10'}`}
-      >
-        {children}
-      </motion.div>
-    </>
+    <motion.div
+      key={pathname}
+      initial={{ opacity: 0, y: isFullWidthPage ? 0 : 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.25,
+        ease: [0.25, 0.1, 0.25, 1]
+      }}
+      className={`min-h-screen relative ${isFullWidthPage ? '' : 'max-w-7xl mx-auto p-4 sm:p-6 lg:p-10'}`}
+    >
+      {children}
+    </motion.div>
   );
 }

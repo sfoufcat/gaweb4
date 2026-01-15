@@ -68,6 +68,9 @@ npm run doppler:sync     # Download secrets to .env.local
 - Add fixed divs/pseudo-elements to fill safe areas with solid colors
 - Use `body::before` or `body::after` for safe area fills
 - Create React components that overlay safe areas with bg colors
+- Use `fixed inset-0` background divs (e.g., `<div className="fixed inset-0 bg-[#faf8f6]" />`)
+  - These cover the entire viewport including safe areas
+  - The background is already handled by `html`/`body` in globals.css
 
 ### Key Files:
 - `src/app/globals.css` - `.main-content-safe` class with the correct pattern

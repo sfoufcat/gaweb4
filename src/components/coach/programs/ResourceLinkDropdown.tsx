@@ -42,7 +42,7 @@ export function ResourceLinkDropdown({
   const [currentPage, setCurrentPage] = useState(0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -54,7 +54,7 @@ export function ResourceLinkDropdown({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Update dropdown position when opened
+  // Update dropdown position when opened - use layoutEffect for synchronous positioning
   useEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
@@ -63,6 +63,9 @@ export function ResourceLinkDropdown({
         left: rect.left + window.scrollX,
         width: rect.width,
       });
+    } else if (!isOpen) {
+      // Reset position when closed so it recalculates fresh on next open
+      setDropdownPosition(null);
     }
   }, [isOpen]);
 
@@ -180,7 +183,8 @@ export function ResourceLinkDropdown({
   };
 
   // Render dropdown menu in a portal to escape overflow-hidden containers
-  const dropdownMenu = isOpen && typeof document !== 'undefined' ? createPortal(
+  // Only render when position is calculated to prevent flash at (0,0)
+  const dropdownMenu = isOpen && dropdownPosition && typeof document !== 'undefined' ? createPortal(
     <div
       ref={dropdownRef}
       style={{
