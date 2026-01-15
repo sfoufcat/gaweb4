@@ -4399,6 +4399,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       availableDownloads={availableDownloads}
                       availableLinks={availableLinks}
                       availableQuestionnaires={availableQuestionnaires}
+                      availableCourses={organizationCourses}
                     />
                   );
                 })()

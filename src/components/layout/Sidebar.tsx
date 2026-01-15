@@ -537,7 +537,7 @@ export function Sidebar() {
       {/* Mobile Bottom Navigation - Apple Glass + Instagram Simplicity */}
       <div
         className={`
-          lg:hidden fixed bottom-0 left-0 right-0 z-[60] flex justify-center px-5 pb-safe-3
+          lg:hidden fixed bottom-0 left-0 right-0 z-[60] flex justify-center px-5
           transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom
           pointer-events-none
           ${isCompact ? 'translate-y-[10px] scale-[0.94] opacity-95' : 'translate-y-0 scale-100 opacity-100'}

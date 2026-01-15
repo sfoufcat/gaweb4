@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment, ClientViewContext, CohortViewContext, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire } from '@/types';
+import type { DiscoverCourse } from '@/types/discover';
 import { Plus, X, ListTodo, Repeat, Target, Trash2, ArrowLeftRight, ChevronDown, ChevronRight, Pencil, Loader2, BookOpen, Download, Link2, FileQuestion, FileText } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { useInstanceIdLookup } from '@/hooks/useProgramInstanceBridge';
@@ -67,6 +68,7 @@ interface DayEditorProps {
   availableDownloads?: DiscoverDownload[];
   availableLinks?: DiscoverLink[];
   availableQuestionnaires?: Questionnaire[];
+  availableCourses?: DiscoverCourse[];
 }
 
 // Form data type
@@ -109,6 +111,7 @@ export function DayEditor({
   availableDownloads = [],
   availableLinks = [],
   availableQuestionnaires = [],
+  availableCourses = [],
 }: DayEditorProps) {
   // Program editor context for centralized save
   const editorContext = useProgramEditorOptional();
@@ -1090,6 +1093,7 @@ export function DayEditor({
         <DayCourseSelector
           currentAssignments={formData.courseAssignments}
           onChange={(assignments) => setFormData({ ...formData, courseAssignments: assignments })}
+          availableCourses={availableCourses}
         />
       </div>
 

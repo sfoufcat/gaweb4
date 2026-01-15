@@ -1673,52 +1673,67 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
               {checkinTab === 'weekly' && (
                 weeklyCheckins.length > 0 ? (
-                  weeklyCheckins.map((checkin) => (
-                    <div key={checkin.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                          Week of {new Date(checkin.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          checkin.onTrackStatus === 'on_track' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                          checkin.onTrackStatus === 'not_sure' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        }`}>
-                          {checkin.onTrackStatus.replace(/_/g, ' ')}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">Goal progress:</p>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-brand-accent rounded-full"
-                              style={{ width: `${checkin.progress}%` }}
-                            />
+                  weeklyCheckins.map((checkin) => {
+                    // Determine progress status based on change from previous
+                    const progressDiff = checkin.progress - (checkin.previousProgress || 0);
+                    const isImproved = progressDiff > 0;
+                    const isStagnant = progressDiff === 0;
+
+                    return (
+                      <div key={checkin.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                            Week of {new Date(checkin.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            isImproved
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                              : isStagnant
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {isImproved ? `+${progressDiff}% improved` : isStagnant ? 'no change' : `${progressDiff}% declined`}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">Goal progress:</p>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-brand-accent rounded-full"
+                                style={{ width: `${checkin.progress}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">{checkin.progress}%</span>
                           </div>
-                          <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">{checkin.progress}%</span>
                         </div>
+                        {checkin.whatWentWell && (
+                          <div>
+                            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">What went well:</p>
+                            <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{checkin.whatWentWell}</p>
+                          </div>
+                        )}
+                        {checkin.biggestObstacles && (
+                          <div>
+                            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">Obstacles:</p>
+                            <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{checkin.biggestObstacles}</p>
+                          </div>
+                        )}
+                        {checkin.nextWeekPlan && (
+                          <div>
+                            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">Next week plan:</p>
+                            <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{checkin.nextWeekPlan}</p>
+                          </div>
+                        )}
+                        {checkin.publicFocus && (
+                          <div>
+                            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">Public focus:</p>
+                            <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{checkin.publicFocus}</p>
+                          </div>
+                        )}
                       </div>
-                      {checkin.whatWentWell && (
-                        <div>
-                          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">What went well:</p>
-                          <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{checkin.whatWentWell}</p>
-                        </div>
-                      )}
-                      {checkin.biggestObstacles && (
-                        <div>
-                          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">Obstacles:</p>
-                          <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{checkin.biggestObstacles}</p>
-                        </div>
-                      )}
-                      {checkin.nextWeekPlan && (
-                        <div>
-                          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">Next week plan:</p>
-                          <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{checkin.nextWeekPlan}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <p className="text-center py-8 text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No weekly check-ins yet</p>
                 )
@@ -1934,24 +1949,28 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         )}
       </div>
 
-      {/* Squad Assignment Section */}
+      {/* Standalone Squad Assignment Section */}
       <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
           <Users className="w-5 h-5 text-brand-accent" />
           <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
-            Squad Membership
+            Standalone Squads
           </h3>
         </div>
 
         {(() => {
-          const userSquadIds = user?.squadIds || (user?.standardSquadId ? [user.standardSquadId] : []);
-          const availableSquads = squads.filter(s => !userSquadIds.includes(s.id));
-          
+          // Only show standalone squads (not program squads)
+          const standaloneSquads = squads.filter(s => !s.programId);
+          const standaloneSquadIds = new Set(standaloneSquads.map(s => s.id));
+          const userSquadIds = (user?.squadIds || (user?.standardSquadId ? [user.standardSquadId] : []))
+            .filter(id => standaloneSquadIds.has(id));
+          const availableSquads = standaloneSquads.filter(s => !userSquadIds.includes(s.id));
+
           return (
             <div className={`flex flex-wrap gap-2 items-center ${updatingSquad ? 'opacity-50 pointer-events-none' : ''}`}>
               {/* Squad tags */}
               {userSquadIds.map((squadId) => {
-                const squad = squads.find(s => s.id === squadId);
+                const squad = standaloneSquads.find(s => s.id === squadId);
                 return (
                   <span
                     key={squadId}
@@ -1968,7 +1987,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   </span>
                 );
               })}
-              
+
               {/* Add squad dropdown */}
               {availableSquads.length > 0 && (
                 <Select
@@ -1988,13 +2007,13 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   </SelectContent>
                 </Select>
               )}
-              
+
               {/* Show "None" if no squads and no available squads */}
               {userSquadIds.length === 0 && availableSquads.length === 0 && (
-                <span className="text-[#8c8c8c] dark:text-[#7d8190] text-sm font-albert">No squads available</span>
+                <span className="text-[#8c8c8c] dark:text-[#7d8190] text-sm font-albert">No standalone squads available</span>
               )}
               {userSquadIds.length === 0 && availableSquads.length > 0 && (
-                <span className="text-[#8c8c8c] dark:text-[#7d8190] text-xs font-albert">Not in any squad</span>
+                <span className="text-[#8c8c8c] dark:text-[#7d8190] text-xs font-albert">Not in any standalone squad</span>
               )}
             </div>
           );

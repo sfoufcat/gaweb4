@@ -1,24 +1,25 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Plus, X, ChevronDown, ChevronRight, Play, Clock, Layers } from 'lucide-react';
+import React, { useState } from 'react';
+import { GraduationCap, X, ChevronDown, ChevronRight, Play, Clock, Layers } from 'lucide-react';
 import type { DayCourseAssignment } from '@/types';
 import type { DiscoverCourse, CourseModule } from '@/types/discover';
+import { ResourceLinkDropdown } from './ResourceLinkDropdown';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
+
+// Strip HTML tags from text
+function stripHtml(html: string): string {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '').trim();
+}
 
 interface DayCourseSelectorProps {
   currentAssignments: DayCourseAssignment[];
   onChange: (assignments: DayCourseAssignment[]) => void;
+  availableCourses?: DiscoverCourse[];
 }
 
-interface CourseWithSelection extends DiscoverCourse {
-  selectedModuleIds: Set<string>;
-  selectedLessonIds: Set<string>;
-}
-
-export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSelectorProps) {
-  const [courses, setCourses] = useState<DiscoverCourse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function DayCourseSelector({ currentAssignments, onChange, availableCourses = [] }: DayCourseSelectorProps) {
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
@@ -26,37 +27,13 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
   const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set());
   const [selectedLessons, setSelectedLessons] = useState<Set<string>>(new Set());
 
-  // Fetch courses on mount
-  useEffect(() => {
-    async function fetchCourses() {
-      try {
-        setError(null);
-        const res = await fetch('/api/coach/org-discover/courses');
-        if (res.ok) {
-          const data = await res.json();
-          setCourses(data.courses || []);
-        } else {
-          // Handle specific error codes
-          if (res.status === 401) {
-            setError('Please sign in to view courses');
-          } else if (res.status === 403) {
-            setError('You do not have permission to view courses');
-          } else {
-            setError('Failed to load courses');
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching courses:', err);
-        setError('Failed to connect to server');
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchCourses();
-  }, []);
-
   // Get course by ID
-  const getCourse = (courseId: string) => courses.find(c => c.id === courseId);
+  const getCourse = (courseId: string) => availableCourses.find(c => c.id === courseId);
+
+  // Filter out already assigned courses
+  const unassignedCourses = availableCourses.filter(
+    c => !currentAssignments.some(a => a.courseId === c.id)
+  );
 
   // Toggle module expansion
   const toggleModuleExpand = (moduleId: string) => {
@@ -128,6 +105,14 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
     });
   };
 
+  // Handle course selection from dropdown
+  const handleCourseSelect = (courseId: string) => {
+    setSelectedCourseId(courseId);
+    setSelectedModules(new Set());
+    setSelectedLessons(new Set());
+    setExpandedModules(new Set());
+  };
+
   // Add the selected course as an assignment
   const handleAddCourse = () => {
     if (!selectedCourseId) return;
@@ -162,13 +147,36 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
     const course = getCourse(assignment.courseId);
     if (!course) return null;
 
+    // Get selected module/lesson names for display
+    let selectedContent: string[] = [];
+
+    if (assignment.moduleIds && assignment.moduleIds.length > 0 && course.modules) {
+      const moduleNames = assignment.moduleIds
+        .map(id => course.modules?.find(m => m.id === id)?.title)
+        .filter(Boolean) as string[];
+      selectedContent = moduleNames;
+    } else if (assignment.lessonIds && assignment.lessonIds.length > 0 && course.modules) {
+      // Find lesson names across all modules
+      const lessonNames: string[] = [];
+      for (const module of course.modules) {
+        if (module.lessons) {
+          for (const lesson of module.lessons) {
+            if (assignment.lessonIds.includes(lesson.id)) {
+              lessonNames.push(lesson.title);
+            }
+          }
+        }
+      }
+      selectedContent = lessonNames;
+    }
+
     let subtext = '';
-    if (assignment.moduleIds && assignment.moduleIds.length > 0) {
-      const moduleCount = assignment.moduleIds.length;
-      subtext = `${moduleCount} module${moduleCount > 1 ? 's' : ''} selected`;
-    } else if (assignment.lessonIds && assignment.lessonIds.length > 0) {
-      const lessonCount = assignment.lessonIds.length;
-      subtext = `${lessonCount} lesson${lessonCount > 1 ? 's' : ''} selected`;
+    if (selectedContent.length > 0) {
+      if (selectedContent.length <= 2) {
+        subtext = selectedContent.join(', ');
+      } else {
+        subtext = `${selectedContent.slice(0, 2).join(', ')} +${selectedContent.length - 2} more`;
+      }
     } else {
       subtext = 'Full course';
     }
@@ -203,7 +211,7 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
                   <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate font-albert">
                     {display.course.title}
                   </p>
-                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert truncate">
                     {display.subtext}
                   </p>
                 </div>
@@ -220,52 +228,21 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
         </div>
       )}
 
-      {/* Course dropdown - always visible */}
-      {loading ? (
-        <div className="h-10 bg-[#e1ddd8]/50 dark:bg-[#262b35]/50 rounded-lg animate-pulse" />
-      ) : error ? (
-        <p className="text-sm text-red-500 dark:text-red-400 font-albert">
-          {error}
-        </p>
-      ) : (() => {
-        const availableCourses = courses.filter(c => !currentAssignments.some(a => a.courseId === c.id));
-        if (availableCourses.length === 0 && courses.length > 0) {
-          return (
-            <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert italic">
-              All courses have been assigned
-            </p>
-          );
-        }
-        if (courses.length === 0) {
-          return (
-            <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
-              No courses available. Create courses in the Discover section first.
-            </p>
-          );
-        }
-        return (
-          <div className="relative">
-            <select
-              value={selectedCourseId || ''}
-              onChange={(e) => {
-                setSelectedCourseId(e.target.value || null);
-                setSelectedModules(new Set());
-                setSelectedLessons(new Set());
-                setExpandedModules(new Set());
-              }}
-              className="w-full h-10 px-3 pr-10 border border-[#e1ddd8] dark:border-[#262b35] rounded-md bg-white dark:bg-[#11141b] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring ring-offset-0"
-            >
-              <option value="">Add a course...</option>
-              {availableCourses.map(course => (
-                <option key={course.id} value={course.id}>
-                  {course.title}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
-          </div>
-        );
-      })()}
+      {/* Course dropdown using ResourceLinkDropdown */}
+      <ResourceLinkDropdown
+        placeholder="Add a course..."
+        icon={GraduationCap}
+        groups={[
+          {
+            label: 'Available Courses',
+            items: unassignedCourses.map(c => ({ id: c.id, title: c.title })),
+            iconClassName: 'text-brand-accent',
+          },
+        ]}
+        onSelect={handleCourseSelect}
+        onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
+        createNewLabel="Create new course"
+      />
 
       {/* Course preview with module/lesson selection - shows when course selected */}
       {selectedCourse && (
@@ -284,7 +261,7 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
                 {selectedCourse.title}
               </h4>
               <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] line-clamp-2 font-albert mt-1">
-                {selectedCourse.shortDescription}
+                {stripHtml(selectedCourse.shortDescription || '')}
               </p>
               <div className="flex items-center gap-3 mt-2 text-xs text-[#a7a39e] dark:text-[#7d8190]">
                 {selectedCourse.totalModules && (
@@ -330,12 +307,13 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
                           <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
                         )}
                       </button>
-                      <label className="flex items-center gap-2 flex-1 cursor-pointer">
-                        <input
-                          type="checkbox"
+                      <div
+                        className="flex items-center gap-2 flex-1 cursor-pointer"
+                        onClick={() => toggleModuleSelection(module)}
+                      >
+                        <BrandedCheckbox
                           checked={selectedModules.has(module.id)}
                           onChange={() => toggleModuleSelection(module)}
-                          className="rounded border-[#e1ddd8] dark:border-[#262b35] text-brand-accent focus:ring-brand-accent"
                         />
                         <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                           {module.title}
@@ -343,22 +321,21 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
                         <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
                           ({module.lessons?.length || 0} lessons)
                         </span>
-                      </label>
+                      </div>
                     </div>
 
                     {/* Lessons */}
                     {expandedModules.has(module.id) && module.lessons && (
                       <div className="ml-8 mt-1 space-y-1">
                         {module.lessons.map((lesson) => (
-                          <label
+                          <div
                             key={lesson.id}
                             className="flex items-center gap-2 py-1 cursor-pointer"
+                            onClick={() => toggleLessonSelection(lesson.id, module.id, module)}
                           >
-                            <input
-                              type="checkbox"
+                            <BrandedCheckbox
                               checked={selectedLessons.has(lesson.id)}
                               onChange={() => toggleLessonSelection(lesson.id, module.id, module)}
-                              className="rounded border-[#e1ddd8] dark:border-[#262b35] text-brand-accent focus:ring-brand-accent"
                             />
                             <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                               {lesson.title}
@@ -368,7 +345,7 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
                                 {lesson.durationMinutes}min
                               </span>
                             )}
-                          </label>
+                          </div>
                         ))}
                       </div>
                     )}

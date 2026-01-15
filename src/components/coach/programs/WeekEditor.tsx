@@ -2863,6 +2863,7 @@ export function WeekEditor({
         <DayCourseSelector
           currentAssignments={formData.courseAssignments}
           onChange={handleCourseAssignmentsChange}
+          availableCourses={availableCourses}
         />
       </CollapsibleSection>
 

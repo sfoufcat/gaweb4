@@ -208,12 +208,22 @@ export function CallSummaryViewModal({
     ? `Summary from ${formattedDate}`
     : 'Call Summary';
 
-  const showFetchButton = onFetchTasks && summary?.status === 'completed' && summary.actionItems?.length > 0;
+  const showFetchButton = onFetchTasks && summary?.status === 'completed' && Array.isArray(summary.actionItems) && summary.actionItems.length > 0;
 
   // Render the summary content (inline, not as a separate component)
-  const renderSummaryContent = () => (
+  const renderSummaryContent = () => {
+    // Guard against null/undefined summary
+    if (!summary) {
+      return (
+        <div className="flex items-center justify-center py-8 text-sm text-[#8c8c8c] dark:text-[#7d8190]">
+          No summary data available
+        </div>
+      );
+    }
+
+    return (
     <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-      {summary?.status === 'completed' && summary.summary ? (
+      {summary.status === 'completed' && summary.summary ? (
         <>
           {/* Executive Summary */}
           {summary.summary.executive && (
@@ -300,7 +310,7 @@ export function CallSummaryViewModal({
           )}
 
           {/* Action Items */}
-          {summary.actionItems?.length > 0 && (
+          {Array.isArray(summary.actionItems) && summary.actionItems.length > 0 && (
             <div>
               <h4 className="flex items-center gap-1.5 text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                 <ListTodo className="h-4 w-4" />
@@ -447,7 +457,8 @@ export function CallSummaryViewModal({
         </div>
       )}
     </div>
-  );
+    );
+  };
 
   // Don't render until we know if we're on mobile or desktop (prevents hydration mismatch)
   if (isMobile === null) {

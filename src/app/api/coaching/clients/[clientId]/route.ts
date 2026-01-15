@@ -379,6 +379,8 @@ export async function GET(
         tier: memberData?.tier || userData?.tier,
         coachingStatus: memberData?.coachingStatus || userData?.coachingStatus,
         coaching: memberData?.coaching || userData?.coaching,
+        // Onboarding data (from users collection where it's stored during onboarding)
+        onboarding: userData?.onboarding,
       };
     }
 
