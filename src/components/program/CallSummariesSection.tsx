@@ -43,8 +43,21 @@ export function CallSummariesSection({
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateValue: string | { seconds: number; nanoseconds: number } | null | undefined) => {
+    if (!dateValue) return '';
+
+    let date: Date;
+    if (typeof dateValue === 'string') {
+      date = new Date(dateValue);
+    } else if (typeof dateValue === 'object' && 'seconds' in dateValue) {
+      // Firestore Timestamp
+      date = new Date(dateValue.seconds * 1000);
+    } else {
+      return '';
+    }
+
+    if (isNaN(date.getTime())) return '';
+
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -114,7 +127,8 @@ export function CallSummariesSection({
                     <div className="flex items-center gap-3 mt-1">
                       <span className="flex items-center gap-1 text-[12px] text-text-muted dark:text-[#7d8190]">
                         <Calendar className="w-3 h-3" />
-                        {formatDate(summary.createdAt)}
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {formatDate(summary.createdAt as any)}
                       </span>
                       {summary.callDurationSeconds && (
                         <span className="flex items-center gap-1 text-[12px] text-text-muted dark:text-[#7d8190]">

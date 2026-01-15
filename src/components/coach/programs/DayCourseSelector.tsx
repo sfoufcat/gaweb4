@@ -4,13 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Plus, X, ChevronDown, ChevronRight, Play, Clock, Layers } from 'lucide-react';
 import type { DayCourseAssignment } from '@/types';
 import type { DiscoverCourse, CourseModule } from '@/types/discover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 interface DayCourseSelectorProps {
   currentAssignments: DayCourseAssignment[];
@@ -26,7 +19,6 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
   const [courses, setCourses] = useState<DiscoverCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
@@ -158,7 +150,6 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
     setSelectedModules(new Set());
     setSelectedLessons(new Set());
     setExpandedModules(new Set());
-    setShowPicker(false);
   };
 
   // Remove an assignment
@@ -229,179 +220,161 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
         </div>
       )}
 
-      {/* Add course button / picker */}
-      {!showPicker ? (
-        <button
-          type="button"
-          onClick={() => setShowPicker(true)}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent dark:hover:text-brand-accent transition-colors font-albert"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Assign Course</span>
-        </button>
-      ) : (
+      {/* Course dropdown - always visible */}
+      {loading ? (
+        <div className="h-10 bg-[#e1ddd8]/50 dark:bg-[#262b35]/50 rounded-lg animate-pulse" />
+      ) : error ? (
+        <p className="text-sm text-red-500 dark:text-red-400 font-albert">
+          {error}
+        </p>
+      ) : (() => {
+        const availableCourses = courses.filter(c => !currentAssignments.some(a => a.courseId === c.id));
+        if (availableCourses.length === 0 && courses.length > 0) {
+          return (
+            <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert italic">
+              All courses have been assigned
+            </p>
+          );
+        }
+        if (courses.length === 0) {
+          return (
+            <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
+              No courses available. Create courses in the Discover section first.
+            </p>
+          );
+        }
+        return (
+          <div className="relative">
+            <select
+              value={selectedCourseId || ''}
+              onChange={(e) => {
+                setSelectedCourseId(e.target.value || null);
+                setSelectedModules(new Set());
+                setSelectedLessons(new Set());
+                setExpandedModules(new Set());
+              }}
+              className="w-full h-10 px-3 pr-10 border border-[#e1ddd8] dark:border-[#262b35] rounded-md bg-white dark:bg-[#11141b] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring ring-offset-0"
+            >
+              <option value="">Add a course...</option>
+              {availableCourses.map(course => (
+                <option key={course.id} value={course.id}>
+                  {course.title}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+          </div>
+        );
+      })()}
+
+      {/* Course preview with module/lesson selection - shows when course selected */}
+      {selectedCourse && (
         <div className="p-4 bg-[#faf8f6] dark:bg-[#1d222b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35] space-y-4">
-          {/* Course selector */}
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Select Course
-            </label>
-            {(() => {
-              if (loading) {
-                return <div className="h-10 bg-[#e1ddd8]/50 dark:bg-[#262b35]/50 rounded-lg animate-pulse" />;
-              }
-              if (error) {
-                return (
-                  <p className="text-sm text-red-500 dark:text-red-400 font-albert">
-                    {error}
-                  </p>
-                );
-              }
-              const availableCourses = courses.filter(c => !currentAssignments.some(a => a.courseId === c.id));
-              if (availableCourses.length === 0) {
-                return (
-                  <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
-                    {courses.length === 0 
-                      ? 'No courses available. Create courses in the Discover section first.'
-                      : 'All courses have been assigned.'}
-                  </p>
-                );
-              }
-              return (
-                <Select
-                  value={selectedCourseId ?? undefined}
-                  onValueChange={(value) => {
-                    setSelectedCourseId(value);
-                    setSelectedModules(new Set());
-                    setSelectedLessons(new Set());
-                    setExpandedModules(new Set());
-                  }}
-                >
-                  <SelectTrigger className="w-full border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                    <SelectValue placeholder="Choose a course..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableCourses.map(course => (
-                      <SelectItem key={course.id} value={course.id}>
-                        {course.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              );
-            })()}
+          {/* Course card preview */}
+          <div className="flex items-start gap-3 p-3 bg-white dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]">
+            {selectedCourse.coverImageUrl && (
+              <img
+                src={selectedCourse.coverImageUrl}
+                alt={selectedCourse.title}
+                className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                {selectedCourse.title}
+              </h4>
+              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] line-clamp-2 font-albert mt-1">
+                {selectedCourse.shortDescription}
+              </p>
+              <div className="flex items-center gap-3 mt-2 text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                {selectedCourse.totalModules && (
+                  <span className="flex items-center gap-1">
+                    <Layers className="w-3 h-3" />
+                    {selectedCourse.totalModules} modules
+                  </span>
+                )}
+                {selectedCourse.totalLessons && (
+                  <span className="flex items-center gap-1">
+                    <Play className="w-3 h-3" />
+                    {selectedCourse.totalLessons} lessons
+                  </span>
+                )}
+                {selectedCourse.totalDurationMinutes && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {Math.round(selectedCourse.totalDurationMinutes / 60)}h
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Course preview with module/lesson selection */}
-          {selectedCourse && (
-            <div className="space-y-3">
-              {/* Course card preview */}
-              <div className="flex items-start gap-3 p-3 bg-white dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]">
-                {selectedCourse.coverImageUrl && (
-                  <img
-                    src={selectedCourse.coverImageUrl}
-                    alt={selectedCourse.title}
-                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                    {selectedCourse.title}
-                  </h4>
-                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] line-clamp-2 font-albert mt-1">
-                    {selectedCourse.shortDescription}
-                  </p>
-                  <div className="flex items-center gap-3 mt-2 text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                    {selectedCourse.totalModules && (
-                      <span className="flex items-center gap-1">
-                        <Layers className="w-3 h-3" />
-                        {selectedCourse.totalModules} modules
-                      </span>
-                    )}
-                    {selectedCourse.totalLessons && (
-                      <span className="flex items-center gap-1">
-                        <Play className="w-3 h-3" />
-                        {selectedCourse.totalLessons} lessons
-                      </span>
-                    )}
-                    {selectedCourse.totalDurationMinutes && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {Math.round(selectedCourse.totalDurationMinutes / 60)}h
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+          {/* Module/lesson tree */}
+          {selectedCourse.modules && selectedCourse.modules.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                Select specific content (optional - leave empty for full course)
+              </p>
+              <div className="max-h-64 overflow-y-auto space-y-1 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-2 bg-white dark:bg-[#11141b]">
+                {selectedCourse.modules.map((module) => (
+                  <div key={module.id}>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleModuleExpand(module.id)}
+                        className="p-1 hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded"
+                      >
+                        {expandedModules.has(module.id) ? (
+                          <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                        )}
+                      </button>
+                      <label className="flex items-center gap-2 flex-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedModules.has(module.id)}
+                          onChange={() => toggleModuleSelection(module)}
+                          className="rounded border-[#e1ddd8] dark:border-[#262b35] text-brand-accent focus:ring-brand-accent"
+                        />
+                        <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                          {module.title}
+                        </span>
+                        <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                          ({module.lessons?.length || 0} lessons)
+                        </span>
+                      </label>
+                    </div>
 
-              {/* Module/lesson tree */}
-              {selectedCourse.modules && selectedCourse.modules.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                    Select specific content (optional - leave empty for full course)
-                  </p>
-                  <div className="max-h-64 overflow-y-auto space-y-1 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-2 bg-white dark:bg-[#11141b]">
-                    {selectedCourse.modules.map((module) => (
-                      <div key={module.id}>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => toggleModuleExpand(module.id)}
-                            className="p-1 hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded"
+                    {/* Lessons */}
+                    {expandedModules.has(module.id) && module.lessons && (
+                      <div className="ml-8 mt-1 space-y-1">
+                        {module.lessons.map((lesson) => (
+                          <label
+                            key={lesson.id}
+                            className="flex items-center gap-2 py-1 cursor-pointer"
                           >
-                            {expandedModules.has(module.id) ? (
-                              <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                            )}
-                          </button>
-                          <label className="flex items-center gap-2 flex-1 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={selectedModules.has(module.id)}
-                              onChange={() => toggleModuleSelection(module)}
+                              checked={selectedLessons.has(lesson.id)}
+                              onChange={() => toggleLessonSelection(lesson.id, module.id, module)}
                               className="rounded border-[#e1ddd8] dark:border-[#262b35] text-brand-accent focus:ring-brand-accent"
                             />
-                            <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                              {module.title}
+                            <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                              {lesson.title}
                             </span>
-                            <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                              ({module.lessons?.length || 0} lessons)
-                            </span>
+                            {lesson.durationMinutes && (
+                              <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                                {lesson.durationMinutes}min
+                              </span>
+                            )}
                           </label>
-                        </div>
-
-                        {/* Lessons */}
-                        {expandedModules.has(module.id) && module.lessons && (
-                          <div className="ml-8 mt-1 space-y-1">
-                            {module.lessons.map((lesson) => (
-                              <label
-                                key={lesson.id}
-                                className="flex items-center gap-2 py-1 cursor-pointer"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={selectedLessons.has(lesson.id)}
-                                  onChange={() => toggleLessonSelection(lesson.id, module.id, module)}
-                                  className="rounded border-[#e1ddd8] dark:border-[#262b35] text-brand-accent focus:ring-brand-accent"
-                                />
-                                <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                                  {lesson.title}
-                                </span>
-                                {lesson.durationMinutes && (
-                                  <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                                    {lesson.durationMinutes}min
-                                  </span>
-                                )}
-                              </label>
-                            ))}
-                          </div>
-                        )}
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           )}
 
@@ -410,7 +383,6 @@ export function DayCourseSelector({ currentAssignments, onChange }: DayCourseSel
             <button
               type="button"
               onClick={() => {
-                setShowPicker(false);
                 setSelectedCourseId(null);
                 setSelectedModules(new Set());
                 setSelectedLessons(new Set());
