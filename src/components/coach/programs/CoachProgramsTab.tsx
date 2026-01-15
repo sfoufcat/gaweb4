@@ -4020,8 +4020,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       ? (instanceWeek?.moduleId ?? '')
                       : (instanceWeek?.moduleId ?? templateWeek?.moduleId ?? ''),
                     name: instanceDataAvailable
-                      ? (instanceWeek?.name ?? '')
-                      : (instanceWeek?.name ?? templateWeek?.name ?? ''),
+                      ? (instanceWeek?.name || sidebarSelection.displayLabel || '')
+                      : (instanceWeek?.name || templateWeek?.name || sidebarSelection.displayLabel || ''),
                     description: instanceDataAvailable
                       ? (instanceWeek?.description ?? '')
                       : (instanceWeek?.description ?? templateWeek?.description ?? ''),
@@ -4072,7 +4072,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     order: templateWeek.order || templateWeek.weekNumber,
                     startDayIndex: templateWeek.startDayIndex || startDay,
                     endDayIndex: templateWeek.endDayIndex || endDay,
-                    name: templateWeek.name,
+                    name: templateWeek.name || sidebarSelection.displayLabel || '',
                     description: templateWeek.description,
                     theme: templateWeek.theme,
                     createdAt: templateWeek.createdAt,
@@ -4099,7 +4099,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     order: existingWeek.order || existingWeek.weekNumber,
                     startDayIndex: existingWeek.startDayIndex || startDay,
                     endDayIndex: existingWeek.endDayIndex || endDay,
-                    name: existingWeek.name,
+                    name: existingWeek.name || sidebarSelection.displayLabel || '',
                     description: existingWeek.description,
                     theme: existingWeek.theme,
                     weeklyPrompt: existingWeek.weeklyPrompt,
@@ -4125,6 +4125,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     order: weekNumber,
                     startDayIndex: startDay,
                     endDayIndex: endDay,
+                    name: sidebarSelection.displayLabel || '', // Use sidebar label for display
                     distribution: 'spread' as const,
                     weeklyTasks: [],
                     weeklyHabits: [],

@@ -36,7 +36,7 @@ import { SyncToCohortDialog } from './SyncToCohortDialog';
 // Selection types (same as ProgramSidebarNav for compatibility)
 export type SidebarSelection =
   | { type: 'module'; id: string; moduleIndex: number }
-  | { type: 'week'; id: string; weekNumber: number; moduleId?: string }
+  | { type: 'week'; id: string; weekNumber: number; moduleId?: string; displayLabel?: string }
   | { type: 'day'; dayIndex: number; weekId?: string; moduleId?: string };
 
 interface ModuleWeeksSidebarProps {
@@ -831,6 +831,7 @@ export function ModuleWeeksSidebar({
         id: currentWeek.storedWeekId || `week-${currentWeek.weekNum}`,
         weekNumber: currentWeek.templateWeekNumber ?? currentWeek.weekNum,
         moduleId: targetModuleId,
+        displayLabel: currentWeek.label, // Pass calendar label for consistent display
       });
     } else {
       // currentDayIndex is outside program range - default to week 1
@@ -1203,7 +1204,8 @@ export function ModuleWeeksSidebar({
       type: 'week',
       id: week.storedWeekId || `week-${week.weekNum}`,
       weekNumber: week.templateWeekNumber ?? week.weekNum,
-      moduleId
+      moduleId,
+      displayLabel: week.label, // Pass calendar label for consistent display
     };
     
     // DEBUG: Log week selection on click
