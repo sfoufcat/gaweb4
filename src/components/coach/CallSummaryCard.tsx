@@ -49,8 +49,22 @@ export function CallSummaryCard({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateValue: string | { seconds: number; nanoseconds: number } | null | undefined): string => {
+    if (!dateValue) return '';
+
+    let date: Date;
+    if (typeof dateValue === 'string') {
+      date = new Date(dateValue);
+    } else if (typeof dateValue === 'object' && 'seconds' in dateValue) {
+      // Firestore Timestamp
+      date = new Date(dateValue.seconds * 1000);
+    } else {
+      return '';
+    }
+
+    if (isNaN(date.getTime())) return '';
+
+    return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -95,7 +109,8 @@ export function CallSummaryCard({
             )}
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
-              <span>{formatDate(summary.callStartedAt)}</span>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <span>{formatDate(summary.callStartedAt as any)}</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" />

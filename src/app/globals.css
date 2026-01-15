@@ -105,8 +105,7 @@
 /*
  * iOS Safari full-viewport content extension
  * With viewport-fit: cover, Safari extends the viewport into the safe areas.
- * html/body are transparent so content (via .main-content-safe) extends naturally
- * into safe areas without a separate fill color.
+ * html/body are transparent so content flows naturally into safe areas.
  */
 html, body {
   background-color: transparent;
@@ -152,10 +151,8 @@ html, body {
    */
   .main-content-safe {
     min-height: 100dvh;
-    /* TOP: extend background into status bar area */
-    padding-top: env(safe-area-inset-top, 0px);
-    margin-top: calc(-1 * env(safe-area-inset-top, 0px));
-    /* BOTTOM: extend background into home indicator area */
+    /* No top padding/margin - content flows naturally under Safari's translucent status bar */
+    /* BOTTOM: extend into home indicator area */
     padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
     margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   }
