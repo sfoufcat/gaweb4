@@ -52,13 +52,16 @@ export function CallSummaryViewModal({
   const [regenerating, setRegenerating] = useState(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
-  // Detect mobile viewport - only runs on client
+  // Detect mobile viewport - only runs on client, once on mount
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
+    setIsMobile(window.innerWidth < 768);
+    const checkMobile = () => {
+      const newIsMobile = window.innerWidth < 768;
+      setIsMobile(newIsMobile);
+    };
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  }, []); // Empty dependency array - only run on mount
 
   // Calculate if summary is stuck in processing
   const getAgeMinutes = useCallback((createdAt: unknown): number => {
