@@ -128,6 +128,133 @@ async function fetchCoachingDataForUser(
   }
 }
 
+// Discovery program type for users without enrollments
+interface DiscoveryProgram {
+  id: string;
+  name: string;
+  description?: string;
+  coverImageUrl?: string;
+  type: 'group' | 'individual';
+  lengthDays: number;
+  priceInCents: number;
+  currency?: string;
+  coachName?: string;
+  coachImageUrl?: string;
+  nextCohort?: {
+    id: string;
+    name: string;
+    startDate: string;
+    spotsRemaining: number;
+  } | null;
+}
+
+/**
+ * Fetch discovery programs for users without enrollments
+ * This pre-fetches the data so UI loads instantly
+ */
+async function fetchDiscoveryPrograms(
+  organizationId: string,
+  userId: string
+): Promise<{ groupPrograms: DiscoveryProgram[]; individualPrograms: DiscoveryProgram[] }> {
+  try {
+    const clerk = await clerkClient();
+
+    // Query published programs for this org
+    const programsSnapshot = await adminDb
+      .collection('programs')
+      .where('organizationId', '==', organizationId)
+      .where('isPublished', '==', true)
+      .where('isActive', '==', true)
+      .get();
+
+    if (programsSnapshot.empty) {
+      return { groupPrograms: [], individualPrograms: [] };
+    }
+
+    // Get coach info from organization (super_coach)
+    let coachName = 'Coach';
+    let coachImageUrl: string | undefined;
+    try {
+      const memberships = await clerk.organizations.getOrganizationMembershipList({
+        organizationId,
+        limit: 100,
+      });
+
+      const coachMember = memberships.data.find(m => {
+        const metadata = m.publicMetadata as { orgRole?: string } | undefined;
+        return metadata?.orgRole === 'super_coach';
+      }) || memberships.data.find(m => m.role === 'org:admin');
+
+      if (coachMember?.publicUserData?.userId) {
+        const coachUser = await clerk.users.getUser(coachMember.publicUserData.userId);
+        coachName = `${coachUser.firstName || ''} ${coachUser.lastName || ''}`.trim() || 'Coach';
+        coachImageUrl = coachUser.imageUrl || undefined;
+      }
+    } catch {
+      // Use default coach name
+    }
+
+    const programs: DiscoveryProgram[] = await Promise.all(
+      programsSnapshot.docs.map(async (doc) => {
+        const data = doc.data() as Program;
+
+        let nextCohort: DiscoveryProgram['nextCohort'] = null;
+
+        // For group programs, get the next available cohort
+        if (data.type === 'group') {
+          const today = new Date().toISOString().split('T')[0];
+          const cohortsSnapshot = await adminDb
+            .collection('program_cohorts')
+            .where('programId', '==', doc.id)
+            .where('enrollmentOpen', '==', true)
+            .get();
+
+          const upcomingCohorts = cohortsSnapshot.docs
+            .map(d => ({ id: d.id, ...d.data() } as ProgramCohort & { id: string }))
+            .filter(c => c.startDate >= today)
+            .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+
+          if (upcomingCohorts.length > 0) {
+            const cohortData = upcomingCohorts[0];
+            const maxEnrollment = cohortData.maxEnrollment || Infinity;
+            const spotsRemaining = Math.max(0, maxEnrollment - (cohortData.currentEnrollment || 0));
+
+            nextCohort = {
+              id: cohortData.id,
+              name: cohortData.name,
+              startDate: cohortData.startDate,
+              spotsRemaining: maxEnrollment === Infinity ? -1 : spotsRemaining,
+            };
+          }
+        }
+
+        return {
+          id: doc.id,
+          name: data.name,
+          description: data.description,
+          coverImageUrl: data.coverImageUrl,
+          type: data.type,
+          lengthDays: data.lengthDays,
+          priceInCents: data.priceInCents || 0,
+          currency: data.currency || 'USD',
+          coachName,
+          coachImageUrl,
+          nextCohort,
+        };
+      })
+    );
+
+    // Sort by createdAt descending
+    const groupPrograms = programs.filter(p => p.type === 'group');
+    const individualPrograms = programs.filter(p => p.type === 'individual');
+
+    return { groupPrograms, individualPrograms };
+  } catch (err) {
+    console.error('[MY_PROGRAMS] Error fetching discovery programs:', err);
+    return { groupPrograms: [], individualPrograms: [] };
+  }
+}
+
 /**
  * Calculate current day index based on start date
  */
@@ -279,10 +406,13 @@ export async function GET() {
     const enrollmentsSnapshot = await query.get();
 
     if (enrollmentsSnapshot.empty) {
+      // No enrollments - fetch discovery programs so UI loads instantly
+      const discoveryPrograms = await fetchDiscoveryPrograms(organizationId, userId);
       return NextResponse.json({
         success: true,
         enrollments: [],
         isPlatformMode: false,
+        discoveryPrograms,
       });
     }
 

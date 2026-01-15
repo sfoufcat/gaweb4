@@ -59,7 +59,7 @@ export default function ProgramHubPage() {
   const { squad: squadTitle, program: programTitle } = useMenuTitles();
   
   // Program data
-  const { 
+  const {
     enrollments,
     groupProgram,
     individualProgram,
@@ -69,6 +69,8 @@ export default function ProgramHubPage() {
     isPlatformMode,
     isLoading: programsLoading,
     refresh: refreshPrograms,
+    discoveryGroupPrograms,
+    discoveryIndividualPrograms,
   } = useMyPrograms();
   
   // Local state
@@ -155,10 +157,10 @@ export default function ProgramHubPage() {
     return enrollments.find(e => e.program.id === selectedProgramId) || null;
   }, [selectedProgramId, enrollments]);
   
-  // Loading state - return null for smooth page fade-in
+  // Loading state - return null for smooth page fade-in via PageTransition
   // In demo mode, skip waiting for Clerk user to load
   const isLoading = (!isDemoMode && !userLoaded) || !mounted || programsLoading;
-  
+
   if (isLoading) {
     return null;
   }
@@ -184,7 +186,10 @@ export default function ProgramHubPage() {
   if (!hasEnrollments) {
     return (
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16">
-        <ProgramDiscovery />
+        <ProgramDiscovery
+          groupPrograms={discoveryGroupPrograms}
+          individualPrograms={discoveryIndividualPrograms}
+        />
       </div>
     );
   }

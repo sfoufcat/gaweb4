@@ -1,98 +1,57 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Users, User, ArrowRight, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { ProgramCard } from '@/components/discover';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 import { ProgramEmptyState } from './ProgramEmptyState';
+import type { DiscoveryProgram } from '@/hooks/useMyPrograms';
 
 /**
  * ProgramDiscovery Component
- * 
+ *
  * Displays available programs when user has no enrollments.
  * Styled similar to SquadDiscovery - shows programs in a grid,
  * separated by Group and 1:1 types, with a "Discover more content" link.
- * 
+ *
+ * OPTIMIZED: Receives discovery programs from parent (fetched via useMyPrograms)
+ * to prevent flash of empty state while loading.
+ *
  * If no programs are available, renders ProgramEmptyState instead.
  */
 
-interface DiscoverProgram {
-  id: string;
-  name: string;
-  description?: string;
-  coverImageUrl?: string;
-  type: 'group' | 'individual';
-  lengthDays: number;
-  priceInCents: number;
-  currency?: string;
-  coachName?: string;
-  coachImageUrl?: string;
-  nextCohort?: {
-    id: string;
-    name: string;
-    startDate: string;
-    spotsRemaining: number;
-  } | null;
-  userEnrollment?: {
-    status: string;
-    cohortId?: string;
-  } | null;
+interface ProgramDiscoveryProps {
+  groupPrograms: DiscoveryProgram[];
+  individualPrograms: DiscoveryProgram[];
 }
 
-export function ProgramDiscovery() {
+export function ProgramDiscovery({ groupPrograms, individualPrograms }: ProgramDiscoveryProps) {
   const { programLower } = useMenuTitles();
 
-  const [groupPrograms, setGroupPrograms] = useState<DiscoverProgram[]>([]);
-  const [individualPrograms, setIndividualPrograms] = useState<DiscoverProgram[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Fetch available programs
-  useEffect(() => {
-    const fetchPrograms = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch('/api/discover/programs');
-        if (!response.ok) throw new Error('Failed to fetch programs');
-
-        const data = await response.json();
-
-        // Filter out programs user is already enrolled in
-        const availableGroup = (data.groupPrograms || []).filter(
-          (p: DiscoverProgram) => !p.userEnrollment
-        );
-        const availableIndividual = (data.individualPrograms || []).filter(
-          (p: DiscoverProgram) => !p.userEnrollment
-        );
-
-        setGroupPrograms(availableGroup);
-        setIndividualPrograms(availableIndividual);
-      } catch (err) {
-        console.error('Error fetching programs:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPrograms();
-  }, []);
-
-  // Derive hasPrograms from array lengths (no separate state needed)
+  // Derive hasPrograms from array lengths
   const hasPrograms = groupPrograms.length > 0 || individualPrograms.length > 0;
-
-  // Return null while loading to prevent flash of empty state
-  // Parent page already shows nothing during initial load, so this just continues that
-  if (isLoading) {
-    return null;
-  }
 
   // No programs available - show empty state with "Discover more content" CTA
   if (!hasPrograms) {
-    return <ProgramEmptyState />;
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+      >
+        <ProgramEmptyState />
+      </motion.div>
+    );
   }
 
   return (
-    <div className="pt-6 pb-32">
+    <motion.div
+      className="pt-6 pb-32"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+    >
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-albert text-[36px] text-text-primary dark:text-[#f5f5f8] leading-[1.2] tracking-[-2px] mb-2">
@@ -117,7 +76,7 @@ export function ProgramDiscovery() {
               {groupPrograms.length}
             </span>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {groupPrograms.map((program) => (
               <ProgramCard key={program.id} program={program} />
@@ -140,7 +99,7 @@ export function ProgramDiscovery() {
               {individualPrograms.length}
             </span>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {individualPrograms.map((program) => (
               <ProgramCard key={program.id} program={program} />
@@ -173,7 +132,6 @@ export function ProgramDiscovery() {
           </div>
         </Link>
       </div>
-    </div>
+    </motion.div>
   );
 }
-

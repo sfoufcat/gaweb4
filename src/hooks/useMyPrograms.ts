@@ -56,9 +56,38 @@ export interface EnrolledProgramWithDetails {
   coachingData?: CoachingDataPreview | null;
 }
 
+// Discovery program for users without enrollments
+export interface DiscoveryProgram {
+  id: string;
+  name: string;
+  description?: string;
+  coverImageUrl?: string;
+  type: 'group' | 'individual';
+  lengthDays: number;
+  priceInCents: number;
+  currency?: string;
+  coachName?: string;
+  coachImageUrl?: string;
+  nextCohort?: {
+    id: string;
+    name: string;
+    startDate: string;
+    spotsRemaining: number;
+  } | null;
+  userEnrollment?: {
+    status: string;
+    cohortId?: string;
+  } | null;
+}
+
 interface MyProgramsResponse {
   enrollments: EnrolledProgramWithDetails[];
   isPlatformMode?: boolean;
+  // Discovery programs for users without enrollments (pre-fetched)
+  discoveryPrograms?: {
+    groupPrograms: DiscoveryProgram[];
+    individualPrograms: DiscoveryProgram[];
+  };
 }
 
 export interface UseMyProgramsReturn {
@@ -66,25 +95,29 @@ export interface UseMyProgramsReturn {
   enrollments: EnrolledProgramWithDetails[];
   groupProgram: EnrolledProgramWithDetails | null;
   individualProgram: EnrolledProgramWithDetails | null;
-  
+
   // Convenience flags
   hasEnrollments: boolean;
   hasGroupProgram: boolean;
   hasIndividualProgram: boolean;
   hasBothPrograms: boolean;
   programCount: number;
-  
+
   // Squad from group program (if any)
   groupSquad: Squad | null;
   hasGroupSquad: boolean;
-  
+
   // Platform mode (no tenant context)
   isPlatformMode: boolean;
-  
+
+  // Discovery programs (for users without enrollments)
+  discoveryGroupPrograms: DiscoveryProgram[];
+  discoveryIndividualPrograms: DiscoveryProgram[];
+
   // Loading states
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   refresh: () => Promise<void>;
 }
@@ -141,26 +174,33 @@ export function useMyPrograms(): UseMyProgramsReturn {
   // Derive group and individual programs
   const groupProgram = enrollments.find(e => e.program.type === 'group') || null;
   const individualProgram = enrollments.find(e => e.program.type === 'individual') || null;
-  
+
   // Get squad from group program
   const groupSquad = groupProgram?.squad || null;
+
+  // Discovery programs (pre-fetched for instant display)
+  const discoveryGroupPrograms = data?.discoveryPrograms?.groupPrograms ?? [];
+  const discoveryIndividualPrograms = data?.discoveryPrograms?.individualPrograms ?? [];
 
   return {
     enrollments,
     groupProgram,
     individualProgram,
-    
+
     hasEnrollments: enrollments.length > 0,
     hasGroupProgram: !!groupProgram,
     hasIndividualProgram: !!individualProgram,
     hasBothPrograms: !!groupProgram && !!individualProgram,
     programCount: enrollments.length,
-    
+
     groupSquad,
     hasGroupSquad: !!groupSquad,
-    
+
     isPlatformMode,
-    
+
+    discoveryGroupPrograms,
+    discoveryIndividualPrograms,
+
     // Only show loading on INITIAL fetch (when no data exists)
     // In demo mode, skip waiting for Clerk user to load
     isLoading: (!isDemoMode && !isLoaded) || (isLoading && !data),
