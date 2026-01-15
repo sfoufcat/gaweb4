@@ -1543,9 +1543,21 @@ export function WeekEditor({
       date = new Date(dateValue);
     } else if (dateValue instanceof Date) {
       date = dateValue;
-    } else if (typeof dateValue === 'object' && dateValue !== null && 'seconds' in dateValue) {
-      // Firestore Timestamp
-      date = new Date((dateValue as { seconds: number }).seconds * 1000);
+    } else if (typeof dateValue === 'object' && dateValue !== null) {
+      // Handle various Firestore Timestamp formats
+      const obj = dateValue as Record<string, unknown>;
+      if ('seconds' in obj && typeof obj.seconds === 'number') {
+        // Standard Firestore Timestamp: { seconds: number, nanoseconds: number }
+        date = new Date(obj.seconds * 1000);
+      } else if ('_seconds' in obj && typeof obj._seconds === 'number') {
+        // Serialized Firestore Timestamp: { _seconds: number, _nanoseconds: number }
+        date = new Date(obj._seconds * 1000);
+      } else if ('toDate' in obj && typeof obj.toDate === 'function') {
+        // Firestore Timestamp with toDate method
+        date = (obj.toDate as () => Date)();
+      } else {
+        return '';
+      }
     } else {
       return '';
     }
@@ -2520,7 +2532,7 @@ export function WeekEditor({
                   <Button
                     size="sm"
                     onClick={() => setShowCreditModal(true)}
-                    className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white text-xs px-4 py-2 h-auto font-medium shadow-sm"
+                    className="shrink-0 bg-red-500 hover:bg-red-600 text-white text-xs px-4 py-2 h-auto font-medium shadow-sm self-center sm:self-auto"
                   >
                     Buy Credits
                   </Button>

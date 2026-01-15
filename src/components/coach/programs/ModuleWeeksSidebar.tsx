@@ -826,22 +826,12 @@ export function ModuleWeeksSidebar({
 
       // Auto-select the current WEEK (not day) for a cleaner initial view
       // Users can then drill down to specific days if needed
-      if (currentWeek.storedWeekId) {
-        onSelectRef.current({
-          type: 'week',
-          id: currentWeek.storedWeekId,
-          weekNumber: currentWeek.templateWeekNumber ?? currentWeek.weekNum,
-          moduleId: targetModuleId,
-        });
-      } else {
-        // Fallback to day selection if no stored week
-        onSelectRef.current({
-          type: 'day',
-          dayIndex: currentDayIndex,
-          weekId: currentWeek.storedWeekId,
-          moduleId: targetModuleId,
-        });
-      }
+      onSelectRef.current({
+        type: 'week',
+        id: currentWeek.storedWeekId || `week-${currentWeek.weekNum}`,
+        weekNumber: currentWeek.templateWeekNumber ?? currentWeek.weekNum,
+        moduleId: targetModuleId,
+      });
     } else {
       // currentDayIndex is outside program range - default to week 1
       setExpandedWeeks(new Set([1]));

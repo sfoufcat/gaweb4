@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import {
   Elements,
@@ -421,6 +421,81 @@ export function CreditPurchaseModal({
   const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
   const [isProcessingSavedPayment, setIsProcessingSavedPayment] = useState(false);
+
+  // Track if we've handled the redirect to prevent double-handling
+  const redirectHandledRef = useRef(false);
+  // Store callbacks in refs to avoid dependency on changing references
+  const onOpenChangeRef = useRef(onOpenChange);
+  const onPurchaseCompleteRef = useRef(onPurchaseComplete);
+
+  // Keep refs up to date
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+    onPurchaseCompleteRef.current = onPurchaseComplete;
+  }, [onOpenChange, onPurchaseComplete]);
+
+  // Handle Stripe redirect return (after 3D Secure, Apple Pay, etc.)
+  // This runs once on mount to check for payment_intent in URL
+  useEffect(() => {
+    // Only run once per component mount
+    if (redirectHandledRef.current) return;
+
+    // Read URL params directly instead of using searchParams to avoid re-render loops
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentIntentParam = urlParams.get('payment_intent');
+    const clientSecretParam = urlParams.get('payment_intent_client_secret');
+    const redirectStatus = urlParams.get('redirect_status');
+
+    // If we have payment_intent in URL, we're returning from a redirect
+    if (paymentIntentParam && clientSecretParam) {
+      redirectHandledRef.current = true;
+
+      // Clean up URL immediately to prevent re-triggering or infinite loops
+      const url = new URL(window.location.href);
+      url.searchParams.delete('payment_intent');
+      url.searchParams.delete('payment_intent_client_secret');
+      url.searchParams.delete('redirect_status');
+      window.history.replaceState({}, '', url.toString());
+
+      // Handle based on redirect status
+      if (redirectStatus === 'succeeded') {
+        // Payment succeeded - confirm credits were added (fallback in case webhook didn't fire)
+        (async () => {
+          try {
+            await fetch('/api/coach/credits/confirm', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ paymentIntentId: paymentIntentParam }),
+            });
+          } catch (err) {
+            console.error('Error confirming credits after redirect:', err);
+            // Don't block - webhook should have handled it
+          }
+          // Open modal to show success, then auto-close
+          onOpenChangeRef.current(true);
+          setStep('success');
+          setLoading(false);
+          // Auto-close after animation
+          setTimeout(() => {
+            onOpenChangeRef.current(false);
+            onPurchaseCompleteRef.current?.();
+          }, 1500);
+        })();
+      } else if (redirectStatus === 'failed') {
+        // Payment failed - open modal to show error
+        onOpenChangeRef.current(true);
+        setError('Payment failed. Please try again.');
+        setStep('selectPack');
+        setLoading(false);
+      } else {
+        // Status is 'processing' or unknown
+        // For processing, we wait for webhook; just reset state
+        // Don't auto-open modal, user can retry if needed
+        setStep('selectPack');
+        setLoading(false);
+      }
+    }
+  }, []); // Empty deps - only run on mount
 
   // Fetch credits info and saved cards when modal opens
   useEffect(() => {
