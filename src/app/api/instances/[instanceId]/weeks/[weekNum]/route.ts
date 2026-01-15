@@ -465,6 +465,7 @@ export async function PATCH(
     if (body.linkedDownloadIds !== undefined) updatedWeek.linkedDownloadIds = body.linkedDownloadIds || [];
     if (body.linkedLinkIds !== undefined) updatedWeek.linkedLinkIds = body.linkedLinkIds || [];
     if (body.linkedQuestionnaireIds !== undefined) updatedWeek.linkedQuestionnaireIds = body.linkedQuestionnaireIds || [];
+    if (body.linkedCourseIds !== undefined) updatedWeek.linkedCourseIds = body.linkedCourseIds || [];
     if (body.distribution !== undefined) updatedWeek.distribution = body.distribution;
     if (body.weeklyHabits !== undefined) updatedWeek.weeklyHabits = body.weeklyHabits;
     if (body.manualNotes !== undefined) updatedWeek.manualNotes = body.manualNotes?.trim() || undefined;

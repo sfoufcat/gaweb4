@@ -161,6 +161,12 @@ export async function PATCH(
     if (body.linkedCourseModuleIds !== undefined) updatedWeek.linkedCourseModuleIds = body.linkedCourseModuleIds || undefined;
     if (body.linkedSummaryIds !== undefined) updatedWeek.linkedSummaryIds = body.linkedSummaryIds || undefined;
     if (body.linkedCallEventIds !== undefined) updatedWeek.linkedCallEventIds = body.linkedCallEventIds || undefined;
+    // Linked resources
+    if (body.linkedArticleIds !== undefined) updatedWeek.linkedArticleIds = body.linkedArticleIds || [];
+    if (body.linkedDownloadIds !== undefined) updatedWeek.linkedDownloadIds = body.linkedDownloadIds || [];
+    if (body.linkedLinkIds !== undefined) updatedWeek.linkedLinkIds = body.linkedLinkIds || [];
+    if (body.linkedQuestionnaireIds !== undefined) updatedWeek.linkedQuestionnaireIds = body.linkedQuestionnaireIds || [];
+    if (body.linkedCourseIds !== undefined) updatedWeek.linkedCourseIds = body.linkedCourseIds || [];
     if (body.manualNotes !== undefined) updatedWeek.manualNotes = body.manualNotes?.trim() || undefined;
     if (body.fillSource !== undefined) updatedWeek.fillSource = body.fillSource || undefined;
     if (body.distribution !== undefined) updatedWeek.distribution = body.distribution || 'spread';
