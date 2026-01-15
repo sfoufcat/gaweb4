@@ -86,8 +86,13 @@ interface ClientProgramEnrollment {
   programId: string;
   programName: string;
   programType: ProgramType;
+  programCoverImageUrl?: string;
   status: string;
-  progress: number;
+  progress: {
+    currentDay: number;
+    totalDays: number;
+    percentComplete: number;
+  };
   startedAt: string;
   completedAt?: string;
 }
@@ -192,8 +197,14 @@ export async function GET(
         id: 'demo-enrollment-1',
         programId: demoClient.programId,
         programName: demoClient.programName || '30-Day Transformation',
+        programType: 'group' as ProgramType,
+        programCoverImageUrl: 'https://images.unsplash.com/photo-1552581234-26160f608093?w=800&h=400&fit=crop',
         status: 'active',
-        progress: 40,
+        progress: {
+          currentDay: 12,
+          totalDays: 30,
+          percentComplete: 40,
+        },
         startedAt: thirtyDaysAgo.toISOString(),
       }] : [];
       
@@ -538,9 +549,9 @@ export async function GET(
       };
     });
 
-    // Process program enrollments - fetch program names and types
+    // Process program enrollments - fetch program names, types, and cover images
     const programIds = [...new Set(programEnrollmentsSnapshot.docs.map(doc => doc.data().programId))];
-    const programMap = new Map<string, { name: string; type: ProgramType }>();
+    const programMap = new Map<string, { name: string; type: ProgramType; coverImageUrl?: string; lengthDays: number }>();
 
     if (programIds.length > 0) {
       const programDocs = await Promise.all(
@@ -552,6 +563,8 @@ export async function GET(
           programMap.set(doc.id, {
             name: programData?.name || 'Unknown Program',
             type: programData?.type || 'group',
+            coverImageUrl: programData?.coverImageUrl,
+            lengthDays: programData?.lengthDays || 30,
           });
         }
       }
@@ -560,13 +573,31 @@ export async function GET(
     const programEnrollments: ClientProgramEnrollment[] = programEnrollmentsSnapshot.docs.map(doc => {
       const data = doc.data();
       const program = programMap.get(data.programId);
+
+      // Calculate progress based on days since start
+      const startDate = new Date(data.startedAt || data.createdAt);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const totalDays = program?.lengthDays || 30;
+
+      const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const currentDay = Math.max(1, Math.min(daysSinceStart + 1, totalDays));
+      const percentComplete = data.status === 'completed'
+        ? 100
+        : Math.round((currentDay / totalDays) * 100);
+
       return {
         id: doc.id,
         programId: data.programId,
         programName: program?.name || 'Unknown Program',
         programType: program?.type || 'group',
+        programCoverImageUrl: program?.coverImageUrl,
         status: data.status || 'active',
-        progress: data.progress || 0,
+        progress: {
+          currentDay: data.status === 'completed' ? totalDays : currentDay,
+          totalDays,
+          percentComplete,
+        },
         startedAt: data.startedAt || data.createdAt,
         completedAt: data.completedAt,
       };

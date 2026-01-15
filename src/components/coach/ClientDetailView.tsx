@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import {
   Calendar,
@@ -278,8 +279,13 @@ interface ClientProgramEnrollment {
   programId: string;
   programName: string;
   programType: 'individual' | 'group';
+  programCoverImageUrl?: string;
   status: string;
-  progress: number;
+  progress: {
+    currentDay: number;
+    totalDays: number;
+    percentComplete: number;
+  };
   startedAt: string;
   completedAt?: string;
 }
@@ -1742,26 +1748,56 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             {currentPrograms.length > 0 ? (
               <div className="space-y-3">
                 {currentPrograms.map((enrollment) => (
-                  <div key={enrollment.id} className="p-4 bg-gradient-to-br from-brand-accent/5 to-[#8c6245]/5 dark:from-[#b8896a]/10 dark:to-brand-accent/5 rounded-xl border border-brand-accent/20">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{enrollment.programName}</span>
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                        Active
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-brand-accent rounded-full"
-                          style={{ width: `${enrollment.progress}%` }}
-                        />
+                  <Link
+                    key={enrollment.id}
+                    href={`/coach/programs/${enrollment.programId}`}
+                    className="block"
+                  >
+                    <div className="flex gap-4 p-4 bg-gradient-to-br from-brand-accent/5 to-[#8c6245]/5 dark:from-[#b8896a]/10 dark:to-brand-accent/5 rounded-xl border border-brand-accent/20 hover:border-brand-accent/40 transition-colors cursor-pointer group">
+                      {/* Cover Image */}
+                      <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden">
+                        {enrollment.programCoverImageUrl ? (
+                          <Image
+                            src={enrollment.programCoverImageUrl}
+                            alt={enrollment.programName}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform"
+                            sizes="64px"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 flex items-center justify-center">
+                            {enrollment.programType === 'group' ? (
+                              <Users className="w-6 h-6 text-brand-accent/60" />
+                            ) : (
+                              <User className="w-6 h-6 text-brand-accent/60" />
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">{enrollment.progress}%</span>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">{enrollment.programName}</span>
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 flex-shrink-0 ml-2">
+                            Active
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="flex-1 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-brand-accent rounded-full transition-all"
+                              style={{ width: `${enrollment.progress.percentComplete}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-medium text-brand-accent font-albert flex-shrink-0">{enrollment.progress.percentComplete}%</span>
+                        </div>
+                        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                          Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays} • Started {new Date(enrollment.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] mt-2 font-albert">
-                      Started {new Date(enrollment.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </p>
-                  </div>
+                  </Link>
                 ))}
               </div>
             ) : (
@@ -1773,24 +1809,54 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               <div className="mt-4 pt-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 space-y-3">
                 <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider font-albert mb-2">Past Programs</p>
                 {pastPrograms.map((enrollment) => (
-                  <div key={enrollment.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{enrollment.programName}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        enrollment.status === 'completed' 
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                          : 'bg-[#e1ddd8] text-[#5f5a55] dark:bg-[#262b35] dark:text-[#b2b6c2]'
-                      }`}>
-                        {enrollment.status === 'completed' ? 'Completed' : 'Cancelled'}
-                      </span>
+                  <Link
+                    key={enrollment.id}
+                    href={`/coach/programs/${enrollment.programId}`}
+                    className="block"
+                  >
+                    <div className="flex gap-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl hover:bg-[#f5f0eb] dark:hover:bg-[#171b22] transition-colors cursor-pointer group">
+                      {/* Cover Image */}
+                      <div className="relative w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden opacity-60">
+                        {enrollment.programCoverImageUrl ? (
+                          <Image
+                            src={enrollment.programCoverImageUrl}
+                            alt={enrollment.programName}
+                            fill
+                            className="object-cover grayscale group-hover:grayscale-0 transition-all"
+                            sizes="56px"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-[#e1ddd8] to-[#d4cfc8] dark:from-[#262b35] dark:to-[#1f242c] flex items-center justify-center">
+                            {enrollment.programType === 'group' ? (
+                              <Users className="w-5 h-5 text-[#8c8c8c] dark:text-[#7d8190]" />
+                            ) : (
+                              <User className="w-5 h-5 text-[#8c8c8c] dark:text-[#7d8190]" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">{enrollment.programName}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${
+                            enrollment.status === 'completed'
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                              : 'bg-[#e1ddd8] text-[#5f5a55] dark:bg-[#262b35] dark:text-[#b2b6c2]'
+                          }`}>
+                            {enrollment.status === 'completed' ? 'Completed' : 'Cancelled'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                          {enrollment.completedAt
+                            ? `Completed ${new Date(enrollment.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                            : `Started ${new Date(enrollment.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                          }
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
-                      {enrollment.completedAt 
-                        ? `Completed ${new Date(enrollment.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                        : `Started ${new Date(enrollment.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                      }
-                    </p>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

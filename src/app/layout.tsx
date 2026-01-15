@@ -54,16 +54,13 @@ function getBestLogoUrl(branding: { logoUrl: string | null; horizontalLogoUrl: s
 /**
  * Viewport configuration for Safari edge-to-edge display
  * viewport-fit=cover enables safe area insets for iOS Safari
+ * No themeColor - allows content to flow naturally into safe areas
  */
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#faf8f6' },
-    { media: '(prefers-color-scheme: dark)', color: '#05070b' },
-  ],
 };
 
 /**
@@ -148,8 +145,6 @@ export default async function RootLayout({
                     if (isDark) {
                       document.documentElement.classList.add('dark');
                     }
-                    // Set initial background for iOS safe area (cleared once content loads)
-                    document.documentElement.style.setProperty('--initial-bg', isDark ? '#05070b' : '#faf8f6');
                   } catch (e) {}
                 })();
               `,
