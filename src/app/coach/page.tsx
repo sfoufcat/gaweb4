@@ -1115,7 +1115,7 @@ export default function CoachPage() {
           {/* Integrations Tab */}
           <TabsContent value="integrations">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
-              <IntegrationsTab />
+              <IntegrationsTab coachTier={subscription?.tier} />
             </div>
           </TabsContent>
 

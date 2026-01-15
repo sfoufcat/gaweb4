@@ -35,9 +35,9 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics', initi
   const [displayedTab, setDisplayedTab] = useState<TabType>('clients');
   const prevTabRef = useRef<TabType>('clients');
 
-  const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
-    { id: 'clients', label: 'Client Activity', icon: <Users className="w-4 h-4" /> },
-    { id: 'community', label: 'Community Health', icon: <Heart className="w-4 h-4" /> },
+  const tabs: { id: TabType; label: string; mobileLabel?: string; icon: React.ReactNode }[] = [
+    { id: 'clients', label: 'Client Activity', mobileLabel: 'Client', icon: <Users className="w-4 h-4" /> },
+    { id: 'community', label: 'Community Health', mobileLabel: 'Community', icon: <Heart className="w-4 h-4" /> },
     { id: 'feed', label: 'Feed', icon: <FileText className="w-4 h-4" /> },
     { id: 'chats', label: 'Chat', icon: <MessageCircle className="w-4 h-4" /> },
     { id: 'products', label: 'Products', icon: <Package className="w-4 h-4" /> },
@@ -107,7 +107,8 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics', initi
               <span className="w-4 h-4">
                 {tab.icon}
               </span>
-              {tab.label}
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.mobileLabel || tab.label}</span>
             </button>
           ))}
         </div>

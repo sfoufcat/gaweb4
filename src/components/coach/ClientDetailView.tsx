@@ -1157,14 +1157,19 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   // Get sentiment data for graph (last 7 days)
   const sentimentData = useMemo(() => {
     const last7Days = [];
+    const today = new Date();
     for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      // Use local date format YYYY-MM-DD (not UTC)
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+
       const morningCheckin = morningCheckins.find(c => c.date === dateStr);
       const eveningCheckin = eveningCheckins.find(c => c.date === dateStr);
-      
+
       last7Days.push({
         date: dateStr,
         dayLabel: date.toLocaleDateString('en-US', { weekday: 'short' }),
@@ -1511,29 +1516,29 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   <div key={idx} className="flex-1 flex flex-col items-center gap-1">
                     <div className="flex gap-1 h-24 items-end">
                       {/* Morning bar */}
-                      <div className="w-3 relative group">
+                      <div className="w-3 h-full relative group flex items-end">
                         {morningValue > 0 && (
                           <>
-                            <div 
+                            <div
                               className={`w-full rounded-t transition-all ${EMOTIONAL_STATE_COLORS[day.morning!]?.bg || 'bg-gray-300'}`}
                               style={{ height: `${morningHeight}%` }}
                             />
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[#1a1a1a] text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                              AM: {day.morning}
+                              AM: {day.morning?.replace(/_/g, ' ')}
                             </div>
                           </>
                         )}
                       </div>
                       {/* Evening bar */}
-                      <div className="w-3 relative group">
+                      <div className="w-3 h-full relative group flex items-end">
                         {eveningValue > 0 && (
                           <>
-                            <div 
+                            <div
                               className={`w-full rounded-t transition-all ${EMOTIONAL_STATE_COLORS[day.evening!]?.bg || 'bg-gray-300'}`}
                               style={{ height: `${eveningHeight}%` }}
                             />
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[#1a1a1a] text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                              PM: {day.evening}
+                              PM: {day.evening?.replace(/_/g, ' ')}
                             </div>
                           </>
                         )}
