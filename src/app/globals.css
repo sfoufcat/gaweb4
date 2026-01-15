@@ -105,14 +105,26 @@
 /*
  * iOS Safari full-viewport background fix
  * With viewport-fit: cover, Safari extends the viewport into the safe areas.
- * We use a fixed pseudo-element to fill the safe area at the bottom.
+ * Using direct color values (not CSS variables) ensures Safari properly renders
+ * the background color in the safe area regions from the very first paint.
  */
 html {
-  background: hsl(var(--app-bg));
+  background-color: #faf8f6;
 }
 
 body {
-  background: hsl(var(--app-bg));
+  background-color: #faf8f6;
+}
+
+/* Dark mode background - must use direct colors for Safari safe area rendering */
+.dark html,
+html.dark {
+  background-color: #05070b;
+}
+
+.dark body,
+html.dark body {
+  background-color: #05070b;
 }
 
 
