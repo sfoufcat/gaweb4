@@ -692,28 +692,19 @@ export async function GET(
       .filter(s => s.startDateTime < now)
       .sort((a, b) => b.startDateTime.localeCompare(a.startDateTime));
 
-    // Calculate streak from alignment data
+    // Get streak from most recent alignment document
     let streak = 0;
     try {
       const alignmentSnapshot = await adminDb.collection('user_alignments')
         .where('userId', '==', clientId)
         .where('organizationId', '==', organizationId)
         .orderBy('date', 'desc')
-        .limit(30)
+        .limit(1)
         .get();
-      
-      // Count consecutive days with full alignment (starting from most recent)
-      const today = new Date().toISOString().split('T')[0];
-      for (const doc of alignmentSnapshot.docs) {
-        const data = doc.data();
-        // Check if all alignment activities are completed
-        const isFullyAligned = data.didMorningCheckin && data.didSetTasks && 
-                               data.didInteractWithSquad && data.hasActiveGoal;
-        if (isFullyAligned) {
-          streak++;
-        } else {
-          break;
-        }
+
+      if (!alignmentSnapshot.empty) {
+        const latestAlignment = alignmentSnapshot.docs[0].data();
+        streak = latestAlignment.streakOnThisDay ?? 0;
       }
     } catch (err) {
       console.warn('[COACHING_CLIENT] Failed to fetch alignment data:', err);

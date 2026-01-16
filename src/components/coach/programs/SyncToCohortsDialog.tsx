@@ -109,7 +109,7 @@ export function SyncToCohortsDialog({
   }, [open]);
 
   // Filter to active/upcoming cohorts only
-  const activeCohorts = cohorts.filter(
+  const activeCohorts = (cohorts || []).filter(
     c => c.status === 'active' || c.status === 'upcoming'
   );
 

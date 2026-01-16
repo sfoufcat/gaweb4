@@ -1189,11 +1189,8 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
-      // Use local date format YYYY-MM-DD (not UTC)
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const dateStr = `${year}-${month}-${day}`;
+      // Use UTC date format YYYY-MM-DD to match server-side date storage
+      const dateStr = date.toISOString().split('T')[0];
 
       const morningCheckin = morningCheckins.find(c => c.date === dateStr);
       const eveningCheckin = eveningCheckins.find(c => c.date === dateStr);
@@ -1299,22 +1296,34 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       {/* Client Header with Activity Status */}
       <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-3xl p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-start gap-5">
-          {/* Avatar */}
-          <div className="shrink-0">
-            {user?.imageUrl || user?.avatarUrl ? (
-              <Image
-                src={user.avatarUrl || user.imageUrl || ''}
-                alt={displayName}
-                width={80}
-                height={80}
-                className="w-20 h-20 rounded-2xl object-cover"
-                unoptimized
-              />
-            ) : (
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-accent to-[#7d5c3e] dark:from-[#b8896a] dark:to-[#8c7a6d] flex items-center justify-center text-white text-2xl font-albert font-bold">
-                {displayName.charAt(0).toUpperCase()}
-              </div>
-            )}
+          {/* Avatar + Chat Button Row (Mobile) */}
+          <div className="flex items-start justify-between sm:justify-start gap-4 shrink-0">
+            {/* Avatar */}
+            <div className="shrink-0">
+              {user?.imageUrl || user?.avatarUrl ? (
+                <Image
+                  src={user.avatarUrl || user.imageUrl || ''}
+                  alt={displayName}
+                  width={80}
+                  height={80}
+                  className="w-20 h-20 rounded-2xl object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-accent to-[#7d5c3e] dark:from-[#b8896a] dark:to-[#8c7a6d] flex items-center justify-center text-white text-2xl font-albert font-bold">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            {/* Chat Button - Mobile Only */}
+            <button
+              onClick={() => setShowDMModal(true)}
+              className="sm:hidden inline-flex items-center justify-center w-10 h-10 bg-[#e5e5e5] dark:bg-[#3a3f4b] hover:bg-[#d5d5d5] dark:hover:bg-[#4a4f5b] rounded-full text-[#5f5a55] dark:text-[#b2b6c2] transition-colors"
+              title="Send message"
+            >
+              <MessageCircle className="w-5 h-5" />
+            </button>
           </div>
           
           {/* Client Info */}
@@ -1361,24 +1370,15 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="flex flex-wrap sm:flex-row items-center gap-2 shrink-0">
+          {/* Quick Actions - Desktop Only */}
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
             <button
               onClick={() => setShowDMModal(true)}
-              className="inline-flex items-center justify-center w-10 h-10 bg-brand-accent hover:bg-brand-accent/90 rounded-full text-white transition-colors"
+              className="inline-flex items-center justify-center w-10 h-10 bg-[#e5e5e5] dark:bg-[#3a3f4b] hover:bg-[#d5d5d5] dark:hover:bg-[#4a4f5b] rounded-full text-[#5f5a55] dark:text-[#b2b6c2] transition-colors"
               title="Send message"
             >
               <MessageCircle className="w-5 h-5" />
             </button>
-            {hasCoaching && (
-              <button
-                onClick={() => setShowCallModal(true)}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#11141b] hover:bg-[#e9e5e0] dark:hover:bg-[#171b22] rounded-full font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] transition-colors"
-              >
-                <Calendar className="w-4 h-4" />
-                Schedule Call
-              </button>
-            )}
           </div>
         </div>
       </div>

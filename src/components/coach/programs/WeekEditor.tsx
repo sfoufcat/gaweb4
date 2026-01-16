@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { ResourceLinkDropdown } from './ResourceLinkDropdown';
 import { CallSummaryViewModal } from './CallSummaryViewModal';
 import { DayCourseSelector } from './DayCourseSelector';
+import { ResourcesTabs } from './ResourcesTabs';
 import { CreditPurchaseModal } from '@/components/coach/CreditPurchaseModal';
 // Audio utilities for duration detection
 import { getAudioDuration } from '@/lib/audio-compression';
@@ -661,7 +662,8 @@ export function WeekEditor({
   // Detailed status from backend: 'uploaded' | 'transcribing' | 'summarizing' | 'completed' | 'failed'
   const [detailedStatus, setDetailedStatus] = useState<string | null>(null);
 
-  // Summary view modal state
+  // Summary view modal state - separate open state from data to prevent re-render loops
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingSummary, setViewingSummary] = useState<CallSummary | null>(null);
 
   // Credit purchase modal state (for insufficient credits error)
@@ -2270,7 +2272,12 @@ export function WeekEditor({
                       {summaryLabel}
                     </span>
                     <button
-                      onClick={() => summary && setViewingSummary(summary)}
+                      onClick={() => {
+                        if (summary) {
+                          setViewingSummary(summary);
+                          setIsViewModalOpen(true);
+                        }
+                      }}
                       className="text-xs text-brand-accent hover:underline font-medium"
                     >
                       View
@@ -2317,11 +2324,15 @@ export function WeekEditor({
         {/* Summary View Modal */}
         <CallSummaryViewModal
           summary={viewingSummary}
-          isOpen={!!viewingSummary}
-          onClose={() => setViewingSummary(null)}
+          isOpen={isViewModalOpen}
+          onClose={() => {
+            setIsViewModalOpen(false);
+            setViewingSummary(null);
+          }}
           onFetchTasks={addTasksFromSummary}
           onSummaryUpdated={(updatedSummary) => {
-            // Update local state so the modal shows the new data
+            // Only update the summary data, not the open state
+            // This prevents re-render loops when summary is regenerated
             setViewingSummary(updatedSummary);
             // Notify parent to refresh the available summaries list
             onSummaryUpdated?.(updatedSummary);
@@ -2594,279 +2605,35 @@ export function WeekEditor({
       </CollapsibleSection>
       )}
 
-      {/* Resources Section - Courses, Articles, Downloads, Links, Questionnaires */}
+      {/* Resources Section - Tabbed UI for Courses, Articles, Downloads, Links, Questionnaires */}
       <CollapsibleSection
         title="Resources"
         icon={BookOpen}
         description="Content to share with clients during this week"
         defaultOpen={false}
       >
-        {/* Courses */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <GraduationCap className="w-4 h-4 inline mr-1.5" />
-            Courses
-          </label>
-          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-            Learning courses for clients to complete this week
-          </p>
-          <DayCourseSelector
-            currentAssignments={formData.courseAssignments}
-            onChange={handleCourseAssignmentsChange}
-            availableCourses={availableCourses}
-          />
-        </div>
-
-        {/* Linked Articles */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <FileText className="w-4 h-4 inline mr-1.5" />
-            Articles
-          </label>
-          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-            Reading materials and guides for this week
-          </p>
-
-          {/* Currently linked articles */}
-          {formData.linkedArticleIds.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {formData.linkedArticleIds.map((articleId) => {
-                const article = availableArticles.find(a => a.id === articleId);
-                return (
-                  <div
-                    key={articleId}
-                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-                  >
-                    <FileText className="w-4 h-4 text-brand-accent" />
-                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                      {article?.title || `Article ${articleId.slice(0, 8)}...`}
-                    </span>
-                    <button
-                      onClick={() => removeArticleLink(articleId)}
-                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Add article dropdown */}
-          <ResourceLinkDropdown
-            placeholder="Add an article..."
-            icon={FileText}
-            groups={[
-              {
-                label: 'Program Content',
-                items: programArticles.map(a => ({ id: a.id, title: a.title })),
-                iconClassName: 'text-brand-accent',
-              },
-              {
-                label: 'Platform Content',
-                items: platformArticles.map(a => ({ id: a.id, title: a.title })),
-                iconClassName: 'text-[#8c8c8c]',
-              },
-            ]}
-            onSelect={addArticleLink}
-            onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
-            createNewLabel="Create new article"
-          />
-
-          {formData.linkedArticleIds.length === 0 && availableArticlesToLink.length === 0 && (
-            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
-              No articles available to link
-            </p>
-          )}
-        </div>
-
-        {/* Linked Downloads */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <Download className="w-4 h-4 inline mr-1.5" />
-            Downloads
-          </label>
-          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-            Files and templates clients can download
-          </p>
-
-          {/* Currently linked downloads */}
-          {formData.linkedDownloadIds.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {formData.linkedDownloadIds.map((downloadId) => {
-                const download = availableDownloads.find(d => d.id === downloadId);
-                return (
-                  <div
-                    key={downloadId}
-                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-                  >
-                    <Download className="w-4 h-4 text-brand-accent" />
-                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                      {download?.title || `Download ${downloadId.slice(0, 8)}...`}
-                    </span>
-                    <button
-                      onClick={() => removeDownloadLink(downloadId)}
-                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Add download dropdown */}
-          <ResourceLinkDropdown
-            placeholder="Add a download..."
-            icon={Download}
-            groups={[
-              {
-                label: 'Program Content',
-                items: programDownloads.map(d => ({ id: d.id, title: d.title })),
-                iconClassName: 'text-brand-accent',
-              },
-              {
-                label: 'Platform Content',
-                items: platformDownloads.map(d => ({ id: d.id, title: d.title })),
-                iconClassName: 'text-[#8c8c8c]',
-              },
-            ]}
-            onSelect={addDownloadLink}
-            onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
-            createNewLabel="Create new download"
-          />
-
-          {formData.linkedDownloadIds.length === 0 && availableDownloadsToLink.length === 0 && (
-            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
-              No downloads available to link
-            </p>
-          )}
-        </div>
-
-        {/* Linked Links */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <Link2 className="w-4 h-4 inline mr-1.5" />
-            External Links
-          </label>
-          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-            Helpful websites and external resources
-          </p>
-
-          {/* Currently linked links */}
-          {formData.linkedLinkIds.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {formData.linkedLinkIds.map((linkId) => {
-                const link = availableLinks.find(l => l.id === linkId);
-                return (
-                  <div
-                    key={linkId}
-                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-                  >
-                    <Link2 className="w-4 h-4 text-brand-accent" />
-                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                      {link?.title || `Link ${linkId.slice(0, 8)}...`}
-                    </span>
-                    <button
-                      onClick={() => removeLinkLink(linkId)}
-                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Add link dropdown */}
-          <ResourceLinkDropdown
-            placeholder="Add a link..."
-            icon={Link2}
-            groups={[
-              {
-                label: 'Program Content',
-                items: programLinks.map(l => ({ id: l.id, title: l.title })),
-                iconClassName: 'text-brand-accent',
-              },
-              {
-                label: 'Platform Content',
-                items: platformLinks.map(l => ({ id: l.id, title: l.title })),
-                iconClassName: 'text-[#8c8c8c]',
-              },
-            ]}
-            onSelect={addLinkLink}
-            onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
-            createNewLabel="Create new link"
-          />
-
-          {formData.linkedLinkIds.length === 0 && availableLinksToLink.length === 0 && (
-            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
-              No links available
-            </p>
-          )}
-        </div>
-
-        {/* Linked Questionnaires */}
-        <div>
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <FileQuestion className="w-4 h-4 inline mr-1.5" />
-            Questionnaires
-          </label>
-          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-            Forms and surveys for clients to complete
-          </p>
-
-          {/* Currently linked questionnaires */}
-          {formData.linkedQuestionnaireIds.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {formData.linkedQuestionnaireIds.map((questionnaireId) => {
-                const questionnaire = availableQuestionnaires.find(q => q.id === questionnaireId);
-                return (
-                  <div
-                    key={questionnaireId}
-                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-                  >
-                    <FileQuestion className="w-4 h-4 text-brand-accent" />
-                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                      {questionnaire?.title || `Questionnaire ${questionnaireId.slice(0, 8)}...`}
-                    </span>
-                    <button
-                      onClick={() => removeQuestionnaireLink(questionnaireId)}
-                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Add questionnaire dropdown */}
-          <ResourceLinkDropdown
-            placeholder="Add a questionnaire..."
-            icon={FileQuestion}
-            groups={[
-              {
-                label: 'Platform Content',
-                items: availableQuestionnairesToLink.map(q => ({ id: q.id, title: q.title })),
-                iconClassName: 'text-[#8c8c8c]',
-              },
-            ]}
-            onSelect={addQuestionnaireLink}
-            onCreateNew={() => { window.location.href = '/coach?tab=discover'; }}
-            createNewLabel="Create new questionnaire"
-          />
-
-          {formData.linkedQuestionnaireIds.length === 0 && availableQuestionnairesToLink.length === 0 && (
-            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
-              No questionnaires available
-            </p>
-          )}
-        </div>
+        <ResourcesTabs
+          courseAssignments={formData.courseAssignments}
+          onCourseAssignmentsChange={handleCourseAssignmentsChange}
+          availableCourses={availableCourses}
+          linkedArticleIds={formData.linkedArticleIds}
+          availableArticles={availableArticles}
+          onAddArticle={addArticleLink}
+          onRemoveArticle={removeArticleLink}
+          linkedDownloadIds={formData.linkedDownloadIds}
+          availableDownloads={availableDownloads}
+          onAddDownload={addDownloadLink}
+          onRemoveDownload={removeDownloadLink}
+          linkedLinkIds={formData.linkedLinkIds}
+          availableLinks={availableLinks}
+          onAddLink={addLinkLink}
+          onRemoveLink={removeLinkLink}
+          linkedQuestionnaireIds={formData.linkedQuestionnaireIds}
+          availableQuestionnaires={availableQuestionnaires}
+          onAddQuestionnaire={addQuestionnaireLink}
+          onRemoveQuestionnaire={removeQuestionnaireLink}
+          programId={programId}
+        />
       </CollapsibleSection>
 
       {/* Notes Section - collapsed by default */}

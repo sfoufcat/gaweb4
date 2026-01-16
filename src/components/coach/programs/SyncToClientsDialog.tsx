@@ -127,7 +127,7 @@ export function SyncToClientsDialog({
   };
 
   // Filter to active/upcoming enrollments only
-  const activeEnrollments = enrollments.filter(
+  const activeEnrollments = (enrollments || []).filter(
     e => e.status === 'active' || e.status === 'upcoming'
   );
 
