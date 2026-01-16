@@ -4343,6 +4343,57 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       cohortName={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortName : undefined}
                       instanceId={instanceId}
                       onSummaryGenerated={refetchCallSummaries}
+                      includeWeekends={selectedProgram?.includeWeekends !== false}
+                      onDaysChange={async (updatedDays) => {
+                        // When dayTag changes, save the updated days
+                        const isInstanceMode = !!(
+                          (clientViewContext.mode === 'client' && clientViewContext.enrollmentId) ||
+                          (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId)
+                        );
+                        
+                        if (isInstanceMode && instanceId) {
+                          // Instance mode: Update days via instance API
+                          try {
+                            const res = await fetch(`/api/instances/${instanceId}/weeks/${weekNumber}/days`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ days: updatedDays }),
+                            });
+                            if (res.ok) {
+                              await refreshInstance();
+                            }
+                          } catch (err) {
+                            console.error('Error updating instance days:', err);
+                          }
+                        } else {
+                          // Template mode: Update programDays state and save to API
+                          setProgramDays(prev => {
+                            const newDays = [...prev];
+                            for (const updatedDay of updatedDays) {
+                              const idx = newDays.findIndex(d => d.dayIndex === updatedDay.dayIndex);
+                              if (idx >= 0) {
+                                newDays[idx] = updatedDay;
+                              }
+                            }
+                            return newDays;
+                          });
+                          
+                          // Save each updated day to the API
+                          if (selectedProgram?.id) {
+                            for (const updatedDay of updatedDays) {
+                              try {
+                                await fetch(`${apiBasePath}/${selectedProgram.id}/days/${updatedDay.id || updatedDay.dayIndex}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ tasks: updatedDay.tasks }),
+                                });
+                              } catch (err) {
+                                console.error('Error updating day:', err);
+                              }
+                            }
+                          }
+                        }
+                      }}
                     />
                   );
                 })()

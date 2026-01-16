@@ -551,6 +551,8 @@ export interface ProgramTaskTemplate {
   notes?: string; // Optional guidance/context
   tag?: string; // Optional tag (e.g., "content", "mindset", "systems")
   source?: TaskSource; // Where this task originated from (for smart merging)
+  // Day assignment tag - overrides distribution logic
+  dayTag?: 'auto' | 'spread' | 'daily' | number; // 'auto' = use program distribution, 'spread' = force spread, 'daily' = all days, number = specific day (1-7)
   // Optional completion status (populated when viewing client-specific days)
   completed?: boolean; // Whether the client has completed this task
   completedAt?: string; // ISO timestamp of when the client completed it
@@ -5856,6 +5858,7 @@ export interface ProgramInstanceTask {
   notes?: string;
   tag?: string;
   source?: TaskSource;           // 'week' | 'day' | 'manual' | 'sync'
+  dayTag?: 'auto' | 'spread' | 'daily' | number; // Per-task distribution override
 }
 
 /**

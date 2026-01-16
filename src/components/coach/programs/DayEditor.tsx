@@ -1,5 +1,21 @@
 'use client';
 
+/**
+ * @deprecated This component is deprecated in favor of the new simplified architecture.
+ *
+ * Day content is now primarily managed through:
+ * - WeekEditor: Edit tasks with dayTag for per-task day assignment
+ * - DayPreviewPopup: Read-only preview of computed day content (accessible from WeekEditor)
+ * - ProgramOverviewTab: Program-level settings and habits
+ *
+ * The new flow eliminates separate day editing in favor of:
+ * 1. Tasks defined at week level with dayTag metadata
+ * 2. Distribution logic computes days[].tasks on save
+ * 3. DayPreviewPopup shows the computed result
+ *
+ * This component is kept for backward compatibility but should not be used in new code.
+ */
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate, DayCourseAssignment, ClientViewContext, CohortViewContext, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';

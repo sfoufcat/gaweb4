@@ -23,6 +23,7 @@ import { CallSummaryViewModal } from './CallSummaryViewModal';
 import { DayCourseSelector } from './DayCourseSelector';
 import { ResourcesTabs } from './ResourcesTabs';
 import { CreditPurchaseModal } from '@/components/coach/CreditPurchaseModal';
+import { DayPreviewPopup } from './DayPreviewPopup';
 // Audio utilities for duration detection
 import { getAudioDuration } from '@/lib/audio-compression';
 
@@ -87,6 +88,10 @@ interface WeekEditorProps {
   completionThreshold?: number;
   // NEW: Instance ID for migrated data (uses new unified API when present)
   instanceId?: string | null;
+  // Program settings
+  includeWeekends?: boolean;
+  // Callback when days are modified (for dayTag changes)
+  onDaysChange?: (days: ProgramDay[]) => void;
 }
 
 // Member info for task completion breakdown
@@ -100,6 +105,9 @@ interface TaskMemberInfo {
 }
 
 // Sortable task component for drag-and-drop weekly tasks
+// Day tag type for task assignment
+type DayTagValue = 'auto' | 'spread' | 'daily' | number; // number = specific day 1-7
+
 interface SortableWeeklyTaskProps {
   task: ProgramTaskTemplate;
   index: number;
@@ -107,6 +115,11 @@ interface SortableWeeklyTaskProps {
   showCompletionStatus: boolean;
   onTogglePrimary: (index: number) => void;
   onRemove: (index: number) => void;
+  // Day assignment
+  dayTag: DayTagValue;
+  onDayTagChange: (index: number, dayTag: DayTagValue) => void;
+  includeWeekends: boolean;
+  daysInWeek: number;
   // Cohort completion data (optional)
   cohortCompletion?: CohortWeeklyTaskCompletionData;
   // Expand functionality for cohort mode
@@ -125,6 +138,10 @@ function SortableWeeklyTask({
   showCompletionStatus,
   onTogglePrimary,
   onRemove,
+  dayTag,
+  onDayTagChange,
+  includeWeekends,
+  daysInWeek,
   cohortCompletion,
   isCohortMode,
   isExpanded,
@@ -309,6 +326,26 @@ function SortableWeeklyTask({
               </span>
             </span>
           </button>
+
+          {/* Day Tag Dropdown */}
+          <select
+            value={dayTag}
+            onChange={(e) => {
+              const val = e.target.value;
+              const newTag: DayTagValue = val === 'auto' ? 'auto' : val === 'spread' ? 'spread' : val === 'daily' ? 'daily' : parseInt(val, 10);
+              onDayTagChange(index, newTag);
+            }}
+            className="px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] bg-transparent border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:border-[#d4d0cb] dark:hover:border-[#313746] focus:outline-none focus:ring-1 focus:ring-brand-accent cursor-pointer"
+          >
+            <option value="auto">Auto</option>
+            <option value="spread">Spread</option>
+            <option value="daily">Daily</option>
+            {Array.from({ length: daysInWeek }, (_, i) => i + 1).map((day) => (
+              <option key={day} value={day}>
+                Day {day}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Delete Button */}
@@ -451,6 +488,8 @@ export function WeekEditor({
   cohortWeeklyTaskCompletion = new Map(),
   completionThreshold = 50,
   instanceId,
+  includeWeekends = true,
+  onDaysChange,
 }: WeekEditorProps) {
   // Program editor context for centralized save
   const editorContext = useProgramEditorOptional();
@@ -669,6 +708,9 @@ export function WeekEditor({
   // Credit purchase modal state (for insufficient credits error)
   const [showCreditModal, setShowCreditModal] = useState(false);
 
+  // Day Preview popup state
+  const [previewDayNumber, setPreviewDayNumber] = useState<number | null>(null);
+
   // Check for in-progress recordings on mount and poll until complete
   // Supports both cohort mode (group programs) and 1:1 mode (individual programs)
   useEffect(() => {
@@ -814,29 +856,6 @@ export function WeekEditor({
     }
   }, [cohortId, taskMemberData]);
 
-  // Fetch members when task is expanded
-  useEffect(() => {
-    expandedTasks.forEach(taskLabel => {
-      const task = formData.weeklyTasks.find(t => t.label === taskLabel);
-      if (task && !taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
-        fetchTaskMembers(task.id || taskLabel, taskLabel);
-      }
-    });
-  }, [expandedTasks, formData.weeklyTasks, taskMemberData, loadingTasks, fetchTaskMembers]);
-
-  // Pre-fetch member data for all tasks in cohort mode to show accurate badge counts
-  useEffect(() => {
-    if (!cohortId || formData.weeklyTasks.length === 0) return;
-
-    // Fetch member data for each task that we don't already have
-    formData.weeklyTasks.forEach(task => {
-      const taskLabel = task.label;
-      if (!taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
-        fetchTaskMembers(task.id || taskLabel, taskLabel);
-      }
-    });
-  }, [cohortId, formData.weeklyTasks, taskMemberData, loadingTasks, fetchTaskMembers]);
-
   // Helper to track field edits
   const trackFieldEdit = useCallback((syncFieldKey: string) => {
     setEditedFields(prev => new Set(prev).add(syncFieldKey));
@@ -851,16 +870,11 @@ export function WeekEditor({
   );
 
   // Handle drag end for reordering weekly tasks
-  const handleTaskDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = formData.weeklyTasks.findIndex((_, i) => `task-${i}` === active.id);
-      const newIndex = formData.weeklyTasks.findIndex((_, i) => `task-${i}` === over.id);
-      const newTasks = arrayMove(formData.weeklyTasks, oldIndex, newIndex);
-      setFormData(prev => ({ ...prev, weeklyTasks: newTasks }));
-      trackFieldEdit('syncTasks');
-    }
-  }, [formData.weeklyTasks, trackFieldEdit]);
+  // Note: Drag reordering is disabled for the unified task list
+  // since tasks come from multiple sources (weeklyTasks + day.tasks)
+  const handleTaskDragEnd = useCallback((_event: DragEndEvent) => {
+    // Reordering disabled for unified list - tasks stay in their source order
+  }, []);
 
   // Get days in this week
   const weekDays = days.filter(
@@ -1613,6 +1627,46 @@ export function WeekEditor({
     trackFieldEdit('syncTasks');
   };
 
+  // Add multiple tasks at once (from summary action items)
+  const addTasksFromSummary = (tasks: ProgramTaskTemplate[]) => {
+    if (tasks.length === 0) return;
+    setFormData({ ...formData, weeklyTasks: [...formData.weeklyTasks, ...tasks] });
+    trackFieldEdit('syncTasks');
+  };
+
+  // Calculate days in week for dayTag dropdown
+  const daysInWeek = includeWeekends ? 7 : 5;
+
+  // Fetch members when task is expanded
+  useEffect(() => {
+    expandedTasks.forEach(taskLabel => {
+      const task = formData.weeklyTasks.find(t => t.label === taskLabel);
+      if (task && !taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
+        fetchTaskMembers(task.id || taskLabel, taskLabel);
+      }
+    });
+  }, [expandedTasks, formData.weeklyTasks, taskMemberData, loadingTasks, fetchTaskMembers]);
+
+  // Pre-fetch member data for all tasks in cohort mode
+  useEffect(() => {
+    if (!cohortId || formData.weeklyTasks.length === 0) return;
+    formData.weeklyTasks.forEach(task => {
+      const taskLabel = task.label;
+      if (!taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
+        fetchTaskMembers(task.id || taskLabel, taskLabel);
+      }
+    });
+  }, [cohortId, formData.weeklyTasks, taskMemberData, loadingTasks, fetchTaskMembers]);
+
+  // Toggle primary/backlog for a task
+  const toggleTaskPrimary = (index: number) => {
+    const updated = [...formData.weeklyTasks];
+    updated[index] = { ...updated[index], isPrimary: !updated[index].isPrimary };
+    setFormData({ ...formData, weeklyTasks: updated });
+    trackFieldEdit('syncTasks');
+  };
+
+  // Remove a task
   const removeTask = (index: number) => {
     setFormData({
       ...formData,
@@ -1621,16 +1675,10 @@ export function WeekEditor({
     trackFieldEdit('syncTasks');
   };
 
-  // Add multiple tasks at once (from summary action items)
-  const addTasksFromSummary = (tasks: ProgramTaskTemplate[]) => {
-    if (tasks.length === 0) return;
-    setFormData({ ...formData, weeklyTasks: [...formData.weeklyTasks, ...tasks] });
-    trackFieldEdit('syncTasks');
-  };
-
-  const toggleTaskPrimary = (index: number) => {
+  // Handle dayTag change - just update the metadata, distribution handles the rest
+  const handleDayTagChange = (index: number, newDayTag: DayTagValue) => {
     const updated = [...formData.weeklyTasks];
-    updated[index] = { ...updated[index], isPrimary: !updated[index].isPrimary };
+    updated[index] = { ...updated[index], dayTag: newDayTag };
     setFormData({ ...formData, weeklyTasks: updated });
     trackFieldEdit('syncTasks');
   };
@@ -2095,6 +2143,10 @@ export function WeekEditor({
                         showCompletionStatus={isClientView || !!cohortId}
                         onTogglePrimary={toggleTaskPrimary}
                         onRemove={removeTask}
+                        dayTag={(task.dayTag as DayTagValue) || 'auto'}
+                        onDayTagChange={handleDayTagChange}
+                        includeWeekends={includeWeekends}
+                        daysInWeek={daysInWeek}
                         cohortCompletion={cohortCompletion}
                         isCohortMode={isCohortMode}
                         isExpanded={expandedTasks.has(taskKey)}
@@ -2120,6 +2172,46 @@ export function WeekEditor({
               <Button onClick={addTask} variant="outline" size="sm">
                 <Plus className="w-4 h-4" />
               </Button>
+            </div>
+
+            {/* Day Preview Bar */}
+            <div className="mt-4 pt-4 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                  Day Preview
+                </span>
+                <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                  Click to preview computed tasks
+                </span>
+              </div>
+              <div className="flex gap-1.5">
+                {Array.from({ length: daysInWeek }, (_, i) => {
+                  const dayNum = i + 1;
+                  const day = days[i];
+                  const taskCount = day?.tasks?.filter(t => t.isPrimary !== false)?.length || 0;
+                  return (
+                    <button
+                      key={dayNum}
+                      type="button"
+                      onClick={() => setPreviewDayNumber(dayNum)}
+                      className={cn(
+                        'flex-1 flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg transition-all',
+                        'bg-[#f7f5f3] dark:bg-[#11141b] hover:bg-[#f0ede9] dark:hover:bg-[#1e222a]',
+                        'border border-transparent hover:border-brand-accent/30'
+                      )}
+                    >
+                      <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                        D{dayNum}
+                      </span>
+                      {taskCount > 0 && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-brand-accent/10 text-brand-accent">
+                          {taskCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -2735,6 +2827,16 @@ export function WeekEditor({
           }}
         />
       )}
+
+      {/* Day Preview Popup */}
+      <DayPreviewPopup
+        isOpen={previewDayNumber !== null}
+        onClose={() => setPreviewDayNumber(null)}
+        dayNumber={previewDayNumber || 1}
+        day={previewDayNumber !== null ? days[previewDayNumber - 1] || null : null}
+        habits={week.weeklyHabits}
+        weekNumber={week.weekNumber}
+      />
     </div>
   );
 }

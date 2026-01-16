@@ -19,7 +19,7 @@ interface SyncToCohortsDialogProps {
   onOpenChange: (open: boolean) => void;
   programId: string;
   weekNumber: number;
-  cohorts: ProgramCohort[];
+  cohorts?: ProgramCohort[];
   editedFields?: Set<string>;
   onSyncComplete?: () => void;
 }

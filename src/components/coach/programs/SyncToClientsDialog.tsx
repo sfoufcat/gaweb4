@@ -30,7 +30,7 @@ interface SyncToClientsDialogProps {
   onOpenChange: (open: boolean) => void;
   programId: string;
   weekNumber: number;
-  enrollments: EnrollmentWithUser[];
+  enrollments?: EnrollmentWithUser[];
   editedFields?: Set<string>;
   onSyncComplete?: () => void;
 }

@@ -572,63 +572,112 @@ export async function PATCH(
 
       console.log(`[INSTANCE_WEEK_PATCH] Distribution: ${distribution.type}, tasks: ${weeklyTasks.length}, days: ${daysToUpdate.length}`);
 
-      // Distribute tasks based on distribution type
-      // IMPORTANT: Always clear old 'week' source tasks from days, even if no new tasks
+      // Distribute tasks based on per-task dayTag (overrides) or program distribution (default)
+      // IMPORTANT: Always clear old 'week' source tasks from days first
       const numDays = daysToUpdate.length;
-      const numTasks = weeklyTasks.length;
 
-      if (distribution.type === 'spread') {
-        // Spread tasks evenly across the week with gaps between them
-        // 3 tasks, 5 days (Mon-Fri) → task 1 on Mon, task 2 on Wed, task 3 on Fri
-        
-        // First, clear old week tasks from all days
-        for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
-          const existingTasks = daysToUpdate[dayIdx].tasks || [];
-          daysToUpdate[dayIdx].tasks = existingTasks.filter(t => !t.source || t.source !== 'week');
+      // Step 1: Clear all week-sourced tasks from all days
+      for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+        const existingTasks = daysToUpdate[dayIdx].tasks || [];
+        daysToUpdate[dayIdx].tasks = existingTasks.filter(t => !t.source || t.source !== 'week');
+      }
+
+      // Step 2: Categorize tasks by their dayTag
+      const dailyTasks: typeof weeklyTasks = [];      // dayTag: 'daily' → all days
+      const spreadTasks: typeof weeklyTasks = [];     // dayTag: 'spread' → spread evenly
+      const specificDayTasks: Map<number, typeof weeklyTasks> = new Map(); // dayTag: 1-7 → specific day
+      const autoTasks: typeof weeklyTasks = [];       // dayTag: undefined/'auto' → use program distribution
+
+      for (const task of weeklyTasks) {
+        const dayTag = task.dayTag;
+        if (dayTag === 'daily') {
+          dailyTasks.push(task);
+        } else if (dayTag === 'spread') {
+          spreadTasks.push(task);
+        } else if (typeof dayTag === 'number' && dayTag >= 1 && dayTag <= numDays) {
+          const existing = specificDayTasks.get(dayTag) || [];
+          existing.push(task);
+          specificDayTasks.set(dayTag, existing);
+        } else {
+          // dayTag: undefined, 'auto', or invalid → use program distribution
+          autoTasks.push(task);
         }
+      }
 
-        // Then, assign each task to a specific day, spread evenly across the week
-        if (numTasks > 0 && numDays > 0) {
-          for (let taskIdx = 0; taskIdx < numTasks; taskIdx++) {
-            // Calculate which day this task should go to
-            let targetDayIdx: number;
-            if (numTasks === 1) {
-              targetDayIdx = 0; // Single task goes to first day
-            } else {
-              // Spread evenly: task 0 → day 0, last task → last day, others evenly between
-              targetDayIdx = Math.round(taskIdx * (numDays - 1) / (numTasks - 1));
-            }
-            
-            // Add this task to that day
-            const task = weeklyTasks[taskIdx];
-            daysToUpdate[targetDayIdx].tasks = [
-              ...daysToUpdate[targetDayIdx].tasks,
+      console.log(`[INSTANCE_WEEK_PATCH] Task categories: daily=${dailyTasks.length}, spread=${spreadTasks.length}, specific=${specificDayTasks.size} days, auto=${autoTasks.length}`);
+
+      // Step 3: Add daily tasks to ALL days
+      for (const task of dailyTasks) {
+        for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+          daysToUpdate[dayIdx].tasks = [
+            ...daysToUpdate[dayIdx].tasks,
+            { ...task, source: 'week' as const },
+          ];
+        }
+      }
+
+      // Step 4: Add specific-day tasks to their designated day
+      for (const [dayNum, tasks] of specificDayTasks) {
+        const dayIdx = dayNum - 1; // dayTag is 1-based, array is 0-based
+        if (dayIdx >= 0 && dayIdx < numDays) {
+          for (const task of tasks) {
+            daysToUpdate[dayIdx].tasks = [
+              ...daysToUpdate[dayIdx].tasks,
               { ...task, source: 'week' as const },
             ];
           }
         }
-      } else if (distribution.type === 'all_days') {
-        // Add all tasks to all days
-        for (const dayToUpdate of daysToUpdate) {
-          const existingTasks = dayToUpdate.tasks || [];
-          dayToUpdate.tasks = [
-            ...existingTasks.filter(t => !t.source || t.source !== 'week'),
-            ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
+      }
+
+      // Step 5: Spread tasks with dayTag: 'spread' evenly across the week
+      if (spreadTasks.length > 0 && numDays > 0) {
+        for (let taskIdx = 0; taskIdx < spreadTasks.length; taskIdx++) {
+          let targetDayIdx: number;
+          if (spreadTasks.length === 1) {
+            targetDayIdx = 0;
+          } else {
+            targetDayIdx = Math.round(taskIdx * (numDays - 1) / (spreadTasks.length - 1));
+          }
+          daysToUpdate[targetDayIdx].tasks = [
+            ...daysToUpdate[targetDayIdx].tasks,
+            { ...spreadTasks[taskIdx], source: 'week' as const },
           ];
         }
-      } else if (distribution.type === 'first_day') {
-        // Clear week tasks from all days, then add to first day only
-        for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
-          const existingTasks = daysToUpdate[dayIdx].tasks || [];
-          if (dayIdx === 0) {
-            // First day: add week tasks
-            daysToUpdate[dayIdx].tasks = [
-              ...existingTasks.filter(t => !t.source || t.source !== 'week'),
-              ...weeklyTasks.map(t => ({ ...t, source: 'week' as const })),
+      }
+
+      // Step 6: Apply program distribution to 'auto' tasks
+      if (autoTasks.length > 0 && numDays > 0) {
+        if (distribution.type === 'spread') {
+          // Spread auto tasks evenly
+          for (let taskIdx = 0; taskIdx < autoTasks.length; taskIdx++) {
+            let targetDayIdx: number;
+            if (autoTasks.length === 1) {
+              targetDayIdx = 0;
+            } else {
+              targetDayIdx = Math.round(taskIdx * (numDays - 1) / (autoTasks.length - 1));
+            }
+            daysToUpdate[targetDayIdx].tasks = [
+              ...daysToUpdate[targetDayIdx].tasks,
+              { ...autoTasks[taskIdx], source: 'week' as const },
             ];
-          } else {
-            // Other days: just clear week tasks
-            daysToUpdate[dayIdx].tasks = existingTasks.filter(t => !t.source || t.source !== 'week');
+          }
+        } else if (distribution.type === 'all_days') {
+          // Add all auto tasks to all days
+          for (const task of autoTasks) {
+            for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+              daysToUpdate[dayIdx].tasks = [
+                ...daysToUpdate[dayIdx].tasks,
+                { ...task, source: 'week' as const },
+              ];
+            }
+          }
+        } else if (distribution.type === 'first_day') {
+          // Add all auto tasks to first day only
+          for (const task of autoTasks) {
+            daysToUpdate[0].tasks = [
+              ...daysToUpdate[0].tasks,
+              { ...task, source: 'week' as const },
+            ];
           }
         }
       }
