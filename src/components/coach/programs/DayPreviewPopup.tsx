@@ -33,7 +33,7 @@ import {
   getResourcesForDay,
   getResourcesByType,
   getCallsForDay,
-} from '@/lib/program-utils';
+} from '@/lib/program-utils-client';
 
 // Accept either ProgramDay or ProgramInstanceDay
 type DayData = ProgramDay | ProgramInstanceDay;

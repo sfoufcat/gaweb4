@@ -83,17 +83,32 @@ function distributeTasksToDays(
       day.tasks = weeklyTasks.map(toInstanceTask);
     }
   } else {
-    // 'spread' - distribute evenly across days
-    const tasksPerDay = Math.ceil(weeklyTasks.length / updatedDays.length);
-    let taskIndex = 0;
+    // 'spread' - distribute evenly using interval-based positioning
+    const numTasks = weeklyTasks.length;
+    const numDays = updatedDays.length;
 
+    // Clear all days first
     for (const day of updatedDays) {
-      const dayTasks: ProgramInstanceDay['tasks'] = [];
-      for (let i = 0; i < tasksPerDay && taskIndex < weeklyTasks.length; i++) {
-        dayTasks.push(toInstanceTask(weeklyTasks[taskIndex]));
-        taskIndex++;
+      day.tasks = [];
+    }
+
+    if (numTasks >= numDays) {
+      // More tasks than days: distribute roughly evenly
+      let taskIdx = 0;
+      for (let d = 0; d < numDays; d++) {
+        const count = Math.ceil((numTasks - taskIdx) / (numDays - d));
+        for (let j = 0; j < count && taskIdx < numTasks; j++) {
+          updatedDays[d].tasks.push(toInstanceTask(weeklyTasks[taskIdx++]));
+        }
       }
-      day.tasks = dayTasks;
+    } else {
+      // Fewer tasks than days: spread using intervals
+      const interval = numDays / numTasks;
+      for (let i = 0; i < numTasks; i++) {
+        const dayOffset = Math.floor(i * interval + interval / 2);
+        const targetDay = Math.min(dayOffset, numDays - 1);
+        updatedDays[targetDay].tasks.push(toInstanceTask(weeklyTasks[i]));
+      }
     }
   }
 
@@ -290,14 +305,17 @@ export async function POST(
       // Handle days
       if (overwriteDays || !existingWeek?.days?.length) {
         // Create fresh days from template structure
-        const daysPerWeek = (templateWeek.endDayIndex || 7) - (templateWeek.startDayIndex || 1) + 1;
+        // Use stored day indices if available, otherwise calculate from week number
+        const daysPerWeekFromProgram = program.includeWeekends !== false ? 7 : 5;
+        const weekStartDay = templateWeek.startDayIndex ?? ((templateWeek.weekNumber - 1) * daysPerWeekFromProgram + 1);
+        const weekEndDay = templateWeek.endDayIndex ?? (weekStartDay + daysPerWeekFromProgram - 1);
+        const numDays = weekEndDay - weekStartDay + 1;
         const days: ProgramInstanceDay[] = [];
 
-        for (let i = 0; i < daysPerWeek; i++) {
-          const globalDayIndex = (templateWeek.startDayIndex || 1) + i;
+        for (let i = 0; i < numDays; i++) {
           days.push({
             dayIndex: i + 1,
-            globalDayIndex,
+            globalDayIndex: weekStartDay + i,
             tasks: [],
             habits: [],
           });

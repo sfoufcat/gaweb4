@@ -2,173 +2,173 @@
   "master": {
     "tasks": [
       {
-        "id": "167",
-        "title": "Add Content Progress and Resource Assignment Types",
-        "description": "Define TypeScript interfaces for content progress tracking and week resource assignments with day-level targeting",
-        "details": "Add ContentProgress interface with fields: id, userId, organizationId, contentType ('course'|'course_module'|'course_lesson'|'article'), contentId, moduleId?, lessonId?, status ('not_started'|'in_progress'|'completed'), progressPercent?, startedAt?, completedAt?, lastAccessedAt, instanceId?, weekIndex?, dayIndex?, completionCount (default 1), firstCompletedAt?, watchProgress?, autoCompleted?, manuallyCompleted?, createdAt, updatedAt. Add WeekResourceAssignment interface with: id, resourceType ('course'|'article'|'download'|'link'|'questionnaire'), resourceId, dayTag ('week'|'daily'|1|2|3|4|5|6|7), moduleIds?, lessonIds?, title?, description?, isRequired?, order?. Update ProgramInstanceWeek to include resourceAssignments?: WeekResourceAssignment[] field.",
-        "testStrategy": "Verify TypeScript compilation passes, interfaces match schema requirements, and all optional fields are properly typed",
+        "id": "179",
+        "title": "Create Program Dashboard API Endpoint",
+        "description": "Implement GET /api/programs/[programId]/dashboard endpoint to provide aggregated dashboard data for program-wide view",
+        "details": "Create API endpoint that aggregates data from enrollments, content_progress, and task_completions tables. Calculate stats including active clients count, average progress, streak data, content completion rates. Implement logic to identify members needing attention (below 50% completion OR idle > 2 days) and top performers (top 3 by completion % + streak). Include upcoming items like scheduled calls and forms. Use TypeScript interface ProgramDashboardData as defined in PRD. Handle both individual and cohort program types with appropriate filtering.",
+        "testStrategy": "Unit tests for data aggregation logic, integration tests for database queries, API endpoint tests with mock data covering edge cases like empty programs, programs with no active clients, and programs with all clients performing well",
         "priority": "high",
         "dependencies": [],
-        "status": "done",
+        "status": "in-progress",
         "subtasks": [],
-        "updatedAt": "2026-01-16T14:28:24.997Z"
+        "updatedAt": "2026-01-16T15:04:58.656Z"
       },
       {
-        "id": "168",
-        "title": "Create Content Progress API Endpoints",
-        "description": "Implement REST API endpoints for content progress tracking with CRUD operations",
-        "details": "Create /api/content-progress/route.ts with GET (list user progress with filters for contentType, instanceId, userId) and POST (create/update progress record). Create /api/content-progress/[id]/route.ts with PATCH (update status, completedAt, progressPercent). Create /api/content-progress/complete/route.ts with POST (mark content complete, increment completionCount, set completedAt). Include proper error handling, validation, and MongoDB operations. Support filtering by userId, instanceId, contentType, and contentId.",
-        "testStrategy": "Test all CRUD operations, verify filtering works correctly, test error cases (invalid IDs, missing fields), validate response formats match ContentProgress interface",
+        "id": "180",
+        "title": "Create Client Dashboard API Endpoint",
+        "description": "Implement GET /api/programs/[programId]/dashboard/client/[clientId] endpoint for individual client progress view",
+        "details": "Create API endpoint for individual client dashboard data including personal stats (overall progress, current week, streaks, content completion, calls completed). Implement week-by-week progress calculation with status indicators (completed/current/future). Build current week content structure showing modules with lessons and articles with completion status. Calculate engagement insights including re-watched content, re-read articles, most active days/hours, and pattern analysis. Use TypeScript interface ClientDashboardData as specified in PRD.",
+        "testStrategy": "Unit tests for individual client data aggregation, integration tests for client-specific queries, API tests with various client states (new, progressing, completed), edge case testing for clients with no activity or missing data",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "181",
+        "title": "Create DashboardStatsRow Component",
+        "description": "Build reusable 4-card stats row component for displaying key program metrics",
+        "details": "Create React component with 4-card grid layout using existing design tokens. Each card shows icon + large number (font-albert font-semibold text-2xl) + label + subtext. Implement responsive design: 2x2 grid on mobile, 4x1 on desktop. Use bg-white dark:bg-[#11141b] for cards with border border-[#e1ddd8] dark:border-[#262b35] rounded-2xl. Include proper TypeScript props interface for stats data. Add loading skeleton states and handle undefined/null values gracefully.",
+        "testStrategy": "Component unit tests with React Testing Library, visual regression tests for responsive layouts, accessibility tests for screen readers, prop validation tests with various data types and edge cases",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "182",
+        "title": "Create NeedsAttentionCard Component",
+        "description": "Build individual member card component for displaying clients/members requiring attention",
+        "details": "Create React component showing avatar + name + week + progress percentage + days idle. Include status indicator using text-amber-500 with ⚠️ icon for warnings. Add [Nudge] and [View →] action buttons. Use rounded full avatars with fallback initials. Apply shadow-sm for subtle depth. Handle different attention reasons (low_progress, idle, both) with appropriate styling. Implement click handlers for actions with proper event handling.",
+        "testStrategy": "Component tests for different attention reasons, interaction tests for button clicks, accessibility tests for keyboard navigation, visual tests for avatar fallbacks and status indicators",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "183",
+        "title": "Create TopPerformerCard Component",
+        "description": "Build component for displaying top performing clients with ranking badges",
+        "details": "Create React component with rank badge (trophy/medal icons for 1st/2nd/3rd place). Display avatar + name + progress percentage + streak days. Include [View →] action button. Use text-green-500 for success indicators and ✓ checkmark icons. Implement ranking logic with appropriate trophy/medal icons (🏆 for 1st, 🥈 for 2nd, 🥉 for 3rd). Apply consistent spacing with gap-4 between elements and existing card styling.",
+        "testStrategy": "Component tests for different ranking positions, visual tests for trophy/medal icons, interaction tests for view button, edge case tests for tied rankings or missing data",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "184",
+        "title": "Create ContentCompletionList Component",
+        "description": "Build component displaying program content items with completion progress bars",
+        "details": "Create React component listing all program content (modules, articles, questionnaires) with progress bars. Use bg-brand-accent for progress fill and bg-[#e1ddd8] dark:bg-[#262b35] for track. Show X/Y completed count for each item. Add warning icon (text-amber-500 ⚠️) for items with < 50% completion. Implement different content type icons and proper TypeScript interfaces for content data. Use space-y-6 between sections.",
+        "testStrategy": "Component tests for different content types, progress bar calculation tests, warning indicator tests for low completion rates, accessibility tests for progress bar labels",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "185",
+        "title": "Create WeekProgressList Component",
+        "description": "Build vertical week progress list component for client view showing week-by-week completion",
+        "details": "Create React component with vertical list of weeks W1-W12 (or totalWeeks from program). Show progress bar + percentage for each week. Use checkmark (✓) for completed weeks, arrow (→) for current week, collapsed state for future weeks. Implement status indicators: completed (text-green-500), current (highlighted), future (muted). Add expand/collapse functionality for long programs. Use consistent progress bar styling matching other components.",
+        "testStrategy": "Component tests for different week statuses, expand/collapse functionality tests, progress calculation tests, edge case tests for programs with varying week counts",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "186",
+        "title": "Create CurrentWeekContent Component",
+        "description": "Build tree view component showing current week's modules, lessons, and articles with completion status",
+        "details": "Create React component with tree view structure for modules containing lessons. Show checkmark + completion date for completed items, empty circle for not started items. Include articles section with read status indicators. Implement collapsible/expandable tree nodes. Use proper indentation and connecting lines for tree structure. Add completion date formatting and status icons (✓ for completed, ○ for not started). Apply consistent spacing and typography.",
+        "testStrategy": "Component tests for tree structure rendering, expand/collapse functionality tests, completion status display tests, date formatting tests, accessibility tests for tree navigation",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "187",
+        "title": "Create EngagementInsights Component",
+        "description": "Build component displaying client engagement patterns including re-watched content and activity insights",
+        "details": "Create React component showing re-watched content with counts, re-read articles with counts, most active days/times, and pattern insights. Implement cards for each insight type with appropriate icons and styling. Add AI-generated or rule-based pattern text display. Use consistent card styling with existing design tokens. Include empty states for clients with no engagement data. Format time and day data in user-friendly format.",
+        "testStrategy": "Component tests for different engagement data scenarios, empty state tests, pattern text display tests, time/day formatting tests, accessibility tests for insight cards",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "188",
+        "title": "Create UpcomingSection Component",
+        "description": "Build component for displaying upcoming calls, forms, and week unlocks with action buttons",
+        "details": "Create React component listing upcoming items (calls, forms, week unlocks) with appropriate action buttons ([Reschedule], [Send Reminder]). Implement date formatting and countdown display. Add different icons for different item types. Include submission count display for forms (X/Y submitted). Handle action button click events with proper event handlers. Use consistent button styling and spacing with gap-4 between items.",
+        "testStrategy": "Component tests for different upcoming item types, action button interaction tests, date formatting tests, countdown display tests, edge case tests for overdue items",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "189",
+        "title": "Create ClientCohortSelector Component",
+        "description": "Build unified dropdown selector component for switching between clients/cohorts with URL state sync",
+        "details": "Create React dropdown component with avatar/icon display for 1:1 programs (client selector) and cohort programs (cohort selector). Implement 'All Clients/Cohorts' default option with separator line. Show client progress (Week X · Y%) and cohort info (X members · Week Y) in dropdown options. Add status indicators (⚠️ for low progress). Implement URL state synchronization for clientId/cohortId parameters. Use proper TypeScript interfaces and handle both program types with conditional rendering.",
+        "testStrategy": "Component tests for both program types, dropdown interaction tests, URL state sync tests, status indicator tests, accessibility tests for keyboard navigation and screen readers",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "190",
+        "title": "Create ProgramDashboard Container Component",
+        "description": "Build main dashboard container component with view switching logic and state management",
+        "details": "Create main React container component that orchestrates all dashboard views. Implement view switching logic between program-wide, individual client, and cohort views based on selector state. Add loading states using skeleton components, error handling with user-friendly messages, and data fetching with proper error boundaries. Integrate all child components with proper prop passing and state management. Handle URL parameter changes and sync with component state. Implement responsive layout with proper spacing (space-y-6 between sections).",
+        "testStrategy": "Integration tests for view switching, loading state tests, error handling tests, URL parameter sync tests, responsive layout tests, end-to-end tests for complete user flows",
         "priority": "high",
         "dependencies": [
-          "167"
+          "179",
+          "180",
+          "181",
+          "182",
+          "183",
+          "184",
+          "185",
+          "186",
+          "187",
+          "188",
+          "189"
         ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-16T14:30:43.321Z"
+        "status": "pending",
+        "subtasks": []
       },
       {
-        "id": "169",
-        "title": "Add Program Utility Helper Functions",
-        "description": "Create helper functions for day-level resource resolution and call scheduling",
-        "details": "Add to src/lib/program-utils.ts: getResourcesForDay(week: ProgramInstanceWeek, dayOfWeek: number) that filters resourceAssignments by dayTag logic (week=always, daily=always, number=match). Add getCallsForDay(week: ProgramInstanceWeek, dayCalendarDate: string, events: UnifiedEvent[]) that filters linkedCallEventIds by scheduledTime date match. Add ClientDayContent interface with tasks, habits, calls, courses (with assignment+course+progress), articles (with assignment+article+progress), downloads, links arrays. Include proper TypeScript typing and JSDoc comments.",
-        "testStrategy": "Unit test dayTag filtering logic (week, daily, specific day numbers), test call date matching with various ISO date formats, verify return types match interfaces",
-        "priority": "medium",
-        "dependencies": [
-          "167"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-16T14:32:06.518Z"
-      },
-      {
-        "id": "170",
-        "title": "Create Content Progress React Hook",
-        "description": "Build custom React hook for managing content progress state and API interactions",
-        "details": "Create src/hooks/useContentProgress.ts with functions: fetchProgress(userId, filters), markComplete(contentType, contentId, moduleId?, lessonId?), updateProgress(id, updates), getProgressForContent(contentType, contentId). Include loading states, error handling, and optimistic updates. Support real-time progress tracking for video watch progress. Cache progress data and invalidate on updates. Return progress arrays, completion status checkers, and mutation functions.",
-        "testStrategy": "Test hook with various content types, verify optimistic updates work correctly, test error handling and loading states, validate cache invalidation",
-        "priority": "medium",
-        "dependencies": [
-          "168"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-16T14:33:17.537Z"
-      },
-      {
-        "id": "171",
-        "title": "Update WeekEditor with Unified Resource Management",
-        "description": "Replace individual resource linking with unified resourceAssignments system including dayTag selection",
-        "details": "Update src/components/coach/programs/WeekEditor.tsx to replace linkedArticleIds, linkedDownloadIds, linkedLinkIds, linkedQuestionnaireIds, linkedCourseIds with unified resourceAssignments management. Add dayTag selector UI with options: 'Week-level', 'Daily', 'Monday', 'Tuesday', etc. Include drag-and-drop reordering, isRequired checkbox, title/description overrides. Add resource type icons and preview cards. Maintain backward compatibility during migration period. Include validation for required fields and duplicate prevention.",
-        "testStrategy": "Test resource assignment CRUD operations, verify dayTag selector works correctly, test drag-and-drop reordering, validate form submission and data persistence",
-        "priority": "medium",
-        "dependencies": [
-          "167",
-          "169"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-16T14:42:57.334Z"
-      },
-      {
-        "id": "172",
-        "title": "Enhance DayPreviewPopup with Complete Day Content",
-        "description": "Update DayPreviewPopup to show all day-specific content including courses, articles, downloads, links, and actual call details",
-        "details": "Update src/components/coach/programs/DayPreviewPopup.tsx to accept week, events, calendarDate, contentProgress, and resource lookup props. Replace session count with actual call details (title, time, completion status). Add courses section showing modules/lessons with per-lesson progress checkmarks. Add articles section with read/unread status. Add downloads and links sections with action buttons. Integrate with getResourcesForDay() and getCallsForDay() helpers. Show completion percentages and required content warnings.",
-        "testStrategy": "Test with various dayTag combinations, verify call details display correctly, test progress status indicators, validate resource filtering by day",
-        "priority": "medium",
-        "dependencies": [
-          "169",
-          "170"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-16T14:35:11.993Z"
-      },
-      {
-        "id": "173",
-        "title": "Implement Course Progress Tracking in CourseViewer",
-        "description": "Add per-lesson completion tracking with video progress monitoring and manual completion options",
-        "details": "Update src/components/discover/CourseViewer.tsx to track lesson-level progress. Add 'Mark Complete' button to each lesson. Implement video progress tracking with progress bar (0-100%). Auto-complete lessons at 90% watch time. Show checkmarks for completed lessons and 'Completed (watched 2x)' badges for re-watches. Add 'Watch Again' button post-completion. Call content-progress API on completion events. Display course-level progress as aggregated lesson completion percentage. Include loading states and error handling for progress updates.",
-        "testStrategy": "Test video progress tracking accuracy, verify auto-completion at 90%, test manual completion button, validate re-watch tracking, test API integration for progress updates",
+        "id": "191",
+        "title": "Integrate Dashboard into CoachProgramsTab",
+        "description": "Replace existing ProgramOverviewTab with new ProgramDashboard and implement URL state persistence",
+        "details": "Replace ProgramOverviewTab component with new ProgramDashboard in CoachProgramsTab. Implement clientId/cohortId URL state management that persists across Overview ↔ Content tab switches. Update URL structure to match specification: ?tab=programs&programId=xyz&viewMode=overview&clientId=abc. Ensure selector state is maintained when switching between tabs. Add proper route handling and parameter validation. Update navigation logic to handle new URL parameters.",
+        "testStrategy": "Integration tests for tab switching with state persistence, URL parameter tests, navigation tests between Overview and Content tabs, edge case tests for invalid clientId/cohortId parameters",
         "priority": "high",
         "dependencies": [
-          "168",
-          "170"
+          "190"
         ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-16T14:38:36.393Z"
+        "status": "pending",
+        "subtasks": []
       },
       {
-        "id": "174",
-        "title": "Implement Article Progress Tracking in ArticleViewer",
-        "description": "Add article completion tracking with manual 'Mark as Read' functionality",
-        "details": "Update src/components/discover/ArticleViewer.tsx to include 'Mark as Read' button at bottom of article content. Show '✓ Read' badge after completion with completion timestamp. Call POST /api/content-progress/complete when user marks article as read. Optional: Add scroll progress tracking for engagement metrics (progressPercent field). Include undo functionality and re-read tracking. Display read status in article lists and search results. Handle loading states during progress updates.",
-        "testStrategy": "Test mark as read functionality, verify completion status persistence, test scroll progress tracking if implemented, validate API integration",
+        "id": "192",
+        "title": "Implement Nudge Action Functionality",
+        "description": "Add nudge action capability to send messages or notifications to clients needing attention",
+        "details": "Implement nudge action functionality triggered from NeedsAttentionCard component. Create modal or inline action interface for sending chat messages or notifications to clients. Add API endpoint for sending nudges with proper message templates. Implement success feedback with toast notifications or inline confirmation. Add rate limiting to prevent spam and track nudge history. Include message customization options and predefined templates for common scenarios (low progress, idle client).",
+        "testStrategy": "Unit tests for nudge API endpoint, integration tests for message sending, UI tests for modal/inline action, rate limiting tests, success feedback tests, edge case tests for failed message delivery",
         "priority": "medium",
         "dependencies": [
-          "168",
-          "170"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-16T14:39:44.615Z"
-      },
-      {
-        "id": "175",
-        "title": "Create Resource Assignment Migration Script",
-        "description": "Build migration utility to convert existing resource linking to unified resourceAssignments format",
-        "details": "Create migration script in src/lib/migrations/ to convert existing ProgramInstanceWeek records. Transform linkedArticleIds, linkedDownloadIds, linkedLinkIds, linkedQuestionnaireIds, linkedCourseIds into resourceAssignments with dayTag: 'week'. Convert courseAssignments to unified format preserving moduleIds and lessonIds. Generate unique IDs for each assignment. Preserve order and add default isRequired: false. Include rollback functionality and dry-run mode. Log migration progress and handle errors gracefully. Batch process to avoid memory issues.",
-        "testStrategy": "Test migration with sample data, verify data integrity before/after migration, test rollback functionality, validate converted data structure matches new schema",
-        "priority": "medium",
-        "dependencies": [
-          "167"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-16T14:41:01.182Z"
-      },
-      {
-        "id": "176",
-        "title": "Update Client Today View with Day Content",
-        "description": "Enhance client's Today view to display day-specific resources and progress tracking",
-        "details": "Update client Today view component to show day-resolved content using getResourcesForDay() helper. Display courses with lesson-level progress, articles with read status, downloads with download buttons, and links with click tracking. Show scheduled calls with actual details instead of counts. Include progress indicators and completion percentages. Add quick-complete actions for articles and lessons. Filter content by dayTag matching current day of week. Include loading states and error handling for progress data.",
-        "testStrategy": "Test day content resolution accuracy, verify progress indicators display correctly, test quick-complete actions, validate content filtering by current day",
-        "priority": "medium",
-        "dependencies": [
-          "169",
-          "170",
-          "172"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-16T14:46:42.848Z"
-      },
-      {
-        "id": "177",
-        "title": "Add Sessions Section to WeekEditor",
-        "description": "Create comprehensive sessions management UI showing calls, recordings, and summaries with proper status tracking",
-        "details": "Add Sessions section to WeekEditor showing scheduled calls from linkedCallEventIds with completion status, summary availability, and manual upload options. Display call details (title, date/time, status), summary status (processing/ready/failed), and action buttons (View Summary, Upload Manually, Retry). Include standalone recordings section for week-specific uploads not tied to scheduled calls. Show proper status indicators: upcoming (no summary), processing (summary in progress), ready (summary available), failed (retry options). Integrate with existing UnifiedEvent and CallSummary data structures.",
-        "testStrategy": "Test call status display accuracy, verify summary status indicators, test manual upload functionality, validate integration with existing call/summary data",
-        "priority": "medium",
-        "dependencies": [
-          "167"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-16T14:44:21.794Z"
-      },
-      {
-        "id": "178",
-        "title": "Implement Content Progress Dashboard and Reporting",
-        "description": "Create coach dashboard views for monitoring client content progress across programs and cohorts",
-        "details": "Build content progress dashboard showing completion rates by content type, client progress summaries, and required content compliance. For cohorts, show aggregate completion percentages (e.g., 'Module 2: 8/12 members completed (67%)'). Include drill-down views to see individual client progress and specific incomplete items. Add progress charts, completion timelines, and engagement metrics. Show re-watch/re-read statistics for content effectiveness analysis. Include filters by program, week, content type, and completion status. Export progress reports for client review meetings.",
-        "testStrategy": "Test progress aggregation accuracy, verify cohort vs individual views, test filtering and sorting functionality, validate export functionality and report accuracy",
-        "priority": "low",
-        "dependencies": [
-          "168",
-          "170"
+          "182",
+          "190"
         ],
         "status": "pending",
         "subtasks": []
@@ -176,9 +176,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-16T14:46:42.848Z",
-      "taskCount": 12,
-      "completedCount": 11,
+      "lastModified": "2026-01-16T15:04:58.657Z",
+      "taskCount": 14,
+      "completedCount": 0,
       "tags": [
         "master"
       ]

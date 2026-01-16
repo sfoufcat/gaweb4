@@ -2191,30 +2191,52 @@ export function WeekEditor({
                   Click to preview computed tasks
                 </span>
               </div>
-              <div className="flex gap-1.5">
+              <div className="flex gap-2">
                 {Array.from({ length: daysInWeek }, (_, i) => {
                   const dayNum = i + 1;
                   const day = days[i];
                   const taskCount = day?.tasks?.filter(t => t.isPrimary !== false)?.length || 0;
+                  const dotCount = Math.min(taskCount, 3);
+                  const isEmpty = taskCount === 0;
+
+                  // Get day label: "Mon (1)" if calendar date available, else "Day 1"
+                  const calendarStartDate = (week as { calendarStartDate?: string }).calendarStartDate;
+                  let dayLabel = `Day ${dayNum}`;
+                  if (calendarStartDate) {
+                    const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    const startDate = new Date(calendarStartDate);
+                    const dayDate = new Date(startDate);
+                    dayDate.setDate(startDate.getDate() + i);
+                    const weekdayName = WEEKDAYS[dayDate.getDay()];
+                    dayLabel = `${weekdayName} (${dayNum})`;
+                  }
+
                   return (
                     <button
                       key={dayNum}
                       type="button"
                       onClick={() => setPreviewDayNumber(dayNum)}
                       className={cn(
-                        'flex-1 flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg transition-all',
-                        'bg-[#f7f5f3] dark:bg-[#11141b] hover:bg-[#f0ede9] dark:hover:bg-[#1e222a]',
-                        'border border-transparent hover:border-brand-accent/30'
+                        'flex-1 flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl transition-all',
+                        'bg-white dark:bg-[#1a1e28] border border-[#e8e4df] dark:border-[#2a2f3a]',
+                        'hover:shadow-sm hover:border-brand-accent/40',
+                        isEmpty && 'opacity-50'
                       )}
                     >
-                      <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                        D{dayNum}
+                      <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                        {dayLabel}
                       </span>
                       {taskCount > 0 && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-brand-accent/10 text-brand-accent">
-                          {taskCount}
-                        </span>
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: dotCount }, (_, j) => (
+                            <span key={j} className="w-1.5 h-1.5 rounded-full bg-brand-accent" />
+                          ))}
+                          {taskCount > 3 && (
+                            <span className="text-[10px] text-brand-accent ml-0.5">+</span>
+                          )}
+                        </div>
                       )}
+                      {isEmpty && <div className="h-[14px]" />}
                     </button>
                   );
                 })}

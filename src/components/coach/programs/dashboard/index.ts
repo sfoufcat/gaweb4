@@ -1,0 +1,10 @@
+export { DashboardStatsRow } from './DashboardStatsRow';
+export { NeedsAttentionCard, type AttentionMember } from './NeedsAttentionCard';
+export { TopPerformerCard, type TopPerformer } from './TopPerformerCard';
+export { ContentCompletionList, type ContentCompletionItem } from './ContentCompletionList';
+export { WeekProgressList, type WeekProgressItem } from './WeekProgressList';
+export { CurrentWeekContent } from './CurrentWeekContent';
+export { EngagementInsights } from './EngagementInsights';
+export { UpcomingSection, type UpcomingItem } from './UpcomingSection';
+export { ClientCohortSelector, type DashboardViewContext } from './ClientCohortSelector';
+export { ProgramDashboard } from './ProgramDashboard';

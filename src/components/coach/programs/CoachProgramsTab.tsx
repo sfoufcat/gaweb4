@@ -9,6 +9,7 @@ import { ModuleEditor } from './ModuleEditor';
 import { WeekEditor } from './WeekEditor';
 import { DayEditor } from './DayEditor';
 import { ProgramOverviewTab } from './ProgramOverviewTab';
+import { ProgramDashboard, type DashboardViewContext } from './dashboard';
 import { WeekFillModal } from './WeekFillModal';
 import { ProgramSettingsModal, ProgramSettingsButton } from './ProgramSettingsModal';
 import { DayCourseSelector } from './DayCourseSelector';
@@ -3772,27 +3773,60 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             )}
           </div>
         ) : viewMode === 'overview' ? (
-          // Program Overview Tab - Settings, Habits, Resources, Members to Watch
-          <ProgramOverviewTab
+          // Program Dashboard - Stats, Needs Attention, Top Performers, Content Completion
+          <ProgramDashboard
             program={selectedProgram!}
+            enrollments={programEnrollments}
+            cohorts={programCohorts}
+            initialClientId={clientViewContext.mode === 'client' ? clientViewContext.userId : undefined}
+            initialCohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined}
+            onViewContextChange={(context: DashboardViewContext) => {
+              // Sync dashboard view context with main view contexts
+              if (context.mode === 'client') {
+                const enrollment = programEnrollments.find(e => e.userId === context.clientId);
+                if (enrollment) {
+                  setClientViewContext({
+                    mode: 'client',
+                    enrollmentId: context.enrollmentId,
+                    userId: context.clientId,
+                    userName: context.clientName,
+                    enrollmentStartedAt: enrollment.startedAt,
+                  });
+                }
+              } else if (context.mode === 'cohort') {
+                const cohort = programCohorts.find(c => c.id === context.cohortId);
+                if (cohort) {
+                  setCohortViewContext({
+                    mode: 'cohort',
+                    cohortId: context.cohortId,
+                    cohortName: context.cohortName,
+                    cohortStartDate: cohort.startDate,
+                  });
+                }
+              } else {
+                // Program view - reset both contexts to template
+                setClientViewContext({ mode: 'template' });
+                setCohortViewContext({ mode: 'template' });
+              }
+            }}
             onProgramUpdate={async (updates) => {
               if (!selectedProgram) return;
-              
+
               try {
                 const response = await fetch(`/api/coach/org-programs/${selectedProgram.id}`, {
                   method: 'PATCH',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(updates),
                 });
-                
+
                 if (!response.ok) {
                   const data = await response.json();
                   throw new Error(data.error || 'Failed to update program');
                 }
-                
+
                 // Update local state
                 setSelectedProgram({ ...selectedProgram, ...updates });
-                
+
                 // Refresh programs list
                 await fetchPrograms();
               } catch (error) {
@@ -3800,11 +3834,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 throw error;
               }
             }}
-            enrollments={programEnrollments}
-            availableArticles={availableArticles}
-            availableDownloads={availableDownloads}
-            availableLinks={availableLinks}
-            availableCourses={organizationCourses}
           />
         ) : viewMode === 'days' ? (
           // Content View - Row (sidebar + editor) or Calendar (full-width)
@@ -4063,7 +4092,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   // ARCHITECTURE: In instance mode, use ONLY instance data - NO template fallback
                   // Template and instance are COMPLETELY SEPARATE data stores.
                   // Template → Instance sync only happens via explicit "Sync to Client/Cohort" button.
-                  const selectedWeek: ProgramWeek = useNewSystem ? {
+                  const selectedWeek: ProgramWeek & { calendarStartDate?: string } = useNewSystem ? {
                     // NEW SYSTEM: Use instance week data ONLY (no template mixing!)
                     // Structural fields use template for compatibility, content fields use instance ONLY
                     id: templateWeek?.id || `instance-week-${weekNumber}`,
@@ -4076,6 +4105,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     createdAt: templateWeek?.createdAt || new Date().toISOString(),
                     updatedAt: instanceWeek?.updatedAt || templateWeek?.updatedAt || new Date().toISOString(),
                     fillSource: templateWeek?.fillSource,
+                    // Calendar date for day preview display (from instance data)
+                    calendarStartDate: instanceWeek?.calendarStartDate,
                     // CONTENT FIELDS: When instance data available, use ONLY instance data (no template fallback!)
                     // This ensures template changes don't "bleed through" to client/cohort view
                     moduleId: instanceDataAvailable
