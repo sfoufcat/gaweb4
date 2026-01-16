@@ -257,6 +257,8 @@ export async function GET(request: NextRequest) {
                   distribution: weekData.distribution,
                   startDayIndex,
                   endDayIndex,
+                  calendarStartDate: calendarWeek?.startDate,
+                  calendarEndDate: calendarWeek?.endDate,
                   days,
                 };
               });
@@ -301,6 +303,8 @@ export async function GET(request: NextRequest) {
                   distribution: weekData.distribution,
                   startDayIndex,
                   endDayIndex,
+                  calendarStartDate: calendarWeek?.startDate,
+                  calendarEndDate: calendarWeek?.endDate,
                   days,
                 };
               });
@@ -448,6 +452,8 @@ export async function GET(request: NextRequest) {
                   distribution: weekData.distribution,
                   startDayIndex,
                   endDayIndex,
+                  calendarStartDate: calendarWeek?.startDate,
+                  calendarEndDate: calendarWeek?.endDate,
                   days,
                 };
               });
@@ -492,6 +498,8 @@ export async function GET(request: NextRequest) {
                   distribution: weekData.distribution,
                   startDayIndex,
                   endDayIndex,
+                  calendarStartDate: calendarWeek?.startDate,
+                  calendarEndDate: calendarWeek?.endDate,
                   days,
                 };
               });

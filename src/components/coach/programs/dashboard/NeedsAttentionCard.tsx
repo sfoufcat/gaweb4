@@ -9,9 +9,8 @@ import { Button } from '@/components/ui/button';
 export interface AttentionMember {
   userId: string;
   name: string;
-visually?: string;
   avatarUrl?: string;
-  reason: 'low_progress' | 'inactive' | 'missed_call' | 'overdue_tasks';
+  reason: 'low_progress' | 'idle' | 'both' | 'inactive' | 'missed_call' | 'overdue_tasks';
   metric: string;
   progress: number;
   lastActive?: string;
@@ -32,6 +31,18 @@ const REASON_CONFIG = {
     color: 'text-amber-600 dark:text-amber-400',
     bg: 'bg-amber-100 dark:bg-amber-900/30',
     label: 'Low progress',
+  },
+  idle: {
+    icon: Clock,
+    color: 'text-red-600 dark:text-red-400',
+    bg: 'bg-red-100 dark:bg-red-900/30',
+    label: 'Inactive',
+  },
+  both: {
+    icon: AlertTriangle,
+    color: 'text-red-600 dark:text-red-400',
+    bg: 'bg-red-100 dark:bg-red-900/30',
+    label: 'Low progress & inactive',
   },
   inactive: {
     icon: Clock,

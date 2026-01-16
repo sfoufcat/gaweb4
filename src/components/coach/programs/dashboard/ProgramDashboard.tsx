@@ -12,7 +12,7 @@ import { WeekProgressList, type WeekProgressItem } from './WeekProgressList';
 import { CurrentWeekContent } from './CurrentWeekContent';
 import { EngagementInsights } from './EngagementInsights';
 import { UpcomingSection, type UpcomingItem } from './UpcomingSection';
-import { ClientCohortSelector, type DashboardViewContext } from './ClientCohortSelector';
+import { type DashboardViewContext } from './ClientCohortSelector';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import type { Program, ProgramEnrollment, ProgramCohort, ProgramHabitTemplate, TaskDistribution } from '@/types';
 
@@ -148,6 +148,19 @@ export function ProgramDashboard({
   const [showSettings, setShowSettings] = useState(false);
   const [isNudging, setIsNudging] = useState<string | null>(null);
 
+  // Sync viewContext when props change (header selector updates)
+  React.useEffect(() => {
+    const newContext = getInitialContext();
+    // Only update if the context mode/ids actually changed
+    if (
+      newContext.mode !== viewContext.mode ||
+      (newContext.mode === 'client' && viewContext.mode === 'client' && newContext.clientId !== viewContext.clientId) ||
+      (newContext.mode === 'cohort' && viewContext.mode === 'cohort' && newContext.cohortId !== viewContext.cohortId)
+    ) {
+      setViewContext(newContext);
+    }
+  }, [initialClientId, initialCohortId]);
+
   // Settings state
   const [includeWeekends, setIncludeWeekends] = useState(program.includeWeekends ?? true);
   const [taskDistribution, setTaskDistribution] = useState<TaskDistribution>(
@@ -164,10 +177,6 @@ export function ProgramDashboard({
     setViewContext(context);
     onViewContextChange?.(context);
   }, [onViewContextChange]);
-
-  // Determine program type for selector
-  // ProgramType is 'group' | 'individual' - map to our dashboard types
-  const programType = program.type === 'group' ? 'cohort' : 'individual';
 
   // Build API URLs
   const programDashboardUrl = viewContext.mode === 'program'
@@ -253,36 +262,7 @@ export function ProgramDashboard({
   }, [onProgramUpdate, hasSettingsChanged, includeWeekends, taskDistribution]);
 
   return (
-    <div className={cn('space-y-6 max-w-5xl mx-auto', className)}>
-      {/* Header with selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {viewContext.mode === 'program'
-              ? 'Program Dashboard'
-              : viewContext.mode === 'client'
-              ? `${viewContext.clientName}'s Progress`
-              : `${viewContext.cohortName} Dashboard`}
-          </h2>
-          <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] mt-0.5">
-            {viewContext.mode === 'program'
-              ? 'Overview of all enrolled members'
-              : viewContext.mode === 'client'
-              ? 'Individual client progress and engagement'
-              : 'Cohort-wide progress and stats'}
-          </p>
-        </div>
-
-        <ClientCohortSelector
-          programType={programType}
-          enrollments={enrollments}
-          cohorts={cohorts}
-          value={viewContext}
-          onChange={handleViewContextChange}
-          className="w-full sm:w-64"
-        />
-      </div>
-
+    <div className={cn('space-y-6', className)}>
       {/* Loading state */}
       {isLoading && (
         <div className="flex items-center justify-center py-20">

@@ -1641,8 +1641,10 @@ export function WeekEditor({
     trackFieldEdit('syncTasks');
   };
 
-  // Calculate days in week for dayTag dropdown
-  const daysInWeek = includeWeekends ? 7 : 5;
+  // Calculate days in week based on actual week range (handles onboarding/closing weeks with fewer days)
+  const daysInWeek = week.endDayIndex && week.startDayIndex
+    ? week.endDayIndex - week.startDayIndex + 1
+    : (includeWeekends ? 7 : 5);
 
   // Fetch members when task is expanded
   useEffect(() => {

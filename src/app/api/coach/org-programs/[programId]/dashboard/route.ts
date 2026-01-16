@@ -62,18 +62,21 @@ interface ProgramDashboardData {
     name: string;
     avatarUrl?: string;
     currentWeek: number;
-    progressPercent: number;
-    daysIdle: number;
+    progress: number;
+    daysInactive: number;
+    lastActive?: string;
     reason: 'low_progress' | 'idle' | 'both';
+    metric: string;
     enrollmentId: string;
   }[];
   topPerformers: {
     userId: string;
     name: string;
     avatarUrl?: string;
-    progressPercent: number;
+    progress: number;
     streak: number;
     rank: number;
+    contentCompleted: number;
     enrollmentId: string;
   }[];
   contentCompletion: ContentCompletionItem[];
@@ -266,21 +269,37 @@ export async function GET(
     // Identify members needing attention (< 50% progress OR idle > 2 days)
     const needsAttention = memberStats
       .filter((m) => m.progressPercent < 50 || m.daysIdle > 2)
-      .map((m) => ({
-        userId: m.userId,
-        name: m.name,
-        avatarUrl: m.avatarUrl,
-        currentWeek: m.currentWeek,
-        progressPercent: m.progressPercent,
-        daysIdle: m.daysIdle,
-        reason: (m.progressPercent < 50 && m.daysIdle > 2
+      .map((m) => {
+        const reason = (m.progressPercent < 50 && m.daysIdle > 2
           ? 'both'
           : m.progressPercent < 50
           ? 'low_progress'
-          : 'idle') as 'low_progress' | 'idle' | 'both',
-        enrollmentId: m.enrollmentId,
-      }))
-      .sort((a, b) => a.progressPercent - b.progressPercent)
+          : 'idle') as 'low_progress' | 'idle' | 'both';
+
+        // Generate metric string based on reason
+        let metric = '';
+        if (reason === 'both') {
+          metric = `${m.progressPercent}% progress, ${m.daysIdle} days idle`;
+        } else if (reason === 'low_progress') {
+          metric = `${m.progressPercent}% progress`;
+        } else {
+          metric = `${m.daysIdle} days idle`;
+        }
+
+        return {
+          userId: m.userId,
+          name: m.name,
+          avatarUrl: m.avatarUrl,
+          currentWeek: m.currentWeek,
+          progress: m.progressPercent,
+          daysInactive: m.daysIdle,
+          lastActive: m.lastActiveAt,
+          reason,
+          metric,
+          enrollmentId: m.enrollmentId,
+        };
+      })
+      .sort((a, b) => a.progress - b.progress)
       .slice(0, 5);
 
     // Top performers (sorted by progress, then streak)
@@ -292,15 +311,22 @@ export async function GET(
         return b.streak - a.streak;
       })
       .slice(0, 3)
-      .map((m, index) => ({
-        userId: m.userId,
-        name: m.name,
-        avatarUrl: m.avatarUrl,
-        progressPercent: m.progressPercent,
-        streak: m.streak,
-        rank: index + 1,
-        enrollmentId: m.enrollmentId,
-      }));
+      .map((m, index) => {
+        // Get content completed count for this user
+        const userProgress = contentProgressMap.get(m.userId) || [];
+        const contentCompleted = userProgress.filter(p => p.status === 'completed').length;
+
+        return {
+          userId: m.userId,
+          name: m.name,
+          avatarUrl: m.avatarUrl,
+          progress: m.progressPercent,
+          streak: m.streak,
+          rank: index + 1,
+          contentCompleted,
+          enrollmentId: m.enrollmentId,
+        };
+      });
 
     // Content completion by item
     const contentCompletionByItem = new Map<string, ContentCompletionItem>();

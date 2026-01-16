@@ -3080,7 +3080,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
 
               {/* Client/Cohort Selector - right after divider */}
-              <div className={viewMode !== 'days' ? 'invisible' : ''}>
+              <div className={viewMode !== 'days' && viewMode !== 'overview' ? 'invisible' : ''}>
                 {selectedProgram?.type === 'individual' ? (
                   <ClientSelector
                     enrollments={programEnrollments}
