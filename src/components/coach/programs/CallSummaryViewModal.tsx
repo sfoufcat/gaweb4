@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Loader2, MessageSquare, ListTodo, Plus, RefreshCw, AlertTriangle } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { Loader2, MessageSquare, ListTodo, Plus, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,14 +10,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-  DrawerClose,
-} from '@/components/ui/drawer';
 import { Badge } from '@/components/ui/badge';
 import type { CallSummary, ProgramTaskTemplate } from '@/types';
 
@@ -26,19 +18,12 @@ interface CallSummaryViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   onFetchTasks?: (tasks: ProgramTaskTemplate[]) => void;
-  onSummaryUpdated?: (summary: CallSummary) => void; // Callback when summary is regenerated
-  entityName?: string; // Client or cohort name
+  onSummaryUpdated?: (summary: CallSummary) => void;
+  entityName?: string;
 }
 
-// Timeout threshold in minutes - summaries stuck longer than this can be regenerated
 const STUCK_TIMEOUT_MINUTES = 5;
 
-/**
- * CallSummaryViewModal
- *
- * Displays a call summary in a dialog (desktop) or drawer (mobile).
- * Includes a "Fetch Tasks" button to extract action items as tasks.
- */
 export function CallSummaryViewModal({
   summary,
   isOpen,
@@ -47,38 +32,11 @@ export function CallSummaryViewModal({
   onSummaryUpdated,
   entityName,
 }: CallSummaryViewModalProps) {
-  const [isMobile, setIsMobile] = useState(false); // Default to desktop
-  const [hasMounted, setHasMounted] = useState(false);
   const [fetchingTasks, setFetchingTasks] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
-  // Use refs to store callbacks to avoid re-render issues
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  const onSummaryUpdatedRef = useRef(onSummaryUpdated);
-  onSummaryUpdatedRef.current = onSummaryUpdated;
-
-  // Detect mobile viewport - only runs on client, once on mount
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
-    setHasMounted(true);
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Stable callback for dialog/drawer open state changes
-  const handleOpenChange = useCallback((open: boolean) => {
-    if (!open) {
-      onCloseRef.current();
-    }
-  }, []);
-
-  // Calculate if summary is stuck in processing
-  const getAgeMinutes = useCallback((createdAt: unknown): number => {
+  const getAgeMinutes = (createdAt: unknown): number => {
     if (!createdAt) return 0;
     let createdTime: number;
     if (typeof createdAt === 'object' && createdAt !== null && 'seconds' in createdAt) {
@@ -89,12 +47,10 @@ export function CallSummaryViewModal({
       return 0;
     }
     return (Date.now() - createdTime) / (1000 * 60);
-  }, []);
+  };
 
-  // Only calculate isStuck if summary exists
   const isStuck = summary?.status === 'processing' && summary?.createdAt && getAgeMinutes(summary.createdAt) > STUCK_TIMEOUT_MINUTES;
 
-  // Handle regenerate
   const handleRegenerate = useCallback(async () => {
     if (!summary?.id || regenerating) return;
 
@@ -114,8 +70,8 @@ export function CallSummaryViewModal({
         throw new Error(data.error || 'Failed to regenerate summary');
       }
 
-      if (data.summary && onSummaryUpdatedRef.current) {
-        onSummaryUpdatedRef.current(data.summary);
+      if (data.summary && onSummaryUpdated) {
+        onSummaryUpdated(data.summary);
       }
     } catch (error) {
       console.error('Error regenerating summary:', error);
@@ -123,17 +79,15 @@ export function CallSummaryViewModal({
     } finally {
       setRegenerating(false);
     }
-  }, [summary?.id, regenerating]);
+  }, [summary?.id, regenerating, onSummaryUpdated]);
 
   const handleFetchTasks = useCallback(async () => {
     if (!summary || !onFetchTasks) return;
 
     setFetchingTasks(true);
     try {
-      // Extract action items from summary and convert to tasks
       const tasks: ProgramTaskTemplate[] = [];
 
-      // Get action items assigned to client (max 3)
       const clientActionItems = summary.actionItems?.filter(
         item => item.assignedTo === 'client' || item.assignedTo === 'both'
       ).slice(0, 3) || [];
@@ -147,13 +101,10 @@ export function CallSummaryViewModal({
         });
       }
 
-      // If no action items, try to extract from key discussion points
       if (tasks.length === 0 && summary.summary?.keyDiscussionPoints?.length) {
-        // Take up to 2 key points as potential tasks
-        const points = summary.summary?.keyDiscussionPoints?.slice(0, 2) || [];
+        const points = summary.summary.keyDiscussionPoints.slice(0, 2);
+        const actionVerbs = ['work on', 'focus', 'practice', 'complete', 'finish', 'start', 'continue', 'develop', 'improve', 'implement', 'create', 'build'];
         for (const point of points) {
-          // Only use points that sound actionable (contain action verbs)
-          const actionVerbs = ['work on', 'focus', 'practice', 'complete', 'finish', 'start', 'continue', 'develop', 'improve', 'implement', 'create', 'build'];
           const isActionable = actionVerbs.some(verb => point.toLowerCase().includes(verb));
           if (isActionable) {
             tasks.push({
@@ -167,17 +118,15 @@ export function CallSummaryViewModal({
       }
 
       onFetchTasks(tasks);
-      onCloseRef.current();
+      onClose();
     } catch (error) {
       console.error('Error fetching tasks from summary:', error);
     } finally {
       setFetchingTasks(false);
     }
-  }, [summary, onFetchTasks]);
+  }, [summary, onFetchTasks, onClose]);
 
-  // Handle both ISO string and Firestore Timestamp objects
-  // Format: "Jan 14th at 14:30"
-  const formatDate = (dateValue: string | { seconds: number; nanoseconds: number } | Date | null | undefined): string => {
+  const formatDate = (dateValue: unknown): string => {
     if (!dateValue) return '';
 
     let date: Date;
@@ -185,16 +134,14 @@ export function CallSummaryViewModal({
       date = new Date(dateValue);
     } else if (dateValue instanceof Date) {
       date = dateValue;
-    } else if (typeof dateValue === 'object' && 'seconds' in dateValue) {
-      // Firestore Timestamp
-      date = new Date(dateValue.seconds * 1000);
+    } else if (typeof dateValue === 'object' && dateValue !== null && 'seconds' in dateValue) {
+      date = new Date((dateValue as { seconds: number }).seconds * 1000);
     } else {
       return '';
     }
 
     if (isNaN(date.getTime())) return '';
 
-    // Format date part: "Jan 14th"
     const month = date.toLocaleDateString('en-US', { month: 'short' });
     const day = date.getDate();
     const daySuffix = (d: number) => {
@@ -207,18 +154,14 @@ export function CallSummaryViewModal({
       }
     };
 
-    // Format time part: "14:30"
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
 
     return `${month} ${day}${daySuffix(day)} at ${hours}:${minutes}`;
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const createdAtValue = summary?.createdAt as any;
-  const formattedDate = formatDate(createdAtValue);
+  const formattedDate = formatDate(summary?.createdAt);
 
-  // Title format: "Nour Shaaban, Jan 14th at 14:30"
   const summaryTitle = entityName
     ? `${entityName}${formattedDate ? `, ${formattedDate}` : ''}`
     : formattedDate
@@ -227,9 +170,7 @@ export function CallSummaryViewModal({
 
   const showFetchButton = onFetchTasks && summary?.status === 'completed' && Array.isArray(summary.actionItems) && summary.actionItems.length > 0;
 
-  // Render the summary content (inline, not as a separate component)
-  const renderSummaryContent = () => {
-    // Guard against null/undefined summary
+  const renderContent = () => {
     if (!summary) {
       return (
         <div className="flex items-center justify-center py-8 text-sm text-[#8c8c8c] dark:text-[#7d8190]">
@@ -238,163 +179,8 @@ export function CallSummaryViewModal({
       );
     }
 
-    return (
-    <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-      {summary.status === 'completed' && summary.summary ? (
-        <>
-          {/* Executive Summary */}
-          {summary.summary?.executive && (
-            <div>
-              <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                Summary
-              </h4>
-              <p className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2] leading-relaxed">
-                {summary.summary?.executive}
-              </p>
-            </div>
-          )}
-
-          {/* Key Discussion Points */}
-          {summary.summary?.keyDiscussionPoints?.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                Key Discussion Points
-              </h4>
-              <ul className="space-y-1.5">
-                {summary.summary?.keyDiscussionPoints?.map((point, index) => (
-                  <li
-                    key={index}
-                    className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2] flex gap-2"
-                  >
-                    <span className="text-[#8c8c8c] dark:text-[#7d8190]">•</span>
-                    <span>{point}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Client Progress */}
-          {summary.summary?.clientProgress && (
-            <div>
-              <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                Client Progress
-              </h4>
-              <p className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2]">
-                {summary.summary?.clientProgress}
-              </p>
-            </div>
-          )}
-
-          {/* Challenges */}
-          {summary.summary?.challenges && summary.summary.challenges.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                Challenges
-              </h4>
-              <ul className="space-y-1">
-                {summary.summary?.challenges?.map((challenge, index) => (
-                  <li
-                    key={index}
-                    className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2] flex gap-2"
-                  >
-                    <span className="text-[#8c8c8c] dark:text-[#7d8190]">•</span>
-                    <span>{challenge}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Breakthroughs */}
-          {summary.summary?.breakthroughs && summary.summary.breakthroughs.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                Breakthroughs
-              </h4>
-              <ul className="space-y-1">
-                {summary.summary?.breakthroughs?.map((breakthrough, index) => (
-                  <li
-                    key={index}
-                    className="text-sm text-green-600 dark:text-green-400 flex gap-2"
-                  >
-                    <span className="text-green-500/50">•</span>
-                    <span>{breakthrough}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Action Items */}
-          {Array.isArray(summary.actionItems) && summary.actionItems.length > 0 && (
-            <div>
-              <h4 className="flex items-center gap-1.5 text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                <ListTodo className="h-4 w-4" />
-                Action Items ({summary.actionItems.length})
-              </h4>
-              <ul className="space-y-2">
-                {summary.actionItems.map((item, index) => (
-                  <li
-                    key={item?.id || index}
-                    className="flex items-start gap-2 text-sm"
-                  >
-                    <Badge
-                      variant={
-                        item?.priority === 'high'
-                          ? 'destructive'
-                          : item?.priority === 'medium'
-                          ? 'default'
-                          : 'secondary'
-                      }
-                      className="text-xs shrink-0"
-                    >
-                      {item?.priority || 'medium'}
-                    </Badge>
-                    <span className="flex-1 text-[#5c5c5c] dark:text-[#b2b6c2]">
-                      {item?.description || 'No description'}
-                    </span>
-                    <Badge variant="outline" className="text-xs shrink-0">
-                      {item?.assignedTo || 'client'}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Coaching Notes */}
-          {summary.summary?.coachingNotes && (
-            <div className="p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg">
-              <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-1">
-                Coaching Notes
-              </h4>
-              <p className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2]">
-                {summary.summary?.coachingNotes}
-              </p>
-            </div>
-          )}
-
-          {/* Follow-up Questions */}
-          {Array.isArray(summary.followUpQuestions) && summary.followUpQuestions.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                Follow-up Questions
-              </h4>
-              <ul className="space-y-1">
-                {summary.followUpQuestions.map((question, index) => (
-                  <li
-                    key={index}
-                    className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2]"
-                  >
-                    {question}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </>
-      ) : summary?.status === 'processing' ? (
+    if (summary.status === 'processing') {
+      return (
         <div className="flex flex-col items-center gap-3 text-sm text-[#8c8c8c] dark:text-[#7d8190] py-4">
           {isStuck ? (
             <>
@@ -402,118 +188,149 @@ export function CallSummaryViewModal({
               <span className="text-amber-600 dark:text-amber-400">Summary generation appears to be stuck</span>
               <span className="text-xs text-center">
                 The summary has been processing for over {STUCK_TIMEOUT_MINUTES} minutes.
-                You can try regenerating it.
               </span>
-              <Button
-                onClick={handleRegenerate}
-                disabled={regenerating}
-                variant="outline"
-                size="sm"
-                className="mt-2"
-              >
-                {regenerating ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
+              <Button onClick={handleRegenerate} disabled={regenerating} variant="outline" size="sm" className="mt-2">
+                {regenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                 Regenerate Summary
               </Button>
-              {regenerateError && (
-                <p className="text-xs text-red-500 mt-1">{regenerateError}</p>
-              )}
+              {regenerateError && <p className="text-xs text-red-500 mt-1">{regenerateError}</p>}
             </>
           ) : (
             <>
               <Loader2 className="h-5 w-5 animate-spin" />
               <span>Summary is being generated...</span>
-              <span className="text-xs">This usually takes 30-60 seconds. Please check back shortly.</span>
+              <span className="text-xs">This usually takes 30-60 seconds.</span>
             </>
           )}
         </div>
-      ) : summary?.status === 'failed' ? (
+      );
+    }
+
+    if (summary.status === 'failed') {
+      return (
         <div className="flex flex-col items-center gap-3 py-4">
           <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg w-full">
             <p className="text-sm text-red-600 dark:text-red-400 text-center">
               {summary.processingError || 'Failed to generate summary'}
             </p>
           </div>
-          <Button
-            onClick={handleRegenerate}
-            disabled={regenerating}
-            variant="outline"
-            size="sm"
-          >
-            {regenerating ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
+          <Button onClick={handleRegenerate} disabled={regenerating} variant="outline" size="sm">
+            {regenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Try Again
           </Button>
-          {regenerateError && (
-            <p className="text-xs text-red-500">{regenerateError}</p>
-          )}
+          {regenerateError && <p className="text-xs text-red-500">{regenerateError}</p>}
         </div>
-      ) : null}
+      );
+    }
 
-      {/* Fetch Tasks Button - shown in content for mobile drawer */}
-      {isMobile && showFetchButton && (
-        <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-          <Button
-            onClick={handleFetchTasks}
-            disabled={fetchingTasks}
-            className="w-full"
-          >
-            {fetchingTasks ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4 mr-2" />
-            )}
-            Add Tasks to Week
-          </Button>
-        </div>
-      )}
-    </div>
+    if (summary.status !== 'completed' || !summary.summary) {
+      return null;
+    }
+
+    return (
+      <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+        {summary.summary.executive && (
+          <div>
+            <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">Summary</h4>
+            <p className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2] leading-relaxed">{summary.summary.executive}</p>
+          </div>
+        )}
+
+        {summary.summary.keyDiscussionPoints && summary.summary.keyDiscussionPoints.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">Key Discussion Points</h4>
+            <ul className="space-y-1.5">
+              {summary.summary.keyDiscussionPoints.map((point, index) => (
+                <li key={index} className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2] flex gap-2">
+                  <span className="text-[#8c8c8c] dark:text-[#7d8190]">•</span>
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {summary.summary.clientProgress && (
+          <div>
+            <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">Client Progress</h4>
+            <p className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2]">{summary.summary.clientProgress}</p>
+          </div>
+        )}
+
+        {summary.summary.challenges && summary.summary.challenges.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">Challenges</h4>
+            <ul className="space-y-1">
+              {summary.summary.challenges.map((challenge, index) => (
+                <li key={index} className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2] flex gap-2">
+                  <span className="text-[#8c8c8c] dark:text-[#7d8190]">•</span>
+                  <span>{challenge}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {summary.summary.breakthroughs && summary.summary.breakthroughs.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">Breakthroughs</h4>
+            <ul className="space-y-1">
+              {summary.summary.breakthroughs.map((breakthrough, index) => (
+                <li key={index} className="text-sm text-green-600 dark:text-green-400 flex gap-2">
+                  <span className="text-green-500/50">•</span>
+                  <span>{breakthrough}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {Array.isArray(summary.actionItems) && summary.actionItems.length > 0 && (
+          <div>
+            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+              <ListTodo className="h-4 w-4" />
+              Action Items ({summary.actionItems.length})
+            </h4>
+            <ul className="space-y-2">
+              {summary.actionItems.map((item, index) => (
+                <li key={item?.id || index} className="flex items-start gap-2 text-sm">
+                  <Badge
+                    variant={item?.priority === 'high' ? 'destructive' : item?.priority === 'medium' ? 'default' : 'secondary'}
+                    className="text-xs shrink-0"
+                  >
+                    {item?.priority || 'medium'}
+                  </Badge>
+                  <span className="flex-1 text-[#5c5c5c] dark:text-[#b2b6c2]">{item?.description || 'No description'}</span>
+                  <Badge variant="outline" className="text-xs shrink-0">{item?.assignedTo || 'client'}</Badge>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {summary.summary.coachingNotes && (
+          <div className="p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg">
+            <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-1">Coaching Notes</h4>
+            <p className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2]">{summary.summary.coachingNotes}</p>
+          </div>
+        )}
+
+        {Array.isArray(summary.followUpQuestions) && summary.followUpQuestions.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">Follow-up Questions</h4>
+            <ul className="space-y-1">
+              {summary.followUpQuestions.map((question, index) => (
+                <li key={index} className="text-sm text-[#5c5c5c] dark:text-[#b2b6c2]">{question}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     );
   };
 
-  // Don't render until mounted (prevents hydration mismatch)
-  if (!hasMounted) {
-    return null;
-  }
-
-  // Mobile: use Drawer (slide up)
-  if (isMobile) {
-    return (
-      <Drawer open={isOpen} onOpenChange={handleOpenChange}>
-        <DrawerContent className="max-h-[85vh]">
-          <DrawerHeader className="border-b border-[#e1ddd8] dark:border-[#262b35]">
-            <div className="flex items-center justify-between">
-              <DrawerTitle className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-brand-accent" />
-                {summaryTitle}
-              </DrawerTitle>
-              <DrawerClose asChild>
-                <Button variant="ghost" size="sm">
-                  <X className="h-4 w-4" />
-                </Button>
-              </DrawerClose>
-            </div>
-            <DrawerDescription className="sr-only">
-              View call summary details and action items
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="p-4 overflow-y-auto">
-            {renderSummaryContent()}
-          </div>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
-  // Desktop: use Dialog
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -524,19 +341,11 @@ export function CallSummaryViewModal({
             View call summary details and action items
           </DialogDescription>
         </DialogHeader>
-        {renderSummaryContent()}
-        {/* Fetch Tasks Button - shown in footer for desktop dialog */}
+        {renderContent()}
         {showFetchButton && (
           <div className="flex justify-end pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-            <Button
-              onClick={handleFetchTasks}
-              disabled={fetchingTasks}
-            >
-              {fetchingTasks ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Plus className="h-4 w-4 mr-2" />
-              )}
+            <Button onClick={handleFetchTasks} disabled={fetchingTasks}>
+              {fetchingTasks ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
               Add Tasks to Week
             </Button>
           </div>

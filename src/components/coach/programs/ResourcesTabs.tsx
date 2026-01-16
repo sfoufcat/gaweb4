@@ -175,7 +175,7 @@ export function ResourcesTabs({
   return (
     <div className="space-y-4">
       {/* Tab Bar */}
-      <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-2xl p-1.5 flex gap-1">
+      <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-2xl p-1.5 flex gap-1 overflow-x-auto scrollbar-none -mx-1 px-1">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const count = counts[tab.id];
@@ -187,7 +187,7 @@ export function ResourcesTabs({
               type="button"
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-sm font-medium transition-all',
+                'flex-1 min-w-0 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap',
                 isActive
                   ? 'bg-white dark:bg-[#1e222a] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
                   : 'text-[#8c8c8c] dark:text-[#7d8190] hover:text-[#5f5a55] dark:hover:text-[#b2b6c2]'
