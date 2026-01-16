@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Loader2, MessageSquare, ListTodo, Plus, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,6 +53,12 @@ export function CallSummaryViewModal({
   const [regenerating, setRegenerating] = useState(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
+  // Use refs to store callbacks to avoid re-render issues
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const onSummaryUpdatedRef = useRef(onSummaryUpdated);
+  onSummaryUpdatedRef.current = onSummaryUpdated;
+
   // Detect mobile viewport - only runs on client, once on mount
   useEffect(() => {
     setIsMobile(window.innerWidth < 768);
@@ -67,9 +73,9 @@ export function CallSummaryViewModal({
   // Stable callback for dialog/drawer open state changes
   const handleOpenChange = useCallback((open: boolean) => {
     if (!open) {
-      onClose();
+      onCloseRef.current();
     }
-  }, [onClose]);
+  }, []);
 
   // Calculate if summary is stuck in processing
   const getAgeMinutes = useCallback((createdAt: unknown): number => {
@@ -108,8 +114,8 @@ export function CallSummaryViewModal({
         throw new Error(data.error || 'Failed to regenerate summary');
       }
 
-      if (data.summary && onSummaryUpdated) {
-        onSummaryUpdated(data.summary);
+      if (data.summary && onSummaryUpdatedRef.current) {
+        onSummaryUpdatedRef.current(data.summary);
       }
     } catch (error) {
       console.error('Error regenerating summary:', error);
@@ -117,7 +123,7 @@ export function CallSummaryViewModal({
     } finally {
       setRegenerating(false);
     }
-  }, [summary?.id, regenerating, onSummaryUpdated]);
+  }, [summary?.id, regenerating]);
 
   const handleFetchTasks = useCallback(async () => {
     if (!summary || !onFetchTasks) return;
@@ -161,13 +167,13 @@ export function CallSummaryViewModal({
       }
 
       onFetchTasks(tasks);
-      onClose();
+      onCloseRef.current();
     } catch (error) {
       console.error('Error fetching tasks from summary:', error);
     } finally {
       setFetchingTasks(false);
     }
-  }, [summary, onFetchTasks, onClose]);
+  }, [summary, onFetchTasks]);
 
   // Handle both ISO string and Firestore Timestamp objects
   // Format: "Jan 14th at 14:30"

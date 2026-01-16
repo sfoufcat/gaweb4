@@ -162,7 +162,7 @@ export function useDayBridge(options: BridgeOptions & { dayIndex: number }) {
         title: instanceDay.title,
         summary: instanceDay.summary,
         dailyPrompt: instanceDay.dailyPrompt,
-        tasks: instanceDay.tasks.map(t => ({
+        tasks: (instanceDay.tasks || []).map(t => ({
           id: t.id,
           label: t.label,
           isPrimary: t.isPrimary,
@@ -322,14 +322,14 @@ export function useWeekBridge(options: BridgeOptions & { weekNumber: number }) {
           label: t.label,
           isPrimary: t.isPrimary,
         })),
-        days: instanceWeek.days.map(d => ({
+        days: (instanceWeek.days || []).map(d => ({
           dayIndex: d.dayIndex,
           globalDayIndex: d.globalDayIndex,
           calendarDate: d.calendarDate,
           title: d.title,
           summary: d.summary,
           dailyPrompt: d.dailyPrompt,
-          tasks: d.tasks.map(t => ({
+          tasks: (d.tasks || []).map(t => ({
             id: t.id,
             label: t.label,
             isPrimary: t.isPrimary,

@@ -52,7 +52,7 @@ function ensureDaysHaveCalendarDates(
   }
 
   // Update each day with calculated calendar date
-  const updatedDays = week.days.map((day, index) => {
+  const updatedDays = (week.days || []).map((day, index) => {
     if (day.calendarDate) {
       return day;
     }
@@ -367,9 +367,9 @@ export async function GET(
       // Enrich tasks with completion placeholders
       const enrichedWeek = {
         ...week,
-        days: week.days.map(day => ({
+        days: (week.days || []).map(day => ({
           ...day,
-          tasks: day.tasks.map(task => ({
+          tasks: (day.tasks || []).map(task => ({
             ...task,
             _totalMembers: totalMembers,
             _completedCount: 0, // Will be populated from tasks collection
@@ -479,7 +479,7 @@ export async function PATCH(
     // Update days if provided - merge day tasks with existing week tasks
     if (body.days !== undefined && Array.isArray(body.days)) {
       updatedWeek.days = body.days.map((day: ProgramInstanceDay, index: number) => {
-        const existingDay = existingWeek.days[index];
+        const existingDay = (existingWeek.days || [])[index];
         const incomingTasks = processTasksWithIds(day.tasks);
         // Keep existing week-distributed tasks
         const existingWeekTasks = (existingDay?.tasks || []).filter(t => t.source === 'week');
@@ -496,7 +496,7 @@ export async function PATCH(
 
     // Update specific day if dayIndex is provided - merge day tasks with existing week tasks
     if (body.dayIndex !== undefined && body.day !== undefined) {
-      const dayIdx = updatedWeek.days.findIndex(d => d.dayIndex === body.dayIndex);
+      const dayIdx = (updatedWeek.days || []).findIndex(d => d.dayIndex === body.dayIndex);
       if (dayIdx !== -1) {
         const existingDay = updatedWeek.days[dayIdx];
         const incomingTasks = processTasksWithIds(body.day.tasks || existingDay.tasks);

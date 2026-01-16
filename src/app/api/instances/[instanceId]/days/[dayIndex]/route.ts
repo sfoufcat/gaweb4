@@ -121,7 +121,7 @@ export async function GET(
       const enrichedDay = {
         ...day,
         weekNumber: week.weekNumber,
-        tasks: day.tasks.map(task => ({
+        tasks: (day.tasks || []).map(task => ({
           ...task,
           _totalMembers: totalMembers,
           _completedCount: 0,

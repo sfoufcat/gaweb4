@@ -110,11 +110,11 @@ export async function GET(
       );
 
       // Enrich weeks with completion data
-      instance.weeks = instance.weeks.map((week: ProgramInstanceWeek) => ({
+      instance.weeks = (instance.weeks || []).map((week: ProgramInstanceWeek) => ({
         ...week,
-        days: week.days.map(day => ({
+        days: (week.days || []).map(day => ({
           ...day,
-          tasks: day.tasks.map(task => {
+          tasks: (day.tasks || []).map(task => {
             // Get task completion from tasks collection
             // This will be optimized in production with a batch query
             return {
