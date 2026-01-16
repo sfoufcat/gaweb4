@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment, ProgramCohort, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire, DayCourseAssignment } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';
-import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video, AlertCircle } from 'lucide-react';
+import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, CalendarPlus, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video, AlertCircle } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -24,6 +24,7 @@ import { DayCourseSelector } from './DayCourseSelector';
 import { ResourcesTabs } from './ResourcesTabs';
 import { CreditPurchaseModal } from '@/components/coach/CreditPurchaseModal';
 import { DayPreviewPopup } from './DayPreviewPopup';
+import { ScheduleCallModal } from '@/components/scheduling';
 // Audio utilities for duration detection
 import { getAudioDuration } from '@/lib/audio-compression';
 
@@ -92,6 +93,8 @@ interface WeekEditorProps {
   includeWeekends?: boolean;
   // Callback when days are modified (for dayTag changes)
   onDaysChange?: (days: ProgramDay[]) => void;
+  // Callback when a call is scheduled (to refresh events list)
+  onCallScheduled?: () => void;
 }
 
 // Member info for task completion breakdown
@@ -490,6 +493,7 @@ export function WeekEditor({
   instanceId,
   includeWeekends = true,
   onDaysChange,
+  onCallScheduled,
 }: WeekEditorProps) {
   // Program editor context for centralized save
   const editorContext = useProgramEditorOptional();
@@ -707,6 +711,9 @@ export function WeekEditor({
 
   // Credit purchase modal state (for insufficient credits error)
   const [showCreditModal, setShowCreditModal] = useState(false);
+
+  // Schedule call modal state (for 1:1 programs)
+  const [showScheduleCallModal, setShowScheduleCallModal] = useState(false);
 
   // Day Preview popup state
   const [previewDayNumber, setPreviewDayNumber] = useState<number | null>(null);
@@ -2261,82 +2268,129 @@ export function WeekEditor({
           </div>
         </CollapsibleSection>
 
-      {/* Sessions Section - Linked Calls, Call Summaries, Recordings */}
-      {/* Hidden in template view - only shown when viewing a specific cohort or client */}
-      {(isClientView || isCohortMode) && (
+      {/* Sessions Section - Calls, Summaries, Recordings */}
+      {/* Always visible - shows info message in template mode, full UI in cohort/client mode */}
       <CollapsibleSection
         title="Sessions"
         icon={Video}
         description="Calls, recordings, and summaries"
         defaultOpen={false}
       >
-        {/* Linked Call Events - Now at the top */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <Phone className="w-4 h-4 inline mr-1.5" />
-            Linked Calls
-          </label>
-          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-            Scheduled or completed calls associated with this week
-          </p>
-
-          {/* Currently linked events */}
-          {formData.linkedCallEventIds.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {formData.linkedCallEventIds.map((eventId) => {
-                const event = availableEvents.find(e => e.id === eventId);
-                return (
-                  <div
-                    key={eventId}
-                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-                  >
-                    <Calendar className="w-4 h-4 text-brand-accent" />
-                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                      {event?.title || `Event ${eventId.slice(0, 8)}...`}
-                    </span>
-                    {event?.startDateTime && (
-                      <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                        {new Date(event.startDateTime).toLocaleDateString()}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => removeEventLink(eventId)}
-                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
+        {/* Template mode message */}
+        {!isClientView && !isCohortMode ? (
+          <div className="p-4 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-[#8c8c8c] dark:text-[#7d8190] mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+                  Schedule calls when viewing {programType === 'group' ? 'a cohort' : 'a client'}
+                </p>
+                <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                  {programType === 'group'
+                    ? 'Select a cohort from the dropdown above to schedule calls, link summaries, and upload recordings.'
+                    : 'Select a client from the dropdown above to schedule calls, link summaries, and upload recordings.'}
+                </p>
+              </div>
             </div>
-          )}
+          </div>
+        ) : (
+          <>
+            {/* Scheduled Calls */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                <Phone className="w-4 h-4 inline mr-1.5" />
+                Scheduled Calls
+              </label>
+              <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
+                Calls scheduled for this week
+              </p>
 
-          {/* Add event dropdown */}
-          {availableEventsToLink.length > 0 && (
-            <select
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-              value=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  addEventLink(e.target.value);
-                }
-              }}
-            >
-              <option value="">Add a call event...</option>
-              {availableEventsToLink.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.title || 'Call'} - {event.startDateTime ? new Date(event.startDateTime).toLocaleDateString() : 'No date'}
-                </option>
-              ))}
-            </select>
-          )}
+              {/* Currently linked events */}
+              {formData.linkedCallEventIds.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  {formData.linkedCallEventIds.map((eventId) => {
+                    const event = availableEvents.find(e => e.id === eventId);
+                    const isRecurringInstance = event?.parentEventId;
+                    return (
+                      <div
+                        key={eventId}
+                        className="flex items-center gap-2 p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-xl group"
+                      >
+                        <Calendar className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <span className="block text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                            {event?.title || `Call ${eventId.slice(0, 8)}...`}
+                          </span>
+                          {event?.startDateTime && (
+                            <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                              {new Date(event.startDateTime).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                              {isRecurringInstance && (
+                                <span className="ml-1.5 text-brand-accent">• Recurring</span>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => removeEventLink(eventId)}
+                          className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Unlink call"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
-          {formData.linkedCallEventIds.length === 0 && availableEventsToLink.length === 0 && (
-            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
-              No call events available to link
-            </p>
-          )}
-        </div>
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-2">
+                {/* Schedule Call button (1:1 programs only for now) */}
+                {isClientView && clientUserId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowScheduleCallModal(true)}
+                    className="flex items-center gap-1.5"
+                  >
+                    <CalendarPlus className="w-4 h-4" />
+                    Schedule Call
+                  </Button>
+                )}
+
+                {/* Link existing call dropdown */}
+                {availableEventsToLink.length > 0 && (
+                  <select
+                    className="px-3 py-1.5 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        addEventLink(e.target.value);
+                      }
+                    }}
+                  >
+                    <option value="">Link existing call...</option>
+                    {availableEventsToLink.map((event) => (
+                      <option key={event.id} value={event.id}>
+                        {event.title || 'Call'} - {event.startDateTime ? new Date(event.startDateTime).toLocaleDateString() : 'No date'}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {formData.linkedCallEventIds.length === 0 && availableEventsToLink.length === 0 && !isClientView && (
+                <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
+                  No calls scheduled for this week
+                </p>
+              )}
+            </div>
 
         {/* Linked Call Summaries */}
         <div className="mb-6">
@@ -2694,8 +2748,9 @@ export function WeekEditor({
             <p className="mt-2 text-sm text-red-600 dark:text-red-400">{recordingError}</p>
           )}
         </div>
+          </>
+        )}
       </CollapsibleSection>
-      )}
 
       {/* Resources Section - Tabbed UI for Courses, Articles, Downloads, Links, Questionnaires */}
       <CollapsibleSection
@@ -2837,6 +2892,20 @@ export function WeekEditor({
         habits={week.weeklyHabits}
         weekNumber={week.weekNumber}
       />
+
+      {/* Schedule Call Modal (1:1 programs) */}
+      {clientUserId && clientName && (
+        <ScheduleCallModal
+          isOpen={showScheduleCallModal}
+          onClose={() => setShowScheduleCallModal(false)}
+          clientId={clientUserId}
+          clientName={clientName}
+          onSuccess={() => {
+            setShowScheduleCallModal(false);
+            onCallScheduled?.();
+          }}
+        />
+      )}
     </div>
   );
 }

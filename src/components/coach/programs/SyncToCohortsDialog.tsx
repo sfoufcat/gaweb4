@@ -43,6 +43,8 @@ export function SyncToCohortsDialog({
   editedFields,
   onSyncComplete,
 }: SyncToCohortsDialogProps) {
+  // Client-side only rendering to avoid hydration issues with portals
+  const [isMounted, setIsMounted] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [targetMode, setTargetMode] = useState<'all' | 'select'>('all');
   const [selectedCohortIds, setSelectedCohortIds] = useState<Set<string>>(new Set());
@@ -50,6 +52,10 @@ export function SyncToCohortsDialog({
   const [distributeAfterSync, setDistributeAfterSync] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Initialize sync fields based on editedFields (if provided) or default to none selected
   const getInitialSyncFields = (): SyncFieldOptions => {
@@ -228,6 +234,11 @@ export function SyncToCohortsDialog({
     { key: 'syncNotes', label: 'Notes' },
     { key: 'syncHabits', label: 'Habits' },
   ];
+
+  // Don't render the dialog portal until mounted on client
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

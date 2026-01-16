@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,25 @@ export function CallSummaryViewModal({
   isOpen,
   onClose,
 }: CallSummaryViewModalProps) {
+  // Client-side only rendering to avoid hydration issues with portals
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Don't render the dialog portal until mounted on client
+  if (!isMounted) {
+    return null;
+  }
+
+  // Safe access to summary content with defensive coding
+  const getSummaryContent = () => {
+    if (!summary) return 'No summary';
+    if (!summary.summary) return 'No summary content';
+    return summary.summary.executive || 'No summary content';
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
@@ -29,11 +49,7 @@ export function CallSummaryViewModal({
           <DialogTitle>Call Summary</DialogTitle>
         </DialogHeader>
         <div>
-          {summary ? (
-            <p>{summary.summary?.executive || 'No summary content'}</p>
-          ) : (
-            <p>No summary</p>
-          )}
+          <p>{getSummaryContent()}</p>
         </div>
       </DialogContent>
     </Dialog>

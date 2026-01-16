@@ -70,10 +70,16 @@ export function EnrollmentSettingsModal({
   currentRules,
   onSave,
 }: EnrollmentSettingsModalProps) {
+  // Client-side only rendering to avoid hydration issues with portals
+  const [isMounted, setIsMounted] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const [isSaving, setIsSaving] = useState(false);
   const [rules, setRules] = useState<OrgEnrollmentRules>(currentRules || DEFAULT_ENROLLMENT_RULES);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Reset to current rules when modal opens
   useEffect(() => {
@@ -239,6 +245,11 @@ export function EnrollmentSettingsModal({
       </Button>
     </>
   );
+
+  // Don't render the dialog portal until mounted on client
+  if (!isMounted) {
+    return null;
+  }
 
   // Desktop: Dialog
   if (isDesktop) {

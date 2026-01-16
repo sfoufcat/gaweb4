@@ -553,6 +553,7 @@ export async function GET(
         completedAt: data.completedAt,
       };
     });
+    console.log('[COACHING_CLIENT] Morning checkins found:', morningCheckins.length, morningCheckins.map(c => ({ date: c.date, state: c.emotionalState })));
 
     // Process evening check-ins
     const eveningCheckins: ClientEveningCheckin[] = eveningCheckinsSnapshot.docs.map(doc => {
@@ -702,13 +703,16 @@ export async function GET(
         .limit(1)
         .get();
 
+      console.log('[COACHING_CLIENT] Alignment docs found:', alignmentSnapshot.size);
       if (!alignmentSnapshot.empty) {
         const latestAlignment = alignmentSnapshot.docs[0].data();
+        console.log('[COACHING_CLIENT] Latest alignment:', { date: latestAlignment.date, streakOnThisDay: latestAlignment.streakOnThisDay });
         streak = latestAlignment.streakOnThisDay ?? 0;
       }
     } catch (err) {
       console.warn('[COACHING_CLIENT] Failed to fetch alignment data:', err);
     }
+    console.log('[COACHING_CLIENT] Final streak value:', streak);
 
     return NextResponse.json({
       data: coachingData,

@@ -51,6 +51,12 @@ const RECURRENCE_OPTIONS = [
   { value: 'monthly', label: 'Monthly' },
 ];
 
+const RECURRENCE_END_OPTIONS = [
+  { value: 'end_of_program', label: 'Ends at end of program' },
+  { value: 'specific_date', label: 'Ends on specific date' },
+  { value: 'occurrences', label: 'Ends after number of occurrences' },
+];
+
 interface ProposedTimeSlot {
   id: string;
   date: string;
@@ -98,6 +104,9 @@ export function ScheduleCallModal({
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [recurrence, setRecurrence] = useState('none');
+  const [recurrenceEnd, setRecurrenceEnd] = useState<'end_of_program' | 'specific_date' | 'occurrences'>('end_of_program');
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState<string>('');
+  const [recurrenceOccurrences, setRecurrenceOccurrences] = useState<number>(10);
 
   // Selected/proposed times
   const [proposedSlots, setProposedSlots] = useState<ProposedTimeSlot[]>([]);
@@ -190,6 +199,38 @@ export function ScheduleCallModal({
     return dayInfo;
   }, [linkToProgram, enrollmentData, proposedSlots]);
 
+  // Calculate program end date for "Ends at end of program" option
+  const programEndDate = useMemo(() => {
+    if (!enrollmentData?.instance?.startDate || !enrollmentData?.program?.lengthDays) {
+      return null;
+    }
+
+    const startDate = new Date(enrollmentData.instance.startDate);
+    const lengthDays = enrollmentData.program.lengthDays;
+    const includeWeekends = enrollmentData.program.includeWeekends;
+
+    // Calculate end date based on lengthDays
+    // If weekends are excluded, we need to count only weekdays
+    if (includeWeekends) {
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + lengthDays - 1);
+      return endDate.toISOString().split('T')[0];
+    } else {
+      // Count weekdays only
+      let daysAdded = 0;
+      const endDate = new Date(startDate);
+      while (daysAdded < lengthDays - 1) {
+        endDate.setDate(endDate.getDate() + 1);
+        const dayOfWeek = endDate.getDay();
+        // Skip weekends (0 = Sunday, 6 = Saturday)
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          daysAdded++;
+        }
+      }
+      return endDate.toISOString().split('T')[0];
+    }
+  }, [enrollmentData]);
+
   // Add a proposed time slot
   const addProposedSlot = useCallback(() => {
     if (!selectedDate || !selectedTime) return;
@@ -233,6 +274,34 @@ export function ScheduleCallModal({
         ? enrollmentData.instance.id
         : undefined;
 
+      // Build recurrence config with end condition
+      let recurrenceConfig: {
+        frequency: 'weekly' | 'biweekly' | 'monthly';
+        time: string;
+        timezone: string;
+        startDate: string;
+        endDate?: string;
+        occurrences?: number;
+      } | undefined = undefined;
+
+      if (recurrence !== 'none') {
+        recurrenceConfig = {
+          frequency: recurrence as 'weekly' | 'biweekly' | 'monthly',
+          time: proposedSlots[0].startTime,
+          timezone,
+          startDate: proposedSlots[0].date,
+        };
+
+        // Apply end condition
+        if (recurrenceEnd === 'end_of_program' && programEndDate) {
+          recurrenceConfig.endDate = programEndDate;
+        } else if (recurrenceEnd === 'specific_date' && recurrenceEndDate) {
+          recurrenceConfig.endDate = recurrenceEndDate;
+        } else if (recurrenceEnd === 'occurrences') {
+          recurrenceConfig.occurrences = recurrenceOccurrences;
+        }
+      }
+
       await proposeCall({
         clientId,
         proposedTimes,
@@ -244,12 +313,7 @@ export function ScheduleCallModal({
         meetingLink: locationType === 'online' ? meetingLink : undefined,
         schedulingNotes: notes,
         isRecurring: recurrence !== 'none',
-        recurrence: recurrence !== 'none' ? {
-          frequency: recurrence as 'weekly' | 'biweekly' | 'monthly',
-          time: proposedSlots[0].startTime,
-          timezone,
-          startDate: proposedSlots[0].date,
-        } : undefined,
+        recurrence: recurrenceConfig,
         instanceId,
       });
 
@@ -597,27 +661,116 @@ export function ScheduleCallModal({
 
           {/* Recurrence (for confirm mode) */}
           {mode === 'confirm' && (
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                <Repeat className="w-4 h-4 inline mr-2" />
-                Repeat
-              </label>
-              <div className="relative">
-                <select
-                  value={recurrence}
-                  onChange={(e) => setRecurrence(e.target.value)}
-                  className="w-full px-4 py-3 pr-10 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent appearance-none cursor-pointer"
-                >
-                  {RECURRENCE_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                  <svg className="h-5 w-5 text-brand-accent" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                  <Repeat className="w-4 h-4 inline mr-2" />
+                  Repeat
+                </label>
+                <div className="relative">
+                  <select
+                    value={recurrence}
+                    onChange={(e) => setRecurrence(e.target.value)}
+                    className="w-full px-4 py-3 pr-10 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent appearance-none cursor-pointer"
+                  >
+                    {RECURRENCE_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                    <svg className="h-5 w-5 text-brand-accent" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </div>
                 </div>
               </div>
+
+              {/* Recurrence End Condition (only shown when recurring) */}
+              {recurrence !== 'none' && (
+                <div className="space-y-3 p-4 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl">
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    End Condition
+                  </label>
+
+                  {/* End of Program option - only if client has active enrollment */}
+                  {enrollmentData?.program && programEndDate && (
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="recurrenceEnd"
+                        value="end_of_program"
+                        checked={recurrenceEnd === 'end_of_program'}
+                        onChange={() => setRecurrenceEnd('end_of_program')}
+                        className="mt-0.5 w-4 h-4 text-brand-accent focus:ring-brand-accent focus:ring-offset-0"
+                      />
+                      <div>
+                        <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                          Ends at end of program
+                        </span>
+                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                          {formatDate(programEndDate)} ({enrollmentData.program.name})
+                        </p>
+                      </div>
+                    </label>
+                  )}
+
+                  {/* Specific date option */}
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="recurrenceEnd"
+                      value="specific_date"
+                      checked={recurrenceEnd === 'specific_date'}
+                      onChange={() => setRecurrenceEnd('specific_date')}
+                      className="mt-0.5 w-4 h-4 text-brand-accent focus:ring-brand-accent focus:ring-offset-0"
+                    />
+                    <div className="flex-1">
+                      <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        Ends on specific date
+                      </span>
+                      {recurrenceEnd === 'specific_date' && (
+                        <input
+                          type="date"
+                          value={recurrenceEndDate}
+                          onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                          min={proposedSlots[0]?.date || new Date().toISOString().split('T')[0]}
+                          className="mt-2 w-full px-3 py-2 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                        />
+                      )}
+                    </div>
+                  </label>
+
+                  {/* Number of occurrences option */}
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="recurrenceEnd"
+                      value="occurrences"
+                      checked={recurrenceEnd === 'occurrences'}
+                      onChange={() => setRecurrenceEnd('occurrences')}
+                      className="mt-0.5 w-4 h-4 text-brand-accent focus:ring-brand-accent focus:ring-offset-0"
+                    />
+                    <div className="flex-1">
+                      <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        Ends after number of occurrences
+                      </span>
+                      {recurrenceEnd === 'occurrences' && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <input
+                            type="number"
+                            value={recurrenceOccurrences}
+                            onChange={(e) => setRecurrenceOccurrences(Math.max(1, parseInt(e.target.value) || 1))}
+                            min={1}
+                            max={52}
+                            className="w-20 px-3 py-2 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                          />
+                          <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">occurrences</span>
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                </div>
+              )}
             </div>
           )}
 

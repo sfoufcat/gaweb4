@@ -54,10 +54,16 @@ export function SyncToClientsDialog({
   editedFields,
   onSyncComplete,
 }: SyncToClientsDialogProps) {
+  // Client-side only rendering to avoid hydration issues with portals
+  const [isMounted, setIsMounted] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [targetMode, setTargetMode] = useState<'all' | 'select'>('all');
   const [selectedEnrollmentIds, setSelectedEnrollmentIds] = useState<Set<string>>(new Set());
   const [preserveClientData, setPreserveClientData] = useState(true);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
@@ -268,6 +274,11 @@ export function SyncToClientsDialog({
     { key: 'syncNotes', label: 'Notes' },
     { key: 'syncHabits', label: 'Habits' },
   ];
+
+  // Don't render the dialog portal until mounted on client
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
