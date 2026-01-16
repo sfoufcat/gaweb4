@@ -295,7 +295,8 @@ export function ProgramSidebarNav({
                 )}
               </div>
 
-              {/* Days in Week (only in Daily mode when expanded) */}
+              {/* DEPRECATED: Day navigation - kept for future use
+                  Days are now viewed via DayPreviewPopup from the Week Editor
               {orientation === 'daily' && isExpanded && (
                 <div className="ml-6 mt-1 space-y-0.5 border-l-2 border-[#e1ddd8] dark:border-[#262b35] pl-2">
                   {week.daysInWeek.map((dayIndex) => {
@@ -318,6 +319,7 @@ export function ProgramSidebarNav({
                   })}
                 </div>
               )}
+              */}
             </div>
           );
         })}

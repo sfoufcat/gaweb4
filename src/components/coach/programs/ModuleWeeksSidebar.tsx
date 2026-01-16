@@ -857,7 +857,8 @@ export function ModuleWeeksSidebar({
     });
   }, []);
 
-  const toggleWeek = useCallback((weekNum: number) => {
+  // DEPRECATED: toggleWeek - no longer needed since day navigation removed
+  const _toggleWeek = useCallback((weekNum: number) => {
     setExpandedWeeks(prev => {
       const next = new Set(prev);
       if (next.has(weekNum)) {
@@ -1222,7 +1223,8 @@ export function ModuleWeeksSidebar({
       onSelect(weekSelection);
     };
     const isWeekSelected = isSelected(weekSelection);
-    const isWeekExpanded = expandedWeeks.has(week.weekNum);
+    // DEPRECATED: isWeekExpanded - no longer needed since day navigation removed
+    const _isWeekExpanded = expandedWeeks.has(week.weekNum);
     const weekStatus = getWeekStatus(week);
     const moduleColor = moduleColors[moduleIndex % moduleColors.length];
 
@@ -1315,7 +1317,7 @@ export function ModuleWeeksSidebar({
               </button>
             )}
 
-            {/* Expand/collapse button - always visible */}
+            {/* DEPRECATED: Week expand/collapse - no longer needed since day navigation removed
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -1329,10 +1331,13 @@ export function ModuleWeeksSidebar({
                 <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
               )}
             </button>
+            */}
           </div>
         </div>
 
-        {/* Days in Week - shown when expanded */}
+        {/* DEPRECATED: Day navigation - kept for future use
+            Days are now viewed via DayPreviewPopup from the Week Editor
+
         <AnimatePresence initial={false}>
           {isWeekExpanded && (
             <motion.div
@@ -1376,7 +1381,6 @@ export function ModuleWeeksSidebar({
                       'text-[#a7a39e] dark:text-[#7d8190]'
                     }`} />
                     <span className="font-medium flex-1">Day {dayIndex}</span>
-                    {/* Content type icons - shown on the right */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {contentTypes.hasTasks && (
                         <span title="Has tasks">
@@ -1400,6 +1404,7 @@ export function ModuleWeeksSidebar({
             </motion.div>
           )}
         </AnimatePresence>
+        */}
       </div>
     );
   };

@@ -62,10 +62,16 @@ export function ProgramSettingsModal({
   cohortCompletionThreshold,
   onCohortCompletionThresholdChange,
 }: ProgramSettingsModalProps) {
+  // Client-side only rendering to avoid hydration issues with portals
+  const [isMounted, setIsMounted] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
   // Local state for threshold slider to prevent API calls on every drag
   const [localThreshold, setLocalThreshold] = useState(cohortCompletionThreshold ?? 50);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Sync local state when prop changes (e.g., after save completes)
   useEffect(() => {
@@ -207,6 +213,11 @@ export function ProgramSettingsModal({
       )}
     </div>
   );
+
+  // Don't render the dialog portal until mounted on client
+  if (!isMounted) {
+    return null;
+  }
 
   // Desktop: Dialog
   if (isDesktop) {

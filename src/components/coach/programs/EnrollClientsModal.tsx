@@ -67,6 +67,8 @@ export function EnrollClientsModal({
   program,
   existingEnrollmentUserIds,
 }: EnrollClientsModalProps) {
+  // Client-side only rendering to avoid hydration issues with portals
+  const [isMounted, setIsMounted] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
   // State
@@ -79,6 +81,10 @@ export function EnrollClientsModal({
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
   const [loadingCohorts, setLoadingCohorts] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -492,6 +498,11 @@ export function EnrollClientsModal({
       </div>
     </div>
   );
+
+  // Don't render the dialog portal until mounted on client
+  if (!isMounted) {
+    return null;
+  }
 
   // Desktop: Dialog
   if (isDesktop) {
