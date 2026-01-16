@@ -693,36 +693,13 @@ export async function GET(
       .filter(s => s.startDateTime < now)
       .sort((a, b) => b.startDateTime.localeCompare(a.startDateTime));
 
-    // Get streak - try user_alignments first, then fall back to squad_members
+    // Get streak from userAlignmentSummary (same source as squad/program views)
     let streak = 0;
     try {
-      // First try: user_alignments (most accurate, has streakOnThisDay)
-      const alignmentSnapshot = await adminDb.collection('user_alignments')
-        .where('userId', '==', clientId)
-        .where('organizationId', '==', organizationId)
-        .orderBy('date', 'desc')
-        .limit(1)
-        .get();
-
-      if (!alignmentSnapshot.empty) {
-        const latestAlignment = alignmentSnapshot.docs[0].data();
-        streak = latestAlignment.streakOnThisDay ?? 0;
-      }
-
-      // Second try: if no alignment data, check squad_members for cached streak
-      if (streak === 0) {
-        const squadMemberSnapshot = await adminDb.collection('squad_members')
-          .where('userId', '==', clientId)
-          .limit(10)
-          .get();
-
-        // Find the highest streak from any squad membership
-        for (const doc of squadMemberSnapshot.docs) {
-          const memberData = doc.data();
-          if (memberData.streak && memberData.streak > streak) {
-            streak = memberData.streak;
-          }
-        }
+      const summaryDoc = await adminDb.collection('userAlignmentSummary').doc(clientId).get();
+      if (summaryDoc.exists) {
+        const summaryData = summaryDoc.data();
+        streak = summaryData?.currentStreak ?? 0;
       }
     } catch (err) {
       console.warn('[COACHING_CLIENT] Failed to fetch streak data:', err);

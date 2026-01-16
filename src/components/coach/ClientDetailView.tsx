@@ -1643,6 +1643,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 {sentimentData.map((day, idx) => {
                   const morningValue = day.morning ? EMOTIONAL_STATE_COLORS[day.morning]?.value || 4 : 0;
                   const eveningValue = day.evening ? EMOTIONAL_STATE_COLORS[day.evening]?.value || 3 : 0;
+                  if (day.morning) console.log('[MoodChart] Day', day.date, 'morning:', day.morning, 'value:', morningValue, 'inColors:', !!EMOTIONAL_STATE_COLORS[day.morning]);
                   // Morning uses 7-point scale, evening uses 5-point scale
                   const morningHeight = morningValue ? (morningValue / 7) * 100 : 0;
                   const eveningHeight = eveningValue ? (eveningValue / 5) * 100 : 0;
