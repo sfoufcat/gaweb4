@@ -855,6 +855,12 @@ export interface Program {
   // Replaces the separate 'program_weeks' collection
   weeks?: ProgramWeek[];
 
+  // Program-level resources (available throughout the program, not week-specific)
+  linkedArticleIds?: string[];         // DiscoverArticle IDs
+  linkedDownloadIds?: string[];        // DiscoverDownload IDs
+  linkedLinkIds?: string[];            // DiscoverLink IDs
+  linkedCourseIds?: string[];          // DiscoverCourse IDs
+
   // Metadata
   createdAt: string;
   updatedAt: string;

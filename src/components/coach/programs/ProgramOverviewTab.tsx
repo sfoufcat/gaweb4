@@ -12,13 +12,20 @@ import {
   TrendingUp,
   TrendingDown,
   Loader2,
+  BookOpen,
+  FileText,
+  Download,
+  Link2,
+  GraduationCap,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Program, ProgramHabitTemplate, TaskDistribution, ProgramEnrollment } from '@/types';
+import type { Program, ProgramHabitTemplate, TaskDistribution, ProgramEnrollment, DiscoverArticle, DiscoverDownload, DiscoverLink } from '@/types';
+import type { DiscoverCourse } from '@/types/discover';
+import { ResourceLinkDropdown } from './ResourceLinkDropdown';
 
 interface MemberToWatch {
   userId: string;
@@ -37,6 +44,11 @@ interface ProgramOverviewTabProps {
   enrollments?: ProgramEnrollment[];
   membersToWatch?: MemberToWatch[];
   isLoadingMembers?: boolean;
+  // Available resources for linking
+  availableArticles?: DiscoverArticle[];
+  availableDownloads?: DiscoverDownload[];
+  availableLinks?: DiscoverLink[];
+  availableCourses?: DiscoverCourse[];
 }
 
 export function ProgramOverviewTab({
@@ -45,6 +57,10 @@ export function ProgramOverviewTab({
   enrollments = [],
   membersToWatch = [],
   isLoadingMembers = false,
+  availableArticles = [],
+  availableDownloads = [],
+  availableLinks = [],
+  availableCourses = [],
 }: ProgramOverviewTabProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [newHabit, setNewHabit] = useState('');
@@ -56,6 +72,12 @@ export function ProgramOverviewTab({
   );
   const [habits, setHabits] = useState<ProgramHabitTemplate[]>(program.defaultHabits || []);
 
+  // Local state for resources
+  const [linkedArticleIds, setLinkedArticleIds] = useState<string[]>(program.linkedArticleIds || []);
+  const [linkedDownloadIds, setLinkedDownloadIds] = useState<string[]>(program.linkedDownloadIds || []);
+  const [linkedLinkIds, setLinkedLinkIds] = useState<string[]>(program.linkedLinkIds || []);
+  const [linkedCourseIds, setLinkedCourseIds] = useState<string[]>(program.linkedCourseIds || []);
+
   // Track if settings have changed
   const hasSettingsChanged =
     includeWeekends !== (program.includeWeekends ?? true) ||
@@ -63,7 +85,13 @@ export function ProgramOverviewTab({
 
   const hasHabitsChanged = JSON.stringify(habits) !== JSON.stringify(program.defaultHabits || []);
 
-  const hasChanges = hasSettingsChanged || hasHabitsChanged;
+  const hasResourcesChanged =
+    JSON.stringify(linkedArticleIds) !== JSON.stringify(program.linkedArticleIds || []) ||
+    JSON.stringify(linkedDownloadIds) !== JSON.stringify(program.linkedDownloadIds || []) ||
+    JSON.stringify(linkedLinkIds) !== JSON.stringify(program.linkedLinkIds || []) ||
+    JSON.stringify(linkedCourseIds) !== JSON.stringify(program.linkedCourseIds || []);
+
+  const hasChanges = hasSettingsChanged || hasHabitsChanged || hasResourcesChanged;
 
   // Save settings
   const handleSave = useCallback(async () => {
@@ -77,11 +105,17 @@ export function ProgramOverviewTab({
       if (hasHabitsChanged) {
         updates.defaultHabits = habits;
       }
+      if (hasResourcesChanged) {
+        updates.linkedArticleIds = linkedArticleIds;
+        updates.linkedDownloadIds = linkedDownloadIds;
+        updates.linkedLinkIds = linkedLinkIds;
+        updates.linkedCourseIds = linkedCourseIds;
+      }
       await onProgramUpdate(updates);
     } finally {
       setIsSaving(false);
     }
-  }, [hasSettingsChanged, hasHabitsChanged, includeWeekends, taskDistribution, habits, onProgramUpdate]);
+  }, [hasSettingsChanged, hasHabitsChanged, hasResourcesChanged, includeWeekends, taskDistribution, habits, linkedArticleIds, linkedDownloadIds, linkedLinkIds, linkedCourseIds, onProgramUpdate]);
 
   // Add habit
   const addHabit = useCallback(() => {
@@ -256,6 +290,73 @@ export function ProgramOverviewTab({
         </div>
       </CollapsibleSection>
 
+      {/* Program Resources Section */}
+      <CollapsibleSection
+        title="Program Resources"
+        icon={BookOpen}
+        description="Resources available throughout the program"
+        defaultOpen={false}
+      >
+        <div className="space-y-4">
+          {/* Courses */}
+          <ResourceSection
+            icon={GraduationCap}
+            title="Courses"
+            linkedIds={linkedCourseIds}
+            availableItems={availableCourses}
+            onAdd={(id) => setLinkedCourseIds([...linkedCourseIds, id])}
+            onRemove={(id) => setLinkedCourseIds(linkedCourseIds.filter((i) => i !== id))}
+            getTitle={(item) => item.title}
+            emptyMessage="No courses linked"
+          />
+
+          {/* Articles */}
+          <ResourceSection
+            icon={FileText}
+            title="Articles"
+            linkedIds={linkedArticleIds}
+            availableItems={availableArticles}
+            onAdd={(id) => setLinkedArticleIds([...linkedArticleIds, id])}
+            onRemove={(id) => setLinkedArticleIds(linkedArticleIds.filter((i) => i !== id))}
+            getTitle={(item) => item.title}
+            emptyMessage="No articles linked"
+          />
+
+          {/* Downloads */}
+          <ResourceSection
+            icon={Download}
+            title="Downloads"
+            linkedIds={linkedDownloadIds}
+            availableItems={availableDownloads}
+            onAdd={(id) => setLinkedDownloadIds([...linkedDownloadIds, id])}
+            onRemove={(id) => setLinkedDownloadIds(linkedDownloadIds.filter((i) => i !== id))}
+            getTitle={(item) => item.title}
+            emptyMessage="No downloads linked"
+          />
+
+          {/* Links */}
+          <ResourceSection
+            icon={Link2}
+            title="Links"
+            linkedIds={linkedLinkIds}
+            availableItems={availableLinks}
+            onAdd={(id) => setLinkedLinkIds([...linkedLinkIds, id])}
+            onRemove={(id) => setLinkedLinkIds(linkedLinkIds.filter((i) => i !== id))}
+            getTitle={(item) => item.title}
+            emptyMessage="No links added"
+          />
+
+          {availableArticles.length === 0 &&
+            availableDownloads.length === 0 &&
+            availableLinks.length === 0 &&
+            availableCourses.length === 0 && (
+              <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] italic text-center py-4">
+                Create resources in the Discover tab to link them here.
+              </p>
+            )}
+        </div>
+      </CollapsibleSection>
+
       {/* Members to Watch Section */}
       <CollapsibleSection
         title="Members to Watch"
@@ -394,6 +495,93 @@ function MemberCard({
       ) : (
         <TrendingDown className="w-4 h-4 text-amber-500 flex-shrink-0" />
       )}
+    </div>
+  );
+}
+
+// Resource section component for program-level resources
+function ResourceSection<T extends { id: string }>({
+  icon: Icon,
+  title,
+  linkedIds,
+  availableItems,
+  onAdd,
+  onRemove,
+  getTitle,
+  emptyMessage,
+}: {
+  icon: React.ElementType;
+  title: string;
+  linkedIds: string[];
+  availableItems: T[];
+  onAdd: (id: string) => void;
+  onRemove: (id: string) => void;
+  getTitle: (item: T) => string;
+  emptyMessage: string;
+}) {
+  const linkedItems = linkedIds
+    .map((id) => availableItems.find((item) => item.id === id))
+    .filter((item): item is T => item !== undefined);
+
+  const availableToLink = availableItems.filter((item) => !linkedIds.includes(item.id));
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-4 h-4 text-[#8c8c8c] dark:text-[#7d8190]" />
+        <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+          {title}
+        </span>
+        {linkedIds.length > 0 && (
+          <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">({linkedIds.length})</span>
+        )}
+      </div>
+
+      {/* Linked items */}
+      {linkedItems.length > 0 && (
+        <div className="space-y-1.5 mb-2">
+          {linkedItems.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center gap-2 p-2 bg-[#f7f5f3] dark:bg-[#11141b] rounded-lg group"
+            >
+              <Icon className="w-3.5 h-3.5 text-brand-accent flex-shrink-0" />
+              <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                {getTitle(item)}
+              </span>
+              <button
+                type="button"
+                onClick={() => onRemove(item.id)}
+                className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add dropdown */}
+      {availableToLink.length > 0 ? (
+        <select
+          className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+          value=""
+          onChange={(e) => {
+            if (e.target.value) {
+              onAdd(e.target.value);
+            }
+          }}
+        >
+          <option value="">Add {title.toLowerCase()}...</option>
+          {availableToLink.map((item) => (
+            <option key={item.id} value={item.id}>
+              {getTitle(item)}
+            </option>
+          ))}
+        </select>
+      ) : linkedIds.length === 0 ? (
+        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] italic">{emptyMessage}</p>
+      ) : null}
     </div>
   );
 }

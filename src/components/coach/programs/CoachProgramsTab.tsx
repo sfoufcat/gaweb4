@@ -8,6 +8,7 @@ import { ModuleWeeksSidebar, type SidebarSelection } from './ModuleWeeksSidebar'
 import { ModuleEditor } from './ModuleEditor';
 import { WeekEditor } from './WeekEditor';
 import { DayEditor } from './DayEditor';
+import { ProgramOverviewTab } from './ProgramOverviewTab';
 import { WeekFillModal } from './WeekFillModal';
 import { ProgramSettingsModal, ProgramSettingsButton } from './ProgramSettingsModal';
 import { DayCourseSelector } from './DayCourseSelector';
@@ -230,7 +231,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   } | null>(null);
   
   // View mode: 'list' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'
-  const [viewMode, setViewMode] = useState<'list' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'overview' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'>('list');
   const [viewModeDirection, setViewModeDirection] = useState<1 | -1>(1); // Animation direction for program tabs
   const prevViewModeRef = useRef(viewMode);
   
@@ -633,7 +634,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
   // View mode order for directional animations
   const VIEW_MODE_ORDER: Record<string, number> = {
-    'list': 0, 'days': 1, 'cohorts': 2, 'enrollments': 3, 'landing': 4, 'referrals': 5,
+    'list': 0, 'overview': 1, 'days': 2, 'cohorts': 3, 'enrollments': 4, 'landing': 5, 'referrals': 6,
   };
 
   // Handler for view mode changes with direction tracking
@@ -3200,6 +3201,18 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 <div className="hidden md:flex items-center gap-1">
                   <button
                     type="button"
+                    onClick={() => handleViewModeChange('overview')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                      viewMode === 'overview'
+                        ? 'bg-[#ebe8e4] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                        : 'text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+                    }`}
+                  >
+                    <Settings2 className="w-4 h-4" />
+                    Overview
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleViewModeChange('days')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
                       viewMode === 'days'
@@ -3270,6 +3283,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         type="button"
                         className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] rounded-lg transition-colors"
                       >
+                        {viewMode === 'overview' && <><Settings2 className="w-4 h-4" />Overview</>}
                         {viewMode === 'days' && <><LayoutTemplate className="w-4 h-4" />Content</>}
                         {viewMode === 'cohorts' && <><Users className="w-4 h-4" />Cohorts</>}
                         {viewMode === 'enrollments' && <><Users className="w-4 h-4" />Enrollments</>}
@@ -3279,6 +3293,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-48 p-1" align="end">
+                      <button
+                        type="button"
+                        onClick={() => { handleViewModeChange('overview'); setIsPageDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                          viewMode === 'overview'
+                            ? 'bg-brand-accent/10 text-brand-accent'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                        }`}
+                      >
+                        <Settings2 className="w-4 h-4" />
+                        Overview
+                        {viewMode === 'overview' && <Check className="w-4 h-4 ml-auto" />}
+                      </button>
                       <button
                         type="button"
                         onClick={() => { handleViewModeChange('days'); setIsPageDropdownOpen(false); }}
@@ -3744,6 +3771,41 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               </div>
             )}
           </div>
+        ) : viewMode === 'overview' ? (
+          // Program Overview Tab - Settings, Habits, Resources, Members to Watch
+          <ProgramOverviewTab
+            program={selectedProgram!}
+            onProgramUpdate={async (updates) => {
+              if (!selectedProgram) return;
+              
+              try {
+                const response = await fetch(`/api/coach/org-programs/${selectedProgram.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(updates),
+                });
+                
+                if (!response.ok) {
+                  const data = await response.json();
+                  throw new Error(data.error || 'Failed to update program');
+                }
+                
+                // Update local state
+                setSelectedProgram({ ...selectedProgram, ...updates });
+                
+                // Refresh programs list
+                await fetchPrograms();
+              } catch (error) {
+                console.error('Error updating program:', error);
+                throw error;
+              }
+            }}
+            enrollments={programEnrollments}
+            availableArticles={availableArticles}
+            availableDownloads={availableDownloads}
+            availableLinks={availableLinks}
+            availableCourses={organizationCourses}
+          />
         ) : viewMode === 'days' ? (
           // Content View - Row (sidebar + editor) or Calendar (full-width)
           <AnimatePresence mode="wait">
