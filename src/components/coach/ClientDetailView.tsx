@@ -1186,6 +1186,8 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   const sentimentData = useMemo(() => {
     const last7Days = [];
     const today = new Date();
+    console.log('[MoodChart] Today:', today.toISOString(), 'morningCheckins:', morningCheckins.length);
+    console.log('[MoodChart] Check-in dates:', morningCheckins.map(c => c.date));
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
@@ -1202,6 +1204,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         evening: eveningCheckin?.emotionalState || null,
       });
     }
+    console.log('[MoodChart] Generated sentiment data:', last7Days);
     return last7Days;
   }, [morningCheckins, eveningCheckins]);
 
@@ -1925,7 +1928,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 {currentPrograms.map((enrollment) => (
                   <Link
                     key={enrollment.id}
-                    href={`/coach/programs/${enrollment.programId}`}
+                    href={`/coach?tab=programs&programId=${enrollment.programId}`}
                     className="block"
                   >
                     <div className="flex gap-4 p-4 bg-gradient-to-br from-brand-accent/5 to-[#8c6245]/5 dark:from-[#b8896a]/10 dark:to-brand-accent/5 rounded-xl border border-brand-accent/20 hover:border-brand-accent/40 transition-colors cursor-pointer group">
@@ -1986,7 +1989,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 {pastPrograms.map((enrollment) => (
                   <Link
                     key={enrollment.id}
-                    href={`/coach/programs/${enrollment.programId}`}
+                    href={`/coach?tab=programs&programId=${enrollment.programId}`}
                     className="block"
                   >
                     <div className="flex gap-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl hover:bg-[#f5f0eb] dark:hover:bg-[#171b22] transition-colors cursor-pointer group">

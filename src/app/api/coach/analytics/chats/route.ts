@@ -30,8 +30,10 @@ interface ChannelStats {
   squadName?: string;
   memberCount: number;
   messageCount: number;
+  messagesLast7Days: number;
   lastMessageAt: string | null;
   createdAt: string | null;
+  image?: string;
 }
 
 interface DailyChatStats {
@@ -102,18 +104,29 @@ export async function GET(request: NextRequest) {
         { limit: 50, state: true, watch: false }
       );
 
+      // Calculate the date 7 days ago for filtering recent messages
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
       // Process channels
       for (const channel of channelsResponse) {
         const channelId = channel.id || '';
         const squadInfo = channelToSquadMap.get(channelId);
-        
+
         // Get message count from channel state
         const state = channel.state;
-        const messageCount = state?.messages?.length || 0;
-        
+        const messages = state?.messages || [];
+        const messageCount = messages.length;
+
+        // Count messages from the last 7 days
+        const messagesLast7Days = messages.filter(msg => {
+          const msgDate = msg.created_at ? new Date(msg.created_at) : null;
+          return msgDate && msgDate >= sevenDaysAgo;
+        }).length;
+
         // Access channel data safely with type assertion for custom fields
         const channelData = channel.data as Record<string, unknown> | undefined;
-        
+
         channels.push({
           channelId,
           channelType: channel.type || 'messaging',
@@ -122,10 +135,12 @@ export async function GET(request: NextRequest) {
           squadName: squadInfo?.squadName,
           memberCount: Object.keys(state?.members || {}).length,
           messageCount,
+          messagesLast7Days,
           lastMessageAt: state?.last_message_at?.toISOString() || null,
           createdAt: (channelData?.created_at as string) || null,
+          image: (channelData?.image as string) || undefined,
         });
-        
+
         totalMessages += messageCount;
       }
     } catch (streamError) {
@@ -144,6 +159,7 @@ export async function GET(request: NextRequest) {
             squadName: squad.name,
             memberCount: 0,
             messageCount: 0,
+            messagesLast7Days: 0,
             lastMessageAt: null,
             createdAt: null,
           });

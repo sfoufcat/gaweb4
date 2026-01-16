@@ -693,9 +693,10 @@ export async function GET(
       .filter(s => s.startDateTime < now)
       .sort((a, b) => b.startDateTime.localeCompare(a.startDateTime));
 
-    // Get streak from most recent alignment document
+    // Get streak - try user_alignments first, then fall back to squad_members
     let streak = 0;
     try {
+      // First try: user_alignments (most accurate, has streakOnThisDay)
       const alignmentSnapshot = await adminDb.collection('user_alignments')
         .where('userId', '==', clientId)
         .where('organizationId', '==', organizationId)
@@ -703,16 +704,29 @@ export async function GET(
         .limit(1)
         .get();
 
-      console.log('[COACHING_CLIENT] Alignment docs found:', alignmentSnapshot.size);
       if (!alignmentSnapshot.empty) {
         const latestAlignment = alignmentSnapshot.docs[0].data();
-        console.log('[COACHING_CLIENT] Latest alignment:', { date: latestAlignment.date, streakOnThisDay: latestAlignment.streakOnThisDay });
         streak = latestAlignment.streakOnThisDay ?? 0;
       }
+
+      // Second try: if no alignment data, check squad_members for cached streak
+      if (streak === 0) {
+        const squadMemberSnapshot = await adminDb.collection('squad_members')
+          .where('userId', '==', clientId)
+          .limit(10)
+          .get();
+
+        // Find the highest streak from any squad membership
+        for (const doc of squadMemberSnapshot.docs) {
+          const memberData = doc.data();
+          if (memberData.streak && memberData.streak > streak) {
+            streak = memberData.streak;
+          }
+        }
+      }
     } catch (err) {
-      console.warn('[COACHING_CLIENT] Failed to fetch alignment data:', err);
+      console.warn('[COACHING_CLIENT] Failed to fetch streak data:', err);
     }
-    console.log('[COACHING_CLIENT] Final streak value:', streak);
 
     return NextResponse.json({
       data: coachingData,

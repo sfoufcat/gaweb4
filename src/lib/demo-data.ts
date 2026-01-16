@@ -1198,8 +1198,10 @@ export interface DemoChannelStats {
   squadName?: string;
   memberCount: number;
   messageCount: number;
+  messagesLast7Days: number;
   lastMessageAt: string | null;
   createdAt: string;
+  image?: string;
 }
 
 export interface DemoDailyChatStats {
@@ -1224,11 +1226,21 @@ export function generateDemoChatAnalytics(): {
   const random = seededRandom(900);
   const channels: DemoChannelStats[] = [];
   
-  // Generate squad channels
+  // Generate squad channels with varying activity levels
+  const activityLevels = [
+    { min7Day: 15, max7Day: 30 },  // Thriving
+    { min7Day: 8, max7Day: 15 },   // Active
+    { min7Day: 3, max7Day: 8 },    // Active
+    { min7Day: 0, max7Day: 3 },    // Inactive/barely active
+    { min7Day: 0, max7Day: 0 },    // Inactive
+  ];
+
   for (let i = 0; i < 5; i++) {
     const squadInfo = SQUAD_NAMES[i];
     const messageCount = 50 + Math.floor(random() * 200);
-    
+    const activity = activityLevels[i];
+    const messagesLast7Days = activity.min7Day + Math.floor(random() * (activity.max7Day - activity.min7Day + 1));
+
     channels.push({
       channelId: `demo-channel-squad-${i + 1}`,
       channelType: 'messaging',
@@ -1237,22 +1249,49 @@ export function generateDemoChatAnalytics(): {
       squadName: squadInfo.name,
       memberCount: 8 + Math.floor(random() * 20),
       messageCount,
+      messagesLast7Days,
       lastMessageAt: randomPastDate(3).toISOString(),
       createdAt: randomPastDate(90).toISOString(),
     });
   }
-  
-  // Generate some DM channels
-  for (let i = 0; i < 8; i++) {
+
+  // Generate organization channels with varying activity
+  const orgChannelNames = ['Announcements', 'Social Corner', 'Share your wins'];
+  const orgActivityLevels = [
+    { min7Day: 1, max7Day: 3 },   // Low activity
+    { min7Day: 1, max7Day: 2 },   // Low activity
+    { min7Day: 0, max7Day: 0 },   // Inactive
+  ];
+
+  for (let i = 0; i < 3; i++) {
+    const activity = orgActivityLevels[i];
+    const messagesLast7Days = activity.min7Day + Math.floor(random() * (activity.max7Day - activity.min7Day + 1));
+
+    channels.push({
+      channelId: `demo-channel-org-${i + 1}`,
+      channelType: 'messaging',
+      name: orgChannelNames[i],
+      memberCount: 10 + Math.floor(random() * 15),
+      messageCount: 5 + Math.floor(random() * 30),
+      messagesLast7Days,
+      lastMessageAt: messagesLast7Days > 0 ? randomPastDate(7).toISOString() : randomPastDate(30).toISOString(),
+      createdAt: randomPastDate(90).toISOString(),
+    });
+  }
+
+  // Generate some DM channels (not shown in analytics but kept for completeness)
+  for (let i = 0; i < 5; i++) {
     const firstName = FIRST_NAMES[Math.floor(random() * FIRST_NAMES.length)];
     const lastName = LAST_NAMES[Math.floor(random() * LAST_NAMES.length)];
-    
+    const messagesLast7Days = Math.floor(random() * 10);
+
     channels.push({
       channelId: `demo-channel-dm-${i + 1}`,
       channelType: 'messaging',
       name: `${firstName} ${lastName}`,
       memberCount: 2,
       messageCount: 10 + Math.floor(random() * 50),
+      messagesLast7Days,
       lastMessageAt: randomPastDate(7).toISOString(),
       createdAt: randomPastDate(60).toISOString(),
     });

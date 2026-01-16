@@ -389,6 +389,206 @@ export async function syncProgramWeeks(
   };
 }
 
+
+// ============================================================================
+// Day-Level Resource Resolution Helpers
+// ============================================================================
+
+import type {
+  ProgramInstanceWeek,
+  WeekResourceAssignment,
+  ProgramInstanceTask,
+  ProgramHabitTemplate,
+  UnifiedEvent,
+  ContentProgress,
+  ResourceDayTag,
+} from '@/types';
+import type { DiscoverCourse, DiscoverArticle } from '@/types/discover';
+
+/**
+ * Client Day Content Interface
+ * Aggregates all content for a specific day in a program
+ */
+export interface ClientDayContent {
+  /** Tasks assigned to this day */
+  tasks: ProgramInstanceTask[];
+  /** Habits from program/module level */
+  habits: ProgramHabitTemplate[];
+  /** Calls scheduled for this specific calendar date */
+  calls: UnifiedEvent[];
+  /** Courses with their assignments and progress */
+  courses: {
+    assignment: WeekResourceAssignment;
+    course: DiscoverCourse;
+    progress?: ContentProgress;
+  }[];
+  /** Articles with their assignments and progress */
+  articles: {
+    assignment: WeekResourceAssignment;
+    article: DiscoverArticle;
+    progress?: ContentProgress;
+  }[];
+  /** Downloads assigned to this day */
+  downloads: WeekResourceAssignment[];
+  /** Links assigned to this day */
+  links: WeekResourceAssignment[];
+  /** Questionnaires assigned to this day */
+  questionnaires: WeekResourceAssignment[];
+}
+
+/**
+ * Filters resource assignments by day tag logic
+ *
+ * @param week - The program instance week containing resource assignments
+ * @param dayOfWeek - Day of week (1-7, where 1=Monday/Sunday depending on program config)
+ * @returns Filtered array of resource assignments for the specified day
+ *
+ * Day tag logic:
+ * - 'week' = always shows (week-level resource)
+ * - 'daily' = always shows (repeats every day)
+ * - 1-7 = shows only on that specific day of week
+ */
+export function getResourcesForDay(
+  week: ProgramInstanceWeek,
+  dayOfWeek: number
+): WeekResourceAssignment[] {
+  const assignments = week.resourceAssignments || [];
+
+  return assignments.filter((assignment) => {
+    const tag = assignment.dayTag;
+
+    // Week-level resources always show
+    if (tag === 'week') return true;
+
+    // Daily resources always show
+    if (tag === 'daily') return true;
+
+    // Specific day match
+    if (typeof tag === 'number') {
+      return tag === dayOfWeek;
+    }
+
+    // Default to showing (treats undefined as week-level)
+    return true;
+  });
+}
+
+/**
+ * Filters resources by type from day-filtered assignments
+ *
+ * @param assignments - Day-filtered resource assignments
+ * @param resourceType - Type of resource to filter for
+ * @returns Filtered assignments of the specified type, sorted by order
+ */
+export function getResourcesByType(
+  assignments: WeekResourceAssignment[],
+  resourceType: WeekResourceAssignment['resourceType']
+): WeekResourceAssignment[] {
+  return assignments
+    .filter((a) => a.resourceType === resourceType)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
+/**
+ * Filters calls for a specific calendar date
+ *
+ * Calls are linked to weeks via linkedCallEventIds. This function filters
+ * those calls to find ones scheduled on a specific calendar date.
+ *
+ * @param week - The program instance week containing linkedCallEventIds
+ * @param dayCalendarDate - ISO date string (YYYY-MM-DD) to filter by
+ * @param events - Array of UnifiedEvent objects to filter
+ * @returns Filtered array of calls scheduled for the specified date
+ */
+export function getCallsForDay(
+  week: ProgramInstanceWeek,
+  dayCalendarDate: string,
+  events: UnifiedEvent[]
+): UnifiedEvent[] {
+  const weekCallIds = week.linkedCallEventIds || [];
+
+  if (weekCallIds.length === 0 || events.length === 0) {
+    return [];
+  }
+
+  // Create a set for faster lookup
+  const callIdSet = new Set(weekCallIds);
+
+  // Filter events linked to this week that fall on the specified date
+  return events.filter((event) => {
+    // Must be linked to this week
+    if (!callIdSet.has(event.id)) return false;
+
+    // Must have a start date/time
+    if (!event.startDateTime) return false;
+
+    // Extract date portion from startDateTime (ISO format: YYYY-MM-DDTHH:mm:ss)
+    const eventDate = event.startDateTime.split('T')[0];
+
+    // Match against the calendar date
+    return eventDate === dayCalendarDate;
+  });
+}
+
+/**
+ * Gets the day of week (1-7) from a calendar date string
+ *
+ * @param calendarDate - ISO date string (YYYY-MM-DD)
+ * @param weekStartsOnSunday - If true, Sunday=1, Saturday=7. If false, Monday=1, Sunday=7
+ * @returns Day of week as number 1-7
+ */
+export function getDayOfWeekFromDate(
+  calendarDate: string,
+  weekStartsOnSunday: boolean = false
+): number {
+  const date = new Date(calendarDate + 'T00:00:00');
+  const jsDay = date.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+
+  if (weekStartsOnSunday) {
+    // Sunday=1, Monday=2, ..., Saturday=7
+    return jsDay + 1;
+  } else {
+    // Monday=1, Tuesday=2, ..., Sunday=7
+    return jsDay === 0 ? 7 : jsDay;
+  }
+}
+
+/**
+ * Checks if a resource assignment should show on a given day
+ *
+ * @param assignment - The resource assignment to check
+ * @param dayOfWeek - Day of week (1-7)
+ * @returns true if the resource should show on this day
+ */
+export function shouldShowResourceOnDay(
+  assignment: WeekResourceAssignment,
+  dayOfWeek: number
+): boolean {
+  const tag = assignment.dayTag;
+
+  if (tag === 'week' || tag === 'daily') return true;
+  if (typeof tag === 'number') return tag === dayOfWeek;
+
+  // Default to showing (treats undefined as week-level)
+  return true;
+}
+
+/**
+ * Checks if a dayTag matches a specific day
+ *
+ * @param dayTag - The day tag to check
+ * @param dayOfWeek - Day of week (1-7)
+ * @returns true if the day tag matches
+ */
+export function dayTagMatchesDay(
+  dayTag: ResourceDayTag | undefined,
+  dayOfWeek: number
+): boolean {
+  if (!dayTag || dayTag === 'week' || dayTag === 'daily') return true;
+  if (typeof dayTag === 'number') return dayTag === dayOfWeek;
+  return true;
+}
+
 /**
  * Creates initial weeks for a program based on its length and assigns them to a module.
  *

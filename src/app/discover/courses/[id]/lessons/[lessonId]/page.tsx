@@ -1,10 +1,12 @@
 'use client';
 
-import { use, useMemo } from 'react';
+import { use, useMemo, useRef, useCallback, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCourse } from '@/hooks/useDiscover';
+import { useSingleContentProgress } from '@/hooks/useContentProgress';
 import { BackButton } from '@/components/discover';
+import { CheckCircle2, RotateCcw, Loader2 } from 'lucide-react';
 import type { CourseLesson, CourseModule } from '@/types/discover';
 
 interface LessonPageProps {
@@ -32,7 +34,7 @@ function findLessonContext(
 
   // Flatten all lessons with their module context
   const allLessons: { lesson: CourseLesson; module: CourseModule; moduleIndex: number; lessonIndex: number }[] = [];
-  
+
   modules.forEach((module, moduleIndex) => {
     module.lessons.forEach((lesson, lessonIndex) => {
       allLessons.push({ lesson, module, moduleIndex, lessonIndex });
@@ -41,7 +43,7 @@ function findLessonContext(
 
   // Find the target lesson and its neighbors
   const targetIndex = allLessons.findIndex(item => item.lesson.id === lessonId);
-  
+
   if (targetIndex !== -1) {
     const target = allLessons[targetIndex];
     foundLesson = target.lesson;
@@ -87,11 +89,66 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
   const { course, loading } = useCourse(courseId);
   const router = useRouter();
 
+  // Progress tracking
+  const {
+    progress,
+    isCompleted,
+    watchProgress: savedWatchProgress,
+    completionCount,
+    markComplete,
+    trackWatchProgress,
+  } = useSingleContentProgress('course_lesson', courseId, lessonId);
+
+  // Local state for video progress
+  const [currentWatchProgress, setCurrentWatchProgress] = useState(0);
+  const [isMarkingComplete, setIsMarkingComplete] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const lastSavedProgress = useRef(0);
+
   // Find lesson context within the course
   const lessonContext = useMemo(() => {
     if (!course) return null;
     return findLessonContext(course.modules, lessonId);
   }, [course, lessonId]);
+
+  // Track video progress
+  const handleTimeUpdate = useCallback(() => {
+    if (!videoRef.current) return;
+
+    const video = videoRef.current;
+    const progress = Math.round((video.currentTime / video.duration) * 100);
+    setCurrentWatchProgress(progress);
+
+    // Save progress every 10% increment
+    if (progress >= lastSavedProgress.current + 10) {
+      lastSavedProgress.current = progress;
+      trackWatchProgress('course_lesson', courseId, progress, { lessonId }).catch(console.error);
+    }
+  }, [courseId, lessonId, trackWatchProgress]);
+
+  // Auto-complete at 90% - handled by API
+  useEffect(() => {
+    if (currentWatchProgress >= 90 && !isCompleted) {
+      trackWatchProgress('course_lesson', courseId, currentWatchProgress, { lessonId }).catch(console.error);
+    }
+  }, [currentWatchProgress, isCompleted, courseId, lessonId, trackWatchProgress]);
+
+  // Mark complete manually
+  const handleMarkComplete = async () => {
+    setIsMarkingComplete(true);
+    try {
+      await markComplete({
+        contentType: 'course_lesson',
+        contentId: courseId,
+        lessonId,
+        watchProgress: currentWatchProgress,
+      });
+    } catch (err) {
+      console.error('Failed to mark lesson complete:', err);
+    } finally {
+      setIsMarkingComplete(false);
+    }
+  };
 
   // Format duration
   const formatDuration = (minutes: number) => {
@@ -192,17 +249,27 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
           </div>
 
           {/* Course Title (small) */}
-          <Link 
+          <Link
             href={`/discover/courses/${courseId}`}
             className="font-sans text-sm text-text-muted hover:text-text-secondary transition-colors"
           >
             {course.title}
           </Link>
 
-          {/* Lesson Title */}
-          <h1 className="font-albert font-medium text-2xl text-text-primary tracking-[-1.5px] leading-[1.3]">
-            {lesson.title}
-          </h1>
+          {/* Lesson Title with Completion Badge */}
+          <div className="flex items-start gap-3">
+            <h1 className="font-albert font-medium text-2xl text-text-primary tracking-[-1.5px] leading-[1.3] flex-1">
+              {lesson.title}
+            </h1>
+            {isCompleted && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 dark:bg-green-900/30 rounded-full">
+                <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <span className="text-xs font-medium text-green-700 dark:text-green-400">
+                  {completionCount > 1 ? `Watched ${completionCount}x` : 'Completed'}
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Meta info */}
           <div className="flex items-center gap-3 text-text-muted text-sm">
@@ -221,16 +288,30 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
       <section className="px-4 pb-4">
         <div className="relative w-full aspect-video bg-black rounded-[20px] overflow-hidden shadow-lg">
           {lesson.videoUrl ? (
-            <video
-              className="w-full h-full object-contain"
-              controls
-              poster={lesson.videoThumbnailUrl}
-              preload="metadata"
-            >
-              <source src={lesson.videoUrl} type="video/mp4" />
-              <source src={lesson.videoUrl} type="video/webm" />
-              Your browser does not support the video tag.
-            </video>
+            <>
+              <video
+                ref={videoRef}
+                className="w-full h-full object-contain"
+                controls
+                poster={lesson.videoThumbnailUrl}
+                preload="metadata"
+                onTimeUpdate={handleTimeUpdate}
+              >
+                <source src={lesson.videoUrl} type="video/mp4" />
+                <source src={lesson.videoUrl} type="video/webm" />
+                Your browser does not support the video tag.
+              </video>
+
+              {/* Progress indicator overlay */}
+              {currentWatchProgress > 0 && currentWatchProgress < 100 && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
+                  <div
+                    className="h-full bg-brand-accent transition-all duration-300"
+                    style={{ width: `${currentWatchProgress}%` }}
+                  />
+                </div>
+              )}
+            </>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-gradient-to-br from-earth-600 to-earth-800">
               <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-4">
@@ -243,6 +324,39 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
             </div>
           )}
         </div>
+
+        {/* Mark Complete Button */}
+        {lesson.videoUrl && (
+          <div className="flex items-center justify-end mt-3 gap-3">
+            {isCompleted ? (
+              <button
+                onClick={handleMarkComplete}
+                disabled={isMarkingComplete}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-earth-600 dark:text-brand-accent hover:bg-earth-100 dark:hover:bg-[#262b35] rounded-lg transition-colors"
+              >
+                {isMarkingComplete ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4" />
+                )}
+                Watch Again
+              </button>
+            ) : (
+              <button
+                onClick={handleMarkComplete}
+                disabled={isMarkingComplete}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-earth-500 dark:bg-brand-accent text-white rounded-lg hover:bg-earth-600 dark:hover:bg-brand-accent/90 transition-colors disabled:opacity-50"
+              >
+                {isMarkingComplete ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4" />
+                )}
+                Mark Complete
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Lesson Content / Notes */}
@@ -314,7 +428,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
             {module.lessons.map((moduleLesson, idx) => {
               const isCurrentLesson = moduleLesson.id === lesson.id;
               const isLocked = moduleLesson.isLocked;
-              
+
               return (
                 <div
                   key={moduleLesson.id}
@@ -324,10 +438,10 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
                     }
                   }}
                   className={`px-4 py-3 flex items-center justify-between ${
-                    isCurrentLesson 
-                      ? 'bg-earth-50 dark:bg-[#1e222a]' 
-                      : isLocked 
-                        ? 'opacity-60' 
+                    isCurrentLesson
+                      ? 'bg-earth-50 dark:bg-[#1e222a]'
+                      : isLocked
+                        ? 'opacity-60'
                         : 'hover:bg-earth-50 dark:hover:bg-[#1e222a] cursor-pointer'
                   }`}
                 >
@@ -380,4 +494,3 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
     </div>
   );
 }
-

@@ -6,8 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { BackButton, CopyLinkButton, AddToContentButton, RichContent, ContentLandingPage, ContentPurchaseSheet } from '@/components/discover';
 import { Button } from '@/components/ui/button';
-import { User, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, AlertCircle, CheckCircle, BookOpen, RotateCcw } from 'lucide-react';
 import type { DiscoverArticle } from '@/types/discover';
+import { useSingleContentProgress } from '@/hooks/useContentProgress';
 
 interface ArticlePageProps {
   params: Promise<{ id: string }>;
@@ -324,13 +325,37 @@ function ArticleContent({
   includedInProgramName?: string;
   id: string;
 }) {
+  const [isMarkingRead, setIsMarkingRead] = useState(false);
+
+  // Content progress tracking
+  const {
+    isCompleted,
+    completionCount,
+    markComplete,
+  } = useSingleContentProgress('article', id);
+
+  // Handle marking article as read
+  const handleMarkAsRead = async () => {
+    setIsMarkingRead(true);
+    try {
+      await markComplete({
+        contentType: 'article',
+        contentId: id,
+      });
+    } catch (err) {
+      console.error('Failed to mark article as read:', err);
+    } finally {
+      setIsMarkingRead(false);
+    }
+  };
+
   // Format publication date
   const formatPublishedDate = () => {
     const date = new Date(article.publishedAt);
-    return date.toLocaleDateString('en-US', { 
-      month: 'long', 
-      day: 'numeric', 
-      year: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
@@ -362,6 +387,13 @@ function ArticleContent({
           <div className="flex items-center justify-between">
             <BackButton />
             <div className="flex items-center gap-2">
+              {/* Completion badge */}
+              {isCompleted && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-sm font-medium">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>{completionCount > 1 ? `Read ${completionCount}x` : 'Read'}</span>
+                </div>
+              )}
               <AddToContentButton
                 contentType="article"
                 contentId={id}
@@ -461,6 +493,30 @@ function ArticleContent({
             <p className="font-sans text-sm text-text-muted leading-[1.2]">
               Published {formatPublishedDate()}
             </p>
+          </div>
+
+          {/* Mark as Read Section */}
+          <div className="pt-6 border-t border-earth-200 dark:border-[#262b35]">
+            {isCompleted ? (
+              <Button
+                onClick={handleMarkAsRead}
+                disabled={isMarkingRead}
+                variant="outline"
+                className="w-full py-3 flex items-center justify-center gap-2 rounded-xl border-earth-300 dark:border-[#3a4150] text-text-secondary hover:bg-earth-50 dark:hover:bg-[#1d222b]"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>{isMarkingRead ? 'Marking...' : 'Read Again'}</span>
+              </Button>
+            ) : (
+              <Button
+                onClick={handleMarkAsRead}
+                disabled={isMarkingRead}
+                className="w-full py-3 flex items-center justify-center gap-2 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-xl"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>{isMarkingRead ? 'Marking...' : 'Mark as Read'}</span>
+              </Button>
+            )}
           </div>
         </div>
       </section>

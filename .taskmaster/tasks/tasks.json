@@ -2,165 +2,173 @@
   "master": {
     "tasks": [
       {
-        "id": "135",
-        "title": "Fix Critical Cohort Day Index Calculation Bug",
-        "description": "Ensure ALL cohort members use cohort.startDate for day index calculation instead of individual enrollment.startedAt to prevent late joiners from seeing wrong day",
-        "details": "Modify calculateCurrentDayIndexV2() function in src/lib/program-engine.ts to:\n1. For group programs with cohort, ALWAYS use cohort.startDate as the reference date\n2. Ignore individual enrollment.startedAt for cohort members\n3. Add assertion/warning if cohort program attempts to use enrollment date\n4. Preserve individual enrollment.startedAt usage for individual programs\n\nImplementation:\n```typescript\nfunction calculateCurrentDayIndexV2(enrollment, program, cohort?) {\n  if (program.type === 'group' && cohort) {\n    // CRITICAL: Use cohort start date for ALL members\n    const referenceDate = cohort.startDate;\n    if (enrollment.startedAt !== cohort.startDate) {\n      console.warn('Cohort member using cohort.startDate, not enrollment.startedAt');\n    }\n    return calculateDaysBetween(referenceDate, new Date());\n  }\n  // Individual programs use enrollment date\n  return calculateDaysBetween(enrollment.startedAt, new Date());\n}\n```",
-        "testStrategy": "Test scenarios: 1) Member joins cohort on day 50 should see day 50 (not day 1), 2) All cohort members see same day index regardless of join date, 3) Individual programs still use enrollment.startedAt, 4) Add unit tests for edge cases like cohort starting in past/future",
+        "id": "167",
+        "title": "Add Content Progress and Resource Assignment Types",
+        "description": "Define TypeScript interfaces for content progress tracking and week resource assignments with day-level targeting",
+        "details": "Add ContentProgress interface with fields: id, userId, organizationId, contentType ('course'|'course_module'|'course_lesson'|'article'), contentId, moduleId?, lessonId?, status ('not_started'|'in_progress'|'completed'), progressPercent?, startedAt?, completedAt?, lastAccessedAt, instanceId?, weekIndex?, dayIndex?, completionCount (default 1), firstCompletedAt?, watchProgress?, autoCompleted?, manuallyCompleted?, createdAt, updatedAt. Add WeekResourceAssignment interface with: id, resourceType ('course'|'article'|'download'|'link'|'questionnaire'), resourceId, dayTag ('week'|'daily'|1|2|3|4|5|6|7), moduleIds?, lessonIds?, title?, description?, isRequired?, order?. Update ProgramInstanceWeek to include resourceAssignments?: WeekResourceAssignment[] field.",
+        "testStrategy": "Verify TypeScript compilation passes, interfaces match schema requirements, and all optional fields are properly typed",
         "priority": "high",
         "dependencies": [],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-10T09:14:38.172Z"
+        "updatedAt": "2026-01-16T14:28:24.997Z"
       },
       {
-        "id": "136",
-        "title": "Stop Creating Future Tasks in Client Week Sync",
-        "description": "Modify client week sync to only create tasks for today and past days, not future days, to prevent database pollution and migration issues",
-        "details": "Update src/app/api/coach/org-programs/[programId]/client-weeks/[clientWeekId]/route.ts:\n1. Add date comparison logic in sync loop\n2. Skip days where calculated date > today\n3. Add logging for skipped future days\n4. Let cron handle future task creation\n\nImplementation:\n```typescript\nfor (const dayData of weekData.days) {\n  const dayDate = calculateDateForDayIndex(enrollment, dayIndex);\n  const today = new Date().toISOString().split('T')[0];\n  \n  if (dayDate > today) {\n    console.log(`Skipping future day ${dayIndex} (${dayDate}) - will be created by cron`);\n    continue;\n  }\n  \n  // Proceed with task creation for today/past days only\n  await syncProgramTasksForDay({\n    userId: enrollment.userId,\n    enrollmentId: enrollment.id,\n    date: dayDate,\n    mode: 'override-program-sourced',\n    coachUserId: req.userId\n  });\n}\n```",
-        "testStrategy": "Verify: 1) Saving week for days 8-14 on day 9 creates tasks for days 8-9 only, 2) Days 10-14 have no tasks in database after save, 3) Cron creates remaining tasks when days arrive, 4) No duplicate tasks created",
+        "id": "168",
+        "title": "Create Content Progress API Endpoints",
+        "description": "Implement REST API endpoints for content progress tracking with CRUD operations",
+        "details": "Create /api/content-progress/route.ts with GET (list user progress with filters for contentType, instanceId, userId) and POST (create/update progress record). Create /api/content-progress/[id]/route.ts with PATCH (update status, completedAt, progressPercent). Create /api/content-progress/complete/route.ts with POST (mark content complete, increment completionCount, set completedAt). Include proper error handling, validation, and MongoDB operations. Support filtering by userId, instanceId, contentType, and contentId.",
+        "testStrategy": "Test all CRUD operations, verify filtering works correctly, test error cases (invalid IDs, missing fields), validate response formats match ContentProgress interface",
         "priority": "high",
         "dependencies": [
-          "135"
+          "167"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-10T09:15:15.517Z"
+        "updatedAt": "2026-01-16T14:30:43.321Z"
       },
       {
-        "id": "137",
-        "title": "Stop Creating Future Tasks in Cohort Day Sync",
-        "description": "Apply same future-day filtering logic to cohort day sync to maintain consistency across individual and group programs",
-        "details": "Update src/app/api/coach/org-programs/[programId]/cohort-days/route.ts with identical logic:\n1. Calculate day date for each cohort member\n2. Skip sync if date > today\n3. Log skipped operations\n4. Ensure all cohort members get same treatment\n\nImplementation:\n```typescript\nfor (const enrollment of cohortEnrollments) {\n  const dayDate = calculateDateForDayIndex(enrollment, dayIndex, cohort);\n  const today = new Date().toISOString().split('T')[0];\n  \n  if (dayDate > today) {\n    console.log(`Skipping future cohort day ${dayIndex} for user ${enrollment.userId}`);\n    continue;\n  }\n  \n  await syncProgramTasksForDay({\n    userId: enrollment.userId,\n    enrollmentId: enrollment.id,\n    date: dayDate,\n    mode: 'override-program-sourced',\n    coachUserId: req.userId\n  });\n}\n```",
-        "testStrategy": "Test: 1) Cohort day sync respects future date filtering, 2) All cohort members treated consistently, 3) No future tasks created for any cohort member, 4) Integration with fixed day index calculation from task 135",
+        "id": "169",
+        "title": "Add Program Utility Helper Functions",
+        "description": "Create helper functions for day-level resource resolution and call scheduling",
+        "details": "Add to src/lib/program-utils.ts: getResourcesForDay(week: ProgramInstanceWeek, dayOfWeek: number) that filters resourceAssignments by dayTag logic (week=always, daily=always, number=match). Add getCallsForDay(week: ProgramInstanceWeek, dayCalendarDate: string, events: UnifiedEvent[]) that filters linkedCallEventIds by scheduledTime date match. Add ClientDayContent interface with tasks, habits, calls, courses (with assignment+course+progress), articles (with assignment+article+progress), downloads, links arrays. Include proper TypeScript typing and JSDoc comments.",
+        "testStrategy": "Unit test dayTag filtering logic (week, daily, specific day numbers), test call date matching with various ISO date formats, verify return types match interfaces",
+        "priority": "medium",
+        "dependencies": [
+          "167"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-16T14:32:06.518Z"
+      },
+      {
+        "id": "170",
+        "title": "Create Content Progress React Hook",
+        "description": "Build custom React hook for managing content progress state and API interactions",
+        "details": "Create src/hooks/useContentProgress.ts with functions: fetchProgress(userId, filters), markComplete(contentType, contentId, moduleId?, lessonId?), updateProgress(id, updates), getProgressForContent(contentType, contentId). Include loading states, error handling, and optimistic updates. Support real-time progress tracking for video watch progress. Cache progress data and invalidate on updates. Return progress arrays, completion status checkers, and mutation functions.",
+        "testStrategy": "Test hook with various content types, verify optimistic updates work correctly, test error handling and loading states, validate cache invalidation",
+        "priority": "medium",
+        "dependencies": [
+          "168"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-16T14:33:17.537Z"
+      },
+      {
+        "id": "171",
+        "title": "Update WeekEditor with Unified Resource Management",
+        "description": "Replace individual resource linking with unified resourceAssignments system including dayTag selection",
+        "details": "Update src/components/coach/programs/WeekEditor.tsx to replace linkedArticleIds, linkedDownloadIds, linkedLinkIds, linkedQuestionnaireIds, linkedCourseIds with unified resourceAssignments management. Add dayTag selector UI with options: 'Week-level', 'Daily', 'Monday', 'Tuesday', etc. Include drag-and-drop reordering, isRequired checkbox, title/description overrides. Add resource type icons and preview cards. Maintain backward compatibility during migration period. Include validation for required fields and duplicate prevention.",
+        "testStrategy": "Test resource assignment CRUD operations, verify dayTag selector works correctly, test drag-and-drop reordering, validate form submission and data persistence",
+        "priority": "medium",
+        "dependencies": [
+          "167",
+          "169"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-16T14:42:57.334Z"
+      },
+      {
+        "id": "172",
+        "title": "Enhance DayPreviewPopup with Complete Day Content",
+        "description": "Update DayPreviewPopup to show all day-specific content including courses, articles, downloads, links, and actual call details",
+        "details": "Update src/components/coach/programs/DayPreviewPopup.tsx to accept week, events, calendarDate, contentProgress, and resource lookup props. Replace session count with actual call details (title, time, completion status). Add courses section showing modules/lessons with per-lesson progress checkmarks. Add articles section with read/unread status. Add downloads and links sections with action buttons. Integrate with getResourcesForDay() and getCallsForDay() helpers. Show completion percentages and required content warnings.",
+        "testStrategy": "Test with various dayTag combinations, verify call details display correctly, test progress status indicators, validate resource filtering by day",
+        "priority": "medium",
+        "dependencies": [
+          "169",
+          "170"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-01-16T14:35:11.993Z"
+      },
+      {
+        "id": "173",
+        "title": "Implement Course Progress Tracking in CourseViewer",
+        "description": "Add per-lesson completion tracking with video progress monitoring and manual completion options",
+        "details": "Update src/components/discover/CourseViewer.tsx to track lesson-level progress. Add 'Mark Complete' button to each lesson. Implement video progress tracking with progress bar (0-100%). Auto-complete lessons at 90% watch time. Show checkmarks for completed lessons and 'Completed (watched 2x)' badges for re-watches. Add 'Watch Again' button post-completion. Call content-progress API on completion events. Display course-level progress as aggregated lesson completion percentage. Include loading states and error handling for progress updates.",
+        "testStrategy": "Test video progress tracking accuracy, verify auto-completion at 90%, test manual completion button, validate re-watch tracking, test API integration for progress updates",
         "priority": "high",
         "dependencies": [
-          "136"
+          "168",
+          "170"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-10T09:16:01.965Z"
+        "updatedAt": "2026-01-16T14:38:36.393Z"
       },
       {
-        "id": "138",
-        "title": "Remove Runtime Template Fallback in Daily Sync",
-        "description": "Eliminate the 5-level template fallback chain in daily sync functions, making client/cohort editor the single source of truth",
-        "details": "Modify syncProgramV2TasksForToday() in src/lib/program-engine.ts:\n1. Remove fallback to program_weeks and program_days\n2. Only read from client_program_days (individual) or cohort_program_days (group)\n3. Return empty array if no editor content exists\n4. Add clear logging when no content found\n\nImplementation:\n```typescript\nasync function syncProgramV2TasksForToday(enrollment, program, cohort?) {\n  const dayIndex = calculateCurrentDayIndexV2(enrollment, program, cohort);\n  \n  let dayTasks = [];\n  if (program.type === 'group' && cohort) {\n    // Only check cohort_program_days - NO template fallback\n    dayTasks = await getCohortProgramDay(cohort.id, dayIndex);\n  } else {\n    // Only check client_program_days - NO template fallback\n    dayTasks = await getClientProgramDay(enrollment.id, dayIndex);\n  }\n  \n  if (!dayTasks || dayTasks.length === 0) {\n    console.log(`No program content found for day ${dayIndex} - coach must set up editor`);\n    return [];\n  }\n  \n  return dayTasks;\n}\n```",
-        "testStrategy": "Verify: 1) Template is never read at runtime, 2) Empty editor results in no program tasks, 3) Client/cohort editor is sole source, 4) Proper logging when content missing, 5) No performance impact from removed fallback chain",
+        "id": "174",
+        "title": "Implement Article Progress Tracking in ArticleViewer",
+        "description": "Add article completion tracking with manual 'Mark as Read' functionality",
+        "details": "Update src/components/discover/ArticleViewer.tsx to include 'Mark as Read' button at bottom of article content. Show '✓ Read' badge after completion with completion timestamp. Call POST /api/content-progress/complete when user marks article as read. Optional: Add scroll progress tracking for engagement metrics (progressPercent field). Include undo functionality and re-read tracking. Display read status in article lists and search results. Handle loading states during progress updates.",
+        "testStrategy": "Test mark as read functionality, verify completion status persistence, test scroll progress tracking if implemented, validate API integration",
         "priority": "medium",
         "dependencies": [
-          "137"
+          "168",
+          "170"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-10T09:16:30.465Z"
+        "updatedAt": "2026-01-16T14:39:44.615Z"
       },
       {
-        "id": "139",
-        "title": "Remove Runtime Template Fallback in Client Sync",
-        "description": "Apply same template fallback removal to coach-triggered sync function for consistency",
-        "details": "Update syncProgramTasksToClientDay() in src/lib/program-engine.ts:\n1. Remove template fallback chain logic\n2. Only use client/cohort program days as source\n3. Maintain same behavior as daily sync\n4. Ensure coach-triggered sync is consistent with cron sync\n\nImplementation:\n```typescript\nasync function syncProgramTasksToClientDay(params) {\n  const { enrollment, program, dayIndex, cohort } = params;\n  \n  // NO template fallback - editor content only\n  let dayContent;\n  if (program.type === 'group' && cohort) {\n    dayContent = await getCohortProgramDay(cohort.id, dayIndex);\n  } else {\n    dayContent = await getClientProgramDay(enrollment.id, dayIndex);\n  }\n  \n  if (!dayContent) {\n    console.log(`No editor content for day ${dayIndex} - skipping sync`);\n    return { created: 0, updated: 0 };\n  }\n  \n  // Proceed with task creation from editor content only\n  return await createTasksFromDayContent(dayContent, params);\n}\n```",
-        "testStrategy": "Test: 1) Coach sync matches cron sync behavior, 2) No template reads during coach operations, 3) Consistent empty handling, 4) Same logging patterns as daily sync",
+        "id": "175",
+        "title": "Create Resource Assignment Migration Script",
+        "description": "Build migration utility to convert existing resource linking to unified resourceAssignments format",
+        "details": "Create migration script in src/lib/migrations/ to convert existing ProgramInstanceWeek records. Transform linkedArticleIds, linkedDownloadIds, linkedLinkIds, linkedQuestionnaireIds, linkedCourseIds into resourceAssignments with dayTag: 'week'. Convert courseAssignments to unified format preserving moduleIds and lessonIds. Generate unique IDs for each assignment. Preserve order and add default isRequired: false. Include rollback functionality and dry-run mode. Log migration progress and handle errors gracefully. Batch process to avoid memory issues.",
+        "testStrategy": "Test migration with sample data, verify data integrity before/after migration, test rollback functionality, validate converted data structure matches new schema",
         "priority": "medium",
         "dependencies": [
-          "138"
+          "167"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-10T09:17:18.341Z"
+        "updatedAt": "2026-01-16T14:41:01.182Z"
       },
       {
-        "id": "140",
-        "title": "Create Unified Sync Function",
-        "description": "Develop single syncProgramTasksForDay() function to replace all existing sync functions with clear, predictable behavior",
-        "details": "Create new unified function in src/lib/program-engine.ts:\n\n```typescript\ninterface SyncProgramTasksParams {\n  userId: string;\n  enrollmentId: string;\n  date: string; // YYYY-MM-DD\n  mode: 'fill-empty' | 'override-program-sourced';\n  coachUserId?: string;\n}\n\nasync function syncProgramTasksForDay(params: SyncProgramTasksParams) {\n  const { userId, enrollmentId, date, mode, coachUserId } = params;\n  \n  // 1. Get enrollment and program\n  const enrollment = await getEnrollment(enrollmentId);\n  const program = await getProgram(enrollment.programId);\n  const cohort = program.type === 'group' ? await getCohort(enrollment.cohortId) : null;\n  \n  // 2. Calculate dayIndex using fixed cohort logic\n  const dayIndex = calculateDayIndexFromDate(date, enrollment, program, cohort);\n  \n  // 3. Get tasks from editor (NO template fallback)\n  const dayContent = await getProgramDayContent(enrollment, program, cohort, dayIndex);\n  if (!dayContent) return { created: 0, updated: 0, skipped: 1 };\n  \n  // 4. Apply distribution if week-sourced\n  const distributedTasks = await distributeTasksForDay(dayContent, dayIndex);\n  \n  // 5. Check existing tasks and handle based on mode\n  return await syncTasksWithMode(distributedTasks, params);\n}\n```",
-        "testStrategy": "Test all sync scenarios: 1) Cron daily sync, 2) Coach manual sync, 3) Week distribution, 4) Individual vs cohort programs, 5) Fill-empty vs override modes, 6) Proper deduplication by programTaskId",
-        "priority": "high",
-        "dependencies": [
-          "139"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-10T09:17:53.543Z"
-      },
-      {
-        "id": "141",
-        "title": "Deprecate Old Sync Functions",
-        "description": "Mark existing sync functions as deprecated and route them through the new unified function for backward compatibility",
-        "details": "Update src/lib/program-engine.ts to deprecate old functions:\n\n```typescript\n/**\n * @deprecated Use syncProgramTasksForDay() instead\n */\nasync function syncProgramV2TasksForToday(enrollment, program, cohort?) {\n  console.warn('syncProgramV2TasksForToday is deprecated, use syncProgramTasksForDay');\n  \n  const today = new Date().toISOString().split('T')[0];\n  return await syncProgramTasksForDay({\n    userId: enrollment.userId,\n    enrollmentId: enrollment.id,\n    date: today,\n    mode: 'fill-empty'\n  });\n}\n\n/**\n * @deprecated Use syncProgramTasksForDay() instead\n */\nasync function syncProgramTasksToClientDay(params) {\n  console.warn('syncProgramTasksToClientDay is deprecated');\n  return await syncProgramTasksForDay({\n    userId: params.userId,\n    enrollmentId: params.enrollmentId,\n    date: params.date,\n    mode: 'override-program-sourced',\n    coachUserId: params.coachUserId\n  });\n}\n\n// Remove syncProgramTasksAuto() and syncWeeklyTasks() entirely\n```",
-        "testStrategy": "Verify: 1) Existing code continues to work through deprecated wrappers, 2) Deprecation warnings appear in logs, 3) New unified function handles all use cases, 4) No breaking changes for current integrations",
+        "id": "176",
+        "title": "Update Client Today View with Day Content",
+        "description": "Enhance client's Today view to display day-specific resources and progress tracking",
+        "details": "Update client Today view component to show day-resolved content using getResourcesForDay() helper. Display courses with lesson-level progress, articles with read status, downloads with download buttons, and links with click tracking. Show scheduled calls with actual details instead of counts. Include progress indicators and completion percentages. Add quick-complete actions for articles and lessons. Filter content by dayTag matching current day of week. Include loading states and error handling for progress data.",
+        "testStrategy": "Test day content resolution accuracy, verify progress indicators display correctly, test quick-complete actions, validate content filtering by current day",
         "priority": "medium",
         "dependencies": [
-          "140"
+          "169",
+          "170",
+          "172"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-10T09:18:33.237Z"
+        "updatedAt": "2026-01-16T14:46:42.848Z"
       },
       {
-        "id": "142",
-        "title": "Remove Lazy Sync from Task Fetch API",
-        "description": "Eliminate sync-on-demand from GET /api/tasks to improve performance and reduce race conditions",
-        "details": "Update src/app/api/tasks/route.ts GET handler:\n1. Remove syncProgramV2TasksForToday() call\n2. Keep migration logic for user tasks only\n3. Add comment explaining cron handles program tasks\n4. Ensure fast response times\n\nImplementation:\n```typescript\nexport async function GET(request: NextRequest) {\n  // ... auth and parsing ...\n  \n  // REMOVED: No more lazy sync - cron creates program tasks\n  // await syncProgramV2TasksForToday(enrollment, program, cohort);\n  \n  // Keep migration for user tasks only (not program tasks)\n  if (shouldMigrateUserTasks(userId, date)) {\n    await migrateUserTasksOnly(userId, date);\n  }\n  \n  // Fetch tasks (program tasks already exist from cron)\n  const tasks = await getTasks(userId, date, filters);\n  \n  return NextResponse.json({ tasks });\n}\n```",
-        "testStrategy": "Performance test: 1) GET /api/tasks response time improves significantly, 2) No sync overhead on app open, 3) Program tasks exist from cron before user needs them, 4) User task migration still works correctly",
+        "id": "177",
+        "title": "Add Sessions Section to WeekEditor",
+        "description": "Create comprehensive sessions management UI showing calls, recordings, and summaries with proper status tracking",
+        "details": "Add Sessions section to WeekEditor showing scheduled calls from linkedCallEventIds with completion status, summary availability, and manual upload options. Display call details (title, date/time, status), summary status (processing/ready/failed), and action buttons (View Summary, Upload Manually, Retry). Include standalone recordings section for week-specific uploads not tied to scheduled calls. Show proper status indicators: upcoming (no summary), processing (summary in progress), ready (summary available), failed (retry options). Integrate with existing UnifiedEvent and CallSummary data structures.",
+        "testStrategy": "Test call status display accuracy, verify summary status indicators, test manual upload functionality, validate integration with existing call/summary data",
         "priority": "medium",
         "dependencies": [
-          "141"
+          "167"
         ],
         "status": "done",
         "subtasks": [],
-        "updatedAt": "2026-01-10T09:19:20.066Z"
+        "updatedAt": "2026-01-16T14:44:21.794Z"
       },
       {
-        "id": "143",
-        "title": "Enhance Cron for Comprehensive Task Creation",
-        "description": "Update cron job to reliably create tasks for today and tomorrow using the new unified sync function",
-        "details": "Update src/app/api/cron/programs-daily-sync/route.ts:\n1. Use new syncProgramTasksForDay() function\n2. Create tasks for today AND tomorrow (buffer)\n3. Handle both individual and cohort programs\n4. Add comprehensive error handling and logging\n\nImplementation:\n```typescript\nexport async function GET() {\n  const today = new Date().toISOString().split('T')[0];\n  const tomorrow = new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0];\n  \n  const enrollments = await getActiveEnrollments();\n  \n  for (const enrollment of enrollments) {\n    try {\n      // Create tasks for today and tomorrow\n      for (const date of [today, tomorrow]) {\n        await syncProgramTasksForDay({\n          userId: enrollment.userId,\n          enrollmentId: enrollment.id,\n          date: date,\n          mode: 'fill-empty' // Don't override existing tasks\n        });\n      }\n    } catch (error) {\n      console.error(`Cron sync failed for enrollment ${enrollment.id}:`, error);\n    }\n  }\n  \n  return NextResponse.json({ success: true, processed: enrollments.length });\n}\n```",
-        "testStrategy": "Test: 1) Cron runs every 6 hours successfully, 2) Creates tasks for today and tomorrow, 3) Handles individual and cohort programs, 4) Proper error handling doesn't break entire batch, 5) No duplicate task creation",
-        "priority": "high",
-        "dependencies": [
-          "142"
-        ],
-        "status": "done",
-        "subtasks": [],
-        "updatedAt": "2026-01-10T09:20:41.245Z"
-      },
-      {
-        "id": "144",
-        "title": "Make Client Program Weeks UI-Only",
-        "description": "Convert week-level storage to UI convenience while making day-level storage the authoritative source for task sync",
-        "details": "Update src/lib/program-utils.ts:\n1. Make distributeClientWeeklyTasksToDays() run immediately on week save\n2. Update client_program_days documents directly\n3. Ensure sync only reads from day documents\n4. Keep week view as UI convenience\n\nImplementation:\n```typescript\nasync function saveClientProgramWeek(weekData) {\n  // Save week data for UI\n  await updateClientProgramWeek(weekData);\n  \n  // IMMEDIATELY distribute to days (authoritative source)\n  const distributedDays = distributeClientWeeklyTasksToDays(weekData);\n  \n  for (const dayData of distributedDays) {\n    await updateClientProgramDay({\n      enrollmentId: weekData.enrollmentId,\n      dayIndex: dayData.dayIndex,\n      tasks: dayData.tasks,\n      updatedAt: new Date()\n    });\n  }\n  \n  // Sync reads from days only, never from weeks\n  console.log(`Week ${weekData.weekIndex} distributed to ${distributedDays.length} days`);\n}\n```",
-        "testStrategy": "Verify: 1) Editing week immediately updates day documents, 2) Sync never reads from week documents, 3) Week view UI works correctly, 4) Backward compatibility with existing data, 5) Day documents are always up-to-date",
-        "priority": "medium",
-        "dependencies": [
-          "143"
-        ],
-        "status": "in-progress",
-        "subtasks": [],
-        "updatedAt": "2026-01-10T09:20:41.256Z"
-      },
-      {
-        "id": "145",
-        "title": "Remove Dead Code and Template Fallbacks",
-        "description": "Clean up unused functions, template fallback code paths, and deprecated sync logic",
-        "details": "Clean up src/lib/program-engine.ts and src/lib/program-utils.ts:\n1. Remove template fallback code paths completely\n2. Remove bodies of deprecated sync functions (keep wrappers)\n3. Remove any program_weeks/program_days reads in sync paths\n4. Add TODO comments for future complete removal\n\nImplementation:\n```typescript\n// Remove these functions entirely:\n// - getTemplateTasksForDay()\n// - buildTemplateFallbackChain()\n// - syncWeeklyTasks()\n// - syncProgramTasksAuto()\n\n// Keep deprecated wrappers but remove complex bodies:\nfunction syncProgramV2TasksForToday() {\n  // TODO: Remove in next major version\n  return syncProgramTasksForDay(/* mapped params */);\n}\n\n// Remove all references to:\n// - program_weeks collection reads in sync\n// - program_days collection reads in sync\n// - template fallback chains\n```",
-        "testStrategy": "Code review: 1) No template reads in sync code paths, 2) Deprecated functions are simple wrappers only, 3) No dead code remains, 4) All sync goes through unified function, 5) Clean, maintainable codebase",
+        "id": "178",
+        "title": "Implement Content Progress Dashboard and Reporting",
+        "description": "Create coach dashboard views for monitoring client content progress across programs and cohorts",
+        "details": "Build content progress dashboard showing completion rates by content type, client progress summaries, and required content compliance. For cohorts, show aggregate completion percentages (e.g., 'Module 2: 8/12 members completed (67%)'). Include drill-down views to see individual client progress and specific incomplete items. Add progress charts, completion timelines, and engagement metrics. Show re-watch/re-read statistics for content effectiveness analysis. Include filters by program, week, content type, and completion status. Export progress reports for client review meetings.",
+        "testStrategy": "Test progress aggregation accuracy, verify cohort vs individual views, test filtering and sorting functionality, validate export functionality and report accuracy",
         "priority": "low",
         "dependencies": [
-          "144"
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": "146",
-        "title": "Add Comprehensive Integration Tests",
-        "description": "Create end-to-end tests for the simplified program task flow covering all critical scenarios",
-        "details": "Create test suite covering:\n1. Coach saves week → only today/past tasks created\n2. Cron runs → tomorrow's tasks created\n3. Late cohort joiner → sees cohort's current day\n4. Template sync → preserves manual tasks\n5. Coach edits coach-added task → propagates\n6. Coach tries to edit client task → blocked\n\nTest implementation:\n```typescript\ndescribe('Simplified Program Engine', () => {\n  test('coach week save creates only past/present tasks', async () => {\n    const weekData = createTestWeekData(/* days 8-14 */);\n    await saveClientProgramWeek(weekData);\n    \n    const futureTasks = await getTasksForDays([10, 11, 12, 13, 14]);\n    expect(futureTasks).toHaveLength(0);\n    \n    const presentTasks = await getTasksForDays([8, 9]);\n    expect(presentTasks.length).toBeGreaterThan(0);\n  });\n  \n  test('cohort member sees cohort day regardless of join date', async () => {\n    const cohort = await createTestCohort({ startDate: '2024-01-01' });\n    const lateJoiner = await enrollUserInCohort(userId, cohort.id, '2024-01-15');\n    \n    const dayIndex = calculateCurrentDayIndexV2(lateJoiner, program, cohort);\n    expect(dayIndex).toBe(15); // Cohort day, not member day 1\n  });\n  \n  // ... more comprehensive tests\n});\n```",
-        "testStrategy": "Full test coverage: 1) Unit tests for all new functions, 2) Integration tests for complete flows, 3) Edge case testing (weekends, cycling programs), 4) Performance regression tests, 5) Backward compatibility verification",
-        "priority": "medium",
-        "dependencies": [
-          "145"
+          "168",
+          "170"
         ],
         "status": "pending",
         "subtasks": []
@@ -168,9 +176,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-10T09:20:41.256Z",
+      "lastModified": "2026-01-16T14:46:42.848Z",
       "taskCount": 12,
-      "completedCount": 9,
+      "completedCount": 11,
       "tags": [
         "master"
       ]

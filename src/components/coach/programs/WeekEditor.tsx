@@ -2311,30 +2311,70 @@ export function WeekEditor({
                   {formData.linkedCallEventIds.map((eventId) => {
                     const event = availableEvents.find(e => e.id === eventId);
                     const isRecurringInstance = event?.parentEventId;
+                    const eventDate = event?.startDateTime ? new Date(event.startDateTime) : null;
+                    const isPast = eventDate ? eventDate < new Date() : false;
+                    const isToday = eventDate ? eventDate.toDateString() === new Date().toDateString() : false;
+                    // Check if this call has a linked summary
+                    const hasSummary = availableCallSummaries.some(s => s.eventId === eventId);
+
                     return (
                       <div
                         key={eventId}
-                        className="flex items-center gap-2 p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-xl group"
+                        className={cn(
+                          "flex items-center gap-2 p-3 rounded-xl group",
+                          isPast && !hasSummary
+                            ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+                            : hasSummary
+                            ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+                            : isToday
+                            ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+                            : "bg-[#faf8f6] dark:bg-[#1e222a]"
+                        )}
                       >
-                        <Calendar className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                        {hasSummary ? (
+                          <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        ) : isToday ? (
+                          <Calendar className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                        ) : isPast ? (
+                          <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                        ) : (
+                          <Calendar className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                        )}
                         <div className="flex-1 min-w-0">
                           <span className="block text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
                             {event?.title || `Call ${eventId.slice(0, 8)}...`}
                           </span>
-                          {event?.startDateTime && (
-                            <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                              {new Date(event.startDateTime).toLocaleDateString('en-US', {
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit',
-                              })}
-                              {isRecurringInstance && (
-                                <span className="ml-1.5 text-brand-accent">• Recurring</span>
-                              )}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {eventDate && (
+                              <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                                {eventDate.toLocaleDateString('en-US', {
+                                  weekday: 'short',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            )}
+                            {isRecurringInstance && (
+                              <span className="text-xs text-brand-accent">• Recurring</span>
+                            )}
+                            {hasSummary && (
+                              <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                                • Summary ready
+                              </span>
+                            )}
+                            {isPast && !hasSummary && (
+                              <span className="text-xs text-amber-600 dark:text-amber-400">
+                                • No summary
+                              </span>
+                            )}
+                            {isToday && (
+                              <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                • Today
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <button
                           onClick={() => removeEventLink(eventId)}
@@ -2408,32 +2448,87 @@ export function WeekEditor({
               {formData.linkedSummaryIds.map((summaryId) => {
                 const summary = availableCallSummaries.find(s => s.id === summaryId);
                 const summaryLabel = summary ? getSummaryLabel(summary) : `Summary ${summaryId.slice(0, 8)}...`;
+                const summaryStatus = summary?.status || 'completed';
+                const isProcessing = summaryStatus === 'processing';
+                const isFailed = summaryStatus === 'failed';
+                const isReady = summaryStatus === 'completed';
+
                 return (
                   <div
                     key={summaryId}
-                    className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
+                    className={cn(
+                      "flex items-center gap-2 p-3 rounded-xl group",
+                      isFailed
+                        ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+                        : isProcessing
+                        ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+                        : "bg-[#faf8f6] dark:bg-[#1e222a]"
+                    )}
                   >
-                    <MessageSquare className="w-4 h-4 text-brand-accent flex-shrink-0" />
-                    <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                      {summaryLabel}
-                    </span>
-                    <button
-                      onClick={() => {
-                        if (summary) {
-                          setViewingSummary(summary);
-                          setIsViewModalOpen(true);
-                        }
-                      }}
-                      className="text-xs text-brand-accent hover:underline font-medium"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => removeSummaryLink(summaryId)}
-                      className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    {isProcessing ? (
+                      <Loader2 className="w-4 h-4 text-amber-500 animate-spin flex-shrink-0" />
+                    ) : isFailed ? (
+                      <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    ) : (
+                      <MessageSquare className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                        {summaryLabel}
+                      </span>
+                      {isProcessing && (
+                        <span className="text-xs text-amber-600 dark:text-amber-400">
+                          Generating summary...
+                        </span>
+                      )}
+                      {isFailed && (
+                        <span className="text-xs text-red-600 dark:text-red-400">
+                          {summary?.processingError || 'Summary generation failed'}
+                        </span>
+                      )}
+                      {isReady && summary?.callStartedAt && (
+                        <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                          {new Date(summary.callStartedAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {isReady && (
+                        <button
+                          onClick={() => {
+                            if (summary) {
+                              setViewingSummary(summary);
+                              setIsViewModalOpen(true);
+                            }
+                          }}
+                          className="px-2 py-1 text-xs text-brand-accent hover:bg-brand-accent/10 rounded-lg font-medium transition-colors"
+                        >
+                          View
+                        </button>
+                      )}
+                      {isFailed && (
+                        <button
+                          onClick={() => {
+                            // TODO: Implement retry functionality
+                            console.log('Retry summary generation for:', summaryId);
+                          }}
+                          className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg font-medium transition-colors"
+                        >
+                          Retry
+                        </button>
+                      )}
+                      <button
+                        onClick={() => removeSummaryLink(summaryId)}
+                        className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}

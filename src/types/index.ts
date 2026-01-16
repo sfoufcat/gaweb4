@@ -1184,8 +1184,9 @@ export interface ProgramWeek {
   linkedDownloadIds?: string[];        // DiscoverDownload IDs
   linkedLinkIds?: string[];            // DiscoverLink IDs
   linkedQuestionnaireIds?: string[];   // Questionnaire IDs
-  linkedCourseIds?: string[];          // DiscoverCourse IDs (deprecated, use courseAssignments)
-  courseAssignments?: DayCourseAssignment[]; // Course assignments with module/lesson selection
+  linkedCourseIds?: string[];          // DiscoverCourse IDs (deprecated, use resourceAssignments)
+  courseAssignments?: DayCourseAssignment[]; // Course assignments (deprecated, use resourceAssignments)
+  resourceAssignments?: WeekResourceAssignment[]; // Unified resource assignments with day targeting
 
   // Coach recordings (uploaded by coach)
   coachRecordingUrl?: string; // URL to uploaded recording file
@@ -1437,6 +1438,72 @@ export interface ContentPurchase {
   purchasedAt: string; // ISO timestamp
   createdAt: string;
   updatedAt?: string;
+}
+
+
+// Content Progress Types
+export type ContentProgressType = 'course' | 'course_module' | 'course_lesson' | 'article';
+export type ContentProgressStatus = 'not_started' | 'in_progress' | 'completed';
+
+export interface ContentProgress {
+  id: string;
+  userId: string;
+  organizationId: string;
+
+  // Content reference (one of these combinations)
+  contentType: ContentProgressType;
+  contentId: string;              // Course/Article ID
+  moduleId?: string;              // For module/lesson progress
+  lessonId?: string;              // For lesson progress
+
+  // Progress state
+  status: ContentProgressStatus;
+  progressPercent?: number;       // 0-100 for courses/videos
+  watchProgress?: number;         // 0-100 video watch progress (for auto-complete at 90%)
+
+  // Timestamps
+  startedAt?: string;             // When first opened
+  completedAt?: string;           // When marked complete
+  firstCompletedAt?: string;      // First ever completion (for re-watch tracking)
+  lastAccessedAt: string;         // Last interaction
+
+  // Completion tracking
+  completionCount: number;        // How many times completed (default 1)
+  autoCompleted?: boolean;        // True if auto-completed at 90% watch
+  manuallyCompleted?: boolean;    // True if manually marked complete
+
+  // Context (optional - links to program)
+  instanceId?: string;            // program_instances ID if part of program
+  weekIndex?: number;             // Which week this was assigned
+  dayIndex?: number;              // Which day (1-7) if day-specific
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Week Resource Assignment Types
+export type ResourceDayTag = 'week' | 'daily' | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+export interface WeekResourceAssignment {
+  id: string;                     // Unique ID for this assignment
+  resourceType: 'course' | 'article' | 'download' | 'link' | 'questionnaire';
+  resourceId: string;             // The content ID
+
+  // Day targeting (mirrors task dayTag)
+  dayTag: ResourceDayTag;
+  // 'week' = available all week (current behavior)
+  // 'daily' = shows every day
+  // 1-7 = specific day of week
+
+  // For courses, optionally scope to specific content
+  moduleIds?: string[];           // Specific modules to assign
+  lessonIds?: string[];           // Specific lessons to assign
+
+  // Display
+  title?: string;                 // Override display title
+  description?: string;           // Coach note about why this is assigned
+  isRequired?: boolean;           // Must complete to progress
+  order?: number;                 // Sort order within day
 }
 
 /**
@@ -5925,8 +5992,9 @@ export interface ProgramInstanceWeek {
   linkedDownloadIds?: string[];        // DiscoverDownload IDs
   linkedLinkIds?: string[];            // DiscoverLink IDs
   linkedQuestionnaireIds?: string[];   // Questionnaire IDs
-  linkedCourseIds?: string[];          // DiscoverCourse IDs (deprecated, use courseAssignments)
-  courseAssignments?: DayCourseAssignment[]; // Course assignments with module/lesson selection
+  linkedCourseIds?: string[];          // DiscoverCourse IDs (deprecated, use resourceAssignments)
+  courseAssignments?: DayCourseAssignment[]; // Course assignments (deprecated, use resourceAssignments)
+  resourceAssignments?: WeekResourceAssignment[]; // Unified resource assignments with day targeting
   manualNotes?: string;          // Coach's manual notes
   // Distribution settings
   distribution?: TaskDistribution;

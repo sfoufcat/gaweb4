@@ -568,7 +568,7 @@ export function DailyFocusSection({
                       <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[1.2]">
                         Backlog
                       </span>
-                      <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-[#262b35]" />
+                      <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-[#262b35] mr-16" />
                       {/* Archive Link - positioned absolutely so it doesn't affect centering */}
                       <button
                         onClick={() => setShowArchiveModal(true)}

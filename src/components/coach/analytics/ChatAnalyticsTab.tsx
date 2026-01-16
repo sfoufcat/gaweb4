@@ -23,8 +23,50 @@ interface ChannelStats {
   squadName?: string;
   memberCount: number;
   messageCount: number;
+  messagesLast7Days: number;
   lastMessageAt: string | null;
   createdAt: string | null;
+  image?: string;
+}
+
+type ActivityLevel = 'thriving' | 'active' | 'inactive';
+
+function getActivityLevel(messagesLast7Days: number): ActivityLevel {
+  if (messagesLast7Days >= 10) return 'thriving';
+  if (messagesLast7Days > 0) return 'active';
+  return 'inactive';
+}
+
+function ActivityBadge({ level }: { level: ActivityLevel }) {
+  const config = {
+    thriving: {
+      label: 'Thriving',
+      bg: 'bg-green-100 dark:bg-green-900/30',
+      text: 'text-green-700 dark:text-green-400',
+      dot: 'bg-green-500',
+    },
+    active: {
+      label: 'Active',
+      bg: 'bg-blue-100 dark:bg-blue-900/30',
+      text: 'text-blue-700 dark:text-blue-400',
+      dot: 'bg-blue-500',
+    },
+    inactive: {
+      label: 'Inactive',
+      bg: 'bg-gray-100 dark:bg-gray-800/50',
+      text: 'text-gray-500 dark:text-gray-400',
+      dot: 'bg-gray-400',
+    },
+  };
+
+  const { label, bg, text, dot } = config[level];
+
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${bg} ${text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+      {label}
+    </span>
+  );
 }
 
 interface DailyChatStats {
@@ -353,18 +395,29 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
 
                 <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
                   {sortedChannels.map((channel, index) => (
-                    <div 
-                      key={channel.channelId} 
+                    <div
+                      key={channel.channelId}
                       className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent flex items-center justify-center text-white">
-                            <Hash className="w-5 h-5" />
-                          </div>
+                          {channel.image ? (
+                            <img
+                              src={channel.image}
+                              alt={channel.name}
+                              className="w-10 h-10 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent flex items-center justify-center text-white">
+                              <Hash className="w-5 h-5" />
+                            </div>
+                          )}
                           <div>
-                            <h4 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] text-sm">{channel.name}</h4>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] text-sm">{channel.name}</h4>
+                              <ActivityBadge level={getActivityLevel(channel.messagesLast7Days)} />
+                            </div>
                             <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
                               {channel.squadName ? `Squad: ${channel.squadName}` : 'Organization channel'}
                             </p>
