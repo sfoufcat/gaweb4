@@ -931,20 +931,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       const templateWeek = programWeeks.find(w => w.weekNumber === weekNumber);
       const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
       
-      // Week 0 (onboarding) special handling: starts at day 1, ends at default onboarding length
-      // Regular weeks: look up from template or use formula
+      // Week 1 (onboarding) special handling: starts at day 1, ends at default onboarding length
+      // Regular weeks (2+): look up from template or use formula based on onboarding end
       let startDay: number;
       let endDay: number;
-      if (weekNumber === 0) {
-        startDay = 1;
-        // Default to 4-day onboarding (typical partial first week)
-        const defaultOnboardingDays = 4;
-        endDay = Math.min(defaultOnboardingDays, selectedProgram?.lengthDays || 30);
+      if (weekNumber === 1) {
+        startDay = templateWeek?.startDayIndex ?? 1;
+        // Use template bounds if available, otherwise default to 4-day onboarding
+        endDay = templateWeek?.endDayIndex ?? Math.min(4, selectedProgram?.lengthDays || 30);
       } else {
-        // Check if Week 0 exists to offset regular weeks
-        const weekZero = programWeeks.find(w => w.weekNumber === 0);
-        const weekZeroEnd = weekZero?.endDayIndex ?? 0;
-        startDay = templateWeek?.startDayIndex ?? (weekZeroEnd + 1 + (weekNumber - 1) * daysPerWeek);
+        // Check if Week 1 (onboarding) exists to offset regular weeks
+        const weekOne = programWeeks.find(w => w.weekNumber === 1);
+        const weekOneEnd = weekOne?.endDayIndex ?? 0;
+        startDay = templateWeek?.startDayIndex ?? (weekOneEnd > 0 ? (weekOneEnd + 1 + (weekNumber - 2) * daysPerWeek) : ((weekNumber - 2) * daysPerWeek + 1));
         endDay = templateWeek?.endDayIndex ?? Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
       }
       setWeekToFill({
@@ -987,19 +986,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       } else {
         const daysPerWeek = selectedProgram.includeWeekends !== false ? 7 : 5;
 
-        // Week 0 (onboarding) special handling
+        // Week 1 (onboarding) special handling
         let startDay: number;
         let endDay: number;
-        if (weekNumber === 0) {
+        if (weekNumber === 1) {
           startDay = 1;
-          // Default to 4-day onboarding (typical partial first week)
-          const defaultOnboardingDays = 4;
-          endDay = Math.min(defaultOnboardingDays, selectedProgram.lengthDays || 30);
+          // Use template bounds if available, otherwise default to 4-day onboarding
+          const templateWeek = programWeeks.find(w => w.weekNumber === 1);
+          endDay = templateWeek?.endDayIndex ?? Math.min(4, selectedProgram.lengthDays || 30);
         } else {
-          // Check if Week 0 exists to offset regular weeks
-          const weekZero = programWeeks.find(w => w.weekNumber === 0);
-          const weekZeroEnd = weekZero?.endDayIndex ?? 0;
-          startDay = weekZeroEnd > 0 ? (weekZeroEnd + 1 + (weekNumber - 1) * daysPerWeek) : ((weekNumber - 1) * daysPerWeek + 1);
+          // Check if Week 1 (onboarding) exists to offset regular weeks
+          const weekOne = programWeeks.find(w => w.weekNumber === 1);
+          const weekOneEnd = weekOne?.endDayIndex ?? 0;
+          startDay = weekOneEnd > 0 ? (weekOneEnd + 1 + (weekNumber - 2) * daysPerWeek) : ((weekNumber - 2) * daysPerWeek + 1);
           endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram.lengthDays || 30);
         }
 
@@ -4037,19 +4036,18 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   // Calculate week bounds from program settings
                   const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
 
-                  // Week 0 (onboarding) special handling for fallback calculation
+                  // Week 1 (onboarding) special handling for fallback calculation
                   let startDay: number;
                   let endDay: number;
-                  if (weekNumber === 0) {
-                    startDay = 1;
-                    // Default to 4-day onboarding (typical partial first week)
-                    const defaultOnboardingDays = 4;
-                    endDay = Math.min(defaultOnboardingDays, selectedProgram?.lengthDays || 30);
+                  if (weekNumber === 1) {
+                    // Use template week bounds if available, otherwise fallback to defaults
+                    startDay = templateWeek?.startDayIndex ?? 1;
+                    endDay = templateWeek?.endDayIndex ?? Math.min(5, selectedProgram?.lengthDays || 30);
                   } else {
-                    // Check if Week 0 exists to offset regular weeks
-                    const weekZero = programWeeks.find(w => w.weekNumber === 0);
-                    const weekZeroEnd = weekZero?.endDayIndex ?? 0;
-                    startDay = weekZeroEnd > 0 ? (weekZeroEnd + 1 + (weekNumber - 1) * daysPerWeek) : ((weekNumber - 1) * daysPerWeek + 1);
+                    // Check if Week 1 (onboarding) exists to offset regular weeks
+                    const weekOne = programWeeks.find(w => w.weekNumber === 1);
+                    const weekOneEnd = weekOne?.endDayIndex ?? 0;
+                    startDay = weekOneEnd > 0 ? (weekOneEnd + 1 + (weekNumber - 2) * daysPerWeek) : ((weekNumber - 2) * daysPerWeek + 1);
                     endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
                   }
 

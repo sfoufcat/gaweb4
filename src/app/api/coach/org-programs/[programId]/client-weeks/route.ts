@@ -75,8 +75,9 @@ async function getOrCreateIndividualInstance(
   if (enrollment.startedAt) {
     calendarWeeks = calculateCalendarWeeks(enrollment.startedAt, totalDays, includeWeekends);
   }
+  // Regular weeks have weekNumber > 1 (excludes onboarding weekNumber=1 AND closing weekNumber=-1)
   const regularCalendarWeeks = calendarWeeks
-    .filter(w => w.weekNumber > 0)
+    .filter(w => w.weekNumber > 1)
     .sort((a, b) => a.startDayIndex - b.startDayIndex);
 
   // Helper to get calendar date for a day

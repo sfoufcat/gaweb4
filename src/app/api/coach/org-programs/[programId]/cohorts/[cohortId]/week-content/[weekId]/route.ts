@@ -360,13 +360,14 @@ function ensureDaysHaveCalendarDates(
 
   // Calculate calendar weeks from cohort start date
   const calendarWeeks = calculateCalendarWeeks(cohortStartDate, totalDays, includeWeekends);
+  // Regular weeks have weekNumber > 1 (excludes onboarding weekNumber=1 AND closing weekNumber=-1)
   const regularCalendarWeeks = calendarWeeks
-    .filter(w => w.weekNumber > 0)
+    .filter(w => w.weekNumber > 1)
     .sort((a, b) => a.startDayIndex - b.startDayIndex);
 
   // Find which calendar week this instance week corresponds to
-  // Use weekNumber - 1 as the position index
-  const weekPosition = week.weekNumber - 1;
+  // Week 1 is onboarding, Week 2 is first regular week (position 0), etc.
+  const weekPosition = week.weekNumber - 2;
   const calendarWeek = regularCalendarWeeks[weekPosition];
 
   if (!calendarWeek?.startDate) {
@@ -440,9 +441,10 @@ async function getOrCreateCohortInstance(
   if (cohortData.startDate) {
     calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
   }
-  // Filter to only regular weeks (weekNumber > 0) and sort by startDayIndex
+  // Filter to only regular weeks (weekNumber > 1) and sort by startDayIndex
+  // Excludes onboarding (weekNumber=1) and closing (weekNumber=-1)
   const regularCalendarWeeks = calendarWeeks
-    .filter(w => w.weekNumber > 0)
+    .filter(w => w.weekNumber > 1)
     .sort((a, b) => a.startDayIndex - b.startDayIndex);
 
   // Helper to get calendar date for a day index within a week
@@ -704,12 +706,13 @@ export async function GET(
           const includeWeekends = programData.includeWeekends !== false;
           const totalDays = programData.lengthDays;
           const calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
+          // Regular weeks have weekNumber > 1 (excludes onboarding and closing)
           const calendarRegularWeeks = calendarWeeks
-            .filter((w: CalendarWeek) => w.weekNumber > 0)
+            .filter((w: CalendarWeek) => w.weekNumber > 1)
             .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
 
-          // Map week to calendar week by position
-          const weekPosition = week.weekNumber - 1;
+          // Map week to calendar week by position (Week 2 = position 0, Week 3 = position 1, etc.)
+          const weekPosition = week.weekNumber - 2;
           calendarWeek = calendarRegularWeeks[weekPosition];
         }
 
@@ -816,13 +819,13 @@ export async function PUT(
       const weekNumber = /^\d+$/.test(weekId) ? parseInt(weekId, 10) : weeks.length + 1;
       const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
 
-      // For Week 0 (onboarding), use days from calendar or default
-      // For other weeks, calculate based on weekNumber and whether Week 0 exists
+      // For Week 1 (onboarding), use days from calendar or default
+      // For other weeks (2+), calculate based on weekNumber and onboarding end
       let startDayIndex: number;
       let endDayIndex: number;
 
-      if (weekNumber === 0) {
-        // Week 0 is onboarding - get day range from calendar
+      if (weekNumber === 1) {
+        // Week 1 is onboarding - get day range from calendar
         const totalDays = programData.lengthDays || 28;
         const includeWeekends = programData.includeWeekends !== false;
         const calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
@@ -830,14 +833,14 @@ export async function PUT(
         startDayIndex = onboardingWeek?.startDayIndex ?? 1;
         endDayIndex = onboardingWeek?.endDayIndex ?? Math.min(4, totalDays);
       } else {
-        // Regular weeks: check if Week 0 exists to determine offset
-        const weekZero = weeks.find(w => w.weekNumber === 0);
-        if (weekZero && weekZero.endDayIndex) {
-          // Week 1 starts after Week 0 ends
-          startDayIndex = weekZero.endDayIndex + 1 + (weekNumber - 1) * daysPerWeek;
+        // Regular weeks (2+): check if Week 1 (onboarding) exists to determine offset
+        const weekOne = weeks.find(w => w.weekNumber === 1);
+        if (weekOne && weekOne.endDayIndex) {
+          // Week 2 starts after Week 1 ends
+          startDayIndex = weekOne.endDayIndex + 1 + (weekNumber - 2) * daysPerWeek;
         } else {
-          // No Week 0, use standard formula
-          startDayIndex = (weekNumber - 1) * daysPerWeek + 1;
+          // No Week 1 (onboarding), use standard formula
+          startDayIndex = (weekNumber - 2) * daysPerWeek + 1;
         }
         endDayIndex = startDayIndex + daysPerWeek - 1;
       }
@@ -1062,13 +1065,13 @@ export async function PATCH(
       const weekNumber = /^\d+$/.test(weekId) ? parseInt(weekId, 10) : weeks.length + 1;
       const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
 
-      // For Week 0 (onboarding), use days from calendar or default
-      // For other weeks, calculate based on weekNumber and whether Week 0 exists
+      // For Week 1 (onboarding), use days from calendar or default
+      // For other weeks (2+), calculate based on weekNumber and onboarding end
       let startDayIndex: number;
       let endDayIndex: number;
 
-      if (weekNumber === 0) {
-        // Week 0 is onboarding - get day range from calendar
+      if (weekNumber === 1) {
+        // Week 1 is onboarding - get day range from calendar
         const totalDays = programData.lengthDays || 28;
         const includeWeekends = programData.includeWeekends !== false;
         const calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
@@ -1076,14 +1079,14 @@ export async function PATCH(
         startDayIndex = onboardingWeek?.startDayIndex ?? 1;
         endDayIndex = onboardingWeek?.endDayIndex ?? Math.min(4, totalDays);
       } else {
-        // Regular weeks: check if Week 0 exists to determine offset
-        const weekZero = weeks.find(w => w.weekNumber === 0);
-        if (weekZero && weekZero.endDayIndex) {
-          // Week 1 starts after Week 0 ends
-          startDayIndex = weekZero.endDayIndex + 1 + (weekNumber - 1) * daysPerWeek;
+        // Regular weeks (2+): check if Week 1 (onboarding) exists to determine offset
+        const weekOne = weeks.find(w => w.weekNumber === 1);
+        if (weekOne && weekOne.endDayIndex) {
+          // Week 2 starts after Week 1 ends
+          startDayIndex = weekOne.endDayIndex + 1 + (weekNumber - 2) * daysPerWeek;
         } else {
-          // No Week 0, use standard formula
-          startDayIndex = (weekNumber - 1) * daysPerWeek + 1;
+          // No Week 1 (onboarding), use standard formula
+          startDayIndex = (weekNumber - 2) * daysPerWeek + 1;
         }
         endDayIndex = startDayIndex + daysPerWeek - 1;
       }
