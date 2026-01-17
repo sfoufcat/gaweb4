@@ -3,33 +3,38 @@
  *
  * Provides functions to calculate calendar-aligned weeks for program enrollments.
  * Weeks align to Mon-Fri calendar weeks, with special handling for:
- * - Onboarding Week: First week (may be partial if joining mid-week)
- * - Closing Week: Last week (may be partial)
- * - Regular Weeks: Full Mon-Fri weeks in between
+ * - Onboarding Week (weekNumber=0): First week, always full (5 days)
+ * - Regular Weeks (weekNumber=1,2,3...): Full Mon-Fri weeks
+ * - Closing Week (weekNumber=-1): Only if last week is partial (<5 days)
  *
- * ## IMPORTANT: Position-Based Mapping
+ * ## Template Week Structure
  *
- * Template weeks (from program_weeks) map to calendar weeks by POSITION among
- * regular weeks, NOT by weekNumber. This is because:
+ * Templates can have:
+ *   Week 0:  Onboarding content (welcome/orientation tasks)
+ *   Week 1-N: Regular content (main program)
+ *   Week -1: Closing content (wrap-up/reflection tasks)
  *
- * - If onboarding is FULL (started Monday), calendar weekNumbers skip 1:
- *   [Onboarding(weekNumber=0), Week 2(weekNumber=2), Week 3(weekNumber=3)...]
+ * ## Calendar-to-Template Mapping
  *
- * - If onboarding is PARTIAL (started mid-week), weekNumbers are sequential:
- *   [Onboarding(weekNumber=0), Week 1(weekNumber=1), Week 2(weekNumber=2)...]
+ * Calendar weeks map directly to template weeks by weekNumber:
+ *   - Onboarding (type='onboarding') → Template Week 0
+ *   - Regular weeks (type='regular') → Template Week 1, 2, 3... (by position)
+ *   - Closing (type='closing') → Template Week -1
  *
- * The mapping rule is:
- *   Template Week N → Nth regular calendar week (0-indexed position N-1)
+ * Example: 60-day program (12 weeks of content)
  *
- * Example with full onboarding (started Monday):
- *   Template Week 1 → Calendar "Week 2" (1st regular week, position 0)
- *   Template Week 2 → Calendar "Week 3" (2nd regular week, position 1)
+ * Monday start (no closing week):
+ *   [Onboarding(wk 0), Week 1, Week 2, ..., Week 12]
+ *   All 12 template weeks used, no Week -1 needed
  *
- * Onboarding and closing weeks have NO template content.
+ * Thursday start (creates closing week):
+ *   [Onboarding(wk 0, 2 days), Week 1, Week 2, ..., Week 11, Closing(wk -1, 3 days)]
+ *   Template Week 0 for onboarding, Weeks 1-11 for regular, Week -1 for closing
  *
  * This logic is used in:
  * - ModuleWeeksSidebar.tsx (frontend week selection)
  * - program-utils.ts (backend distribution functions)
+ * - instances/route.ts (instance creation)
  */
 
 import type { Program, ProgramEnrollment } from '@/types';
@@ -285,6 +290,9 @@ export function calculateCalendarWeeks(
     const daysRemaining = programLengthDays - currentDayIndex + 1;
     const daysInThisWeek = Math.min(daysPerWeek, daysRemaining);
     const isLastWeek = currentDayIndex + daysInThisWeek > programLengthDays;
+    // Closing week only if it's partial (fewer days than a full week)
+    // A full last week is still a regular week, not closing
+    const isClosingWeek = isLastWeek && daysInThisWeek < daysPerWeek;
 
     // Calculate end date for this week
     let weekEndDate: Date;
@@ -303,9 +311,9 @@ export function calculateCalendarWeeks(
     }
 
     weeks.push({
-      type: isLastWeek ? 'closing' : 'regular',
-      label: isLastWeek ? 'Closing' : `Week ${weekNumber}`,
-      weekNumber: isLastWeek ? -1 : weekNumber,
+      type: isClosingWeek ? 'closing' : 'regular',
+      label: isClosingWeek ? 'Closing' : `Week ${weekNumber}`,
+      weekNumber: isClosingWeek ? -1 : weekNumber,
       startDate: formatDate(currentMonday),
       endDate: formatDate(weekEndDate),
       startDayIndex: currentDayIndex,
@@ -314,7 +322,7 @@ export function calculateCalendarWeeks(
     });
 
     currentDayIndex += daysInThisWeek;
-    if (!isLastWeek) {
+    if (!isClosingWeek) {
       weekNumber++;
     }
     currentMonday = addDays(currentMonday, 7);

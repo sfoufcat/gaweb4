@@ -97,13 +97,17 @@ interface ModuleWeeksSidebarProps {
  * - weekNum: Sequential index for UI (1, 2, 3... including onboarding as 1)
  * - templateWeekNumber: The template week's actual weekNumber for API calls
  *
- * In calendar view with onboarding:
- *   Onboarding → weekNum=1, templateWeekNumber=undefined
- *   Week 1     → weekNum=2, templateWeekNumber=1
- *   Week 2     → weekNum=3, templateWeekNumber=2
+ * Template week structure:
+ *   Week 0:  Onboarding content (welcome/orientation tasks)
+ *   Week 1-N: Regular content (main program)
+ *   Week -1: Closing content (wrap-up/reflection tasks)
+ *
+ * Calendar-to-template mapping:
+ *   Onboarding (type='onboarding') → Template Week 0
+ *   Regular weeks (type='regular') → Template Week 1, 2, 3... (by position)
+ *   Closing (type='closing')       → Template Week -1
  *
  * When selecting weeks, ALWAYS use templateWeekNumber for API lookups.
- * Using weekNum would cause a +1 offset bug (tasks go to wrong week).
  */
 interface CalculatedWeek {
   weekNum: number; // Sequential UI index (includes onboarding)
@@ -506,82 +510,49 @@ export function ModuleWeeksSidebar({
         days.some(d => d.dayIndex === day && (d.tasks?.length > 0 || d.title))
       );
 
-      // Find the stored week using POSITION-based matching among regular weeks.
-      // Template weeks are numbered 1, 2, 3... but calendar weeks may have:
-      // - Onboarding (weekNumber: 0) - no template match
-      // - Regular weeks (weekNumber: 1, 2, 3... or 2, 3, 4... if onboarding was full)
-      // - Closing (weekNumber: -1) - no template match
+      // Find the stored week using DIRECT weekNumber matching.
+      // Template structure:
+      //   Week 0: Onboarding content
+      //   Weeks 1-N: Regular content (by position among regular weeks)
+      //   Week -1: Closing content
       //
-      // The correct mapping is: Nth regular calendar week → Template Week N
-      // NOT by weekNumber, because calendar weekNumbers can skip 1 if onboarding is full.
+      // Calendar weeks map directly to template weeks:
+      //   - Onboarding (type='onboarding') → Template Week 0
+      //   - Regular weeks → Template Week 1, 2, 3... (by position)
+      //   - Closing (type='closing') → Template Week -1
       let storedWeek: typeof weeks[0] | undefined;
-
-      // For regular AND closing weeks, find the corresponding template/instance week
-      // IMPORTANT: Use POSITION-based mapping, not weekNumber, because:
-      // - Template weeks are always numbered 1, 2, 3...
-      // - Calendar weekNumbers can skip 1 if onboarding is a full week (0, 2, 3...)
-      // - Nth content calendar week (0-indexed position) → Template/Instance week at position N
-      // Note: 'closing' type is the last week which may still have template content
       let targetWeekNumber: number | undefined;
 
-      // Include both 'regular' AND 'closing' weeks (closing is just the last regular week)
-      const isContentWeek = cw.type === 'regular' || cw.type === 'closing';
-
-      if (isContentWeek) {
-        // Find position of this week among all content weeks (regular + closing)
-        const contentCalendarWeeks = calendarWeeks.filter(w => w.type === 'regular' || w.type === 'closing');
-        const positionAmongContent = contentCalendarWeeks.findIndex(
+      if (cw.type === 'onboarding') {
+        // Onboarding always maps to Template Week 0
+        targetWeekNumber = 0;
+        storedWeek = weeks.find(w => w.weekNumber === 0);
+      } else if (cw.type === 'closing') {
+        // Closing always maps to Template Week -1
+        targetWeekNumber = -1;
+        storedWeek = weeks.find(w => w.weekNumber === -1);
+      } else {
+        // Regular weeks: find position among regular weeks only
+        const regularCalendarWeeks = calendarWeeks.filter(w => w.type === 'regular');
+        const positionAmongRegular = regularCalendarWeeks.findIndex(
           rcw => rcw.startDayIndex === cw.startDayIndex
         );
 
-        if (positionAmongContent >= 0) {
+        if (positionAmongRegular >= 0) {
           // Template weeks are 1-indexed, so position 0 → weekNumber 1
-          targetWeekNumber = positionAmongContent + 1;
-          
-          // First try to find by weekNumber (most reliable)
+          targetWeekNumber = positionAmongRegular + 1;
           storedWeek = weeks.find(w => w.weekNumber === targetWeekNumber);
-          
-          // If not found by weekNumber, try by array position (fallback for mismatched numbering)
-          if (!storedWeek && weeks.length > positionAmongContent) {
-            // Sort weeks by weekNumber to ensure consistent ordering
-            const sortedWeeks = [...weeks].sort((a, b) => (a.weekNumber || 0) - (b.weekNumber || 0));
-            storedWeek = sortedWeeks[positionAmongContent];
-            console.warn('[SIDEBAR_WEEK_DEBUG] Found storedWeek by position instead of weekNumber', {
-              calendarLabel: cw.label,
-              positionAmongContent,
-              targetWeekNumber,
-              foundWeekNumber: storedWeek?.weekNumber,
-            });
-          }
-          
-          // DEBUG: Log when week is not found at all
-          if (!storedWeek) {
-            console.warn('[SIDEBAR_WEEK_DEBUG] Could not find storedWeek!', {
-              calendarLabel: cw.label,
-              calendarWeekNumber: cw.weekNumber,
-              positionAmongContent,
-              targetWeekNumber,
-              availableWeekNumbers: weeks.map(w => w.weekNumber),
-              weeksCount: weeks.length,
-            });
-          }
 
-          // DEBUG: Always log the final templateWeekNumber calculation
-          console.log('[SIDEBAR_WEEK_CALC]', {
-            calendarLabel: cw.label,
-            calendarType: cw.type,
-            calendarDays: `${cw.startDayIndex}-${cw.endDayIndex}`,
-            positionAmongContent,
-            targetWeekNumber,
-            storedWeekFound: !!storedWeek,
-            storedWeekNumber: storedWeek?.weekNumber,
-            // FIXED: Always use targetWeekNumber (position-based), not storedWeek.weekNumber
-            finalTemplateWeekNumber: targetWeekNumber,
-            weekNum: idx + 1,
-          });
+          // Fallback: try by array position among positive-numbered weeks
+          if (!storedWeek) {
+            const positiveWeeks = weeks.filter(w => w.weekNumber > 0)
+              .sort((a, b) => (a.weekNumber || 0) - (b.weekNumber || 0));
+            if (positiveWeeks.length > positionAmongRegular) {
+              storedWeek = positiveWeeks[positionAmongRegular];
+            }
+          }
         }
       }
-      // For onboarding and closing weeks, storedWeek remains undefined (no template content)
 
       return {
         weekNum: idx + 1, // Sequential for internal use
@@ -597,9 +568,8 @@ export function ModuleWeeksSidebar({
         storedWeekId: storedWeek?.id,
         moduleId: storedWeek?.moduleId,
         order: idx, // Maintain calendar order
-        // CRITICAL: Use targetWeekNumber for content weeks (regular/closing)
-        // For non-content weeks (onboarding), use cw.weekNumber (0 for onboarding, -1 for closing)
-        // This prevents the collision where both onboarding and Week 1 would have weekNumber=1
+        // Template week mapping:
+        //   Onboarding → 0, Regular → 1+, Closing → -1
         templateWeekNumber: targetWeekNumber ?? cw.weekNumber,
       };
     });
@@ -1422,7 +1392,11 @@ export function ModuleWeeksSidebar({
     const moduleWeeks = localOrder
       ? localOrder.map(id => propsWeeks.find(w => (w.storedWeekId || `temp-${w.weekNum}`) === id)).filter((w): w is CalculatedWeek => w !== undefined)
       : propsWeeks;
-    const weekCount = moduleWeeks.length;
+    // Count weeks with template content (storedWeekId or any defined templateWeekNumber)
+    // Week 0 = Onboarding, Week 1+ = Regular, Week -1 = Closing
+    const weekCount = moduleWeeks.filter(w =>
+      w.storedWeekId || w.templateWeekNumber !== undefined
+    ).length;
     const moduleStatus = getModuleStatus(moduleWeeks);
 
     // Status-based background colors for modules - module color for future
