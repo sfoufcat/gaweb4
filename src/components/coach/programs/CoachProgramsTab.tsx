@@ -4044,20 +4044,44 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
 
                   // Week 0 (onboarding) special handling for fallback calculation
+                  // CRITICAL: Use instance weeks when in instance mode, template weeks otherwise
+                  const isInstanceMode = !!(
+                    (clientViewContext.mode === 'client' && clientViewContext.enrollmentId) ||
+                    (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId)
+                  );
+                  const weeksSource = isInstanceMode ? (instance?.weeks || []) : programWeeks;
+
                   let startDay: number;
                   let endDay: number;
-                  if (weekNumber === 0) {
+
+                  // First, try to get startDayIndex/endDayIndex directly from the selected week in weeksSource
+                  const selectedWeekData = weeksSource.find(w => w.weekNumber === weekNumber);
+
+                  if (selectedWeekData?.startDayIndex !== undefined && selectedWeekData?.endDayIndex !== undefined) {
+                    // Use pre-calculated indices from the week data (most accurate)
+                    startDay = selectedWeekData.startDayIndex;
+                    endDay = selectedWeekData.endDayIndex;
+                  } else if (weekNumber === 0) {
                     startDay = 1;
                     // Default to 4-day onboarding (typical partial first week)
                     const defaultOnboardingDays = 4;
                     endDay = Math.min(defaultOnboardingDays, selectedProgram?.lengthDays || 30);
                   } else {
                     // Check if Week 0 exists to offset regular weeks
-                    const weekZero = programWeeks.find(w => w.weekNumber === 0);
+                    const weekZero = weeksSource.find(w => w.weekNumber === 0);
                     const weekZeroEnd = weekZero?.endDayIndex ?? 0;
                     startDay = weekZeroEnd > 0 ? (weekZeroEnd + 1 + (weekNumber - 1) * daysPerWeek) : ((weekNumber - 1) * daysPerWeek + 1);
                     endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
                   }
+
+                  console.log('[WEEK_EDITOR] Day index calculation:', {
+                    weekNumber,
+                    isInstanceMode,
+                    weeksSourceLength: weeksSource.length,
+                    selectedWeekData: selectedWeekData ? { startDayIndex: selectedWeekData.startDayIndex, endDayIndex: selectedWeekData.endDayIndex } : null,
+                    startDay,
+                    endDay,
+                  });
 
                   // Determine which week data to use
                   const isCohortMode = selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort';
