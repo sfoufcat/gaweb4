@@ -185,11 +185,11 @@ export async function GET(request: NextRequest) {
             const sortedCalendarWeeks = calendarWeeks.sort((a, b) => a.startDayIndex - b.startDayIndex);
 
             // Helper to get calendar week by TEMPLATE weekNumber
-            // Template weeks are numbered 1, 2, 3... (content weeks only)
-            // Calendar weeks are numbered 1 (onboarding), 2, 3, 4... (content)
-            // So template week N maps to calendar week N+1
+            // Template weeks are numbered 1, 2, 3...
+            // Calendar weeks are numbered 1 (onboarding), 2, 3, 4...
+            // Direct 1:1 mapping: Template Week 1 = Calendar Week 1 (Onboarding)
             const getCalendarWeekByTemplateNumber = (templateWeekNumber: number) => {
-              return sortedCalendarWeeks.find(cw => cw.weekNumber === templateWeekNumber + 1);
+              return sortedCalendarWeeks.find(cw => cw.weekNumber === templateWeekNumber);
             };
 
             // Helper to get calendar date for a day by TEMPLATE week number
@@ -254,9 +254,9 @@ export async function GET(request: NextRequest) {
 
                 return {
                   id: weekData.id || crypto.randomUUID(),
-                  // Instance weekNumber = calendar weekNumber = template weekNumber + 1
-                  // This aligns with calendar weeks: onboarding=1, content weeks=2,3,4...
-                  weekNumber: weekData.weekNumber + 1,
+                  // Instance weekNumber = template weekNumber (direct 1:1 mapping)
+                  // Template Week 1 = Onboarding, Template Week 2 = Week 2, etc.
+                  weekNumber: weekData.weekNumber,
                   moduleId: weekData.moduleId,
                   name: weekData.name,
                   theme: weekData.theme,
@@ -306,8 +306,8 @@ export async function GET(request: NextRequest) {
 
                 return {
                   id: weekDoc.id,
-                  // Instance weekNumber = calendar weekNumber = template weekNumber + 1
-                  weekNumber: weekData.weekNumber + 1,
+                  // Instance weekNumber = template weekNumber (direct 1:1 mapping)
+                  weekNumber: weekData.weekNumber,
                   moduleId: weekData.moduleId,
                   name: weekData.name,
                   theme: weekData.theme,
@@ -397,11 +397,11 @@ export async function GET(request: NextRequest) {
             const sortedCalendarWeeks = calendarWeeks.sort((a, b) => a.startDayIndex - b.startDayIndex);
 
             // Helper to get calendar week by TEMPLATE weekNumber
-            // Template weeks are numbered 1, 2, 3... (content weeks only)
-            // Calendar weeks are numbered 1 (onboarding), 2, 3, 4... (content)
-            // So template week N maps to calendar week N+1
+            // Template weeks are numbered 1, 2, 3...
+            // Calendar weeks are numbered 1 (onboarding), 2, 3, 4...
+            // Direct 1:1 mapping: Template Week 1 = Calendar Week 1 (Onboarding)
             const getCalendarWeekByTemplateNumber = (templateWeekNumber: number) => {
-              return sortedCalendarWeeks.find(cw => cw.weekNumber === templateWeekNumber + 1);
+              return sortedCalendarWeeks.find(cw => cw.weekNumber === templateWeekNumber);
             };
 
             // Helper to get calendar date for a day by TEMPLATE week number
@@ -466,9 +466,9 @@ export async function GET(request: NextRequest) {
 
                 return {
                   id: weekData.id || crypto.randomUUID(),
-                  // Instance weekNumber = calendar weekNumber = template weekNumber + 1
-                  // This aligns with calendar weeks: onboarding=1, content weeks=2,3,4...
-                  weekNumber: weekData.weekNumber + 1,
+                  // Instance weekNumber = template weekNumber (direct 1:1 mapping)
+                  // Template Week 1 = Onboarding, Template Week 2 = Week 2, etc.
+                  weekNumber: weekData.weekNumber,
                   moduleId: weekData.moduleId,
                   name: weekData.name,
                   theme: weekData.theme,
@@ -518,8 +518,8 @@ export async function GET(request: NextRequest) {
 
                 return {
                   id: weekDoc.id,
-                  // Instance weekNumber = calendar weekNumber = template weekNumber + 1
-                  weekNumber: weekData.weekNumber + 1,
+                  // Instance weekNumber = template weekNumber (direct 1:1 mapping)
+                  weekNumber: weekData.weekNumber,
                   moduleId: weekData.moduleId,
                   name: weekData.name,
                   theme: weekData.theme,
