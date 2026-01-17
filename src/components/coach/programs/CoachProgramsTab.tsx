@@ -389,19 +389,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     let calendarWeeksLookup: Map<number, { startDate: string; endDate: string; actualStartDayOfWeek?: number; startDayIndex: number; endDayIndex: number }> | null = null;
     if (instance.startDate && selectedProgram?.lengthDays) {
       const calculatedWeeks = calculateCalendarWeeks(instance.startDate, selectedProgram.lengthDays, includeWeekends);
-      console.log('[INSTANCE_WEEKS] Calculated calendar weeks:', {
-        instanceStartDate: instance.startDate,
-        programLengthDays: selectedProgram.lengthDays,
-        includeWeekends,
-        calculatedWeeks: calculatedWeeks.map(cw => ({
-          weekNumber: cw.weekNumber,
-          startDate: cw.startDate,
-          endDate: cw.endDate,
-          startDayIndex: cw.startDayIndex,
-          endDayIndex: cw.endDayIndex,
-          actualStartDayOfWeek: cw.actualStartDayOfWeek,
-        })),
-      });
       calendarWeeksLookup = new Map(calculatedWeeks.map(cw => [cw.weekNumber, {
         startDate: cw.startDate,
         endDate: cw.endDate,
@@ -409,31 +396,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         startDayIndex: cw.startDayIndex,
         endDayIndex: cw.endDayIndex,
       }]));
-    } else {
-      console.log('[INSTANCE_WEEKS] NOT calculating calendar weeks:', {
-        hasStartDate: !!instance.startDate,
-        instanceStartDate: instance.startDate,
-        hasLengthDays: !!selectedProgram?.lengthDays,
-        lengthDays: selectedProgram?.lengthDays,
-      });
     }
 
     return instance.weeks.map(week => {
       // ALWAYS prefer calculated calendar data when available
       // This ensures correct dates/indices even for legacy instances with stale stored values
       const calculatedCalendar = calendarWeeksLookup?.get(week.weekNumber);
-
-      // Debug: Log what values are being used
-      console.log('[INSTANCE_WEEK_MAPPING]', {
-        weekNumber: week.weekNumber,
-        hasCalendarLookup: !!calendarWeeksLookup,
-        foundCalculated: !!calculatedCalendar,
-        calculatedStartDate: calculatedCalendar?.startDate,
-        storedStartDate: week.calendarStartDate,
-        finalStartDate: calculatedCalendar?.startDate || week.calendarStartDate,
-        calculatedStartDayIndex: calculatedCalendar?.startDayIndex,
-        storedStartDayIndex: week.startDayIndex,
-      });
 
       return {
         id: `${instance.id}-week-${week.weekNumber}`,
@@ -4152,30 +4120,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   // NEW SYSTEM: Check if we have instance week data
                   // Use instanceWeeks (derived with calendar fallbacks) instead of raw instance.weeks
                   const instanceWeek = instanceWeeks?.find(w => w.weekNumber === weekNumber);
-
-                  // Debug: Log week data sources
-                  if ((isCohortMode || isClientMode) && instanceId) {
-                    console.log('[WEEK_DATA] Week data sources:', {
-                      mode: isCohortMode ? 'cohort' : 'client',
-                      weekNumber,
-                      instanceId,
-                      hasInstance: !!instance,
-                      instanceWeeksCount: instance?.weeks?.length ?? 0,
-                      instanceWeekNumbers: instance?.weeks?.map(w => w.weekNumber),
-                      hasInstanceWeek: !!instanceWeek,
-                      instanceWeekTasks: instanceWeek?.weeklyTasks?.length ?? 'undefined',
-                      instanceWeekTaskLabels: instanceWeek?.weeklyTasks?.map(t => t.label),
-                      templateWeekTasks: templateWeek?.weeklyTasks?.length ?? 'undefined',
-                      // Recalculated calendar data from instanceWeeks memo
-                      recalculatedCalendar: instanceWeek ? {
-                        calendarStartDate: instanceWeek.calendarStartDate,
-                        calendarEndDate: instanceWeek.calendarEndDate,
-                        startDayIndex: instanceWeek.startDayIndex,
-                        endDayIndex: instanceWeek.endDayIndex,
-                        actualStartDayOfWeek: instanceWeek.actualStartDayOfWeek,
-                      } : 'no instanceWeek',
-                    });
-                  }
 
                   // Use existing week data or create a default
                   // Priority: instanceId means new system (always), else old system fallback

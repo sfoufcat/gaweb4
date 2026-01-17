@@ -123,6 +123,8 @@ interface SortableWeeklyTaskProps {
   onDayTagChange: (index: number, dayTag: DayTagValue) => void;
   includeWeekends: boolean;
   daysInWeek: number;
+  // Calendar date for weekday name display
+  calendarStartDate?: string;
   // Cohort completion data (optional)
   cohortCompletion?: CohortWeeklyTaskCompletionData;
   // Expand functionality for cohort mode
@@ -145,6 +147,7 @@ function SortableWeeklyTask({
   onDayTagChange,
   includeWeekends,
   daysInWeek,
+  calendarStartDate,
   cohortCompletion,
   isCohortMode,
   isExpanded,
@@ -338,16 +341,27 @@ function SortableWeeklyTask({
               const newTag: DayTagValue = val === 'auto' ? 'auto' : val === 'spread' ? 'spread' : val === 'daily' ? 'daily' : parseInt(val, 10);
               onDayTagChange(index, newTag);
             }}
-            className="px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] bg-transparent border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:border-[#d4d0cb] dark:hover:border-[#313746] focus:outline-none focus:ring-1 focus:ring-brand-accent cursor-pointer"
+            className="px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] bg-white dark:bg-[#1a1e28] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:border-[#d4d0cb] dark:hover:border-[#313746] focus:outline-none focus:ring-1 focus:ring-brand-accent cursor-pointer shadow-sm"
           >
             <option value="auto">Auto</option>
             <option value="spread">Spread</option>
             <option value="daily">Daily</option>
-            {Array.from({ length: daysInWeek }, (_, i) => i + 1).map((day) => (
-              <option key={day} value={day}>
-                Day {day}
-              </option>
-            ))}
+            {Array.from({ length: daysInWeek }, (_, i) => {
+              const dayNum = i + 1;
+              // Get weekday name if calendar date available
+              let dayLabel = `Day ${dayNum}`;
+              if (calendarStartDate) {
+                const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const [year, month, dayOfMonth] = calendarStartDate.split('-').map(Number);
+                const dayDate = new Date(year, month - 1, dayOfMonth + i);
+                dayLabel = WEEKDAYS[dayDate.getDay()];
+              }
+              return (
+                <option key={dayNum} value={dayNum}>
+                  {dayLabel}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -577,6 +591,8 @@ export function WeekEditor({
   const weekNotes = week.notes || [];
   const weekManualNotes = week.manualNotes || '';
   const weekDistribution = (week.distribution || 'spread') as TaskDistribution;
+  // Calendar date for weekday display (may be on extended week type)
+  const weekCalendarStartDate = (week as { calendarStartDate?: string }).calendarStartDate;
   const weekCoachRecordingUrl = week.coachRecordingUrl || '';
   const weekCoachRecordingNotes = week.coachRecordingNotes || '';
   const weekLinkedSummaryIds = week.linkedSummaryIds || [];
@@ -2156,6 +2172,7 @@ export function WeekEditor({
                         onDayTagChange={handleDayTagChange}
                         includeWeekends={includeWeekends}
                         daysInWeek={daysInWeek}
+                        calendarStartDate={weekCalendarStartDate}
                         cohortCompletion={cohortCompletion}
                         isCohortMode={isCohortMode}
                         isExpanded={expandedTasks.has(taskKey)}
@@ -2213,18 +2230,6 @@ export function WeekEditor({
                     const dayDate = new Date(year, month - 1, dayOfMonth + i);
                     const weekdayName = WEEKDAYS[dayDate.getDay()];
                     dayLabel = `${weekdayName} (${dayNum})`;
-
-                    // Debug: log once per week render
-                    if (i === 0) {
-                      console.log('[DAY_PREVIEW] Calendar date parsing:', {
-                        calendarStartDate,
-                        parsedParts: { year, month, dayOfMonth },
-                        firstDayDate: dayDate.toString(),
-                        firstDayOfWeek: dayDate.getDay(),
-                        weekdayName,
-                        weekNumber: week.weekNumber,
-                      });
-                    }
                   }
 
                   // Check if this day is before the actual enrollment start (pre-enrollment blur)
