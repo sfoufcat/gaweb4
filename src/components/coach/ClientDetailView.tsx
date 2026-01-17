@@ -1643,18 +1643,18 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 {sentimentData.map((day, idx) => {
                   const morningValue = day.morning ? EMOTIONAL_STATE_COLORS[day.morning]?.value || 4 : 0;
                   const eveningValue = day.evening ? EMOTIONAL_STATE_COLORS[day.evening]?.value || 3 : 0;
-                  if (day.morning) console.log('[MoodChart] Day', day.date, 'morning:', day.morning, 'value:', morningValue, 'inColors:', !!EMOTIONAL_STATE_COLORS[day.morning]);
                   // Morning uses 7-point scale, evening uses 5-point scale
                   const morningHeight = morningValue ? (morningValue / 7) * 100 : 0;
                   const eveningHeight = eveningValue ? (eveningValue / 5) * 100 : 0;
                   const hasMorning = morningValue > 0;
                   const hasEvening = eveningValue > 0;
+                  if (hasMorning) console.log('[MoodChart] Rendering bar for', day.date, 'height:', morningHeight, '% hasMorning:', hasMorning);
 
                   return (
                     <div key={idx} className="flex flex-col items-center">
                       <div className="flex gap-1.5 h-28 items-end mb-2">
                         {/* Morning bar */}
-                        <div className="relative group">
+                        <div className="relative group h-full flex items-end">
                           <div
                             className={`w-4 rounded-md transition-all duration-300 ease-out ${
                               hasMorning
@@ -1677,7 +1677,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                           )}
                         </div>
                         {/* Evening bar */}
-                        <div className="relative group">
+                        <div className="relative group h-full flex items-end">
                           <div
                             className={`w-4 rounded-md transition-all duration-300 ease-out ${
                               hasEvening

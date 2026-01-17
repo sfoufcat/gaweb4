@@ -222,12 +222,12 @@ export function calculateCalendarWeeks(
     }
   }
 
-  // Onboarding Week (Week 1 - always exists)
-  // Note: Onboarding is now Week 1, not Week 0. This simplifies the system
-  // since all weeks are numbered sequentially starting from 1.
+  // Onboarding Week (weekNumber=1, but labeled "Onboarding")
+  // Note: Onboarding is now weekNumber=1 (not 0), but we still display it as "Onboarding"
+  // for clarity. This simplifies calculations while keeping clear UX.
   weeks.push({
     type: 'onboarding',
-    label: 'Week 1',
+    label: 'Onboarding',
     weekNumber: 1,
     startDate: formatDate(effectiveStartDate),
     endDate: formatDate(actualOnboardingEndDate),
@@ -238,9 +238,9 @@ export function calculateCalendarWeeks(
 
   // If program is only onboarding week, mark it as closing too
   if (onboardingDays >= programLengthDays) {
-    // Update to be both onboarding and closing
-    weeks[0].type = 'closing'; // It's also the closing week
-    weeks[0].label = programLengthDays <= daysPerWeek ? 'Week 1' : 'Week 1';
+    // Update to be both onboarding and closing (keep "Onboarding" label)
+    weeks[0].type = 'closing';
+    // Label stays as "Onboarding" for single-week programs
     return weeks;
   }
 

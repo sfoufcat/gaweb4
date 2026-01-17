@@ -393,6 +393,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       weeklyTasks: week.weeklyTasks || [],
       calendarStartDate: week.calendarStartDate,
       calendarEndDate: week.calendarEndDate,
+      // Include startDayIndex and endDayIndex from instance for correct day range
+      startDayIndex: week.startDayIndex,
+      endDayIndex: week.endDayIndex,
       moduleId: week.moduleId,
       createdAt: now,
       updatedAt: now,
@@ -808,8 +811,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         weekNumber: iw.weekNumber,
         moduleId: iw.moduleId,
         order: idx,
-        startDayIndex: (iw.weekNumber - 1) * 7 + 1,
-        endDayIndex: iw.weekNumber * 7,
+        // Use actual startDayIndex/endDayIndex from instance data
+        startDayIndex: iw.startDayIndex,
+        endDayIndex: iw.endDayIndex,
         name: iw.name,
         theme: iw.theme,
         description: iw.description,

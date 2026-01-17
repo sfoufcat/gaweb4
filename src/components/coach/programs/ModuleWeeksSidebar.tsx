@@ -97,13 +97,18 @@ interface ModuleWeeksSidebarProps {
  * - weekNum: Sequential index for UI (1, 2, 3... including onboarding as 1)
  * - templateWeekNumber: The template week's actual weekNumber for API calls
  *
+ * Week numbering scheme:
+ * - Onboarding = weekNumber 1 (type='onboarding'), but NO template content
+ * - Regular weeks = weekNumber 2, 3, 4... (type='regular'), HAS template content
+ * - Closing = weekNumber -1 (type='closing'), may have template content
+ *
  * In calendar view with onboarding:
- *   Onboarding → weekNum=1, templateWeekNumber=undefined
- *   Week 1     → weekNum=2, templateWeekNumber=1
- *   Week 2     → weekNum=3, templateWeekNumber=2
+ *   Onboarding → weekNum=1, templateWeekNumber=undefined (no template content)
+ *   Week 2     → weekNum=2, templateWeekNumber=2 (maps to template week 2)
+ *   Week 3     → weekNum=3, templateWeekNumber=3 (maps to template week 3)
  *
  * When selecting weeks, ALWAYS use templateWeekNumber for API lookups.
- * Using weekNum would cause a +1 offset bug (tasks go to wrong week).
+ * Using weekNum would cause bugs when onboarding is present.
  */
 interface CalculatedWeek {
   weekNum: number; // Sequential UI index (includes onboarding)
@@ -507,20 +512,19 @@ export function ModuleWeeksSidebar({
       );
 
       // Find the stored week using POSITION-based matching among regular weeks.
-      // Template weeks are numbered 1, 2, 3... but calendar weeks may have:
-      // - Onboarding (weekNumber: 0) - no template match
-      // - Regular weeks (weekNumber: 1, 2, 3... or 2, 3, 4... if onboarding was full)
-      // - Closing (weekNumber: -1) - no template match
+      // Template weeks are numbered 2, 3, 4... (onboarding is 1, closing is -1)
+      // Calendar weeks may have:
+      // - Onboarding (weekNumber: 1, type='onboarding') - no template match
+      // - Regular weeks (weekNumber: 2, 3, 4..., type='regular') - has template content
+      // - Closing (weekNumber: -1, type='closing') - may have template content
       //
-      // The correct mapping is: Nth regular calendar week → Template Week N
-      // NOT by weekNumber, because calendar weekNumbers can skip 1 if onboarding is full.
+      // Mapping: Nth content calendar week (0-indexed) → Template Week N+2
       let storedWeek: typeof weeks[0] | undefined;
 
       // For regular AND closing weeks, find the corresponding template/instance week
       // IMPORTANT: Use POSITION-based mapping, not weekNumber, because:
-      // - Template weeks are always numbered 1, 2, 3...
-      // - Calendar weekNumbers can skip 1 if onboarding is a full week (0, 2, 3...)
-      // - Nth content calendar week (0-indexed position) → Template/Instance week at position N
+      // - Template weeks start at 2 (onboarding is 1)
+      // - Nth content calendar week (0-indexed) → Template Week N+2
       // Note: 'closing' type is the last week which may still have template content
       let targetWeekNumber: number | undefined;
 
@@ -535,9 +539,10 @@ export function ModuleWeeksSidebar({
         );
 
         if (positionAmongContent >= 0) {
-          // Template weeks are 1-indexed, so position 0 → weekNumber 1
-          targetWeekNumber = positionAmongContent + 1;
-          
+          // Template weeks are 2-indexed (onboarding=1, first content=2)
+          // So position 0 → weekNumber 2, position 1 → weekNumber 3, etc.
+          targetWeekNumber = positionAmongContent + 2;
+
           // First try to find by weekNumber (most reliable)
           storedWeek = weeks.find(w => w.weekNumber === targetWeekNumber);
           
@@ -581,7 +586,8 @@ export function ModuleWeeksSidebar({
           });
         }
       }
-      // For onboarding and closing weeks, storedWeek remains undefined (no template content)
+      // For onboarding weeks, storedWeek remains undefined (no template content)
+      // Onboarding gets templateWeekNumber=undefined to avoid collision with content weeks
 
       return {
         weekNum: idx + 1, // Sequential for internal use
@@ -590,7 +596,7 @@ export function ModuleWeeksSidebar({
         daysInWeek,
         contentCount: daysWithContent.length,
         totalDays: daysInWeek.length,
-        label: cw.label, // Calendar week label (Onboarding, Week 1, etc.)
+        label: cw.label, // Calendar week label (Onboarding, Week 2, etc.)
         theme: storedWeek?.theme, // Actual theme from stored week
         distribution: storedWeek?.distribution || 'spread',
         weeklyTasks: storedWeek?.weeklyTasks || [],
@@ -598,9 +604,9 @@ export function ModuleWeeksSidebar({
         moduleId: storedWeek?.moduleId,
         order: idx, // Maintain calendar order
         // CRITICAL: Use targetWeekNumber for content weeks (regular/closing)
-        // For non-content weeks (onboarding), use cw.weekNumber (0 for onboarding, -1 for closing)
-        // This prevents the collision where both onboarding and Week 1 would have weekNumber=1
-        templateWeekNumber: targetWeekNumber ?? cw.weekNumber,
+        // For onboarding (type='onboarding'), use undefined to avoid collision
+        // Closing weeks (type='closing') use targetWeekNumber from position calculation
+        templateWeekNumber: cw.type === 'onboarding' ? undefined : targetWeekNumber,
       };
     });
   }, [calendarWeeks, days, weeks, program.includeWeekends]);
