@@ -1648,13 +1648,12 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   const eveningHeight = eveningValue ? (eveningValue / 5) * 100 : 0;
                   const hasMorning = morningValue > 0;
                   const hasEvening = eveningValue > 0;
-                  if (hasMorning) console.log('[MoodChart] Rendering bar for', day.date, 'height:', morningHeight, '% hasMorning:', hasMorning);
 
                   return (
                     <div key={idx} className="flex flex-col items-center">
                       <div className="flex gap-1.5 h-28 items-end mb-2">
                         {/* Morning bar */}
-                        <div className="relative group h-full flex items-end">
+                        <div className="relative group">
                           <div
                             className={`w-4 rounded-md transition-all duration-300 ease-out ${
                               hasMorning
@@ -1677,7 +1676,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                           )}
                         </div>
                         {/* Evening bar */}
-                        <div className="relative group h-full flex items-end">
+                        <div className="relative group">
                           <div
                             className={`w-4 rounded-md transition-all duration-300 ease-out ${
                               hasEvening

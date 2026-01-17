@@ -1997,7 +1997,7 @@ export function WeekEditor({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2 sm:gap-3">
           <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {week.name || (week.weekNumber === -1 ? 'Closing' : `Week ${week.weekNumber}`)}
+            {week.name || (week.weekNumber === 0 ? 'Onboarding' : week.weekNumber === -1 ? 'Closing' : `Week ${week.weekNumber}`)}
           </h3>
           {/* Client/Cohort/Template mode badge */}
           {isClientView ? (

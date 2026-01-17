@@ -3,21 +3,29 @@
  *
  * Provides functions to calculate calendar-aligned weeks for program enrollments.
  * Weeks align to Mon-Fri calendar weeks, with special handling for:
- * - Onboarding Week: Week 1 (may be partial if joining mid-week)
- * - Regular Weeks: Week 2, 3, 4... Full Mon-Fri weeks in between
- * - Closing Week: Last week (may be partial, weekNumber=-1)
+ * - Onboarding Week: First week (may be partial if joining mid-week)
+ * - Closing Week: Last week (may be partial)
+ * - Regular Weeks: Full Mon-Fri weeks in between
  *
- * ## Week Numbering Scheme
+ * ## IMPORTANT: Position-Based Mapping
  *
- * - Week 1 = Onboarding (type='onboarding')
- * - Week 2, 3, 4... = Regular weeks (type='regular')
- * - Week -1 = Closing (type='closing')
+ * Template weeks (from program_weeks) map to calendar weeks by POSITION among
+ * regular weeks, NOT by weekNumber. This is because:
  *
- * ## Position-Based Mapping
+ * - If onboarding is FULL (started Monday), calendar weekNumbers skip 1:
+ *   [Onboarding(weekNumber=0), Week 2(weekNumber=2), Week 3(weekNumber=3)...]
  *
- * When mapping template weeks to calendar weeks, use POSITION among regular weeks:
- *   - Filter calendar weeks to `weekNumber > 1` to get regular weeks only
- *   - Template Week 2 → position 0, Template Week 3 → position 1, etc.
+ * - If onboarding is PARTIAL (started mid-week), weekNumbers are sequential:
+ *   [Onboarding(weekNumber=0), Week 1(weekNumber=1), Week 2(weekNumber=2)...]
+ *
+ * The mapping rule is:
+ *   Template Week N → Nth regular calendar week (0-indexed position N-1)
+ *
+ * Example with full onboarding (started Monday):
+ *   Template Week 1 → Calendar "Week 2" (1st regular week, position 0)
+ *   Template Week 2 → Calendar "Week 3" (2nd regular week, position 1)
+ *
+ * Onboarding and closing weeks have NO template content.
  *
  * This logic is used in:
  * - ModuleWeeksSidebar.tsx (frontend week selection)
@@ -35,12 +43,12 @@ export type CalendarWeekType = 'onboarding' | 'regular' | 'closing';
 export interface CalendarWeek {
   /** Type of week: onboarding (first), regular (middle), closing (last) */
   type: CalendarWeekType;
-  /** Display label: "Week 1", "Week 2", "Closing" */
+  /** Display label: "Onboarding", "Week 1", "Closing" */
   label: string;
   /**
-   * Week number: 1 for onboarding, 2+ for regular, -1 for closing.
-   * IMPORTANT: When filtering for regular weeks (not onboarding or closing), use `weekNumber > 1`
-   * to exclude both onboarding (1) AND closing (-1).
+   * Week number: 0 for onboarding, 1+ for regular, -1 for closing.
+   * IMPORTANT: When filtering for regular weeks, use `weekNumber > 0` (not `!== 0`)
+   * to exclude both onboarding (0) AND closing (-1).
    */
   weekNumber: number;
   /** ISO date string for first day of this week (Monday or enrollment date) */
@@ -222,13 +230,11 @@ export function calculateCalendarWeeks(
     }
   }
 
-  // Onboarding Week (weekNumber=1, but labeled "Onboarding")
-  // Note: Onboarding is now weekNumber=1 (not 0), but we still display it as "Onboarding"
-  // for clarity. This simplifies calculations while keeping clear UX.
+  // Onboarding Week (always exists)
   weeks.push({
     type: 'onboarding',
     label: 'Onboarding',
-    weekNumber: 1,
+    weekNumber: 0,
     startDate: formatDate(effectiveStartDate),
     endDate: formatDate(actualOnboardingEndDate),
     startDayIndex: 1,
@@ -238,18 +244,17 @@ export function calculateCalendarWeeks(
 
   // If program is only onboarding week, mark it as closing too
   if (onboardingDays >= programLengthDays) {
-    // Update to be both onboarding and closing (keep "Onboarding" label)
-    weeks[0].type = 'closing';
-    // Label stays as "Onboarding" for single-week programs
+    // Update to be both onboarding and closing
+    weeks[0].type = 'closing'; // It's also the closing week
+    weeks[0].label = programLengthDays <= daysPerWeek ? 'Program' : 'Onboarding';
     return weeks;
   }
 
-  // Calculate remaining weeks (starting from Week 2)
+  // Calculate remaining weeks
   let currentDayIndex = onboardingDays + 1;
-  // Week 2 comes after onboarding (Week 1)
-  // If onboarding was a full week, we still call it Week 1, next is Week 2
-  // If onboarding was partial, next full week is still Week 2
-  let weekNumber = 2;
+  // Start at Week 2 if onboarding was a full week, Week 1 if partial
+  // This follows the calendar alignment where full onboarding "counts as" week 1
+  let weekNumber = onboardingDays >= daysPerWeek ? 2 : 1;
   let currentMonday = getNextMonday(actualOnboardingEndDate);
 
   while (currentDayIndex <= programLengthDays) {

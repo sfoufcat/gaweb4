@@ -83,10 +83,9 @@ export async function GET(
           const totalDays = programData.lengthDays;
           const calendarWeeks = calculateCalendarWeeks(enrollment.startedAt, totalDays, includeWeekends);
 
-          // Get regular calendar weeks only (excludes onboarding weekNumber=1 AND closing weekNumber=-1)
-          // Regular weeks have weekNumber > 1 (Week 2, Week 3, etc.)
+          // Get regular calendar weeks only (excludes onboarding weekNumber=0 AND closing weekNumber=-1)
           const calendarRegularWeeks = calendarWeeks
-            .filter((w: CalendarWeek) => w.weekNumber > 1)
+            .filter((w: CalendarWeek) => w.weekNumber > 0)
             .sort((a: CalendarWeek, b: CalendarWeek) => a.startDayIndex - b.startDayIndex);
 
           // Get the position of this week among all template regular weeks
@@ -94,7 +93,7 @@ export async function GET(
           const templateWeeksSnapshot = await adminDb
             .collection('program_weeks')
             .where('programId', '==', programId)
-            .where('weekNumber', '>', 1) // Regular weeks only (not onboarding)
+            .where('weekNumber', '>', 0) // Regular weeks only
             .orderBy('weekNumber', 'asc')
             .get();
 
@@ -105,9 +104,9 @@ export async function GET(
           if (templateWeekPosition >= 0) {
             // Regular template week: map to same position in calendar regular weeks
             calendarWeek = calendarRegularWeeks[templateWeekPosition];
-          } else if (weekNumber === 1) {
-            // Onboarding week (weekNumber=1): map to calendar onboarding
-            calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.type === 'onboarding');
+          } else if (weekNumber === 0) {
+            // Onboarding week: map to calendar onboarding
+            calendarWeek = calendarWeeks.find((w: CalendarWeek) => w.weekNumber === 0);
           }
 
           if (calendarWeek) {

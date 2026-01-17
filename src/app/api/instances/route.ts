@@ -176,25 +176,19 @@ export async function GET(request: NextRequest) {
             const daysPerWeek = includeWeekends ? 7 : 5;
             const totalDays = programData.lengthDays || 28;
 
-            // Calculate calendar weeks from cohort start date (includes Week 0 onboarding)
+            // Calculate calendar weeks from cohort start date
             let calendarWeeks: CalendarWeek[] = [];
             if (cohortData.startDate) {
               calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
             }
-            // Sort all calendar weeks (including onboarding) - no longer filtering out onboarding
-            const sortedCalendarWeeks = calendarWeeks.sort((a, b) => a.startDayIndex - b.startDayIndex);
+            const regularCalendarWeeks = calendarWeeks
+              .filter(w => w.weekNumber > 0)
+              .sort((a, b) => a.startDayIndex - b.startDayIndex);
 
-            // Helper to get calendar week by TEMPLATE weekNumber
-            // Template weeks are numbered 1, 2, 3...
-            // Calendar weeks are numbered 1 (onboarding), 2, 3, 4...
-            // Direct 1:1 mapping: Template Week 1 = Calendar Week 1 (Onboarding)
-            const getCalendarWeekByTemplateNumber = (templateWeekNumber: number) => {
-              return sortedCalendarWeeks.find(cw => cw.weekNumber === templateWeekNumber);
-            };
-
-            // Helper to get calendar date for a day by TEMPLATE week number
-            const getCalendarDateForDayByTemplateNumber = (templateWeekNumber: number, dayOffset: number): string | undefined => {
-              const calendarWeek = getCalendarWeekByTemplateNumber(templateWeekNumber);
+            // Helper to get calendar date for a day by week number (not position)
+            // Note: Week 0 (onboarding) won't have calendar dates since calendar weeks start at 1
+            const getCalendarDateForDayByWeekNumber = (weekNumber: number, dayOffset: number): string | undefined => {
+              const calendarWeek = regularCalendarWeeks.find(cw => cw.weekNumber === weekNumber);
               if (!calendarWeek?.startDate) return undefined;
               const startDate = new Date(calendarWeek.startDate);
               startDate.setDate(startDate.getDate() + dayOffset);
@@ -232,13 +226,9 @@ export async function GET(request: NextRequest) {
                 weeklyPrompt?: string;
                 distribution?: string;
               }) => {
-                // Look up calendar week by template weekNumber
-                // Template weeks (1, 2, 3...) map to calendar content weeks (2, 3, 4...)
-                const calendarWeek = getCalendarWeekByTemplateNumber(weekData.weekNumber);
-                // Fallback: Template week N maps to calendar content week N (position N-1 among content weeks)
-                // Content weeks start after onboarding, so first content week starts at day (onboardingDays + 1)
-                // For simplicity, assume onboarding takes 1 full week worth of days
-                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + daysPerWeek + 1);
+                // Look up calendar week by weekNumber (not array position) to handle Week 0 correctly
+                const calendarWeek = regularCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
+                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
                 const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
 
                 const days: ProgramInstanceDay[] = [];
@@ -246,7 +236,7 @@ export async function GET(request: NextRequest) {
                   days.push({
                     dayIndex: i + 1,
                     globalDayIndex: startDayIndex + i,
-                    calendarDate: getCalendarDateForDayByTemplateNumber(weekData.weekNumber, i),
+                    calendarDate: getCalendarDateForDayByWeekNumber(weekData.weekNumber, i),
                     tasks: [],
                     habits: [],
                   });
@@ -254,8 +244,6 @@ export async function GET(request: NextRequest) {
 
                 return {
                   id: weekData.id || crypto.randomUUID(),
-                  // Instance weekNumber = template weekNumber (direct 1:1 mapping)
-                  // Template Week 1 = Onboarding, Template Week 2 = Week 2, etc.
                   weekNumber: weekData.weekNumber,
                   moduleId: weekData.moduleId,
                   name: weekData.name,
@@ -284,13 +272,9 @@ export async function GET(request: NextRequest) {
 
               weeks = weeksSnapshot.docs.map((weekDoc) => {
                 const weekData = weekDoc.data();
-                // Look up calendar week by template weekNumber
-                // Template weeks (1, 2, 3...) map to calendar content weeks (2, 3, 4...)
-                const calendarWeek = getCalendarWeekByTemplateNumber(weekData.weekNumber);
-                // Fallback: Template week N maps to calendar content week N (position N-1 among content weeks)
-                // Content weeks start after onboarding, so first content week starts at day (onboardingDays + 1)
-                // For simplicity, assume onboarding takes 1 full week worth of days
-                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + daysPerWeek + 1);
+                // Look up calendar week by weekNumber (not array position) to handle Week 0 correctly
+                const calendarWeek = regularCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
+                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
                 const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
 
                 const days: ProgramInstanceDay[] = [];
@@ -298,7 +282,7 @@ export async function GET(request: NextRequest) {
                   days.push({
                     dayIndex: i + 1,
                     globalDayIndex: startDayIndex + i,
-                    calendarDate: getCalendarDateForDayByTemplateNumber(weekData.weekNumber, i),
+                    calendarDate: getCalendarDateForDayByWeekNumber(weekData.weekNumber, i),
                     tasks: [],
                     habits: [],
                   });
@@ -306,7 +290,6 @@ export async function GET(request: NextRequest) {
 
                 return {
                   id: weekDoc.id,
-                  // Instance weekNumber = template weekNumber (direct 1:1 mapping)
                   weekNumber: weekData.weekNumber,
                   moduleId: weekData.moduleId,
                   name: weekData.name,
@@ -388,25 +371,19 @@ export async function GET(request: NextRequest) {
             const daysPerWeek = includeWeekends ? 7 : 5;
             const totalDays = programData.lengthDays || 28;
 
-            // Calculate calendar weeks from enrollment start date (includes Week 0 onboarding)
+            // Calculate calendar weeks from enrollment start date
             let calendarWeeks: CalendarWeek[] = [];
             if (enrollmentData.startDate) {
               calendarWeeks = calculateCalendarWeeks(enrollmentData.startDate, totalDays, includeWeekends);
             }
-            // Sort all calendar weeks (including onboarding) - no longer filtering out onboarding
-            const sortedCalendarWeeks = calendarWeeks.sort((a, b) => a.startDayIndex - b.startDayIndex);
+            const regularCalendarWeeks = calendarWeeks
+              .filter(w => w.weekNumber > 0)
+              .sort((a, b) => a.startDayIndex - b.startDayIndex);
 
-            // Helper to get calendar week by TEMPLATE weekNumber
-            // Template weeks are numbered 1, 2, 3...
-            // Calendar weeks are numbered 1 (onboarding), 2, 3, 4...
-            // Direct 1:1 mapping: Template Week 1 = Calendar Week 1 (Onboarding)
-            const getCalendarWeekByTemplateNumber = (templateWeekNumber: number) => {
-              return sortedCalendarWeeks.find(cw => cw.weekNumber === templateWeekNumber);
-            };
-
-            // Helper to get calendar date for a day by TEMPLATE week number
-            const getCalendarDateForDayByTemplateNumber = (templateWeekNumber: number, dayOffset: number): string | undefined => {
-              const calendarWeek = getCalendarWeekByTemplateNumber(templateWeekNumber);
+            // Helper to get calendar date for a day by week number (not position)
+            // Note: Week 0 (onboarding) won't have calendar dates since calendar weeks start at 1
+            const getCalendarDateForDayByWeekNumber = (weekNumber: number, dayOffset: number): string | undefined => {
+              const calendarWeek = regularCalendarWeeks.find(cw => cw.weekNumber === weekNumber);
               if (!calendarWeek?.startDate) return undefined;
               const startDate = new Date(calendarWeek.startDate);
               startDate.setDate(startDate.getDate() + dayOffset);
@@ -444,13 +421,9 @@ export async function GET(request: NextRequest) {
                 weeklyPrompt?: string;
                 distribution?: string;
               }) => {
-                // Look up calendar week by template weekNumber
-                // Template weeks (1, 2, 3...) map to calendar content weeks (2, 3, 4...)
-                const calendarWeek = getCalendarWeekByTemplateNumber(weekData.weekNumber);
-                // Fallback: Template week N maps to calendar content week N (position N-1 among content weeks)
-                // Content weeks start after onboarding, so first content week starts at day (onboardingDays + 1)
-                // For simplicity, assume onboarding takes 1 full week worth of days
-                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + daysPerWeek + 1);
+                // Look up calendar week by weekNumber (not array position) to handle Week 0 correctly
+                const calendarWeek = regularCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
+                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
                 const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
 
                 const days: ProgramInstanceDay[] = [];
@@ -458,7 +431,7 @@ export async function GET(request: NextRequest) {
                   days.push({
                     dayIndex: i + 1,
                     globalDayIndex: startDayIndex + i,
-                    calendarDate: getCalendarDateForDayByTemplateNumber(weekData.weekNumber, i),
+                    calendarDate: getCalendarDateForDayByWeekNumber(weekData.weekNumber, i),
                     tasks: [],
                     habits: [],
                   });
@@ -466,8 +439,6 @@ export async function GET(request: NextRequest) {
 
                 return {
                   id: weekData.id || crypto.randomUUID(),
-                  // Instance weekNumber = template weekNumber (direct 1:1 mapping)
-                  // Template Week 1 = Onboarding, Template Week 2 = Week 2, etc.
                   weekNumber: weekData.weekNumber,
                   moduleId: weekData.moduleId,
                   name: weekData.name,
@@ -496,13 +467,9 @@ export async function GET(request: NextRequest) {
 
               weeks = weeksSnapshot.docs.map((weekDoc) => {
                 const weekData = weekDoc.data();
-                // Look up calendar week by template weekNumber
-                // Template weeks (1, 2, 3...) map to calendar content weeks (2, 3, 4...)
-                const calendarWeek = getCalendarWeekByTemplateNumber(weekData.weekNumber);
-                // Fallback: Template week N maps to calendar content week N (position N-1 among content weeks)
-                // Content weeks start after onboarding, so first content week starts at day (onboardingDays + 1)
-                // For simplicity, assume onboarding takes 1 full week worth of days
-                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + daysPerWeek + 1);
+                // Look up calendar week by weekNumber (not array position) to handle Week 0 correctly
+                const calendarWeek = regularCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
+                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
                 const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
 
                 const days: ProgramInstanceDay[] = [];
@@ -510,7 +477,7 @@ export async function GET(request: NextRequest) {
                   days.push({
                     dayIndex: i + 1,
                     globalDayIndex: startDayIndex + i,
-                    calendarDate: getCalendarDateForDayByTemplateNumber(weekData.weekNumber, i),
+                    calendarDate: getCalendarDateForDayByWeekNumber(weekData.weekNumber, i),
                     tasks: [],
                     habits: [],
                   });
@@ -518,7 +485,6 @@ export async function GET(request: NextRequest) {
 
                 return {
                   id: weekDoc.id,
-                  // Instance weekNumber = template weekNumber (direct 1:1 mapping)
                   weekNumber: weekData.weekNumber,
                   moduleId: weekData.moduleId,
                   name: weekData.name,

@@ -38,14 +38,12 @@ function ensureDaysHaveCalendarDates(
 
   // Calculate calendar weeks from start date
   const calendarWeeks = calculateCalendarWeeks(startDate, totalDays, includeWeekends);
-  // Regular weeks have weekNumber > 1 (Week 2, Week 3, etc.) - excludes onboarding (1) and closing (-1)
   const regularCalendarWeeks = calendarWeeks
-    .filter(w => w.weekNumber > 1)
+    .filter(w => w.weekNumber > 0)
     .sort((a, b) => a.startDayIndex - b.startDayIndex);
 
   // Find which calendar week this instance week corresponds to
-  // Week 1 is onboarding, Week 2 is first regular week (position 0), etc.
-  const weekPosition = week.weekNumber - 2;
+  const weekPosition = week.weekNumber - 1;
   const calendarWeek = regularCalendarWeeks[weekPosition];
 
   if (!calendarWeek?.startDate) {
@@ -331,7 +329,7 @@ export async function GET(
     const { instanceId, weekNum } = await params;
     const weekNumber = parseInt(weekNum, 10);
 
-    if (isNaN(weekNumber) || weekNumber < 1) {
+    if (isNaN(weekNumber) || weekNumber < 0) {
       return NextResponse.json({ error: 'Invalid week number' }, { status: 400 });
     }
 
@@ -421,7 +419,7 @@ export async function PATCH(
     const weekNumber = parseInt(weekNum, 10);
     const body = await request.json();
 
-    if (isNaN(weekNumber) || weekNumber < 1) {
+    if (isNaN(weekNumber) || weekNumber < 0) {
       return NextResponse.json({ error: 'Invalid week number' }, { status: 400 });
     }
 
