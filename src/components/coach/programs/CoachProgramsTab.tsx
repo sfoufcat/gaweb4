@@ -389,6 +389,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     let calendarWeeksLookup: Map<number, { startDate: string; endDate: string; actualStartDayOfWeek?: number; startDayIndex: number; endDayIndex: number }> | null = null;
     if (instance.startDate && selectedProgram?.lengthDays) {
       const calculatedWeeks = calculateCalendarWeeks(instance.startDate, selectedProgram.lengthDays, includeWeekends);
+      console.log('[INSTANCE_WEEKS] Calculated calendar weeks:', {
+        instanceStartDate: instance.startDate,
+        programLengthDays: selectedProgram.lengthDays,
+        includeWeekends,
+        calculatedWeeks: calculatedWeeks.map(cw => ({
+          weekNumber: cw.weekNumber,
+          startDate: cw.startDate,
+          endDate: cw.endDate,
+          startDayIndex: cw.startDayIndex,
+          endDayIndex: cw.endDayIndex,
+          actualStartDayOfWeek: cw.actualStartDayOfWeek,
+        })),
+      });
       calendarWeeksLookup = new Map(calculatedWeeks.map(cw => [cw.weekNumber, {
         startDate: cw.startDate,
         endDate: cw.endDate,
@@ -396,12 +409,32 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         startDayIndex: cw.startDayIndex,
         endDayIndex: cw.endDayIndex,
       }]));
+    } else {
+      console.log('[INSTANCE_WEEKS] NOT calculating calendar weeks:', {
+        hasStartDate: !!instance.startDate,
+        instanceStartDate: instance.startDate,
+        hasLengthDays: !!selectedProgram?.lengthDays,
+        lengthDays: selectedProgram?.lengthDays,
+      });
     }
 
     return instance.weeks.map(week => {
       // ALWAYS prefer calculated calendar data when available
       // This ensures correct dates/indices even for legacy instances with stale stored values
       const calculatedCalendar = calendarWeeksLookup?.get(week.weekNumber);
+
+      // Debug: Log what values are being used
+      console.log('[INSTANCE_WEEK_MAPPING]', {
+        weekNumber: week.weekNumber,
+        hasCalendarLookup: !!calendarWeeksLookup,
+        foundCalculated: !!calculatedCalendar,
+        calculatedStartDate: calculatedCalendar?.startDate,
+        storedStartDate: week.calendarStartDate,
+        finalStartDate: calculatedCalendar?.startDate || week.calendarStartDate,
+        calculatedStartDayIndex: calculatedCalendar?.startDayIndex,
+        storedStartDayIndex: week.startDayIndex,
+      });
+
       return {
         id: `${instance.id}-week-${week.weekNumber}`,
         programId: instance.programId,

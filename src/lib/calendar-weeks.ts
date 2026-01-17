@@ -75,10 +75,14 @@ export interface CalendarWeek {
 // ============================================================================
 
 /**
- * Format a Date object to ISO date string (YYYY-MM-DD)
+ * Format a Date object to ISO date string (YYYY-MM-DD) using LOCAL time
+ * (not UTC, to avoid day-of-week issues when timezone offset crosses midnight)
  */
 function formatDate(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /**

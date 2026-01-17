@@ -2213,6 +2213,18 @@ export function WeekEditor({
                     const dayDate = new Date(year, month - 1, dayOfMonth + i);
                     const weekdayName = WEEKDAYS[dayDate.getDay()];
                     dayLabel = `${weekdayName} (${dayNum})`;
+
+                    // Debug: log once per week render
+                    if (i === 0) {
+                      console.log('[DAY_PREVIEW] Calendar date parsing:', {
+                        calendarStartDate,
+                        parsedParts: { year, month, dayOfMonth },
+                        firstDayDate: dayDate.toString(),
+                        firstDayOfWeek: dayDate.getDay(),
+                        weekdayName,
+                        weekNumber: week.weekNumber,
+                      });
+                    }
                   }
 
                   // Check if this day is before the actual enrollment start (pre-enrollment blur)
