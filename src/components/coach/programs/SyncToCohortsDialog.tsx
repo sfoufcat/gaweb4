@@ -43,20 +43,6 @@ export function SyncToCohortsDialog({
   editedFields,
   onSyncComplete,
 }: SyncToCohortsDialogProps) {
-  // Client-side only rendering to avoid hydration issues with portals
-  const [isMounted, setIsMounted] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [targetMode, setTargetMode] = useState<'all' | 'select'>('all');
-  const [selectedCohortIds, setSelectedCohortIds] = useState<Set<string>>(new Set());
-  const [preserveCohortData, setPreserveCohortData] = useState(true);
-  const [distributeAfterSync, setDistributeAfterSync] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
   // Initialize sync fields based on editedFields (if provided) or default to none selected
   const getInitialSyncFields = (): SyncFieldOptions => {
     if (editedFields && editedFields.size > 0) {
@@ -82,10 +68,24 @@ export function SyncToCohortsDialog({
     };
   };
 
+  // All useState hooks grouped together (React Rules of Hooks)
+  const [isMounted, setIsMounted] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [targetMode, setTargetMode] = useState<'all' | 'select'>('all');
+  const [selectedCohortIds, setSelectedCohortIds] = useState<Set<string>>(new Set());
+  const [preserveCohortData, setPreserveCohortData] = useState(true);
+  const [distributeAfterSync, setDistributeAfterSync] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [syncFields, setSyncFields] = useState<SyncFieldOptions>(getInitialSyncFields);
 
-  // Track if dialog was previously open to detect open transitions
+  // useRef hooks
   const wasOpenRef = useRef(false);
+
+  // useEffect hooks - client-side only rendering to avoid hydration issues with portals
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Select all / deselect all helper
   const allFieldsSelected = Object.values(syncFields).every(v => v);

@@ -385,7 +385,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
     // Calculate calendar weeks if we have a start date but weeks are missing calendar dates
     // This provides fallback for instances created before calendar dates were added
-    let calendarWeeksLookup: Map<number, { startDate: string; endDate: string; actualStartDayOfWeek?: number }> | null = null;
+    // Also provides updated day indices for legacy instances (e.g., 4-day onboarding → 5-day)
+    let calendarWeeksLookup: Map<number, { startDate: string; endDate: string; actualStartDayOfWeek?: number; startDayIndex: number; endDayIndex: number }> | null = null;
     const needsCalendarFallback = instance.weeks.some(w => !w.calendarStartDate) && instance.startDate;
     if (needsCalendarFallback && instance.startDate && selectedProgram?.lengthDays) {
       const calculatedWeeks = calculateCalendarWeeks(instance.startDate, selectedProgram.lengthDays, includeWeekends);
@@ -393,6 +394,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         startDate: cw.startDate,
         endDate: cw.endDate,
         actualStartDayOfWeek: cw.actualStartDayOfWeek,
+        startDayIndex: cw.startDayIndex,
+        endDayIndex: cw.endDayIndex,
       }]));
     }
 
@@ -416,9 +419,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         calendarEndDate: week.calendarEndDate || fallbackCalendar?.endDate,
         actualStartDayOfWeek: week.actualStartDayOfWeek ?? fallbackCalendar?.actualStartDayOfWeek,
         moduleId: week.moduleId,
-        // Use API-provided day indices, or calculate fallback (with proper Week 0 handling)
-        startDayIndex: week.startDayIndex ?? (week.weekNumber === 0 ? 1 : (week.weekNumber - 1) * daysPerWeek + 1),
-        endDayIndex: week.endDayIndex ?? (week.weekNumber === 0 ? daysPerWeek : week.weekNumber * daysPerWeek),
+        // Use calculated calendar week indices first (most accurate for new 5-day onboarding),
+        // then stored indices, then calculate fallback
+        startDayIndex: fallbackCalendar?.startDayIndex ?? week.startDayIndex ?? (week.weekNumber === 0 ? 1 : (week.weekNumber - 1) * daysPerWeek + 1),
+        endDayIndex: fallbackCalendar?.endDayIndex ?? week.endDayIndex ?? (week.weekNumber === 0 ? daysPerWeek : week.weekNumber * daysPerWeek),
         createdAt: now,
         updatedAt: now,
       } as ClientProgramWeek & { actualStartDayOfWeek?: number };

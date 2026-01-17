@@ -2207,9 +2207,10 @@ export function WeekEditor({
                   let dayLabel = `Day ${dayNum}`;
                   if (calendarStartDate) {
                     const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                    const startDate = new Date(calendarStartDate);
-                    const dayDate = new Date(startDate);
-                    dayDate.setDate(startDate.getDate() + i);
+                    // Parse as local date to avoid UTC timezone issues
+                    // (new Date("2025-01-13") parses as UTC, causing day-of-week to be off by 1)
+                    const [year, month, dayOfMonth] = calendarStartDate.split('-').map(Number);
+                    const dayDate = new Date(year, month - 1, dayOfMonth + i);
                     const weekdayName = WEEKDAYS[dayDate.getDay()];
                     dayLabel = `${weekdayName} (${dayNum})`;
                   }

@@ -54,19 +54,6 @@ export function SyncToClientsDialog({
   editedFields,
   onSyncComplete,
 }: SyncToClientsDialogProps) {
-  // Client-side only rendering to avoid hydration issues with portals
-  const [isMounted, setIsMounted] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [targetMode, setTargetMode] = useState<'all' | 'select'>('all');
-  const [selectedEnrollmentIds, setSelectedEnrollmentIds] = useState<Set<string>>(new Set());
-  const [preserveClientData, setPreserveClientData] = useState(true);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  
   // Initialize sync fields based on editedFields (if provided) or default to none selected
   const getInitialSyncFields = (): SyncFieldOptions => {
     if (editedFields && editedFields.size > 0) {
@@ -91,11 +78,24 @@ export function SyncToClientsDialog({
       syncHabits: false,
     };
   };
-  
+
+  // All useState hooks grouped together (React Rules of Hooks)
+  const [isMounted, setIsMounted] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [targetMode, setTargetMode] = useState<'all' | 'select'>('all');
+  const [selectedEnrollmentIds, setSelectedEnrollmentIds] = useState<Set<string>>(new Set());
+  const [preserveClientData, setPreserveClientData] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [syncFields, setSyncFields] = useState<SyncFieldOptions>(getInitialSyncFields);
 
-  // Track if dialog was previously open to detect open transitions
+  // useRef hooks
   const wasOpenRef = useRef(false);
+
+  // useEffect hooks - client-side only rendering to avoid hydration issues with portals
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Select all / deselect all helper
   const allFieldsSelected = Object.values(syncFields).every(v => v);

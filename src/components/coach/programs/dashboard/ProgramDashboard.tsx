@@ -179,15 +179,22 @@ export function ProgramDashboard({
   }, [onViewContextChange]);
 
   // Build API URLs
-  const programDashboardUrl = viewContext.mode === 'program'
-    ? `/api/coach/org-programs/${program.id}/dashboard`
-    : null;
+  // For program mode, fetch all enrollments; for cohort mode, filter by cohortId
+  const programDashboardUrl = useMemo(() => {
+    if (viewContext.mode === 'program') {
+      return `/api/coach/org-programs/${program.id}/dashboard`;
+    }
+    if (viewContext.mode === 'cohort') {
+      return `/api/coach/org-programs/${program.id}/dashboard?cohortId=${viewContext.cohortId}`;
+    }
+    return null;
+  }, [viewContext.mode, viewContext.mode === 'cohort' ? viewContext.cohortId : null, program.id]);
 
   const clientDashboardUrl = viewContext.mode === 'client'
     ? `/api/coach/org-programs/${program.id}/dashboard/client/${viewContext.clientId}`
     : null;
 
-  // Fetch program-wide data
+  // Fetch program/cohort-wide data
   const { data: programData, isLoading: programLoading } = useSWR<ProgramDashboardData>(
     programDashboardUrl,
     fetcher,
@@ -201,7 +208,7 @@ export function ProgramDashboard({
     { revalidateOnFocus: false }
   );
 
-  const isLoading = (viewContext.mode === 'program' && programLoading) ||
+  const isLoading = ((viewContext.mode === 'program' || viewContext.mode === 'cohort') && programLoading) ||
     (viewContext.mode === 'client' && clientLoading);
 
   // Handle nudge action

@@ -694,9 +694,11 @@ export async function GET(
       .sort((a, b) => b.startDateTime.localeCompare(a.startDateTime));
 
     // Get streak from userAlignmentSummary (same source as squad/program views)
+    // Document ID format: {organizationId}_{userId}
     let streak = 0;
     try {
-      const summaryDoc = await adminDb.collection('userAlignmentSummary').doc(clientId).get();
+      const summaryDocId = `${organizationId}_${clientId}`;
+      const summaryDoc = await adminDb.collection('userAlignmentSummary').doc(summaryDocId).get();
       if (summaryDoc.exists) {
         const summaryData = summaryDoc.data();
         streak = summaryData?.currentStreak ?? 0;

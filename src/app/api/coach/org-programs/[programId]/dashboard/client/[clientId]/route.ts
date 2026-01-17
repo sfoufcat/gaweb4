@@ -319,9 +319,19 @@ export async function GET(
       pattern = `Most active on ${mostActiveDays.join(' and ')}`;
     }
 
-    // Calculate streaks (simplified - would need task_completions for accuracy)
-    const currentStreak = Math.floor(Math.random() * 10) + 1; // Placeholder
-    const bestStreak = currentStreak + Math.floor(Math.random() * 5);
+    // Get streak from userAlignmentSummary
+    let currentStreak = 0;
+    try {
+      const summaryDocId = `${organizationId}_${clientId}`;
+      const summaryDoc = await adminDb.collection('userAlignmentSummary').doc(summaryDocId).get();
+      if (summaryDoc.exists) {
+        const summaryData = summaryDoc.data();
+        currentStreak = summaryData?.currentStreak ?? 0;
+      }
+    } catch (err) {
+      console.warn('[CLIENT_DASHBOARD] Failed to fetch streak:', err);
+    }
+    const bestStreak = currentStreak; // Best streak would need historical tracking
 
     // Get calls (simplified - would need to query events)
     const callsCompleted = 0; // Placeholder

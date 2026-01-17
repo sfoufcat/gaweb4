@@ -1644,8 +1644,10 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   const morningValue = day.morning ? EMOTIONAL_STATE_COLORS[day.morning]?.value || 4 : 0;
                   const eveningValue = day.evening ? EMOTIONAL_STATE_COLORS[day.evening]?.value || 3 : 0;
                   // Morning uses 7-point scale, evening uses 5-point scale
-                  const morningHeight = morningValue ? (morningValue / 7) * 100 : 0;
-                  const eveningHeight = eveningValue ? (eveningValue / 5) * 100 : 0;
+                  // Use pixel heights (h-28 = 112px max)
+                  const maxBarHeight = 100;
+                  const morningHeight = morningValue ? Math.max((morningValue / 7) * maxBarHeight, 12) : 8;
+                  const eveningHeight = eveningValue ? Math.max((eveningValue / 5) * maxBarHeight, 12) : 8;
                   const hasMorning = morningValue > 0;
                   const hasEvening = eveningValue > 0;
 
@@ -1661,7 +1663,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                                 : 'bg-[#e9e5e0] dark:bg-[#262b35]'
                             }`}
                             style={{
-                              height: hasMorning ? `${Math.max(morningHeight, 12)}%` : '8px',
+                              height: `${morningHeight}px`,
                               opacity: hasMorning ? 1 : 0.4
                             }}
                           />
@@ -1684,7 +1686,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                                 : 'bg-[#e9e5e0] dark:bg-[#262b35]'
                             }`}
                             style={{
-                              height: hasEvening ? `${Math.max(eveningHeight, 12)}%` : '8px',
+                              height: `${eveningHeight}px`,
                               opacity: hasEvening ? 1 : 0.4
                             }}
                           />

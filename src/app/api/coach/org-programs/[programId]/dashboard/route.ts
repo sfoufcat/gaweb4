@@ -202,10 +202,27 @@ export async function GET(
       }
     }
 
-    // Get task completions for streak calculation
+    // Get streaks from userAlignmentSummary
     const streakMap = new Map<string, number>();
-    // For now, use a simplified streak calculation based on lastActiveAt
-    // In a full implementation, you'd query task_completions
+    if (userIds.length > 0) {
+      // Batch fetch alignment summaries (document ID format: {organizationId}_{userId})
+      const chunks: string[][] = [];
+      for (let i = 0; i < userIds.length; i += 30) {
+        chunks.push(userIds.slice(i, i + 30));
+      }
+      for (const chunk of chunks) {
+        const refs = chunk.map(userId =>
+          adminDb.collection('userAlignmentSummary').doc(`${organizationId}_${userId}`)
+        );
+        const docs = await adminDb.getAll(...refs);
+        docs.forEach((doc, index) => {
+          if (doc.exists) {
+            const data = doc.data();
+            streakMap.set(chunk[index], data?.currentStreak ?? 0);
+          }
+        });
+      }
+    }
 
     // Calculate member stats
     const memberStats: MemberStats[] = enrollments.map((enrollment) => {
@@ -222,8 +239,8 @@ export async function GET(
       const totalItems = userProgress.length || 1;
       const progressPercent = Math.round((completedItems / totalItems) * 100) || 0;
 
-      // Simplified streak (would need task_completions for accurate count)
-      const streak = streakMap.get(enrollment.userId) || (daysIdle <= 1 ? Math.floor(Math.random() * 10) + 1 : 0);
+      // Get streak from alignment summary
+      const streak = streakMap.get(enrollment.userId) || 0;
 
       return {
         userId: enrollment.userId,
