@@ -259,6 +259,7 @@ export async function GET(request: NextRequest) {
                   endDayIndex,
                   calendarStartDate: calendarWeek?.startDate,
                   calendarEndDate: calendarWeek?.endDate,
+                  actualStartDayOfWeek: calendarWeek?.actualStartDayOfWeek,
                   days,
                 };
               });
@@ -305,6 +306,7 @@ export async function GET(request: NextRequest) {
                   endDayIndex,
                   calendarStartDate: calendarWeek?.startDate,
                   calendarEndDate: calendarWeek?.endDate,
+                  actualStartDayOfWeek: calendarWeek?.actualStartDayOfWeek,
                   days,
                 };
               });
@@ -454,6 +456,7 @@ export async function GET(request: NextRequest) {
                   endDayIndex,
                   calendarStartDate: calendarWeek?.startDate,
                   calendarEndDate: calendarWeek?.endDate,
+                  actualStartDayOfWeek: calendarWeek?.actualStartDayOfWeek,
                   days,
                 };
               });
@@ -500,6 +503,7 @@ export async function GET(request: NextRequest) {
                   endDayIndex,
                   calendarStartDate: calendarWeek?.startDate,
                   calendarEndDate: calendarWeek?.endDate,
+                  actualStartDayOfWeek: calendarWeek?.actualStartDayOfWeek,
                   days,
                 };
               });

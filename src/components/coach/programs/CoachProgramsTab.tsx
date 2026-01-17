@@ -60,6 +60,7 @@ import { useProgramInstance } from '@/hooks/useProgramInstance';
 
 import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
 import { calculateProgramDayIndex, getActiveCycleNumber, calculateCyclesSinceDate } from '@/lib/program-client-utils';
+import { calculateCalendarWeeks } from '@/lib/calendar-weeks';
 
 // Animation variants for subtle fade transitions (calendar/row switching)
 const fadeVariants = {
@@ -375,34 +376,54 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   }, [instance]);
 
   // Derive weeks from instance (when using new system)
+  // If calendarStartDate is missing (legacy instances), calculate it from enrollment start date
   const instanceWeeks = useMemo(() => {
     if (!instance?.weeks) return [];
     const now = new Date().toISOString();
     const includeWeekends = selectedProgram?.includeWeekends !== false;
     const daysPerWeek = includeWeekends ? 7 : 5;
-    return instance.weeks.map(week => ({
-      id: `${instance.id}-week-${week.weekNumber}`,
-      programId: instance.programId,
-      organizationId: instance.organizationId,
-      enrollmentId: instance.enrollmentId || '',
-      programWeekId: `${instance.programId}-week-${week.weekNumber}`,
-      userId: instance.userId || '',
-      weekNumber: week.weekNumber,
-      name: week.name,
-      theme: week.theme,
-      description: week.description,
-      weeklyPrompt: week.weeklyPrompt,
-      weeklyTasks: week.weeklyTasks || [],
-      calendarStartDate: week.calendarStartDate,
-      calendarEndDate: week.calendarEndDate,
-      moduleId: week.moduleId,
-      // Use API-provided day indices, or calculate fallback (with proper Week 0 handling)
-      startDayIndex: week.startDayIndex ?? (week.weekNumber === 0 ? 1 : (week.weekNumber - 1) * daysPerWeek + 1),
-      endDayIndex: week.endDayIndex ?? (week.weekNumber === 0 ? daysPerWeek : week.weekNumber * daysPerWeek),
-      createdAt: now,
-      updatedAt: now,
-    } as ClientProgramWeek));
-  }, [instance, selectedProgram?.includeWeekends]);
+
+    // Calculate calendar weeks if we have a start date but weeks are missing calendar dates
+    // This provides fallback for instances created before calendar dates were added
+    let calendarWeeksLookup: Map<number, { startDate: string; endDate: string; actualStartDayOfWeek?: number }> | null = null;
+    const needsCalendarFallback = instance.weeks.some(w => !w.calendarStartDate) && instance.startDate;
+    if (needsCalendarFallback && instance.startDate && selectedProgram?.lengthDays) {
+      const calculatedWeeks = calculateCalendarWeeks(instance.startDate, selectedProgram.lengthDays, includeWeekends);
+      calendarWeeksLookup = new Map(calculatedWeeks.map(cw => [cw.weekNumber, {
+        startDate: cw.startDate,
+        endDate: cw.endDate,
+        actualStartDayOfWeek: cw.actualStartDayOfWeek,
+      }]));
+    }
+
+    return instance.weeks.map(week => {
+      // Use stored calendar dates, or fall back to calculated ones
+      const fallbackCalendar = calendarWeeksLookup?.get(week.weekNumber);
+      return {
+        id: `${instance.id}-week-${week.weekNumber}`,
+        programId: instance.programId,
+        organizationId: instance.organizationId,
+        enrollmentId: instance.enrollmentId || '',
+        programWeekId: `${instance.programId}-week-${week.weekNumber}`,
+        userId: instance.userId || '',
+        weekNumber: week.weekNumber,
+        name: week.name,
+        theme: week.theme,
+        description: week.description,
+        weeklyPrompt: week.weeklyPrompt,
+        weeklyTasks: week.weeklyTasks || [],
+        calendarStartDate: week.calendarStartDate || fallbackCalendar?.startDate,
+        calendarEndDate: week.calendarEndDate || fallbackCalendar?.endDate,
+        actualStartDayOfWeek: week.actualStartDayOfWeek ?? fallbackCalendar?.actualStartDayOfWeek,
+        moduleId: week.moduleId,
+        // Use API-provided day indices, or calculate fallback (with proper Week 0 handling)
+        startDayIndex: week.startDayIndex ?? (week.weekNumber === 0 ? 1 : (week.weekNumber - 1) * daysPerWeek + 1),
+        endDayIndex: week.endDayIndex ?? (week.weekNumber === 0 ? daysPerWeek : week.weekNumber * daysPerWeek),
+        createdAt: now,
+        updatedAt: now,
+      } as ClientProgramWeek & { actualStartDayOfWeek?: number };
+    });
+  }, [instance, selectedProgram?.includeWeekends, selectedProgram?.lengthDays]);
 
   // Leave warning dialog state (for unsaved changes)
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
@@ -4090,7 +4111,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   const existingWeek = templateWeek;
 
                   // NEW SYSTEM: Check if we have instance week data
-                  const instanceWeek = instance?.weeks?.find(w => w.weekNumber === weekNumber);
+                  // Use instanceWeeks (derived with calendar fallbacks) instead of raw instance.weeks
+                  const instanceWeek = instanceWeeks?.find(w => w.weekNumber === weekNumber);
 
                   // Debug: Log week data sources
                   if ((isCohortMode || isClientMode) && instanceId) {
@@ -4122,7 +4144,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   // ARCHITECTURE: In instance mode, use ONLY instance data - NO template fallback
                   // Template and instance are COMPLETELY SEPARATE data stores.
                   // Template → Instance sync only happens via explicit "Sync to Client/Cohort" button.
-                  const selectedWeek: ProgramWeek & { calendarStartDate?: string } = useNewSystem ? {
+                  const selectedWeek: ProgramWeek & { calendarStartDate?: string; actualStartDayOfWeek?: number } = useNewSystem ? {
                     // NEW SYSTEM: Use instance week data ONLY (no template mixing!)
                     // Structural fields use template for compatibility, content fields use instance ONLY
                     id: templateWeek?.id || `instance-week-${weekNumber}`,
@@ -4137,6 +4159,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     fillSource: templateWeek?.fillSource,
                     // Calendar date for day preview display (from instance data)
                     calendarStartDate: instanceWeek?.calendarStartDate,
+                    // For onboarding week: which day enrollment starts (for blur effect)
+                    actualStartDayOfWeek: instanceWeek?.actualStartDayOfWeek,
                     // CONTENT FIELDS: When instance data available, use ONLY instance data (no template fallback!)
                     // This ensures template changes don't "bleed through" to client/cohort view
                     moduleId: instanceDataAvailable

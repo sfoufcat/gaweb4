@@ -61,6 +61,13 @@ export interface CalendarWeek {
   endDayIndex: number;
   /** Number of active program days in this week (1-5 for weekdays-only, 1-7 with weekends) */
   dayCount: number;
+  /**
+   * For onboarding week: which day of the week the enrollment actually starts (1-based).
+   * 1 = Monday, 2 = Tuesday, ..., 5 = Friday (for weekdays-only programs)
+   * Days before this should be shown as blurred/disabled in the UI.
+   * Only set for onboarding weeks; undefined for regular and closing weeks.
+   */
+  actualStartDayOfWeek?: number;
 }
 
 // ============================================================================
@@ -198,48 +205,62 @@ export function calculateCalendarWeeks(
 
   const daysPerWeek = includeWeekends ? 7 : 5;
 
-  // Calculate days remaining in first week (until Friday for weekdays-only, until Sunday for weekends)
+  // Calculate the actual enrollment day of week (1=Mon, 2=Tue, ..., 5=Fri for weekdays-only)
   const effectiveDayOfWeek = effectiveStartDate.getDay();
-  let daysInFirstWeek: number;
+  // Convert from JS day (0=Sun, 1=Mon, ..., 6=Sat) to 1-based weekday (1=Mon, 2=Tue, ..., 5=Fri)
+  const actualStartDayOfWeek = effectiveDayOfWeek === 0 ? 1 : effectiveDayOfWeek; // Sunday → Monday
 
-  if (includeWeekends) {
-    // Days until Sunday (end of week)
-    daysInFirstWeek = effectiveDayOfWeek === 0 ? 1 : 8 - effectiveDayOfWeek;
-  } else {
-    // Days until Friday (Mon=1 means 5 days, Thu=4 means 2 days, Fri=5 means 1 day)
-    daysInFirstWeek = 6 - effectiveDayOfWeek;
-    if (daysInFirstWeek <= 0) daysInFirstWeek = 1; // Handle edge case
-  }
+  // ALWAYS show full week for onboarding (5 days for weekdays-only, 7 with weekends)
+  // Days before actualStartDayOfWeek will be shown as blurred/disabled in UI
+  const daysInFirstWeek = daysPerWeek;
 
   // Cap first week days to program length
   const onboardingDays = Math.min(daysInFirstWeek, programLengthDays);
 
-  // Calculate end date for onboarding week
-  const onboardingEndDate = addDays(effectiveStartDate, onboardingDays - 1);
-  // Adjust for weekends if needed
-  let actualOnboardingEndDate = onboardingEndDate;
+  // Calculate the Monday of the enrollment week (start of onboarding)
+  let onboardingStartDate: Date;
+  if (effectiveDayOfWeek === 0) {
+    // Sunday - go back to Monday of previous week for weekdays-only, or use as-is with weekends
+    onboardingStartDate = includeWeekends ? effectiveStartDate : addDays(effectiveStartDate, -6);
+  } else if (effectiveDayOfWeek === 1) {
+    // Monday - already at start of week
+    onboardingStartDate = effectiveStartDate;
+  } else if (effectiveDayOfWeek === 6) {
+    // Saturday - for weekdays-only, go back to Monday of this week
+    onboardingStartDate = includeWeekends ? effectiveStartDate : addDays(effectiveStartDate, -5);
+  } else {
+    // Tue-Fri - go back to Monday of this week
+    onboardingStartDate = addDays(effectiveStartDate, -(effectiveDayOfWeek - 1));
+  }
+
+  // Calculate end date for onboarding week (always Friday for weekdays-only)
+  let actualOnboardingEndDate: Date;
   if (!includeWeekends) {
-    // Count forward from start, skipping weekends
+    // Count forward from Monday, skipping weekends, for onboardingDays
     let daysToAdd = onboardingDays - 1;
-    actualOnboardingEndDate = new Date(effectiveStartDate);
+    actualOnboardingEndDate = new Date(onboardingStartDate);
     while (daysToAdd > 0) {
       actualOnboardingEndDate = addDays(actualOnboardingEndDate, 1);
       if (!isWeekend(actualOnboardingEndDate)) {
         daysToAdd--;
       }
     }
+  } else {
+    actualOnboardingEndDate = addDays(onboardingStartDate, onboardingDays - 1);
   }
 
-  // Onboarding Week (always exists)
+  // Onboarding Week (always exists, always full week)
+  // actualStartDayOfWeek indicates which day enrollment actually starts (for blur logic)
   weeks.push({
     type: 'onboarding',
     label: 'Onboarding',
     weekNumber: 0,
-    startDate: formatDate(effectiveStartDate),
+    startDate: formatDate(onboardingStartDate),
     endDate: formatDate(actualOnboardingEndDate),
     startDayIndex: 1,
     endDayIndex: onboardingDays,
     dayCount: onboardingDays,
+    actualStartDayOfWeek: includeWeekends ? undefined : actualStartDayOfWeek, // Only relevant for weekdays-only
   });
 
   // If program is only onboarding week, mark it as closing too

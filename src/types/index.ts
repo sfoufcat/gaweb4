@@ -1255,6 +1255,16 @@ export interface ClientProgramWeek {
   linkedCallEventIds?: string[];
   fillSource?: WeekFillSource;
 
+  // Calendar dates (for day preview display)
+  calendarStartDate?: string;   // ISO date - first day of this week
+  calendarEndDate?: string;     // ISO date - last day of this week
+  /**
+   * For onboarding week (weekNumber=0): which day of week enrollment actually starts.
+   * 1 = Monday, 2 = Tuesday, ..., 5 = Friday (for weekdays-only programs).
+   * Days before this should be shown as blurred/disabled in the UI.
+   */
+  actualStartDayOfWeek?: number;
+
   // Sync tracking
   lastSyncedAt?: string;        // When last synced from template
   hasLocalChanges?: boolean;    // True if edited after sync
@@ -5971,6 +5981,13 @@ export interface ProgramInstanceWeek {
   // Day range (program day indices)
   startDayIndex?: number;
   endDayIndex?: number;
+  /**
+   * For onboarding week (weekNumber=0): which day of week enrollment actually starts.
+   * 1 = Monday, 2 = Tuesday, ..., 5 = Friday (for weekdays-only programs).
+   * Days before this should be shown as blurred/disabled in the UI.
+   * Only set for onboarding weeks; undefined for regular and closing weeks.
+   */
+  actualStartDayOfWeek?: number;
   // Content
   name?: string;                 // Week name/title
   theme?: string;

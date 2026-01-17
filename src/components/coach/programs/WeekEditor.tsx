@@ -2203,6 +2203,7 @@ export function WeekEditor({
 
                   // Get day label: "Mon (1)" if calendar date available, else "Day 1"
                   const calendarStartDate = (week as { calendarStartDate?: string }).calendarStartDate;
+                  const actualStartDayOfWeek = (week as { actualStartDayOfWeek?: number }).actualStartDayOfWeek;
                   let dayLabel = `Day ${dayNum}`;
                   if (calendarStartDate) {
                     const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -2213,22 +2214,35 @@ export function WeekEditor({
                     dayLabel = `${weekdayName} (${dayNum})`;
                   }
 
+                  // Check if this day is before the actual enrollment start (pre-enrollment blur)
+                  // actualStartDayOfWeek is 1-based (1=Mon, 2=Tue, etc.), dayNum is also 1-based
+                  // For onboarding week (weekNumber=0): days before actualStartDayOfWeek are pre-enrollment
+                  const isPreEnrollment = week.weekNumber === 0 && !!actualStartDayOfWeek && dayNum < actualStartDayOfWeek;
+
                   return (
                     <button
                       key={dayNum}
                       type="button"
-                      onClick={() => setPreviewDayNumber(dayNum)}
+                      onClick={() => !isPreEnrollment && setPreviewDayNumber(dayNum)}
+                      disabled={isPreEnrollment}
                       className={cn(
                         'flex-1 flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl transition-all',
                         'bg-white dark:bg-[#1a1e28] border border-[#e8e4df] dark:border-[#2a2f3a]',
-                        'hover:shadow-sm hover:border-brand-accent/40',
-                        isEmpty && 'opacity-50'
+                        isPreEnrollment
+                          ? 'opacity-30 cursor-not-allowed bg-gray-100 dark:bg-[#15181f]'
+                          : 'hover:shadow-sm hover:border-brand-accent/40',
+                        isEmpty && !isPreEnrollment && 'opacity-50'
                       )}
                     >
-                      <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                      <span className={cn(
+                        'text-sm font-medium font-albert',
+                        isPreEnrollment
+                          ? 'text-[#a7a39e] dark:text-[#5a5e6a]'
+                          : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                      )}>
                         {dayLabel}
                       </span>
-                      {taskCount > 0 && (
+                      {taskCount > 0 && !isPreEnrollment && (
                         <div className="flex items-center gap-0.5">
                           {Array.from({ length: dotCount }, (_, j) => (
                             <span key={j} className="w-1.5 h-1.5 rounded-full bg-brand-accent" />
@@ -2238,7 +2252,7 @@ export function WeekEditor({
                           )}
                         </div>
                       )}
-                      {isEmpty && <div className="h-[14px]" />}
+                      {(isEmpty || isPreEnrollment) && <div className="h-[14px]" />}
                     </button>
                   );
                 })}
