@@ -3,16 +3,16 @@
  *
  * Provides functions to calculate calendar-aligned weeks for program enrollments.
  * Weeks align to Mon-Fri calendar weeks, with special handling for:
- * - Onboarding Week (weekNumber=0): First week, always full (5 days)
- * - Regular Weeks (weekNumber=1,2,3...): Full Mon-Fri weeks
- * - Closing Week (weekNumber=-1): Only if last week is partial (<5 days)
+ * - Onboarding Week (weekNumber=0): First week, always full (5 days), welcome/orientation
+ * - Regular Weeks (weekNumber=1,2,3...): Full Mon-Fri weeks, main content
+ * - Closing Week (weekNumber=-1): ALWAYS exists as last week, wrap-up/reflection
  *
  * ## Template Week Structure
  *
- * Templates can have:
- *   Week 0:  Onboarding content (welcome/orientation tasks)
+ * Templates have a consistent structure:
+ *   Week 0:   Onboarding (welcome/orientation tasks) - ALWAYS exists
  *   Week 1-N: Regular content (main program)
- *   Week -1: Closing content (wrap-up/reflection tasks)
+ *   Week -1:  Closing (wrap-up/reflection tasks) - ALWAYS exists
  *
  * ## Calendar-to-Template Mapping
  *
@@ -21,15 +21,15 @@
  *   - Regular weeks (type='regular') → Template Week 1, 2, 3... (by position)
  *   - Closing (type='closing') → Template Week -1
  *
- * Example: 60-day program (12 weeks of content)
+ * Example: 60-day program
  *
- * Monday start (no closing week):
- *   [Onboarding(wk 0), Week 1, Week 2, ..., Week 12]
- *   All 12 template weeks used, no Week -1 needed
+ * Monday start (full weeks):
+ *   [Onboarding(wk 0, 5 days), Week 1, ..., Week 10, Closing(wk -1, 5 days)]
+ *   Template: Week 0 (days 1-5), Weeks 1-10 (days 6-55), Week -1 (days 56-60)
  *
- * Thursday start (creates closing week):
- *   [Onboarding(wk 0, 2 days), Week 1, Week 2, ..., Week 11, Closing(wk -1, 3 days)]
- *   Template Week 0 for onboarding, Weeks 1-11 for regular, Week -1 for closing
+ * Tuesday start (partial first/last):
+ *   [Onboarding(wk 0, 4 active), Week 1, ..., Week 11, Closing(wk -1, 1 day)]
+ *   Same template content, different calendar boundaries
  *
  * This logic is used in:
  * - ModuleWeeksSidebar.tsx (frontend week selection)
@@ -290,9 +290,9 @@ export function calculateCalendarWeeks(
     const daysRemaining = programLengthDays - currentDayIndex + 1;
     const daysInThisWeek = Math.min(daysPerWeek, daysRemaining);
     const isLastWeek = currentDayIndex + daysInThisWeek > programLengthDays;
-    // Closing week only if it's partial (fewer days than a full week)
-    // A full last week is still a regular week, not closing
-    const isClosingWeek = isLastWeek && daysInThisWeek < daysPerWeek;
+    // Closing week ALWAYS exists as the final week (like Onboarding is always first)
+    // This provides a consistent structure: Onboarding → Regular weeks → Closing
+    const isClosingWeek = isLastWeek;
 
     // Calculate end date for this week
     let weekEndDate: Date;
