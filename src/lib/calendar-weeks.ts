@@ -252,9 +252,8 @@ export function calculateCalendarWeeks(
 
   // Calculate remaining weeks
   let currentDayIndex = onboardingDays + 1;
-  // Start at Week 2 if onboarding was a full week, Week 1 if partial
-  // This follows the calendar alignment where full onboarding "counts as" week 1
-  let weekNumber = onboardingDays >= daysPerWeek ? 2 : 1;
+  // Always start at Week 1 - Onboarding is Week 0, regular weeks are 1, 2, 3...
+  let weekNumber = 1;
   let currentMonday = getNextMonday(actualOnboardingEndDate);
 
   while (currentDayIndex <= programLengthDays) {
