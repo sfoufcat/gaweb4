@@ -177,18 +177,18 @@ export async function GET(request: NextRequest) {
             const totalDays = programData.lengthDays || 28;
 
             // Calculate calendar weeks from cohort start date
+            // Include ALL weeks (including Week 0 onboarding) for proper date mapping
             let calendarWeeks: CalendarWeek[] = [];
             if (cohortData.startDate) {
               calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
             }
-            const regularCalendarWeeks = calendarWeeks
-              .filter(w => w.weekNumber > 0)
-              .sort((a, b) => a.startDayIndex - b.startDayIndex);
+            // Sort all calendar weeks by start day for consistent ordering
+            const sortedCalendarWeeks = [...calendarWeeks].sort((a, b) => a.startDayIndex - b.startDayIndex);
 
-            // Helper to get calendar date for a day by week number (not position)
-            // Note: Week 0 (onboarding) won't have calendar dates since calendar weeks start at 1
+            // Helper to get calendar date for a day by week number
+            // Now includes Week 0 (onboarding) which has calendar dates too
             const getCalendarDateForDayByWeekNumber = (weekNumber: number, dayOffset: number): string | undefined => {
-              const calendarWeek = regularCalendarWeeks.find(cw => cw.weekNumber === weekNumber);
+              const calendarWeek = sortedCalendarWeeks.find(cw => cw.weekNumber === weekNumber);
               if (!calendarWeek?.startDate) return undefined;
               const startDate = new Date(calendarWeek.startDate);
               startDate.setDate(startDate.getDate() + dayOffset);
@@ -226,9 +226,9 @@ export async function GET(request: NextRequest) {
                 weeklyPrompt?: string;
                 distribution?: string;
               }) => {
-                // Look up calendar week by weekNumber (not array position) to handle Week 0 correctly
-                const calendarWeek = regularCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
-                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
+                // Look up calendar week by weekNumber (includes Week 0 onboarding)
+                const calendarWeek = sortedCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
+                const startDayIndex = calendarWeek?.startDayIndex ?? (weekData.weekNumber === 0 ? 1 : (weekData.weekNumber - 1) * daysPerWeek + 1);
                 const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
 
                 const days: ProgramInstanceDay[] = [];
@@ -272,9 +272,9 @@ export async function GET(request: NextRequest) {
 
               weeks = weeksSnapshot.docs.map((weekDoc) => {
                 const weekData = weekDoc.data();
-                // Look up calendar week by weekNumber (not array position) to handle Week 0 correctly
-                const calendarWeek = regularCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
-                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
+                // Look up calendar week by weekNumber (includes Week 0 onboarding)
+                const calendarWeek = sortedCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
+                const startDayIndex = calendarWeek?.startDayIndex ?? (weekData.weekNumber === 0 ? 1 : (weekData.weekNumber - 1) * daysPerWeek + 1);
                 const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
 
                 const days: ProgramInstanceDay[] = [];
@@ -372,18 +372,18 @@ export async function GET(request: NextRequest) {
             const totalDays = programData.lengthDays || 28;
 
             // Calculate calendar weeks from enrollment start date
+            // Include ALL weeks (including Week 0 onboarding) for proper date mapping
             let calendarWeeks: CalendarWeek[] = [];
             if (enrollmentData.startDate) {
               calendarWeeks = calculateCalendarWeeks(enrollmentData.startDate, totalDays, includeWeekends);
             }
-            const regularCalendarWeeks = calendarWeeks
-              .filter(w => w.weekNumber > 0)
-              .sort((a, b) => a.startDayIndex - b.startDayIndex);
+            // Sort all calendar weeks by start day for consistent ordering
+            const sortedCalendarWeeks = [...calendarWeeks].sort((a, b) => a.startDayIndex - b.startDayIndex);
 
-            // Helper to get calendar date for a day by week number (not position)
-            // Note: Week 0 (onboarding) won't have calendar dates since calendar weeks start at 1
+            // Helper to get calendar date for a day by week number
+            // Now includes Week 0 (onboarding) which has calendar dates too
             const getCalendarDateForDayByWeekNumber = (weekNumber: number, dayOffset: number): string | undefined => {
-              const calendarWeek = regularCalendarWeeks.find(cw => cw.weekNumber === weekNumber);
+              const calendarWeek = sortedCalendarWeeks.find(cw => cw.weekNumber === weekNumber);
               if (!calendarWeek?.startDate) return undefined;
               const startDate = new Date(calendarWeek.startDate);
               startDate.setDate(startDate.getDate() + dayOffset);
@@ -421,9 +421,9 @@ export async function GET(request: NextRequest) {
                 weeklyPrompt?: string;
                 distribution?: string;
               }) => {
-                // Look up calendar week by weekNumber (not array position) to handle Week 0 correctly
-                const calendarWeek = regularCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
-                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
+                // Look up calendar week by weekNumber (includes Week 0 onboarding)
+                const calendarWeek = sortedCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
+                const startDayIndex = calendarWeek?.startDayIndex ?? (weekData.weekNumber === 0 ? 1 : (weekData.weekNumber - 1) * daysPerWeek + 1);
                 const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
 
                 const days: ProgramInstanceDay[] = [];
@@ -467,9 +467,9 @@ export async function GET(request: NextRequest) {
 
               weeks = weeksSnapshot.docs.map((weekDoc) => {
                 const weekData = weekDoc.data();
-                // Look up calendar week by weekNumber (not array position) to handle Week 0 correctly
-                const calendarWeek = regularCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
-                const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
+                // Look up calendar week by weekNumber (includes Week 0 onboarding)
+                const calendarWeek = sortedCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
+                const startDayIndex = calendarWeek?.startDayIndex ?? (weekData.weekNumber === 0 ? 1 : (weekData.weekNumber - 1) * daysPerWeek + 1);
                 const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
 
                 const days: ProgramInstanceDay[] = [];

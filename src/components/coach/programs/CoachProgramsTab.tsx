@@ -378,6 +378,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const instanceWeeks = useMemo(() => {
     if (!instance?.weeks) return [];
     const now = new Date().toISOString();
+    const includeWeekends = selectedProgram?.includeWeekends !== false;
+    const daysPerWeek = includeWeekends ? 7 : 5;
     return instance.weeks.map(week => ({
       id: `${instance.id}-week-${week.weekNumber}`,
       programId: instance.programId,
@@ -394,10 +396,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       calendarStartDate: week.calendarStartDate,
       calendarEndDate: week.calendarEndDate,
       moduleId: week.moduleId,
+      // Use API-provided day indices, or calculate fallback (with proper Week 0 handling)
+      startDayIndex: week.startDayIndex ?? (week.weekNumber === 0 ? 1 : (week.weekNumber - 1) * daysPerWeek + 1),
+      endDayIndex: week.endDayIndex ?? (week.weekNumber === 0 ? daysPerWeek : week.weekNumber * daysPerWeek),
       createdAt: now,
       updatedAt: now,
     } as ClientProgramWeek));
-  }, [instance]);
+  }, [instance, selectedProgram?.includeWeekends]);
 
   // Leave warning dialog state (for unsaved changes)
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
@@ -801,6 +806,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     if (isInstanceMode) {
       const now = new Date().toISOString();
       // Return instance weeks - if empty, return empty array (NOT template data)
+      // Use the startDayIndex/endDayIndex from instanceWeeks (already calculated with Week 0 handling)
       return instanceWeeks.map((iw, idx) => ({
         id: iw.id,
         programId: iw.programId,
@@ -808,8 +814,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         weekNumber: iw.weekNumber,
         moduleId: iw.moduleId,
         order: idx,
-        startDayIndex: (iw.weekNumber - 1) * 7 + 1,
-        endDayIndex: iw.weekNumber * 7,
+        startDayIndex: iw.startDayIndex,
+        endDayIndex: iw.endDayIndex,
         name: iw.name,
         theme: iw.theme,
         description: iw.description,
