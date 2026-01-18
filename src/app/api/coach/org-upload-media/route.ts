@@ -52,12 +52,24 @@ export async function POST(req: Request) {
     // Step 3: Validate file type
     const isImage = file.type.startsWith('image/');
     const isVideo = file.type.startsWith('video/');
-    
+
     if (!isImage && !isVideo) {
       return NextResponse.json({ error: 'File must be an image or video' }, { status: 400 });
     }
 
-    // Step 4: Validate file size (10MB for images, 500MB for videos)
+    // Step 4: Check for large video files - they should use direct upload
+    // Vercel serverless functions have a 4.5MB body limit
+    const VERCEL_BODY_LIMIT = 4.5 * 1024 * 1024;
+    if (isVideo && file.size > VERCEL_BODY_LIMIT) {
+      console.log('[COACH_UPLOAD] Video exceeds Vercel limit, should use direct upload:', file.size);
+      return NextResponse.json({
+        error: 'Video file too large for server upload. Please refresh and try again.',
+        code: 'FILE_TOO_LARGE_FOR_SERVER',
+        suggestion: 'Use direct upload for videos larger than 4.5MB'
+      }, { status: 413 });
+    }
+
+    // Step 5: Validate file size (10MB for images, 500MB for videos)
     const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024;
     if (file.size > maxSize) {
       const maxSizeMB = maxSize / (1024 * 1024);

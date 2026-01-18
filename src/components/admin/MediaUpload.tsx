@@ -77,10 +77,14 @@ const getAspectRatioClass = (ratio?: '2:1' | '16:9' | '1:1' | '4:3') => {
   }
 };
 
-export function MediaUpload({ 
-  value, 
-  onChange, 
-  folder, 
+// Vercel serverless functions have a 4.5MB body limit
+// Videos typically exceed this, so we use direct-to-storage upload
+const VERCEL_BODY_LIMIT = 4.5 * 1024 * 1024;
+
+export function MediaUpload({
+  value,
+  onChange,
+  folder,
   type = 'image',
   label = 'Media',
   required = false,
@@ -94,32 +98,109 @@ export function MediaUpload({
   const [error, setError] = useState<string | null>(null);
   const [showUrlInput, setShowUrlInput] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
 
   const acceptedTypes = getAcceptedTypes(type);
   const maxSize = getMaxSize(type);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Determine if we should use direct upload (for coach endpoints with video files)
+  const shouldUseDirectUpload = (file: File) => {
+    const isCoachEndpoint = uploadEndpoint.includes('/api/coach/');
+    const isVideo = file.type.startsWith('video/');
+    const exceedsLimit = file.size > VERCEL_BODY_LIMIT;
+    return isCoachEndpoint && isVideo && exceedsLimit;
+  };
 
-    // Validate file type
-    if (!acceptedTypes.includes(file.type)) {
-      const typeLabel = type === 'image' ? 'image (JPG, PNG, WebP, GIF)' 
-        : type === 'video' ? 'video (MP4, WebM, MOV)' 
-        : 'image or video';
-      setError(`Please select a valid ${typeLabel} file`);
-      return;
-    }
-
-    // Validate file size
-    if (file.size > maxSize) {
-      setError(`File size must be less than ${formatFileSize(maxSize)}`);
-      return;
-    }
-
+  // Direct upload to Firebase Storage via signed URL (bypasses Vercel 4.5MB limit)
+  const handleDirectUpload = async (file: File) => {
     setError(null);
     setUploading(true);
-    setProgress(10); // Show initial progress
+    setProgress(0);
+
+    try {
+      // Step 1: Get signed upload URL from server
+      const urlResponse = await fetch('/api/coach/org-upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          folder,
+        }),
+      });
+
+      if (!urlResponse.ok) {
+        const data = await urlResponse.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to get upload URL');
+      }
+
+      const { uploadUrl, publicUrl, storagePath } = await urlResponse.json();
+
+      // Step 2: Upload directly to Firebase Storage with progress tracking
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhrRef.current = xhr;
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            // Use 0-90% for upload, 90-100% for making public
+            const percent = Math.round((e.loaded / e.total) * 90);
+            setProgress(percent);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error during upload'));
+        xhr.onabort = () => reject(new Error('Upload cancelled'));
+
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('Content-Type', file.type);
+        xhr.send(file);
+      });
+
+      // Step 3: Make the file publicly accessible
+      setProgress(95);
+      const makePublicResponse = await fetch('/api/coach/org-make-public', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storagePath }),
+      });
+
+      if (!makePublicResponse.ok) {
+        const data = await makePublicResponse.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to make file public');
+      }
+
+      setProgress(100);
+
+      // Small delay to show 100% before clearing
+      setTimeout(() => {
+        onChange(publicUrl);
+        setUploading(false);
+        setProgress(0);
+        xhrRef.current = null;
+      }, 200);
+    } catch (err) {
+      console.error('Direct upload error:', err);
+      setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
+      setUploading(false);
+      setProgress(0);
+      xhrRef.current = null;
+    }
+  };
+
+  // Server-side upload (for images and small files)
+  const handleServerUpload = async (file: File) => {
+    setError(null);
+    setUploading(true);
+    setProgress(10);
 
     try {
       const formData = new FormData();
@@ -145,7 +226,7 @@ export function MediaUpload({
 
       const data = await response.json();
       setProgress(100);
-      
+
       // Small delay to show 100% before clearing
       setTimeout(() => {
         onChange(data.url);
@@ -157,6 +238,33 @@ export function MediaUpload({
       setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
       setUploading(false);
       setProgress(0);
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!acceptedTypes.includes(file.type)) {
+      const typeLabel = type === 'image' ? 'image (JPG, PNG, WebP, GIF)'
+        : type === 'video' ? 'video (MP4, WebM, MOV)'
+        : 'image or video';
+      setError(`Please select a valid ${typeLabel} file`);
+      return;
+    }
+
+    // Validate file size
+    if (file.size > maxSize) {
+      setError(`File size must be less than ${formatFileSize(maxSize)}`);
+      return;
+    }
+
+    // Route to appropriate upload method
+    if (shouldUseDirectUpload(file)) {
+      await handleDirectUpload(file);
+    } else {
+      await handleServerUpload(file);
     }
   };
 

@@ -178,9 +178,11 @@ export async function GET(request: NextRequest) {
 
             // Calculate calendar weeks from cohort start date
             // Include ALL weeks (including Week 0 onboarding) for proper date mapping
+            // Fallback: use today if startDate is missing
             let calendarWeeks: CalendarWeek[] = [];
-            if (cohortData.startDate) {
-              calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
+            const effectiveCohortStartDate = cohortData.startDate || new Date().toISOString().split('T')[0];
+            if (effectiveCohortStartDate) {
+              calendarWeeks = calculateCalendarWeeks(effectiveCohortStartDate, totalDays, includeWeekends);
             }
             // Sort all calendar weeks by start day for consistent ordering
             const sortedCalendarWeeks = [...calendarWeeks].sort((a, b) => a.startDayIndex - b.startDayIndex);
@@ -422,9 +424,11 @@ export async function GET(request: NextRequest) {
 
             // Calculate calendar weeks from enrollment start date
             // Include ALL weeks (including Week 0 onboarding) for proper date mapping
+            // Fallback: use startedAt or today if startDate is missing
             let calendarWeeks: CalendarWeek[] = [];
-            if (enrollmentData.startDate) {
-              calendarWeeks = calculateCalendarWeeks(enrollmentData.startDate, totalDays, includeWeekends);
+            const effectiveStartDate = enrollmentData.startDate || enrollmentData.startedAt || new Date().toISOString().split('T')[0];
+            if (effectiveStartDate) {
+              calendarWeeks = calculateCalendarWeeks(effectiveStartDate, totalDays, includeWeekends);
             }
             // Sort all calendar weeks by start day for consistent ordering
             const sortedCalendarWeeks = [...calendarWeeks].sort((a, b) => a.startDayIndex - b.startDayIndex);

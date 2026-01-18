@@ -4118,9 +4118,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     endDay = selectedWeekData.endDayIndex;
                   } else if (weekNumber === 0) {
                     startDay = 1;
-                    // Default to 4-day onboarding (typical partial first week)
-                    const defaultOnboardingDays = 4;
-                    endDay = Math.min(defaultOnboardingDays, totalDays);
+                    // Onboarding gets full week (5 days for weekdays-only, 7 for include weekends)
+                    endDay = Math.min(daysPerWeek, totalDays);
                   } else if (weekNumber === -1) {
                     // Closing week: last daysPerWeek of the program
                     startDay = Math.max(1, totalDays - daysPerWeek + 1);
