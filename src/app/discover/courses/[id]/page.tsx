@@ -37,6 +37,25 @@ export default function CourseDetailPage({ params }: CoursePageProps) {
   
   const justPurchased = searchParams.get('purchased') === 'true';
 
+  // Program context from URL params (when accessed from a program)
+  // Preserve these when navigating to lessons
+  const instanceId = searchParams.get('instanceId') || undefined;
+  const enrollmentId = searchParams.get('enrollmentId') || undefined;
+  const weekIndex = searchParams.get('weekIndex') ? parseInt(searchParams.get('weekIndex')!, 10) : undefined;
+  const dayIndex = searchParams.get('dayIndex') ? parseInt(searchParams.get('dayIndex')!, 10) : undefined;
+
+  // Build lesson URL with program context preserved
+  const buildLessonUrl = (lessonId: string) => {
+    let url = `/discover/courses/${id}/lessons/${lessonId}`;
+    const params = new URLSearchParams();
+    if (instanceId) params.set('instanceId', instanceId);
+    if (enrollmentId) params.set('enrollmentId', enrollmentId);
+    if (weekIndex !== undefined) params.set('weekIndex', weekIndex.toString());
+    if (dayIndex !== undefined) params.set('dayIndex', dayIndex.toString());
+    const queryString = params.toString();
+    return queryString ? `${url}?${queryString}` : url;
+  };
+
   // Fetch course data
   const fetchCourse = useCallback(async () => {
     try {
@@ -531,7 +550,8 @@ function CourseContent({
                     {module.lessons.map((lesson, lessonIndex) => {
                       const handleLessonClick = () => {
                         // All lessons unlocked for owners
-                        router.push(`/discover/courses/${id}/lessons/${lesson.id}`);
+                        // Preserve program context when navigating to lesson
+                        router.push(buildLessonUrl(lesson.id));
                       };
 
                       // Check if this lesson is completed

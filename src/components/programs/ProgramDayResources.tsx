@@ -82,6 +82,7 @@ interface ResourceCardProps {
   onMarkComplete?: () => void;
   isMarkingComplete?: boolean;
   compact?: boolean;
+  instanceId?: string;
 }
 
 function ResourceCard({
@@ -93,19 +94,27 @@ function ResourceCard({
   onMarkComplete,
   isMarkingComplete,
   compact,
+  instanceId,
 }: ResourceCardProps) {
   const Icon = RESOURCE_ICONS[assignment.resourceType];
   const iconColor = RESOURCE_COLORS[assignment.resourceType];
   const isCompleted = progress?.status === 'completed';
   const isInProgress = progress?.status === 'in_progress';
 
-  // Build the appropriate link
+  // Build the appropriate link with program context for tracking
   const href = useMemo(() => {
+    const buildUrlWithContext = (basePath: string) => {
+      if (!instanceId) return basePath;
+      const params = new URLSearchParams();
+      params.set('instanceId', instanceId);
+      return `${basePath}?${params.toString()}`;
+    };
+
     switch (assignment.resourceType) {
       case 'course':
-        return `/discover/courses/${assignment.resourceId}`;
+        return buildUrlWithContext(`/discover/courses/${assignment.resourceId}`);
       case 'article':
-        return `/discover/articles/${assignment.resourceId}`;
+        return buildUrlWithContext(`/discover/articles/${assignment.resourceId}`);
       case 'download':
       case 'link':
         return url || '#';
@@ -114,7 +123,7 @@ function ResourceCard({
       default:
         return '#';
     }
-  }, [assignment.resourceType, assignment.resourceId, url]);
+  }, [assignment.resourceType, assignment.resourceId, url, instanceId]);
 
   const isExternalLink = assignment.resourceType === 'link' || assignment.resourceType === 'download';
 
@@ -425,6 +434,7 @@ export function ProgramDayResources({
                   }
                   isMarkingComplete={markingComplete.has(key)}
                   compact={compact}
+                  instanceId={instanceId}
                 />
               );
             });
