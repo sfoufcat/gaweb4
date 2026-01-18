@@ -775,15 +775,26 @@ export function ModuleWeeksSidebar({
         return;
       }
 
-      // Upcoming cohort/enrollment: show Week 1
+      // Upcoming cohort/enrollment: show Onboarding (Week 0)
       if (viewStatus === 'upcoming') {
         hasInitializedExpansion.current = true;
-        setExpandedWeeks(new Set([1]));
-        // Only expand the module containing week 1 (with fallback)
-        const firstWeek = displayWeeks[0];
-        const targetModuleId = findModuleForWeek(firstWeek);
+        // Find Onboarding week (weekNum === 0), fallback to first week
+        const onboardingWeek = displayWeeks.find(w => w.weekNum === 0) || displayWeeks[0];
+        setExpandedWeeks(new Set([onboardingWeek?.weekNum ?? 0]));
+        // Only expand the module containing onboarding (with fallback)
+        const targetModuleId = findModuleForWeek(onboardingWeek);
         if (targetModuleId && (isClientView || isCohortView)) {
           setExpandedModules(new Set([targetModuleId]));
+        }
+        // Auto-select Onboarding week
+        if (onboardingWeek) {
+          onSelectRef.current({
+            type: 'week',
+            id: onboardingWeek.storedWeekId || `week-${onboardingWeek.weekNum}`,
+            weekNumber: onboardingWeek.templateWeekNumber ?? onboardingWeek.weekNum,
+            moduleId: targetModuleId,
+            displayLabel: onboardingWeek.label,
+          });
         }
         return;
       }
@@ -831,8 +842,20 @@ export function ModuleWeeksSidebar({
         displayLabel: currentWeek.label, // Pass calendar label for consistent display
       });
     } else {
-      // currentDayIndex is outside program range - default to week 1
-      setExpandedWeeks(new Set([1]));
+      // currentDayIndex is outside program range - default to Onboarding (Week 0)
+      const onboardingWeek = displayWeeks.find(w => w.weekNum === 0) || displayWeeks[0];
+      setExpandedWeeks(new Set([onboardingWeek?.weekNum ?? 0]));
+      // Auto-select Onboarding week
+      if (onboardingWeek) {
+        const targetModuleId = findModuleForWeek(onboardingWeek);
+        onSelectRef.current({
+          type: 'week',
+          id: onboardingWeek.storedWeekId || `week-${onboardingWeek.weekNum}`,
+          weekNumber: onboardingWeek.templateWeekNumber ?? onboardingWeek.weekNum,
+          moduleId: targetModuleId,
+          displayLabel: onboardingWeek.label,
+        });
+      }
     }
   }, [currentDayIndex, displayWeeks, viewStatus, isClientView, isCohortView, findModuleForWeek]); // Added findModuleForWeek
 
