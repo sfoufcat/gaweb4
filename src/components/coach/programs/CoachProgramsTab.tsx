@@ -385,9 +385,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
     // ALWAYS calculate calendar weeks when we have a start date
     // This ensures correct day indices even for legacy instances with old stored values
+    // Fallback: use enrollment startedAt if instance.startDate is missing
     let calculatedWeeks: ReturnType<typeof calculateCalendarWeeks> = [];
-    if (instance.startDate && selectedProgram?.lengthDays) {
-      calculatedWeeks = calculateCalendarWeeks(instance.startDate, selectedProgram.lengthDays, includeWeekends);
+    const instanceStartDate = instance.startDate;
+    const enrollmentStartDate = clientViewContext.mode === 'client' && clientViewContext.enrollmentId
+      ? programEnrollments.find(e => e.id === clientViewContext.enrollmentId)?.startedAt
+      : undefined;
+    const effectiveStartDate = instanceStartDate || enrollmentStartDate;
+
+    if (effectiveStartDate && selectedProgram?.lengthDays) {
+      calculatedWeeks = calculateCalendarWeeks(effectiveStartDate, selectedProgram.lengthDays, includeWeekends);
     }
 
     // Create lookups: by weekNumber (for new system) and by position (for legacy)
@@ -440,7 +447,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         updatedAt: now,
       } as ClientProgramWeek & { actualStartDayOfWeek?: number };
     });
-  }, [instance, selectedProgram?.includeWeekends, selectedProgram?.lengthDays]);
+  }, [instance, selectedProgram?.includeWeekends, selectedProgram?.lengthDays, clientViewContext, programEnrollments]);
 
   // Leave warning dialog state (for unsaved changes)
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
@@ -982,9 +989,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       const totalDays = selectedProgram?.lengthDays || 30;
       if (weekNumber === 0) {
         startDay = 1;
-        // Default to 4-day onboarding (typical partial first week)
-        const defaultOnboardingDays = 4;
-        endDay = Math.min(defaultOnboardingDays, totalDays);
+        // Onboarding gets full week (5 days for weekdays-only, 7 for include weekends)
+        endDay = Math.min(daysPerWeek, totalDays);
       } else if (weekNumber === -1) {
         // Closing week: last daysPerWeek of the program
         startDay = Math.max(1, totalDays - daysPerWeek + 1);
@@ -1042,9 +1048,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         let endDay: number;
         if (weekNumber === 0) {
           startDay = 1;
-          // Default to 4-day onboarding (typical partial first week)
-          const defaultOnboardingDays = 4;
-          endDay = Math.min(defaultOnboardingDays, totalDays);
+          // Onboarding gets full week (5 days for weekdays-only, 7 for include weekends)
+          endDay = Math.min(daysPerWeek, totalDays);
         } else if (weekNumber === -1) {
           // Closing week: last daysPerWeek of the program
           startDay = Math.max(1, totalDays - daysPerWeek + 1);

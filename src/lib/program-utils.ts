@@ -753,13 +753,25 @@ export async function distributeWeeklyTasksToDays(
   const storedStartDay = weekData.startDayIndex;
   const storedEndDay = weekData.endDayIndex;
 
-  if (!storedStartDay || !storedEndDay) {
-    console.error('[PROGRAM_UTILS] Week missing day indices:', { weekId, storedStartDay, storedEndDay });
+  // If missing, calculate fallback based on weekNumber
+  const resolvedStartDay = storedStartDay ?? (
+    weekNumber === 0 ? 1 :
+    weekNumber === -1 ? Math.max(1, totalDays - daysPerWeek + 1) :
+    (weekNumber - 1) * daysPerWeek + 1
+  );
+  const resolvedEndDay = Math.min(
+    storedEndDay ?? (
+      weekNumber === 0 ? daysPerWeek :
+      weekNumber === -1 ? totalDays :
+      weekNumber * daysPerWeek
+    ),
+    totalDays
+  );
+
+  if (!resolvedStartDay || !resolvedEndDay || resolvedStartDay > resolvedEndDay) {
+    console.error('[PROGRAM_UTILS] Week invalid day indices:', { weekId, weekNumber, storedStartDay, storedEndDay, resolvedStartDay, resolvedEndDay });
     return { created: 0, updated: 0, skipped: 0 };
   }
-
-  const resolvedStartDay = storedStartDay;
-  const resolvedEndDay = Math.min(storedEndDay, totalDays);
 
   console.log('[PROGRAM_UTILS] distributeWeeklyTasksToDays:', {
     weekId,
