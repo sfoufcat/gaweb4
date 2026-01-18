@@ -23,11 +23,11 @@ const DrawerClose = DrawerPrimitive.Close;
 
 const DrawerOverlay = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay> & { zIndex?: string }
+>(({ className, zIndex = 'z-[10000]', ...props }, ref) => (
   <DrawerPrimitive.Overlay
     ref={ref}
-    className={cn('fixed inset-0 z-[10000] bg-black/40 backdrop-blur-sm', className)}
+    className={cn('fixed inset-0 bg-black/40 backdrop-blur-sm', zIndex, className)}
     {...props}
   />
 ));
@@ -35,14 +35,18 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> & { hideHandle?: boolean }
->(({ className, children, hideHandle, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> & {
+    hideHandle?: boolean;
+    zIndex?: string;
+  }
+>(({ className, children, hideHandle, zIndex = 'z-[10000]', ...props }, ref) => (
   <DrawerPortal>
-    <DrawerOverlay />
+    <DrawerOverlay zIndex={zIndex} />
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed inset-x-0 bottom-0 z-[10000] mt-24 flex h-auto flex-col rounded-t-[24px] border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]',
+        'fixed inset-x-0 bottom-0 mt-24 flex h-auto flex-col rounded-t-[24px] border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]',
+        zIndex,
         className
       )}
       {...props}
@@ -119,4 +123,3 @@ export {
   DrawerTitle,
   DrawerDescription,
 };
-

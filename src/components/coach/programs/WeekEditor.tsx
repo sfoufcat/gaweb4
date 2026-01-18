@@ -25,6 +25,7 @@ import { UnifiedResourcesTabs } from './UnifiedResourcesTabs';
 import { CreditPurchaseModal } from '@/components/coach/CreditPurchaseModal';
 import { DayPreviewPopup } from './DayPreviewPopup';
 import { ScheduleCallModal } from '@/components/scheduling';
+import { ScheduleCohortEventModal } from '@/components/scheduling/ScheduleCohortEventModal';
 // Audio utilities for duration detection
 import { getAudioDuration } from '@/lib/audio-compression';
 
@@ -737,6 +738,9 @@ export function WeekEditor({
   // Schedule call modal state (for 1:1 programs)
   const [showScheduleCallModal, setShowScheduleCallModal] = useState(false);
 
+  // Schedule cohort event modal state (for group programs)
+  const [showScheduleCohortModal, setShowScheduleCohortModal] = useState(false);
+
   // Day Preview popup state
   const [previewDayNumber, setPreviewDayNumber] = useState<number | null>(null);
 
@@ -1191,6 +1195,9 @@ export function WeekEditor({
       weekLinkedSummaryIds: week.linkedSummaryIds,
       formLinkedCallEventIds: formData.linkedCallEventIds,
       weekLinkedCallEventIds: week.linkedCallEventIds,
+      // Include resource assignments to detect when resources are added/removed/modified
+      formResourceAssignments: formData.resourceAssignments,
+      weekResourceAssignments: week.resourceAssignments,
     });
     if (stateFingerprint === lastRegisteredFingerprint.current) {
       // Already processed this exact state, skip to prevent infinite loop
@@ -2440,7 +2447,7 @@ export function WeekEditor({
 
               {/* Action buttons */}
               <div className="flex flex-wrap gap-2">
-                {/* Schedule Call button (1:1 programs only for now) */}
+                {/* Schedule Call button (1:1 programs) */}
                 {isClientView && clientUserId && (
                   <Button
                     variant="outline"
@@ -2450,6 +2457,19 @@ export function WeekEditor({
                   >
                     <CalendarPlus className="w-4 h-4" />
                     Schedule Call
+                  </Button>
+                )}
+
+                {/* Schedule Event button (cohort/group programs) */}
+                {isCohortMode && cohortId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowScheduleCohortModal(true)}
+                    className="flex items-center gap-1.5"
+                  >
+                    <CalendarPlus className="w-4 h-4" />
+                    Schedule Event
                   </Button>
                 )}
 
@@ -3042,6 +3062,29 @@ export function WeekEditor({
           clientName={clientName}
           onSuccess={() => {
             setShowScheduleCallModal(false);
+            onCallScheduled?.();
+          }}
+        />
+      )}
+
+      {/* Schedule Cohort Event Modal (group programs) */}
+      {isCohortMode && cohortId && programId && (
+        <ScheduleCohortEventModal
+          isOpen={showScheduleCohortModal}
+          onClose={() => setShowScheduleCohortModal(false)}
+          cohort={{
+            id: cohortId,
+            name: cohortName || cohorts?.find(c => c.id === cohortId)?.name || 'Cohort',
+            endDate: cohorts?.find(c => c.id === cohortId)?.endDate,
+          }}
+          programId={programId}
+          programName={week.name || 'Program'}
+          instanceId={instanceId || undefined}
+          instanceStartDate={cohorts?.find(c => c.id === cohortId)?.startDate}
+          programLengthDays={days.length > 0 ? days.length : undefined}
+          includeWeekends={includeWeekends}
+          onSuccess={() => {
+            setShowScheduleCohortModal(false);
             onCallScheduled?.();
           }}
         />

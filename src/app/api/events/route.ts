@@ -191,6 +191,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // For cohort_call events, auto-populate attendeeIds from cohort enrollments
+    let attendeeIds: string[] = body.attendeeIds || [];
+    if (body.eventType === 'cohort_call' && body.cohortId && attendeeIds.length === 0) {
+      try {
+        // Find all active enrollments for this cohort
+        const enrollmentsSnapshot = await adminDb
+          .collection('enrollments')
+          .where('cohortId', '==', body.cohortId)
+          .where('status', 'in', ['active', 'in_progress'])
+          .get();
+
+        attendeeIds = enrollmentsSnapshot.docs
+          .map(doc => doc.data().userId)
+          .filter((id): id is string => !!id);
+
+        console.log(`[EVENTS_POST] Auto-populated ${attendeeIds.length} attendees for cohort ${body.cohortId}`);
+      } catch (err) {
+        console.error('[EVENTS_POST] Error fetching cohort enrollments:', err);
+        // Continue without attendees - they can still be notified via other means
+      }
+    }
+
     // Determine if user is a coach
     const role = (sessionClaims?.publicMetadata as { role?: string })?.role;
     const isCoachLed = role === 'coach' || role === 'super_admin' || role === 'admin';
@@ -326,7 +348,7 @@ export async function POST(request: NextRequest) {
       clientName: body.clientName || clientName,
       clientAvatarUrl: body.clientAvatarUrl || clientAvatarUrl,
 
-      attendeeIds: body.attendeeIds || [],
+      attendeeIds: attendeeIds,
       maxAttendees: body.maxAttendees || undefined,
       
       votingConfig: body.approvalType === 'voting' ? {

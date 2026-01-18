@@ -1547,9 +1547,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
           if (eventsRes.ok) {
             const eventsData = await eventsRes.json();
-            // Filter to only include call events (coaching_1on1, squad_call, etc.)
+            // Filter to only include call events (coaching_1on1, squad_call, cohort_call)
             const callEvents = (eventsData.events || []).filter((e: UnifiedEvent) =>
-              e.eventType === 'coaching_1on1' || e.eventType === 'squad_call'
+              e.eventType === 'coaching_1on1' || e.eventType === 'squad_call' || e.eventType === 'cohort_call'
             );
             setAvailableEvents(callEvents);
           } else {
@@ -1720,6 +1720,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       }
     } catch (err) {
       console.error('Error refetching call summaries:', err);
+    }
+  }, [selectedProgram]);
+
+  // Refetch events (called when a new event is scheduled)
+  const refetchEvents = useCallback(async () => {
+    if (!selectedProgram) return;
+    try {
+      const eventsRes = await fetch(`/api/programs/${selectedProgram.id}/events`);
+      if (eventsRes.ok) {
+        const eventsData = await eventsRes.json();
+        // Filter to only include call events (coaching_1on1, squad_call, cohort_call)
+        const callEvents = (eventsData.events || []).filter((e: UnifiedEvent) =>
+          e.eventType === 'coaching_1on1' || e.eventType === 'squad_call' || e.eventType === 'cohort_call'
+        );
+        setAvailableEvents(callEvents);
+      }
+    } catch (err) {
+      console.error('Error refetching events:', err);
     }
   }, [selectedProgram]);
 
@@ -4347,6 +4365,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     linkedLinkIds: templateWeek.linkedLinkIds ?? [],
                     linkedQuestionnaireIds: templateWeek.linkedQuestionnaireIds ?? [],
                     courseAssignments: templateWeek.courseAssignments ?? [],
+                    resourceAssignments: templateWeek.resourceAssignments ?? [],
                   } : existingWeek ? {
                     // For client weeks, map to ProgramWeek structure
                     id: existingWeek.id,
@@ -4381,6 +4400,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     linkedLinkIds: existingWeek.linkedLinkIds || [],
                     linkedQuestionnaireIds: existingWeek.linkedQuestionnaireIds || [],
                     courseAssignments: existingWeek.courseAssignments || [],
+                    resourceAssignments: existingWeek.resourceAssignments || [],
                   } : {
                     id: `temp-week-${weekNumber}`,
                     programId: selectedProgram?.id || '',
@@ -4404,6 +4424,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     linkedLinkIds: [],
                     linkedQuestionnaireIds: [],
                     courseAssignments: [],
+                    resourceAssignments: [],
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                   };
@@ -4495,6 +4516,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 coachRecordingNotes: updates.coachRecordingNotes,
                                 linkedSummaryIds: updates.linkedSummaryIds,
                                 linkedCallEventIds: updates.linkedCallEventIds,
+                                // Resource assignments
+                                linkedArticleIds: updates.linkedArticleIds,
+                                linkedDownloadIds: updates.linkedDownloadIds,
+                                linkedLinkIds: updates.linkedLinkIds,
+                                linkedQuestionnaireIds: updates.linkedQuestionnaireIds,
+                                courseAssignments: updates.courseAssignments,
+                                resourceAssignments: updates.resourceAssignments,
                                 // Trigger distribution when tasks are updated
                                 ...(weeklyTasksUpdated && { distributeTasksNow: true }),
                               }),
@@ -4614,6 +4642,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       cohortName={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortName : undefined}
                       instanceId={instanceId}
                       onSummaryGenerated={refetchCallSummaries}
+                      onCallScheduled={refetchEvents}
                       includeWeekends={selectedProgram?.includeWeekends !== false}
                       onDaysChange={async (updatedDays) => {
                         // When dayTag changes, save the updated days

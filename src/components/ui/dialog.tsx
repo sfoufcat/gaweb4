@@ -16,12 +16,13 @@ const DialogClose = DialogPrimitive.Close
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> & { zIndex?: string }
+>(({ className, zIndex = 'z-[10000]', ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-[10000] bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      zIndex,
       className
     )}
     {...props}
@@ -33,14 +34,16 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     hideCloseButton?: boolean
+    zIndex?: string
   }
->(({ className, children, hideCloseButton, ...props }, ref) => (
+>(({ className, children, hideCloseButton, zIndex = 'z-[10000]', ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay zIndex={zIndex} />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-[10000] grid w-full max-w-2xl translate-x-[-50%] translate-y-[-50%] gap-4 border border-white/20 dark:border-white/10 bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl p-6 shadow-2xl shadow-black/10 dark:shadow-black/30 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-2xl",
+        "fixed left-[50%] top-[50%] grid w-full max-w-2xl translate-x-[-50%] translate-y-[-50%] gap-4 border border-white/20 dark:border-white/10 bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl p-6 shadow-2xl shadow-black/10 dark:shadow-black/30 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-2xl",
+        zIndex,
         className
       )}
       {...props}
@@ -124,12 +127,3 @@ export {
   DialogTitle,
   DialogDescription,
 }
-
-
-
-
-
-
-
-
-

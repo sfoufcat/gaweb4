@@ -147,6 +147,7 @@ export function ProgramDashboard({
   const [viewContext, setViewContext] = useState<DashboardViewContext>(getInitialContext);
   const [showSettings, setShowSettings] = useState(false);
   const [isNudging, setIsNudging] = useState<string | null>(null);
+  const [nudgedUsers, setNudgedUsers] = useState<Set<string>>(new Set());
 
   // Sync viewContext when props change (header selector updates)
   React.useEffect(() => {
@@ -212,7 +213,7 @@ export function ProgramDashboard({
     (viewContext.mode === 'client' && clientLoading);
 
   // Handle nudge action
-  const handleNudge = useCallback(async (userId: string) => {
+  const handleNudge = useCallback(async (userId: string): Promise<boolean> => {
     setIsNudging(userId);
     try {
       const response = await fetch('/api/coach/nudge', {
@@ -228,11 +229,13 @@ export function ProgramDashboard({
         throw new Error('Failed to send nudge');
       }
 
-      // Could show a success toast here
+      // Track successful nudge
+      setNudgedUsers(prev => new Set([...prev, userId]));
       console.log('[NUDGE] Successfully sent nudge to', userId);
+      return true;
     } catch (error) {
       console.error('[NUDGE] Error:', error);
-      // Could show an error toast here
+      return false;
     } finally {
       setIsNudging(null);
     }
@@ -290,6 +293,7 @@ export function ProgramDashboard({
               onNudge={handleNudge}
               onViewClient={handleViewClient}
               isNudging={isNudging}
+              nudgedUsers={nudgedUsers}
             />
             <TopPerformerCard
               performers={programData.topPerformers}
@@ -348,6 +352,7 @@ export function ProgramDashboard({
               onNudge={handleNudge}
               onViewClient={handleViewClient}
               isNudging={isNudging}
+              nudgedUsers={nudgedUsers}
             />
             <TopPerformerCard
               performers={programData.topPerformers}

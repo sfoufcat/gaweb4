@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { AlertTriangle, Clock, TrendingDown, Send, User } from 'lucide-react';
+import { AlertTriangle, Clock, TrendingDown, Send, User, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -19,9 +19,10 @@ export interface AttentionMember {
 
 interface NeedsAttentionCardProps {
   members: AttentionMember[];
-  onNudge?: (userId: string) => void;
+  onNudge?: (userId: string) => Promise<boolean>;
   onViewClient?: (userId: string) => void;
   isNudging?: string | null;
+  nudgedUsers?: Set<string>;
   className?: string;
 }
 
@@ -69,8 +70,20 @@ export function NeedsAttentionCard({
   onNudge,
   onViewClient,
   isNudging,
+  nudgedUsers = new Set(),
   className,
 }: NeedsAttentionCardProps) {
+  // Track fade-in animation for sent confirmation
+  const [showSentAnimation, setShowSentAnimation] = useState<Set<string>>(new Set());
+
+  // Trigger animation when nudgedUsers changes
+  useEffect(() => {
+    nudgedUsers.forEach(userId => {
+      if (!showSentAnimation.has(userId)) {
+        setShowSentAnimation(prev => new Set([...prev, userId]));
+      }
+    });
+  }, [nudgedUsers, showSentAnimation]);
   if (members.length === 0) {
     return (
       <div className={cn('bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6', className)}>
@@ -181,18 +194,34 @@ export function NeedsAttentionCard({
                 </p>
               </div>
 
-              {/* Nudge button */}
+              {/* Nudge button / Sent confirmation */}
               {onNudge && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onNudge(member.userId)}
-                  disabled={isNudging === member.userId}
-                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-brand-accent hover:text-brand-accent hover:bg-brand-accent/10"
-                >
-                  <Send className="w-4 h-4 mr-1" />
-                  <span className="text-xs">Nudge</span>
-                </Button>
+                <div className="flex-shrink-0">
+                  {nudgedUsers.has(member.userId) ? (
+                    <span
+                      className={cn(
+                        "flex items-center gap-1 text-xs text-green-600 dark:text-green-400 px-3 py-1.5 transition-all duration-300",
+                        showSentAnimation.has(member.userId)
+                          ? "opacity-100 translate-x-0"
+                          : "opacity-0 translate-x-2"
+                      )}
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Sent
+                    </span>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onNudge(member.userId)}
+                      disabled={isNudging === member.userId}
+                      className="text-brand-accent hover:text-brand-accent hover:bg-brand-accent/10"
+                    >
+                      <Send className="w-4 h-4 mr-1" />
+                      <span className="text-xs">Nudge</span>
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           );

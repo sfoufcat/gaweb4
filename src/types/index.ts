@@ -4742,7 +4742,8 @@ export interface ReferralWithDetails extends Referral {
 export type EventType =
   | 'community_event'    // Broad events (workshops, webinars, community events) - appears in Discover
   | 'squad_call'         // Squad group calls (coach or peer)
-  | 'coaching_1on1';     // Individual coaching sessions
+  | 'coaching_1on1'      // Individual coaching sessions
+  | 'cohort_call';       // Cohort group calls (scheduled by coach for cohort members)
 
 /**
  * Event Scope - Who can see/access this event
