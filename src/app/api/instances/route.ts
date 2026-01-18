@@ -185,19 +185,10 @@ export async function GET(request: NextRequest) {
             // Sort all calendar weeks by start day for consistent ordering
             const sortedCalendarWeeks = [...calendarWeeks].sort((a, b) => a.startDayIndex - b.startDayIndex);
 
-            // Helper to get calendar date for a day by week number
-            // Now includes Week 0 (onboarding) which has calendar dates too
-            const getCalendarDateForDayByWeekNumber = (weekNumber: number, dayOffset: number): string | undefined => {
-              const calendarWeek = sortedCalendarWeeks.find(cw => cw.weekNumber === weekNumber);
-              if (!calendarWeek?.startDate) return undefined;
-              const startDate = new Date(calendarWeek.startDate);
-              startDate.setDate(startDate.getDate() + dayOffset);
-              return startDate.toISOString().split('T')[0];
-            };
-
             let weeks: Array<{
               id: string;
               weekNumber: number;
+              templateWeekNumber?: number;
               moduleId?: string;
               name?: string;
               theme?: string;
@@ -213,53 +204,82 @@ export async function GET(request: NextRequest) {
             // NEW: First try to read from programs.weeks[] (embedded template weeks)
             if (programData.weeks && Array.isArray(programData.weeks) && programData.weeks.length > 0) {
               console.log(`[INSTANCES_LIST_GET] Using embedded weeks from program (${programData.weeks.length} weeks)`);
-              weeks = programData.weeks.map((weekData: {
-                id?: string;
-                weekNumber: number;
-                moduleId?: string;
-                name?: string;
-                theme?: string;
-                startDayIndex?: number;
-                endDayIndex?: number;
-                weeklyTasks?: Array<{ id?: string; label: string }>;
-                weeklyHabits?: unknown[];
-                weeklyPrompt?: string;
-                distribution?: string;
-              }) => {
-                // Look up calendar week by weekNumber (includes Week 0 onboarding)
-                const calendarWeek = sortedCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
-                const startDayIndex = calendarWeek?.startDayIndex ?? (weekData.weekNumber === 0 ? 1 : (weekData.weekNumber - 1) * daysPerWeek + 1);
-                const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
+
+              // Detect format: new format has weekNumber=0 (onboarding), old format starts at 1
+              const hasOnboarding = programData.weeks.some((w: { weekNumber: number }) => w.weekNumber === 0);
+              const isNewFormat = hasOnboarding;
+
+              console.log(`[INSTANCES_LIST_GET] Template format: ${isNewFormat ? 'NEW (0, 1-N, -1)' : 'OLD (1-N)'}`);
+
+              // Map calendar weeks to instance weeks using weekNumber-based matching
+              weeks = sortedCalendarWeeks.map((calendarWeek) => {
+                type TemplateWeek = {
+                  id?: string;
+                  weekNumber: number;
+                  moduleId?: string;
+                  name?: string;
+                  theme?: string;
+                  startDayIndex?: number;
+                  endDayIndex?: number;
+                  weeklyTasks?: Array<{ id?: string; label: string }>;
+                  weeklyHabits?: unknown[];
+                  weeklyPrompt?: string;
+                  distribution?: string;
+                };
+
+                let templateWeek: TemplateWeek | undefined;
+
+                if (isNewFormat) {
+                  // NEW FORMAT: Direct weekNumber matching (0, 1, 2, ..., -1)
+                  templateWeek = programData.weeks.find((w: TemplateWeek) => w.weekNumber === calendarWeek.weekNumber);
+                } else {
+                  // OLD FORMAT (Lazy Migration): Template weeks are [1, 2, 3, ..., N]
+                  // Map by position: calendarWeek at index i → templateWeek at index i
+                  const calendarIndex = sortedCalendarWeeks.indexOf(calendarWeek);
+                  templateWeek = programData.weeks[calendarIndex];
+                }
+
+                const startDayIndex = calendarWeek.startDayIndex;
+                const endDayIndex = calendarWeek.endDayIndex;
+
+                // Helper to get calendar date for each day
+                const getCalendarDateForDay = (dayOffset: number): string | undefined => {
+                  if (!calendarWeek.startDate) return undefined;
+                  const startDate = new Date(calendarWeek.startDate);
+                  startDate.setDate(startDate.getDate() + dayOffset);
+                  return startDate.toISOString().split('T')[0];
+                };
 
                 const days: ProgramInstanceDay[] = [];
                 for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
                   days.push({
                     dayIndex: i + 1,
                     globalDayIndex: startDayIndex + i,
-                    calendarDate: getCalendarDateForDayByWeekNumber(weekData.weekNumber, i),
+                    calendarDate: getCalendarDateForDay(i),
                     tasks: [],
                     habits: [],
                   });
                 }
 
                 return {
-                  id: weekData.id || crypto.randomUUID(),
-                  weekNumber: weekData.weekNumber,
-                  moduleId: weekData.moduleId,
-                  name: weekData.name,
-                  theme: weekData.theme,
-                  weeklyTasks: (weekData.weeklyTasks || []).map((t) => ({
+                  id: templateWeek?.id || crypto.randomUUID(),
+                  weekNumber: calendarWeek.weekNumber, // Always use calendar weekNumber (0, 1, 2, ..., -1)
+                  templateWeekNumber: templateWeek?.weekNumber, // Preserve original for reference
+                  moduleId: templateWeek?.moduleId,
+                  name: templateWeek?.name,
+                  theme: templateWeek?.theme,
+                  weeklyTasks: (templateWeek?.weeklyTasks || []).map((t) => ({
                     ...t,
                     id: t.id || crypto.randomUUID(),
                   })),
-                  weeklyHabits: weekData.weeklyHabits || [],
-                  weeklyPrompt: weekData.weeklyPrompt,
-                  distribution: weekData.distribution,
+                  weeklyHabits: templateWeek?.weeklyHabits || [],
+                  weeklyPrompt: templateWeek?.weeklyPrompt,
+                  distribution: templateWeek?.distribution,
                   startDayIndex,
                   endDayIndex,
-                  calendarStartDate: calendarWeek?.startDate,
-                  calendarEndDate: calendarWeek?.endDate,
-                  actualStartDayOfWeek: calendarWeek?.actualStartDayOfWeek,
+                  calendarStartDate: calendarWeek.startDate,
+                  calendarEndDate: calendarWeek.endDate,
+                  actualStartDayOfWeek: calendarWeek.actualStartDayOfWeek,
                   days,
                 };
               });
@@ -271,42 +291,69 @@ export async function GET(request: NextRequest) {
                 .orderBy('weekNumber', 'asc')
                 .get();
 
-              weeks = weeksSnapshot.docs.map((weekDoc) => {
-                const weekData = weekDoc.data();
-                // Look up calendar week by weekNumber (includes Week 0 onboarding)
-                const calendarWeek = sortedCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
-                const startDayIndex = calendarWeek?.startDayIndex ?? (weekData.weekNumber === 0 ? 1 : (weekData.weekNumber - 1) * daysPerWeek + 1);
-                const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
+              // Detect format: new format has weekNumber=0 (onboarding), old format starts at 1
+              const hasOnboarding = weeksSnapshot.docs.some(doc => doc.data().weekNumber === 0);
+              const isNewFormat = hasOnboarding;
+
+              console.log(`[INSTANCES_LIST_GET] Legacy collection format: ${isNewFormat ? 'NEW (0, 1-N, -1)' : 'OLD (1-N)'}`);
+
+              // Map calendar weeks to instance weeks using weekNumber-based matching
+              weeks = sortedCalendarWeeks.map((calendarWeek) => {
+                let weekDoc;
+                let weekData;
+
+                if (isNewFormat) {
+                  // NEW FORMAT: Direct weekNumber matching
+                  weekDoc = weeksSnapshot.docs.find(doc => doc.data().weekNumber === calendarWeek.weekNumber);
+                  weekData = weekDoc?.data();
+                } else {
+                  // OLD FORMAT (Lazy Migration): Map by position
+                  const calendarIndex = sortedCalendarWeeks.indexOf(calendarWeek);
+                  weekDoc = weeksSnapshot.docs[calendarIndex];
+                  weekData = weekDoc?.data();
+                }
+
+                const startDayIndex = calendarWeek.startDayIndex;
+                const endDayIndex = calendarWeek.endDayIndex;
+
+                // Helper to get calendar date for each day
+                const getCalendarDateForDay = (dayOffset: number): string | undefined => {
+                  if (!calendarWeek.startDate) return undefined;
+                  const startDate = new Date(calendarWeek.startDate);
+                  startDate.setDate(startDate.getDate() + dayOffset);
+                  return startDate.toISOString().split('T')[0];
+                };
 
                 const days: ProgramInstanceDay[] = [];
                 for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
                   days.push({
                     dayIndex: i + 1,
                     globalDayIndex: startDayIndex + i,
-                    calendarDate: getCalendarDateForDayByWeekNumber(weekData.weekNumber, i),
+                    calendarDate: getCalendarDateForDay(i),
                     tasks: [],
                     habits: [],
                   });
                 }
 
                 return {
-                  id: weekDoc.id,
-                  weekNumber: weekData.weekNumber,
-                  moduleId: weekData.moduleId,
-                  name: weekData.name,
-                  theme: weekData.theme,
-                  weeklyTasks: (weekData.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
+                  id: weekDoc?.id || crypto.randomUUID(),
+                  weekNumber: calendarWeek.weekNumber, // Always use calendar weekNumber
+                  templateWeekNumber: weekData?.weekNumber, // Preserve original
+                  moduleId: weekData?.moduleId,
+                  name: weekData?.name,
+                  theme: weekData?.theme,
+                  weeklyTasks: (weekData?.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
                     ...t,
                     id: t.id || crypto.randomUUID(),
                   })),
-                  weeklyHabits: weekData.weeklyHabits || [],
-                  weeklyPrompt: weekData.weeklyPrompt,
-                  distribution: weekData.distribution,
+                  weeklyHabits: weekData?.weeklyHabits || [],
+                  weeklyPrompt: weekData?.weeklyPrompt,
+                  distribution: weekData?.distribution,
                   startDayIndex,
                   endDayIndex,
-                  calendarStartDate: calendarWeek?.startDate,
-                  calendarEndDate: calendarWeek?.endDate,
-                  actualStartDayOfWeek: calendarWeek?.actualStartDayOfWeek,
+                  calendarStartDate: calendarWeek.startDate,
+                  calendarEndDate: calendarWeek.endDate,
+                  actualStartDayOfWeek: calendarWeek.actualStartDayOfWeek,
                   days,
                 };
               });
@@ -382,19 +429,10 @@ export async function GET(request: NextRequest) {
             // Sort all calendar weeks by start day for consistent ordering
             const sortedCalendarWeeks = [...calendarWeeks].sort((a, b) => a.startDayIndex - b.startDayIndex);
 
-            // Helper to get calendar date for a day by week number
-            // Now includes Week 0 (onboarding) which has calendar dates too
-            const getCalendarDateForDayByWeekNumber = (weekNumber: number, dayOffset: number): string | undefined => {
-              const calendarWeek = sortedCalendarWeeks.find(cw => cw.weekNumber === weekNumber);
-              if (!calendarWeek?.startDate) return undefined;
-              const startDate = new Date(calendarWeek.startDate);
-              startDate.setDate(startDate.getDate() + dayOffset);
-              return startDate.toISOString().split('T')[0];
-            };
-
             let weeks: Array<{
               id: string;
               weekNumber: number;
+              templateWeekNumber?: number;
               moduleId?: string;
               name?: string;
               theme?: string;
@@ -410,53 +448,82 @@ export async function GET(request: NextRequest) {
             // Read from programs.weeks[] (embedded template weeks)
             if (programData.weeks && Array.isArray(programData.weeks) && programData.weeks.length > 0) {
               console.log(`[INSTANCES_LIST_GET] Using embedded weeks from program (${programData.weeks.length} weeks) for enrollment`);
-              weeks = programData.weeks.map((weekData: {
-                id?: string;
-                weekNumber: number;
-                moduleId?: string;
-                name?: string;
-                theme?: string;
-                startDayIndex?: number;
-                endDayIndex?: number;
-                weeklyTasks?: Array<{ id?: string; label: string }>;
-                weeklyHabits?: unknown[];
-                weeklyPrompt?: string;
-                distribution?: string;
-              }) => {
-                // Look up calendar week by weekNumber (includes Week 0 onboarding)
-                const calendarWeek = sortedCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
-                const startDayIndex = calendarWeek?.startDayIndex ?? (weekData.weekNumber === 0 ? 1 : (weekData.weekNumber - 1) * daysPerWeek + 1);
-                const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
+
+              // Detect format: new format has weekNumber=0 (onboarding), old format starts at 1
+              const hasOnboarding = programData.weeks.some((w: { weekNumber: number }) => w.weekNumber === 0);
+              const isNewFormat = hasOnboarding;
+
+              console.log(`[INSTANCES_LIST_GET] Template format for enrollment: ${isNewFormat ? 'NEW (0, 1-N, -1)' : 'OLD (1-N)'}`);
+
+              // Map calendar weeks to instance weeks using weekNumber-based matching
+              weeks = sortedCalendarWeeks.map((calendarWeek) => {
+                type TemplateWeek = {
+                  id?: string;
+                  weekNumber: number;
+                  moduleId?: string;
+                  name?: string;
+                  theme?: string;
+                  startDayIndex?: number;
+                  endDayIndex?: number;
+                  weeklyTasks?: Array<{ id?: string; label: string }>;
+                  weeklyHabits?: unknown[];
+                  weeklyPrompt?: string;
+                  distribution?: string;
+                };
+
+                let templateWeek: TemplateWeek | undefined;
+
+                if (isNewFormat) {
+                  // NEW FORMAT: Direct weekNumber matching (0, 1, 2, ..., -1)
+                  templateWeek = programData.weeks.find((w: TemplateWeek) => w.weekNumber === calendarWeek.weekNumber);
+                } else {
+                  // OLD FORMAT (Lazy Migration): Template weeks are [1, 2, 3, ..., N]
+                  // Map by position: calendarWeek at index i → templateWeek at index i
+                  const calendarIndex = sortedCalendarWeeks.indexOf(calendarWeek);
+                  templateWeek = programData.weeks[calendarIndex];
+                }
+
+                const startDayIndex = calendarWeek.startDayIndex;
+                const endDayIndex = calendarWeek.endDayIndex;
+
+                // Helper to get calendar date for each day
+                const getCalendarDateForDay = (dayOffset: number): string | undefined => {
+                  if (!calendarWeek.startDate) return undefined;
+                  const startDate = new Date(calendarWeek.startDate);
+                  startDate.setDate(startDate.getDate() + dayOffset);
+                  return startDate.toISOString().split('T')[0];
+                };
 
                 const days: ProgramInstanceDay[] = [];
                 for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
                   days.push({
                     dayIndex: i + 1,
                     globalDayIndex: startDayIndex + i,
-                    calendarDate: getCalendarDateForDayByWeekNumber(weekData.weekNumber, i),
+                    calendarDate: getCalendarDateForDay(i),
                     tasks: [],
                     habits: [],
                   });
                 }
 
                 return {
-                  id: weekData.id || crypto.randomUUID(),
-                  weekNumber: weekData.weekNumber,
-                  moduleId: weekData.moduleId,
-                  name: weekData.name,
-                  theme: weekData.theme,
-                  weeklyTasks: (weekData.weeklyTasks || []).map((t) => ({
+                  id: templateWeek?.id || crypto.randomUUID(),
+                  weekNumber: calendarWeek.weekNumber, // Always use calendar weekNumber (0, 1, 2, ..., -1)
+                  templateWeekNumber: templateWeek?.weekNumber, // Preserve original for reference
+                  moduleId: templateWeek?.moduleId,
+                  name: templateWeek?.name,
+                  theme: templateWeek?.theme,
+                  weeklyTasks: (templateWeek?.weeklyTasks || []).map((t) => ({
                     ...t,
                     id: t.id || crypto.randomUUID(),
                   })),
-                  weeklyHabits: weekData.weeklyHabits || [],
-                  weeklyPrompt: weekData.weeklyPrompt,
-                  distribution: weekData.distribution,
+                  weeklyHabits: templateWeek?.weeklyHabits || [],
+                  weeklyPrompt: templateWeek?.weeklyPrompt,
+                  distribution: templateWeek?.distribution,
                   startDayIndex,
                   endDayIndex,
-                  calendarStartDate: calendarWeek?.startDate,
-                  calendarEndDate: calendarWeek?.endDate,
-                  actualStartDayOfWeek: calendarWeek?.actualStartDayOfWeek,
+                  calendarStartDate: calendarWeek.startDate,
+                  calendarEndDate: calendarWeek.endDate,
+                  actualStartDayOfWeek: calendarWeek.actualStartDayOfWeek,
                   days,
                 };
               });
@@ -468,42 +535,69 @@ export async function GET(request: NextRequest) {
                 .orderBy('weekNumber', 'asc')
                 .get();
 
-              weeks = weeksSnapshot.docs.map((weekDoc) => {
-                const weekData = weekDoc.data();
-                // Look up calendar week by weekNumber (includes Week 0 onboarding)
-                const calendarWeek = sortedCalendarWeeks.find(cw => cw.weekNumber === weekData.weekNumber);
-                const startDayIndex = calendarWeek?.startDayIndex ?? (weekData.weekNumber === 0 ? 1 : (weekData.weekNumber - 1) * daysPerWeek + 1);
-                const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
+              // Detect format: new format has weekNumber=0 (onboarding), old format starts at 1
+              const hasOnboarding = weeksSnapshot.docs.some(doc => doc.data().weekNumber === 0);
+              const isNewFormat = hasOnboarding;
+
+              console.log(`[INSTANCES_LIST_GET] Legacy collection format for enrollment: ${isNewFormat ? 'NEW (0, 1-N, -1)' : 'OLD (1-N)'}`);
+
+              // Map calendar weeks to instance weeks using weekNumber-based matching
+              weeks = sortedCalendarWeeks.map((calendarWeek) => {
+                let weekDoc;
+                let weekData;
+
+                if (isNewFormat) {
+                  // NEW FORMAT: Direct weekNumber matching
+                  weekDoc = weeksSnapshot.docs.find(doc => doc.data().weekNumber === calendarWeek.weekNumber);
+                  weekData = weekDoc?.data();
+                } else {
+                  // OLD FORMAT (Lazy Migration): Map by position
+                  const calendarIndex = sortedCalendarWeeks.indexOf(calendarWeek);
+                  weekDoc = weeksSnapshot.docs[calendarIndex];
+                  weekData = weekDoc?.data();
+                }
+
+                const startDayIndex = calendarWeek.startDayIndex;
+                const endDayIndex = calendarWeek.endDayIndex;
+
+                // Helper to get calendar date for each day
+                const getCalendarDateForDay = (dayOffset: number): string | undefined => {
+                  if (!calendarWeek.startDate) return undefined;
+                  const startDate = new Date(calendarWeek.startDate);
+                  startDate.setDate(startDate.getDate() + dayOffset);
+                  return startDate.toISOString().split('T')[0];
+                };
 
                 const days: ProgramInstanceDay[] = [];
                 for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
                   days.push({
                     dayIndex: i + 1,
                     globalDayIndex: startDayIndex + i,
-                    calendarDate: getCalendarDateForDayByWeekNumber(weekData.weekNumber, i),
+                    calendarDate: getCalendarDateForDay(i),
                     tasks: [],
                     habits: [],
                   });
                 }
 
                 return {
-                  id: weekDoc.id,
-                  weekNumber: weekData.weekNumber,
-                  moduleId: weekData.moduleId,
-                  name: weekData.name,
-                  theme: weekData.theme,
-                  weeklyTasks: (weekData.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
+                  id: weekDoc?.id || crypto.randomUUID(),
+                  weekNumber: calendarWeek.weekNumber, // Always use calendar weekNumber
+                  templateWeekNumber: weekData?.weekNumber, // Preserve original
+                  moduleId: weekData?.moduleId,
+                  name: weekData?.name,
+                  theme: weekData?.theme,
+                  weeklyTasks: (weekData?.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
                     ...t,
                     id: t.id || crypto.randomUUID(),
                   })),
-                  weeklyHabits: weekData.weeklyHabits || [],
-                  weeklyPrompt: weekData.weeklyPrompt,
-                  distribution: weekData.distribution,
+                  weeklyHabits: weekData?.weeklyHabits || [],
+                  weeklyPrompt: weekData?.weeklyPrompt,
+                  distribution: weekData?.distribution,
                   startDayIndex,
                   endDayIndex,
-                  calendarStartDate: calendarWeek?.startDate,
-                  calendarEndDate: calendarWeek?.endDate,
-                  actualStartDayOfWeek: calendarWeek?.actualStartDayOfWeek,
+                  calendarStartDate: calendarWeek.startDate,
+                  calendarEndDate: calendarWeek.endDate,
+                  actualStartDayOfWeek: calendarWeek.actualStartDayOfWeek,
                   days,
                 };
               });

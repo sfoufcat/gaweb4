@@ -345,27 +345,75 @@ export async function syncProgramWeeks(
     }
   }
 
-  // Create missing weeks
+  // Create missing weeks with proper structure:
+  // Week 0: Onboarding (first week, days 1 to daysPerWeek)
+  // Weeks 1 to N-2: Regular weeks (middle)
+  // Week -1: Closing (last week)
+  //
+  // For 12 calculated weeks (e.g., 60-day weekday program):
+  // → [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, -1]
+  // → Onboarding (days 1-5) + Week 1-10 (days 6-55) + Closing (days 56-60)
   const newWeeks: typeof existingWeeks = [];
   const now = new Date().toISOString();
 
-  for (let weekNum = 1; weekNum <= targetWeekCount; weekNum++) {
-    if (!existingWeekNumbers.has(weekNum)) {
-      const startDay = (weekNum - 1) * daysPerWeek + 1;
-      const endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
+  // Number of regular weeks (excluding onboarding and closing)
+  const regularWeekCount = Math.max(0, targetWeekCount - 2);
 
-      newWeeks.push({
-        id: crypto.randomUUID(),
-        moduleId: targetModuleId || '',
-        order: weekNum,
-        weekNumber: weekNum,
-        startDayIndex: startDay,
-        endDayIndex: endDay,
-        distribution: 'spread',
-        createdAt: now,
-        updatedAt: now,
-      });
+  // Week 0: Onboarding (always first week)
+  if (!existingWeekNumbers.has(0)) {
+    newWeeks.push({
+      id: crypto.randomUUID(),
+      moduleId: targetModuleId || '',
+      order: 0,
+      weekNumber: 0,
+      startDayIndex: 1,
+      endDayIndex: Math.min(daysPerWeek, totalDays),
+      distribution: 'spread',
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  // Weeks 1 to N: Regular weeks (middle)
+  for (let weekNum = 1; weekNum <= regularWeekCount; weekNum++) {
+    if (!existingWeekNumbers.has(weekNum)) {
+      // Regular weeks start after onboarding
+      const startDay = daysPerWeek + (weekNum - 1) * daysPerWeek + 1;
+      // End day is capped to leave room for closing week
+      const closingStart = totalDays - daysPerWeek + 1;
+      const endDay = Math.min(startDay + daysPerWeek - 1, closingStart - 1);
+
+      // Only add if there are actually days for this week
+      if (startDay < closingStart) {
+        newWeeks.push({
+          id: crypto.randomUUID(),
+          moduleId: targetModuleId || '',
+          order: weekNum,
+          weekNumber: weekNum,
+          startDayIndex: startDay,
+          endDayIndex: endDay,
+          distribution: 'spread',
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
     }
+  }
+
+  // Week -1: Closing (always last week)
+  if (!existingWeekNumbers.has(-1) && totalDays > daysPerWeek) {
+    const closingStartDay = totalDays - daysPerWeek + 1;
+    newWeeks.push({
+      id: crypto.randomUUID(),
+      moduleId: targetModuleId || '',
+      order: targetWeekCount, // Sort order puts closing at the end
+      weekNumber: -1,
+      startDayIndex: closingStartDay,
+      endDayIndex: totalDays,
+      distribution: 'spread',
+      createdAt: now,
+      updatedAt: now,
+    });
   }
 
   const createdCount = newWeeks.length;
@@ -373,7 +421,14 @@ export async function syncProgramWeeks(
   if (createdCount > 0) {
     // Merge with existing weeks and update the program document
     const allWeeks = [...existingWeeks, ...newWeeks];
-    allWeeks.sort((a, b) => a.weekNumber - b.weekNumber);
+    // Sort: 0 (onboarding) first, then 1, 2, 3..., then -1 (closing) last
+    allWeeks.sort((a, b) => {
+      // Closing (-1) should always be last
+      if (a.weekNumber === -1) return 1;
+      if (b.weekNumber === -1) return -1;
+      // Otherwise sort by weekNumber (0 first, then 1, 2, 3...)
+      return a.weekNumber - b.weekNumber;
+    });
 
     await adminDb.collection('programs').doc(programId).update({
       weeks: allWeeks,
