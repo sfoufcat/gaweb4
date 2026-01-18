@@ -55,6 +55,33 @@ export async function GET(
       return NextResponse.json({ error: 'Instance not found' }, { status: 404 });
     }
 
+    // Backfill startDate if missing (legacy instances)
+    let startDate = data.startDate;
+    if (!startDate) {
+      if (data.type === 'individual' && data.enrollmentId) {
+        // Get from enrollment
+        const enrollmentDoc = await adminDb.collection('program_enrollments').doc(data.enrollmentId).get();
+        if (enrollmentDoc.exists) {
+          const enrollmentData = enrollmentDoc.data();
+          startDate = enrollmentData?.startDate || enrollmentData?.startedAt;
+          if (typeof startDate?.toDate === 'function') {
+            startDate = startDate.toDate().toISOString().split('T')[0];
+          }
+        }
+      } else if (data.type === 'cohort' && data.cohortId) {
+        // Get from cohort
+        const cohortDoc = await adminDb.collection('program_cohorts').doc(data.cohortId).get();
+        if (cohortDoc.exists) {
+          startDate = cohortDoc.data()?.startDate;
+        }
+      }
+      // Persist the backfilled startDate
+      if (startDate) {
+        await instanceDoc.ref.update({ startDate, updatedAt: new Date().toISOString() });
+        console.log(`[INSTANCE_GET] Backfilled startDate=${startDate} for instance ${instanceId}`);
+      }
+    }
+
     const instance: ProgramInstance = {
       id: instanceDoc.id,
       programId: data.programId,
@@ -63,7 +90,7 @@ export async function GET(
       userId: data.userId,
       enrollmentId: data.enrollmentId,
       cohortId: data.cohortId,
-      startDate: data.startDate,
+      startDate,
       endDate: data.endDate,
       weeks: data.weeks || [],
       includeWeekends: data.includeWeekends,
