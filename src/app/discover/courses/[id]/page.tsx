@@ -357,14 +357,14 @@ function CourseContent({
   router: ReturnType<typeof useRouter>;
 }) {
   // Fetch completion progress for all lessons in this course
-  const { progressList, isContentCompleted, getCourseCompletionPercent } = useContentProgress({
+  const { progress, isContentCompleted, getCourseCompletionPercent } = useContentProgress({
     contentType: 'course_lesson',
     contentId: id,
   });
 
   // Calculate course completion percentage
   const completionPercent = getCourseCompletionPercent(id);
-  const completedLessons = progressList.filter(p => p.status === 'completed').length;
+  const completedLessons = progress.filter((p) => p.status === 'completed').length;
 
   return (
     <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">

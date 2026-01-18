@@ -7,19 +7,23 @@
 
 import type {
   ProgramInstanceWeek,
+  ProgramWeek,
   WeekResourceAssignment,
   UnifiedEvent,
 } from '@/types';
 
+// Accept either template or instance week (both have resourceAssignments)
+type WeekWithResources = Pick<ProgramWeek | ProgramInstanceWeek, 'resourceAssignments'>;
+
 /**
  * Filters resources assigned to a specific day within a week
  *
- * @param week - The program instance week containing resourceAssignments
+ * @param week - The program week containing resourceAssignments (template or instance)
  * @param dayOfWeek - The day of week (1-7, where 1 is day 1 of the week)
  * @returns Array of resources assigned to show on this day
  */
 export function getResourcesForDay(
-  week: ProgramInstanceWeek,
+  week: WeekWithResources,
   dayOfWeek: number
 ): WeekResourceAssignment[] {
   const assignments = week.resourceAssignments || [];
@@ -59,23 +63,26 @@ export function getResourcesByType(
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
+// Accept weeks that may have linkedCallEventIds (instance has it, template may have it)
+type WeekWithCalls = Pick<ProgramInstanceWeek, 'linkedCallEventIds'> | Pick<ProgramWeek, 'linkedCallEventIds'>;
+
 /**
  * Filters calls for a specific calendar date
  *
  * Calls are linked to weeks via linkedCallEventIds. This function filters
  * those calls to find ones scheduled on a specific calendar date.
  *
- * @param week - The program instance week containing linkedCallEventIds
+ * @param week - The program week containing linkedCallEventIds (template or instance)
  * @param dayCalendarDate - ISO date string (YYYY-MM-DD) to filter by
  * @param events - Array of UnifiedEvent objects to filter
  * @returns Filtered array of calls scheduled for the specified date
  */
 export function getCallsForDay(
-  week: ProgramInstanceWeek,
+  week: WeekWithCalls,
   dayCalendarDate: string,
   events: UnifiedEvent[]
 ): UnifiedEvent[] {
-  const weekCallIds = week.linkedCallEventIds || [];
+  const weekCallIds = (week as ProgramInstanceWeek).linkedCallEventIds || [];
 
   if (weekCallIds.length === 0 || events.length === 0) {
     return [];

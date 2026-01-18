@@ -24,6 +24,7 @@ import type {
   ProgramInstanceTask,
   ProgramHabitTemplate,
   ProgramInstanceWeek,
+  ProgramWeek,
   UnifiedEvent,
   WeekResourceAssignment,
   ContentProgress,
@@ -39,6 +40,9 @@ import {
 type DayData = ProgramDay | ProgramInstanceDay;
 type TaskData = ProgramTaskTemplate | ProgramInstanceTask;
 
+// Week type can be either template or instance (both have resourceAssignments)
+type WeekData = ProgramWeek | ProgramInstanceWeek;
+
 interface DayPreviewPopupProps {
   isOpen: boolean;
   onClose: () => void;
@@ -47,7 +51,7 @@ interface DayPreviewPopupProps {
   habits?: ProgramHabitTemplate[]; // Program-level habits
   weekNumber: number;
   // New props for enhanced content display
-  week?: ProgramInstanceWeek;
+  week?: WeekData;
   events?: UnifiedEvent[]; // All events for filtering
   calendarDate?: string; // ISO date (YYYY-MM-DD) for this day
   dayOfWeek?: number; // 1-7 for resource filtering

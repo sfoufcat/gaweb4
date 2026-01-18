@@ -3084,6 +3084,13 @@ export function WeekEditor({
         day={previewDayNumber !== null ? days[previewDayNumber - 1] || null : null}
         habits={week.weeklyHabits}
         weekNumber={week.weekNumber}
+        // Pass week data for resource assignments
+        week={week}
+        dayOfWeek={previewDayNumber || undefined}
+        events={availableEvents}
+        // Pass course/article lookups for display
+        courses={availableCourses.reduce((acc, c) => ({ ...acc, [c.id]: c }), {})}
+        articles={availableArticles.reduce((acc, a) => ({ ...acc, [a.id]: a }), {})}
       />
 
       {/* Schedule Call Modal (1:1 programs) */}
