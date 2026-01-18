@@ -32,6 +32,7 @@ interface ProgramScheduleViewProps {
   isLoading?: boolean;
   onTaskComplete?: (itemId: string) => void;
   onJoinCall?: (eventId: string) => void;
+  enrollmentId?: string; // For linking progress to program
 }
 
 export function ProgramScheduleView({
@@ -39,6 +40,7 @@ export function ProgramScheduleView({
   isLoading = false,
   onTaskComplete,
   onJoinCall,
+  enrollmentId,
 }: ProgramScheduleViewProps) {
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
 
@@ -181,7 +183,13 @@ export function ProgramScheduleView({
                           item.courseId && (
                             <Link
                               href={`/discover/courses/${item.courseId}${
-                                item.lessonId ? `?lesson=${item.lessonId}` : ''
+                                (() => {
+                                  const params = new URLSearchParams();
+                                  if (item.lessonId) params.set('lesson', item.lessonId);
+                                  if (enrollmentId) params.set('enrollmentId', enrollmentId);
+                                  const qs = params.toString();
+                                  return qs ? `?${qs}` : '';
+                                })()
                               }`}
                               className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
                             >

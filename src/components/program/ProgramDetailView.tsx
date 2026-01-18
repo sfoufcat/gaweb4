@@ -1023,7 +1023,7 @@ export function ProgramDetailView({
             {courses.map((course) => (
               <Link
                 key={course.id}
-                href={`/discover/courses/${course.id}`}
+                href={`/discover/courses/${course.id}?enrollmentId=${enrollment.id}`}
                 className="flex-shrink-0 w-[180px] bg-[rgba(255,255,255,0.7)] dark:bg-[#171b22] rounded-[20px] p-4 hover:shadow-lg transition-shadow"
               >
                 <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[1.2]">

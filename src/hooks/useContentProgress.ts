@@ -34,6 +34,7 @@ interface MarkCompleteParams {
   lessonId?: string;
   watchProgress?: number;
   instanceId?: string;
+  enrollmentId?: string; // Alternative to instanceId - API will look up instance
   weekIndex?: number;
   dayIndex?: number;
 }
@@ -283,12 +284,23 @@ export function useContentProgress(filters?: ContentProgressFilters) {
 
   /**
    * Track video watch progress (updates watchProgress field)
+   * @param options.instanceId - Link to program instance for cohort tracking
+   * @param options.enrollmentId - Alternative to instanceId - API will look up instance
+   * @param options.weekIndex - Which program week (1-based)
+   * @param options.dayIndex - Which day in the week (1-7)
    */
   const trackWatchProgress = async (
     contentType: ContentProgressType,
     contentId: string,
     watchProgress: number,
-    options?: { moduleId?: string; lessonId?: string; instanceId?: string }
+    options?: {
+      moduleId?: string;
+      lessonId?: string;
+      instanceId?: string;
+      enrollmentId?: string;
+      weekIndex?: number;
+      dayIndex?: number;
+    }
   ): Promise<ContentProgress> => {
     return upsertProgress({
       contentType,

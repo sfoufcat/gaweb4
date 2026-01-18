@@ -2,7 +2,7 @@
 
 import { use, useMemo, useRef, useCallback, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCourse } from '@/hooks/useDiscover';
 import { useSingleContentProgress } from '@/hooks/useContentProgress';
 import { BackButton } from '@/components/discover';
@@ -88,6 +88,13 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
   const { id: courseId, lessonId } = use(params);
   const { course, loading } = useCourse(courseId);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Program context from URL params (when accessed from a program)
+  const instanceId = searchParams.get('instanceId') || undefined;
+  const enrollmentId = searchParams.get('enrollmentId') || undefined;
+  const weekIndex = searchParams.get('weekIndex') ? parseInt(searchParams.get('weekIndex')!, 10) : undefined;
+  const dayIndex = searchParams.get('dayIndex') ? parseInt(searchParams.get('dayIndex')!, 10) : undefined;
 
   // Progress tracking
   const {
@@ -122,16 +129,28 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
     // Save progress every 10% increment
     if (progress >= lastSavedProgress.current + 10) {
       lastSavedProgress.current = progress;
-      trackWatchProgress('course_lesson', courseId, progress, { lessonId }).catch(console.error);
+      trackWatchProgress('course_lesson', courseId, progress, {
+        lessonId,
+        instanceId,
+        enrollmentId,
+        weekIndex,
+        dayIndex,
+      }).catch(console.error);
     }
-  }, [courseId, lessonId, trackWatchProgress]);
+  }, [courseId, lessonId, trackWatchProgress, instanceId, enrollmentId, weekIndex, dayIndex]);
 
   // Auto-complete at 90% - handled by API
   useEffect(() => {
     if (currentWatchProgress >= 90 && !isCompleted) {
-      trackWatchProgress('course_lesson', courseId, currentWatchProgress, { lessonId }).catch(console.error);
+      trackWatchProgress('course_lesson', courseId, currentWatchProgress, {
+        lessonId,
+        instanceId,
+        enrollmentId,
+        weekIndex,
+        dayIndex,
+      }).catch(console.error);
     }
-  }, [currentWatchProgress, isCompleted, courseId, lessonId, trackWatchProgress]);
+  }, [currentWatchProgress, isCompleted, courseId, lessonId, trackWatchProgress, instanceId, enrollmentId, weekIndex, dayIndex]);
 
   // Mark complete manually
   const handleMarkComplete = async () => {
@@ -142,6 +161,10 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
         contentId: courseId,
         lessonId,
         watchProgress: currentWatchProgress,
+        instanceId,
+        enrollmentId,
+        weekIndex,
+        dayIndex,
       });
     } catch (err) {
       console.error('Failed to mark lesson complete:', err);
@@ -156,6 +179,18 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  };
+
+  // Build URL with program context params
+  const buildLessonUrl = (targetLessonId: string) => {
+    let url = `/discover/courses/${courseId}/lessons/${targetLessonId}`;
+    const params = new URLSearchParams();
+    if (instanceId) params.set('instanceId', instanceId);
+    if (enrollmentId) params.set('enrollmentId', enrollmentId);
+    if (weekIndex !== undefined) params.set('weekIndex', weekIndex.toString());
+    if (dayIndex !== undefined) params.set('dayIndex', dayIndex.toString());
+    const queryString = params.toString();
+    return queryString ? `${url}?${queryString}` : url;
   };
 
   // Render notes with paragraph support
@@ -377,7 +412,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
           {/* Previous Lesson - Ghost/minimal style */}
           {prevLesson ? (
             <button
-              onClick={() => router.push(`/discover/courses/${courseId}/lessons/${prevLesson.id}`)}
+              onClick={() => router.push(buildLessonUrl(prevLesson.id))}
               className="flex items-center gap-2 text-earth-600 dark:text-brand-accent hover:text-earth-700 dark:hover:text-[#d4b896] transition-colors group"
             >
               <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -392,7 +427,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
           {/* Next Lesson - Compact pill style */}
           {nextLesson ? (
             <button
-              onClick={() => router.push(`/discover/courses/${courseId}/lessons/${nextLesson.id}`)}
+              onClick={() => router.push(buildLessonUrl(nextLesson.id))}
               className="flex items-center gap-2 px-5 py-2.5 bg-earth-500 dark:bg-brand-accent rounded-full hover:bg-earth-600 dark:hover:bg-brand-accent/90 transition-colors text-white group"
             >
               <span className="font-sans text-sm font-medium">Next</span>
@@ -432,7 +467,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
                   key={moduleLesson.id}
                   onClick={() => {
                     if (!isLocked && !isCurrentLesson) {
-                      router.push(`/discover/courses/${courseId}/lessons/${moduleLesson.id}`);
+                      router.push(buildLessonUrl(moduleLesson.id));
                     }
                   }}
                   className={`px-4 py-3 flex items-center justify-between ${

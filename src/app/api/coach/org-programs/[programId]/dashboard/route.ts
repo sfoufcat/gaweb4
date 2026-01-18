@@ -117,6 +117,7 @@ export async function GET(
 
     const { searchParams } = new URL(request.url);
     const cohortId = searchParams.get('cohortId');
+    const instanceIdParam = searchParams.get('instanceId'); // Optional: directly pass instanceId
 
     // Get program details
     const programDoc = await adminDb.collection('programs').doc(programId).get();
@@ -150,6 +151,35 @@ export async function GET(
       ...doc.data(),
     })) as (ProgramEnrollment & { id: string })[];
 
+    // Look up instanceId for filtering content progress
+    // This ensures we only show progress for THIS program, not other programs
+    let instanceId: string | null = instanceIdParam;
+
+    if (!instanceId && cohortId) {
+      // Look up instance by cohortId
+      const instanceSnap = await adminDb
+        .collection('program_instances')
+        .where('cohortId', '==', cohortId)
+        .where('programId', '==', programId)
+        .limit(1)
+        .get();
+
+      if (!instanceSnap.empty) {
+        instanceId = instanceSnap.docs[0].id;
+      }
+    } else if (!instanceId && enrollments.length === 1) {
+      // For individual programs, look up by enrollment
+      const instanceSnap = await adminDb
+        .collection('program_instances')
+        .where('enrollmentId', '==', enrollments[0].id)
+        .limit(1)
+        .get();
+
+      if (!instanceSnap.empty) {
+        instanceId = instanceSnap.docs[0].id;
+      }
+    }
+
     // Calculate one week ago for "new this week"
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -182,16 +212,23 @@ export async function GET(
     const contentProgressMap = new Map<string, ContentProgress[]>();
 
     if (userIds.length > 0) {
-      // Fetch content progress by organization and program
-      // Content progress is linked to users and organization, not necessarily instances
+      // Fetch content progress - filter by instanceId if available for accurate program scoping
       const batchSize = 30;
       for (let i = 0; i < userIds.length; i += batchSize) {
         const batch = userIds.slice(i, i + batchSize);
-        const progressSnapshot = await adminDb
+
+        // Build query with instanceId filter when available
+        let progressQuery = adminDb
           .collection('content_progress')
           .where('userId', 'in', batch)
-          .where('organizationId', '==', organizationId)
-          .get();
+          .where('organizationId', '==', organizationId);
+
+        // Filter by instanceId to show only progress for THIS program
+        if (instanceId) {
+          progressQuery = progressQuery.where('instanceId', '==', instanceId);
+        }
+
+        const progressSnapshot = await progressQuery.get();
 
         progressSnapshot.docs.forEach((doc) => {
           const progress = { id: doc.id, ...doc.data() } as ContentProgress;
