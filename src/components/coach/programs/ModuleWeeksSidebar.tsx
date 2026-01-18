@@ -426,14 +426,35 @@ export function ModuleWeeksSidebar({
 
 
   // Auto-calculate weeks based on program length
+  // Uses same structure as calendar weeks: Onboarding (Week 0), Regular (1-N), Closing (-1)
   const calculatedWeeks = useMemo((): CalculatedWeek[] => {
     const totalDays = program.lengthDays || 30;
     const includeWeekends = program.includeWeekends !== false;
     const daysPerWeek = includeWeekends ? 7 : 5;
     const numWeeks = Math.ceil(totalDays / daysPerWeek);
 
-    return Array.from({ length: numWeeks }, (_, weekIdx) => {
-      const weekNum = weekIdx + 1;
+    const result: CalculatedWeek[] = [];
+
+    for (let weekIdx = 0; weekIdx < numWeeks; weekIdx++) {
+      const isFirst = weekIdx === 0;
+      const isLast = weekIdx === numWeeks - 1;
+
+      // Week numbering: 0 for Onboarding, 1+ for Regular, -1 for Closing
+      let weekNum: number;
+      let label: string;
+
+      if (isFirst) {
+        weekNum = 0;
+        label = 'Onboarding';
+      } else if (isLast) {
+        weekNum = -1;
+        label = 'Closing';
+      } else {
+        // Regular weeks: 1, 2, 3, ... (excluding first and last)
+        weekNum = weekIdx;
+        label = `Week ${weekNum}`;
+      }
+
       const startDay = weekIdx * daysPerWeek + 1;
       const endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
 
@@ -444,23 +465,25 @@ export function ModuleWeeksSidebar({
 
       const storedWeek = weeks.find(w => w.weekNumber === weekNum);
 
-      return {
+      result.push({
         weekNum,
         startDay,
         endDay,
         daysInWeek,
         contentCount: daysWithContent.length,
         totalDays: daysInWeek.length,
-        label: `Week ${weekNum}`,
+        label,
         theme: storedWeek?.theme,
         distribution: storedWeek?.distribution || 'spread',
         weeklyTasks: storedWeek?.weeklyTasks || [],
         storedWeekId: storedWeek?.id,
         moduleId: storedWeek?.moduleId,
         order: storedWeek?.order, // Preserve order for drag-drop
-        templateWeekNumber: weekNum, // In template view, weekNum is the template week number
-      };
-    });
+        templateWeekNumber: weekNum, // Template week number for mapping
+      });
+    }
+
+    return result;
   }, [program.lengthDays, program.includeWeekends, days, weeks]);
 
   // Calculate calendar-aligned weeks when in client view mode or cohort view mode
@@ -604,68 +627,32 @@ export function ModuleWeeksSidebar({
     // Initialize with empty arrays for each module
     modules.forEach(m => map.set(m.id, []));
 
-    // Separate weeks with stored moduleId from unassigned weeks
-    const weeksToAssign = displayWeeks;
-    const assignedWeeks: CalculatedWeek[] = [];
-    const unassignedWeeks: CalculatedWeek[] = [];
+    if (modules.length === 0) return map;
 
-    weeksToAssign.forEach(week => {
-      if (week.moduleId && map.has(week.moduleId)) {
-        assignedWeeks.push(week);
-        map.get(week.moduleId)!.push(week);
-      } else {
-        unassignedWeeks.push(week);
-      }
+    const weeksToAssign = displayWeeks;
+
+    // ALWAYS use even distribution for consistent display
+    // This ensures 3-3-3-3 distribution regardless of stored moduleIds
+    // Sort weeks by weekNum first (Onboarding=0 first, then 1,2,3..., Closing=-1 last)
+    const sortedWeeks = [...weeksToAssign].sort((a, b) => {
+      // Closing (-1) should come last
+      if (a.weekNum === -1) return 1;
+      if (b.weekNum === -1) return -1;
+      return a.weekNum - b.weekNum;
     });
 
-    // If ALL weeks are unassigned (no stored moduleIds), distribute evenly
-    // This handles new programs or programs without module assignments
-    if (unassignedWeeks.length > 0 && modules.length > 0) {
-      const allUnassigned = assignedWeeks.length === 0;
+    const weeksPerModule = Math.ceil(sortedWeeks.length / modules.length);
 
-      if (allUnassigned && unassignedWeeks.length > 0) {
-        // Even distribution: divide weeks equally across modules
-        // Sort weeks by weekNum first (Onboarding=0 first, then 1,2,3..., Closing=-1 last)
-        const sortedWeeks = [...unassignedWeeks].sort((a, b) => {
-          // Closing (-1) should come last
-          if (a.weekNum === -1) return 1;
-          if (b.weekNum === -1) return -1;
-          return a.weekNum - b.weekNum;
-        });
+    sortedWeeks.forEach((week, idx) => {
+      const moduleIdx = Math.min(Math.floor(idx / weeksPerModule), modules.length - 1);
+      const targetModuleId = modules[moduleIdx].id;
+      map.get(targetModuleId)!.push(week);
+    });
 
-        const weeksPerModule = Math.ceil(sortedWeeks.length / modules.length);
-
-        sortedWeeks.forEach((week, idx) => {
-          const moduleIdx = Math.min(Math.floor(idx / weeksPerModule), modules.length - 1);
-          const targetModuleId = modules[moduleIdx].id;
-          map.get(targetModuleId)!.push(week);
-        });
-      } else {
-        // Some weeks have moduleIds, others don't - use fallback logic
-        unassignedWeeks.forEach(week => {
-          // Closing week (weekNum === -1) should go to LAST module
-          // Onboarding and other unassigned weeks go to first module
-          const isClosingWeek = week.weekNum === -1;
-          const targetModuleId = isClosingWeek
-            ? modules[modules.length - 1].id
-            : modules[0].id;
-          map.get(targetModuleId)!.push(week);
-        });
-      }
-    }
-
-    // Sort weeks within each module by order (or weekNum as fallback)
+    // Sort weeks within each module by weekNum
+    // Closing (-1) should come last within a module
     map.forEach((moduleWeeks) => {
       moduleWeeks.sort((a, b) => {
-        // If both have order, sort by order
-        if (a.order !== undefined && b.order !== undefined) {
-          return a.order - b.order;
-        }
-        // If only one has order, prioritize the one with order
-        if (a.order !== undefined) return -1;
-        if (b.order !== undefined) return 1;
-        // Fallback to weekNum for weeks without stored order
-        // Closing (-1) should come last within a module
         if (a.weekNum === -1) return 1;
         if (b.weekNum === -1) return -1;
         return a.weekNum - b.weekNum;
