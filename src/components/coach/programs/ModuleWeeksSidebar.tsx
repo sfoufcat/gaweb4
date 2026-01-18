@@ -604,18 +604,55 @@ export function ModuleWeeksSidebar({
     // Initialize with empty arrays for each module
     modules.forEach(m => map.set(m.id, []));
 
-    // Assign weeks to their modules based on moduleId
+    // Separate weeks with stored moduleId from unassigned weeks
     const weeksToAssign = displayWeeks;
+    const assignedWeeks: CalculatedWeek[] = [];
+    const unassignedWeeks: CalculatedWeek[] = [];
 
     weeksToAssign.forEach(week => {
       if (week.moduleId && map.has(week.moduleId)) {
+        assignedWeeks.push(week);
         map.get(week.moduleId)!.push(week);
-      } else if (modules.length > 0) {
-        // Assign unassigned weeks to first module
-        const firstModuleId = modules[0].id;
-        map.get(firstModuleId)!.push(week);
+      } else {
+        unassignedWeeks.push(week);
       }
     });
+
+    // If ALL weeks are unassigned (no stored moduleIds), distribute evenly
+    // This handles new programs or programs without module assignments
+    if (unassignedWeeks.length > 0 && modules.length > 0) {
+      const allUnassigned = assignedWeeks.length === 0;
+
+      if (allUnassigned && unassignedWeeks.length > 0) {
+        // Even distribution: divide weeks equally across modules
+        // Sort weeks by weekNum first (Onboarding=0 first, then 1,2,3..., Closing=-1 last)
+        const sortedWeeks = [...unassignedWeeks].sort((a, b) => {
+          // Closing (-1) should come last
+          if (a.weekNum === -1) return 1;
+          if (b.weekNum === -1) return -1;
+          return a.weekNum - b.weekNum;
+        });
+
+        const weeksPerModule = Math.ceil(sortedWeeks.length / modules.length);
+
+        sortedWeeks.forEach((week, idx) => {
+          const moduleIdx = Math.min(Math.floor(idx / weeksPerModule), modules.length - 1);
+          const targetModuleId = modules[moduleIdx].id;
+          map.get(targetModuleId)!.push(week);
+        });
+      } else {
+        // Some weeks have moduleIds, others don't - use fallback logic
+        unassignedWeeks.forEach(week => {
+          // Closing week (weekNum === -1) should go to LAST module
+          // Onboarding and other unassigned weeks go to first module
+          const isClosingWeek = week.weekNum === -1;
+          const targetModuleId = isClosingWeek
+            ? modules[modules.length - 1].id
+            : modules[0].id;
+          map.get(targetModuleId)!.push(week);
+        });
+      }
+    }
 
     // Sort weeks within each module by order (or weekNum as fallback)
     map.forEach((moduleWeeks) => {
@@ -628,6 +665,9 @@ export function ModuleWeeksSidebar({
         if (a.order !== undefined) return -1;
         if (b.order !== undefined) return 1;
         // Fallback to weekNum for weeks without stored order
+        // Closing (-1) should come last within a module
+        if (a.weekNum === -1) return 1;
+        if (b.weekNum === -1) return -1;
         return a.weekNum - b.weekNum;
       });
     });
