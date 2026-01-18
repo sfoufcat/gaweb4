@@ -5,3 +5,4 @@ export { AdminCoursesSection } from './AdminCoursesSection';
 export { AdminDownloadsSection } from './AdminDownloadsSection';
 export { AdminLinksSection } from './AdminLinksSection';
 export { AdminQuestionnairesSection } from './AdminQuestionnairesSection';
+export { CourseEditor } from './CourseEditor';

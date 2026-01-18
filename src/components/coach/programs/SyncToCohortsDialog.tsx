@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Users, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +34,17 @@ interface SyncFieldOptions {
   syncHabits: boolean;
 }
 
+// Default sync fields - nothing selected
+const DEFAULT_SYNC_FIELDS: SyncFieldOptions = {
+  syncName: false,
+  syncTheme: false,
+  syncPrompt: false,
+  syncTasks: false,
+  syncFocus: false,
+  syncNotes: false,
+  syncHabits: false,
+};
+
 export function SyncToCohortsDialog({
   open,
   onOpenChange,
@@ -43,30 +54,31 @@ export function SyncToCohortsDialog({
   editedFields,
   onSyncComplete,
 }: SyncToCohortsDialogProps) {
-  // Initialize sync fields based on editedFields (if provided) or default to none selected
-  const getInitialSyncFields = (): SyncFieldOptions => {
-    if (editedFields && editedFields.size > 0) {
+  // Store editedFields in a ref to avoid re-render loops from Set reference changes
+  const editedFieldsRef = useRef<Set<string> | undefined>(editedFields);
+
+  // Update ref when editedFields changes (without triggering re-render)
+  useEffect(() => {
+    editedFieldsRef.current = editedFields;
+  }, [editedFields]);
+
+  // Memoized function to compute initial sync fields from ref
+  const getInitialSyncFields = useCallback((): SyncFieldOptions => {
+    const fields = editedFieldsRef.current;
+    if (fields && fields.size > 0) {
       return {
-        syncName: editedFields.has('syncName'),
-        syncTheme: editedFields.has('syncTheme'),
-        syncPrompt: editedFields.has('syncPrompt'),
-        syncTasks: editedFields.has('syncTasks'),
-        syncFocus: editedFields.has('syncFocus'),
-        syncNotes: editedFields.has('syncNotes'),
-        syncHabits: editedFields.has('syncHabits'),
+        syncName: fields.has('syncName'),
+        syncTheme: fields.has('syncTheme'),
+        syncPrompt: fields.has('syncPrompt'),
+        syncTasks: fields.has('syncTasks'),
+        syncFocus: fields.has('syncFocus'),
+        syncNotes: fields.has('syncNotes'),
+        syncHabits: fields.has('syncHabits'),
       };
     }
     // Default: nothing selected, user must choose what to sync
-    return {
-      syncName: false,
-      syncTheme: false,
-      syncPrompt: false,
-      syncTasks: false,
-      syncFocus: false,
-      syncNotes: false,
-      syncHabits: false,
-    };
-  };
+    return DEFAULT_SYNC_FIELDS;
+  }, []);
 
   // All useState hooks grouped together (React Rules of Hooks)
   const [isMounted, setIsMounted] = useState(false);
@@ -77,7 +89,7 @@ export function SyncToCohortsDialog({
   const [distributeAfterSync, setDistributeAfterSync] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [syncFields, setSyncFields] = useState<SyncFieldOptions>(getInitialSyncFields);
+  const [syncFields, setSyncFields] = useState<SyncFieldOptions>(DEFAULT_SYNC_FIELDS);
 
   // useRef hooks
   const wasOpenRef = useRef(false);
@@ -105,14 +117,13 @@ export function SyncToCohortsDialog({
   // Reset syncFields only when dialog opens (transitions from closed to open)
   useEffect(() => {
     if (open && !wasOpenRef.current) {
-      // Dialog just opened - initialize fields
+      // Dialog just opened - initialize fields from ref (stable reference)
       setSyncFields(getInitialSyncFields());
       setError(null);
       setSuccess(null);
     }
     wasOpenRef.current = open;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, getInitialSyncFields]);
 
   // Filter to active/upcoming cohorts only
   const activeCohorts = (cohorts || []).filter(

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { DiscoverCourse, CourseModule, CourseLesson } from '@/types/discover';
+import type { DiscoverCourse } from '@/types/discover';
 import type { UserTrack } from '@/types';
 import {
   Table,
@@ -21,15 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
-import { BrandedCheckbox } from '@/components/ui/checkbox';
-import { MediaUpload } from '@/components/admin/MediaUpload';
-import { RichTextEditor } from '@/components/admin/RichTextEditor';
-import { ProgramSelector } from '@/components/admin/ProgramSelector';
-import { CategorySelector } from '@/components/admin/CategorySelector';
-import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
 import {
   Select,
   SelectContent,
@@ -37,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { CourseEditor } from './CourseEditor';
 
 // Track options for dropdown
 const TRACK_OPTIONS: { value: UserTrack | ''; label: string }[] = [
@@ -58,786 +50,19 @@ const getTrackDisplayName = (track: UserTrack | null | undefined): string => {
   return option?.label || track;
 };
 
-// Generate unique ID for new modules/lessons
-const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-// Helper function to fetch video duration from URL
-async function fetchVideoDuration(url: string): Promise<number | null> {
-  return new Promise((resolve) => {
-    try {
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      
-      video.onloadedmetadata = () => {
-        const durationMinutes = Math.ceil(video.duration / 60);
-        resolve(durationMinutes);
-        video.remove();
-      };
-      
-      video.onerror = () => {
-        resolve(null);
-        video.remove();
-      };
-      
-      // Timeout after 10 seconds
-      setTimeout(() => {
-        resolve(null);
-        video.remove();
-      }, 10000);
-      
-      video.src = url;
-    } catch {
-      resolve(null);
-    }
-  });
-}
-
-// Lesson Editor Component
-function LessonEditor({
-  lesson,
-  index,
-  onUpdate,
-  onDelete,
-  onMoveUp,
-  onMoveDown,
-  isFirst,
-  isLast,
-  uploadEndpoint,
-}: {
-  lesson: CourseLesson;
-  index: number;
-  onUpdate: (lesson: CourseLesson) => void;
-  onDelete: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  isFirst: boolean;
-  isLast: boolean;
-  uploadEndpoint: string;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const [fetchingDuration, setFetchingDuration] = useState(false);
-
-  // Auto-fetch duration when video URL is added/changed
-  const handleVideoUrlBlur = async (url: string) => {
-    if (!url || lesson.durationMinutes) return; // Don't override existing duration
-    
-    setFetchingDuration(true);
-    const duration = await fetchVideoDuration(url);
-    setFetchingDuration(false);
-    
-    if (duration) {
-      onUpdate({ ...lesson, durationMinutes: duration });
-    }
-  };
-
-  // Manual fetch duration button handler
-  const handleFetchDuration = async () => {
-    if (!lesson.videoUrl) return;
-    
-    setFetchingDuration(true);
-    const duration = await fetchVideoDuration(lesson.videoUrl);
-    setFetchingDuration(false);
-    
-    if (duration) {
-      onUpdate({ ...lesson, durationMinutes: duration });
-    } else {
-      alert('Could not fetch video duration. The video might be from a source that blocks cross-origin requests.');
-    }
-  };
-
-  return (
-    <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#171b22]">
-      {/* Collapsed Header */}
-      <div className="p-3 flex items-center gap-3">
-        <span className="w-6 h-6 flex items-center justify-center bg-brand-accent/10 rounded text-xs font-medium text-brand-accent font-albert">
-          {index + 1}
-        </span>
-        <input
-          type="text"
-          value={lesson.title}
-          onChange={e => onUpdate({ ...lesson, title: e.target.value })}
-          placeholder="Lesson title"
-          className="flex-1 px-2 py-1 border border-transparent hover:border-[#e1ddd8] dark:border-[#262b35] rounded focus:outline-none focus:border-brand-accent font-albert text-sm"
-        />
-        <input
-          type="number"
-          value={lesson.durationMinutes || ''}
-          onChange={e => onUpdate({ ...lesson, durationMinutes: e.target.value ? parseInt(e.target.value) : undefined })}
-          placeholder="Min"
-          className="w-16 px-2 py-1 border border-[#e1ddd8] dark:border-[#262b35] rounded focus:outline-none focus:ring-1 focus:ring-brand-accent dark:ring-brand-accent font-albert text-sm text-center"
-        />
-        <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">min</span>
-        
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={onMoveUp}
-            disabled={isFirst}
-            className="p-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:text-[#f5f5f8] disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={onMoveDown}
-            disabled={isLast}
-            className="p-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:text-[#f5f5f8] disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={() => setExpanded(!expanded)}
-            className="px-2 py-1 text-xs text-brand-accent hover:text-brand-accent/90 hover:bg-brand-accent/10 rounded font-albert font-medium flex items-center gap-1"
-          >
-            {expanded ? 'Hide' : 'Details'}
-            <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="p-1 text-red-500 hover:text-red-700"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* Expanded Content */}
-      {expanded && (
-        <div className="p-3 pt-0 space-y-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
-          <div>
-            <MediaUpload
-              value={lesson.videoUrl || ''}
-              onChange={(url) => {
-                onUpdate({ ...lesson, videoUrl: url });
-                if (url) handleVideoUrlBlur(url);
-              }}
-              folder="courses/lessons"
-              type="video"
-              label="Lesson Video"
-              uploadEndpoint={uploadEndpoint}
-            />
-            {lesson.videoUrl && (
-              <div className="mt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleFetchDuration}
-                  disabled={fetchingDuration}
-                  className="px-3 py-1.5 text-xs bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20 rounded font-albert font-medium disabled:opacity-50 whitespace-nowrap"
-                  title="Fetch video duration automatically"
-                >
-                  {fetchingDuration ? (
-                    <span className="flex items-center gap-1">
-                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Fetching...
-                    </span>
-                  ) : (
-                    'Get Duration'
-                  )}
-                </button>
-                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]/70 font-albert">
-                  Duration will auto-fetch when you add a video
-                </span>
-              </div>
-            )}
-          </div>
-          <div>
-            <MediaUpload
-              value={lesson.videoThumbnailUrl || ''}
-              onChange={(url) => onUpdate({ ...lesson, videoThumbnailUrl: url })}
-              folder="courses/lessons"
-              type="image"
-              label="Video Thumbnail (optional)"
-              uploadEndpoint={uploadEndpoint}
-            />
-          </div>
-          <div>
-            <RichTextEditor
-              value={lesson.notes || ''}
-              onChange={(notes) => onUpdate({ ...lesson, notes })}
-              label="Lesson Notes"
-              placeholder="Summary, key points, or additional resources..."
-              rows={4}
-              showMediaToolbar={true}
-              mediaFolder="courses/lessons"
-              uploadEndpoint={uploadEndpoint}
-            />
-          </div>
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={lesson.isLocked || false}
-                onChange={e => onUpdate({ ...lesson, isLocked: e.target.checked })}
-                className="w-4 h-4 text-brand-accent border-[#e1ddd8] dark:border-[#262b35] rounded focus:ring-brand-accent dark:ring-brand-accent"
-              />
-              <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Locked (Premium)</span>
-            </label>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Module Editor Component
-function ModuleEditor({
-  module,
-  index,
-  onUpdate,
-  onDelete,
-  onMoveUp,
-  onMoveDown,
-  isFirst,
-  isLast,
-  uploadEndpoint,
-}: {
-  module: CourseModule;
-  index: number;
-  onUpdate: (module: CourseModule) => void;
-  onDelete: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  isFirst: boolean;
-  isLast: boolean;
-  uploadEndpoint: string;
-}) {
-  const [expanded, setExpanded] = useState(true);
-
-  const addLesson = () => {
-    const newLesson: CourseLesson = {
-      id: generateId(),
-      title: '',
-      order: module.lessons.length + 1,
-    };
-    onUpdate({ ...module, lessons: [...module.lessons, newLesson] });
-  };
-
-  const updateLesson = (lessonIndex: number, lesson: CourseLesson) => {
-    const newLessons = [...module.lessons];
-    newLessons[lessonIndex] = lesson;
-    onUpdate({ ...module, lessons: newLessons });
-  };
-
-  const deleteLesson = (lessonIndex: number) => {
-    onUpdate({ ...module, lessons: module.lessons.filter((_, i) => i !== lessonIndex) });
-  };
-
-  const moveLessonUp = (lessonIndex: number) => {
-    if (lessonIndex === 0) return;
-    const newLessons = [...module.lessons];
-    [newLessons[lessonIndex - 1], newLessons[lessonIndex]] = [newLessons[lessonIndex], newLessons[lessonIndex - 1]];
-    onUpdate({ ...module, lessons: newLessons });
-  };
-
-  const moveLessonDown = (lessonIndex: number) => {
-    if (lessonIndex === module.lessons.length - 1) return;
-    const newLessons = [...module.lessons];
-    [newLessons[lessonIndex], newLessons[lessonIndex + 1]] = [newLessons[lessonIndex + 1], newLessons[lessonIndex]];
-    onUpdate({ ...module, lessons: newLessons });
-  };
-
-  return (
-    <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-[#faf8f6] dark:bg-[#0d0f14] overflow-hidden">
-      {/* Module Header */}
-      <div className="p-4 bg-white dark:bg-[#171b22] border-b border-[#e1ddd8] dark:border-[#262b35]">
-        <div className="flex items-start gap-3">
-          <span className="w-8 h-8 flex items-center justify-center bg-brand-accent rounded-lg text-sm font-bold text-white font-albert flex-shrink-0">
-            {String(index + 1).padStart(2, '0')}
-          </span>
-          <div className="flex-1 space-y-2">
-            <input
-              type="text"
-              value={module.title}
-              onChange={e => onUpdate({ ...module, title: e.target.value })}
-              placeholder="Module title"
-              className="w-full px-2 py-1 border border-transparent hover:border-[#e1ddd8] dark:border-[#262b35] rounded focus:outline-none focus:border-brand-accent font-albert font-semibold"
-            />
-            <input
-              type="text"
-              value={module.subtitle || ''}
-              onChange={e => onUpdate({ ...module, subtitle: e.target.value })}
-              placeholder="Subtitle (optional)"
-              className="w-full px-2 py-1 border border-transparent hover:border-[#e1ddd8] dark:border-[#262b35] rounded focus:outline-none focus:border-brand-accent font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]"
-            />
-            <RichTextEditor
-              value={module.description || ''}
-              onChange={(description) => onUpdate({ ...module, description })}
-              placeholder="Module description (optional)..."
-              rows={3}
-              showMediaToolbar={true}
-              mediaFolder="courses"
-              uploadEndpoint={uploadEndpoint}
-            />
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={onMoveUp}
-              disabled={isFirst}
-              className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e1ddd8]/50 rounded disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Move up"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={onMoveDown}
-              disabled={isLast}
-              className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e1ddd8]/50 rounded disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Move down"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => setExpanded(!expanded)}
-              className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e1ddd8]/50 rounded"
-              title={expanded ? 'Collapse' : 'Expand'}
-            >
-              <svg className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={onDelete}
-              className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-              title="Delete module"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Lessons */}
-      {expanded && (
-        <div className="p-4 space-y-2">
-          {module.lessons.map((lesson, lessonIndex) => (
-            <LessonEditor
-              key={lesson.id}
-              lesson={lesson}
-              index={lessonIndex}
-              onUpdate={l => updateLesson(lessonIndex, l)}
-              onDelete={() => deleteLesson(lessonIndex)}
-              onMoveUp={() => moveLessonUp(lessonIndex)}
-              onMoveDown={() => moveLessonDown(lessonIndex)}
-              isFirst={lessonIndex === 0}
-              isLast={lessonIndex === module.lessons.length - 1}
-              uploadEndpoint={uploadEndpoint}
-            />
-          ))}
-          <button
-            type="button"
-            onClick={addLesson}
-            className="w-full py-2 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-sm text-brand-accent hover:border-brand-accent hover:bg-brand-accent/5 transition-colors font-albert"
-          >
-            + Add Lesson
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Course Form Dialog
-function CourseFormDialog({
-  course,
-  isOpen,
-  onClose,
-  onSave,
-  uploadEndpoint,
-  programsApiEndpoint,
-  apiEndpoint,
-}: {
-  course: DiscoverCourse | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: () => void;
-  uploadEndpoint: string;
-  programsApiEndpoint: string;
-  apiEndpoint: string;
-}) {
-  const isEditing = !!course;
-  const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    coverImageUrl: '',
-    shortDescription: '',
-    category: '',
-    level: '',
-    track: '' as UserTrack | '',
-    programIds: [] as string[],
-    featured: false,
-    trending: false,
-    modules: [] as CourseModule[],
-    pricing: getDefaultPricingData() as ContentPricingData,
-  });
-
-  useEffect(() => {
-    if (course) {
-      setFormData({
-        title: course.title || '',
-        coverImageUrl: course.coverImageUrl || '',
-        shortDescription: course.shortDescription || '',
-        category: course.category || '',
-        level: course.level || '',
-        track: course.track || '',
-        programIds: course.programIds || [],
-        featured: course.featured || false,
-        trending: course.trending || false,
-        modules: course.modules || [],
-        pricing: {
-          priceInCents: course.priceInCents ?? null,
-          currency: course.currency || 'USD',
-          purchaseType: course.purchaseType || 'popup',
-          isPublic: course.isPublic !== false,
-        },
-      });
-    } else {
-      setFormData({
-        title: '',
-        coverImageUrl: '',
-        shortDescription: '',
-        category: '',
-        level: '',
-        track: '',
-        programIds: [],
-        featured: false,
-        trending: false,
-        modules: [],
-        pricing: getDefaultPricingData(),
-      });
-    }
-  }, [course, isOpen]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.shortDescription.trim()) {
-      alert('Short description is required');
-      return;
-    }
-
-    if (!formData.coverImageUrl.trim()) {
-      alert('Cover image is required');
-      return;
-    }
-
-    setSaving(true);
-
-    try {
-      const url = isEditing 
-        ? `${apiEndpoint}/${course.id}`
-        : apiEndpoint;
-      
-      const payload = {
-        ...formData,
-        category: formData.category || null, // Convert empty string to null
-        level: formData.level || null, // Convert empty string to null
-        track: formData.track || null, // Convert empty string to null (deprecated)
-        programIds: formData.programIds, // New program association
-        // Flatten pricing fields
-        priceInCents: formData.pricing.priceInCents,
-        currency: formData.pricing.currency,
-        purchaseType: formData.pricing.purchaseType,
-        isPublic: formData.pricing.isPublic,
-      };
-      // Remove the nested pricing object from payload
-      delete (payload as Record<string, unknown>).pricing;
-      
-      const response = await fetch(url, {
-        method: isEditing ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save course');
-      }
-
-      onSave();
-      onClose();
-    } catch (err) {
-      console.error('Error saving course:', err);
-      alert(err instanceof Error ? err.message : 'Failed to save course');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const addModule = () => {
-    const newModule: CourseModule = {
-      id: generateId(),
-      title: '',
-      order: formData.modules.length + 1,
-      lessons: [],
-    };
-    setFormData(prev => ({ ...prev, modules: [...prev.modules, newModule] }));
-  };
-
-  const updateModule = (index: number, module: CourseModule) => {
-    const newModules = [...formData.modules];
-    newModules[index] = module;
-    setFormData(prev => ({ ...prev, modules: newModules }));
-  };
-
-  const deleteModule = (index: number) => {
-    setFormData(prev => ({ ...prev, modules: prev.modules.filter((_, i) => i !== index) }));
-  };
-
-  const moveModuleUp = (index: number) => {
-    if (index === 0) return;
-    const newModules = [...formData.modules];
-    [newModules[index - 1], newModules[index]] = [newModules[index], newModules[index - 1]];
-    setFormData(prev => ({ ...prev, modules: newModules }));
-  };
-
-  const moveModuleDown = (index: number) => {
-    if (index === formData.modules.length - 1) return;
-    const newModules = [...formData.modules];
-    [newModules[index], newModules[index + 1]] = [newModules[index + 1], newModules[index]];
-    setFormData(prev => ({ ...prev, modules: newModules }));
-  };
-
-  // Calculate totals
-  const totalLessons = formData.modules.reduce((sum, m) => sum + m.lessons.length, 0);
-  const totalDuration = formData.modules.reduce((sum, m) => 
-    sum + m.lessons.reduce((lSum, l) => lSum + (l.durationMinutes || 0), 0), 0
-  );
-
-  const isDesktop = useMediaQuery('(min-width: 768px)');
-
-  const content = (
-    <form onSubmit={handleSubmit}>
-      <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35] flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {isEditing ? 'Edit Course' : 'Create Course'}
-          </h2>
-          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-            {formData.modules.length} modules · {totalLessons} lessons · {totalDuration} min
-          </p>
-        </div>
-      </div>
-
-          <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-            {/* Basic Info Section */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert flex items-center gap-2">
-                <span className="w-6 h-6 flex items-center justify-center bg-brand-accent/10 rounded text-xs font-bold text-brand-accent">1</span>
-                Basic Information
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Title *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.title}
-                    onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert"
-                  />
-                </div>
-                
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                    Cover Image <span className="text-text-muted text-xs font-normal">(1200 x 675px)</span> *
-                  </label>
-                  <MediaUpload
-                    value={formData.coverImageUrl}
-                    onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
-                    folder="courses"
-                    type="image"
-                    required
-                    uploadEndpoint={uploadEndpoint}
-                    hideLabel
-                    previewSize="thumbnail"
-                  />
-                </div>
-                
-                <div className="col-span-2">
-                  <RichTextEditor
-                    value={formData.shortDescription}
-                    onChange={(shortDescription) => setFormData(prev => ({ ...prev, shortDescription }))}
-                    label="Short Description *"
-                    required
-                    rows={3}
-                    placeholder="Brief course overview..."
-                    showMediaToolbar={true}
-                    mediaFolder="courses"
-                    uploadEndpoint={uploadEndpoint}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Category</label>
-                  <CategorySelector
-                    value={formData.category}
-                    onChange={(category) => setFormData(prev => ({ ...prev, category }))}
-                    placeholder="Select or create category..."
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Level</label>
-                  <Select
-                    value={formData.level || 'none'}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, level: value === 'none' ? '' : value }))}
-                  >
-                    <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent ring-offset-0 dark:ring-brand-accent font-albert bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8]">
-                      <SelectValue placeholder="Select level..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectItem value="Beginner">Beginner</SelectItem>
-                      <SelectItem value="Intermediate">Intermediate</SelectItem>
-                      <SelectItem value="Advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {/* Programs (replaces Track) */}
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                    Programs
-                  </label>
-                  <ProgramSelector
-                    value={formData.programIds}
-                    onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
-                    placeholder="Select programs for this course..."
-                    programsApiEndpoint={programsApiEndpoint}
-                  />
-                </div>
-                
-              </div>
-              
-              {/* Pricing & Access */}
-              <ContentPricingFields
-                value={formData.pricing}
-                onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
-              />
-
-              <div className="flex gap-6">
-                <div className="flex items-center gap-2">
-                  <BrandedCheckbox
-                    checked={formData.featured}
-                    onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
-                  />
-                  <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, featured: !prev.featured }))}>Featured</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <BrandedCheckbox
-                    checked={formData.trending}
-                    onChange={(checked) => setFormData(prev => ({ ...prev, trending: checked }))}
-                  />
-                  <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, trending: !prev.trending }))}>Trending</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Modules & Lessons Section */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert flex items-center gap-2">
-                <span className="w-6 h-6 flex items-center justify-center bg-brand-accent/10 rounded text-xs font-bold text-brand-accent">2</span>
-                Modules & Lessons
-              </h3>
-              
-              <div className="space-y-4">
-                {formData.modules.map((module, index) => (
-                  <ModuleEditor
-                    key={module.id}
-                    module={module}
-                    index={index}
-                    onUpdate={m => updateModule(index, m)}
-                    onDelete={() => deleteModule(index)}
-                    onMoveUp={() => moveModuleUp(index)}
-                    onMoveDown={() => moveModuleDown(index)}
-                    isFirst={index === 0}
-                    isLast={index === formData.modules.length - 1}
-                    uploadEndpoint={uploadEndpoint}
-                  />
-                ))}
-                
-                <button
-                  type="button"
-                  onClick={addModule}
-                  className="w-full py-3 border-2 border-dashed border-brand-accent rounded-xl text-brand-accent hover:bg-brand-accent/5 transition-colors font-albert font-medium"
-                >
-                  + Add Module
-                </button>
-              </div>
-            </div>
-          </div>
-
-      <div className="p-6 border-t border-[#e1ddd8] dark:border-[#262b35] flex justify-end gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onClose}
-          disabled={saving}
-          className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 font-albert"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          disabled={saving || !formData.title.trim() || !formData.shortDescription.trim() || !formData.coverImageUrl.trim()}
-          className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
-        >
-          {saving ? 'Saving...' : isEditing ? 'Update Course' : 'Create Course'}
-        </Button>
-      </div>
-    </form>
-  );
-
-  // Desktop: Use Dialog (centered modal)
-  if (isDesktop) {
-    return (
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-4xl p-0" hideCloseButton>
-          {content}
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Mobile: Use Drawer (slide-up)
-  return (
-    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()} shouldScaleBackground={false}>
-      <DrawerContent className="max-h-[85dvh]">
-        {content}
-      </DrawerContent>
-    </Drawer>
-  );
-}
-
 interface AdminCoursesSectionProps {
   apiEndpoint?: string;
+  /** Initial course ID for URL persistence */
+  initialCourseId?: string | null;
+  /** Callback when course selection changes (for URL persistence) */
+  onCourseSelect?: (courseId: string | null) => void;
 }
 
-export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses' }: AdminCoursesSectionProps) {
+export function AdminCoursesSection({
+  apiEndpoint = '/api/admin/discover/courses',
+  initialCourseId,
+  onCourseSelect,
+}: AdminCoursesSectionProps) {
   const [courses, setCourses] = useState<DiscoverCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -845,10 +70,13 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
   const [categoryFilter, setCategoryFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
   const [trackFilter, setTrackFilter] = useState('');
-  const [courseToEdit, setCourseToEdit] = useState<DiscoverCourse | null>(null);
   const [courseToDelete, setCourseToDelete] = useState<DiscoverCourse | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // View mode state: 'list' or 'editor'
+  const [viewMode, setViewMode] = useState<'list' | 'editor'>('list');
+  const [selectedCourse, setSelectedCourse] = useState<DiscoverCourse | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   // Derive endpoints from API endpoint - use coach endpoints for coach routes
   const isCoachContext = apiEndpoint.includes('/coach/');
@@ -882,6 +110,56 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
     fetchCourses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Handle initial course ID from URL
+  useEffect(() => {
+    if (initialCourseId && courses.length > 0 && viewMode === 'list') {
+      if (initialCourseId === 'new') {
+        // Creating new course
+        setIsCreating(true);
+        setSelectedCourse(null);
+        setViewMode('editor');
+      } else {
+        // Editing existing course
+        const course = courses.find(c => c.id === initialCourseId);
+        if (course) {
+          setSelectedCourse(course);
+          setIsCreating(false);
+          setViewMode('editor');
+        }
+      }
+    }
+  }, [initialCourseId, courses, viewMode]);
+
+  // Handle opening course editor
+  const handleEditCourse = (course: DiscoverCourse) => {
+    setSelectedCourse(course);
+    setIsCreating(false);
+    setViewMode('editor');
+    onCourseSelect?.(course.id);
+  };
+
+  // Handle creating new course
+  const handleCreateCourse = () => {
+    setSelectedCourse(null);
+    setIsCreating(true);
+    setViewMode('editor');
+    onCourseSelect?.('new');
+  };
+
+  // Handle closing editor
+  const handleCloseEditor = () => {
+    setViewMode('list');
+    setSelectedCourse(null);
+    setIsCreating(false);
+    onCourseSelect?.(null);
+  };
+
+  // Handle save success
+  const handleSaveSuccess = async () => {
+    await fetchCourses();
+    handleCloseEditor();
+  };
 
   // Get unique categories and levels
   const categories = useMemo(() => {
@@ -988,6 +266,20 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
     );
   }
 
+  // Show full-page editor when in editor mode
+  if (viewMode === 'editor') {
+    return (
+      <CourseEditor
+        course={isCreating ? null : selectedCourse}
+        onClose={handleCloseEditor}
+        onSave={handleSaveSuccess}
+        uploadEndpoint={uploadEndpoint}
+        programsApiEndpoint={programsApiEndpoint}
+        apiEndpoint={apiEndpoint}
+      />
+    );
+  }
+
   return (
     <>
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
@@ -1070,7 +362,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
               </Select>
 
               <button
-                onClick={() => { setCourseToEdit(null); setIsFormOpen(true); }}
+                onClick={handleCreateCourse}
                 className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200 whitespace-nowrap"
               >
                 <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1148,7 +440,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => { setCourseToEdit(course); setIsFormOpen(true); }}
+                        onClick={() => handleEditCourse(course)}
                         className="text-brand-accent hover:text-brand-accent/90 hover:bg-brand-accent/10 font-albert"
                       >
                         Edit
@@ -1175,17 +467,6 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
           </div>
         )}
       </div>
-
-      {/* Course Form Dialog */}
-      <CourseFormDialog
-        course={courseToEdit}
-        isOpen={isFormOpen}
-        onClose={() => { setIsFormOpen(false); setCourseToEdit(null); }}
-        onSave={fetchCourses}
-        uploadEndpoint={uploadEndpoint}
-        programsApiEndpoint={programsApiEndpoint}
-        apiEndpoint={apiEndpoint}
-      />
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!courseToDelete} onOpenChange={open => !open && setCourseToDelete(null)}>

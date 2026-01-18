@@ -18,9 +18,19 @@ interface AdminDiscoverTabProps {
   initialSubTab?: string | null;
   /** Callback when sub-tab selection changes (for URL persistence) */
   onSubTabChange?: (subTab: string | null) => void;
+  /** Optional initial course ID for URL persistence */
+  initialCourseId?: string | null;
+  /** Callback when course selection changes (for URL persistence) */
+  onCourseSelect?: (courseId: string | null) => void;
 }
 
-export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover', initialSubTab, onSubTabChange }: AdminDiscoverTabProps) {
+export function AdminDiscoverTab({
+  apiBasePath = '/api/admin/discover',
+  initialSubTab,
+  onSubTabChange,
+  initialCourseId,
+  onCourseSelect,
+}: AdminDiscoverTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<DiscoverSubTab>('events');
 
   // Restore sub-tab selection from URL param on mount
@@ -78,7 +88,13 @@ export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover', initialS
       <div>
         {activeSubTab === 'events' && <AdminEventsSection apiEndpoint={`${apiBasePath}/events`} />}
         {activeSubTab === 'articles' && <AdminArticlesSection apiEndpoint={`${apiBasePath}/articles`} />}
-        {activeSubTab === 'courses' && <AdminCoursesSection apiEndpoint={`${apiBasePath}/courses`} />}
+        {activeSubTab === 'courses' && (
+          <AdminCoursesSection
+            apiEndpoint={`${apiBasePath}/courses`}
+            initialCourseId={initialCourseId}
+            onCourseSelect={onCourseSelect}
+          />
+        )}
         {activeSubTab === 'downloads' && <AdminDownloadsSection apiEndpoint={`${apiBasePath}/downloads`} />}
         {activeSubTab === 'links' && <AdminLinksSection apiEndpoint={`${apiBasePath}/links`} />}
         {activeSubTab === 'questionnaires' && <AdminQuestionnairesSection apiEndpoint="/api/coach/questionnaires" />}

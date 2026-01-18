@@ -128,6 +128,7 @@ export default function CoachPage() {
   const initialFlowId = searchParams.get('flowId');
   const initialClientId = searchParams.get('clientId');
   const initialDiscoverSubTab = searchParams.get('discoverSubTab');
+  const initialCourseId = searchParams.get('courseId');
   const initialCustomizeSubtab = searchParams.get('customizeSubtab');
   const initialAnalyticsSubTab = searchParams.get('analyticsSubTab');
   const initialAnalyticsSquadId = searchParams.get('analyticsSquadId');
@@ -180,6 +181,7 @@ export default function CoachPage() {
     if (newTab !== 'clients') url.searchParams.delete('clientId');
     // Always clear sub-tab params on any tab change
     url.searchParams.delete('discoverSubTab');
+    url.searchParams.delete('courseId');
     url.searchParams.delete('customizeSubtab');
     url.searchParams.delete('analyticsSubTab');
     url.searchParams.delete('analyticsSquadId');
@@ -277,6 +279,22 @@ export default function CoachPage() {
       url.searchParams.set('discoverSubTab', subTab);
     } else {
       url.searchParams.delete('discoverSubTab');
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
+  // Handler for course selection changes - updates URL
+  const handleCourseSelect = useCallback((courseId: string | null) => {
+    // Don't update URL if navigating away from /coach
+    if (window.location.pathname !== '/coach') return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'discover');
+    url.searchParams.set('discoverSubTab', 'courses');
+    if (courseId) {
+      url.searchParams.set('courseId', courseId);
+    } else {
+      url.searchParams.delete('courseId');
     }
     router.replace(url.pathname + url.search, { scroll: false });
   }, [router]);
@@ -1027,10 +1045,12 @@ export default function CoachPage() {
 
           {/* Discover Content Tab - Uses org-scoped API for coaches */}
           <TabsContent value="discover">
-            <AdminDiscoverTab 
+            <AdminDiscoverTab
               apiBasePath={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-discover' : '/api/admin/discover'}
               initialSubTab={initialDiscoverSubTab}
               onSubTabChange={handleDiscoverSubTabChange}
+              initialCourseId={initialCourseId}
+              onCourseSelect={handleCourseSelect}
             />
           </TabsContent>
 
