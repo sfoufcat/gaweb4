@@ -14,7 +14,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { clerkClient } from '@clerk/nextjs/server';
 import { getStreamServerClient } from '@/lib/stream-server';
 import type { Program, ProgramDay, ProgramCohort, ProgramHabitTemplate, ProgramFeature, ProgramTestimonial, ProgramFAQ, Squad } from '@/types';
-import { syncProgramWeeks, recalculateWeekDayIndices } from '@/lib/program-utils';
+import { syncProgramWeeks, recalculateWeekDayIndices, syncInstanceStructure } from '@/lib/program-utils';
 
 /**
  * Calculate cohort status dynamically based on dates.
@@ -632,6 +632,32 @@ export async function PUT(
         // Recalculate day indices for existing weeks
         await recalculateWeekDayIndices(programId);
         console.log(`[COACH_ORG_PROGRAM_PUT] Recalculated week day indices`);
+
+        // Sync all active instances to new structure
+        const newLengthDays = body.lengthDays ?? currentData?.lengthDays ?? 60;
+        const newIncludeWeekends = body.includeWeekends ?? currentData?.includeWeekends ?? false;
+
+        const instancesSnapshot = await adminDb.collection('program_instances')
+          .where('programId', '==', programId)
+          .get();
+
+        let instancesSynced = 0;
+        for (const instanceDoc of instancesSnapshot.docs) {
+          const instanceData = instanceDoc.data();
+          // Only sync instances that have a startDate (needed for calendar calculation)
+          if (instanceData.startDate) {
+            try {
+              await syncInstanceStructure(instanceDoc.id, programId, {
+                includeWeekends: newIncludeWeekends,
+                lengthDays: newLengthDays,
+              });
+              instancesSynced++;
+            } catch (instanceError) {
+              console.error(`[COACH_ORG_PROGRAM_PUT] Failed to sync instance ${instanceDoc.id}:`, instanceError);
+            }
+          }
+        }
+        console.log(`[COACH_ORG_PROGRAM_PUT] Synced ${instancesSynced} instances to new structure`);
       } catch (weekError) {
         console.error(`[COACH_ORG_PROGRAM_PUT] Failed to sync weeks:`, weekError);
         // Don't fail the update, weeks can be synced later

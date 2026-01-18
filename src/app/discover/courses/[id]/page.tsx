@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { BackButton, CopyLinkButton, AddToContentButton, RichContent, ContentLandingPage, ContentPurchaseSheet } from '@/components/discover';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, CheckCircle2 } from 'lucide-react';
+import { useContentProgress } from '@/hooks/useContentProgress';
 import type { DiscoverCourse } from '@/types/discover';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { CoachQuizModal } from '@/components/lp/CoachQuizModal';
@@ -355,6 +356,16 @@ function CourseContent({
   id: string;
   router: ReturnType<typeof useRouter>;
 }) {
+  // Fetch completion progress for all lessons in this course
+  const { progressList, isContentCompleted, getCourseCompletionPercent } = useContentProgress({
+    contentType: 'course_lesson',
+    contentId: id,
+  });
+
+  // Calculate course completion percentage
+  const completionPercent = getCourseCompletionPercent(id);
+  const completedLessons = progressList.filter(p => p.status === 'completed').length;
+
   return (
     <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">
       {/* Success message if just purchased */}
@@ -434,6 +445,21 @@ function CourseContent({
                 Included in {includedInProgramName}
               </p>
             )}
+
+            {/* Course Completion Progress */}
+            {totalLessons > 0 && (
+              <div className="flex items-center gap-3 mt-2">
+                <div className="flex-1 h-2 bg-earth-100 dark:bg-[#262b35] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-500 dark:bg-green-400 transition-all duration-300"
+                    style={{ width: `${completionPercent}%` }}
+                  />
+                </div>
+                <span className="text-sm text-text-secondary whitespace-nowrap">
+                  {completedLessons}/{totalLessons} completed
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -508,8 +534,11 @@ function CourseContent({
                         router.push(`/discover/courses/${id}/lessons/${lesson.id}`);
                       };
 
+                      // Check if this lesson is completed
+                      const lessonCompleted = isContentCompleted('course_lesson', id, lesson.id);
+
                       return (
-                        <div 
+                        <div
                           key={lesson.id}
                           onClick={handleLessonClick}
                           role="button"
@@ -523,23 +552,37 @@ function CourseContent({
                           className="px-4 py-3 flex items-center justify-between transition-colors hover:bg-earth-50 dark:hover:bg-[#1e222a] cursor-pointer active:bg-earth-100 dark:active:bg-[#262b35]"
                         >
                           <div className="flex items-center gap-3">
-                            {/* Play icon - all unlocked */}
-                            <div className="w-8 h-8 rounded-full bg-earth-500 dark:bg-brand-accent flex items-center justify-center group-hover:bg-earth-600 transition-colors">
-                              <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                            </div>
+                            {/* Show checkmark for completed, play icon otherwise */}
+                            {lessonCompleted ? (
+                              <div className="w-8 h-8 rounded-full bg-green-500 dark:bg-green-500 flex items-center justify-center">
+                                <CheckCircle2 className="w-5 h-5 text-white" />
+                              </div>
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-earth-500 dark:bg-brand-accent flex items-center justify-center group-hover:bg-earth-600 transition-colors">
+                                <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M8 5v14l11-7z" />
+                                </svg>
+                              </div>
+                            )}
 
                             {/* Lesson Info */}
                             <div className="flex flex-col">
-                              <span className="font-sans text-sm text-text-primary dark:text-[#f5f5f8] leading-[1.2]">
+                              <span className={`font-sans text-sm leading-[1.2] ${
+                                lessonCompleted
+                                  ? 'text-text-secondary dark:text-[#b2b6c2]'
+                                  : 'text-text-primary dark:text-[#f5f5f8]'
+                              }`}>
                                 {lessonIndex + 1}. {lesson.title}
                               </span>
-                              {lesson.videoUrl && (
+                              {lessonCompleted ? (
+                                <span className="font-sans text-xs text-green-600 dark:text-green-400 mt-0.5">
+                                  Completed
+                                </span>
+                              ) : lesson.videoUrl ? (
                                 <span className="font-sans text-xs text-text-muted dark:text-[#7d8190] mt-0.5">
                                   Video lesson
                                 </span>
-                              )}
+                              ) : null}
                             </div>
                           </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Calendar,
@@ -352,9 +353,27 @@ export function ScheduleCallModal({
     }
   };
 
-  if (!isOpen) return null;
+  // Mount portal after initial render
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  return (
+  // Prevent body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  if (!mounted || !isOpen) return null;
+
+  const content = (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
       {/* Backdrop */}
       <div
@@ -830,6 +849,7 @@ export function ScheduleCallModal({
       </div>
     </div>
   );
+
+  // Use portal to render at document body level
+  return createPortal(content, document.body);
 }
-
-

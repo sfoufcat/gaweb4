@@ -230,7 +230,7 @@ export function DayPreviewPopup({
                       Day {dayNumber} Preview
                     </h3>
                     <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
-                      Week {weekNumber} &middot; {day.title || `Day ${dayNumber}`}
+                      {weekNumber === 0 ? 'Onboarding' : weekNumber === -1 ? 'Closing' : `Week ${weekNumber}`} &middot; {day.title || `Day ${dayNumber}`}
                       {calendarDate && ` &middot; ${calendarDate}`}
                     </p>
                   </div>

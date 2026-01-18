@@ -325,9 +325,8 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
           )}
         </div>
 
-        {/* Mark Complete Button */}
-        {lesson.videoUrl && (
-          <div className="flex items-center justify-end mt-3 gap-3">
+        {/* Mark Complete Button - shown for all lessons (with or without video) */}
+        <div className="flex items-center justify-end mt-3 gap-3">
             {isCompleted ? (
               <button
                 onClick={handleMarkComplete}
@@ -355,8 +354,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
                 Mark Complete
               </button>
             )}
-          </div>
-        )}
+        </div>
       </section>
 
       {/* Lesson Content / Notes */}

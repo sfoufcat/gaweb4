@@ -441,6 +441,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     });
   }, [instance, selectedProgram?.includeWeekends, selectedProgram?.lengthDays]);
 
+  // Detect instance vs program structure mismatch (e.g., includeWeekends changed)
+  const structureMismatch = useMemo(() => {
+    if (!instance || !selectedProgram) return false;
+    // Check if includeWeekends setting differs
+    const instanceIncludesWeekends = instance.includeWeekends ?? false;
+    const programIncludesWeekends = selectedProgram.includeWeekends ?? false;
+    return instanceIncludesWeekends !== programIncludesWeekends;
+  }, [instance, selectedProgram]);
+
   // Leave warning dialog state (for unsaved changes)
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const [pendingNavigationAction, setPendingNavigationAction] = useState<(() => void) | null>(null);
@@ -669,6 +678,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   // Habit sync state
   const [syncingHabits, setSyncingHabits] = useState(false);
   const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Instance structure sync state
+  const [syncingStructure, setSyncingStructure] = useState(false);
   
   // Track previous program ID to detect actual selection changes vs updates
   const prevProgramId = useRef<string | null>(null);
@@ -2983,6 +2995,38 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     }
   };
 
+  // Sync instance structure to match current program settings (e.g., when includeWeekends changed)
+  const syncInstanceStructure = async () => {
+    if (!instanceId || !selectedProgram?.id) return;
+
+    setSyncingStructure(true);
+    try {
+      const response = await fetch(`/api/instances/${instanceId}/sync-template`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          overwriteStructure: true,
+          includeWeekends: selectedProgram.includeWeekends ?? false,
+          lengthDays: selectedProgram.lengthDays ?? 60,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        console.error('[SYNC_STRUCTURE] Failed:', data.error);
+        return;
+      }
+
+      // Refresh instance data after sync
+      refreshInstance?.();
+      console.log('[SYNC_STRUCTURE] Success - refreshing instance data');
+    } catch (err) {
+      console.error('[SYNC_STRUCTURE] Error:', err);
+    } finally {
+      setSyncingStructure(false);
+    }
+  };
+
   const formatPrice = (cents: number, subscriptionEnabled?: boolean, billingInterval?: 'monthly' | 'quarterly' | 'yearly') => {
     if (cents === 0) return 'Free';
     const price = `$${(cents / 100).toFixed(2)}`;
@@ -3171,6 +3215,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   />
                 ) : null}
               </div>
+
+              {/* Structure mismatch warning - when instance has different settings than program */}
+              {structureMismatch && instanceId && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <span className="text-xs text-amber-700 dark:text-amber-300 whitespace-nowrap">
+                    Week structure changed
+                  </span>
+                  <button
+                    type="button"
+                    onClick={syncInstanceStructure}
+                    disabled={syncingStructure}
+                    className="text-xs font-medium text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 underline whitespace-nowrap"
+                  >
+                    {syncingStructure ? 'Syncing...' : 'Sync now'}
+                  </button>
+                </div>
+              )}
 
               {/* Right side controls */}
               <div className="flex-shrink-0 ml-auto flex items-center gap-2">

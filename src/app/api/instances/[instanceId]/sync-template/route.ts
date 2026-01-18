@@ -24,6 +24,7 @@ import type {
   ProgramTaskTemplate,
   TemplateSyncOptions,
 } from '@/types';
+import { syncInstanceStructure } from '@/lib/program-utils';
 
 type RouteParams = { params: Promise<{ instanceId: string }> };
 
@@ -32,6 +33,10 @@ interface SyncTemplateRequest {
   syncOptions?: TemplateSyncOptions;
   distributeAfterSync?: boolean;
   overwriteDays?: boolean;
+  // Structure sync options (when includeWeekends/lengthDays changed)
+  overwriteStructure?: boolean;
+  includeWeekends?: boolean;
+  lengthDays?: number;
 }
 
 /**
@@ -129,6 +134,9 @@ export async function POST(
       syncOptions = {},
       distributeAfterSync = false,
       overwriteDays = false,
+      overwriteStructure = false,
+      includeWeekends,
+      lengthDays,
     } = body;
 
     // Fetch the instance
@@ -142,6 +150,26 @@ export async function POST(
     // Verify ownership
     if (instance.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Handle structure sync (when includeWeekends or lengthDays changed)
+    if (overwriteStructure && includeWeekends !== undefined && lengthDays !== undefined) {
+      try {
+        const result = await syncInstanceStructure(instanceId, instance.programId, {
+          includeWeekends,
+          lengthDays,
+        });
+        return NextResponse.json({
+          success: true,
+          structureSynced: true,
+          weeksUpdated: result.weeksUpdated,
+          weeksAdded: result.weeksAdded,
+          weeksRemoved: result.weeksRemoved,
+        });
+      } catch (structureError) {
+        console.error('[SYNC_TEMPLATE] Structure sync error:', structureError);
+        return NextResponse.json({ error: 'Failed to sync instance structure' }, { status: 500 });
+      }
     }
 
     // Fetch the template program

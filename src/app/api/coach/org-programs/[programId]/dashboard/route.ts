@@ -283,6 +283,55 @@ export async function GET(
     const totalContentItems = allProgress.length || 1;
     const contentCompletion = Math.round((completedContent / totalContentItems) * 100) || 0;
 
+    // Fetch actual titles for content items
+    const contentTitleMap = new Map<string, string>();
+    const courseIds = new Set<string>();
+    const articleIds = new Set<string>();
+
+    allProgress.forEach((p) => {
+      if (p.contentType === 'article') {
+        articleIds.add(p.contentId);
+      } else if (p.contentType === 'course' || p.contentType === 'course_lesson' || p.contentType === 'course_module') {
+        courseIds.add(p.contentId);
+      }
+    });
+
+    // Batch fetch course titles
+    if (courseIds.size > 0) {
+      const courseIdArray = Array.from(courseIds);
+      const batchSize = 30;
+      for (let i = 0; i < courseIdArray.length; i += batchSize) {
+        const batch = courseIdArray.slice(i, i + batchSize);
+        const courseDocs = await adminDb
+          .collection('courses')
+          .where('__name__', 'in', batch)
+          .get();
+
+        courseDocs.docs.forEach((doc) => {
+          const data = doc.data();
+          contentTitleMap.set(doc.id, data.title || `Course ${doc.id.slice(0, 8)}`);
+        });
+      }
+    }
+
+    // Batch fetch article titles
+    if (articleIds.size > 0) {
+      const articleIdArray = Array.from(articleIds);
+      const batchSize = 30;
+      for (let i = 0; i < articleIdArray.length; i += batchSize) {
+        const batch = articleIdArray.slice(i, i + batchSize);
+        const articleDocs = await adminDb
+          .collection('articles')
+          .where('__name__', 'in', batch)
+          .get();
+
+        articleDocs.docs.forEach((doc) => {
+          const data = doc.data();
+          contentTitleMap.set(doc.id, data.title || `Article ${doc.id.slice(0, 8)}`);
+        });
+      }
+    }
+
     // Identify members needing attention (< 50% progress OR idle > 2 days)
     const needsAttention = memberStats
       .filter((m) => m.progressPercent < 50 || m.daysIdle > 2)
@@ -361,10 +410,14 @@ export async function GET(
           (existing.completedCount / existing.totalCount) * 100
         );
       } else {
+        // Look up actual title from fetched content
+        const title = contentTitleMap.get(p.contentId) ||
+          (p.contentType === 'article' ? `Article ${p.contentId.slice(0, 8)}` : `Course ${p.contentId.slice(0, 8)}`);
+
         contentCompletionByItem.set(key, {
           contentType: p.contentType === 'article' ? 'article' : 'course',
           contentId: p.contentId,
-          title: `Content ${p.contentId.slice(0, 8)}...`, // Would need to fetch actual titles
+          title,
           completedCount: p.status === 'completed' ? 1 : 0,
           totalCount: 1,
           completionPercent: p.status === 'completed' ? 100 : 0,

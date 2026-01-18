@@ -191,13 +191,23 @@ export async function recalculateWeekDayIndices(programId: string): Promise<void
     }))
     .sort((a, b) => a.order - b.order);
 
-  // Get all weeks
+  // Get weeks from both sources: embedded array (primary) and collection (legacy)
+  const embeddedWeeks: Array<{
+    id: string;
+    weekNumber: number;
+    moduleId?: string;
+    order: number;
+    startDayIndex: number;
+    endDayIndex: number;
+    [key: string]: unknown;
+  }> = programData?.weeks || [];
+
   const weeksSnapshot = await adminDb
     .collection('program_weeks')
     .where('programId', '==', programId)
     .get();
 
-  const allWeeks: WeekData[] = weeksSnapshot.docs.map(doc => ({
+  const collectionWeeks: WeekData[] = weeksSnapshot.docs.map(doc => ({
     id: doc.id,
     moduleId: doc.data().moduleId || null,
     order: doc.data().order || 0,
@@ -205,6 +215,19 @@ export async function recalculateWeekDayIndices(programId: string): Promise<void
     startDayIndex: doc.data().startDayIndex || 0,
     endDayIndex: doc.data().endDayIndex || 0,
   }));
+
+  // Use embedded weeks as primary source, fallback to collection
+  const useEmbedded = embeddedWeeks.length > 0;
+  const allWeeks: WeekData[] = useEmbedded
+    ? embeddedWeeks.map(w => ({
+        id: w.id,
+        moduleId: w.moduleId || null,
+        order: w.order || 0,
+        weekNumber: w.weekNumber || 0,
+        startDayIndex: w.startDayIndex || 0,
+        endDayIndex: w.endDayIndex || 0,
+      }))
+    : collectionWeeks;
 
   // Calculate week day indices sequentially, accounting for onboarding weeks
   // Sort weeks by weekNumber: 0 (onboarding), 1+ (regular), -1 (closing)
@@ -221,17 +244,9 @@ export async function recalculateWeekDayIndices(programId: string): Promise<void
     const weekNumber = week.weekNumber;
     if (weekNumber < -1) continue; // Skip truly invalid week numbers (allow -1 for closing)
 
-    // Calculate how many days this week spans
-    // Onboarding weeks (weekNumber = 0) use their existing length or default to daysPerWeek
-    // Regular weeks use daysPerWeek
-    let weekLength: number;
-    if (weekNumber === 0) {
-      // Onboarding week - preserve its existing length if valid, otherwise calculate from stored indices
-      const existingLength = week.endDayIndex - week.startDayIndex + 1;
-      weekLength = existingLength > 0 && existingLength <= daysPerWeek ? existingLength : daysPerWeek;
-    } else {
-      weekLength = daysPerWeek;
-    }
+    // All weeks use daysPerWeek - no special handling for onboarding/closing
+    // This ensures proper recalculation when includeWeekends changes
+    const weekLength = daysPerWeek;
 
     const startDay = currentDay;
     const endDay = Math.min(currentDay + weekLength - 1, totalDays);
@@ -240,11 +255,17 @@ export async function recalculateWeekDayIndices(programId: string): Promise<void
     week.startDayIndex = startDay;
     week.endDayIndex = endDay;
 
-    batch.update(adminDb.collection('program_weeks').doc(week.id), {
-      startDayIndex: startDay,
-      endDayIndex: endDay,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+    // Also update collection if it exists
+    if (collectionWeeks.some(cw => cw.weekNumber === weekNumber)) {
+      const collectionWeek = collectionWeeks.find(cw => cw.weekNumber === weekNumber);
+      if (collectionWeek) {
+        batch.update(adminDb.collection('program_weeks').doc(collectionWeek.id), {
+          startDayIndex: startDay,
+          endDayIndex: endDay,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+    }
 
     // Move to next day range
     currentDay = endDay + 1;
@@ -283,7 +304,41 @@ export async function recalculateWeekDayIndices(programId: string): Promise<void
   }
 
   await batch.commit();
-  console.log(`[PROGRAM_UTILS] Recalculated day indices for ${allWeeks.length} weeks in program ${programId}`);
+
+  // Update embedded weeks in programs.weeks[] array
+  if (embeddedWeeks.length > 0) {
+    // Create a map of updated indices by weekNumber
+    const updatedIndicesByWeekNumber = new Map<number, { startDayIndex: number; endDayIndex: number }>();
+    for (const week of sortedWeeks) {
+      updatedIndicesByWeekNumber.set(week.weekNumber, {
+        startDayIndex: week.startDayIndex,
+        endDayIndex: week.endDayIndex,
+      });
+    }
+
+    // Update each embedded week with new indices
+    const updatedEmbeddedWeeks = embeddedWeeks.map(week => {
+      const newIndices = updatedIndicesByWeekNumber.get(week.weekNumber);
+      if (newIndices) {
+        return {
+          ...week,
+          startDayIndex: newIndices.startDayIndex,
+          endDayIndex: newIndices.endDayIndex,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return week;
+    });
+
+    // Update the program document with recalculated embedded weeks
+    await adminDb.collection('programs').doc(programId).update({
+      weeks: updatedEmbeddedWeeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    console.log(`[PROGRAM_UTILS] Updated ${updatedEmbeddedWeeks.length} embedded weeks in programs.weeks[]`);
+  }
+
+  console.log(`[PROGRAM_UTILS] Recalculated day indices for ${allWeeks.length} weeks in program ${programId} (daysPerWeek: ${daysPerWeek})`);
 }
 
 /**
@@ -1658,4 +1713,164 @@ export async function distributeClientWeeklyTasksToDays(
 
   // Return the actual day range used (calendar-aligned) so callers can sync the correct days
   return { created, updated, skipped, startDayIndex: resolvedStartDay, endDayIndex: resolvedEndDay };
+}
+
+/**
+ * Sync instance structure when program settings change (e.g., includeWeekends toggle).
+ *
+ * This function:
+ * 1. Updates the instance's includeWeekends setting
+ * 2. Recalculates week boundaries (startDayIndex, endDayIndex) for new daysPerWeek
+ * 3. Recalculates calendar dates (calendarStartDate, calendarEndDate) from instance.startDate
+ * 4. Preserves all existing content (weeklyTasks, weeklyHabits, weeklyPrompt, etc.)
+ * 5. Adds/removes weeks as needed (fewer weeks for 7-day, more for 5-day)
+ *
+ * @param instanceId - The program instance ID to sync
+ * @param programId - The program template ID
+ * @param newSettings - The new program settings
+ * @returns Summary of changes made
+ */
+export async function syncInstanceStructure(
+  instanceId: string,
+  programId: string,
+  newSettings: { includeWeekends: boolean; lengthDays: number }
+): Promise<{ weeksUpdated: number; weeksAdded: number; weeksRemoved: number }> {
+  const { includeWeekends, lengthDays } = newSettings;
+  const daysPerWeek = includeWeekends ? 7 : 5;
+
+  // Get the instance
+  const instanceDoc = await adminDb.collection('program_instances').doc(instanceId).get();
+  if (!instanceDoc.exists) {
+    throw new Error(`Instance ${instanceId} not found`);
+  }
+
+  const instanceData = instanceDoc.data();
+  const existingWeeks = instanceData?.weeks || [];
+  const startDate = instanceData?.startDate;
+
+  // Get template weeks for reference
+  const programDoc = await adminDb.collection('programs').doc(programId).get();
+  const programData = programDoc.data();
+  const templateWeeks = programData?.weeks || [];
+
+  // Calculate new calendar weeks if we have a start date
+  let calendarWeeks: CalendarWeek[] = [];
+  if (startDate) {
+    calendarWeeks = calculateCalendarWeeks(startDate, lengthDays, includeWeekends);
+  }
+
+  // Type for week data
+  type InstanceWeek = {
+    weekNumber: number;
+    name?: string;
+    theme?: string;
+    description?: string;
+    weeklyTasks: Array<{ id: string; label: string; [key: string]: unknown }>;
+    weeklyHabits: unknown[];
+    weeklyPrompt?: string;
+    moduleId?: string;
+    startDayIndex: number;
+    endDayIndex: number;
+    calendarStartDate?: string;
+    calendarEndDate?: string;
+    actualStartDayOfWeek?: number;
+    days: unknown[];
+  };
+
+  // Build new weeks array, preserving content where possible
+  const newWeeks: InstanceWeek[] = [];
+
+  // Create lookup for existing weeks by weekNumber
+  const existingWeeksByNumber = new Map<number, InstanceWeek>(
+    existingWeeks.map((w: InstanceWeek) => [w.weekNumber, w])
+  );
+
+  // Create lookup for template weeks by weekNumber
+  const templateWeeksByNumber = new Map<number, InstanceWeek>(
+    templateWeeks.map((w: InstanceWeek) => [w.weekNumber, w])
+  );
+
+  // Sort calendar weeks for processing: 0 (onboarding), 1+ (regular), -1 (closing)
+  const sortedCalendarWeeks = [...calendarWeeks].sort((a, b) => {
+    if (a.weekNumber === -1) return 1;
+    if (b.weekNumber === -1) return -1;
+    return a.weekNumber - b.weekNumber;
+  });
+
+  let weeksUpdated = 0;
+  let weeksAdded = 0;
+
+  for (const calWeek of sortedCalendarWeeks) {
+    const weekNumber = calWeek.weekNumber;
+    const existingWeek = existingWeeksByNumber.get(weekNumber);
+    const templateWeek = templateWeeksByNumber.get(weekNumber);
+
+    if (existingWeek) {
+      // Update existing week - preserve content, update indices and dates
+      newWeeks.push({
+        ...existingWeek,
+        startDayIndex: calWeek.startDayIndex,
+        endDayIndex: calWeek.endDayIndex,
+        calendarStartDate: calWeek.startDate,
+        calendarEndDate: calWeek.endDate,
+        actualStartDayOfWeek: calWeek.actualStartDayOfWeek,
+      });
+      weeksUpdated++;
+    } else if (templateWeek) {
+      // Add new week from template
+      newWeeks.push({
+        weekNumber,
+        name: templateWeek.name,
+        theme: templateWeek.theme,
+        description: templateWeek.description,
+        weeklyTasks: templateWeek.weeklyTasks || [],
+        weeklyHabits: templateWeek.weeklyHabits || [],
+        weeklyPrompt: templateWeek.weeklyPrompt,
+        moduleId: templateWeek.moduleId,
+        startDayIndex: calWeek.startDayIndex,
+        endDayIndex: calWeek.endDayIndex,
+        calendarStartDate: calWeek.startDate,
+        calendarEndDate: calWeek.endDate,
+        actualStartDayOfWeek: calWeek.actualStartDayOfWeek,
+        days: [],
+      });
+      weeksAdded++;
+    } else {
+      // Create empty week (no template exists)
+      newWeeks.push({
+        weekNumber,
+        name: weekNumber === 0 ? 'Onboarding' : weekNumber === -1 ? 'Closing' : `Week ${weekNumber}`,
+        weeklyTasks: [],
+        weeklyHabits: [],
+        startDayIndex: calWeek.startDayIndex,
+        endDayIndex: calWeek.endDayIndex,
+        calendarStartDate: calWeek.startDate,
+        calendarEndDate: calWeek.endDate,
+        actualStartDayOfWeek: calWeek.actualStartDayOfWeek,
+        days: [],
+      });
+      weeksAdded++;
+    }
+  }
+
+  // Count removed weeks (weeks that existed but aren't in new structure)
+  const newWeekNumbers = new Set(newWeeks.map(w => w.weekNumber));
+  const weeksRemoved = existingWeeks.filter(
+    (w: { weekNumber: number }) => !newWeekNumbers.has(w.weekNumber)
+  ).length;
+
+  // Update the instance
+  await instanceDoc.ref.update({
+    includeWeekends,
+    weeks: newWeeks,
+    updatedAt: new Date().toISOString(),
+  });
+
+  console.log(
+    `[PROGRAM_UTILS] Synced instance ${instanceId} structure: ` +
+    `${weeksUpdated} updated, ${weeksAdded} added, ${weeksRemoved} removed ` +
+    `(includeWeekends: ${includeWeekends}, daysPerWeek: ${daysPerWeek})`
+  );
+
+  return { weeksUpdated, weeksAdded, weeksRemoved };
 }
