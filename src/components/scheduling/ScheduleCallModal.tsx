@@ -20,8 +20,11 @@ import {
 } from 'lucide-react';
 import { useAvailableSlots } from '@/hooks/useAvailability';
 import { useSchedulingActions } from '@/hooks/useScheduling';
+import { useCallUsage, formatCallUsageStatus, formatExtraCallPrice } from '@/hooks/useCallUsage';
 import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
 import type { ProgramEnrollment, ProgramInstance } from '@/types';
+
+type CallTypeOption = 'program' | 'extra';
 
 interface ScheduleCallModalProps {
   isOpen: boolean;
@@ -116,6 +119,7 @@ export function ScheduleCallModal({
   // Program linking state - always enabled by default when enrollment exists
   const [enrollmentData, setEnrollmentData] = useState<ClientEnrollmentData | null>(null);
   const [enrollmentLoading, setEnrollmentLoading] = useState(false);
+  const [callType, setCallType] = useState<CallTypeOption>('program');
 
   // Fetch client's active 1:1 enrollment when modal opens
   useEffect(() => {
@@ -141,6 +145,19 @@ export function ScheduleCallModal({
 
   // Program linking is always enabled when client has an active enrollment
   const linkToProgram = !!(enrollmentData?.program && enrollmentData?.instance);
+
+  // Fetch call usage for the client's enrollment
+  const {
+    usage: callUsage,
+    isLoading: callUsageLoading,
+    hasAllowance,
+  } = useCallUsage(enrollmentData?.enrollment?.id, isOpen && linkToProgram);
+
+  // Show call type selector when client has program with call allowance
+  const showCallTypeSelector = linkToProgram && hasAllowance;
+
+  // Extra call price from program
+  const extraCallPrice = callUsage?.pricePerExtraCallCents ?? 0;
 
   // Date range for available slots (next 30 days)
   const dateRange = useMemo(() => {
@@ -313,6 +330,12 @@ export function ScheduleCallModal({
         isRecurring: recurrence !== 'none',
         recurrence: recurrenceConfig,
         instanceId,
+        // Program call tracking
+        ...(showCallTypeSelector && {
+          isProgramCall: callType === 'program',
+          isExtraCall: callType === 'extra',
+          enrollmentId: enrollmentData?.enrollment?.id,
+        }),
       });
 
       onSuccess?.();
@@ -627,8 +650,82 @@ export function ScheduleCallModal({
             </div>
           )}
 
-          {/* Program Linking info (auto-enabled when client has active 1:1 enrollment) */}
-          {!enrollmentLoading && linkToProgram && proposedSlots.length > 0 && (
+          {/* Call Type Selector (when client has program with call allowance) */}
+          {!enrollmentLoading && !callUsageLoading && showCallTypeSelector && (
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                Call Type
+              </label>
+
+              {/* Program Call Option */}
+              <button
+                onClick={() => setCallType('program')}
+                className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                  callType === 'program'
+                    ? 'border-brand-accent bg-brand-accent/5'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#c5c0ba] dark:hover:border-[#3a4050]'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    callType === 'program' ? 'border-brand-accent bg-brand-accent' : 'border-[#c5c0ba] dark:border-[#4a5060]'
+                  }`}>
+                    {callType === 'program' && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Link2 className="w-4 h-4 text-brand-accent" />
+                      <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        Program Call
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                      Uses client&apos;s allowance: {formatCallUsageStatus(callUsage)}
+                    </p>
+                    <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
+                      Linked to: {enrollmentData?.program?.name}
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Extra Call Option */}
+              <button
+                onClick={() => setCallType('extra')}
+                className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                  callType === 'extra'
+                    ? 'border-brand-accent bg-brand-accent/5'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#c5c0ba] dark:hover:border-[#3a4050]'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    callType === 'extra' ? 'border-brand-accent bg-brand-accent' : 'border-[#c5c0ba] dark:border-[#4a5060]'
+                  }`}>
+                    {callType === 'extra' && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        Extra Session
+                      </span>
+                      {extraCallPrice > 0 && (
+                        <span className="text-sm text-green-600 dark:text-green-400">
+                          {formatExtraCallPrice(extraCallPrice)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                      Doesn&apos;t use client&apos;s allowance
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* Program Linking info (when program call selected and has proposed slots) */}
+          {!enrollmentLoading && linkToProgram && proposedSlots.length > 0 && callType === 'program' && (
             <div className="p-4 bg-brand-accent/5 dark:bg-brand-accent/10 border border-brand-accent/20 dark:border-brand-accent/30 rounded-xl">
               <div className="flex items-center gap-3">
                 <div className="flex-shrink-0 w-8 h-8 bg-brand-accent/10 dark:bg-brand-accent/20 rounded-lg flex items-center justify-center">

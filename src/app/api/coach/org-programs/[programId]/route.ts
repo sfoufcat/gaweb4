@@ -439,9 +439,25 @@ export async function PUT(
         updateData.allowCustomStartDate = body.allowCustomStartDate;
       }
       if (body.callCreditsPerMonth !== undefined) {
-        updateData.callCreditsPerMonth = typeof body.callCreditsPerMonth === 'number' && body.callCreditsPerMonth > 0 
-          ? body.callCreditsPerMonth 
+        updateData.callCreditsPerMonth = typeof body.callCreditsPerMonth === 'number' && body.callCreditsPerMonth > 0
+          ? body.callCreditsPerMonth
           : FieldValue.delete();
+      }
+      if (body.maxCallsPerWeek !== undefined) {
+        updateData.maxCallsPerWeek = typeof body.maxCallsPerWeek === 'number' && body.maxCallsPerWeek > 0
+          ? body.maxCallsPerWeek
+          : FieldValue.delete();
+      }
+      if (body.pricePerExtraCallCents !== undefined) {
+        updateData.pricePerExtraCallCents = typeof body.pricePerExtraCallCents === 'number' && body.pricePerExtraCallCents > 0
+          ? body.pricePerExtraCallCents
+          : FieldValue.delete();
+      }
+      if (body.callBookingMode !== undefined) {
+        const validModes = ['propose', 'direct'];
+        if (validModes.includes(body.callBookingMode)) {
+          updateData.callBookingMode = body.callBookingMode;
+        }
       }
     }
     

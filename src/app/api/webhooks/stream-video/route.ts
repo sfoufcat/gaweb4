@@ -34,6 +34,8 @@ interface StreamWebhookPayload {
       clientUserId?: string;
       programId?: string;
       programEnrollmentId?: string;
+      instanceId?: string;
+      isProgramCall?: boolean;
     };
     settings?: {
       recording?: {
@@ -218,20 +220,34 @@ async function handleRecordingReady(payload: StreamWebhookPayload): Promise<void
     return;
   }
 
-  // Check credits availability
-  const creditsNeeded = calculateCreditsUsed(durationSeconds);
-  const { available, remainingMinutes } = await checkCreditsAvailable(organizationId, creditsNeeded);
+  // Determine if this is a program call (has instanceId from custom data or event)
+  const isProgramCall = !!(call.custom?.instanceId || call.custom?.isProgramCall);
 
-  if (!available) {
-    console.log(`[STREAM_VIDEO_WEBHOOK] Insufficient credits (need ${creditsNeeded}, have ${remainingMinutes})`);
-    return;
-  }
+  // Program calls: Always generate summary - included with program enrollment
+  // Non-program calls: Check and deduct coach credits first
+  let creditsDeducted = 0;
 
-  // Deduct credits before processing
-  const deductResult = await deductCredits(organizationId, creditsNeeded);
-  if (!deductResult.success) {
-    console.error(`[STREAM_VIDEO_WEBHOOK] Failed to deduct credits: ${deductResult.error}`);
-    return;
+  if (isProgramCall) {
+    console.log(`[STREAM_VIDEO_WEBHOOK] Program call - summary included with enrollment`);
+  } else {
+    // Check credits availability for non-program calls
+    const creditsNeeded = calculateCreditsUsed(durationSeconds);
+    const { available, remainingMinutes } = await checkCreditsAvailable(organizationId, creditsNeeded);
+
+    if (!available) {
+      console.log(`[STREAM_VIDEO_WEBHOOK] Non-program call: Insufficient credits (need ${creditsNeeded}, have ${remainingMinutes})`);
+      return;
+    }
+
+    // Deduct credits before processing
+    const deductResult = await deductCredits(organizationId, creditsNeeded);
+    if (!deductResult.success) {
+      console.error(`[STREAM_VIDEO_WEBHOOK] Failed to deduct credits: ${deductResult.error}`);
+      return;
+    }
+
+    creditsDeducted = creditsNeeded;
+    console.log(`[STREAM_VIDEO_WEBHOOK] Non-program call - deducted ${creditsNeeded} credits`);
   }
 
   try {
@@ -306,9 +322,13 @@ async function handleRecordingReady(payload: StreamWebhookPayload): Promise<void
 
     console.log(`[STREAM_VIDEO_WEBHOOK] Successfully processed recording for call ${callId}`);
   } catch (error) {
-    // Refund credits on failure
-    await refundCredits(organizationId, creditsNeeded);
-    console.error(`[STREAM_VIDEO_WEBHOOK] Error processing recording, credits refunded:`, error);
+    // Refund credits on failure (only if credits were deducted)
+    if (creditsDeducted > 0) {
+      await refundCredits(organizationId, creditsDeducted);
+      console.error(`[STREAM_VIDEO_WEBHOOK] Error processing recording, ${creditsDeducted} credits refunded:`, error);
+    } else {
+      console.error(`[STREAM_VIDEO_WEBHOOK] Error processing recording:`, error);
+    }
   }
 }
 

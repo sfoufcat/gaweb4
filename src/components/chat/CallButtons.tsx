@@ -3,9 +3,20 @@
 import { useCallback, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
-import { Phone, Calendar, Check, Clock, Loader2 } from 'lucide-react';
+import { Phone, Calendar, Check, Clock, Loader2, AlertTriangle } from 'lucide-react';
 import { useStreamVideoClient } from '@/contexts/StreamVideoContext';
 import { useUpcomingCall } from '@/hooks/useUpcomingCall';
+import { useOrgCredits } from '@/hooks/useOrgCredits';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import type { Channel } from 'stream-chat';
 import type { UnifiedEvent } from '@/types';
 
@@ -142,6 +153,8 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
   const { user: clerkUser } = useUser();
   const { videoClient, activeCall, setActiveCall } = useStreamVideoClient();
   const [isJoiningCall, setIsJoiningCall] = useState(false);
+  const [showCreditWarning, setShowCreditWarning] = useState(false);
+  const [pendingCallEvent, setPendingCallEvent] = useState<UnifiedEvent | null>(null);
 
   // Determine channel call type
   const callType = getChannelCallType(channel);
@@ -159,6 +172,9 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
     otherUserId,
     callType === 'dm'
   );
+
+  // Check org credits for non-program calls
+  const { hasCredits: orgHasCredits } = useOrgCredits(callType === 'dm');
 
   // For DMs, check if the current user can call the other user
   const canCall = useMemo(() => {
@@ -183,6 +199,8 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
 
     try {
       setIsJoiningCall(true);
+      setShowCreditWarning(false);
+      setPendingCallEvent(null);
 
       // Create call ID using event ID for tracking
       const callId = `event-${event.id}-${Date.now()}`;
@@ -247,18 +265,84 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
     }
   }, [videoClient, channel, router, setActiveCall, clerkUser]);
 
+  // Check if event is a program call (linked to program instance)
+  const isProgramCall = useCallback((event: UnifiedEvent): boolean => {
+    return !!(event.isProgramCall || event.instanceId);
+  }, []);
+
+  // Handle join button click - check credits for non-program calls
+  const handleJoinClick = useCallback((event: UnifiedEvent) => {
+    // Program calls don't need credit check - summaries are included
+    if (isProgramCall(event)) {
+      joinCall(event);
+      return;
+    }
+
+    // Non-program call: check if org has credits
+    if (!orgHasCredits) {
+      // Show warning dialog
+      setPendingCallEvent(event);
+      setShowCreditWarning(true);
+      return;
+    }
+
+    // Has credits, proceed
+    joinCall(event);
+  }, [isProgramCall, orgHasCredits, joinCall]);
+
+  // Credit warning dialog for non-program calls (rendered alongside content)
+  const creditWarningDialog = (
+    <AlertDialog open={showCreditWarning} onOpenChange={setShowCreditWarning}>
+      <AlertDialogContent className="max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            Summary Not Available
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-left">
+            This call isn&apos;t linked to a program and your organization has no
+            transcription credits remaining.
+            <br /><br />
+            The call will still work, but no AI summary will be generated afterward.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => {
+            setShowCreditWarning(false);
+            setPendingCallEvent(null);
+          }}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (pendingCallEvent) {
+                joinCall(pendingCallEvent);
+              }
+            }}
+            className="bg-green-500 hover:bg-green-600"
+          >
+            Join Anyway
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   // If there's an active call, show "Return to call" button
   if (activeCall) {
     return (
-      <div className={`flex items-center gap-2 ${className}`}>
-        <button
-          onClick={() => router.push(`/call/${activeCall.id}`)}
-          className="px-3 py-1.5 bg-green-500 text-white rounded-full text-xs font-albert font-medium hover:bg-green-600 transition-colors flex items-center gap-1.5"
-        >
-          <Phone className="w-3.5 h-3.5" />
-          Return to call
-        </button>
-      </div>
+      <>
+        {creditWarningDialog}
+        <div className={`flex items-center gap-2 ${className}`}>
+          <button
+            onClick={() => router.push(`/call/${activeCall.id}`)}
+            className="px-3 py-1.5 bg-green-500 text-white rounded-full text-xs font-albert font-medium hover:bg-green-600 transition-colors flex items-center gap-1.5"
+          >
+            <Phone className="w-3.5 h-3.5" />
+            Return to call
+          </button>
+        </div>
+      </>
     );
   }
 
@@ -337,27 +421,30 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
       const hasStarted = startTime <= now;
 
       return (
-        <div className={`flex items-center gap-1 ${className}`}>
-          <button
-            onClick={() => joinCall(upcomingCall)}
-            disabled={isJoiningCall || !videoClient}
-            className="px-3 py-1.5 text-sm font-albert font-medium text-white bg-green-500 hover:bg-green-600 rounded-full transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Join scheduled call"
-          >
-            {isJoiningCall ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Phone className="w-4 h-4" />
-            )}
-            <span>Join Call</span>
-            {!hasStarted && (
-              <span className="flex items-center gap-0.5 text-xs opacity-80">
-                <Clock className="w-3 h-3" />
-                {formatRelativeTime(upcomingCall.startDateTime)}
-              </span>
-            )}
-          </button>
-        </div>
+        <>
+          {creditWarningDialog}
+          <div className={`flex items-center gap-1 ${className}`}>
+            <button
+              onClick={() => handleJoinClick(upcomingCall)}
+              disabled={isJoiningCall || !videoClient}
+              className="px-3 py-1.5 text-sm font-albert font-medium text-white bg-green-500 hover:bg-green-600 rounded-full transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Join scheduled call"
+            >
+              {isJoiningCall ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Phone className="w-4 h-4" />
+              )}
+              <span>Join Call</span>
+              {!hasStarted && (
+                <span className="flex items-center gap-0.5 text-xs opacity-80">
+                  <Clock className="w-3 h-3" />
+                  {formatRelativeTime(upcomingCall.startDateTime)}
+                </span>
+              )}
+            </button>
+          </div>
+        </>
       );
     }
   }

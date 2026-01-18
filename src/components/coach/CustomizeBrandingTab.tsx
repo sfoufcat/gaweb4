@@ -1483,24 +1483,20 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
       )}
 
       {/* Subtab Navigation */}
-      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-2">
-        <div className="flex flex-wrap gap-1">
+      <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
+        <div className="flex items-center gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
           {SUBTABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveSubtab(tab.id)}
-              className={`
-                flex items-center gap-2 px-4 py-2.5 rounded-xl font-albert text-sm transition-all
-                ${activeSubtab === tab.id
-                  ? 'bg-gradient-to-r from-brand-accent/15 to-[#8c6245]/10 text-[#1a1a1a] dark:from-[#b8896a]/15 dark:to-brand-accent/10 dark:text-[#f5f5f8] shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef]/50 dark:hover:bg-[#262b35]/50'
-                }
-              `}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 whitespace-nowrap ${
+                activeSubtab === tab.id
+                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+              }`}
             >
-              <span className={activeSubtab === tab.id ? 'text-brand-accent' : ''}>
-                {tab.icon}
-              </span>
-              {tab.label}
+              {tab.icon}
+              <span className="hidden sm:inline">{tab.label}</span>
             </button>
           ))}
         </div>

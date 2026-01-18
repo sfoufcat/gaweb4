@@ -292,8 +292,17 @@ export async function POST(request: NextRequest) {
       // Individual program settings
       defaultStartDate: body.type === 'individual' && body.defaultStartDate ? body.defaultStartDate : undefined,
       allowCustomStartDate: body.type === 'individual' ? body.allowCustomStartDate !== false : undefined,
-      callCreditsPerMonth: body.type === 'individual' && typeof body.callCreditsPerMonth === 'number' && body.callCreditsPerMonth > 0 
-        ? body.callCreditsPerMonth 
+      callCreditsPerMonth: body.type === 'individual' && typeof body.callCreditsPerMonth === 'number' && body.callCreditsPerMonth > 0
+        ? body.callCreditsPerMonth
+        : undefined,
+      maxCallsPerWeek: body.type === 'individual' && typeof body.maxCallsPerWeek === 'number' && body.maxCallsPerWeek > 0
+        ? body.maxCallsPerWeek
+        : undefined,
+      pricePerExtraCallCents: body.type === 'individual' && typeof body.pricePerExtraCallCents === 'number' && body.pricePerExtraCallCents > 0
+        ? body.pricePerExtraCallCents
+        : undefined,
+      callBookingMode: body.type === 'individual' && ['propose', 'direct'].includes(body.callBookingMode)
+        ? body.callBookingMode
         : undefined,
       defaultHabits: defaultHabits.length > 0 ? defaultHabits : undefined,
       dailyFocusSlots: typeof body.dailyFocusSlots === 'number' && body.dailyFocusSlots >= 1 && body.dailyFocusSlots <= 4

@@ -799,7 +799,10 @@ export interface Program {
   defaultStartDate?: string; // ISO date string - coach-set default start date (e.g., "2025-02-01")
   allowCustomStartDate?: boolean; // If true, users can pick their own start date during enrollment
   callCreditsPerMonth?: number; // Number of coaching call credits included per month (0 = unlimited/pay-per-call)
-  
+  maxCallsPerWeek?: number; // Optional weekly cap on calls (e.g., 2)
+  pricePerExtraCallCents?: number; // Price for calls beyond allowance
+  callBookingMode?: 'propose' | 'direct'; // 'propose' = client proposes times, 'direct' = client books directly into availability
+
   // Content
   defaultHabits?: ProgramHabitTemplate[]; // Default habits for enrolled users
   
@@ -1063,6 +1066,15 @@ export interface ProgramEnrollment {
 
   // Community membership (for individual programs with client community)
   joinedCommunity?: boolean; // Whether user opted into client community squad
+
+  // Call usage tracking (for program call allowances)
+  callUsage?: {
+    windowStart: string;      // ISO date - rolling 30-day window start
+    callsInWindow: number;    // Calls completed in current window
+    callsThisWeek: number;    // Calls this calendar week
+    weekStart: string;        // ISO date - current week start (Monday)
+    lastCallAt?: string;      // ISO date of most recent call
+  };
 
   // Metadata
   createdAt: string;
@@ -4907,7 +4919,14 @@ export interface UnifiedEvent {
   priceInCents?: number;
   paymentIntentId?: string;         // Stripe payment intent ID
   paidAt?: string;                  // When payment was completed
-  
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PROGRAM CALL TRACKING (for call allowance system)
+  // ═══════════════════════════════════════════════════════════════════════════
+  isProgramCall?: boolean;          // true = uses client's program allowance
+  isExtraCall?: boolean;            // true = paid beyond allowance
+  callUsageDeducted?: boolean;      // true = already counted against allowance
+
   // ═══════════════════════════════════════════════════════════════════════════
   // NYLAS SYNC (external calendar integration)
   // ═══════════════════════════════════════════════════════════════════════════

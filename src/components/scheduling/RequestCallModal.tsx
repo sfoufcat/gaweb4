@@ -5,7 +5,6 @@ import {
   X,
   Calendar,
   Clock,
-  Video,
   Loader2,
   Plus,
   Trash2,
@@ -14,9 +13,11 @@ import {
   AlertCircle,
   DollarSign,
   Globe,
+  Sparkles,
 } from 'lucide-react';
 import { useAvailableSlots } from '@/hooks/useAvailability';
 import { useSchedulingActions } from '@/hooks/useScheduling';
+import { useCallUsage, formatCallUsageStatus, formatWeeklyLimitStatus, formatExtraCallPrice } from '@/hooks/useCallUsage';
 
 interface RequestCallModalProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ interface RequestCallModalProps {
   /** If call is paid, show the price */
   isPaid?: boolean;
   priceInCents?: number;
+  /** Enrollment ID for program call tracking */
+  enrollmentId?: string;
   onSuccess?: () => void;
 }
 
@@ -41,11 +44,17 @@ interface ProposedTimeSlot {
   endTime: string;
 }
 
+type CallTypeOption = 'program' | 'extra';
+
 /**
  * RequestCallModal
- * 
+ *
  * Modal for users/clients to request a call with their coach.
  * They can propose multiple time slots for the coach to choose from.
+ *
+ * When client has an active program enrollment, shows call type selector:
+ * - Program Call: Uses client's monthly allowance
+ * - Extra Call: Paid call beyond allowance
  */
 export function RequestCallModal({
   isOpen,
@@ -53,13 +62,24 @@ export function RequestCallModal({
   coachName,
   isPaid = false,
   priceInCents = 0,
+  enrollmentId,
   onSuccess,
 }: RequestCallModalProps) {
   const { requestCall, isLoading, error } = useSchedulingActions();
 
+  // Fetch call usage if enrollment exists
+  const {
+    usage,
+    isLoading: usageLoading,
+    canScheduleProgramCall,
+    isWeeklyLimitReached,
+    hasAllowance,
+  } = useCallUsage(enrollmentId, isOpen);
+
   // Form state
   const [duration, setDuration] = useState(60);
   const [description, setDescription] = useState('');
+  const [callType, setCallType] = useState<CallTypeOption>('program');
 
   // Selected/proposed times
   const [proposedSlots, setProposedSlots] = useState<ProposedTimeSlot[]>([]);
@@ -81,7 +101,7 @@ export function RequestCallModal({
   }, []);
 
   // Fetch available slots
-  const { slots, isLoading: slotsLoading, timezone } = useAvailableSlots(
+  const { slots, isLoading: slotsLoading } = useAvailableSlots(
     dateRange.startDate,
     dateRange.endDate,
     duration
@@ -102,6 +122,22 @@ export function RequestCallModal({
 
   // Available dates
   const availableDates = useMemo(() => Object.keys(slotsByDate).sort(), [slotsByDate]);
+
+  // Determine if we should show call type selector
+  const showCallTypeSelector = !!(hasAllowance && enrollmentId);
+
+  // Extra call price - from program or fallback to props
+  const extraCallPrice = usage?.pricePerExtraCallCents ?? priceInCents;
+
+  // Auto-select call type based on availability
+  useMemo(() => {
+    if (!showCallTypeSelector) return;
+
+    // If can't schedule program call, force extra
+    if (!canScheduleProgramCall) {
+      setCallType('extra');
+    }
+  }, [showCallTypeSelector, canScheduleProgramCall]);
 
   // Add a proposed time slot
   const addProposedSlot = useCallback(() => {
@@ -143,9 +179,14 @@ export function RequestCallModal({
 
       await requestCall({
         proposedTimes,
-        // Don't send title - let API set it to "Call request from {clientName}"
         description,
         duration,
+        // Pass program call info if applicable
+        ...(showCallTypeSelector && {
+          isProgramCall: callType === 'program',
+          isExtraCall: callType === 'extra',
+          enrollmentId,
+        }),
       });
 
       // Show success message before closing
@@ -250,13 +291,110 @@ export function RequestCallModal({
         ) : (
         /* Content */
         <div className="p-6 space-y-6">
-          {/* Price notice */}
-          {isPaid && priceInCents > 0 && (
+          {/* Loading usage */}
+          {enrollmentId && usageLoading && (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-5 h-5 text-brand-accent animate-spin" />
+            </div>
+          )}
+
+          {/* Call Type Selector - only show if has program enrollment with allowance */}
+          {showCallTypeSelector && !usageLoading && (
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                Call Type
+              </label>
+
+              {/* Program Call Option */}
+              <button
+                onClick={() => canScheduleProgramCall && setCallType('program')}
+                disabled={!canScheduleProgramCall}
+                className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                  callType === 'program'
+                    ? 'border-brand-accent bg-brand-accent/5'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#c5c0ba] dark:hover:border-[#3a4050]'
+                } ${!canScheduleProgramCall ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    callType === 'program' ? 'border-brand-accent bg-brand-accent' : 'border-[#c5c0ba] dark:border-[#4a5060]'
+                  }`}>
+                    {callType === 'program' && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-brand-accent" />
+                      <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        Program Call
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                      {formatCallUsageStatus(usage)}
+                    </p>
+                    {isWeeklyLimitReached && (
+                      <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                        {formatWeeklyLimitStatus(usage)}
+                      </p>
+                    )}
+                    {usage?.programName && (
+                      <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
+                        Linked to: {usage.programName}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </button>
+
+              {/* Extra Call Option */}
+              {extraCallPrice > 0 && (
+                <button
+                  onClick={() => setCallType('extra')}
+                  className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                    callType === 'extra'
+                      ? 'border-brand-accent bg-brand-accent/5'
+                      : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#c5c0ba] dark:hover:border-[#3a4050]'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      callType === 'extra' ? 'border-brand-accent bg-brand-accent' : 'border-[#c5c0ba] dark:border-[#4a5060]'
+                    }`}>
+                      {callType === 'extra' && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-green-600" />
+                        <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                          Extra Call — {formatExtraCallPrice(extraCallPrice)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                        Not linked to program. Coach receives payment after confirmation.
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              )}
+
+              {/* No extra call price set */}
+              {extraCallPrice === 0 && !canScheduleProgramCall && (
+                <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl">
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                    You&apos;ve used all your program calls. Contact your coach to schedule an extra call.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Price notice - only show for extra/non-program calls */}
+          {((isPaid && priceInCents > 0 && !showCallTypeSelector) ||
+            (showCallTypeSelector && callType === 'extra' && extraCallPrice > 0)) && (
             <div className="flex items-center gap-3 p-4 bg-brand-accent/10 border border-brand-accent/20 rounded-xl">
               <DollarSign className="w-5 h-5 text-brand-accent" />
               <div>
                 <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  {formatPrice(priceInCents)} per call
+                  {formatPrice(showCallTypeSelector ? extraCallPrice : priceInCents)} per call
                 </p>
                 <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
                   You&apos;ll be prompted to pay after the coach confirms
@@ -450,7 +588,7 @@ export function RequestCallModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={proposedSlots.length === 0 || isLoading}
+            disabled={proposedSlots.length === 0 || isLoading || (showCallTypeSelector && !canScheduleProgramCall && callType === 'program')}
             className="flex items-center gap-2 px-6 py-3 bg-[#1a1a1a] dark:bg-brand-accent text-white rounded-xl font-albert font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
             {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -462,4 +600,3 @@ export function RequestCallModal({
     </div>
   );
 }
-
