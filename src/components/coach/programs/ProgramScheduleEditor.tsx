@@ -178,10 +178,21 @@ export function ProgramScheduleEditor({
 
   // Get theme for a calendar week from stored week data
   const getWeekTheme = (cw: CalendarWeek): string | undefined => {
+    // Direct match by weekNumber first (most accurate)
+    const directMatch = weeks.find(w => w.weekNumber === cw.weekNumber);
+    if (directMatch) return directMatch.theme;
+
+    // Fallback: match by day range (for legacy data)
     const firstDay = cw.startDayIndex;
-    // Calculate expected day range from weekNumber (same as ModuleWeeksSidebar)
     const daysPerWeek = includeWeekends ? 7 : 5;
     const storedWeek = weeks.find(w => {
+      // Use stored day indices if available
+      if (w.startDayIndex !== undefined && w.endDayIndex !== undefined) {
+        return firstDay >= w.startDayIndex && firstDay <= w.endDayIndex;
+      }
+      // Skip formula fallback for special weeks (0, -1) without stored indices
+      if (w.weekNumber <= 0) return false;
+      // Calculate for regular weeks only
       const weekStart = (w.weekNumber - 1) * daysPerWeek + 1;
       const weekEnd = w.weekNumber * daysPerWeek;
       return firstDay >= weekStart && firstDay <= weekEnd;

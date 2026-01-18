@@ -305,10 +305,30 @@ export async function POST(
       // Handle days
       if (overwriteDays || !existingWeek?.days?.length) {
         // Create fresh days from template structure
-        // Use stored day indices if available, otherwise calculate from week number
+        // Use stored day indices - they should always exist in the new week structure
+        // Fallback calculation only for legacy data (won't work for week -1 closing)
         const daysPerWeekFromProgram = program.includeWeekends !== false ? 7 : 5;
-        const weekStartDay = templateWeek.startDayIndex ?? ((templateWeek.weekNumber - 1) * daysPerWeekFromProgram + 1);
-        const weekEndDay = templateWeek.endDayIndex ?? (weekStartDay + daysPerWeekFromProgram - 1);
+        const totalDays = program.lengthDays || 30;
+        let weekStartDay: number;
+        let weekEndDay: number;
+
+        if (templateWeek.startDayIndex !== undefined && templateWeek.endDayIndex !== undefined) {
+          // Preferred: use stored indices
+          weekStartDay = templateWeek.startDayIndex;
+          weekEndDay = templateWeek.endDayIndex;
+        } else if (templateWeek.weekNumber === 0) {
+          // Onboarding: days 1 to daysPerWeek
+          weekStartDay = 1;
+          weekEndDay = Math.min(daysPerWeekFromProgram, totalDays);
+        } else if (templateWeek.weekNumber === -1) {
+          // Closing: last daysPerWeek days
+          weekStartDay = Math.max(1, totalDays - daysPerWeekFromProgram + 1);
+          weekEndDay = totalDays;
+        } else {
+          // Regular weeks: sequential after onboarding
+          weekStartDay = daysPerWeekFromProgram + (templateWeek.weekNumber - 1) * daysPerWeekFromProgram + 1;
+          weekEndDay = Math.min(weekStartDay + daysPerWeekFromProgram - 1, totalDays - daysPerWeekFromProgram);
+        }
         const numDays = weekEndDay - weekStartDay + 1;
         const days: ProgramInstanceDay[] = [];
 
@@ -360,8 +380,12 @@ export async function POST(
       }
     }
 
-    // Sort by week number
-    finalWeeks.sort((a, b) => a.weekNumber - b.weekNumber);
+    // Sort by week number: 0 (onboarding) first, then 1, 2, 3..., then -1 (closing) last
+    finalWeeks.sort((a, b) => {
+      if (a.weekNumber === -1) return 1;
+      if (b.weekNumber === -1) return -1;
+      return a.weekNumber - b.weekNumber;
+    });
 
     // Update the instance
     const now = new Date().toISOString();

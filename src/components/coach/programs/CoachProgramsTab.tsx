@@ -425,8 +425,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         actualStartDayOfWeek: calculatedCalendar?.actualStartDayOfWeek ?? week.actualStartDayOfWeek,
         moduleId: week.moduleId,
         // Use calculated calendar week indices (most accurate for 5-day onboarding)
-        startDayIndex: calculatedCalendar?.startDayIndex ?? week.startDayIndex ?? (weekNumber === 0 ? 1 : (weekNumber - 1) * daysPerWeek + 1),
-        endDayIndex: calculatedCalendar?.endDayIndex ?? week.endDayIndex ?? (weekNumber === 0 ? daysPerWeek : weekNumber * daysPerWeek),
+        // Handle special weeks: 0 (onboarding), -1 (closing), 1+ (regular)
+        startDayIndex: calculatedCalendar?.startDayIndex ?? week.startDayIndex ?? (
+          weekNumber === 0 ? 1 :
+          weekNumber === -1 ? Math.max(1, (selectedProgram?.lengthDays || 30) - daysPerWeek + 1) :
+          (weekNumber - 1) * daysPerWeek + 1
+        ),
+        endDayIndex: calculatedCalendar?.endDayIndex ?? week.endDayIndex ?? (
+          weekNumber === 0 ? daysPerWeek :
+          weekNumber === -1 ? (selectedProgram?.lengthDays || 30) :
+          weekNumber * daysPerWeek
+        ),
         createdAt: now,
         updatedAt: now,
       } as ClientProgramWeek & { actualStartDayOfWeek?: number };
@@ -970,17 +979,22 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       // Regular weeks: look up from template or use formula
       let startDay: number;
       let endDay: number;
+      const totalDays = selectedProgram?.lengthDays || 30;
       if (weekNumber === 0) {
         startDay = 1;
         // Default to 4-day onboarding (typical partial first week)
         const defaultOnboardingDays = 4;
-        endDay = Math.min(defaultOnboardingDays, selectedProgram?.lengthDays || 30);
+        endDay = Math.min(defaultOnboardingDays, totalDays);
+      } else if (weekNumber === -1) {
+        // Closing week: last daysPerWeek of the program
+        startDay = Math.max(1, totalDays - daysPerWeek + 1);
+        endDay = totalDays;
       } else {
         // Check if Week 0 exists to offset regular weeks
         const weekZero = programWeeks.find(w => w.weekNumber === 0);
         const weekZeroEnd = weekZero?.endDayIndex ?? 0;
         startDay = templateWeek?.startDayIndex ?? (weekZeroEnd + 1 + (weekNumber - 1) * daysPerWeek);
-        endDay = templateWeek?.endDayIndex ?? Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
+        endDay = templateWeek?.endDayIndex ?? Math.min(startDay + daysPerWeek - 1, totalDays);
       }
       setWeekToFill({
         id: `temp-week-${weekNumber}`,
@@ -1021,21 +1035,26 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         }
       } else {
         const daysPerWeek = selectedProgram.includeWeekends !== false ? 7 : 5;
+        const totalDays = selectedProgram.lengthDays || 30;
 
-        // Week 0 (onboarding) special handling
+        // Week 0 (onboarding), -1 (closing), or regular week handling
         let startDay: number;
         let endDay: number;
         if (weekNumber === 0) {
           startDay = 1;
           // Default to 4-day onboarding (typical partial first week)
           const defaultOnboardingDays = 4;
-          endDay = Math.min(defaultOnboardingDays, selectedProgram.lengthDays || 30);
+          endDay = Math.min(defaultOnboardingDays, totalDays);
+        } else if (weekNumber === -1) {
+          // Closing week: last daysPerWeek of the program
+          startDay = Math.max(1, totalDays - daysPerWeek + 1);
+          endDay = totalDays;
         } else {
           // Check if Week 0 exists to offset regular weeks
           const weekZero = programWeeks.find(w => w.weekNumber === 0);
           const weekZeroEnd = weekZero?.endDayIndex ?? 0;
           startDay = weekZeroEnd > 0 ? (weekZeroEnd + 1 + (weekNumber - 1) * daysPerWeek) : ((weekNumber - 1) * daysPerWeek + 1);
-          endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram.lengthDays || 30);
+          endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
         }
 
         const res = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`, {
@@ -4087,6 +4106,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   // First, try to get startDayIndex/endDayIndex directly from the selected week in weeksSource
                   const selectedWeekData = weeksSource.find(w => w.weekNumber === weekNumber);
 
+                  const totalDays = selectedProgram?.lengthDays || 30;
                   if (selectedWeekData?.startDayIndex !== undefined && selectedWeekData?.endDayIndex !== undefined) {
                     // Use pre-calculated indices from the week data (most accurate)
                     startDay = selectedWeekData.startDayIndex;
@@ -4095,13 +4115,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     startDay = 1;
                     // Default to 4-day onboarding (typical partial first week)
                     const defaultOnboardingDays = 4;
-                    endDay = Math.min(defaultOnboardingDays, selectedProgram?.lengthDays || 30);
+                    endDay = Math.min(defaultOnboardingDays, totalDays);
+                  } else if (weekNumber === -1) {
+                    // Closing week: last daysPerWeek of the program
+                    startDay = Math.max(1, totalDays - daysPerWeek + 1);
+                    endDay = totalDays;
                   } else {
                     // Check if Week 0 exists to offset regular weeks
                     const weekZero = weeksSource.find(w => w.weekNumber === 0);
                     const weekZeroEnd = weekZero?.endDayIndex ?? 0;
                     startDay = weekZeroEnd > 0 ? (weekZeroEnd + 1 + (weekNumber - 1) * daysPerWeek) : ((weekNumber - 1) * daysPerWeek + 1);
-                    endDay = Math.min(startDay + daysPerWeek - 1, selectedProgram?.lengthDays || 30);
+                    endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
                   }
 
                   console.log('[WEEK_EDITOR] Day index calculation:', {

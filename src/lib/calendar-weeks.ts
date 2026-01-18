@@ -599,3 +599,24 @@ export function calculateProgramDayForDate(
   // Should not reach here if weeks are calculated correctly
   return null;
 }
+
+// ============================================================================
+// WEEK SORTING UTILITIES
+// ============================================================================
+
+/**
+ * Sort comparator for weeks by weekNumber.
+ * Properly handles the week numbering scheme: 0 (onboarding), 1+ (regular), -1 (closing).
+ *
+ * Sort order: 0, 1, 2, 3, ..., N, -1
+ *
+ * @example
+ * weeks.sort(sortWeeksByNumber);
+ */
+export function sortWeeksByNumber<T extends { weekNumber: number }>(a: T, b: T): number {
+  // Closing (-1) should always be last
+  if (a.weekNumber === -1) return 1;
+  if (b.weekNumber === -1) return -1;
+  // Otherwise sort numerically (0 first, then 1, 2, 3...)
+  return a.weekNumber - b.weekNumber;
+}

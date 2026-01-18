@@ -38,13 +38,20 @@ function ensureDaysHaveCalendarDates(
 
   // Calculate calendar weeks from start date
   const calendarWeeks = calculateCalendarWeeks(startDate, totalDays, includeWeekends);
-  const regularCalendarWeeks = calendarWeeks
-    .filter(w => w.weekNumber > 0)
-    .sort((a, b) => a.startDayIndex - b.startDayIndex);
 
   // Find which calendar week this instance week corresponds to
-  const weekPosition = week.weekNumber - 1;
-  const calendarWeek = regularCalendarWeeks[weekPosition];
+  // Handle special weeks: 0 (onboarding), -1 (closing), 1+ (regular)
+  let calendarWeek;
+  if (week.weekNumber === 0) {
+    // Onboarding: find week 0
+    calendarWeek = calendarWeeks.find(w => w.weekNumber === 0);
+  } else if (week.weekNumber === -1) {
+    // Closing: find week -1
+    calendarWeek = calendarWeeks.find(w => w.weekNumber === -1);
+  } else if (week.weekNumber > 0) {
+    // Regular weeks: find by weekNumber directly
+    calendarWeek = calendarWeeks.find(w => w.weekNumber === week.weekNumber);
+  }
 
   if (!calendarWeek?.startDate) {
     console.log(`[ENSURE_CALENDAR_DATES] No calendar week found for week ${week.weekNumber}`);
@@ -329,7 +336,8 @@ export async function GET(
     const { instanceId, weekNum } = await params;
     const weekNumber = parseInt(weekNum, 10);
 
-    if (isNaN(weekNumber) || weekNumber < 0) {
+    // Allow weekNumber: 0 (onboarding), 1+ (regular), -1 (closing)
+    if (isNaN(weekNumber) || weekNumber < -1) {
       return NextResponse.json({ error: 'Invalid week number' }, { status: 400 });
     }
 
@@ -419,7 +427,8 @@ export async function PATCH(
     const weekNumber = parseInt(weekNum, 10);
     const body = await request.json();
 
-    if (isNaN(weekNumber) || weekNumber < 0) {
+    // Allow weekNumber: 0 (onboarding), 1+ (regular), -1 (closing)
+    if (isNaN(weekNumber) || weekNumber < -1) {
       return NextResponse.json({ error: 'Invalid week number' }, { status: 400 });
     }
 

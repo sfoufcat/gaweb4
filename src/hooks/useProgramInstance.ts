@@ -245,7 +245,8 @@ export function useInstanceWeek(instanceId: string | null, weekNumber: number | 
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const shouldFetch = instanceId && weekNumber !== null && weekNumber >= 0;
+  // Allow weekNumber: 0 (onboarding), 1+ (regular), -1 (closing)
+  const shouldFetch = instanceId && weekNumber !== null && weekNumber >= -1;
 
   // Fetch week data
   const {

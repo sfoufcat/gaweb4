@@ -360,14 +360,17 @@ function ensureDaysHaveCalendarDates(
 
   // Calculate calendar weeks from cohort start date
   const calendarWeeks = calculateCalendarWeeks(cohortStartDate, totalDays, includeWeekends);
-  const regularCalendarWeeks = calendarWeeks
-    .filter(w => w.weekNumber > 0)
-    .sort((a, b) => a.startDayIndex - b.startDayIndex);
 
   // Find which calendar week this instance week corresponds to
-  // Use weekNumber - 1 as the position index
-  const weekPosition = week.weekNumber - 1;
-  const calendarWeek = regularCalendarWeeks[weekPosition];
+  // Handle special weeks: 0 (onboarding), -1 (closing), 1+ (regular)
+  let calendarWeek;
+  if (week.weekNumber === 0) {
+    calendarWeek = calendarWeeks.find(w => w.weekNumber === 0);
+  } else if (week.weekNumber === -1) {
+    calendarWeek = calendarWeeks.find(w => w.weekNumber === -1);
+  } else if (week.weekNumber > 0) {
+    calendarWeek = calendarWeeks.find(w => w.weekNumber === week.weekNumber);
+  }
 
   if (!calendarWeek?.startDate) {
     console.log(`[ENSURE_CALENDAR_DATES] No calendar week found for week ${week.weekNumber}`);
@@ -440,14 +443,31 @@ async function getOrCreateCohortInstance(
   if (cohortData.startDate) {
     calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
   }
-  // Filter to only regular weeks (weekNumber > 0) and sort by startDayIndex
-  const regularCalendarWeeks = calendarWeeks
-    .filter(w => w.weekNumber > 0)
-    .sort((a, b) => a.startDayIndex - b.startDayIndex);
 
-  // Helper to get calendar date for a day index within a week
-  const getCalendarDateForDay = (weekPosition: number, dayOffset: number): string | undefined => {
-    const calendarWeek = regularCalendarWeeks[weekPosition];
+  // Helper to find calendar week by weekNumber (handles 0, 1+, -1)
+  const findCalendarWeek = (weekNumber: number): CalendarWeek | undefined => {
+    return calendarWeeks.find(w => w.weekNumber === weekNumber);
+  };
+
+  // Helper to calculate fallback day indices for special weeks
+  const getFallbackDayIndices = (weekNumber: number): { startDayIndex: number; endDayIndex: number } => {
+    if (weekNumber === 0) {
+      // Onboarding: first daysPerWeek days
+      return { startDayIndex: 1, endDayIndex: Math.min(daysPerWeek, totalDays) };
+    } else if (weekNumber === -1) {
+      // Closing: last daysPerWeek days
+      const startDayIndex = Math.max(1, totalDays - daysPerWeek + 1);
+      return { startDayIndex, endDayIndex: totalDays };
+    } else {
+      // Regular weeks (1+)
+      const startDayIndex = (weekNumber - 1) * daysPerWeek + 1;
+      return { startDayIndex, endDayIndex: Math.min(startDayIndex + daysPerWeek - 1, totalDays) };
+    }
+  };
+
+  // Helper to get calendar date for a day within a week
+  const getCalendarDateForDay = (weekNumber: number, dayOffset: number): string | undefined => {
+    const calendarWeek = findCalendarWeek(weekNumber);
     if (!calendarWeek?.startDate) return undefined;
     const startDate = new Date(calendarWeek.startDate);
     startDate.setDate(startDate.getDate() + dayOffset);
@@ -458,11 +478,12 @@ async function getOrCreateCohortInstance(
   let weeks: ProgramInstanceWeek[] = [];
 
   if (programData.weeks && Array.isArray(programData.weeks) && programData.weeks.length > 0) {
-    weeks = programData.weeks.map((weekData, weekPosition) => {
-      const calendarWeek = regularCalendarWeeks[weekPosition];
-      // Use calendar week's day range if available, otherwise calculate from weekNumber
-      const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
-      const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
+    weeks = programData.weeks.map((weekData) => {
+      const calendarWeek = findCalendarWeek(weekData.weekNumber);
+      const fallback = getFallbackDayIndices(weekData.weekNumber);
+      // Use calendar week's day range if available, otherwise use fallback
+      const startDayIndex = calendarWeek?.startDayIndex ?? fallback.startDayIndex;
+      const endDayIndex = calendarWeek?.endDayIndex ?? fallback.endDayIndex;
 
       const days: ProgramInstanceDay[] = [];
       for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
@@ -470,7 +491,7 @@ async function getOrCreateCohortInstance(
         days.push({
           dayIndex: i + 1, // Relative to week (1-based)
           globalDayIndex: dayIndex,
-          calendarDate: getCalendarDateForDay(weekPosition, i),
+          calendarDate: getCalendarDateForDay(weekData.weekNumber, i),
           tasks: [],
           habits: [],
         });
@@ -501,11 +522,12 @@ async function getOrCreateCohortInstance(
       .orderBy('weekNumber', 'asc')
       .get();
 
-    weeks = weeksSnapshot.docs.map((weekDoc, weekPosition) => {
+    weeks = weeksSnapshot.docs.map((weekDoc) => {
       const weekData = weekDoc.data();
-      const calendarWeek = regularCalendarWeeks[weekPosition];
-      const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
-      const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
+      const calendarWeek = findCalendarWeek(weekData.weekNumber);
+      const fallback = getFallbackDayIndices(weekData.weekNumber);
+      const startDayIndex = calendarWeek?.startDayIndex ?? fallback.startDayIndex;
+      const endDayIndex = calendarWeek?.endDayIndex ?? fallback.endDayIndex;
 
       const days: ProgramInstanceDay[] = [];
       for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
@@ -513,7 +535,7 @@ async function getOrCreateCohortInstance(
         days.push({
           dayIndex: i + 1, // Relative to week (1-based)
           globalDayIndex: dayIndex,
-          calendarDate: getCalendarDateForDay(weekPosition, i),
+          calendarDate: getCalendarDateForDay(weekData.weekNumber, i),
           tasks: [],
           habits: [],
         });
@@ -620,10 +642,24 @@ export async function GET(
 
     if (!weekResult) {
       // Week doesn't exist - create it on-demand
-      const weekNumber = /^\d+$/.test(weekId) ? parseInt(weekId, 10) : 1;
+      // Parse weekId: can be number (1, 0, -1) or UUID
+      const weekNumber = /^-?\d+$/.test(weekId) ? parseInt(weekId, 10) : 1;
       const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
-      const startDayIndex = (weekNumber - 1) * daysPerWeek + 1;
-      const endDayIndex = startDayIndex + daysPerWeek - 1;
+      const totalDays = programData.lengthDays || 28;
+
+      // Calculate day indices based on weekNumber (0=onboarding, -1=closing, 1+=regular)
+      let startDayIndex: number;
+      let endDayIndex: number;
+      if (weekNumber === 0) {
+        startDayIndex = 1;
+        endDayIndex = Math.min(daysPerWeek, totalDays);
+      } else if (weekNumber === -1) {
+        startDayIndex = Math.max(1, totalDays - daysPerWeek + 1);
+        endDayIndex = totalDays;
+      } else {
+        startDayIndex = (weekNumber - 1) * daysPerWeek + 1;
+        endDayIndex = Math.min(startDayIndex + daysPerWeek - 1, totalDays);
+      }
 
       const days: ProgramInstanceDay[] = [];
       for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
@@ -650,7 +686,12 @@ export async function GET(
 
       // Save the new week to the instance
       const weeks = [...(instance.weeks || []), newWeek];
-      weeks.sort((a, b) => a.weekNumber - b.weekNumber);
+      // Sort: 0 (onboarding), 1+ (regular), -1 (closing) last
+      weeks.sort((a, b) => {
+        if (a.weekNumber === -1) return 1;
+        if (b.weekNumber === -1) return -1;
+        return a.weekNumber - b.weekNumber;
+      });
 
       await adminDb.collection('program_instances').doc(instance.id!).update({
         weeks,
@@ -813,24 +854,31 @@ export async function PUT(
 
     if (!weekResult) {
       // Week doesn't exist - create it
-      const weekNumber = /^\d+$/.test(weekId) ? parseInt(weekId, 10) : weeks.length + 1;
+      // Parse weekId: can be number (1, 0, -1) or UUID
+      const weekNumber = /^-?\d+$/.test(weekId) ? parseInt(weekId, 10) : weeks.length + 1;
       const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+      const totalDays = programData.lengthDays || 28;
 
-      // For Week 0 (onboarding), use days from calendar or default
-      // For other weeks, calculate based on weekNumber and whether Week 0 exists
+      // Calculate day indices based on weekNumber (0=onboarding, -1=closing, 1+=regular)
       let startDayIndex: number;
       let endDayIndex: number;
 
       if (weekNumber === 0) {
         // Week 0 is onboarding - get day range from calendar
-        const totalDays = programData.lengthDays || 28;
         const includeWeekends = programData.includeWeekends !== false;
         const calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
         const onboardingWeek = calendarWeeks.find(w => w.type === 'onboarding');
         startDayIndex = onboardingWeek?.startDayIndex ?? 1;
         endDayIndex = onboardingWeek?.endDayIndex ?? Math.min(4, totalDays);
+      } else if (weekNumber === -1) {
+        // Week -1 is closing - get day range from calendar or calculate
+        const includeWeekends = programData.includeWeekends !== false;
+        const calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
+        const closingWeek = calendarWeeks.find(w => w.type === 'closing');
+        startDayIndex = closingWeek?.startDayIndex ?? Math.max(1, totalDays - daysPerWeek + 1);
+        endDayIndex = closingWeek?.endDayIndex ?? totalDays;
       } else {
-        // Regular weeks: check if Week 0 exists to determine offset
+        // Regular weeks (1+): check if Week 0 exists to determine offset
         const weekZero = weeks.find(w => w.weekNumber === 0);
         if (weekZero && weekZero.endDayIndex) {
           // Week 1 starts after Week 0 ends
@@ -839,7 +887,7 @@ export async function PUT(
           // No Week 0, use standard formula
           startDayIndex = (weekNumber - 1) * daysPerWeek + 1;
         }
-        endDayIndex = startDayIndex + daysPerWeek - 1;
+        endDayIndex = Math.min(startDayIndex + daysPerWeek - 1, totalDays);
       }
 
       const days: ProgramInstanceDay[] = [];
@@ -865,8 +913,12 @@ export async function PUT(
       };
 
       weeks.push(newWeek);
-      // Sort weeks by weekNumber to maintain order
-      weeks.sort((a, b) => a.weekNumber - b.weekNumber);
+      // Sort: 0 (onboarding), 1+ (regular), -1 (closing) last
+      weeks.sort((a, b) => {
+        if (a.weekNumber === -1) return 1;
+        if (b.weekNumber === -1) return -1;
+        return a.weekNumber - b.weekNumber;
+      });
       weekIndex = weeks.findIndex(w => w.weekNumber === weekNumber);
       console.log(`[COHORT_WEEK_CONTENT_PUT] Created new week ${weekNumber} at index ${weekIndex}`);
     } else {
@@ -1059,24 +1111,31 @@ export async function PATCH(
 
     if (!weekResult) {
       // Week doesn't exist - create it
-      const weekNumber = /^\d+$/.test(weekId) ? parseInt(weekId, 10) : weeks.length + 1;
+      // Parse weekId: can be number (1, 0, -1) or UUID
+      const weekNumber = /^-?\d+$/.test(weekId) ? parseInt(weekId, 10) : weeks.length + 1;
       const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+      const totalDays = programData.lengthDays || 28;
 
-      // For Week 0 (onboarding), use days from calendar or default
-      // For other weeks, calculate based on weekNumber and whether Week 0 exists
+      // Calculate day indices based on weekNumber (0=onboarding, -1=closing, 1+=regular)
       let startDayIndex: number;
       let endDayIndex: number;
 
       if (weekNumber === 0) {
         // Week 0 is onboarding - get day range from calendar
-        const totalDays = programData.lengthDays || 28;
         const includeWeekends = programData.includeWeekends !== false;
         const calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
         const onboardingWeek = calendarWeeks.find(w => w.type === 'onboarding');
         startDayIndex = onboardingWeek?.startDayIndex ?? 1;
         endDayIndex = onboardingWeek?.endDayIndex ?? Math.min(4, totalDays);
+      } else if (weekNumber === -1) {
+        // Week -1 is closing - get day range from calendar or calculate
+        const includeWeekends = programData.includeWeekends !== false;
+        const calendarWeeks = calculateCalendarWeeks(cohortData.startDate, totalDays, includeWeekends);
+        const closingWeek = calendarWeeks.find(w => w.type === 'closing');
+        startDayIndex = closingWeek?.startDayIndex ?? Math.max(1, totalDays - daysPerWeek + 1);
+        endDayIndex = closingWeek?.endDayIndex ?? totalDays;
       } else {
-        // Regular weeks: check if Week 0 exists to determine offset
+        // Regular weeks (1+): check if Week 0 exists to determine offset
         const weekZero = weeks.find(w => w.weekNumber === 0);
         if (weekZero && weekZero.endDayIndex) {
           // Week 1 starts after Week 0 ends
@@ -1085,7 +1144,7 @@ export async function PATCH(
           // No Week 0, use standard formula
           startDayIndex = (weekNumber - 1) * daysPerWeek + 1;
         }
-        endDayIndex = startDayIndex + daysPerWeek - 1;
+        endDayIndex = Math.min(startDayIndex + daysPerWeek - 1, totalDays);
       }
 
       const days: ProgramInstanceDay[] = [];
@@ -1111,7 +1170,12 @@ export async function PATCH(
       };
 
       weeks.push(existingWeek);
-      weeks.sort((a, b) => a.weekNumber - b.weekNumber);
+      // Sort: 0 (onboarding), 1+ (regular), -1 (closing) last
+      weeks.sort((a, b) => {
+        if (a.weekNumber === -1) return 1;
+        if (b.weekNumber === -1) return -1;
+        return a.weekNumber - b.weekNumber;
+      });
       weekIndex = weeks.findIndex(w => w.weekNumber === weekNumber);
       console.log(`[COHORT_WEEK_CONTENT_PATCH] Created new week ${weekNumber} at index ${weekIndex}`);
     } else {

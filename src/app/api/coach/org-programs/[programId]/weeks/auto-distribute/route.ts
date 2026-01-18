@@ -85,8 +85,12 @@ export async function POST(
       }
     }
 
-    // Sort by weekNumber
-    weeks.sort((a, b) => a.weekNumber - b.weekNumber);
+    // Sort by weekNumber: 0 (onboarding), 1+ (regular), -1 (closing) last
+    weeks.sort((a, b) => {
+      if (a.weekNumber === -1) return 1;
+      if (b.weekNumber === -1) return -1;
+      return a.weekNumber - b.weekNumber;
+    });
 
     // Calculate even distribution
     const numModules = modules.length;

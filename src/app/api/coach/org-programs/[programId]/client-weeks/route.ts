@@ -75,13 +75,28 @@ async function getOrCreateIndividualInstance(
   if (enrollment.startedAt) {
     calendarWeeks = calculateCalendarWeeks(enrollment.startedAt, totalDays, includeWeekends);
   }
-  const regularCalendarWeeks = calendarWeeks
-    .filter(w => w.weekNumber > 0)
-    .sort((a, b) => a.startDayIndex - b.startDayIndex);
 
-  // Helper to get calendar date for a day
-  const getCalendarDateForDay = (weekPosition: number, dayOffset: number): string | undefined => {
-    const calendarWeek = regularCalendarWeeks[weekPosition];
+  // Helper to find calendar week by weekNumber (handles 0, 1+, -1)
+  const findCalendarWeek = (weekNumber: number): CalendarWeek | undefined => {
+    return calendarWeeks.find(w => w.weekNumber === weekNumber);
+  };
+
+  // Helper to calculate fallback day indices for special weeks
+  const getFallbackDayIndices = (weekNumber: number): { startDayIndex: number; endDayIndex: number } => {
+    if (weekNumber === 0) {
+      return { startDayIndex: 1, endDayIndex: Math.min(daysPerWeek, totalDays) };
+    } else if (weekNumber === -1) {
+      const startDayIndex = Math.max(1, totalDays - daysPerWeek + 1);
+      return { startDayIndex, endDayIndex: totalDays };
+    } else {
+      const startDayIndex = (weekNumber - 1) * daysPerWeek + 1;
+      return { startDayIndex, endDayIndex: Math.min(startDayIndex + daysPerWeek - 1, totalDays) };
+    }
+  };
+
+  // Helper to get calendar date for a day within a week
+  const getCalendarDateForDay = (weekNumber: number, dayOffset: number): string | undefined => {
+    const calendarWeek = findCalendarWeek(weekNumber);
     if (!calendarWeek?.startDate) return undefined;
     const startDate = new Date(calendarWeek.startDate);
     startDate.setDate(startDate.getDate() + dayOffset);
@@ -92,17 +107,18 @@ async function getOrCreateIndividualInstance(
   let weeks: ProgramInstanceWeek[] = [];
 
   if (programData.weeks && Array.isArray(programData.weeks) && programData.weeks.length > 0) {
-    weeks = programData.weeks.map((weekData, weekPosition) => {
-      const calendarWeek = regularCalendarWeeks[weekPosition];
-      const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
-      const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
+    weeks = programData.weeks.map((weekData) => {
+      const calendarWeek = findCalendarWeek(weekData.weekNumber);
+      const fallback = getFallbackDayIndices(weekData.weekNumber);
+      const startDayIndex = calendarWeek?.startDayIndex ?? fallback.startDayIndex;
+      const endDayIndex = calendarWeek?.endDayIndex ?? fallback.endDayIndex;
 
       const days: ProgramInstanceDay[] = [];
       for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
         days.push({
           dayIndex: i + 1,
           globalDayIndex: startDayIndex + i,
-          calendarDate: getCalendarDateForDay(weekPosition, i),
+          calendarDate: getCalendarDateForDay(weekData.weekNumber, i),
           tasks: [],
           habits: [],
         });
@@ -133,18 +149,19 @@ async function getOrCreateIndividualInstance(
       .orderBy('weekNumber', 'asc')
       .get();
 
-    weeks = weeksSnapshot.docs.map((weekDoc, weekPosition) => {
+    weeks = weeksSnapshot.docs.map((weekDoc) => {
       const weekData = weekDoc.data();
-      const calendarWeek = regularCalendarWeeks[weekPosition];
-      const startDayIndex = calendarWeek?.startDayIndex ?? ((weekData.weekNumber - 1) * daysPerWeek + 1);
-      const endDayIndex = calendarWeek?.endDayIndex ?? (startDayIndex + daysPerWeek - 1);
+      const calendarWeek = findCalendarWeek(weekData.weekNumber);
+      const fallback = getFallbackDayIndices(weekData.weekNumber);
+      const startDayIndex = calendarWeek?.startDayIndex ?? fallback.startDayIndex;
+      const endDayIndex = calendarWeek?.endDayIndex ?? fallback.endDayIndex;
 
       const days: ProgramInstanceDay[] = [];
       for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
         days.push({
           dayIndex: i + 1,
           globalDayIndex: startDayIndex + i,
-          calendarDate: getCalendarDateForDay(weekPosition, i),
+          calendarDate: getCalendarDateForDay(weekData.weekNumber, i),
           tasks: [],
           habits: [],
         });
@@ -405,8 +422,24 @@ export async function POST(
 
       if (weekIndex === -1) {
         // Create new week if doesn't exist
-        const startDayIndex = weekContent.startDayIndex ?? (weekNumber - 1) * daysPerWeek + 1;
-        const endDayIndex = weekContent.endDayIndex ?? Math.min(startDayIndex + daysPerWeek - 1, program.lengthDays || 30);
+        const totalDays = program.lengthDays || 30;
+
+        // Calculate fallback day indices based on weekNumber (0=onboarding, -1=closing, 1+=regular)
+        let fallbackStartDay: number;
+        let fallbackEndDay: number;
+        if (weekNumber === 0) {
+          fallbackStartDay = 1;
+          fallbackEndDay = Math.min(daysPerWeek, totalDays);
+        } else if (weekNumber === -1) {
+          fallbackStartDay = Math.max(1, totalDays - daysPerWeek + 1);
+          fallbackEndDay = totalDays;
+        } else {
+          fallbackStartDay = (weekNumber - 1) * daysPerWeek + 1;
+          fallbackEndDay = Math.min(fallbackStartDay + daysPerWeek - 1, totalDays);
+        }
+
+        const startDayIndex = weekContent.startDayIndex ?? fallbackStartDay;
+        const endDayIndex = weekContent.endDayIndex ?? fallbackEndDay;
 
         const days = [];
         for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
@@ -445,7 +478,12 @@ export async function POST(
         };
 
         weeks.push(newWeek);
-        weeks.sort((a, b) => a.weekNumber - b.weekNumber);
+        // Sort by weekNumber: 0 (onboarding), 1+ (regular), -1 (closing) last
+        weeks.sort((a, b) => {
+          if (a.weekNumber === -1) return 1;
+          if (b.weekNumber === -1) return -1;
+          return a.weekNumber - b.weekNumber;
+        });
         weekIndex = weeks.findIndex(w => w.weekNumber === weekNumber);
       } else {
         // Update existing week

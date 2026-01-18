@@ -207,15 +207,19 @@ export async function recalculateWeekDayIndices(programId: string): Promise<void
   }));
 
   // Calculate week day indices sequentially, accounting for onboarding weeks
-  // Sort weeks by weekNumber (0 = onboarding, 1+ = regular weeks)
-  const sortedWeeks = [...allWeeks].sort((a, b) => a.weekNumber - b.weekNumber);
+  // Sort weeks by weekNumber: 0 (onboarding), 1+ (regular), -1 (closing)
+  const sortedWeeks = [...allWeeks].sort((a, b) => {
+    if (a.weekNumber === -1) return 1;
+    if (b.weekNumber === -1) return -1;
+    return a.weekNumber - b.weekNumber;
+  });
 
   const batch = adminDb.batch();
   let currentDay = 1; // Start from Day 1
 
   for (const week of sortedWeeks) {
     const weekNumber = week.weekNumber;
-    if (weekNumber < 0) continue; // Skip invalid week numbers
+    if (weekNumber < -1) continue; // Skip truly invalid week numbers (allow -1 for closing)
 
     // Calculate how many days this week spans
     // Onboarding weeks (weekNumber = 0) use their existing length or default to daysPerWeek
