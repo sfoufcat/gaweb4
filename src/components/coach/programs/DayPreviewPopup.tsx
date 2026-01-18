@@ -215,14 +215,14 @@ export function DayPreviewPopup({
               duration: 0.25,
               ease: [0.25, 0.1, 0.25, 1],
             }}
-            className="relative w-full sm:max-w-md max-h-[85vh] sm:max-h-[80vh] overflow-hidden"
+            className="relative w-full sm:max-w-md max-h-[85vh] sm:max-h-[80vh] overflow-hidden bg-white dark:bg-[#1e222a] rounded-t-2xl sm:rounded-2xl shadow-2xl border border-[#e1ddd8] dark:border-[#262b35]"
           >
             {/* Mobile drag handle */}
-            <div className="sm:hidden flex justify-center pt-3 pb-1 bg-white dark:bg-[#1e222a] rounded-t-2xl">
+            <div className="sm:hidden flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 rounded-full bg-[#d1cdc8] dark:bg-[#3a4150]" />
             </div>
 
-            <div className="bg-white dark:bg-[#1e222a] rounded-t-2xl sm:rounded-2xl shadow-2xl border border-[#e1ddd8] dark:border-[#262b35] overflow-hidden">
+            <div className="overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-[#e1ddd8]/60 dark:border-[#262b35]/60 bg-[#f7f5f3] dark:bg-[#11141b]">
                 <div className="flex items-center gap-3">

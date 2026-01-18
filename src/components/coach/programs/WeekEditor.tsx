@@ -1306,6 +1306,11 @@ export function WeekEditor({
           coachRecordingNotes: week.coachRecordingNotes,
           linkedSummaryIds: week.linkedSummaryIds,
           linkedCallEventIds: week.linkedCallEventIds,
+          linkedArticleIds: week.linkedArticleIds,
+          linkedDownloadIds: week.linkedDownloadIds,
+          linkedLinkIds: week.linkedLinkIds,
+          linkedQuestionnaireIds: week.linkedQuestionnaireIds,
+          courseAssignments: week.courseAssignments,
         },
         pendingData: pendingDataForContext,
         apiEndpoint: endpoint,
@@ -1319,7 +1324,7 @@ export function WeekEditor({
     }
   // Note: Removed getDefaultFormData from deps as it's not used in this effect
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData, week.id, week.weekNumber, week.name, week.theme, week.description, week.weeklyPrompt, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.weeklyTasks, week.currentFocus, week.notes, week.linkedSummaryIds, week.linkedCallEventIds, editorContext, programId, viewContext, clientContextId, getApiEndpoint, editedFields, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
+  }, [formData, week.id, week.weekNumber, week.name, week.theme, week.description, week.weeklyPrompt, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.weeklyTasks, week.currentFocus, week.notes, week.linkedSummaryIds, week.linkedCallEventIds, week.linkedArticleIds, week.linkedDownloadIds, week.linkedLinkIds, week.linkedQuestionnaireIds, week.courseAssignments, editorContext, programId, viewContext, clientContextId, getApiEndpoint, editedFields, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
 
   // handleSave is only used by the SyncToClientsDialog now
   const handleSave = async () => {
