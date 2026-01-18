@@ -2,8 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
-import { DollarSign, Globe, ShoppingBag, AlertTriangle } from 'lucide-react';
+import { DollarSign, Globe, ShoppingBag, AlertTriangle, ChevronDown, Check } from 'lucide-react';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
+import { Button } from '@/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 export interface ContentPricingData {
   priceInCents: number | null;
@@ -24,6 +30,66 @@ const CURRENCIES = [
   { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
   { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
 ];
+
+/**
+ * Currency selector dropdown component
+ */
+function CurrencySelector({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (currency: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedCurrency = CURRENCIES.find(c => c.code === value) || CURRENCIES[0];
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between h-auto py-2 font-normal text-left rounded-lg border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b]"
+        >
+          <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm">
+            {selectedCurrency.code} ({selectedCurrency.symbol})
+          </span>
+          <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[180px] p-1" align="start">
+        {CURRENCIES.map((currency) => (
+          <button
+            key={currency.code}
+            type="button"
+            onClick={() => {
+              onChange(currency.code);
+              setOpen(false);
+            }}
+            className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] cursor-pointer text-left ${
+              value === currency.code ? 'bg-[#f3f1ef] dark:bg-[#262b35]' : ''
+            }`}
+          >
+            <div className={`flex h-4 w-4 items-center justify-center rounded border flex-shrink-0 ${
+              value === currency.code
+                ? 'bg-[#a07855] border-brand-accent'
+                : 'border-gray-300 dark:border-gray-600'
+            }`}>
+              {value === currency.code && (
+                <Check className="h-3 w-3 text-white" />
+              )}
+            </div>
+            <span className="flex-1 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              {currency.code} ({currency.symbol})
+            </span>
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 /**
  * Reusable pricing fields component for content gating.
@@ -131,8 +197,8 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
       {isPricingEnabled && (
         <div className="space-y-4 pt-2">
           {/* Price and Currency */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="flex gap-3">
+            <div className="flex-[2]">
               <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1.5 font-albert">
                 Price
               </label>
@@ -150,22 +216,15 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
                 />
               </div>
             </div>
-            
-            <div>
+
+            <div className="flex-1">
               <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1.5 font-albert">
                 Currency
               </label>
-              <select
+              <CurrencySelector
                 value={value.currency}
-                onChange={(e) => onChange({ ...value, currency: e.target.value })}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-              >
-                {CURRENCIES.map((currency) => (
-                  <option key={currency.code} value={currency.code}>
-                    {currency.code} ({currency.symbol})
-                  </option>
-                ))}
-              </select>
+                onChange={(currency) => onChange({ ...value, currency })}
+              />
             </div>
           </div>
 
@@ -174,7 +233,7 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
             <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
               Purchase Experience
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3">
               <button
                 type="button"
                 onClick={() => onChange({ ...value, purchaseType: 'popup' })}
@@ -189,8 +248,8 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
                 }`} />
                 <div className="text-left">
                   <span className={`block text-sm font-medium font-albert ${
-                    value.purchaseType === 'popup' 
-                      ? 'text-[#1a1a1a] dark:text-[#f5f5f8]' 
+                    value.purchaseType === 'popup'
+                      ? 'text-[#1a1a1a] dark:text-[#f5f5f8]'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2]'
                   }`}>
                     Quick Popup
@@ -200,7 +259,7 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
                   </span>
                 </div>
               </button>
-              
+
               <button
                 type="button"
                 onClick={() => onChange({ ...value, purchaseType: 'landing_page' })}
@@ -215,8 +274,8 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
                 }`} />
                 <div className="text-left">
                   <span className={`block text-sm font-medium font-albert ${
-                    value.purchaseType === 'landing_page' 
-                      ? 'text-[#1a1a1a] dark:text-[#f5f5f8]' 
+                    value.purchaseType === 'landing_page'
+                      ? 'text-[#1a1a1a] dark:text-[#f5f5f8]'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2]'
                   }`}>
                     Landing Page

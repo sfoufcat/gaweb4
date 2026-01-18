@@ -23,8 +23,7 @@ import { CustomMessageInput } from '@/components/chat/CustomMessageInput';
 import { SquadMemberStoryAvatar } from '@/components/chat/SquadMemberStoryAvatar';
 import { CallButtons } from '@/components/chat/CallButtons';
 import { ChatActionsMenu } from '@/components/chat/ChatActionsMenu';
-import { RequestCallModal } from '@/components/scheduling';
-import { Calendar } from 'lucide-react';
+import { RequestCallModal, ScheduleCallModal } from '@/components/scheduling';
 import type { ChatChannelType } from '@/types/chat-preferences';
 import type { Channel as StreamChannel, ChannelSort, ChannelFilters, ChannelOptions, StreamChat } from 'stream-chat';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
@@ -417,6 +416,7 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
   const { channel } = useChatContext();
   const router = useRouter();
   const [showRequestCallModal, setShowRequestCallModal] = useState(false);
+  const [showScheduleCallModal, setShowScheduleCallModal] = useState(false);
   const { isCoach } = useCoachSquads();
 
   // Cast channel.data to any to access custom properties like name and image
@@ -560,20 +560,18 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
           </div>
         </div>
 
-        {/* Right: Schedule call button + Call buttons */}
+        {/* Right: Call buttons (Schedule/Scheduled/Join states handled by CallButtons) */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Schedule Call button for coaching channels */}
-          {isCoachingChannel && (
-            <button
-              onClick={() => setShowRequestCallModal(true)}
-              className="px-3 py-1.5 bg-brand-accent/10 text-brand-accent rounded-full text-xs font-albert font-medium hover:bg-brand-accent/20 transition-colors flex items-center gap-1.5"
-              aria-label="Schedule a call"
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Schedule</span>
-            </button>
-          )}
-          <CallButtons channel={channel} />
+          <CallButtons
+            channel={channel}
+            onScheduleClick={() => {
+              if (isCoach) {
+                setShowScheduleCallModal(true);
+              } else {
+                setShowRequestCallModal(true);
+              }
+            }}
+          />
           <ChatActionsMenu
             channelId={channelId || ''}
             channelType={chatChannelType}
@@ -582,8 +580,8 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
         </div>
       </div>
 
-      {/* Request Call Modal for coaching channels */}
-      {isCoachingChannel && (
+      {/* Request Call Modal for clients in coaching channels */}
+      {isCoachingChannel && !isCoach && (
         <RequestCallModal
           isOpen={showRequestCallModal}
           onClose={() => setShowRequestCallModal(false)}
@@ -592,6 +590,19 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
           priceInCents={0}
           onSuccess={() => {
             setShowRequestCallModal(false);
+          }}
+        />
+      )}
+
+      {/* Schedule Call Modal for coaches */}
+      {isCoach && otherMember?.user?.id && (
+        <ScheduleCallModal
+          isOpen={showScheduleCallModal}
+          onClose={() => setShowScheduleCallModal(false)}
+          clientId={otherMember.user.id}
+          clientName={otherMember.user.name || 'Client'}
+          onSuccess={() => {
+            setShowScheduleCallModal(false);
           }}
         />
       )}
