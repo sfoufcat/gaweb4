@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const {
+    let {
       contentType,
       contentId,
       moduleId,
@@ -51,7 +51,26 @@ export async function POST(request: Request) {
       instanceId,
       weekIndex,
       dayIndex,
+      enrollmentId, // Alternative to instanceId - API will look up instance
     } = body;
+
+    // If enrollmentId provided but no instanceId, look up the instance
+    if (enrollmentId && !instanceId) {
+      try {
+        const instanceSnapshot = await adminDb
+          .collection('program_instances')
+          .where('enrollmentId', '==', enrollmentId)
+          .limit(1)
+          .get();
+
+        if (!instanceSnapshot.empty) {
+          instanceId = instanceSnapshot.docs[0].id;
+        }
+      } catch (err) {
+        console.warn('[CONTENT_PROGRESS_COMPLETE] Instance lookup failed:', err);
+        // Continue without instanceId - progress will still be tracked, just not linked
+      }
+    }
 
     // Validation
     if (!contentType || !contentId) {
@@ -112,6 +131,18 @@ export async function POST(request: Request) {
       // Update watch progress if provided
       if (watchProgress !== undefined) {
         updates.watchProgress = watchProgress;
+      }
+
+      // Update program context fields if provided (and not already set)
+      // This allows late binding of progress to a program instance
+      if (instanceId !== undefined && !existing.instanceId) {
+        updates.instanceId = instanceId;
+      }
+      if (weekIndex !== undefined && existing.weekIndex === undefined) {
+        updates.weekIndex = weekIndex;
+      }
+      if (dayIndex !== undefined && existing.dayIndex === undefined) {
+        updates.dayIndex = dayIndex;
       }
 
       await docRef.update(updates);

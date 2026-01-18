@@ -205,6 +205,7 @@ export default function CourseDetailPage({ params }: CoursePageProps) {
         includedInProgramName={includedInProgramName}
         id={id}
         router={router}
+        buildLessonUrl={buildLessonUrl}
       />
     );
   }
@@ -365,6 +366,7 @@ function CourseContent({
   includedInProgramName,
   id,
   router,
+  buildLessonUrl,
 }: {
   course: DiscoverCourse & { coachName?: string; coachImageUrl?: string };
   totalLessons: number;
@@ -374,6 +376,7 @@ function CourseContent({
   includedInProgramName?: string;
   id: string;
   router: ReturnType<typeof useRouter>;
+  buildLessonUrl: (lessonId: string) => string;
 }) {
   // Fetch completion progress for all lessons in this course
   const { progress, isContentCompleted, getCourseCompletionPercent } = useContentProgress({
