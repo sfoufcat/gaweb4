@@ -4355,8 +4355,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     organizationId: existingWeek.organizationId,
                     weekNumber: existingWeek.weekNumber,
                     order: existingWeek.order || existingWeek.weekNumber,
-                    startDayIndex: existingWeek.startDayIndex || startDay,
-                    endDayIndex: existingWeek.endDayIndex || endDay,
+                    // For special weeks (onboarding/closing), always use calculated values to reflect includeWeekends changes
+                    startDayIndex: isSpecialWeek ? startDay : (existingWeek.startDayIndex || startDay),
+                    endDayIndex: isSpecialWeek ? endDay : (existingWeek.endDayIndex || endDay),
                     name: existingWeek.name || sidebarSelection.displayLabel || '',
                     description: existingWeek.description,
                     theme: existingWeek.theme,

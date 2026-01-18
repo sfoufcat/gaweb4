@@ -1216,7 +1216,8 @@ export function WeekEditor({
       JSON.stringify(formData.linkedDownloadIds) !== JSON.stringify(week.linkedDownloadIds || []) ||
       JSON.stringify(formData.linkedLinkIds) !== JSON.stringify(week.linkedLinkIds || []) ||
       JSON.stringify(formData.linkedQuestionnaireIds) !== JSON.stringify(week.linkedQuestionnaireIds || []) ||
-      JSON.stringify(formData.courseAssignments) !== JSON.stringify(week.courseAssignments || []);
+      JSON.stringify(formData.courseAssignments) !== JSON.stringify(week.courseAssignments || []) ||
+      JSON.stringify(formData.resourceAssignments) !== JSON.stringify(week.resourceAssignments || []);
     
     // Debug logging for change detection
     if (changed) {

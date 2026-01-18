@@ -181,6 +181,7 @@ export async function POST(
       linkedQuestionnaireIds: body.linkedQuestionnaireIds || [],
       linkedCourseIds: body.linkedCourseIds || [],
       courseAssignments: body.courseAssignments || [],
+      resourceAssignments: body.resourceAssignments || [],
       coachRecordingUrl: body.coachRecordingUrl?.trim() || undefined,
       coachRecordingNotes: body.coachRecordingNotes?.trim() || undefined,
       fillSource: body.fillSource || undefined,

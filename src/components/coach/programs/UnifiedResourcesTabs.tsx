@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   GraduationCap,
   FileText,
@@ -76,7 +77,7 @@ interface UnifiedResourcesTabsProps {
   includeWeekends?: boolean;
 }
 
-// DayTag selector dropdown
+// DayTag selector dropdown - uses portal to escape overflow:hidden containers
 function DayTagSelector({
   value,
   onChange,
@@ -87,6 +88,8 @@ function DayTagSelector({
   includeWeekends?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
 
   const options = includeWeekends
     ? DAY_TAG_OPTIONS
@@ -94,9 +97,21 @@ function DayTagSelector({
 
   const currentOption = options.find(opt => opt.value === value) || options[0];
 
+  // Update dropdown position when opening
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+      });
+    }
+  }, [isOpen]);
+
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#8c8c8c] dark:text-[#7d8190] bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg hover:bg-[#e8e4df] dark:hover:bg-[#262b35] transition-colors"
@@ -106,10 +121,13 @@ function DayTagSelector({
         <ChevronDown className={cn('w-3 h-3 transition-transform', isOpen && 'rotate-180')} />
       </button>
 
-      {isOpen && (
+      {isOpen && typeof document !== 'undefined' && createPortal(
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute left-0 top-full mt-1 z-50 min-w-[120px] py-1 bg-white dark:bg-[#1e222a] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] shadow-lg">
+          <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)} />
+          <div
+            className="fixed z-[9999] min-w-[120px] py-1 bg-white dark:bg-[#1e222a] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] shadow-lg max-h-[280px] overflow-y-auto"
+            style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
+          >
             {options.map((option) => (
               <button
                 key={String(option.value)}
@@ -129,7 +147,8 @@ function DayTagSelector({
               </button>
             ))}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );
