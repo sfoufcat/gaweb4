@@ -2218,24 +2218,48 @@ export function WeekEditor({
                   const dotCount = Math.min(taskCount, 3);
                   const isEmpty = taskCount === 0;
 
-                  // Get day label: "Mon (1)" if calendar date available, else "Day 1"
+                  // Get day label and date info
                   const calendarStartDate = (week as { calendarStartDate?: string }).calendarStartDate;
                   const actualStartDayOfWeek = (week as { actualStartDayOfWeek?: number }).actualStartDayOfWeek;
                   let dayLabel = `Day ${dayNum}`;
+                  let dateLabel = '';
+                  let dayStatus: 'past' | 'active' | 'future' = 'future';
+
                   if (calendarStartDate) {
                     const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                     // Parse as local date to avoid UTC timezone issues
-                    // (new Date("2025-01-13") parses as UTC, causing day-of-week to be off by 1)
                     const [year, month, dayOfMonth] = calendarStartDate.split('-').map(Number);
                     const dayDate = new Date(year, month - 1, dayOfMonth + i);
                     const weekdayName = WEEKDAYS[dayDate.getDay()];
-                    dayLabel = `${weekdayName} (${dayNum})`;
+                    const monthDay = dayDate.getDate();
+                    const monthName = dayDate.toLocaleDateString('en-US', { month: 'short' });
+                    dayLabel = weekdayName;
+                    dateLabel = `${monthName} ${monthDay}`;
+
+                    // Calculate day status (past/active/future)
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    dayDate.setHours(0, 0, 0, 0);
+                    if (dayDate.getTime() < today.getTime()) {
+                      dayStatus = 'past';
+                    } else if (dayDate.getTime() === today.getTime()) {
+                      dayStatus = 'active';
+                    } else {
+                      dayStatus = 'future';
+                    }
                   }
 
                   // Check if this day is before the actual enrollment start (pre-enrollment blur)
-                  // actualStartDayOfWeek is 1-based (1=Mon, 2=Tue, etc.), dayNum is also 1-based
-                  // For onboarding week (weekNumber=0): days before actualStartDayOfWeek are pre-enrollment
                   const isPreEnrollment = week.weekNumber === 0 && !!actualStartDayOfWeek && dayNum < actualStartDayOfWeek;
+
+                  // Status-based styles
+                  const statusBgClass = isPreEnrollment
+                    ? 'bg-gray-100 dark:bg-[#15181f]'
+                    : dayStatus === 'past'
+                      ? 'bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40'
+                      : dayStatus === 'active'
+                        ? 'bg-green-50/60 dark:bg-green-950/20 border-green-300 dark:border-green-700/50'
+                        : 'bg-white dark:bg-[#1a1e28] border-[#e8e4df] dark:border-[#2a2f3a]';
 
                   return (
                     <button
@@ -2244,24 +2268,42 @@ export function WeekEditor({
                       onClick={() => !isPreEnrollment && setPreviewDayNumber(dayNum)}
                       disabled={isPreEnrollment}
                       className={cn(
-                        'flex-1 flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl transition-all',
-                        'bg-white dark:bg-[#1a1e28] border border-[#e8e4df] dark:border-[#2a2f3a]',
+                        'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-xl transition-all border',
+                        statusBgClass,
                         isPreEnrollment
-                          ? 'opacity-30 cursor-not-allowed bg-gray-100 dark:bg-[#15181f]'
+                          ? 'opacity-30 cursor-not-allowed'
                           : 'hover:shadow-sm hover:border-brand-accent/40',
-                        isEmpty && !isPreEnrollment && 'opacity-50'
+                        isEmpty && !isPreEnrollment && 'opacity-60'
                       )}
                     >
                       <span className={cn(
-                        'text-sm font-medium font-albert',
+                        'text-xs font-medium font-albert',
                         isPreEnrollment
                           ? 'text-[#a7a39e] dark:text-[#5a5e6a]'
-                          : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                          : dayStatus === 'active'
+                            ? 'text-green-700 dark:text-green-400'
+                            : dayStatus === 'past'
+                              ? 'text-yellow-700 dark:text-yellow-400'
+                              : 'text-[#5f5a55] dark:text-[#b2b6c2]'
                       )}>
                         {dayLabel}
                       </span>
+                      {dateLabel && (
+                        <span className={cn(
+                          'text-[10px] font-albert',
+                          isPreEnrollment
+                            ? 'text-[#c4c0bb] dark:text-[#4a4f5c]'
+                            : dayStatus === 'active'
+                              ? 'text-green-600 dark:text-green-500'
+                              : dayStatus === 'past'
+                                ? 'text-yellow-600 dark:text-yellow-500'
+                                : 'text-[#a7a39e] dark:text-[#7d8190]'
+                        )}>
+                          {dateLabel}
+                        </span>
+                      )}
                       {taskCount > 0 && !isPreEnrollment && (
-                        <div className="flex items-center gap-0.5">
+                        <div className="flex items-center gap-0.5 mt-0.5">
                           {Array.from({ length: dotCount }, (_, j) => (
                             <span key={j} className="w-1.5 h-1.5 rounded-full bg-brand-accent" />
                           ))}

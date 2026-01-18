@@ -385,32 +385,35 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
     // ALWAYS calculate calendar weeks when we have a start date
     // This ensures correct day indices even for legacy instances with old stored values
-    // The calculated values take priority for startDayIndex/endDayIndex to ensure 5-day onboarding
-    let calendarWeeksLookup: Map<number, { startDate: string; endDate: string; actualStartDayOfWeek?: number; startDayIndex: number; endDayIndex: number }> | null = null;
+    let calculatedWeeks: ReturnType<typeof calculateCalendarWeeks> = [];
     if (instance.startDate && selectedProgram?.lengthDays) {
-      const calculatedWeeks = calculateCalendarWeeks(instance.startDate, selectedProgram.lengthDays, includeWeekends);
-      calendarWeeksLookup = new Map(calculatedWeeks.map(cw => [cw.weekNumber, {
-        startDate: cw.startDate,
-        endDate: cw.endDate,
-        actualStartDayOfWeek: cw.actualStartDayOfWeek,
-        startDayIndex: cw.startDayIndex,
-        endDayIndex: cw.endDayIndex,
-      }]));
+      calculatedWeeks = calculateCalendarWeeks(instance.startDate, selectedProgram.lengthDays, includeWeekends);
     }
 
-    return instance.weeks.map(week => {
-      // ALWAYS prefer calculated calendar data when available
-      // This ensures correct dates/indices even for legacy instances with stale stored values
-      const calculatedCalendar = calendarWeeksLookup?.get(week.weekNumber);
+    // Create lookups: by weekNumber (for new system) and by position (for legacy)
+    const calendarByWeekNumber = new Map(calculatedWeeks.map(cw => [cw.weekNumber, cw]));
+    const calendarByPosition = new Map(calculatedWeeks.map((cw, idx) => [idx, cw]));
+
+    return instance.weeks.map((week, idx) => {
+      // Try lookup by weekNumber first (new system)
+      // Then try by position (legacy instances with old 1-based weekNumbers)
+      let calculatedCalendar = calendarByWeekNumber.get(week.weekNumber);
+      if (!calculatedCalendar && calendarByPosition.has(idx)) {
+        // Legacy: instance week at position 0 maps to calculated week at position 0 (Onboarding)
+        calculatedCalendar = calendarByPosition.get(idx);
+      }
+
+      // Use calculated weekNumber if available, otherwise keep stored
+      const weekNumber = calculatedCalendar?.weekNumber ?? week.weekNumber;
 
       return {
-        id: `${instance.id}-week-${week.weekNumber}`,
+        id: `${instance.id}-week-${weekNumber}`,
         programId: instance.programId,
         organizationId: instance.organizationId,
         enrollmentId: instance.enrollmentId || '',
-        programWeekId: `${instance.programId}-week-${week.weekNumber}`,
+        programWeekId: `${instance.programId}-week-${weekNumber}`,
         userId: instance.userId || '',
-        weekNumber: week.weekNumber,
+        weekNumber,
         name: week.name,
         theme: week.theme,
         description: week.description,
@@ -421,10 +424,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         calendarEndDate: calculatedCalendar?.endDate || week.calendarEndDate,
         actualStartDayOfWeek: calculatedCalendar?.actualStartDayOfWeek ?? week.actualStartDayOfWeek,
         moduleId: week.moduleId,
-        // Use calculated calendar week indices (most accurate for 5-day onboarding),
-        // then stored indices, then calculate fallback
-        startDayIndex: calculatedCalendar?.startDayIndex ?? week.startDayIndex ?? (week.weekNumber === 0 ? 1 : (week.weekNumber - 1) * daysPerWeek + 1),
-        endDayIndex: calculatedCalendar?.endDayIndex ?? week.endDayIndex ?? (week.weekNumber === 0 ? daysPerWeek : week.weekNumber * daysPerWeek),
+        // Use calculated calendar week indices (most accurate for 5-day onboarding)
+        startDayIndex: calculatedCalendar?.startDayIndex ?? week.startDayIndex ?? (weekNumber === 0 ? 1 : (weekNumber - 1) * daysPerWeek + 1),
+        endDayIndex: calculatedCalendar?.endDayIndex ?? week.endDayIndex ?? (weekNumber === 0 ? daysPerWeek : weekNumber * daysPerWeek),
         createdAt: now,
         updatedAt: now,
       } as ClientProgramWeek & { actualStartDayOfWeek?: number };
