@@ -608,13 +608,14 @@ export async function GET(request: NextRequest) {
             }
 
             // Create the instance for individual enrollment
+            // Use effectiveStartDate (already calculated with fallbacks) for startDate
             const instanceData = {
               programId,
               organizationId,
               type: 'individual' as const,
               enrollmentId,
               userId: enrollmentData.userId,
-              startDate: enrollmentData.startDate,
+              startDate: effectiveStartDate,  // Use effectiveStartDate with fallbacks
               endDate: enrollmentData.endDate,
               includeWeekends: programData.includeWeekends !== false,
               dailyFocusSlots: programData.dailyFocusSlots || 3,

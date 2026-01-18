@@ -383,18 +383,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     const includeWeekends = selectedProgram?.includeWeekends !== false;
     const daysPerWeek = includeWeekends ? 7 : 5;
 
-    // ALWAYS calculate calendar weeks when we have a start date
-    // This ensures correct day indices even for legacy instances with old stored values
-    // Fallback: use enrollment startedAt if instance.startDate is missing
+    // Calculate calendar weeks from instance.startDate (single source of truth)
     let calculatedWeeks: ReturnType<typeof calculateCalendarWeeks> = [];
-    const instanceStartDate = instance.startDate;
-    const enrollmentStartDate = clientViewContext.mode === 'client' && clientViewContext.enrollmentId
-      ? programEnrollments.find(e => e.id === clientViewContext.enrollmentId)?.startedAt
-      : undefined;
-    const effectiveStartDate = instanceStartDate || enrollmentStartDate;
-
-    if (effectiveStartDate && selectedProgram?.lengthDays) {
-      calculatedWeeks = calculateCalendarWeeks(effectiveStartDate, selectedProgram.lengthDays, includeWeekends);
+    if (instance.startDate && selectedProgram?.lengthDays) {
+      calculatedWeeks = calculateCalendarWeeks(instance.startDate, selectedProgram.lengthDays, includeWeekends);
     }
 
     // Create lookups: by weekNumber (for new system) and by position (for legacy)
@@ -447,7 +439,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         updatedAt: now,
       } as ClientProgramWeek & { actualStartDayOfWeek?: number };
     });
-  }, [instance, selectedProgram?.includeWeekends, selectedProgram?.lengthDays, clientViewContext, programEnrollments]);
+  }, [instance, selectedProgram?.includeWeekends, selectedProgram?.lengthDays]);
 
   // Leave warning dialog state (for unsaved changes)
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
