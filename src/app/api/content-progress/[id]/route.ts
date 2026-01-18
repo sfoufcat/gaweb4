@@ -10,7 +10,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import type { ContentProgress } from '@/types';
+import { isOrgCoach } from '@/lib/admin-utils-shared';
+import type { ContentProgress, ClerkPublicMetadata } from '@/types';
 
 const COLLECTION = 'content_progress';
 
@@ -24,13 +25,15 @@ interface RouteParams {
  */
 export async function GET(request: Request, { params }: RouteParams) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
     const organizationId = await getEffectiveOrgId();
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const orgRole = publicMetadata?.orgRole;
 
     const docRef = adminDb.collection(COLLECTION).doc(id);
     const doc = await docRef.get();
@@ -41,8 +44,10 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     const data = doc.data() as ContentProgress;
 
-    // Security check: user can only access their own progress (or coaches can access client progress)
-    if (data.userId !== userId && data.organizationId !== organizationId) {
+    // Security check: user can access their own progress, or coaches can access client progress in their org
+    const isOwner = data.userId === userId;
+    const isCoachInSameOrg = isOrgCoach(orgRole) && data.organizationId === organizationId;
+    if (!isOwner && !isCoachInSameOrg) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

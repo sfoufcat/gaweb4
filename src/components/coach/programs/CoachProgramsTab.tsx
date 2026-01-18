@@ -4166,10 +4166,18 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   const selectedWeekData = weeksSource.find(w => w.weekNumber === weekNumber);
 
                   const totalDays = selectedProgram?.lengthDays || 30;
-                  if (selectedWeekData?.startDayIndex !== undefined && selectedWeekData?.endDayIndex !== undefined) {
+                  // For special weeks (onboarding/closing) in template mode, always recalculate based on current settings
+                  // This ensures day counts update when program.includeWeekends changes
+                  const isSpecialWeek = weekNumber === 0 || weekNumber === -1;
+                  const shouldUseStoredIndices = selectedWeekData?.startDayIndex !== undefined &&
+                    selectedWeekData?.endDayIndex !== undefined &&
+                    (isInstanceMode || !isSpecialWeek);
+
+                  if (shouldUseStoredIndices) {
                     // Use pre-calculated indices from the week data (most accurate)
-                    startDay = selectedWeekData.startDayIndex;
-                    endDay = selectedWeekData.endDayIndex;
+                    // We've already verified these are defined in shouldUseStoredIndices check
+                    startDay = selectedWeekData!.startDayIndex as number;
+                    endDay = selectedWeekData!.endDayIndex as number;
                   } else if (weekNumber === 0) {
                     startDay = 1;
                     // Onboarding gets full week (5 days for weekdays-only, 7 for include weekends)
@@ -4204,6 +4212,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   // NEW SYSTEM: Check if we have instance week data
                   // Use instanceWeeks (derived with calendar fallbacks) instead of raw instance.weeks
                   const instanceWeek = instanceWeeks?.find(w => w.weekNumber === weekNumber);
+                  // Raw instance week has all fields (ProgramInstanceWeek) including resource assignments
+                  const rawInstanceWeek = instance?.weeks?.find(w => w.weekNumber === weekNumber);
 
                   // Use existing week data or create a default
                   // Priority: instanceId means new system (always), else old system fallback
@@ -4284,6 +4294,25 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     linkedCallEventIds: instanceDataAvailable
                       ? (instanceWeek?.linkedCallEventIds ?? [])
                       : (instanceWeek?.linkedCallEventIds ?? templateWeek?.linkedCallEventIds ?? []),
+                    // Resource assignments - use raw instance.weeks for these fields (not in ClientProgramWeek type)
+                    linkedArticleIds: instanceDataAvailable
+                      ? (rawInstanceWeek?.linkedArticleIds ?? [])
+                      : (rawInstanceWeek?.linkedArticleIds ?? templateWeek?.linkedArticleIds ?? []),
+                    linkedDownloadIds: instanceDataAvailable
+                      ? (rawInstanceWeek?.linkedDownloadIds ?? [])
+                      : (rawInstanceWeek?.linkedDownloadIds ?? templateWeek?.linkedDownloadIds ?? []),
+                    linkedLinkIds: instanceDataAvailable
+                      ? (rawInstanceWeek?.linkedLinkIds ?? [])
+                      : (rawInstanceWeek?.linkedLinkIds ?? templateWeek?.linkedLinkIds ?? []),
+                    linkedQuestionnaireIds: instanceDataAvailable
+                      ? (rawInstanceWeek?.linkedQuestionnaireIds ?? [])
+                      : (rawInstanceWeek?.linkedQuestionnaireIds ?? templateWeek?.linkedQuestionnaireIds ?? []),
+                    courseAssignments: instanceDataAvailable
+                      ? (rawInstanceWeek?.courseAssignments ?? [])
+                      : (rawInstanceWeek?.courseAssignments ?? templateWeek?.courseAssignments ?? []),
+                    resourceAssignments: instanceDataAvailable
+                      ? (rawInstanceWeek?.resourceAssignments ?? [])
+                      : (rawInstanceWeek?.resourceAssignments ?? templateWeek?.resourceAssignments ?? []),
                   } : isCohortMode && !instanceId && templateWeek ? {
                     // OLD SYSTEM FALLBACK: Use cohortWeekContent (deprecated - for unmigrated cohorts)
                     // Only used when instanceId is NOT available (not migrated)
@@ -4312,6 +4341,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     manualNotes: cohortWeekContent?.manualNotes ?? templateWeek.manualNotes,
                     linkedSummaryIds: cohortWeekContent?.linkedSummaryIds ?? templateWeek.linkedSummaryIds ?? [],
                     linkedCallEventIds: cohortWeekContent?.linkedCallEventIds ?? templateWeek.linkedCallEventIds ?? [],
+                    // Resource assignments
+                    linkedArticleIds: templateWeek.linkedArticleIds ?? [],
+                    linkedDownloadIds: templateWeek.linkedDownloadIds ?? [],
+                    linkedLinkIds: templateWeek.linkedLinkIds ?? [],
+                    linkedQuestionnaireIds: templateWeek.linkedQuestionnaireIds ?? [],
+                    courseAssignments: templateWeek.courseAssignments ?? [],
                   } : existingWeek ? {
                     // For client weeks, map to ProgramWeek structure
                     id: existingWeek.id,
@@ -4339,6 +4374,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     fillSource: existingWeek.fillSource,
                     createdAt: existingWeek.createdAt,
                     updatedAt: existingWeek.updatedAt,
+                    // Resource assignments
+                    linkedArticleIds: existingWeek.linkedArticleIds || [],
+                    linkedDownloadIds: existingWeek.linkedDownloadIds || [],
+                    linkedLinkIds: existingWeek.linkedLinkIds || [],
+                    linkedQuestionnaireIds: existingWeek.linkedQuestionnaireIds || [],
+                    courseAssignments: existingWeek.courseAssignments || [],
                   } : {
                     id: `temp-week-${weekNumber}`,
                     programId: selectedProgram?.id || '',
@@ -4356,6 +4397,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     notes: [],
                     linkedSummaryIds: [],
                     linkedCallEventIds: [],
+                    // Resource assignments
+                    linkedArticleIds: [],
+                    linkedDownloadIds: [],
+                    linkedLinkIds: [],
+                    linkedQuestionnaireIds: [],
+                    courseAssignments: [],
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                   };
