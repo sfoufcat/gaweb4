@@ -16,7 +16,6 @@ import {
   AlertCircle,
   Repeat,
   Globe,
-  BookOpen,
   Link2,
 } from 'lucide-react';
 import { useAvailableSlots } from '@/hooks/useAvailability';
@@ -114,10 +113,9 @@ export function ScheduleCallModal({
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
 
-  // Program linking state
+  // Program linking state - always enabled by default when enrollment exists
   const [enrollmentData, setEnrollmentData] = useState<ClientEnrollmentData | null>(null);
   const [enrollmentLoading, setEnrollmentLoading] = useState(false);
-  const [linkToProgram, setLinkToProgram] = useState(false);
 
   // Fetch client's active 1:1 enrollment when modal opens
   useEffect(() => {
@@ -130,10 +128,6 @@ export function ScheduleCallModal({
         if (response.ok) {
           const data = await response.json();
           setEnrollmentData(data);
-          // Auto-enable linking if client has an active enrollment with instance
-          if (data.instance) {
-            setLinkToProgram(true);
-          }
         }
       } catch (err) {
         console.error('Failed to fetch client enrollment:', err);
@@ -144,6 +138,9 @@ export function ScheduleCallModal({
 
     fetchEnrollment();
   }, [isOpen, clientId]);
+
+  // Program linking is always enabled when client has an active enrollment
+  const linkToProgram = !!(enrollmentData?.program && enrollmentData?.instance);
 
   // Date range for available slots (next 30 days)
   const dateRange = useMemo(() => {
@@ -630,50 +627,27 @@ export function ScheduleCallModal({
             </div>
           )}
 
-          {/* Program Linking (only shown if client has active 1:1 enrollment) */}
-          {!enrollmentLoading && enrollmentData?.program && enrollmentData?.instance && (
-            <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
-              <div className="px-4 py-3 bg-[#f3f1ef] dark:bg-[#1e222a] border-b border-[#e1ddd8] dark:border-[#262b35]">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                  <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Program Linking
-                  </span>
+          {/* Program Linking info (auto-enabled when client has active 1:1 enrollment) */}
+          {!enrollmentLoading && linkToProgram && proposedSlots.length > 0 && (
+            <div className="p-4 bg-brand-accent/5 dark:bg-brand-accent/10 border border-brand-accent/20 dark:border-brand-accent/30 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-8 h-8 bg-brand-accent/10 dark:bg-brand-accent/20 rounded-lg flex items-center justify-center">
+                  <Link2 className="w-4 h-4 text-brand-accent" />
                 </div>
-              </div>
-              <div className="p-4">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={linkToProgram}
-                    onChange={(e) => setLinkToProgram(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded border-[#d1cdc8] dark:border-[#3a4150] text-brand-accent focus:ring-brand-accent focus:ring-offset-0"
-                  />
-                  <div>
-                    <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                      Link to {enrollmentData.program.name}
-                    </span>
-                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-                      Associate this call with the client&apos;s program timeline
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    Linked to {enrollmentData?.program?.name}
+                  </p>
+                  {calculatedProgramDay ? (
+                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                      Will appear in <strong>Week {calculatedProgramDay.weekIndex + 1}</strong>, <strong>Day {calculatedProgramDay.globalDayIndex}</strong>
                     </p>
-                  </div>
-                </label>
-
-                {/* Show calculated week/day when linked and times selected */}
-                {linkToProgram && proposedSlots.length > 0 && (
-                  <div className="mt-3 flex items-center gap-2 p-2 bg-brand-accent/5 dark:bg-brand-accent/10 rounded-lg">
-                    <Link2 className="w-4 h-4 text-brand-accent" />
-                    {calculatedProgramDay ? (
-                      <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                        Will be linked to <strong>Week {calculatedProgramDay.weekIndex + 1}</strong>, <strong>Day {calculatedProgramDay.globalDayIndex}</strong>
-                      </span>
-                    ) : (
-                      <span className="text-sm text-[#a7a39e] dark:text-[#7d8190]">
-                        Selected date is outside program range
-                      </span>
-                    )}
-                  </div>
-                )}
+                  ) : (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                      Selected date is outside program range
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )}
