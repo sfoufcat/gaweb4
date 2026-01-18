@@ -28,6 +28,7 @@ import type {
   UnifiedEvent,
   WeekResourceAssignment,
   ContentProgress,
+  DayCourseAssignment,
 } from '@/types';
 import type { DiscoverCourse, DiscoverArticle } from '@/types/discover';
 import {
@@ -119,10 +120,26 @@ export function DayPreviewPopup({
   }, [week, calendarDate, events]);
 
   // Filter resources by type
-  const courseAssignments = useMemo(
-    () => getResourcesByType(dayResources, 'course'),
-    [dayResources]
-  );
+  // For courses, check both resourceAssignments (unified format) and courseAssignments (legacy format)
+  const courseAssignments = useMemo(() => {
+    const fromResources = getResourcesByType(dayResources, 'course');
+    if (fromResources.length > 0) {
+      return fromResources;
+    }
+    // Fallback: Convert week.courseAssignments (DayCourseAssignment[]) to WeekResourceAssignment format
+    // These are week-level assignments (no day-specific tagging in legacy format)
+    const legacyCourses = (week as ProgramWeek)?.courseAssignments || [];
+    return legacyCourses.map((ca: DayCourseAssignment, index: number): WeekResourceAssignment => ({
+      id: `legacy-course-${ca.courseId}`,
+      resourceType: 'course',
+      resourceId: ca.courseId,
+      dayTag: 'week', // Legacy format doesn't have day tags, treat as week-level
+      isRequired: false,
+      order: index,
+      moduleIds: ca.moduleIds,
+      lessonIds: ca.lessonIds,
+    }));
+  }, [dayResources, week]);
   const articleAssignments = useMemo(
     () => getResourcesByType(dayResources, 'article'),
     [dayResources]
