@@ -417,7 +417,22 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
   const router = useRouter();
   const [showRequestCallModal, setShowRequestCallModal] = useState(false);
   const [showScheduleCallModal, setShowScheduleCallModal] = useState(false);
+  const [clientEnrollmentId, setClientEnrollmentId] = useState<string | undefined>();
   const { isCoach } = useCoachSquads();
+
+  // Fetch client enrollment when modal opens (for non-coaches)
+  useEffect(() => {
+    if (showRequestCallModal && !isCoach) {
+      fetch('/api/scheduling/my-enrollment')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.enrollmentId) {
+            setClientEnrollmentId(data.enrollmentId);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [showRequestCallModal, isCoach]);
 
   // Cast channel.data to any to access custom properties like name and image
   const channelData = channel?.data as Record<string, unknown> | undefined;
@@ -588,6 +603,7 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
           coachName={coachName}
           isPaid={false}
           priceInCents={0}
+          enrollmentId={clientEnrollmentId}
           onSuccess={() => {
             setShowRequestCallModal(false);
           }}

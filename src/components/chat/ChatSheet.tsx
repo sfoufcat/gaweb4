@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { MessageCircle, ChevronRight, ChevronLeft, Users, Megaphone, PartyPopper, Trophy, X, Pin } from 'lucide-react';
+import { MessageCircle, ChevronRight, ChevronLeft, Users, Megaphone, PartyPopper, Trophy, X, Pin, Calendar } from 'lucide-react';
 import { useStreamChatClient } from '@/contexts/StreamChatContext';
 import { useChatChannels, type ChannelPreview } from '@/contexts/ChatChannelsContext';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
@@ -31,6 +31,7 @@ import { ArchivedChatsLink } from '@/components/chat/ArchivedChatsLink';
 import { useChatPreferences } from '@/hooks/useChatPreferences';
 import type { ChatChannelType } from '@/types/chat-preferences';
 import { Archive, Trash2, PinOff, ArchiveRestore } from 'lucide-react';
+import { RequestCallModal, ScheduleCallModal } from '@/components/scheduling';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   AlertDialog,
@@ -718,6 +719,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                     channelName={selectedChannelName}
                     onBack={handleBack}
                     isReadOnly={isAnnouncementsChannel}
+                    isCoach={isCoach}
                   />
                 )}
               </div>
@@ -842,15 +844,45 @@ function ChatSheetMessageView({
   channel,
   channelName,
   onBack,
-  isReadOnly
+  isReadOnly,
+  isCoach
 }: {
   channel: StreamChannel;
   channelName: string;
   onBack: () => void;
   isReadOnly: boolean;
+  isCoach: boolean;
 }) {
   const { setActiveChannel } = useChatContext();
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+
+  // Scheduling modal state
+  const [showRequestCallModal, setShowRequestCallModal] = useState(false);
+  const [showScheduleCallModal, setShowScheduleCallModal] = useState(false);
+  const [clientEnrollmentId, setClientEnrollmentId] = useState<string | undefined>();
+
+  // Determine if this is a coaching channel (supports scheduling)
+  const channelId = channel.id;
+  const isCoachingChannel = channelId?.startsWith('coaching-');
+
+  // Get other member info for scheduling (used for coach scheduling with client)
+  const members = Object.values(channel.state?.members || {});
+  const { client } = useChatContext();
+  const otherMember = members.find(m => m.user?.id !== client?.userID);
+
+  // Fetch client enrollment when modal opens (for non-coaches)
+  useEffect(() => {
+    if (showRequestCallModal && !isCoach) {
+      fetch('/api/scheduling/my-enrollment')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.enrollmentId) {
+            setClientEnrollmentId(data.enrollmentId);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [showRequestCallModal, isCoach]);
 
   // Set active channel when mounted
   useEffect(() => {
@@ -899,9 +931,25 @@ function ChatSheetMessageView({
         >
           <ChevronLeft className="w-5 h-5 text-text-primary" />
         </button>
-        <h3 className="font-albert text-[16px] font-semibold text-text-primary truncate">
+        <h3 className="font-albert text-[16px] font-semibold text-text-primary truncate flex-1">
           {channelName}
         </h3>
+        {/* Schedule button for coaching channels */}
+        {isCoachingChannel && (
+          <button
+            onClick={() => {
+              if (isCoach) {
+                setShowScheduleCallModal(true);
+              } else {
+                setShowRequestCallModal(true);
+              }
+            }}
+            className="p-2 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#272d38] transition-colors"
+            aria-label="Schedule a call"
+          >
+            <Calendar className="w-5 h-5 text-text-secondary" />
+          </button>
+        )}
       </div>
 
       {/* Messages + Input Container - explicit flex layout */}
@@ -930,6 +978,34 @@ function ChatSheetMessageView({
           </Window>
         </Channel>
       </div>
+
+      {/* Request Call Modal for clients in coaching channels */}
+      {isCoachingChannel && !isCoach && (
+        <RequestCallModal
+          isOpen={showRequestCallModal}
+          onClose={() => setShowRequestCallModal(false)}
+          coachName={channelName}
+          isPaid={false}
+          priceInCents={0}
+          enrollmentId={clientEnrollmentId}
+          onSuccess={() => {
+            setShowRequestCallModal(false);
+          }}
+        />
+      )}
+
+      {/* Schedule Call Modal for coaches */}
+      {isCoach && otherMember?.user?.id && (
+        <ScheduleCallModal
+          isOpen={showScheduleCallModal}
+          onClose={() => setShowScheduleCallModal(false)}
+          clientId={otherMember.user.id}
+          clientName={otherMember.user.name || 'Client'}
+          onSuccess={() => {
+            setShowScheduleCallModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -677,6 +677,7 @@ export function ProgramDetailView({
           coachName={coachingCoach?.name || program.coachName}
           isPaid={callSettings?.pricingModel === 'per_call' || callSettings?.pricingModel === 'both'}
           priceInCents={callSettings?.pricePerCallCents || 0}
+          enrollmentId={enrollment?.id}
           onSuccess={() => {
             setShowRequestCallModal(false);
             if (onRefresh) {
