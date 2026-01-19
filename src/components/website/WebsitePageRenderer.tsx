@@ -140,8 +140,7 @@ export function WebsitePageRenderer({
         isPreviewMode={isPreviewMode}
       />
 
-      {/* Spacer for fixed nav (+ preview banner if present) */}
-      <div className={isPreviewMode ? 'h-[104px]' : 'h-16'} />
+      {/* No spacer needed - floating nav overlays content */}
 
       {/* Website Template Content */}
       {renderTemplate()}

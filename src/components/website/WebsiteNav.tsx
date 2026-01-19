@@ -39,50 +39,59 @@ export function WebsiteNav({
     <motion.nav
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
-      className={`fixed left-0 right-0 z-50 bg-white/80 dark:bg-[#0a0c10]/80 backdrop-blur-xl border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50 ${isPreviewMode ? 'top-10' : 'top-0'}`}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      className={`fixed left-0 right-0 z-50 flex justify-center px-4 ${isPreviewMode ? 'top-12' : 'top-4'}`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo / Brand */}
-          <Link href="/" className="flex items-center gap-3">
-            {logoUrl ? (
-              <div className="relative h-8 w-auto">
-                <Image
-                  src={logoUrl}
-                  alt={appTitle}
-                  width={120}
-                  height={32}
-                  className="h-8 w-auto object-contain"
-                />
-              </div>
-            ) : (
-              <span className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                {appTitle}
-              </span>
-            )}
-          </Link>
+      {/* Floating pill navigation - Apple 2026 glassmorphism */}
+      <div
+        className="flex items-center justify-between gap-8 px-6 py-3 rounded-full backdrop-blur-2xl border shadow-lg"
+        style={{
+          background: 'rgba(255, 255, 255, 0.75)',
+          borderColor: 'rgba(255, 255, 255, 0.3)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.1) inset',
+        }}
+      >
+        {/* Logo / Brand */}
+        <Link href="/" className="flex items-center gap-3">
+          {logoUrl ? (
+            <div className="relative h-7 w-auto">
+              <Image
+                src={logoUrl}
+                alt={appTitle}
+                width={100}
+                height={28}
+                className="h-7 w-auto object-contain"
+              />
+            </div>
+          ) : (
+            <span className="text-base font-semibold text-[#1a1a1a] font-albert tracking-tight">
+              {appTitle}
+            </span>
+          )}
+        </Link>
 
-          {/* Navigation Actions */}
-          <div className="flex items-center gap-3">
-            {showSignIn && (
-              <Link
-                href="/sign-in"
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors font-albert"
-              >
-                <LogIn className="w-4 h-4" />
-                {signInButtonText}
-              </Link>
-            )}
+        {/* Navigation Actions */}
+        <div className="flex items-center gap-2">
+          {showSignIn && (
             <Link
-              href={joinUrl}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-full transition-all hover:scale-105 shadow-lg font-albert"
-              style={{ backgroundColor: accentColor }}
+              href="/sign-in"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#4a4a4a] hover:text-[#1a1a1a] transition-colors font-albert rounded-full hover:bg-black/5"
             >
-              {joinButtonText}
-              <ArrowRight className="w-4 h-4" />
+              <LogIn className="w-3.5 h-3.5" />
+              {signInButtonText}
             </Link>
-          </div>
+          )}
+          <Link
+            href={joinUrl}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-full transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] font-albert"
+            style={{
+              backgroundColor: accentColor,
+              boxShadow: `0 4px 16px ${accentColor}50`,
+            }}
+          >
+            {joinButtonText}
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       </div>
     </motion.nav>
