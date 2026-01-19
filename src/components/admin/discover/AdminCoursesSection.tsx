@@ -391,7 +391,7 @@ export function AdminCoursesSection({
         </div>
 
         {/* Course Cards */}
-        <div className="space-y-2">
+        <div className="p-3 space-y-2">
           {filteredCourses.map(course => (
             <div
               key={course.id}
@@ -480,8 +480,10 @@ export function AdminCoursesSection({
         </div>
 
         {filteredCourses.length === 0 && (
-          <div className="p-12 text-center">
-            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No courses found</p>
+          <div className="px-3 pb-3">
+            <div className="p-12 text-center">
+              <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No courses found</p>
+            </div>
           </div>
         )}
       </div>

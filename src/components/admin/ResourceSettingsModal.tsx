@@ -176,7 +176,7 @@ function SettingsContent({
   };
 
   return (
-    <div className="space-y-5 overflow-y-auto max-h-[70vh] md:max-h-[75vh] pr-1 scrollbar-thin">
+    <div className="space-y-5 overflow-y-auto max-h-[70vh] md:max-h-[75vh] scrollbar-thin">
       {/* Basic Info */}
       <div className="space-y-4">
         <div>
@@ -422,7 +422,7 @@ export function ResourceSettingsModal(props: ResourceSettingsModalProps) {
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg p-0 gap-0">
+        <DialogContent className="max-w-xl p-0 gap-0">
           <DialogHeader className="px-5 py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
             <DialogTitle className="flex items-center gap-2 text-base font-semibold font-albert">
               <Settings2 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />

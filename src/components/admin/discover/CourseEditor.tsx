@@ -308,9 +308,9 @@ export function CourseEditor({
     <div className="flex flex-col h-full min-h-screen">
       {/* Header */}
       <div className="border-b border-[#e1ddd8] dark:border-[#262b35]">
-        {/* Top row: back + title + actions */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+        {/* Single row: back + title + tabs + stats + actions */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button
               type="button"
               onClick={onClose}
@@ -318,22 +318,74 @@ export function CourseEditor({
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-base sm:text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-              {formData.title || 'New Course'}
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            {/* Settings Button */}
             <button
               type="button"
               onClick={() => setBasicInfoOpen(true)}
-              className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-              title="Course Settings"
+              className="flex items-center gap-1.5 min-w-0 group"
+              title="Edit course settings"
             >
-              <Settings2 className="w-4 h-4" />
+              <h1 className="text-base sm:text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-brand-accent transition-colors">
+                {formData.title || 'New Course'}
+              </h1>
+              <Settings2 className="w-3.5 h-3.5 text-[#9ca3af] group-hover:text-brand-accent transition-colors flex-shrink-0" />
             </button>
 
+            {/* Tab Navigation - inline with title */}
+            {isEditing && (
+              <>
+                {/* Mobile: dropdown style */}
+                <div className="sm:hidden relative ml-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab(activeTab === 'overview' ? 'content' : 'overview')}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                  >
+                    {activeTab === 'overview' ? (
+                      <>
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        <span>Overview</span>
+                      </>
+                    ) : (
+                      <>
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                        <span>Content</span>
+                      </>
+                    )}
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {/* Desktop: tab buttons */}
+                <div className="hidden sm:flex items-center gap-1 ml-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('overview')}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium font-albert transition-all whitespace-nowrap ${
+                      activeTab === 'overview'
+                        ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    Overview
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('content')}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium font-albert transition-all whitespace-nowrap ${
+                      activeTab === 'content'
+                        ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+                    }`}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                    Content
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             {/* Stats - hidden on mobile */}
             <div className="hidden lg:flex items-center gap-4 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
               <span className="flex items-center gap-1.5">
@@ -367,36 +419,6 @@ export function CourseEditor({
             </Button>
           </div>
         </div>
-
-        {/* Tab Navigation - second row on mobile, inline on desktop for existing courses */}
-        {isEditing && (
-          <div className="flex items-center gap-1 px-4 sm:px-6 pb-3 overflow-x-auto scrollbar-hide">
-            <button
-              type="button"
-              onClick={() => setActiveTab('overview')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all whitespace-nowrap ${
-                activeTab === 'overview'
-                  ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              Overview
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('content')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all whitespace-nowrap ${
-                activeTab === 'content'
-                  ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4" />
-              Content
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Main Content */}
