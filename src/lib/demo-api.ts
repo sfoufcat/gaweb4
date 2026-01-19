@@ -407,7 +407,41 @@ export const demoHandlers = {
       },
     });
   },
-  
+
+  'org-website': () => {
+    return demoResponse({
+      website: {
+        id: DEMO_ORGANIZATION.id,
+        organizationId: DEMO_ORGANIZATION.id,
+        enabled: true,
+        template: 'classic',
+        heroHeadline: 'Transform Your Life with Expert Coaching',
+        heroSubheadline: 'Personalized coaching programs designed to help you achieve your biggest goals and become your best self.',
+        heroCtaText: 'Get Started',
+        heroCtaFunnelId: null,
+        coachBio: 'I am a certified coach with over 10 years of experience helping individuals achieve their personal and professional goals.',
+        coachBullets: ['ICF Certified Coach', '10+ Years Experience', 'MBA, Stanford University'],
+        coachHeadline: 'About Your Coach',
+        servicesHeadline: 'What I Offer',
+        services: [
+          { id: '1', title: '1:1 Coaching', description: 'Personalized sessions tailored to your needs', icon: 'users', funnelId: '' },
+          { id: '2', title: 'Group Programs', description: 'Join a cohort of like-minded individuals', icon: 'video', funnelId: '' },
+        ],
+        testimonials: [
+          { text: 'Working with this coach completely transformed my approach to work and life.', author: 'Sarah M.', role: 'Entrepreneur', rating: 5 },
+        ],
+        faqs: [
+          { question: 'How long is a typical coaching engagement?', answer: 'Most clients work with me for 3-6 months, depending on their goals.' },
+        ],
+        showSignIn: true,
+        signInButtonText: 'Sign In',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      funnels: [],
+    });
+  },
+
   // ============================================================================
   // SUPPORT / FEATURE REQUESTS
   // ============================================================================

@@ -16,6 +16,8 @@ export type {
   AIGenerationResponse,
   ProgramContentDraft,
   LandingPageDraft,
+  WebsiteContentDraft,
+  WebsiteServiceDraft,
   AIValidationResult,
   AIValidationError,
   AIValidationWarning,
@@ -45,8 +47,10 @@ export type {
 export {
   programContentDraftSchema,
   landingPageDraftSchema,
+  websiteContentDraftSchema,
   validateProgramContentDraft,
   validateLandingPageDraft,
+  validateWebsiteContentDraft,
 } from './schemas';
 
 

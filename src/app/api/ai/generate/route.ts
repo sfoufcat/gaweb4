@@ -1,14 +1,14 @@
 /**
  * AI Generation API Route
- * 
+ *
  * POST /api/ai/generate
  * Generates content using AI based on the specified use case.
- * 
+ *
  * Authorization: Coach/Admin only (org-scoped)
- * 
+ *
  * Request Body:
  * {
- *   useCase: 'PROGRAM_CONTENT' | 'LANDING_PAGE_PROGRAM' | 'LANDING_PAGE_SQUAD',
+ *   useCase: 'PROGRAM_CONTENT' | 'LANDING_PAGE_PROGRAM' | 'LANDING_PAGE_SQUAD' | 'LANDING_PAGE_WEBSITE',
  *   userPrompt: string,
  *   context?: {
  *     programName?: string,
@@ -24,10 +24,10 @@
  *     constraints?: string,
  *   }
  * }
- * 
+ *
  * Response:
  * {
- *   draft: ProgramContentDraft | LandingPageDraft,
+ *   draft: ProgramContentDraft | LandingPageDraft | WebsiteContentDraft,
  *   meta: {
  *     model: string,
  *     inputTokens: number,
@@ -48,6 +48,7 @@ const VALID_USE_CASES: AIUseCase[] = [
   'PROGRAM_CONTENT',
   'LANDING_PAGE_PROGRAM',
   'LANDING_PAGE_SQUAD',
+  'LANDING_PAGE_WEBSITE',
 ];
 
 export async function POST(request: NextRequest) {
@@ -155,9 +156,9 @@ export async function POST(request: NextRequest) {
     }
     
     // For validation errors, return them with details
-    if (message.includes('Invalid program content') || message.includes('Invalid landing page')) {
+    if (message.includes('Invalid program content') || message.includes('Invalid landing page') || message.includes('Invalid website content')) {
       return NextResponse.json(
-        { 
+        {
           error: 'AI generated invalid content. Please try again with a more specific prompt.',
           details: message,
         },

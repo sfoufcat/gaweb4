@@ -64,6 +64,7 @@ export interface TenantConfigData {
   subdomain: string;
   branding: TenantBrandingData;
   feedEnabled?: boolean;  // Whether social feed is enabled for this org
+  websiteEnabled?: boolean;  // Whether public website is enabled (replaces sign-in for unauthenticated visitors)
   coachingPromo?: TenantCoachingPromoData;
   verifiedCustomDomain?: string;
   // Menu empty state behavior (what to show when user has no program/squad)
@@ -253,7 +254,8 @@ export function buildTenantConfigData(
   feedEnabled?: boolean,
   programEmptyStateBehavior?: EmptyStateBehavior,
   squadEmptyStateBehavior?: EmptyStateBehavior,
-  subscription?: TenantSubscriptionData
+  subscription?: TenantSubscriptionData,
+  websiteEnabled?: boolean
 ): TenantConfigData {
   return {
     organizationId,
@@ -268,6 +270,7 @@ export function buildTenantConfigData(
       menuOrder: branding?.menuOrder ?? DEFAULT_TENANT_BRANDING.menuOrder,
     },
     feedEnabled: feedEnabled ?? false,
+    websiteEnabled: websiteEnabled ?? false,
     coachingPromo: coachingPromo ? {
       title: coachingPromo.title ?? DEFAULT_TENANT_COACHING_PROMO.title,
       subtitle: coachingPromo.subtitle ?? DEFAULT_TENANT_COACHING_PROMO.subtitle,
@@ -294,9 +297,10 @@ export async function syncTenantToEdgeConfig(
   feedEnabled?: boolean,
   programEmptyStateBehavior?: EmptyStateBehavior,
   squadEmptyStateBehavior?: EmptyStateBehavior,
-  subscription?: TenantSubscriptionData
+  subscription?: TenantSubscriptionData,
+  websiteEnabled?: boolean
 ): Promise<void> {
-  const data = buildTenantConfigData(organizationId, subdomain, branding, verifiedCustomDomain, coachingPromo, feedEnabled, programEmptyStateBehavior, squadEmptyStateBehavior, subscription);
+  const data = buildTenantConfigData(organizationId, subdomain, branding, verifiedCustomDomain, coachingPromo, feedEnabled, programEmptyStateBehavior, squadEmptyStateBehavior, subscription, websiteEnabled);
   
   const items: EdgeConfigItem[] = [
     { operation: 'upsert', key: getSubdomainKey(subdomain), value: data },

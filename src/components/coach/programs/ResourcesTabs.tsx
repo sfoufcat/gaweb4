@@ -214,7 +214,7 @@ export function ResourcesTabs({
       </div>
 
       {/* Tab Content */}
-      <div className="min-h-[120px]">
+      <div key={activeTab} className="min-h-[120px] animate-fadeIn">
         {/* Courses Tab */}
         {activeTab === 'courses' && (
           <div className="space-y-3">

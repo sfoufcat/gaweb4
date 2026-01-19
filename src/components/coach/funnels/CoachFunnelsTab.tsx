@@ -661,6 +661,8 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
         )}
       </div>
 
+      {/* Tab Content */}
+      <div key={activeTab} className="animate-fadeIn">
       {/* Loading state */}
       {isLoading && (
         <div className="space-y-3 animate-pulse">
@@ -860,6 +862,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
           ))}
         </div>
       )}
+      </div>
 
       {/* Create Dialog */}
       {showCreateDialog && (

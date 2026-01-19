@@ -18,6 +18,7 @@ import { AdminDiscoverTab } from '@/components/admin/discover';
 import { AdminPremiumUpgradeFormsTab } from '@/components/admin/AdminPremiumUpgradeFormsTab';
 import { AdminCoachingIntakeFormsTab } from '@/components/admin/AdminCoachingIntakeFormsTab';
 import { CoachFunnelsTab } from '@/components/coach/funnels';
+import { CoachWebsiteTab } from '@/components/coach/website';
 import { CoachProgramsTab } from '@/components/coach/programs';
 import { CoachSquadsTab } from '@/components/coach/squads';
 import { CoachReferralsTab } from '@/components/coach/referrals';
@@ -45,8 +46,8 @@ import { IntegrationsTab } from '@/components/coach/settings';
  */
 
 // Valid tab values
-type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'integrations' | 'customize' | 'plan' | 'support';
-const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'checkins', 'onboarding', 'channels', 'scheduling', 'integrations', 'customize', 'plan', 'support'];
+type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'website' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'integrations' | 'customize' | 'plan' | 'support';
+const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'website', 'checkins', 'onboarding', 'channels', 'scheduling', 'integrations', 'customize', 'plan', 'support'];
 
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
 // Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
@@ -910,6 +911,12 @@ export default function CoachPage() {
                       >
                         Funnels
                       </TabsTrigger>
+                      <TabsTrigger
+                        value="website"
+                        className="relative z-10 rounded-lg px-3.5 py-1.5 text-sm font-medium font-albert transition-colors duration-200 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white data-[state=active]:bg-white dark:data-[state=active]:bg-[#262b35] data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:text-white data-[state=active]:shadow-sm"
+                      >
+                        Website
+                      </TabsTrigger>
                     </TabsList>
                   </div>
 
@@ -1072,6 +1079,13 @@ export default function CoachPage() {
           <TabsContent value="funnels" className="animate-fadeIn">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <CoachFunnelsTab initialFunnelId={initialFunnelId} onFunnelSelect={handleFunnelSelect} />
+            </div>
+          </TabsContent>
+
+          {/* Website Tab */}
+          <TabsContent value="website" className="animate-fadeIn">
+            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+              <CoachWebsiteTab />
             </div>
           </TabsContent>
 

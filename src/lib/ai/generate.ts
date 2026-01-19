@@ -8,8 +8,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { buildProgramContentPrompt, buildLandingPagePrompt } from './prompts';
-import { validateProgramContentDraft, validateLandingPageDraft } from './schemas';
+import { buildProgramContentPrompt, buildLandingPagePrompt, buildWebsiteContentPrompt } from './prompts';
+import { validateProgramContentDraft, validateLandingPageDraft, validateWebsiteContentDraft } from './schemas';
 import type {
   AIUseCase,
   AIGenerationContext,
@@ -17,6 +17,7 @@ import type {
   AIGenerationResponse,
   ProgramContentDraft,
   LandingPageDraft,
+  WebsiteContentDraft,
   AIValidationResult,
   AIUsageLog,
 } from './types';
@@ -129,18 +130,18 @@ export interface GenerateOptions {
 
 export async function generate(
   options: GenerateOptions
-): Promise<AIGenerationResponse<ProgramContentDraft | LandingPageDraft>> {
+): Promise<AIGenerationResponse<ProgramContentDraft | LandingPageDraft | WebsiteContentDraft>> {
   const { orgId, userId, useCase, userPrompt, context } = options;
-  
+
   // Check rate limit
   const rateLimitResult = checkRateLimit(orgId);
   if (!rateLimitResult.allowed) {
     throw new Error(`Rate limit exceeded. Try again in ${rateLimitResult.resetInSeconds} seconds.`);
   }
-  
+
   // Build prompt based on use case
   let prompt: { system: string; user: string };
-  
+
   switch (useCase) {
     case 'PROGRAM_CONTENT':
       prompt = buildProgramContentPrompt(userPrompt, context);
@@ -150,6 +151,9 @@ export async function generate(
       break;
     case 'LANDING_PAGE_SQUAD':
       prompt = buildLandingPagePrompt(userPrompt, context, 'squad');
+      break;
+    case 'LANDING_PAGE_WEBSITE':
+      prompt = buildWebsiteContentPrompt(userPrompt, context);
       break;
     default:
       throw new Error(`Unknown use case: ${useCase}`);
@@ -199,13 +203,20 @@ export async function generate(
     }
     
     // Validate based on use case
-    let validatedDraft: ProgramContentDraft | LandingPageDraft;
-    
+    let validatedDraft: ProgramContentDraft | LandingPageDraft | WebsiteContentDraft;
+
     if (useCase === 'PROGRAM_CONTENT') {
       const validation = validateProgramContentDraft(draft);
       if (!validation.success) {
         console.error('[AI Generate] Validation errors:', validation.errors);
         throw new Error(`Invalid program content: ${validation.errors?.map(e => e.message).join(', ')}`);
+      }
+      validatedDraft = validation.data!;
+    } else if (useCase === 'LANDING_PAGE_WEBSITE') {
+      const validation = validateWebsiteContentDraft(draft);
+      if (!validation.success) {
+        console.error('[AI Generate] Validation errors:', validation.errors);
+        throw new Error(`Invalid website content: ${validation.errors?.map(e => e.message).join(', ')}`);
       }
       validatedDraft = validation.data!;
     } else {
@@ -254,13 +265,13 @@ export function validateDraft(
 ): AIValidationResult {
   const errors: Array<{ path: string; message: string }> = [];
   const warnings: Array<{ path: string; message: string }> = [];
-  
+
   if (useCase === 'PROGRAM_CONTENT') {
     const validation = validateProgramContentDraft(draft);
     if (!validation.success && validation.errors) {
       errors.push(...validation.errors);
     }
-    
+
     // Add warnings for content quality
     const programDraft = draft as ProgramContentDraft;
     if (programDraft?.daysOrWeeks) {
@@ -273,12 +284,42 @@ export function validateDraft(
         }
       }
     }
+  } else if (useCase === 'LANDING_PAGE_WEBSITE') {
+    const validation = validateWebsiteContentDraft(draft);
+    if (!validation.success && validation.errors) {
+      errors.push(...validation.errors);
+    }
+
+    // Add warnings for website content quality
+    const websiteDraft = draft as WebsiteContentDraft;
+    if (websiteDraft?.faq && websiteDraft.faq.length < 5) {
+      warnings.push({
+        path: 'faq',
+        message: 'Consider adding more FAQs to address common objections',
+      });
+    }
+    if (websiteDraft?.services?.items && websiteDraft.services.items.length < 3) {
+      warnings.push({
+        path: 'services.items',
+        message: 'Consider adding more services to showcase your offerings',
+      });
+    }
+    if (websiteDraft?.testimonials) {
+      for (const [i, t] of websiteDraft.testimonials.entries()) {
+        if (t.name && !t.name.match(/^Client [A-Z]$|^Past Participant$|^Member \d+$/i)) {
+          warnings.push({
+            path: `testimonials[${i}].name`,
+            message: 'Replace with real testimonial or use placeholder like "Client A"',
+          });
+        }
+      }
+    }
   } else {
     const validation = validateLandingPageDraft(draft);
     if (!validation.success && validation.errors) {
       errors.push(...validation.errors);
     }
-    
+
     // Add warnings for landing page quality
     const lpDraft = draft as LandingPageDraft;
     if (lpDraft?.faq && lpDraft.faq.length < 5) {
@@ -299,7 +340,7 @@ export function validateDraft(
       }
     }
   }
-  
+
   return {
     valid: errors.length === 0,
     errors,
@@ -318,6 +359,7 @@ export type {
   AIGenerationResponse,
   ProgramContentDraft,
   LandingPageDraft,
+  WebsiteContentDraft,
   AIValidationResult,
 };
 

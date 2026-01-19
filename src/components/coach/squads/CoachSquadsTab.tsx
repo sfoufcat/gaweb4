@@ -1436,6 +1436,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
           />
         </div>
       ) : null}
+      </div>
 
       {/* Remove Member Confirmation */}
       {removeConfirmMember && (

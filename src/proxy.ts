@@ -245,6 +245,7 @@ function canAccessAdminSection(role?: UserRole): boolean {
 
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
+  '/website',      // Public org website - replaces sign-in when enabled
   '/lander(.*)',   // Enterprise landing page - public
   '/join(.*)',     // Unified funnel system (replaces /begin)
   '/sign-in(.*)',
@@ -1125,6 +1126,22 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     // Use redirect_url if it's a safe relative path, otherwise default to /
     const destination = redirectUrl && redirectUrl.startsWith('/') ? redirectUrl : '/';
     return NextResponse.redirect(new URL(destination, request.url));
+  }
+
+  // ==========================================================================
+  // PUBLIC WEBSITE ROUTING
+  // ==========================================================================
+  // When a tenant has their public website enabled, unauthenticated visitors
+  // to the root path (/) see the website instead of being redirected to sign-in.
+  // The website has Sign In and Join buttons for users to authenticate.
+  if (isTenantMode && tenantOrgId && !userId) {
+    if (pathname === '/' || pathname === '') {
+      const websiteEnabled = tenantConfigData?.websiteEnabled;
+      if (websiteEnabled) {
+        console.log(`[MIDDLEWARE] Rewriting / to /website for tenant ${tenantSubdomain} (website enabled)`);
+        return NextResponse.rewrite(new URL('/website', request.url));
+      }
+    }
   }
 
   // Protect non-public routes (require authentication)

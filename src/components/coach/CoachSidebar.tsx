@@ -3,7 +3,7 @@
 import { cn } from '@/lib/utils';
 
 // Tab types from coach page
-type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'integrations' | 'customize' | 'plan' | 'support';
+type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'website' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'integrations' | 'customize' | 'plan' | 'support';
 
 interface NavItem {
   value: CoachTab;
@@ -31,6 +31,7 @@ const FULL_NAV_GROUPS: NavGroup[] = [
     items: [
       { value: 'analytics', label: 'Analytics' },
       { value: 'funnels', label: 'Funnels' },
+      { value: 'website', label: 'Website' },
     ],
   },
   {

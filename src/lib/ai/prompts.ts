@@ -217,6 +217,111 @@ Remember: Output ONLY the JSON object. No explanations, no markdown formatting.`
 }
 
 // =============================================================================
+// WEBSITE CONTENT GENERATION
+// =============================================================================
+
+const WEBSITE_CONTENT_SYSTEM_PROMPT = `You are an expert conversion copywriter specializing in coaching and personal development websites.
+
+Your job is to create compelling website copy that converts visitors into clients. This is a coach's main website - their digital home that showcases who they are and what they offer.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON matching the exact schema provided. No markdown, no explanations.
+2. Write benefit-focused copy that speaks to the target audience's desires and pain points.
+3. Keep copy scannable - use short sentences and clear structure.
+4. Testimonials MUST use placeholder names like "Client A", "Client B", "Past Participant" - NEVER fabricate real-sounding names.
+5. FAQs should address real objections about working with a coach (4-8 items).
+6. Services should be broad offerings (e.g., "1:1 Coaching", "Group Programs") not specific product names.
+7. Match the requested tone while maintaining professionalism.
+8. Avoid clichés and generic marketing speak.
+9. Focus on transformation and outcomes, not just features.
+10. SEO meta title should be under 60 characters, meta description under 160 characters.
+
+TONE OPTIONS:
+- "friendly": Warm, approachable, conversational
+- "direct": Clear, no-nonsense, action-oriented
+- "premium": Sophisticated, exclusive, high-value
+- "playful": Fun, energetic, memorable
+
+SERVICE ICON OPTIONS (optional):
+"target", "users", "book", "trophy", "heart", "compass", "star", "zap", "lightbulb", "puzzle"
+
+OUTPUT SCHEMA:
+{
+  "hero": {
+    "headline": string,
+    "subheadline": string,
+    "ctaText": string
+  },
+  "coach": {
+    "headline": string,
+    "bio": string,
+    "bullets": string[]
+  },
+  "services": {
+    "headline": string,
+    "items": [{ "title": string, "description": string, "icon": string? }]
+  },
+  "testimonials": [
+    { "name": string, "role": string?, "quote": string }
+  ],
+  "faq": [
+    { "question": string, "answer": string }
+  ],
+  "cta": {
+    "headline": string,
+    "subheadline": string,
+    "buttonText": string
+  },
+  "seo": {
+    "metaTitle": string,
+    "metaDescription": string
+  },
+  "tone": "friendly"|"direct"|"premium"|"playful"
+}`;
+
+export function buildWebsiteContentPrompt(
+  userPrompt: string,
+  context?: AIGenerationContext
+): { system: string; user: string } {
+  const contextParts: string[] = [];
+
+  if (context?.coachName) {
+    contextParts.push(`Coach Name: ${context.coachName}`);
+  }
+  if (context?.niche) {
+    contextParts.push(`Niche/Industry: ${context.niche}`);
+  }
+  if (context?.targetAudience) {
+    contextParts.push(`Target Audience: ${context.targetAudience}`);
+  }
+  if (context?.constraints) {
+    contextParts.push(`Additional Context: ${context.constraints}`);
+  }
+
+  const contextSection = contextParts.length > 0
+    ? `\n\nCOACH CONTEXT:\n${contextParts.join('\n')}`
+    : '';
+
+  const user = `Generate website content for a coach's main website.
+${contextSection}
+
+COACH'S REQUEST:
+${userPrompt}
+
+IMPORTANT REMINDERS:
+- This is the coach's main website, not a specific program landing page
+- Services should be broad categories (e.g., "1:1 Coaching", "Group Programs", "Workshops")
+- Testimonials must use placeholder names like "Client A", "Client B", or "Past Participant"
+- Include 4-8 FAQ items that address common objections about coaching
+- SEO meta title must be under 60 characters, meta description under 160 characters
+- Match the tone to what the coach described
+
+Remember: Output ONLY the JSON object. No explanations, no markdown formatting.`;
+
+  return { system: WEBSITE_CONTENT_SYSTEM_PROMPT, user };
+}
+
+// =============================================================================
 // WEEK FILL GENERATION (from call summary, prompt, or PDF)
 // =============================================================================
 

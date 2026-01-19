@@ -9,10 +9,11 @@
 // USE CASES
 // =============================================================================
 
-export type AIUseCase = 
+export type AIUseCase =
   | 'PROGRAM_CONTENT'
   | 'LANDING_PAGE_PROGRAM'
-  | 'LANDING_PAGE_SQUAD';
+  | 'LANDING_PAGE_SQUAD'
+  | 'LANDING_PAGE_WEBSITE';
 
 // =============================================================================
 // PROGRAM CONTENT SCHEMA
@@ -117,6 +118,45 @@ export interface LandingPageDraft {
 }
 
 // =============================================================================
+// WEBSITE CONTENT SCHEMA
+// =============================================================================
+
+export interface WebsiteServiceDraft {
+  title: string;
+  description: string;
+  icon?: string; // Optional icon key from featureIconMap
+}
+
+export interface WebsiteContentDraft {
+  hero: {
+    headline: string;
+    subheadline: string;
+    ctaText: string;
+  };
+  coach: {
+    headline: string;
+    bio: string;
+    bullets: string[];
+  };
+  services: {
+    headline: string;
+    items: WebsiteServiceDraft[];
+  };
+  testimonials: LandingPageTestimonial[];
+  faq: LandingPageFAQ[];
+  cta: {
+    headline: string;
+    subheadline: string;
+    buttonText: string;
+  };
+  seo: {
+    metaTitle: string;
+    metaDescription: string;
+  };
+  tone: LandingPageTone;
+}
+
+// =============================================================================
 // GENERATION REQUEST/RESPONSE
 // =============================================================================
 
@@ -157,7 +197,7 @@ export interface AIGenerationMeta {
   estimatedCost?: number; // in USD
 }
 
-export interface AIGenerationResponse<T = ProgramContentDraft | LandingPageDraft> {
+export interface AIGenerationResponse<T = ProgramContentDraft | LandingPageDraft | WebsiteContentDraft> {
   draft: T;
   meta: AIGenerationMeta;
 }

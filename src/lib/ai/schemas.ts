@@ -138,11 +138,59 @@ export const landingPageDraftSchema = z.object({
 });
 
 // =============================================================================
+// WEBSITE CONTENT SCHEMAS
+// =============================================================================
+
+export const websiteServiceSchema = z.object({
+  title: nonEmptyString.max(80, 'Service title must be 80 characters or less'),
+  description: nonEmptyString.max(200, 'Service description must be 200 characters or less'),
+  icon: z.string().max(50).optional(),
+});
+
+export const websiteContentDraftSchema = z.object({
+  hero: z.object({
+    headline: nonEmptyString.max(100, 'Hero headline must be 100 characters or less'),
+    subheadline: nonEmptyString.max(200, 'Hero subheadline must be 200 characters or less'),
+    ctaText: nonEmptyString.max(40, 'CTA text must be 40 characters or less'),
+  }),
+  coach: z.object({
+    headline: nonEmptyString.max(80, 'Coach headline must be 80 characters or less'),
+    bio: nonEmptyString.max(1000, 'Coach bio must be 1000 characters or less'),
+    bullets: z.array(z.string().max(150))
+      .min(2, 'Must have at least 2 bullet points')
+      .max(6, 'Can have at most 6 bullet points'),
+  }),
+  services: z.object({
+    headline: nonEmptyString.max(80, 'Services headline must be 80 characters or less'),
+    items: z.array(websiteServiceSchema)
+      .min(2, 'Must have at least 2 services')
+      .max(6, 'Can have at most 6 services'),
+  }),
+  testimonials: z.array(landingPageTestimonialSchema)
+    .min(2, 'Must have at least 2 testimonials')
+    .max(6, 'Can have at most 6 testimonials'),
+  faq: z.array(landingPageFAQSchema)
+    .min(4, 'Must have at least 4 FAQs')
+    .max(8, 'Can have at most 8 FAQs'),
+  cta: z.object({
+    headline: nonEmptyString.max(100, 'CTA headline must be 100 characters or less'),
+    subheadline: nonEmptyString.max(200, 'CTA subheadline must be 200 characters or less'),
+    buttonText: nonEmptyString.max(40, 'Button text must be 40 characters or less'),
+  }),
+  seo: z.object({
+    metaTitle: nonEmptyString.max(60, 'Meta title must be 60 characters or less'),
+    metaDescription: nonEmptyString.max(160, 'Meta description must be 160 characters or less'),
+  }),
+  tone: landingPageToneSchema,
+});
+
+// =============================================================================
 // VALIDATION HELPERS
 // =============================================================================
 
 export type ProgramContentDraft = z.infer<typeof programContentDraftSchema>;
 export type LandingPageDraft = z.infer<typeof landingPageDraftSchema>;
+export type WebsiteContentDraft = z.infer<typeof websiteContentDraftSchema>;
 
 /**
  * Validate a program content draft
@@ -176,6 +224,29 @@ export function validateLandingPageDraft(draft: unknown): {
   errors?: Array<{ path: string; message: string }>;
 } {
   const result = landingPageDraftSchema.safeParse(draft);
+
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+
+  return {
+    success: false,
+    errors: result.error.issues.map((err) => ({
+      path: String(err.path.join('.')),
+      message: err.message,
+    })),
+  };
+}
+
+/**
+ * Validate a website content draft
+ */
+export function validateWebsiteContentDraft(draft: unknown): {
+  success: boolean;
+  data?: WebsiteContentDraft;
+  errors?: Array<{ path: string; message: string }>;
+} {
+  const result = websiteContentDraftSchema.safeParse(draft);
 
   if (result.success) {
     return { success: true, data: result.data };
