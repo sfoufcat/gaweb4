@@ -1,11 +1,14 @@
 'use client';
 
 import React from 'react';
-import { LandingPageRenderer } from '@/components/shared/landing-templates/LandingPageRenderer';
+import { useRouter } from 'next/navigation';
 import { WebsiteNav } from './WebsiteNav';
-import { WebsiteServicesSection } from './WebsiteServicesSection';
-import { WebsiteFooterCTA } from './WebsiteFooterCTA';
-import type { OrgWebsite, Funnel } from '@/types';
+import {
+  WebsiteClassicTemplate,
+  WebsiteModernTemplate,
+  WebsiteMinimalTemplate,
+} from './templates';
+import type { OrgWebsite, Funnel, WebsiteService } from '@/types';
 
 // Simple branding interface for website rendering
 // Can accept either full OrgBranding or simplified ServerBranding
@@ -39,9 +42,11 @@ export function WebsitePageRenderer({
   subdomain,
   isPreviewMode = false,
 }: WebsitePageRendererProps) {
+  const router = useRouter();
+
   // Get accent color from branding - supports both OrgBranding and ServerBranding
   const accentLight = branding?.colors?.accentLight || branding?.primaryColor || '#a07855';
-  const accentDark = branding?.colors?.accentDark || branding?.primaryColor || '#b8896a';
+  const accentDark = branding?.colors?.accentDark || branding?.primaryColor || '#8b6544';
 
   // Build funnel URLs map
   const funnelUrls: Record<string, string> = {};
@@ -57,10 +62,46 @@ export function WebsitePageRenderer({
     ? funnelUrls[website.heroCtaFunnelId] || '/join'
     : '/join';
 
-  // Get footer CTA URL (defaults to hero CTA)
-  const footerCtaUrl = website.ctaFunnelId
-    ? funnelUrls[website.ctaFunnelId] || heroCtaUrl
-    : heroCtaUrl;
+  // Handle service click - navigate to funnel or show modal
+  const handleServiceClick = (service: WebsiteService) => {
+    if (service.funnelId && funnelUrls[service.funnelId]) {
+      router.push(funnelUrls[service.funnelId]);
+    } else if (service.externalUrl) {
+      window.open(service.externalUrl, '_blank');
+    }
+  };
+
+  // Select template based on website settings
+  const renderTemplate = () => {
+    const commonProps = {
+      headline: website.heroHeadline,
+      subheadline: website.heroSubheadline,
+      heroImageUrl: website.heroImageUrl,
+      ctaText: website.heroCtaText || 'Get Started',
+      ctaUrl: heroCtaUrl,
+      coachName: coachName,
+      coachImageUrl: coachImageUrl,
+      coachBio: website.coachBio,
+      coachHeadline: website.coachHeadline,
+      credentials: website.coachBullets || [],
+      services: website.services || [],
+      testimonials: website.testimonials || [],
+      faqs: website.faqs || [],
+      accentLight,
+      accentDark,
+      onServiceClick: handleServiceClick,
+    };
+
+    switch (website.template) {
+      case 'modern':
+        return <WebsiteModernTemplate {...commonProps} />;
+      case 'minimal':
+        return <WebsiteMinimalTemplate {...commonProps} />;
+      case 'classic':
+      default:
+        return <WebsiteClassicTemplate {...commonProps} />;
+    }
+  };
 
   return (
     <div className="min-h-screen">
@@ -93,47 +134,8 @@ export function WebsitePageRenderer({
       {/* Spacer for fixed nav (+ preview banner if present) */}
       <div className={isPreviewMode ? 'h-[104px]' : 'h-16'} />
 
-      {/* Main Landing Page Content - reuses existing templates */}
-      <LandingPageRenderer
-        template={website.template}
-        headline={website.heroHeadline}
-        subheadline={website.heroSubheadline}
-        programImageUrl={website.heroImageUrl}
-        coachName={coachName}
-        coachImageUrl={coachImageUrl}
-        coachBio={website.coachBio}
-        keyOutcomes={website.coachBullets} // Credentials as outcomes
-        features={[]} // Services shown separately below
-        testimonials={website.testimonials}
-        faqs={website.faqs}
-        ctaText={website.heroCtaText || 'Get Started'}
-        showTestimonials={website.testimonials.length > 0}
-        showFAQ={website.faqs.length > 0}
-        showPrice={false} // Website doesn't show price
-        onCTA={() => {
-          // Navigate to funnel
-          window.location.href = heroCtaUrl;
-        }}
-        accentLight={accentLight}
-        accentDark={accentDark}
-      />
-
-      {/* Services Section - shown after main content */}
-      <WebsiteServicesSection
-        headline={website.servicesHeadline || 'What I Offer'}
-        services={website.services}
-        funnelUrls={funnelUrls}
-        accentColor={accentLight}
-      />
-
-      {/* Footer CTA */}
-      <WebsiteFooterCTA
-        headline={website.ctaHeadline}
-        subheadline={website.ctaSubheadline}
-        buttonText={website.ctaButtonText || website.heroCtaText || 'Get Started'}
-        url={footerCtaUrl}
-        accentColor={accentLight}
-      />
+      {/* Website Template Content */}
+      {renderTemplate()}
 
       {/* Simple Footer */}
       <footer className="py-8 bg-[#faf8f6] dark:bg-[#05070b] border-t border-[#e1ddd8] dark:border-[#262b35]">
