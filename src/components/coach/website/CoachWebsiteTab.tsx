@@ -385,7 +385,12 @@ export function CoachWebsiteTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmEnable}>Enable Website</AlertDialogAction>
+            <AlertDialogAction
+              onClick={confirmEnable}
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white"
+            >
+              Enable Website
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
