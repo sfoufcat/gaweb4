@@ -227,36 +227,126 @@ export async function GET(
       const courses = resourceAssignments.filter((r) => r.resourceType === 'course');
       const articles = resourceAssignments.filter((r) => r.resourceType === 'article');
 
-      // For courses, we'd need to fetch module/lesson structure
-      // Simplified version - just show as modules
+      // Fetch course metadata to get actual lesson counts (not just from progress)
+      const courseIds = courses.map((c) => c.resourceId).filter(Boolean);
+      const courseMetaMap = new Map<string, { title: string; lessons: { id: string; title: string; order: number }[] }>();
+
+      if (courseIds.length > 0) {
+        // Firestore 'in' query limited to 30 items
+        const batchSize = 30;
+        for (let i = 0; i < courseIds.length; i += batchSize) {
+          const batch = courseIds.slice(i, i + batchSize);
+          const courseDocs = await adminDb
+            .collection('discover_courses')
+            .where('__name__', 'in', batch)
+            .get();
+
+          courseDocs.forEach((doc) => {
+            const data = doc.data();
+            // Lessons can be in different structures depending on course format
+            let lessons: { id: string; title: string; order: number }[] = [];
+
+            if (data.lessons && Array.isArray(data.lessons)) {
+              lessons = data.lessons.map((lesson: { id?: string; title?: string; order?: number }, idx: number) => ({
+                id: lesson.id || `lesson-${idx}`,
+                title: lesson.title || `Lesson ${idx + 1}`,
+                order: lesson.order ?? idx,
+              }));
+            } else if (data.modules && Array.isArray(data.modules)) {
+              // Flat list of lessons from all modules
+              data.modules.forEach((mod: { lessons?: { id?: string; title?: string; order?: number }[] }, modIdx: number) => {
+                if (mod.lessons && Array.isArray(mod.lessons)) {
+                  mod.lessons.forEach((lesson, lesIdx: number) => {
+                    lessons.push({
+                      id: lesson.id || `lesson-${modIdx}-${lesIdx}`,
+                      title: lesson.title || `Lesson ${lessons.length + 1}`,
+                      order: lessons.length,
+                    });
+                  });
+                }
+              });
+            }
+
+            courseMetaMap.set(doc.id, {
+              title: data.title || 'Course',
+              lessons,
+            });
+          });
+        }
+      }
+
+      // Build modules with ACTUAL lesson counts from course metadata
       courses.forEach((course) => {
+        const courseMeta = courseMetaMap.get(course.resourceId);
         const courseProgress = contentProgress.filter(
           (p) => p.contentId === course.resourceId && p.contentType === 'course_lesson'
         );
 
+        // Build lessons from course metadata, overlay with progress
+        const lessons: LessonProgress[] = (courseMeta?.lessons || []).map((lesson) => {
+          const lessonProgress = courseProgress.find((p) => p.lessonId === lesson.id);
+          return {
+            lessonId: lesson.id,
+            title: lesson.title,
+            completed: lessonProgress?.status === 'completed',
+            completedAt: lessonProgress?.completedAt,
+          };
+        });
+
+        // If no metadata found but we have progress, fall back to progress-based lessons
+        // (This handles edge cases where course metadata is missing)
+        if (lessons.length === 0 && courseProgress.length > 0) {
+          courseProgress.forEach((p) => {
+            lessons.push({
+              lessonId: p.lessonId || p.id,
+              title: `Lesson ${p.lessonId?.slice(0, 8) || ''}`,
+              completed: p.status === 'completed',
+              completedAt: p.completedAt,
+            });
+          });
+        }
+
         const moduleProgress: ModuleProgress = {
           moduleId: course.resourceId,
-          title: course.title || 'Course',
-          lessons: courseProgress.map((p) => ({
-            lessonId: p.lessonId || p.id,
-            title: `Lesson ${p.lessonId?.slice(0, 8) || ''}`,
-            completed: p.status === 'completed',
-            completedAt: p.completedAt,
-          })),
+          title: courseMeta?.title || course.title || 'Course',
+          lessons,
         };
 
         currentWeekContent.modules.push(moduleProgress);
       });
 
-      // Articles
+      // Fetch article metadata for proper titles
+      const articleIds = articles.map((a) => a.resourceId).filter(Boolean);
+      const articleMetaMap = new Map<string, { title: string }>();
+
+      if (articleIds.length > 0) {
+        const batchSize = 30;
+        for (let i = 0; i < articleIds.length; i += batchSize) {
+          const batch = articleIds.slice(i, i + batchSize);
+          const articleDocs = await adminDb
+            .collection('discover_articles')
+            .where('__name__', 'in', batch)
+            .get();
+
+          articleDocs.forEach((doc) => {
+            const data = doc.data();
+            articleMetaMap.set(doc.id, {
+              title: data.title || 'Article',
+            });
+          });
+        }
+      }
+
+      // Articles with proper titles
       articles.forEach((article) => {
+        const articleMeta = articleMetaMap.get(article.resourceId);
         const articleProgress = contentProgress.find(
           (p) => p.contentId === article.resourceId && p.contentType === 'article'
         );
 
         currentWeekContent.articles.push({
           articleId: article.resourceId,
-          title: article.title || 'Article',
+          title: articleMeta?.title || article.title || 'Article',
           completed: articleProgress?.status === 'completed',
           completedAt: articleProgress?.completedAt,
         });

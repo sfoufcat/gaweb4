@@ -31,11 +31,11 @@ export function AdminDiscoverTab({
   initialCourseId,
   onCourseSelect,
 }: AdminDiscoverTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<DiscoverSubTab>('events');
+  const [activeSubTab, setActiveSubTab] = useState<DiscoverSubTab>('courses');
 
   // Restore sub-tab selection from URL param on mount
   useEffect(() => {
-    if (initialSubTab && ['events', 'articles', 'courses', 'downloads', 'links', 'questionnaires'].includes(initialSubTab)) {
+    if (initialSubTab && ['courses', 'events', 'articles', 'questionnaires', 'downloads', 'links'].includes(initialSubTab)) {
       setActiveSubTab(initialSubTab as DiscoverSubTab);
     }
   }, [initialSubTab]);
@@ -46,19 +46,19 @@ export function AdminDiscoverTab({
   }, [activeSubTab, onSubTabChange]);
 
   const tabs: { id: DiscoverSubTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'courses', label: 'Courses', icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: 'events', label: 'Events', icon: <Calendar className="w-3.5 h-3.5" /> },
     { id: 'articles', label: 'Articles', icon: <FileText className="w-3.5 h-3.5" /> },
-    { id: 'courses', label: 'Courses', icon: <BookOpen className="w-3.5 h-3.5" /> },
+    { id: 'questionnaires', label: 'Questionnaires', icon: <ClipboardList className="w-3.5 h-3.5" /> },
     { id: 'downloads', label: 'Downloads', icon: <Download className="w-3.5 h-3.5" /> },
     { id: 'links', label: 'Links', icon: <Link className="w-3.5 h-3.5" /> },
-    { id: 'questionnaires', label: 'Questionnaires', icon: <ClipboardList className="w-3.5 h-3.5" /> },
   ];
 
   return (
     <div className="space-y-6">
       {/* Section Header */}
       <div>
-        <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Content</h2>
+        <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Resources</h2>
         <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
           Manage content for programs
         </p>

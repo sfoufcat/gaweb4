@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { Program, ProgramEnrollment, ContentProgress } from '@/types';
+import type { Program, ProgramEnrollment, ContentProgress, ProgramInstance, WeekResourceAssignment } from '@/types';
 
 interface MemberStats {
   userId: string;
@@ -151,9 +151,10 @@ export async function GET(
       ...doc.data(),
     })) as (ProgramEnrollment & { id: string })[];
 
-    // Look up instanceId for filtering content progress
+    // Look up instance for filtering content progress and getting assigned resources
     // This ensures we only show progress for THIS program, not other programs
     let instanceId: string | null = instanceIdParam;
+    let instance: (ProgramInstance & { id: string }) | null = null;
 
     if (!instanceId && cohortId) {
       // Look up instance by cohortId
@@ -166,6 +167,7 @@ export async function GET(
 
       if (!instanceSnap.empty) {
         instanceId = instanceSnap.docs[0].id;
+        instance = { id: instanceSnap.docs[0].id, ...instanceSnap.docs[0].data() } as ProgramInstance & { id: string };
       }
     } else if (!instanceId && enrollments.length === 1) {
       // For individual programs, look up by enrollment
@@ -177,6 +179,13 @@ export async function GET(
 
       if (!instanceSnap.empty) {
         instanceId = instanceSnap.docs[0].id;
+        instance = { id: instanceSnap.docs[0].id, ...instanceSnap.docs[0].data() } as ProgramInstance & { id: string };
+      }
+    } else if (instanceIdParam) {
+      // If instanceId was passed directly, fetch it
+      const instanceDoc = await adminDb.collection('program_instances').doc(instanceIdParam).get();
+      if (instanceDoc.exists) {
+        instance = { id: instanceDoc.id, ...instanceDoc.data() } as ProgramInstance & { id: string };
       }
     }
 
@@ -431,36 +440,150 @@ export async function GET(
         };
       });
 
-    // Content completion by item
+    // Content completion by item - build from ASSIGNED resources, not just tracked progress
+    // This shows completion for all content the coach assigned, even if no one started it yet
     const contentCompletionByItem = new Map<string, ContentCompletionItem>();
 
-    allProgress.forEach((p) => {
-      const key = `${p.contentType}-${p.contentId}`;
-      const existing = contentCompletionByItem.get(key);
+    // Collect all assigned resources from instance or program weeks
+    const allAssignedResources: WeekResourceAssignment[] = [];
+    const weekSource = instance?.weeks || program.weeks || [];
 
-      if (existing) {
-        existing.totalCount++;
-        if (p.status === 'completed') {
-          existing.completedCount++;
+    weekSource.forEach((week) => {
+      // Get resources from both new and legacy formats
+      const resources = week.resourceAssignments || [];
+      const legacyCourses = week.courseAssignments || [];
+
+      resources.forEach((r) => {
+        if (r.resourceType === 'course' || r.resourceType === 'article') {
+          allAssignedResources.push(r);
         }
-        existing.completionPercent = Math.round(
-          (existing.completedCount / existing.totalCount) * 100
-        );
-      } else {
-        // Look up actual title from fetched content
-        const title = contentTitleMap.get(p.contentId) ||
-          (p.contentType === 'article' ? `Article ${p.contentId.slice(0, 8)}` : `Course ${p.contentId.slice(0, 8)}`);
+      });
 
-        contentCompletionByItem.set(key, {
-          contentType: p.contentType === 'article' ? 'article' : 'course',
-          contentId: p.contentId,
-          title,
-          completedCount: p.status === 'completed' ? 1 : 0,
-          totalCount: 1,
-          completionPercent: p.status === 'completed' ? 100 : 0,
-        });
+      // Also include legacy course assignments
+      legacyCourses.forEach((ca: { courseId?: string; title?: string }) => {
+        if (ca.courseId) {
+          allAssignedResources.push({
+            id: ca.courseId,
+            resourceType: 'course',
+            resourceId: ca.courseId,
+            title: ca.title,
+            dayTag: 'week',
+            order: 0,
+          } as WeekResourceAssignment);
+        }
+      });
+    });
+
+    // Deduplicate by resourceId
+    const uniqueResources = new Map<string, WeekResourceAssignment>();
+    allAssignedResources.forEach((r) => {
+      if (!uniqueResources.has(r.resourceId)) {
+        uniqueResources.set(r.resourceId, r);
       }
     });
+
+    // Fetch metadata for all assigned content
+    const assignedCourseIds = Array.from(uniqueResources.values())
+      .filter((r) => r.resourceType === 'course')
+      .map((r) => r.resourceId);
+    const assignedArticleIds = Array.from(uniqueResources.values())
+      .filter((r) => r.resourceType === 'article')
+      .map((r) => r.resourceId);
+
+    const assignedContentTitleMap = new Map<string, string>();
+
+    // Fetch course titles
+    if (assignedCourseIds.length > 0) {
+      const batchSize = 30;
+      for (let i = 0; i < assignedCourseIds.length; i += batchSize) {
+        const batch = assignedCourseIds.slice(i, i + batchSize);
+        const courseDocs = await adminDb
+          .collection('discover_courses')
+          .where('__name__', 'in', batch)
+          .get();
+
+        courseDocs.docs.forEach((doc) => {
+          const data = doc.data();
+          assignedContentTitleMap.set(doc.id, data.title || `Course ${doc.id.slice(0, 8)}`);
+        });
+      }
+    }
+
+    // Fetch article titles
+    if (assignedArticleIds.length > 0) {
+      const batchSize = 30;
+      for (let i = 0; i < assignedArticleIds.length; i += batchSize) {
+        const batch = assignedArticleIds.slice(i, i + batchSize);
+        const articleDocs = await adminDb
+          .collection('discover_articles')
+          .where('__name__', 'in', batch)
+          .get();
+
+        articleDocs.docs.forEach((doc) => {
+          const data = doc.data();
+          assignedContentTitleMap.set(doc.id, data.title || `Article ${doc.id.slice(0, 8)}`);
+        });
+      }
+    }
+
+    // Build completion list from ASSIGNED content (shows all assigned, even if not started)
+    const totalMembers = memberStats.length;
+
+    uniqueResources.forEach((resource) => {
+      // Count how many members completed this content
+      let completedCount = 0;
+      memberStats.forEach((member) => {
+        const memberProgress = contentProgressMap.get(member.userId) || [];
+        const hasCompleted = memberProgress.some(
+          (p) => p.contentId === resource.resourceId && p.status === 'completed'
+        );
+        if (hasCompleted) completedCount++;
+      });
+
+      const contentType = resource.resourceType === 'course' ? 'course' : 'article';
+      const title = assignedContentTitleMap.get(resource.resourceId) ||
+        resource.title ||
+        (contentType === 'article' ? `Article ${resource.resourceId.slice(0, 8)}` : `Course ${resource.resourceId.slice(0, 8)}`);
+
+      contentCompletionByItem.set(resource.resourceId, {
+        contentType,
+        contentId: resource.resourceId,
+        title,
+        completedCount,
+        totalCount: totalMembers,
+        completionPercent: totalMembers > 0 ? Math.round((completedCount / totalMembers) * 100) : 0,
+      });
+    });
+
+    // If no assigned resources found, fall back to tracked progress (for backwards compatibility)
+    if (contentCompletionByItem.size === 0) {
+      allProgress.forEach((p) => {
+        const key = `${p.contentType}-${p.contentId}`;
+        const existing = contentCompletionByItem.get(key);
+
+        if (existing) {
+          existing.totalCount++;
+          if (p.status === 'completed') {
+            existing.completedCount++;
+          }
+          existing.completionPercent = Math.round(
+            (existing.completedCount / existing.totalCount) * 100
+          );
+        } else {
+          const title = contentTitleMap.get(p.contentId) ||
+            (p.contentType === 'article' ? `Article ${p.contentId.slice(0, 8)}` : `Course ${p.contentId.slice(0, 8)}`);
+
+          contentCompletionByItem.set(key, {
+            contentType: p.contentType === 'article' ? 'article' : 'course',
+            contentId: p.contentId,
+            title,
+            completedCount: p.status === 'completed' ? 1 : 0,
+            totalCount: 1,
+            completionPercent: p.status === 'completed' ? 100 : 0,
+          });
+        }
+      });
+    }
 
     const contentCompletionList = Array.from(contentCompletionByItem.values())
       .sort((a, b) => b.completionPercent - a.completionPercent);

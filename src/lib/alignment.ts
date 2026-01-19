@@ -458,7 +458,9 @@ export async function updateAlignmentForToday(
   organizationId: string,
   updates: AlignmentUpdatePayload
 ): Promise<UserAlignment | null> {
-  const today = getTodayDate();
+  // Fetch user's timezone for accurate date calculations
+  const timezone = await getUserTimezone(userId);
+  const today = getTodayDate(timezone);
   const docId = getAlignmentDocId(organizationId, userId, today);
   const docRef = adminDb.collection('userAlignment').doc(docId);
   const now = new Date().toISOString();
@@ -538,7 +540,7 @@ export async function updateAlignmentForToday(
 
     // If becoming fully aligned for the first time today, update streak
     if (fullyAligned && !wasFullyAlignedBefore) {
-      streakOnThisDay = await updateStreak(userId, organizationId, today);
+      streakOnThisDay = await updateStreak(userId, organizationId, today, timezone);
     }
 
     // Prepare alignment data
@@ -688,19 +690,24 @@ async function checkAndResetBrokenStreak(userId: string, organizationId: string,
 /**
  * Update the user's streak when they become fully aligned within an organization
  * Returns the new streak count
- * 
+ *
  * Weekend handling (when weekendStreakEnabled is false - default):
  * - If called on a weekend, returns current streak without modification (safety guard)
  * - When checking streak continuity, looks back to last weekday (skipping Sat/Sun)
  * - This ensures streaks bridge from Friday to Monday without breaking
- * 
+ *
  * When weekendStreakEnabled is true:
  * - Weekends are treated like any other day
  * - Members must complete activities every day to maintain streak
- * 
+ *
  * Multi-tenancy: Streak is tracked separately per organization
+ *
+ * @param userId User ID
+ * @param organizationId Organization ID
+ * @param today Today's date in YYYY-MM-DD format (should be timezone-aware)
+ * @param timezone User's IANA timezone string
  */
-async function updateStreak(userId: string, organizationId: string, today: string): Promise<number> {
+async function updateStreak(userId: string, organizationId: string, today: string, timezone: string): Promise<number> {
   const summaryDocId = getAlignmentSummaryDocId(organizationId, userId);
   const summaryRef = adminDb.collection('userAlignmentSummary').doc(summaryDocId);
   const now = new Date().toISOString();
@@ -709,9 +716,9 @@ async function updateStreak(userId: string, organizationId: string, today: strin
     // Get org config to check weekend setting
     const config = await getOrgAlignmentConfig(organizationId);
     const weekendStreakEnabled = config.weekendStreakEnabled === true;
-    
+
     // Safety guard: If called on a weekend and weekends are disabled, don't modify streak
-    if (!weekendStreakEnabled && isWeekendDate(today)) {
+    if (!weekendStreakEnabled && isWeekendDate(today, timezone)) {
       const summaryDoc = await summaryRef.get();
       if (summaryDoc.exists) {
         return (summaryDoc.data() as UserAlignmentSummary).currentStreak || 0;
@@ -729,10 +736,10 @@ async function updateStreak(userId: string, organizationId: string, today: strin
 
       // Get the expected last aligned date based on weekend setting
       // If weekends enabled, check yesterday; otherwise check last weekday
-      const expectedLastDate = weekendStreakEnabled 
-        ? getYesterdayDate() 
-        : getLastWeekdayDate(today);
-      
+      const expectedLastDate = weekendStreakEnabled
+        ? getYesterdayDate(timezone)
+        : getLastWeekdayDate(today, timezone);
+
       if (lastAlignedDate === expectedLastDate) {
         currentStreak = (summaryData.currentStreak || 0) + 1;
       } else if (lastAlignedDate === today) {
@@ -785,11 +792,13 @@ export async function getFullAlignmentState(
  * Multi-tenancy: Alignment is scoped per organization
  */
 export async function initializeAlignmentForToday(userId: string, organizationId: string): Promise<UserAlignment> {
-  const today = getTodayDate();
-  
+  // Fetch user's timezone for accurate date calculations
+  const timezone = await getUserTimezone(userId);
+  const today = getTodayDate(timezone);
+
   // Proactively check and reset broken streaks on page load
   // This ensures users see their streak as 0 immediately if they missed a day
-  await checkAndResetBrokenStreak(userId, organizationId, today);
+  await checkAndResetBrokenStreak(userId, organizationId, today, timezone);
   
   // Get org config to know which activities to check
   const config = await getOrgAlignmentConfig(organizationId);
