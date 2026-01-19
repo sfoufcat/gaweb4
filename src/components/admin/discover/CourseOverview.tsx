@@ -303,7 +303,7 @@ export function CourseOverview({ course, apiEndpoint }: CourseOverviewProps) {
   }
 
   return (
-    <div className="p-6 space-y-8 max-w-5xl mx-auto">
+    <div className="px-8 py-6 space-y-8 w-full">
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard

@@ -318,22 +318,22 @@ export function CourseEditor({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate max-w-[300px]">
-              {formData.title || 'New Course'}
-            </h1>
-          </div>
+          <h1 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate max-w-[300px]">
+            {formData.title || 'New Course'}
+          </h1>
+        </div>
 
+        <div className="flex items-center gap-3">
           {/* Tab Navigation - only show for existing courses */}
           {isEditing && (
-            <div className="flex items-center gap-1 bg-[#f3f1ef] dark:bg-[#11141b] rounded-xl p-1 ml-4">
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setActiveTab('overview')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
                   activeTab === 'overview'
-                    ? 'bg-white dark:bg-[#1c2028] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white'
+                    ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                 }`}
               >
                 <BarChart3 className="w-4 h-4" />
@@ -342,10 +342,10 @@ export function CourseEditor({
               <button
                 type="button"
                 onClick={() => setActiveTab('content')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
                   activeTab === 'content'
-                    ? 'bg-white dark:bg-[#1c2028] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white'
+                    ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                 }`}
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -353,11 +353,9 @@ export function CourseEditor({
               </button>
             </div>
           )}
-        </div>
 
-        <div className="flex items-center gap-3">
           {/* Stats */}
-          <div className="hidden sm:flex items-center gap-4 mr-4 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+          <div className="hidden sm:flex items-center gap-4 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
             <span className="flex items-center gap-1.5">
               <Layers className="w-4 h-4" />
               {formData.modules.length}
@@ -401,10 +399,10 @@ export function CourseEditor({
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden p-4 bg-[#faf8f6] dark:bg-[#0d0f14]">
         {/* Overview Tab Content */}
         {activeTab === 'overview' && isEditing && course && (
-          <div className="flex-1 overflow-y-auto">
+          <div className="h-full overflow-y-auto rounded-2xl border border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
             <CourseOverview
               course={course}
               apiEndpoint={apiEndpoint}
@@ -414,21 +412,17 @@ export function CourseEditor({
 
         {/* Content Tab or New Course - Sidebar + Editor */}
         {(activeTab === 'content' || !isEditing) && (
-          <>
+          <div className="h-full flex rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
         {/* Sidebar - Module/Lesson Tree */}
-        <div className="w-80 flex-shrink-0 flex flex-col bg-[#faf8f6] dark:bg-[#0d0f14] p-4">
-          {/* Sidebar Container with rounded border */}
-          <div className="flex-1 flex flex-col border border-[#e1ddd8] dark:border-[#262b35] rounded-2xl overflow-hidden bg-white/50 dark:bg-[#171b22]/50">
-            {/* Sidebar Header */}
-            <div className="px-4 py-3 border-b border-[#e8e4df] dark:border-[#262b35] flex items-center justify-between bg-[#faf8f6]/80 dark:bg-[#0d0f14]/80">
-              <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Structure</span>
-              </div>
-            </div>
+        <div className="w-[420px] flex-shrink-0 flex flex-col border-r border-[#e8e4df] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#0d0f14]">
+          {/* Sidebar Header */}
+          <div className="px-6 py-4 flex items-center gap-2">
+            <LayoutGrid className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+            <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Structure</span>
+          </div>
 
           {/* Module List */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
             <Reorder.Group
               axis="y"
               values={formData.modules}
@@ -607,29 +601,28 @@ export function CourseEditor({
               Add Module
             </button>
           </div>
-          </div>
         </div>
 
         {/* Content Area - Lesson Editor */}
         <div className="flex-1 overflow-y-auto bg-white dark:bg-[#171b22]">
           {selectedLesson && selectedModuleIndex !== null && selectedLessonIndex !== null ? (
-            <div className="max-w-3xl mx-auto p-8 space-y-6">
+            <div className="max-w-5xl mx-auto px-10 py-8 space-y-8">
+              {/* Lesson Title */}
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                  Lesson Title
-                </label>
                 <input
                   type="text"
                   value={selectedLesson.title}
                   onChange={(e) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, title: e.target.value })}
-                  placeholder="Enter lesson title..."
-                  className="w-full px-4 py-3 text-lg border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert bg-white dark:bg-[#0d0f14]"
+                  placeholder="Lesson title..."
+                  className="w-full px-0 py-2 text-2xl font-semibold border-none bg-transparent focus:outline-none focus:ring-0 font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#b2b6c2] dark:placeholder:text-[#5f5a55]"
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+              {/* Media Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Video Upload - Takes 2/3 */}
+                <div className="lg:col-span-2 space-y-3">
+                  <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                     Video
                   </label>
                   <MediaUpload
@@ -647,7 +640,7 @@ export function CourseEditor({
                       type="button"
                       onClick={handleFetchDuration}
                       disabled={fetchingDuration}
-                      className="mt-2 px-3 py-1.5 text-xs bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20 rounded-lg font-albert font-medium disabled:opacity-50 flex items-center gap-1.5"
+                      className="px-3 py-1.5 text-xs bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20 rounded-lg font-albert font-medium disabled:opacity-50 flex items-center gap-1.5"
                     >
                       {fetchingDuration ? (
                         <>
@@ -664,9 +657,10 @@ export function CourseEditor({
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                    Thumbnail (optional)
+                {/* Thumbnail - Takes 1/3 */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                    Thumbnail
                   </label>
                   <MediaUpload
                     value={selectedLesson.videoThumbnailUrl || ''}
@@ -680,38 +674,45 @@ export function CourseEditor({
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                    Duration (minutes)
+              {/* Settings Row */}
+              <div className="flex items-center gap-8 py-4 border-y border-[#e8e4df] dark:border-[#262b35]">
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                    Duration
                   </label>
-                  <input
-                    type="number"
-                    value={selectedLesson.durationMinutes || ''}
-                    onChange={(e) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, durationMinutes: e.target.value ? parseInt(e.target.value) : undefined })}
-                    placeholder="0"
-                    className="w-24 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert bg-white dark:bg-[#0d0f14]"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={selectedLesson.durationMinutes || ''}
+                      onChange={(e) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, durationMinutes: e.target.value ? parseInt(e.target.value) : undefined })}
+                      placeholder="0"
+                      className="w-20 px-3 py-2 text-center border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert bg-white dark:bg-[#0d0f14]"
+                    />
+                    <span className="text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">min</span>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-3 pt-6">
+                <div className="h-6 w-px bg-[#e8e4df] dark:bg-[#262b35]" />
+
+                <label className="flex items-center gap-3 cursor-pointer">
                   <BrandedCheckbox
                     checked={selectedLesson.isLocked || false}
                     onChange={(checked) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, isLocked: checked })}
                   />
                   <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                    Locked (Premium)
+                    Locked
                   </span>
-                </div>
+                </label>
               </div>
 
-              <div>
+              {/* Notes Section */}
+              <div className="space-y-3">
                 <RichTextEditor
                   value={selectedLesson.notes || ''}
                   onChange={(notes) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, notes })}
                   label="Lesson Notes"
                   placeholder="Summary, key points, or additional resources..."
-                  rows={6}
+                  rows={8}
                   showMediaToolbar={true}
                   mediaFolder="courses/lessons"
                   uploadEndpoint={uploadEndpoint}
@@ -728,7 +729,7 @@ export function CourseEditor({
             </div>
           )}
         </div>
-          </>
+          </div>
         )}
       </div>
 
