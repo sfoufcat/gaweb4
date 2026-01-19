@@ -1047,11 +1047,11 @@ export function ChannelManagementTab() {
       <div className="p-6">
         <div className="max-w-2xl mx-auto">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 w-48 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg" />
-            <div className="h-4 w-64 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg" />
+            <div className="h-8 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+            <div className="h-4 w-64 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
             <div className="space-y-3 mt-6">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-16 bg-[#e1ddd8] dark:bg-[#262b35] rounded-xl" />
+                <div key={i} className="h-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
               ))}
             </div>
           </div>

@@ -4174,12 +4174,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   {/* Content Editor - conditionally render based on selection */}
                   <div className="flex-1 p-4 sm:p-6">
                 {loadingDetails ? (
-                <div className="space-y-6 animate-pulse">
-                  <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                <div className="space-y-6 animate-pulse pt-2">
+                  {/* Title skeleton */}
+                  <div className="h-6 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                  {/* Form field skeleton */}
                   <div className="space-y-2">
                     <div className="h-4 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
                     <div className="h-10 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
                   </div>
+                  {/* Content area skeleton */}
                   <div className="space-y-2">
                     <div className="h-4 w-28 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
                     <div className="h-24 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
