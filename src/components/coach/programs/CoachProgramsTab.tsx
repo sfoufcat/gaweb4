@@ -19,7 +19,7 @@ import type { Questionnaire } from '@/types/questionnaire';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine, RefreshCw, UserPlus } from 'lucide-react';
+import { Plus, Users, User, Calendar as CalendarIcon, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine, RefreshCw, UserPlus } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -45,7 +45,9 @@ import { EnrollmentSettingsModal } from './EnrollmentSettingsModal';
 import { EnrollClientsModal } from './EnrollClientsModal';
 import type { OrgEnrollmentRules } from '@/types';
 import { DEFAULT_ENROLLMENT_RULES } from '@/types';
-import { BrandedCheckbox } from '@/components/ui/checkbox';
+import { BrandedCheckbox, BrandedRadio } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 import { StatusBadge, TypeBadge, VisibilityBadge } from '@/components/ui/program-badges';
 import { CoachSelector } from '@/components/coach/CoachSelector';
 import { ClientSelector } from './ClientSelector';
@@ -4873,7 +4875,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       </h3>
                       <div className="flex items-center gap-3 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
                         <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
+                          <CalendarIcon className="w-3 h-3" />
                           {cohort.startDate} → {cohort.endDate}
                         </span>
                         <span className="flex items-center gap-1">
@@ -4935,7 +4937,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
               {!loadingDetails && programCohorts.length === 0 && (
                 <div className="text-center py-8 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
-                  <Calendar className="w-12 h-12 text-[#5f5a55] mx-auto mb-3" />
+                  <CalendarIcon className="w-12 h-12 text-[#5f5a55] mx-auto mb-3" />
                   <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
                     No cohorts yet
                   </h3>
@@ -5068,7 +5070,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           <div className="text-right min-w-[100px]">
                             {nextCallFormatted ? (
                               <div className="flex items-center gap-1.5">
-                                <Calendar className="w-3.5 h-3.5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                                <CalendarIcon className="w-3.5 h-3.5 text-[#5f5a55] dark:text-[#b2b6c2]" />
                                 <div>
                                   <p className="text-xs font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
                                     {nextCallFormatted.date}
@@ -5093,7 +5095,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                               className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-accent text-white rounded-lg text-xs font-medium hover:bg-brand-accent/90 transition-colors"
                               title="Schedule a call"
                             >
-                              <Calendar className="w-3.5 h-3.5" />
+                              <CalendarIcon className="w-3.5 h-3.5" />
                               Schedule
                             </button>
                           )}
@@ -6194,27 +6196,61 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
                           Start Date *
                         </label>
-                        <input
-                          type="date"
-                          value={cohortFormData.startDate}
-                          onChange={(e) => {
-                            const startDate = new Date(e.target.value);
-                            const endDate = new Date(startDate);
-                            endDate.setDate(endDate.getDate() + (selectedProgram?.lengthDays || 30) - 1);
-                            setCohortFormData({
-                              ...cohortFormData,
-                              startDate: e.target.value,
-                              endDate: endDate.toISOString().split('T')[0],
-                            });
-                          }}
-                          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                        />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-left flex items-center justify-between hover:border-brand-accent/50 transition-colors"
+                            >
+                              <span className={cohortFormData.startDate ? '' : 'text-[#8a8580] dark:text-[#6b7280]'}>
+                                {cohortFormData.startDate 
+                                  ? format(new Date(cohortFormData.startDate + 'T00:00:00'), 'MMM d, yyyy')
+                                  : 'Select date'}
+                              </span>
+                              <CalendarIcon className="h-4 w-4 text-[#8a8580] dark:text-[#6b7280]" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent 
+                            className="w-auto p-0 rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] shadow-xl" 
+                            align="start"
+                          >
+                            <Calendar
+                              mode="single"
+                              selected={cohortFormData.startDate ? new Date(cohortFormData.startDate + 'T00:00:00') : undefined}
+                              onSelect={(date) => {
+                                if (date) {
+                                  const startDateStr = format(date, 'yyyy-MM-dd');
+                                  const endDate = new Date(date);
+                                  endDate.setDate(endDate.getDate() + (selectedProgram?.lengthDays || 30) - 1);
+                                  setCohortFormData({
+                                    ...cohortFormData,
+                                    startDate: startDateStr,
+                                    endDate: endDate.toISOString().split('T')[0],
+                                  });
+                                }
+                              }}
+                              showTodayButton
+                              onTodayClick={() => {
+                                const today = new Date();
+                                const startDateStr = format(today, 'yyyy-MM-dd');
+                                const endDate = new Date(today);
+                                endDate.setDate(endDate.getDate() + (selectedProgram?.lengthDays || 30) - 1);
+                                setCohortFormData({
+                                  ...cohortFormData,
+                                  startDate: startDateStr,
+                                  endDate: endDate.toISOString().split('T')[0],
+                                });
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
                           Duration
                         </label>
-                        <div className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-[#f9f8f6] dark:bg-[#0d1017] text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">
+                        <div className="px-3 py-2.5 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-[#f9f8f6] dark:bg-[#0d1017] text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">
                           {selectedProgram?.lengthDays || 30} days (from program)
                         </div>
                       </div>
@@ -6234,44 +6270,38 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       />
                     </div>
 
-                    <label className="flex items-center gap-2.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
-                      <input
-                        type="checkbox"
+                    <label className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer select-none">
+                      <BrandedCheckbox
                         checked={cohortFormData.enrollmentOpen}
-                        onChange={(e) => setCohortFormData({ ...cohortFormData, enrollmentOpen: e.target.checked })}
-                        className="w-4.5 h-4.5 rounded border-[#d1ccc6] dark:border-[#3a4050] accent-[var(--brand-accent)] cursor-pointer"
+                        onChange={(checked) => setCohortFormData({ ...cohortFormData, enrollmentOpen: checked })}
                       />
                       Enrollment open
                     </label>
 
                     {/* After Program Ends Setting */}
-                    <div className="pt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                    <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert">
                         After program ends
                       </label>
-                      <div className="space-y-2.5">
-                        <label className="flex items-center gap-2.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
-                          <input
-                            type="radio"
+                      <div className="space-y-3">
+                        <label className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer select-none">
+                          <BrandedRadio
                             name="afterProgramEnds"
                             checked={!cohortFormData.convertSquadsToCommunity}
                             onChange={() => setCohortFormData({ ...cohortFormData, convertSquadsToCommunity: false })}
-                            className="w-4.5 h-4.5 accent-[var(--brand-accent)] cursor-pointer"
                           />
                           Close squad after grace period
                         </label>
-                        <label className="flex items-center gap-2.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
-                          <input
-                            type="radio"
+                        <label className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer select-none">
+                          <BrandedRadio
                             name="afterProgramEnds"
                             checked={cohortFormData.convertSquadsToCommunity}
                             onChange={() => setCohortFormData({ ...cohortFormData, convertSquadsToCommunity: true })}
-                            className="w-4.5 h-4.5 accent-[var(--brand-accent)] cursor-pointer"
                           />
                           Convert to squad
                         </label>
                       </div>
-                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1.5 font-albert">
+                      <p className="text-xs text-[#8a8580] dark:text-[#6b7280] mt-2 font-albert">
                         Squads remain active for alumni to stay connected
                       </p>
                     </div>

@@ -155,6 +155,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
   
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [landingPageSaved, setLandingPageSaved] = useState(true);
 
   const fetchSquads = useCallback(async () => {
     // Skip API call in demo mode
@@ -482,8 +483,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
     }
   };
 
-  const handleSaveLandingPage = async () => {
-    if (!selectedSquad) return;
+  const handleSaveLandingPage = async (): Promise<boolean> => {
+    if (!selectedSquad) return false;
     
     try {
       setSaving(true);
@@ -536,9 +537,11 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
       const updatedSquads = await fetch(apiBasePath).then(r => r.json());
       const updated = (updatedSquads.squads || []).find((s: Squad) => s.id === selectedSquad.id);
       if (updated) setSelectedSquad(updated);
+      return true;
     } catch (err) {
       console.error('[CoachSquadsTab] Error saving landing page:', err);
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -1045,6 +1048,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
       <div className="flex items-center gap-3 mb-6 overflow-x-auto scrollbar-hide">
         {/* Back button */}
         <button
+          type="button"
           onClick={handleBackToList}
           className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
           title="Back to Squads"
@@ -1077,8 +1081,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
+        {/* Spacer */}
+        <div className="flex-1" />
 
         {/* Desktop Tabs - matching program style */}
         <div className="hidden md:flex items-center gap-1 flex-shrink-0">
@@ -1147,7 +1151,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
                 <ChevronDown className="w-4 h-4 ml-1" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-48 p-1" align="start">
+            <PopoverContent className="w-48 p-1" align="end">
               <button
                 type="button"
                 onClick={() => { setViewMode('members'); setIsPageDropdownOpen(false); }}
@@ -1203,9 +1207,6 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
             </PopoverContent>
           </Popover>
         </div>
-
-        {/* Spacer */}
-        <div className="flex-1" />
 
         {/* Action buttons */}
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -1367,37 +1368,40 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
       ) : viewMode === 'landing' ? (
         // Landing Page Editor
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                Customize your squad&apos;s public landing page
-              </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              Customize your squad&apos;s public landing page
+            </p>
+            <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
+              <button
+                onClick={() => setIsAILandingPageModalOpen(true)}
+                className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span className="hidden sm:inline">Generate with AI</span>
+                <span className="sm:hidden">AI</span>
+              </button>
+              <Button
+                onClick={async () => {
+                  const success = await handleSaveLandingPage();
+                  if (success) {
+                    setLandingPageSaved(true);
+                  }
+                }}
+                disabled={saving || landingPageSaved}
+                className={`flex items-center gap-2 ${landingPageSaved ? 'bg-[#d1ccc5] dark:bg-[#3d424d] cursor-not-allowed' : 'bg-brand-accent hover:bg-brand-accent/90'} text-white`}
+              >
+                {saving ? 'Saving...' : landingPageSaved ? 'Saved' : 'Save'}
+              </Button>
               <a
                 href={`/discover/squads/${selectedSquad.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-brand-accent hover:underline flex items-center gap-1 mt-1"
+                className="p-2 hover:bg-[#faf8f6] dark:hover:bg-white/5 rounded-lg transition-colors"
+                title="Preview landing page"
               >
-                <ExternalLink className="w-3 h-3" />
-                Preview landing page
+                <ExternalLink className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
               </a>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setIsAILandingPageModalOpen(true)}
-                className="border-brand-accent text-brand-accent hover:bg-brand-accent/10 flex items-center gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                Generate with AI
-              </Button>
-              <Button
-                onClick={handleSaveLandingPage}
-                disabled={saving}
-                className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
-              >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
             </div>
           </div>
           
@@ -1409,7 +1413,10 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
 
           <ProgramLandingPageEditor
             formData={landingPageFormData}
-            onChange={setLandingPageFormData}
+            onChange={(data) => {
+              setLandingPageFormData(data);
+              setLandingPageSaved(false);
+            }}
             hideCurriculumOption={true}
             countLabel="member count"
             uploadEndpoint="/api/coach/org-upload-media"

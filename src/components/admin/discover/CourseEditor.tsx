@@ -8,22 +8,8 @@ import { Button } from '@/components/ui/button';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
-import { ProgramSelector } from '@/components/admin/ProgramSelector';
-import { CategorySelector } from '@/components/admin/CategorySelector';
-import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
+import { ResourceSettingsModal } from '@/components/admin/ResourceSettingsModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -363,7 +349,28 @@ export function CourseEditor({
                 <LayoutGrid className="w-4 h-4" />
                 Content
               </button>
+              {/* Settings Button - right of Content tab */}
+              <button
+                type="button"
+                onClick={() => setBasicInfoOpen(true)}
+                className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                title="Course Settings"
+              >
+                <Settings2 className="w-4 h-4" />
+              </button>
             </div>
+          )}
+
+          {/* Settings Button for new courses */}
+          {!isEditing && (
+            <button
+              type="button"
+              onClick={() => setBasicInfoOpen(true)}
+              className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+              title="Course Settings"
+            >
+              <Settings2 className="w-4 h-4" />
+            </button>
           )}
 
           {/* Stats */}
@@ -381,16 +388,6 @@ export function CourseEditor({
               {totalDuration} min
             </span>
           </div>
-
-          {/* Basic Info Button */}
-          <button
-            type="button"
-            onClick={() => setBasicInfoOpen(true)}
-            className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-            title="Course Settings"
-          >
-            <Settings2 className="w-5 h-5" />
-          </button>
 
           <Button
             variant="outline"
@@ -618,113 +615,106 @@ export function CourseEditor({
         {/* Content Area - Lesson Editor (shown on mobile when lesson selected) */}
         <div className={`flex-1 overflow-y-auto bg-white dark:bg-[#171b22] ${selectedLesson ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
           {selectedLesson && selectedModuleIndex !== null && selectedLessonIndex !== null ? (
-            <div className="px-8 md:px-12 lg:px-16 py-8 md:py-10 space-y-8 w-full">
-              {/* Mobile Back Button */}
-              <button
-                type="button"
-                onClick={() => { setSelectedModuleIndex(null); setSelectedLessonIndex(null); }}
-                className="md:hidden flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white mb-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Structure
-              </button>
-
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-2 font-albert">
-                  Lesson Title
-                </label>
+            <>
+              {/* Lesson Header Bar - aligned with Structure */}
+              <div className="sticky top-0 z-10 flex items-center gap-3 px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+                {/* Mobile Back Button */}
+                <button
+                  type="button"
+                  onClick={() => { setSelectedModuleIndex(null); setSelectedLessonIndex(null); }}
+                  className="md:hidden p-1 -ml-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <Play className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] hidden md:block" />
                 <input
                   type="text"
                   value={selectedLesson.title}
                   onChange={(e) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, title: e.target.value })}
-                  placeholder="Enter lesson title..."
-                  className="w-full px-4 py-3.5 text-lg border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert bg-white dark:bg-[#0d0f14]"
+                  placeholder="Lesson title..."
+                  className="flex-1 text-base font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] font-albert"
                 />
+                <button
+                  type="button"
+                  onClick={() => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, isLocked: !selectedLesson.isLocked })}
+                  className={`text-xs px-3 py-1.5 rounded-full font-medium font-albert transition-colors ${
+                    selectedLesson.isLocked
+                      ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                  }`}
+                >
+                  {selectedLesson.isLocked ? 'Locked' : 'Unlocked'}
+                </button>
               </div>
 
-              {/* Video Section - Full Width 16:9 */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  Video
-                </label>
-                <MediaUpload
-                  value={selectedLesson.videoUrl || ''}
-                  onChange={async (url) => {
-                    updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url });
-                    // Auto-detect duration when video is uploaded
-                    if (url) {
-                      const duration = await fetchVideoDuration(url);
-                      if (duration) {
-                        updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url, durationMinutes: duration });
-                      }
-                    }
-                  }}
-                  folder="courses/lessons"
-                  type="video"
-                  uploadEndpoint={uploadEndpoint}
-                  hideLabel
-                  aspectRatio="16:9"
-                />
-              </div>
-
-              {/* Thumbnail - Inline Collapsible */}
-              <details className="group">
-                <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white font-albert select-none">
-                  <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
-                  Custom Thumbnail
-                  {selectedLesson.videoThumbnailUrl && (
-                    <span className="text-xs text-brand-accent ml-1">(Set)</span>
-                  )}
-                </summary>
-                <div className="mt-3 pl-6">
-                  <MediaUpload
-                    value={selectedLesson.videoThumbnailUrl || ''}
-                    onChange={(url) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoThumbnailUrl: url })}
-                    folder="courses/lessons"
-                    type="image"
-                    uploadEndpoint={uploadEndpoint}
-                    hideLabel
-                    aspectRatio="16:9"
-                  />
-                  <p className="text-xs text-[#9ca3af] mt-2 font-albert">
-                    Optional. If not set, the video&apos;s first frame will be used.
-                  </p>
-                </div>
-              </details>
-
-              {/* Notes Section */}
-              <div className="space-y-3">
-                <RichTextEditor
-                  value={selectedLesson.notes || ''}
-                  onChange={(notes) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, notes })}
-                  label="Lesson Notes"
-                  placeholder="Summary, key points, or additional resources..."
-                  rows={10}
-                  showMediaToolbar={true}
-                  mediaFolder="courses/lessons"
-                  uploadEndpoint={uploadEndpoint}
-                />
-              </div>
-
-              {/* Locked Toggle - Full Width at Bottom */}
-              <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                <label className="flex items-start gap-4 cursor-pointer p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#0d0f14] transition-colors">
-                  <BrandedCheckbox
-                    checked={selectedLesson.isLocked || false}
-                    onChange={(checked) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, isLocked: checked })}
-                  />
-                  <div className="flex-1">
-                    <span className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                      Locked Lesson
-                    </span>
-                    <span className="block text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-                      Locked lessons require enrollment or purchase to access. Use this for premium content.
-                    </span>
+              {/* Lesson Content */}
+              <div className="px-6 py-5 space-y-5 w-full">
+                {/* Video Section */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                    Video
+                  </label>
+                  <div className="max-h-[200px] overflow-hidden rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+                    <MediaUpload
+                      value={selectedLesson.videoUrl || ''}
+                      onChange={async (url) => {
+                        updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url });
+                        if (url) {
+                          const duration = await fetchVideoDuration(url);
+                          if (duration) {
+                            updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url, durationMinutes: duration });
+                          }
+                        }
+                      }}
+                      folder="courses/lessons"
+                      type="video"
+                      uploadEndpoint={uploadEndpoint}
+                      hideLabel
+                      aspectRatio="16:9"
+                    />
                   </div>
-                </label>
+                </div>
+
+                {/* Thumbnail - Collapsible */}
+                <details className="group">
+                  <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white font-albert select-none">
+                    <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
+                    Custom Thumbnail
+                    {selectedLesson.videoThumbnailUrl && (
+                      <span className="text-xs text-brand-accent ml-1">(Set)</span>
+                    )}
+                  </summary>
+                  <div className="mt-3 pl-6">
+                    <MediaUpload
+                      value={selectedLesson.videoThumbnailUrl || ''}
+                      onChange={(url) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoThumbnailUrl: url })}
+                      folder="courses/lessons"
+                      type="image"
+                      uploadEndpoint={uploadEndpoint}
+                      hideLabel
+                      aspectRatio="16:9"
+                    />
+                    <p className="text-xs text-[#9ca3af] mt-2 font-albert">
+                      Optional. If not set, the video&apos;s first frame will be used.
+                    </p>
+                  </div>
+                </details>
+
+                {/* Notes Section */}
+                <div>
+                  <RichTextEditor
+                    value={selectedLesson.notes || ''}
+                    onChange={(notes) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, notes })}
+                    label="Lesson Notes"
+                    placeholder="Summary, key points, or additional resources..."
+                    rows={6}
+                    showMediaToolbar={true}
+                    mediaFolder="courses/lessons"
+                    uploadEndpoint={uploadEndpoint}
+                  />
+                </div>
               </div>
-            </div>
+            </>
           ) : (
             <div className="h-full flex items-center justify-center text-[#5f5a55] dark:text-[#b2b6c2]">
               <div className="text-center px-6">
@@ -743,142 +733,32 @@ export function CourseEditor({
         )}
       </div>
 
-      {/* Basic Info Sheet */}
-      <Sheet open={basicInfoOpen} onOpenChange={setBasicInfoOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="font-albert">Course Settings</SheetTitle>
-          </SheetHeader>
-
-          <div className="mt-6 space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                Title *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.title}
-                onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Enter course title..."
-                className="w-full px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert bg-white dark:bg-[#0d0f14]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                Cover Image <span className="text-[#9ca3af] font-normal">(1200 x 675px)</span> *
-              </label>
-              <MediaUpload
-                value={formData.coverImageUrl}
-                onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
-                folder="courses"
-                type="image"
-                required
-                uploadEndpoint={uploadEndpoint}
-                hideLabel
-                previewSize="full"
-              />
-            </div>
-
-            <div>
-              <RichTextEditor
-                value={formData.shortDescription}
-                onChange={(shortDescription) => setFormData(prev => ({ ...prev, shortDescription }))}
-                label="Description *"
-                required
-                rows={4}
-                placeholder="What will students learn in this course?"
-                showMediaToolbar={false}
-                uploadEndpoint={uploadEndpoint}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                  Category
-                </label>
-                <CategorySelector
-                  value={formData.category}
-                  onChange={(category) => setFormData(prev => ({ ...prev, category }))}
-                  placeholder="Select..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                  Level
-                </label>
-                <Select
-                  value={formData.level || 'none'}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, level: value === 'none' ? '' : value }))}
-                >
-                  <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert bg-white dark:bg-[#0d0f14]">
-                    <SelectValue placeholder="Select..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="Beginner">Beginner</SelectItem>
-                    <SelectItem value="Intermediate">Intermediate</SelectItem>
-                    <SelectItem value="Advanced">Advanced</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                Programs
-              </label>
-              <ProgramSelector
-                value={formData.programIds}
-                onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
-                placeholder="Link to programs..."
-                programsApiEndpoint={programsApiEndpoint}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                Pricing & Access
-              </label>
-              <ContentPricingFields
-                value={formData.pricing}
-                onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
-              />
-            </div>
-
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                Visibility
-              </label>
-
-              <label className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#faf8f6] dark:hover:bg-[#0d0f14] cursor-pointer transition-colors">
-                <BrandedCheckbox
-                  checked={formData.featured}
-                  onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
-                />
-                <div>
-                  <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Featured</span>
-                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Show in featured section</p>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#faf8f6] dark:hover:bg-[#0d0f14] cursor-pointer transition-colors">
-                <BrandedCheckbox
-                  checked={formData.trending}
-                  onChange={(checked) => setFormData(prev => ({ ...prev, trending: checked }))}
-                />
-                <div>
-                  <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Trending</span>
-                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Show in trending section</p>
-                </div>
-              </label>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Course Settings Modal */}
+      <ResourceSettingsModal
+        open={basicInfoOpen}
+        onOpenChange={setBasicInfoOpen}
+        type="course"
+        title={formData.title}
+        onTitleChange={(title) => setFormData(prev => ({ ...prev, title }))}
+        coverImageUrl={formData.coverImageUrl}
+        onCoverImageChange={(coverImageUrl) => setFormData(prev => ({ ...prev, coverImageUrl }))}
+        description={formData.shortDescription}
+        onDescriptionChange={(shortDescription) => setFormData(prev => ({ ...prev, shortDescription }))}
+        category={formData.category}
+        onCategoryChange={(category) => setFormData(prev => ({ ...prev, category }))}
+        level={formData.level}
+        onLevelChange={(level) => setFormData(prev => ({ ...prev, level: level === 'none' ? '' : level }))}
+        programIds={formData.programIds}
+        onProgramIdsChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
+        pricing={formData.pricing}
+        onPricingChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
+        featured={formData.featured}
+        onFeaturedChange={(featured) => setFormData(prev => ({ ...prev, featured }))}
+        trending={formData.trending}
+        onTrendingChange={(trending) => setFormData(prev => ({ ...prev, trending }))}
+        uploadEndpoint={uploadEndpoint}
+        programsApiEndpoint={programsApiEndpoint}
+      />
 
       {/* Delete Module Confirmation Dialog */}
       <AlertDialog open={deleteModuleIndex !== null} onOpenChange={(open) => !open && setDeleteModuleIndex(null)}>

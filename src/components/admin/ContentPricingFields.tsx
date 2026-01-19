@@ -34,7 +34,7 @@ const CURRENCIES = [
 /**
  * Currency selector dropdown component
  */
-function CurrencySelector({
+export function CurrencySelector({
   value,
   onChange,
 }: {

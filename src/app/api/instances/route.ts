@@ -35,6 +35,109 @@ import type { ProgramInstance, ProgramInstanceDay } from '@/types';
 import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
 
 /**
+ * Distributes weeklyTasks to days based on each task's dayTag and the week's distribution setting.
+ * This is used during instance creation to pre-populate days with tasks.
+ */
+function distributeTasksToDays(
+  weeklyTasks: Array<{ id?: string; label: string; dayTag?: 'auto' | 'spread' | 'daily' | number; [key: string]: unknown }>,
+  days: ProgramInstanceDay[],
+  distribution: string | undefined
+): ProgramInstanceDay[] {
+  const numDays = days.length;
+  if (numDays === 0 || weeklyTasks.length === 0) return days;
+
+  // Helper to create a day task from a weekly task template
+  const createDayTask = (task: typeof weeklyTasks[0]) => ({
+    ...task,
+    id: task.id || crypto.randomUUID(),
+    source: 'week' as const,
+  });
+
+  // Categorize tasks by their dayTag
+  const dailyTasks: typeof weeklyTasks = [];      // dayTag: 'daily' → all days
+  const spreadTasks: typeof weeklyTasks = [];     // dayTag: 'spread' → spread evenly
+  const specificDayTasks: Map<number, typeof weeklyTasks> = new Map(); // dayTag: 1-7 → specific day
+  const autoTasks: typeof weeklyTasks = [];       // dayTag: undefined/'auto' → use program distribution
+
+  for (const task of weeklyTasks) {
+    const dayTag = task.dayTag;
+    if (dayTag === 'daily') {
+      dailyTasks.push(task);
+    } else if (dayTag === 'spread') {
+      spreadTasks.push(task);
+    } else if (typeof dayTag === 'number' && dayTag >= 1 && dayTag <= numDays) {
+      const existing = specificDayTasks.get(dayTag) || [];
+      existing.push(task);
+      specificDayTasks.set(dayTag, existing);
+    } else {
+      // dayTag: undefined, 'auto', or invalid → use program distribution
+      autoTasks.push(task);
+    }
+  }
+
+  // Clone days to avoid mutation - use 'any' to allow flexible task structure
+  const updatedDays = days.map(d => ({ ...d, tasks: [...(d.tasks || [])] as unknown[] }));
+
+  // Add daily tasks to ALL days
+  for (const task of dailyTasks) {
+    for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+      updatedDays[dayIdx].tasks.push(createDayTask(task));
+    }
+  }
+
+  // Add specific-day tasks to their designated day
+  for (const [dayNum, tasks] of specificDayTasks) {
+    const dayIdx = dayNum - 1; // dayTag is 1-based, array is 0-based
+    if (dayIdx >= 0 && dayIdx < numDays) {
+      for (const task of tasks) {
+        updatedDays[dayIdx].tasks.push(createDayTask(task));
+      }
+    }
+  }
+
+  // Spread tasks with dayTag: 'spread' evenly across the week
+  if (spreadTasks.length > 0) {
+    for (let taskIdx = 0; taskIdx < spreadTasks.length; taskIdx++) {
+      let targetDayIdx: number;
+      if (spreadTasks.length === 1) {
+        targetDayIdx = 0;
+      } else {
+        targetDayIdx = Math.round(taskIdx * (numDays - 1) / (spreadTasks.length - 1));
+      }
+      updatedDays[targetDayIdx].tasks.push(createDayTask(spreadTasks[taskIdx]));
+    }
+  }
+
+  // Apply program distribution to 'auto' tasks
+  if (autoTasks.length > 0) {
+    const distType = distribution || 'spread';
+    if (distType === 'spread') {
+      for (let taskIdx = 0; taskIdx < autoTasks.length; taskIdx++) {
+        let targetDayIdx: number;
+        if (autoTasks.length === 1) {
+          targetDayIdx = 0;
+        } else {
+          targetDayIdx = Math.round(taskIdx * (numDays - 1) / (autoTasks.length - 1));
+        }
+        updatedDays[targetDayIdx].tasks.push(createDayTask(autoTasks[taskIdx]));
+      }
+    } else if (distType === 'all_days') {
+      for (const task of autoTasks) {
+        for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+          updatedDays[dayIdx].tasks.push(createDayTask(task));
+        }
+      }
+    } else if (distType === 'first_day') {
+      for (const task of autoTasks) {
+        updatedDays[0].tasks.push(createDayTask(task));
+      }
+    }
+  }
+
+  return updatedDays as ProgramInstanceDay[];
+}
+
+/**
  * GET /api/instances
  * Returns a list of program instances
  */
@@ -252,7 +355,7 @@ export async function GET(request: NextRequest) {
                   return startDate.toISOString().split('T')[0];
                 };
 
-                const days: ProgramInstanceDay[] = [];
+                let days: ProgramInstanceDay[] = [];
                 for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
                   days.push({
                     dayIndex: i + 1,
@@ -263,6 +366,17 @@ export async function GET(request: NextRequest) {
                   });
                 }
 
+                // Prepare weeklyTasks with IDs
+                const weeklyTasks = (templateWeek?.weeklyTasks || []).map((t) => ({
+                  ...t,
+                  id: t.id || crypto.randomUUID(),
+                }));
+
+                // Distribute tasks to days based on dayTag and distribution setting
+                if (weeklyTasks.length > 0) {
+                  days = distributeTasksToDays(weeklyTasks, days, templateWeek?.distribution);
+                }
+
                 return {
                   id: templateWeek?.id || crypto.randomUUID(),
                   weekNumber: calendarWeek.weekNumber, // Always use calendar weekNumber (0, 1, 2, ..., -1)
@@ -270,10 +384,7 @@ export async function GET(request: NextRequest) {
                   moduleId: templateWeek?.moduleId,
                   name: templateWeek?.name,
                   theme: templateWeek?.theme,
-                  weeklyTasks: (templateWeek?.weeklyTasks || []).map((t) => ({
-                    ...t,
-                    id: t.id || crypto.randomUUID(),
-                  })),
+                  weeklyTasks,
                   weeklyHabits: templateWeek?.weeklyHabits || [],
                   weeklyPrompt: templateWeek?.weeklyPrompt,
                   distribution: templateWeek?.distribution,
@@ -326,7 +437,7 @@ export async function GET(request: NextRequest) {
                   return startDate.toISOString().split('T')[0];
                 };
 
-                const days: ProgramInstanceDay[] = [];
+                let days: ProgramInstanceDay[] = [];
                 for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
                   days.push({
                     dayIndex: i + 1,
@@ -337,6 +448,17 @@ export async function GET(request: NextRequest) {
                   });
                 }
 
+                // Prepare weeklyTasks with IDs
+                const weeklyTasks = (weekData?.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
+                  ...t,
+                  id: t.id || crypto.randomUUID(),
+                }));
+
+                // Distribute tasks to days based on dayTag and distribution setting
+                if (weeklyTasks.length > 0) {
+                  days = distributeTasksToDays(weeklyTasks, days, weekData?.distribution);
+                }
+
                 return {
                   id: weekDoc?.id || crypto.randomUUID(),
                   weekNumber: calendarWeek.weekNumber, // Always use calendar weekNumber
@@ -344,10 +466,7 @@ export async function GET(request: NextRequest) {
                   moduleId: weekData?.moduleId,
                   name: weekData?.name,
                   theme: weekData?.theme,
-                  weeklyTasks: (weekData?.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
-                    ...t,
-                    id: t.id || crypto.randomUUID(),
-                  })),
+                  weeklyTasks,
                   weeklyHabits: weekData?.weeklyHabits || [],
                   weeklyPrompt: weekData?.weeklyPrompt,
                   distribution: weekData?.distribution,
@@ -498,7 +617,7 @@ export async function GET(request: NextRequest) {
                   return startDate.toISOString().split('T')[0];
                 };
 
-                const days: ProgramInstanceDay[] = [];
+                let days: ProgramInstanceDay[] = [];
                 for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
                   days.push({
                     dayIndex: i + 1,
@@ -509,6 +628,17 @@ export async function GET(request: NextRequest) {
                   });
                 }
 
+                // Prepare weeklyTasks with IDs
+                const weeklyTasks = (templateWeek?.weeklyTasks || []).map((t) => ({
+                  ...t,
+                  id: t.id || crypto.randomUUID(),
+                }));
+
+                // Distribute tasks to days based on dayTag and distribution setting
+                if (weeklyTasks.length > 0) {
+                  days = distributeTasksToDays(weeklyTasks, days, templateWeek?.distribution);
+                }
+
                 return {
                   id: templateWeek?.id || crypto.randomUUID(),
                   weekNumber: calendarWeek.weekNumber, // Always use calendar weekNumber (0, 1, 2, ..., -1)
@@ -516,10 +646,7 @@ export async function GET(request: NextRequest) {
                   moduleId: templateWeek?.moduleId,
                   name: templateWeek?.name,
                   theme: templateWeek?.theme,
-                  weeklyTasks: (templateWeek?.weeklyTasks || []).map((t) => ({
-                    ...t,
-                    id: t.id || crypto.randomUUID(),
-                  })),
+                  weeklyTasks,
                   weeklyHabits: templateWeek?.weeklyHabits || [],
                   weeklyPrompt: templateWeek?.weeklyPrompt,
                   distribution: templateWeek?.distribution,
@@ -572,7 +699,7 @@ export async function GET(request: NextRequest) {
                   return startDate.toISOString().split('T')[0];
                 };
 
-                const days: ProgramInstanceDay[] = [];
+                let days: ProgramInstanceDay[] = [];
                 for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
                   days.push({
                     dayIndex: i + 1,
@@ -583,6 +710,17 @@ export async function GET(request: NextRequest) {
                   });
                 }
 
+                // Prepare weeklyTasks with IDs
+                const weeklyTasks = (weekData?.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
+                  ...t,
+                  id: t.id || crypto.randomUUID(),
+                }));
+
+                // Distribute tasks to days based on dayTag and distribution setting
+                if (weeklyTasks.length > 0) {
+                  days = distributeTasksToDays(weeklyTasks, days, weekData?.distribution);
+                }
+
                 return {
                   id: weekDoc?.id || crypto.randomUUID(),
                   weekNumber: calendarWeek.weekNumber, // Always use calendar weekNumber
@@ -590,10 +728,7 @@ export async function GET(request: NextRequest) {
                   moduleId: weekData?.moduleId,
                   name: weekData?.name,
                   theme: weekData?.theme,
-                  weeklyTasks: (weekData?.weeklyTasks || []).map((t: { id?: string; label: string }) => ({
-                    ...t,
-                    id: t.id || crypto.randomUUID(),
-                  })),
+                  weeklyTasks,
                   weeklyHabits: weekData?.weeklyHabits || [],
                   weeklyPrompt: weekData?.weeklyPrompt,
                   distribution: weekData?.distribution,

@@ -1184,16 +1184,39 @@ export function WeekEditor({
       // Set skip cycles to prevent re-registration during save->refresh cycle
       // Use a few cycles (3) to give SWR time to fetch and React to re-render
       skipCyclesRemaining.current = 3;
-      // Track current formData as "saved" state
+      // Reset to original week data - inline to avoid callback dependency
+      const resetFormData: WeekFormData = {
+        name: week.name || '',
+        theme: week.theme || '',
+        description: week.description || '',
+        weeklyPrompt: week.weeklyPrompt || '',
+        weeklyTasks: week.weeklyTasks || [],
+        currentFocus: week.currentFocus || [],
+        notes: week.notes || [],
+        manualNotes: week.manualNotes || '',
+        distribution: (week.distribution || 'spread') as TaskDistribution,
+        coachRecordingUrl: week.coachRecordingUrl || '',
+        coachRecordingNotes: week.coachRecordingNotes || '',
+        linkedSummaryIds: week.linkedSummaryIds || [],
+        linkedCallEventIds: week.linkedCallEventIds || [],
+        linkedArticleIds: week.linkedArticleIds || [],
+        linkedDownloadIds: week.linkedDownloadIds || [],
+        linkedLinkIds: week.linkedLinkIds || [],
+        linkedQuestionnaireIds: week.linkedQuestionnaireIds || [],
+        courseAssignments: week.courseAssignments || [],
+        resourceAssignments: week.resourceAssignments || [],
+      };
+      setFormData(resetFormData);
+      // Track the reset formData as "saved" state
       lastSavedFormDataRef.current = JSON.stringify({
-        weeklyTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
+        weeklyTasks: resetFormData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
       });
       // Clear UI state
       setHasChanges(false);
       setShowSyncButton(false);
       setSaveStatus('idle');
     }
-  }, [editorContext?.resetVersion, week.weekNumber, week.id]);
+  }, [editorContext?.resetVersion, week]);
 
   // Check for changes and register with context
   useEffect(() => {
@@ -1654,6 +1677,7 @@ export function WeekEditor({
       label: newTask.trim(),
       isPrimary: true,
       type: 'task',
+      dayTag: 'auto',
     };
     setFormData({ ...formData, weeklyTasks: [...formData.weeklyTasks, task] });
     setNewTask('');
