@@ -32,20 +32,26 @@ const stagger = {
   },
 };
 
-const float = {
-  initial: { y: 0 },
-  animate: {
-    y: [-8, 8, -8],
-    transition: { duration: 6, repeat: Infinity, ease: 'easeInOut' as const },
-  },
+// Float animation configs (used inline, not as variants)
+const floatAnimation = {
+  y: [-8, 8, -8],
 };
 
-const floatDelayed = {
-  initial: { y: 0 },
-  animate: {
-    y: [8, -8, 8],
-    transition: { duration: 5, repeat: Infinity, ease: 'easeInOut' as const, delay: 0.5 },
-  },
+const floatTransition = {
+  duration: 6,
+  repeat: Infinity,
+  ease: 'easeInOut' as const,
+};
+
+const floatDelayedAnimation = {
+  y: [8, -8, 8],
+};
+
+const floatDelayedTransition = {
+  duration: 5,
+  repeat: Infinity,
+  ease: 'easeInOut' as const,
+  delay: 0.5,
 };
 
 // Pastel gradient palette for service cards
@@ -148,9 +154,8 @@ export function WebsiteClassicTemplate({
 
         {/* Floating decorative elements */}
         <motion.div
-          variants={float}
-          initial="initial"
-          animate="animate"
+          animate={floatAnimation}
+          transition={floatTransition}
           className="absolute top-32 right-[15%] hidden lg:block"
         >
           <div
@@ -167,9 +172,8 @@ export function WebsiteClassicTemplate({
         </motion.div>
 
         <motion.div
-          variants={floatDelayed}
-          initial="initial"
-          animate="animate"
+          animate={floatDelayedAnimation}
+          transition={floatDelayedTransition}
           className="absolute bottom-48 left-[10%] hidden lg:block"
         >
           <div
