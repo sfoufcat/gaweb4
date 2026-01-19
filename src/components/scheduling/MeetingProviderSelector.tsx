@@ -44,7 +44,7 @@ interface ProviderConfig {
 const PROVIDERS: ProviderConfig[] = [
   { id: 'in_app', label: 'In-App', icon: Phone },
   { id: 'zoom', label: 'Zoom', icon: Video, requiresConnection: true },
-  { id: 'google_meet', label: 'Google Meet', icon: Video, requiresConnection: true },
+  { id: 'google_meet', label: 'Meet', icon: Video, requiresConnection: true },
   { id: 'manual', label: 'Manual Link', icon: Link2 },
 ];
 

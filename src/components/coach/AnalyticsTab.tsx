@@ -203,7 +203,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics', initialSqua
           }`}
         >
           <UserX className="w-4 h-4" />
-          {excludeAdmins ? 'Admins Excluded' : 'Include Admins'}
+          {excludeAdmins ? 'Excluding Admins' : 'Including Admins'}
         </button>
       </div>
 

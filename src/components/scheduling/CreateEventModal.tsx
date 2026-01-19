@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Fragment, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { motion, AnimatePresence } from 'framer-motion';
+import useSWR from 'swr';
 import {
   X,
   Calendar,
@@ -17,6 +18,7 @@ import {
   Globe,
   Users,
   UserCheck,
+  ChevronRight,
 } from 'lucide-react';
 import {
   Drawer,
@@ -26,7 +28,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import { MeetingProviderSelector, MeetingProviderType, isMeetingProviderReady } from './MeetingProviderSelector';
-import type { RecurrenceFrequency } from '@/types';
+import type { RecurrenceFrequency, Squad, ProgramCohort } from '@/types';
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -76,19 +78,29 @@ const COMMON_TIMEZONES = [
 
 type RecurrenceEndType = 'specific_date' | 'occurrences';
 
+// Simple fetcher for SWR
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
+interface ProgramWithCohorts {
+  id: string;
+  name: string;
+  type: 'group' | 'individual';
+  cohorts?: ProgramCohort[];
+}
+
 /**
  * CreateEventModal - 3-Step Wizard matching NewProgramModal design
  *
- * Step 1: Basic Info - Title, description, event type, cover image
- * Step 2: Meeting Provider - Zoom, Google Meet, or Manual link
+ * Step 1: Basic Info - Title, description, cover image
+ * Step 2: Event Type + Meeting Provider - Select type, show cohort/squad selector if needed, configure meeting
  * Step 3: Schedule - Date, time, duration, timezone, recurrence
  */
 export function CreateEventModal({
   isOpen,
   onClose,
-  programId,
-  cohortId,
-  squadId,
+  programId: propProgramId,
+  cohortId: propCohortId,
+  squadId: propSquadId,
   instanceId,
   organizationId,
   onSuccess,
@@ -103,6 +115,18 @@ export function CreateEventModal({
 
   // Coach integrations
   const { zoom, googleMeet } = useCoachIntegrations();
+
+  // Fetch squads for squad selector
+  const { data: squadsData } = useSWR<{ squads: Squad[] }>(
+    isOpen ? '/api/coach/org-squads' : null,
+    fetcher
+  );
+
+  // Fetch programs with cohorts for cohort selector
+  const { data: programsData } = useSWR<{ programs: ProgramWithCohorts[] }>(
+    isOpen ? '/api/coach/org-programs?includeStats=false' : null,
+    fetcher
+  );
 
   // Track initial mount to skip animation on first open
   const isInitialMount = useRef(true);
@@ -119,10 +143,13 @@ export function CreateEventModal({
   // Step 1: Basic Info
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [eventType, setEventType] = useState<string>('community_event');
   const [coverImageUrl, setCoverImageUrl] = useState('');
 
-  // Step 2: Meeting Provider
+  // Step 2: Event Type + Meeting Provider
+  const [eventType, setEventType] = useState<string>('community_event');
+  const [selectedProgramId, setSelectedProgramId] = useState<string>('');
+  const [selectedCohortId, setSelectedCohortId] = useState<string>('');
+  const [selectedSquadId, setSelectedSquadId] = useState<string>('');
   const [meetingProvider, setMeetingProvider] = useState<MeetingProviderType>('manual');
   const [manualMeetingLink, setManualMeetingLink] = useState('');
   const [useManualOverride, setUseManualOverride] = useState(false);
@@ -137,6 +164,17 @@ export function CreateEventModal({
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [recurrenceOccurrences, setRecurrenceOccurrences] = useState(4);
 
+  // Fetch cohorts when a program is selected
+  const { data: cohortsData } = useSWR<{ cohorts: ProgramCohort[] }>(
+    isOpen && selectedProgramId ? `/api/coach/org-programs/${selectedProgramId}/cohorts?status=upcoming,active` : null,
+    fetcher
+  );
+
+  // Get group programs (only group programs have cohorts)
+  const groupPrograms = programsData?.programs?.filter(p => p.type === 'group') || [];
+  const cohorts = cohortsData?.cohorts || [];
+  const squads = squadsData?.squads || [];
+
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -144,8 +182,11 @@ export function CreateEventModal({
       setError(null);
       setTitle('');
       setDescription('');
-      setEventType('community_event');
       setCoverImageUrl('');
+      setEventType('community_event');
+      setSelectedProgramId(propProgramId || '');
+      setSelectedCohortId(propCohortId || '');
+      setSelectedSquadId(propSquadId || '');
       setMeetingProvider('manual');
       setManualMeetingLink('');
       setUseManualOverride(false);
@@ -162,7 +203,7 @@ export function CreateEventModal({
       setRecurrenceEndDate('');
       setRecurrenceOccurrences(4);
     }
-  }, [isOpen]);
+  }, [isOpen, propProgramId, propCohortId, propSquadId]);
 
   // Animation variants
   const fadeVariants = {
@@ -184,6 +225,16 @@ export function CreateEventModal({
     }
 
     if (currentStep === 'meeting') {
+      // Check if cohort/squad is selected when required
+      if (eventType === 'cohort_call' && !selectedCohortId) {
+        setError('Please select a cohort');
+        return false;
+      }
+      if (eventType === 'squad_call' && !selectedSquadId) {
+        setError('Please select a squad');
+        return false;
+      }
+
       const integrations = { zoom: { connected: zoom.connected }, googleMeet: { connected: googleMeet.connected } };
       if (!isMeetingProviderReady(meetingProvider, integrations, useManualOverride, manualMeetingLink)) {
         if (meetingProvider === 'manual' && !manualMeetingLink.trim()) {
@@ -327,17 +378,22 @@ export function CreateEventModal({
         occurrences: recurrenceEndType === 'occurrences' ? recurrenceOccurrences : undefined,
       } : undefined;
 
-      // Determine scope based on context
+      // Determine IDs based on event type
+      const finalCohortId = eventType === 'cohort_call' ? selectedCohortId : (propCohortId || undefined);
+      const finalSquadId = eventType === 'squad_call' ? selectedSquadId : (propSquadId || undefined);
+      const finalProgramId = eventType === 'cohort_call' ? selectedProgramId : (propProgramId || undefined);
+
+      // Determine scope based on event type
       let scope: string = 'organization';
       let participantModel: string = 'open';
 
-      if (squadId) {
+      if (eventType === 'squad_call' || finalSquadId) {
         scope = 'squad';
         participantModel = 'squad_members';
-      } else if (cohortId) {
+      } else if (eventType === 'cohort_call' || finalCohortId) {
         scope = 'cohort';
         participantModel = 'cohort_members';
-      } else if (programId) {
+      } else if (finalProgramId) {
         scope = 'program';
         participantModel = 'program_enrollees';
       }
@@ -364,10 +420,10 @@ export function CreateEventModal({
         visibility: 'program_wide',
 
         organizationId: organizationId || undefined,
-        programId: programId || undefined,
-        programIds: programId ? [programId] : [],
-        cohortId: cohortId || undefined,
-        squadId: squadId || undefined,
+        programId: finalProgramId || undefined,
+        programIds: finalProgramId ? [finalProgramId] : [],
+        cohortId: finalCohortId || undefined,
+        squadId: finalSquadId || undefined,
         instanceId: instanceId || undefined,
 
         isRecurring: recurrence !== 'none',
@@ -423,12 +479,12 @@ export function CreateEventModal({
           <div>
             <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
               {step === 'info' && 'Create Event'}
-              {step === 'meeting' && 'Meeting Link'}
+              {step === 'meeting' && 'Event Type & Meeting'}
               {step === 'schedule' && 'Schedule'}
             </h2>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
               {step === 'info' && 'Set up your event details'}
-              {step === 'meeting' && 'Choose how attendees will join'}
+              {step === 'meeting' && 'Configure type and meeting link'}
               {step === 'schedule' && 'Pick a date and time'}
             </p>
           </div>
@@ -490,6 +546,36 @@ export function CreateEventModal({
                 />
               </div>
 
+              {/* Cover Image */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                  <ImageIcon className="inline w-4 h-4 mr-1" />
+                  Cover Image <span className="text-[#5f5a55] dark:text-[#b2b6c2] font-normal">(optional)</span>
+                </label>
+                <MediaUpload
+                  value={coverImageUrl}
+                  onChange={setCoverImageUrl}
+                  folder="events"
+                  type="image"
+                  uploadEndpoint="/api/coach/org-upload-media"
+                  hideLabel
+                  aspectRatio="16:9"
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {/* Step 2: Event Type + Meeting Provider */}
+          {step === 'meeting' && (
+            <motion.div
+              key="meeting"
+              variants={fadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="space-y-5"
+            >
               {/* Event Type - Card Selection */}
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
@@ -503,7 +589,17 @@ export function CreateEventModal({
                       <button
                         key={type.value}
                         type="button"
-                        onClick={() => setEventType(type.value)}
+                        onClick={() => {
+                          setEventType(type.value);
+                          // Reset selections when type changes
+                          if (type.value !== 'cohort_call') {
+                            setSelectedProgramId('');
+                            setSelectedCohortId('');
+                          }
+                          if (type.value !== 'squad_call') {
+                            setSelectedSquadId('');
+                          }
+                        }}
                         className={`group relative flex flex-col items-center text-center p-4 rounded-2xl border-2 transition-colors ${
                           isSelected
                             ? 'border-brand-accent bg-brand-accent/5'
@@ -536,36 +632,146 @@ export function CreateEventModal({
                 </div>
               </div>
 
-              {/* Cover Image */}
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                  <ImageIcon className="inline w-4 h-4 mr-1 -mt-0.5" />
-                  Cover Image <span className="text-[#5f5a55] dark:text-[#b2b6c2] font-normal">(optional)</span>
-                </label>
-                <MediaUpload
-                  value={coverImageUrl}
-                  onChange={setCoverImageUrl}
-                  folder="events"
-                  type="image"
-                  uploadEndpoint="/api/coach/org-upload-media"
-                  hideLabel
-                  aspectRatio="16:9"
-                />
-              </div>
-            </motion.div>
-          )}
+              {/* Cohort Selector (when cohort_call is selected) */}
+              {eventType === 'cohort_call' && (
+                <div className="space-y-3">
+                  {/* Program Selector */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                      Select Program <span className="text-red-500">*</span>
+                    </label>
+                    {groupPrograms.length === 0 ? (
+                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl">
+                        No group programs with cohorts found
+                      </p>
+                    ) : (
+                      <select
+                        value={selectedProgramId}
+                        onChange={(e) => {
+                          setSelectedProgramId(e.target.value);
+                          setSelectedCohortId(''); // Reset cohort when program changes
+                        }}
+                        className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                      >
+                        <option value="">Select a program...</option>
+                        {groupPrograms.map((program) => (
+                          <option key={program.id} value={program.id}>
+                            {program.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
 
-          {/* Step 2: Meeting Provider */}
-          {step === 'meeting' && (
-            <motion.div
-              key="meeting"
-              variants={fadeVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className="space-y-5"
-            >
+                  {/* Cohort Selector */}
+                  {selectedProgramId && (
+                    <div>
+                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                        Select Cohort <span className="text-red-500">*</span>
+                      </label>
+                      {cohorts.length === 0 ? (
+                        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl">
+                          No active or upcoming cohorts found for this program
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {cohorts.map((cohort) => (
+                            <button
+                              key={cohort.id}
+                              type="button"
+                              onClick={() => setSelectedCohortId(cohort.id)}
+                              className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-colors ${
+                                selectedCohortId === cohort.id
+                                  ? 'border-brand-accent bg-brand-accent/5'
+                                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                  selectedCohortId === cohort.id
+                                    ? 'bg-brand-accent/20'
+                                    : 'bg-[#f3f1ef] dark:bg-[#262b35]'
+                                }`}>
+                                  <Users className={`w-4 h-4 ${selectedCohortId === cohort.id ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                                </div>
+                                <div className="text-left">
+                                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{cohort.name}</p>
+                                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                                    {cohort.status === 'active' ? 'Active' : 'Upcoming'} • {cohort.currentEnrollment || 0} members
+                                  </p>
+                                </div>
+                              </div>
+                              {selectedCohortId === cohort.id ? (
+                                <div className="w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center">
+                                  <Check className="w-3 h-3 text-white" />
+                                </div>
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Squad Selector (when squad_call is selected) */}
+              {eventType === 'squad_call' && (
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                    Select Squad <span className="text-red-500">*</span>
+                  </label>
+                  {squads.length === 0 ? (
+                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl">
+                      No squads found in your organization
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {squads.map((squad) => (
+                        <button
+                          key={squad.id}
+                          type="button"
+                          onClick={() => setSelectedSquadId(squad.id)}
+                          className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-colors ${
+                            selectedSquadId === squad.id
+                              ? 'border-brand-accent bg-brand-accent/5'
+                              : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                              selectedSquadId === squad.id
+                                ? 'bg-brand-accent/20'
+                                : 'bg-[#f3f1ef] dark:bg-[#262b35]'
+                            }`}>
+                              <UserCheck className={`w-4 h-4 ${selectedSquadId === squad.id ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                            </div>
+                            <div className="text-left">
+                              <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{squad.name}</p>
+                              {squad.description && (
+                                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate max-w-[200px]">
+                                  {squad.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {selectedSquadId === squad.id ? (
+                            <div className="w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center">
+                              <Check className="w-3 h-3 text-white" />
+                            </div>
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Meeting Provider */}
               <MeetingProviderSelector
                 allowInApp={false}
                 value={meetingProvider}
