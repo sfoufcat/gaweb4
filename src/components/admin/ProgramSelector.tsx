@@ -1,13 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Check, ChevronDown, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 /**
  * ProgramSelector Component
@@ -32,6 +27,8 @@ interface ProgramSelectorProps {
   className?: string;
   /** API endpoint to fetch programs from. Defaults to /api/admin/programs for admin, use /api/coach/org-programs for coach context */
   programsApiEndpoint?: string;
+  /** Whether to show the helper text below the selector */
+  showHelperText?: boolean;
 }
 
 export function ProgramSelector({
@@ -40,11 +37,14 @@ export function ProgramSelector({
   placeholder = 'Select programs...',
   className = '',
   programsApiEndpoint = '/api/admin/programs',
+  showHelperText = false,
 }: ProgramSelectorProps) {
   const [open, setOpen] = useState(false);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch programs on mount
   useEffect(() => {
@@ -81,63 +81,89 @@ export function ProgramSelector({
   const selectedPrograms = programs.filter(p => value.includes(p.id));
   
   // Filter programs by search term
-  const filteredPrograms = programs.filter(p => 
+  const filteredPrograms = programs.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
   return (
-    <div className={className}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between h-auto min-h-[40px] font-normal text-left"
-          >
-            {selectedPrograms.length > 0 ? (
-              <div className="flex flex-wrap gap-1 flex-1">
-                {selectedPrograms.map(program => (
-                  <span
-                    key={program.id}
-                    className="inline-flex items-center gap-1 bg-[#f3f1ef] dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] text-xs px-2 py-0.5 rounded-full"
-                  >
-                    {program.name}
-                    <button
-                      type="button"
-                      onClick={(e) => removeProgram(program.id, e)}
-                      className="hover:bg-black/10 dark:hover:bg-white/10 rounded-full p-0.5"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <span className="text-text-secondary dark:text-[#7d8190]">
-                {loading ? 'Loading programs...' : placeholder}
+    <div className={cn('relative', className)}>
+      {/* Trigger Button - styled like Select */}
+      <button
+        ref={triggerRef}
+        type="button"
+        role="combobox"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="flex h-10 w-full items-center justify-between rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#0d0f14] px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-brand-accent disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {selectedPrograms.length > 0 ? (
+          <div className="flex flex-wrap gap-1 flex-1 mr-2 overflow-hidden">
+            {selectedPrograms.map(program => (
+              <span
+                key={program.id}
+                className="inline-flex items-center gap-1 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] text-xs px-2 py-0.5 rounded-full"
+              >
+                {program.name}
+                <button
+                  type="button"
+                  onClick={(e) => removeProgram(program.id, e)}
+                  className="hover:bg-black/10 dark:hover:bg-white/10 rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </span>
-            )}
-            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[300px] p-0" align="start">
+            ))}
+          </div>
+        ) : (
+          <span className="text-[#9ca3af] dark:text-[#7d8190]">
+            {loading ? 'Loading...' : placeholder}
+          </span>
+        )}
+        <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+      </button>
+
+      {/* Dropdown Content */}
+      {open && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 mt-1 w-full min-w-[8rem] overflow-hidden rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] shadow-md animate-in fade-in-0 zoom-in-95"
+        >
           <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
             <input
               type="text"
               placeholder="Search programs..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8]"
+              className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#0d0f14] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8]"
+              autoFocus
             />
           </div>
           <div className="max-h-[200px] overflow-y-auto p-1">
             {loading ? (
-              <div className="p-4 text-center text-sm text-text-secondary dark:text-[#7d8190]">
+              <div className="p-4 text-center text-sm text-[#9ca3af] dark:text-[#7d8190]">
                 Loading...
               </div>
             ) : filteredPrograms.length === 0 ? (
-              <div className="p-4 text-center text-sm text-text-secondary dark:text-[#7d8190]">
+              <div className="p-4 text-center text-sm text-[#9ca3af] dark:text-[#7d8190]">
                 {searchTerm ? 'No programs found.' : 'No programs available.'}
               </div>
             ) : (
@@ -151,7 +177,7 @@ export function ProgramSelector({
                   <div
                     className={`flex h-4 w-4 items-center justify-center rounded border flex-shrink-0 ${
                       value.includes(program.id)
-                        ? 'bg-[#a07855] border-brand-accent'
+                        ? 'bg-brand-accent border-brand-accent'
                         : 'border-gray-300 dark:border-gray-600'
                     }`}
                   >
@@ -160,20 +186,22 @@ export function ProgramSelector({
                     )}
                   </div>
                   <span className="flex-1 text-[#1a1a1a] dark:text-[#f5f5f8]">{program.name}</span>
-                  <span className="text-xs text-text-secondary dark:text-[#7d8190]">
+                  <span className="text-xs text-[#9ca3af] dark:text-[#7d8190]">
                     {program.type === 'group' ? 'Group' : '1:1'}
                   </span>
                 </button>
               ))
             )}
           </div>
-        </PopoverContent>
-      </Popover>
+        </div>
+      )}
 
-      {/* Helper text */}
-      <p className="text-xs text-text-secondary dark:text-[#7d8190] mt-1">
-        Select which programs this content should be available in. Leave empty for all users.
-      </p>
+      {/* Helper text - only shown if explicitly enabled */}
+      {showHelperText && (
+        <p className="text-xs text-[#9ca3af] dark:text-[#7d8190] mt-1">
+          Select which programs this content should be available in. Leave empty for all users.
+        </p>
+      )}
     </div>
   );
 }

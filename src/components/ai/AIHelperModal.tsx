@@ -14,11 +14,12 @@ import {
   Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { 
-  AIUseCase, 
-  AIGenerationContext, 
-  ProgramContentDraft, 
+import type {
+  AIUseCase,
+  AIGenerationContext,
+  ProgramContentDraft,
   LandingPageDraft,
+  WebsiteContentDraft,
 } from '@/lib/ai/types';
 
 // =============================================================================
@@ -32,7 +33,7 @@ interface AIHelperModalProps {
   description: string;
   useCase: AIUseCase;
   context?: AIGenerationContext;
-  onApply: (draft: ProgramContentDraft | LandingPageDraft) => void;
+  onApply: (draft: ProgramContentDraft | LandingPageDraft | WebsiteContentDraft) => void;
   /** Whether existing content exists that will be overwritten */
   hasExistingContent?: boolean;
   /** Custom warning message for overwrite */
@@ -278,6 +279,99 @@ function LandingPagePreview({ draft }: { draft: LandingPageDraft }) {
   );
 }
 
+function WebsiteContentPreview({ draft }: { draft: WebsiteContentDraft }) {
+  return (
+    <div className="space-y-4 max-h-[400px] overflow-y-auto">
+      {/* Hero */}
+      <div className="bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 dark:from-brand-accent/30 dark:to-brand-accent/10 rounded-lg p-4">
+        <span className="text-xs font-medium text-brand-accent dark:text-[#c49a6c] uppercase tracking-wide">Hero Section</span>
+        <h3 className="text-lg font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mt-1">{draft.hero.headline}</h3>
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">{draft.hero.subheadline}</p>
+        <div className="mt-3">
+          <span className="px-3 py-1 bg-brand-accent text-brand-accent-foreground text-sm rounded-lg">{draft.hero.ctaText}</span>
+        </div>
+      </div>
+
+      {/* About Coach */}
+      <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-4">
+        <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wide">About the Coach</span>
+        <h4 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mt-1">{draft.coach.headline}</h4>
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-2 line-clamp-3">{draft.coach.bio}</p>
+        <ul className="mt-2 space-y-1">
+          {draft.coach.bullets.slice(0, 3).map((bullet, i) => (
+            <li key={i} className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">✓ {bullet}</li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Services */}
+      <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-4">
+        <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wide">Services ({draft.services.items.length})</span>
+        <h4 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mt-1">{draft.services.headline}</h4>
+        <div className="mt-2 grid gap-2">
+          {draft.services.items.slice(0, 4).map((item, i) => (
+            <div key={i} className="text-sm">
+              <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{item.title}</span>
+              <span className="text-[#5f5a55] dark:text-[#b2b6c2]"> – {item.description}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Testimonials */}
+      <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-4">
+        <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wide">Testimonials ({draft.testimonials.length})</span>
+        <div className="mt-2 space-y-3">
+          {draft.testimonials.slice(0, 2).map((t, i) => (
+            <div key={i} className="bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg p-3">
+              <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] italic">&ldquo;{t.quote}&rdquo;</p>
+              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-2">— {t.name}{t.role ? `, ${t.role}` : ''}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* FAQs */}
+      <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-4">
+        <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wide">FAQs ({draft.faq.length})</span>
+        <div className="mt-2 space-y-2">
+          {draft.faq.slice(0, 3).map((faq, i) => (
+            <div key={i}>
+              <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">Q: {faq.question}</p>
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">A: {faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-4">
+        <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wide">Footer CTA</span>
+        <h4 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mt-1">{draft.cta.headline}</h4>
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">{draft.cta.subheadline}</p>
+        <div className="mt-2">
+          <span className="px-3 py-1 bg-brand-accent text-brand-accent-foreground text-sm rounded-lg">{draft.cta.buttonText}</span>
+        </div>
+      </div>
+
+      {/* SEO */}
+      <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-4">
+        <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wide">SEO</span>
+        <div className="mt-2 space-y-1">
+          <p className="text-sm"><span className="text-[#5f5a55] dark:text-[#b2b6c2]">Title:</span> <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{draft.seo.metaTitle}</span></p>
+          <p className="text-sm"><span className="text-[#5f5a55] dark:text-[#b2b6c2]">Description:</span> <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{draft.seo.metaDescription}</span></p>
+        </div>
+      </div>
+
+      {/* Tone */}
+      <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+        <Zap className="w-4 h-4" />
+        <span>Tone: <span className="capitalize font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{draft.tone}</span></span>
+      </div>
+    </div>
+  );
+}
+
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
@@ -296,7 +390,7 @@ export function AIHelperModal({
   const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<ModalStep>('input');
   const [userPrompt, setUserPrompt] = useState('');
-  const [draft, setDraft] = useState<ProgramContentDraft | LandingPageDraft | null>(null);
+  const [draft, setDraft] = useState<ProgramContentDraft | LandingPageDraft | WebsiteContentDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   
@@ -443,8 +537,10 @@ export function AIHelperModal({
                   <textarea
                     value={userPrompt}
                     onChange={(e) => setUserPrompt(e.target.value)}
-                    placeholder={useCase === 'PROGRAM_CONTENT' 
+                    placeholder={useCase === 'PROGRAM_CONTENT'
                       ? "E.g., Create a 30-day program for creators who want to grow their audience. Focus on content strategy, consistency, and engagement. Include daily action tasks and weekly reflection exercises..."
+                      : useCase === 'LANDING_PAGE_WEBSITE'
+                      ? "E.g., I'm a leadership coach helping executives develop their emotional intelligence. My target audience is mid-level managers looking to advance. I offer 1:1 coaching, group workshops, and a 12-week leadership program..."
                       : "E.g., Create a landing page for busy professionals who want to level up their health. Tone should be friendly but professional. Highlight the community aspect and accountability..."
                     }
                     rows={6}
@@ -533,6 +629,8 @@ export function AIHelperModal({
                 
                 {useCase === 'PROGRAM_CONTENT' ? (
                   <ProgramContentPreview draft={draft as ProgramContentDraft} />
+                ) : useCase === 'LANDING_PAGE_WEBSITE' ? (
+                  <WebsiteContentPreview draft={draft as WebsiteContentDraft} />
                 ) : (
                   <LandingPagePreview draft={draft as LandingPageDraft} />
                 )}

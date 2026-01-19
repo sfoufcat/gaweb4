@@ -2,12 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 /**
  * CategorySelector Component
@@ -30,7 +25,7 @@ interface CategorySelectorProps {
 export function CategorySelector({
   value,
   onChange,
-  placeholder = 'Select or create category...',
+  placeholder = 'Select...',
   className = '',
   categoriesApiEndpoint = '/api/coach/org-article-categories',
 }: CategorySelectorProps) {
@@ -40,6 +35,8 @@ export function CategorySelector({
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -60,11 +57,30 @@ export function CategorySelector({
     fetchCategories();
   }, [categoriesApiEndpoint]);
 
-  // Focus input when popover opens
+  // Focus input when dropdown opens
   useEffect(() => {
     if (open && inputRef.current) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
+  }, [open]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
   // Filter categories by search term
@@ -120,31 +136,37 @@ export function CategorySelector({
   };
 
   return (
-    <div className={className}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between h-auto min-h-[40px] font-normal text-left"
-          >
-            {value ? (
-              <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{value}</span>
-            ) : (
-              <span className="text-text-secondary dark:text-[#7d8190]">
-                {loading ? 'Loading categories...' : placeholder}
-              </span>
-            )}
-            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[300px] p-0" align="start">
+    <div className={cn('relative', className)}>
+      {/* Trigger Button - styled like Select */}
+      <button
+        ref={triggerRef}
+        type="button"
+        role="combobox"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="flex h-10 w-full items-center justify-between rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#0d0f14] px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-brand-accent disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {value ? (
+          <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{value}</span>
+        ) : (
+          <span className="text-[#9ca3af] dark:text-[#7d8190]">
+            {loading ? 'Loading...' : placeholder}
+          </span>
+        )}
+        <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+      </button>
+
+      {/* Dropdown Content */}
+      {open && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 mt-1 w-full min-w-[8rem] overflow-hidden rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] shadow-md animate-in fade-in-0 zoom-in-95"
+        >
           <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
             <input
               ref={inputRef}
               type="text"
-              placeholder="Search or create category..."
+              placeholder="Search or create..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => {
@@ -153,12 +175,12 @@ export function CategorySelector({
                   handleCreateCategory();
                 }
               }}
-              className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8]"
+              className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#0d0f14] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8]"
             />
           </div>
           <div className="max-h-[250px] overflow-y-auto p-1">
             {loading ? (
-              <div className="p-4 text-center text-sm text-text-secondary dark:text-[#7d8190]">
+              <div className="p-4 text-center text-sm text-[#9ca3af] dark:text-[#7d8190]">
                 Loading...
               </div>
             ) : (
@@ -180,7 +202,7 @@ export function CategorySelector({
 
                 {/* Existing categories */}
                 {filteredCategories.length === 0 && !showCreateOption ? (
-                  <div className="p-4 text-center text-sm text-text-secondary dark:text-[#7d8190]">
+                  <div className="p-4 text-center text-sm text-[#9ca3af] dark:text-[#7d8190]">
                     {searchTerm ? 'No categories found.' : 'No categories yet. Type to create one.'}
                   </div>
                 ) : (
@@ -195,7 +217,7 @@ export function CategorySelector({
                     >
                       <div className={`flex h-4 w-4 items-center justify-center rounded border flex-shrink-0 ${
                         value === category
-                          ? 'bg-[#a07855] border-brand-accent'
+                          ? 'bg-brand-accent border-brand-accent'
                           : 'border-gray-300 dark:border-gray-600'
                       }`}>
                         {value === category && (
@@ -209,8 +231,8 @@ export function CategorySelector({
               </>
             )}
           </div>
-        </PopoverContent>
-      </Popover>
+        </div>
+      )}
     </div>
   );
 }

@@ -649,7 +649,7 @@ export function CourseEditor({
               </div>
 
               {/* Lesson Content */}
-              <div className="px-6 py-5 space-y-5 w-full">
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 w-full">
                 {/* Video Section */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">

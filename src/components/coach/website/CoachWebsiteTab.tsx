@@ -8,7 +8,8 @@ import {
   Loader2,
   Save,
   Sparkles,
-  Info
+  Info,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -22,20 +23,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { WebsiteEditor } from './WebsiteEditor';
 import { TemplateSelector } from './TemplateSelector';
+import { AIHelperModal } from '@/components/ai/AIHelperModal';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import type { OrgWebsite, WebsiteTemplateName, WebsiteService } from '@/types';
 import { DEFAULT_ORG_WEBSITE } from '@/types';
-import type { WebsiteContentDraft } from '@/lib/ai/types';
+import type { WebsiteContentDraft, ProgramContentDraft, LandingPageDraft } from '@/lib/ai/types';
 
 interface SimpleFunnel {
   id: string;
@@ -66,9 +60,6 @@ export function CoachWebsiteTab() {
 
   // AI generation state
   const [showAIModal, setShowAIModal] = useState(false);
-  const [aiPrompt, setAIPrompt] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [aiError, setAIError] = useState<string | null>(null);
 
   // Form state - initialized from website or defaults
   const [formData, setFormData] = useState<Omit<OrgWebsite, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'>>({
@@ -184,41 +175,13 @@ export function CoachWebsiteTab() {
     handleFormChange({ template });
   };
 
-  const handleAIGenerate = async () => {
-    if (isDemoMode) {
-      openSignupModal?.();
-      return;
-    }
-
-    if (!aiPrompt.trim() || aiPrompt.length < 10) {
-      setAIError('Please describe your coaching business in at least 10 characters');
-      return;
-    }
-
-    try {
-      setIsGenerating(true);
-      setAIError(null);
-
-      const response = await fetch('/api/ai/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          useCase: 'LANDING_PAGE_WEBSITE',
-          userPrompt: aiPrompt,
-          context: {},
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to generate content');
-      }
-
-      const data = await response.json();
-      const draft = data.draft as WebsiteContentDraft;
+  const handleApplyAIContent = (draft: ProgramContentDraft | LandingPageDraft | WebsiteContentDraft) => {
+    // Type guard for WebsiteContentDraft
+    if ('services' in draft && 'cta' in draft && 'seo' in draft) {
+      const websiteDraft = draft as WebsiteContentDraft;
 
       // Apply the generated content to form data
-      const generatedServices: WebsiteService[] = draft.services.items.map((item) => ({
+      const generatedServices: WebsiteService[] = websiteDraft.services.items.map((item) => ({
         id: crypto.randomUUID(),
         title: item.title,
         description: item.description,
@@ -227,37 +190,36 @@ export function CoachWebsiteTab() {
       }));
 
       handleFormChange({
-        heroHeadline: draft.hero.headline,
-        heroSubheadline: draft.hero.subheadline,
-        heroCtaText: draft.hero.ctaText,
-        coachHeadline: draft.coach.headline,
-        coachBio: draft.coach.bio,
-        coachBullets: draft.coach.bullets,
-        servicesHeadline: draft.services.headline,
+        heroHeadline: websiteDraft.hero.headline,
+        heroSubheadline: websiteDraft.hero.subheadline,
+        heroCtaText: websiteDraft.hero.ctaText,
+        coachHeadline: websiteDraft.coach.headline,
+        coachBio: websiteDraft.coach.bio,
+        coachBullets: websiteDraft.coach.bullets,
+        servicesHeadline: websiteDraft.services.headline,
         services: generatedServices,
-        testimonials: draft.testimonials.map((t) => ({
+        testimonials: websiteDraft.testimonials.map((t) => ({
           text: t.quote,
           author: t.name,
           role: t.role || '',
           rating: 5,
         })),
-        faqs: draft.faq,
-        ctaHeadline: draft.cta.headline,
-        ctaSubheadline: draft.cta.subheadline,
-        ctaButtonText: draft.cta.buttonText,
-        metaTitle: draft.seo.metaTitle,
-        metaDescription: draft.seo.metaDescription,
+        faqs: websiteDraft.faq,
+        ctaHeadline: websiteDraft.cta.headline,
+        ctaSubheadline: websiteDraft.cta.subheadline,
+        ctaButtonText: websiteDraft.cta.buttonText,
+        metaTitle: websiteDraft.seo.metaTitle,
+        metaDescription: websiteDraft.seo.metaDescription,
       });
-
-      setShowAIModal(false);
-      setAIPrompt('');
-    } catch (err) {
-      console.error('AI generation error:', err);
-      setAIError(err instanceof Error ? err.message : 'Failed to generate content');
-    } finally {
-      setIsGenerating(false);
     }
   };
+
+  // Check if website has existing content
+  const hasExistingContent = !!(
+    formData.heroHeadline ||
+    formData.coachBio ||
+    formData.services.length > 0
+  );
 
   // Tenant required state
   if (tenantRequired) {
@@ -310,20 +272,40 @@ export function CoachWebsiteTab() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {hasUnsavedChanges && (
-            <span className="text-sm text-amber-600 dark:text-amber-400 font-albert">
+            <span className="text-sm text-amber-600 dark:text-amber-400 font-albert hidden sm:inline">
               Unsaved changes
             </span>
           )}
-          <Button
-            variant="outline"
-            onClick={() => setShowAIModal(true)}
-            className="gap-2"
+          {/* Preview Button */}
+          {formData.enabled && (
+            <a
+              href="/website"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
+            >
+              <Eye className="w-4 h-4" />
+              <span className="hidden sm:inline">Preview</span>
+            </a>
+          )}
+          {/* Generate with AI Button - borderless style */}
+          <button
+            onClick={() => {
+              if (isDemoMode) {
+                openSignupModal?.();
+              } else {
+                setShowAIModal(true);
+              }
+            }}
+            className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
           >
             <Sparkles className="w-4 h-4" />
-            Generate with AI
-          </Button>
+            <span className="hidden sm:inline">Generate with AI</span>
+            <span className="sm:hidden">AI</span>
+          </button>
+          {/* Save Button */}
           <Button
             onClick={handleSave}
             disabled={isSaving || !hasUnsavedChanges}
@@ -334,7 +316,7 @@ export function CoachWebsiteTab() {
             ) : (
               <Save className="w-4 h-4" />
             )}
-            Save
+            <span className="hidden sm:inline">Save</span>
           </Button>
         </div>
       </div>
@@ -411,71 +393,17 @@ export function CoachWebsiteTab() {
       </AlertDialog>
 
       {/* AI Generation Modal */}
-      <Dialog open={showAIModal} onOpenChange={setShowAIModal}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-brand-accent" />
-              Generate Website Content
-            </DialogTitle>
-            <DialogDescription>
-              Describe your coaching business and we&apos;ll generate professional website content for you.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                Describe your coaching business
-              </label>
-              <textarea
-                value={aiPrompt}
-                onChange={(e) => setAIPrompt(e.target.value)}
-                placeholder="Example: I'm a leadership coach helping executives develop their emotional intelligence and communication skills. My target audience is mid-level managers looking to advance to senior roles. I offer 1:1 coaching, group workshops, and a 12-week leadership development program."
-                rows={6}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-                disabled={isGenerating}
-              />
-              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1.5">
-                Include your niche, target audience, services offered, and what makes you unique.
-              </p>
-            </div>
-
-            {aiError && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-sm text-red-600 dark:text-red-400 font-albert">{aiError}</p>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowAIModal(false)}
-              disabled={isGenerating}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAIGenerate}
-              disabled={isGenerating || !aiPrompt.trim()}
-              className="gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Generate Content
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AIHelperModal
+        isOpen={showAIModal}
+        onClose={() => setShowAIModal(false)}
+        title="Generate Website Content"
+        description="Describe your coaching business and we'll generate professional website content for you."
+        useCase="LANDING_PAGE_WEBSITE"
+        context={{}}
+        onApply={handleApplyAIContent}
+        hasExistingContent={hasExistingContent}
+        overwriteWarning="This will replace your existing website content including headlines, services, testimonials, and FAQs."
+      />
     </div>
   );
 }

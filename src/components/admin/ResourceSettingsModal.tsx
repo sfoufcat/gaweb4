@@ -176,7 +176,7 @@ function SettingsContent({
   };
 
   return (
-    <div className="space-y-5 overflow-y-auto max-h-[70vh] md:max-h-[75vh] px-1">
+    <div className="space-y-5 overflow-y-auto max-h-[70vh] md:max-h-[75vh] pr-1 scrollbar-thin">
       {/* Basic Info */}
       <div className="space-y-4">
         <div>
@@ -244,10 +244,10 @@ function SettingsContent({
                     Level
                   </label>
                   <Select value={level || ''} onValueChange={onLevelChange}>
-                    <SelectTrigger className="w-full h-10 bg-white dark:bg-[#0d0f14] border-[#e1ddd8] dark:border-[#262b35]">
+                    <SelectTrigger className="w-full h-10 bg-white dark:bg-[#0d0f14] border-[#e1ddd8] dark:border-[#262b35] rounded-lg">
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-lg">
                       <SelectItem value="none">None</SelectItem>
                       <SelectItem value="Beginner">Beginner</SelectItem>
                       <SelectItem value="Intermediate">Intermediate</SelectItem>
@@ -266,10 +266,8 @@ function SettingsContent({
                   value={programIds || []}
                   onChange={onProgramIdsChange}
                   programsApiEndpoint={programsApiEndpoint}
+                  showHelperText
                 />
-                <p className="text-xs text-[#9ca3af] mt-1 font-albert">
-                  Select which programs this content should be available in. Leave empty for all users.
-                </p>
               </div>
             )}
           </div>
