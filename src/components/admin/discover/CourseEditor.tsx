@@ -618,7 +618,7 @@ export function CourseEditor({
         {/* Content Area - Lesson Editor (shown on mobile when lesson selected) */}
         <div className={`flex-1 overflow-y-auto bg-white dark:bg-[#171b22] ${selectedLesson ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
           {selectedLesson && selectedModuleIndex !== null && selectedLessonIndex !== null ? (
-            <div className="max-w-4xl mx-auto px-6 md:px-10 py-6 md:py-8 space-y-6 w-full">
+            <div className="px-8 md:px-12 lg:px-16 py-8 md:py-10 space-y-8 w-full">
               {/* Mobile Back Button */}
               <button
                 type="button"
@@ -629,31 +629,18 @@ export function CourseEditor({
                 Back to Structure
               </button>
 
-              {/* Title Row with Locked toggle */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-2 font-albert">
-                    Lesson Title
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedLesson.title}
-                    onChange={(e) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, title: e.target.value })}
-                    placeholder="Enter lesson title..."
-                    className="w-full px-4 py-3 text-lg border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert bg-white dark:bg-[#0d0f14]"
-                  />
-                </div>
-                <div className="sm:pt-7">
-                  <label className="inline-flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#0d0f14] transition-colors">
-                    <BrandedCheckbox
-                      checked={selectedLesson.isLocked || false}
-                      onChange={(checked) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, isLocked: checked })}
-                    />
-                    <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                      Locked
-                    </span>
-                  </label>
-                </div>
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-2 font-albert">
+                  Lesson Title
+                </label>
+                <input
+                  type="text"
+                  value={selectedLesson.title}
+                  onChange={(e) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, title: e.target.value })}
+                  placeholder="Enter lesson title..."
+                  className="w-full px-4 py-3.5 text-lg border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert bg-white dark:bg-[#0d0f14]"
+                />
               </div>
 
               {/* Video Section - Full Width 16:9 */}
@@ -718,6 +705,24 @@ export function CourseEditor({
                   mediaFolder="courses/lessons"
                   uploadEndpoint={uploadEndpoint}
                 />
+              </div>
+
+              {/* Locked Toggle - Full Width at Bottom */}
+              <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                <label className="flex items-start gap-4 cursor-pointer p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#0d0f14] transition-colors">
+                  <BrandedCheckbox
+                    checked={selectedLesson.isLocked || false}
+                    onChange={(checked) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, isLocked: checked })}
+                  />
+                  <div className="flex-1">
+                    <span className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                      Locked Lesson
+                    </span>
+                    <span className="block text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+                      Locked lessons require enrollment or purchase to access. Use this for premium content.
+                    </span>
+                  </div>
+                </label>
               </div>
             </div>
           ) : (

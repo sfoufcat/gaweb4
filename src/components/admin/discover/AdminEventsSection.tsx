@@ -39,6 +39,9 @@ import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { CategorySelector } from '@/components/admin/CategorySelector';
 import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { MeetingProviderSelector, type MeetingProviderType } from '@/components/scheduling/MeetingProviderSelector';
+import { CreateEventModal } from '@/components/scheduling/CreateEventModal';
+import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 
 // Common timezones (same as SquadCallEditForm)
 const COMMON_TIMEZONES = [
@@ -59,14 +62,6 @@ const COMMON_TIMEZONES = [
   { value: 'UTC', label: 'UTC' },
 ];
 
-// Location presets
-const LOCATION_OPTIONS = [
-  { value: 'zoom', label: 'Zoom' },
-  { value: 'google_meet', label: 'Google Meet' },
-  { value: 'microsoft_teams', label: 'Microsoft Teams' },
-  { value: 'in_person', label: 'In-person' },
-  { value: 'other', label: 'Other' },
-];
 
 // Recurrence options
 const RECURRENCE_OPTIONS: { value: RecurrenceFrequency | 'none'; label: string }[] = [
@@ -126,6 +121,9 @@ function EventFormDialog({
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [loadingCoaches, setLoadingCoaches] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Get coach integrations for meeting auto-creation
+  const { zoom, googleMeet } = useCoachIntegrations();
   
   // Derive API context
   const isCoachContext = apiEndpoint.includes('/coach/');
@@ -139,8 +137,8 @@ function EventFormDialog({
     time: '10:00',
     durationMinutes: 60,
     timezone: 'America/New_York',
-    location: 'zoom' as string,
-    meetingLink: '',
+    meetingProvider: 'zoom' as MeetingProviderType,
+    manualMeetingLink: '',
     description: '',
     bulletPoints: [''],
     additionalInfo: { type: '', language: 'English', difficulty: 'All levels' },
@@ -191,14 +189,12 @@ function EventFormDialog({
       const [endH, endM] = endTime.split(':').map(Number);
       const durationMinutes = ((endH * 60 + endM) - (startH * 60 + startM)) || 60;
       
-      // Determine location type from existing data
-      let locationValue = 'other';
+      // Determine meeting provider from existing data
+      let meetingProvider: MeetingProviderType = 'manual';
       const label = (event.locationLabel || '').toLowerCase();
-      if (label.includes('zoom')) locationValue = 'zoom';
-      else if (label.includes('google') || label.includes('meet')) locationValue = 'google_meet';
-      else if (label.includes('teams')) locationValue = 'microsoft_teams';
-      else if (event.locationType === 'in_person') locationValue = 'in_person';
-      
+      if (label.includes('zoom')) meetingProvider = 'zoom';
+      else if (label.includes('google') || label.includes('meet')) meetingProvider = 'google_meet';
+
       setFormData({
         title: event.title || '',
         coverImageUrl: event.coverImageUrl || '',
@@ -206,8 +202,8 @@ function EventFormDialog({
         time: startTime,
         durationMinutes,
         timezone: event.timezone || 'America/New_York',
-        location: locationValue,
-        meetingLink: event.zoomLink || '',
+        meetingProvider,
+        manualMeetingLink: event.zoomLink || '',
         description: event.longDescription || event.shortDescription || '',
         bulletPoints: event.bulletPoints?.length ? event.bulletPoints : [''],
         additionalInfo: event.additionalInfo || { type: '', language: 'English', difficulty: 'All levels' },
@@ -238,8 +234,8 @@ function EventFormDialog({
         time: '10:00',
         durationMinutes: 60,
         timezone: 'America/New_York',
-        location: 'zoom',
-        meetingLink: '',
+        meetingProvider: 'zoom',
+        manualMeetingLink: '',
         description: '',
         bulletPoints: [''],
         additionalInfo: { type: '', language: 'English', difficulty: 'All levels' },
@@ -272,14 +268,13 @@ function EventFormDialog({
     }
   };
 
-  // Get location label for display
+  // Get location label from meeting provider
   const getLocationLabel = (): string => {
-    switch (formData.location) {
+    switch (formData.meetingProvider) {
       case 'zoom': return 'Zoom';
       case 'google_meet': return 'Google Meet';
-      case 'microsoft_teams': return 'Microsoft Teams';
-      case 'in_person': return 'In-person';
-      default: return 'Other';
+      case 'manual': return 'Online';
+      default: return 'Online';
     }
   };
 
@@ -290,7 +285,62 @@ function EventFormDialog({
     try {
       // Get selected host info
       const selectedHost = coaches.find(c => c.id === formData.hostUserId);
-      
+
+      // Handle meeting link creation based on provider
+      let finalMeetingLink = formData.manualMeetingLink || null;
+      let externalMeetingId: string | null = null;
+
+      // Auto-create Zoom meeting if connected
+      if (formData.meetingProvider === 'zoom' && zoom.connected && !isEditing) {
+        try {
+          const startDateTime = `${formData.date}T${formData.time}:00`;
+          const zoomResponse = await fetch('/api/coach/integrations/zoom/meetings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              topic: formData.title,
+              startTime: startDateTime,
+              duration: formData.durationMinutes,
+              timezone: formData.timezone,
+            }),
+          });
+          if (zoomResponse.ok) {
+            const zoomData = await zoomResponse.json();
+            finalMeetingLink = zoomData.meetingUrl || zoomData.join_url;
+            externalMeetingId = zoomData.meetingId?.toString() || zoomData.id?.toString();
+          }
+        } catch (err) {
+          console.error('Failed to create Zoom meeting:', err);
+        }
+      }
+
+      // Auto-create Google Meet if connected
+      if (formData.meetingProvider === 'google_meet' && googleMeet.connected && !isEditing) {
+        try {
+          const startDateTime = `${formData.date}T${formData.time}:00`;
+          const endTime = calculateEndTime(formData.time, formData.durationMinutes);
+          const endDateTime = `${formData.date}T${endTime}:00`;
+          const meetResponse = await fetch('/api/coach/integrations/google_meet/meetings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              summary: formData.title,
+              startTime: startDateTime,
+              endTime: endDateTime,
+              timezone: formData.timezone,
+              description: formData.description,
+            }),
+          });
+          if (meetResponse.ok) {
+            const meetData = await meetResponse.json();
+            finalMeetingLink = meetData.meetingUrl;
+            externalMeetingId = meetData.eventId;
+          }
+        } catch (err) {
+          console.error('Failed to create Google Meet:', err);
+        }
+      }
+
       // Build the payload as UnifiedEvent-compatible
       const payload = {
         title: formData.title,
@@ -300,9 +350,11 @@ function EventFormDialog({
         endTime: calculateEndTime(formData.time, formData.durationMinutes),
         timezone: formData.timezone,
         durationMinutes: formData.durationMinutes,
-        locationType: formData.location === 'in_person' ? 'in_person' : 'online',
+        locationType: 'online',
         locationLabel: getLocationLabel(),
-        meetingLink: formData.meetingLink || null,
+        meetingLink: finalMeetingLink,
+        meetingProvider: formData.meetingProvider,
+        externalMeetingId,
         shortDescription: formData.description.substring(0, 200),
         longDescription: formData.description,
         bulletPoints: formData.bulletPoints.filter(bp => bp.trim()),
@@ -600,37 +652,14 @@ function EventFormDialog({
               </p>
             </div>
 
-            {/* Location - Simplified */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                <MapPin className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
-                Location
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <Select
-                  value={formData.location}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}
-                >
-                  <SelectTrigger className="px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent ring-offset-0 dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LOCATION_OPTIONS.map(option => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formData.location !== 'in_person' && (
-                  <input
-                    type="url"
-                    value={formData.meetingLink}
-                    onChange={e => setFormData(prev => ({ ...prev, meetingLink: e.target.value }))}
-                    placeholder="Meeting URL..."
-                    className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-                  />
-                )}
-              </div>
-            </div>
+            {/* Meeting Provider */}
+            <MeetingProviderSelector
+              allowInApp={false}
+              value={formData.meetingProvider}
+              onChange={(provider) => setFormData(prev => ({ ...prev, meetingProvider: provider }))}
+              manualLink={formData.manualMeetingLink}
+              onManualLinkChange={(link) => setFormData(prev => ({ ...prev, manualMeetingLink: link }))}
+            />
 
             {/* Host - Select from coaches */}
             <div>
@@ -863,6 +892,7 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
   const [eventToEdit, setEventToEdit] = useState<DiscoverEvent | null>(null);
   const [eventToDelete, setEventToDelete] = useState<DiscoverEvent | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Derive upload endpoint from API endpoint - use coach upload for coach routes
@@ -1024,7 +1054,7 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
               </div>
               
               <button
-                onClick={() => { setEventToEdit(null); setIsFormOpen(true); }}
+                onClick={() => setIsCreateModalOpen(true)}
                 className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
                 title="Create Event"
               >
@@ -1115,7 +1145,7 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
         )}
       </div>
 
-      {/* Event Form Dialog */}
+      {/* Event Form Dialog - for editing existing events */}
       <EventFormDialog
         event={eventToEdit}
         isOpen={isFormOpen}
@@ -1123,6 +1153,13 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
         onSave={fetchEvents}
         uploadEndpoint={uploadEndpoint}
         apiEndpoint={apiEndpoint}
+      />
+
+      {/* Create Event Modal - 3-step wizard for creating new events */}
+      <CreateEventModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={fetchEvents}
       />
 
       {/* Delete Confirmation */}

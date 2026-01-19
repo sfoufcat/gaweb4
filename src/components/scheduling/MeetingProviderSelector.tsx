@@ -178,53 +178,17 @@ export function MeetingProviderSelector({
     // Zoom selected and connected
     if (value === 'zoom' && zoom.connected) {
       return (
-        <div className="space-y-3">
-          <div className="p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-xl">
-            <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
-              <Check className="w-4 h-4" />
-              Zoom connected
-              {zoom.accountEmail && (
-                <span className="text-xs opacity-75">({zoom.accountEmail})</span>
-              )}
-            </p>
-          </div>
-
-          {/* Auto/Manual toggle */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="zoom-link-type"
-                checked={!useManualOverride}
-                onChange={() => onUseManualOverrideChange?.(false)}
-                className="w-4 h-4 text-brand-accent focus:ring-brand-accent"
-              />
-              <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                Auto-generate link <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">(Recommended)</span>
-              </span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="zoom-link-type"
-                checked={useManualOverride}
-                onChange={() => onUseManualOverrideChange?.(true)}
-                className="w-4 h-4 text-brand-accent focus:ring-brand-accent"
-              />
-              <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                Enter link manually
-              </span>
-            </label>
-            {useManualOverride && (
-              <input
-                type="url"
-                value={manualLink}
-                onChange={(e) => onManualLinkChange?.(e.target.value)}
-                placeholder="https://zoom.us/j/..."
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-brand-accent"
-              />
+        <div className="p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-xl">
+          <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
+            <Check className="w-4 h-4" />
+            Zoom connected
+            {zoom.accountEmail && (
+              <span className="text-xs opacity-75">({zoom.accountEmail})</span>
             )}
-          </div>
+          </p>
+          <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1 ml-6">
+            Link will be auto-generated
+          </p>
         </div>
       );
     }
@@ -232,53 +196,17 @@ export function MeetingProviderSelector({
     // Google Meet selected and connected
     if (value === 'google_meet' && googleMeet.connected) {
       return (
-        <div className="space-y-3">
-          <div className="p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-xl">
-            <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
-              <Check className="w-4 h-4" />
-              Google Meet enabled
-              {googleMeet.accountEmail && (
-                <span className="text-xs opacity-75">({googleMeet.accountEmail})</span>
-              )}
-            </p>
-          </div>
-
-          {/* Auto/Manual toggle */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="meet-link-type"
-                checked={!useManualOverride}
-                onChange={() => onUseManualOverrideChange?.(false)}
-                className="w-4 h-4 text-brand-accent focus:ring-brand-accent"
-              />
-              <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                Auto-generate link <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">(Recommended)</span>
-              </span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="meet-link-type"
-                checked={useManualOverride}
-                onChange={() => onUseManualOverrideChange?.(true)}
-                className="w-4 h-4 text-brand-accent focus:ring-brand-accent"
-              />
-              <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                Enter link manually
-              </span>
-            </label>
-            {useManualOverride && (
-              <input
-                type="url"
-                value={manualLink}
-                onChange={(e) => onManualLinkChange?.(e.target.value)}
-                placeholder="https://meet.google.com/..."
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-brand-accent"
-              />
+        <div className="p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-xl">
+          <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
+            <Check className="w-4 h-4" />
+            Google Meet connected
+            {googleMeet.accountEmail && (
+              <span className="text-xs opacity-75">({googleMeet.accountEmail})</span>
             )}
-          </div>
+          </p>
+          <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1 ml-6">
+            Link will be auto-generated
+          </p>
         </div>
       );
     }
