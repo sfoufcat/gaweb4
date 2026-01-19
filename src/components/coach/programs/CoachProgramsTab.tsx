@@ -2026,12 +2026,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     }
   }, [viewMode, selectedProgram, fetchProgramEnrollments]);
 
-  // Fetch enrollments for individual programs when viewing content (needed for client selector)
+  // Fetch enrollments for individual programs (needed for client selector)
   useEffect(() => {
-    if (viewMode === 'days' && selectedProgram?.type === 'individual') {
+    if (selectedProgram?.type === 'individual') {
       fetchProgramEnrollments(selectedProgram.id);
     }
-  }, [viewMode, selectedProgram, fetchProgramEnrollments]);
+  }, [selectedProgram, fetchProgramEnrollments]);
 
   // Note: Client loading state now managed by useInstanceIdLookup hook (instanceIdLoading)
   // Week/Day data comes from instance via useProgramInstance hook (auto-created)

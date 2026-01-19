@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment, useRef } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Calendar,
@@ -9,13 +11,18 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  FileText,
   Video,
   Image as ImageIcon,
   Repeat,
   Globe,
+  Users,
+  UserCheck,
 } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+} from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import { MeetingProviderSelector, MeetingProviderType, isMeetingProviderReady } from './MeetingProviderSelector';
@@ -50,9 +57,9 @@ const RECURRENCE_OPTIONS: { value: RecurrenceFrequency | 'none'; label: string }
 ];
 
 const EVENT_TYPES = [
-  { value: 'community_event', label: 'Community Event', description: 'Open event for all members' },
-  { value: 'cohort_call', label: 'Cohort Call', description: 'Call with cohort members' },
-  { value: 'squad_call', label: 'Squad Call', description: 'Call with squad members' },
+  { value: 'community_event', label: 'Community', description: 'Open to all members', icon: Globe },
+  { value: 'cohort_call', label: 'Cohort Call', description: 'For cohort members', icon: Users },
+  { value: 'squad_call', label: 'Squad Call', description: 'For squad members', icon: UserCheck },
 ];
 
 const COMMON_TIMEZONES = [
@@ -70,7 +77,7 @@ const COMMON_TIMEZONES = [
 type RecurrenceEndType = 'specific_date' | 'occurrences';
 
 /**
- * CreateEventModal - 3-Step Wizard
+ * CreateEventModal - 3-Step Wizard matching NewProgramModal design
  *
  * Step 1: Basic Info - Title, description, event type, cover image
  * Step 2: Meeting Provider - Zoom, Google Meet, or Manual link
@@ -91,8 +98,23 @@ export function CreateEventModal({
   const [isCreatingMeeting, setIsCreatingMeeting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Mobile detection
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
   // Coach integrations
   const { zoom, googleMeet } = useCoachIntegrations();
+
+  // Track initial mount to skip animation on first open
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isOpen) {
+      isInitialMount.current = true;
+      const timer = setTimeout(() => {
+        isInitialMount.current = false;
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   // Step 1: Basic Info
   const [title, setTitle] = useState('');
@@ -141,6 +163,13 @@ export function CreateEventModal({
       setRecurrenceOccurrences(4);
     }
   }, [isOpen]);
+
+  // Animation variants
+  const fadeVariants = {
+    initial: { opacity: 0, scale: 0.98 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.98 },
+  };
 
   // Step validation
   const validateStep = (currentStep: WizardStep): boolean => {
@@ -196,6 +225,12 @@ export function CreateEventModal({
     setError(null);
     if (step === 'meeting') setStep('info');
     else if (step === 'schedule') setStep('meeting');
+  };
+
+  // Get step index for progress dots
+  const getStepIndex = () => {
+    const steps: WizardStep[] = ['info', 'meeting', 'schedule'];
+    return steps.indexOf(step);
   };
 
   // Handle form submission
@@ -370,77 +405,63 @@ export function CreateEventModal({
   // Get minimum date (today)
   const minDate = new Date().toISOString().split('T')[0];
 
-  // Progress indicator
-  const steps: { key: WizardStep; label: string; icon: typeof FileText }[] = [
-    { key: 'info', label: 'Basic Info', icon: FileText },
-    { key: 'meeting', label: 'Meeting', icon: Video },
-    { key: 'schedule', label: 'Schedule', icon: Calendar },
-  ];
-
-  const currentStepIndex = steps.findIndex(s => s.key === step);
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0" hideCloseButton>
-        {/* Header */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-[#1e222a] border-b border-[#e1ddd8] dark:border-[#262b35] px-6 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-albert text-[20px] font-semibold tracking-[-0.5px] text-[#1a1a1a] dark:text-[#f5f5f8]">
-              Create Event
-            </h2>
+  // Wizard content (shared between Dialog and Drawer)
+  const wizardContent = (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+        <div className="flex items-center gap-3">
+          {step !== 'info' && (
             <button
-              onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+              onClick={goToPrevStep}
+              disabled={isSubmitting}
+              className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
             >
-              <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
-          </div>
-
-          {/* Progress Steps */}
-          <div className="flex items-center gap-2">
-            {steps.map((s, index) => {
-              const Icon = s.icon;
-              const isActive = index === currentStepIndex;
-              const isCompleted = index < currentStepIndex;
-
-              return (
-                <div key={s.key} className="flex items-center flex-1">
-                  <div
-                    className={`
-                      flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-albert font-medium transition-colors
-                      ${isActive ? 'bg-brand-accent text-white' : ''}
-                      ${isCompleted ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400' : ''}
-                      ${!isActive && !isCompleted ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]' : ''}
-                    `}
-                  >
-                    {isCompleted ? (
-                      <Check className="w-4 h-4" />
-                    ) : (
-                      <Icon className="w-4 h-4" />
-                    )}
-                    <span className="hidden sm:inline">{s.label}</span>
-                    <span className="sm:hidden">{index + 1}</span>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className={`flex-1 h-0.5 mx-2 rounded ${index < currentStepIndex ? 'bg-green-500' : 'bg-[#e1ddd8] dark:bg-[#262b35]'}`} />
-                  )}
-                </div>
-              );
-            })}
+          )}
+          <div>
+            <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
+              {step === 'info' && 'Create Event'}
+              {step === 'meeting' && 'Meeting Link'}
+              {step === 'schedule' && 'Schedule'}
+            </h2>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              {step === 'info' && 'Set up your event details'}
+              {step === 'meeting' && 'Choose how attendees will join'}
+              {step === 'schedule' && 'Pick a date and time'}
+            </p>
           </div>
         </div>
+        <button
+          onClick={onClose}
+          disabled={isSubmitting}
+          className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
-        {/* Body */}
-        <div className="px-6 py-5 space-y-5">
-          {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-              <p className="text-red-600 dark:text-red-400 text-sm font-albert">{error}</p>
-            </div>
-          )}
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        {error && (
+          <div className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+            <p className="text-red-600 dark:text-red-400 text-sm font-albert">{error}</p>
+          </div>
+        )}
 
+        <AnimatePresence mode="wait">
           {/* Step 1: Basic Info */}
           {step === 'info' && (
-            <div className="space-y-5">
+            <motion.div
+              key="info"
+              variants={fadeVariants}
+              initial={isInitialMount.current ? false : 'initial'}
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="space-y-5"
+            >
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
@@ -469,41 +490,49 @@ export function CreateEventModal({
                 />
               </div>
 
-              {/* Event Type */}
+              {/* Event Type - Card Selection */}
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
                   Event Type
                 </label>
-                <div className="space-y-2">
-                  {EVENT_TYPES.map((type) => (
-                    <label
-                      key={type.value}
-                      className={`
-                        flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors
-                        ${eventType === type.value
-                          ? 'bg-brand-accent/5 border-brand-accent'
-                          : 'bg-white dark:bg-[#11141b] border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
-                        }
-                      `}
-                    >
-                      <input
-                        type="radio"
-                        name="eventType"
-                        value={type.value}
-                        checked={eventType === type.value}
-                        onChange={(e) => setEventType(e.target.value)}
-                        className="mt-1 w-4 h-4 text-brand-accent focus:ring-brand-accent"
-                      />
-                      <div>
-                        <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                <div className="grid grid-cols-3 gap-3">
+                  {EVENT_TYPES.map((type) => {
+                    const Icon = type.icon;
+                    const isSelected = eventType === type.value;
+                    return (
+                      <button
+                        key={type.value}
+                        type="button"
+                        onClick={() => setEventType(type.value)}
+                        className={`group relative flex flex-col items-center text-center p-4 rounded-2xl border-2 transition-colors ${
+                          isSelected
+                            ? 'border-brand-accent bg-brand-accent/5'
+                            : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+                        }`}
+                      >
+                        {/* Icon */}
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-colors ${
+                          isSelected
+                            ? 'bg-brand-accent/20'
+                            : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                        }`}>
+                          <Icon className={`w-5 h-5 ${isSelected ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                        </div>
+                        <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-0.5">
                           {type.label}
-                        </span>
-                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                        </h3>
+                        <p className="text-[10px] text-[#5f5a55] dark:text-[#b2b6c2] leading-tight">
                           {type.description}
                         </p>
-                      </div>
-                    </label>
-                  ))}
+                        {/* Selection indicator */}
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -523,15 +552,20 @@ export function CreateEventModal({
                   aspectRatio="16:9"
                 />
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* Step 2: Meeting Provider */}
           {step === 'meeting' && (
-            <div className="space-y-5">
-              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                Choose how attendees will join this event.
-              </p>
+            <motion.div
+              key="meeting"
+              variants={fadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="space-y-5"
+            >
               <MeetingProviderSelector
                 allowInApp={false}
                 value={meetingProvider}
@@ -542,12 +576,20 @@ export function CreateEventModal({
                 onUseManualOverrideChange={setUseManualOverride}
                 label="Meeting Link"
               />
-            </div>
+            </motion.div>
           )}
 
           {/* Step 3: Schedule */}
           {step === 'schedule' && (
-            <div className="space-y-5">
+            <motion.div
+              key="schedule"
+              variants={fadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="space-y-5"
+            >
               {/* Date & Time */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -646,14 +688,25 @@ export function CreateEventModal({
                       End after
                     </p>
 
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="recurrenceEnd"
-                        checked={recurrenceEndType === 'occurrences'}
-                        onChange={() => setRecurrenceEndType('occurrences')}
-                        className="w-4 h-4 text-brand-accent focus:ring-brand-accent"
-                      />
+                    {/* Occurrences option */}
+                    <button
+                      type="button"
+                      onClick={() => setRecurrenceEndType('occurrences')}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                        recurrenceEndType === 'occurrences'
+                          ? 'border-brand-accent bg-brand-accent/5'
+                          : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        recurrenceEndType === 'occurrences'
+                          ? 'border-brand-accent bg-brand-accent'
+                          : 'border-[#d1ccc6] dark:border-[#3a4150]'
+                      }`}>
+                        {recurrenceEndType === 'occurrences' && (
+                          <Check className="w-3 h-3 text-white" />
+                        )}
+                      </div>
                       <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
                         Number of occurrences
                       </span>
@@ -662,25 +715,37 @@ export function CreateEventModal({
                           type="number"
                           value={recurrenceOccurrences}
                           onChange={(e) => setRecurrenceOccurrences(Math.max(1, parseInt(e.target.value) || 1))}
+                          onClick={(e) => e.stopPropagation()}
                           min={1}
                           max={52}
-                          className="w-16 px-2 py-1 text-sm bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                          className="ml-auto w-16 px-2 py-1 text-sm bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent"
                         />
                       )}
-                    </label>
+                    </button>
 
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="recurrenceEnd"
-                        checked={recurrenceEndType === 'specific_date'}
-                        onChange={() => setRecurrenceEndType('specific_date')}
-                        className="w-4 h-4 text-brand-accent focus:ring-brand-accent"
-                      />
+                    {/* Specific date option */}
+                    <button
+                      type="button"
+                      onClick={() => setRecurrenceEndType('specific_date')}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                        recurrenceEndType === 'specific_date'
+                          ? 'border-brand-accent bg-brand-accent/5'
+                          : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        recurrenceEndType === 'specific_date'
+                          ? 'border-brand-accent bg-brand-accent'
+                          : 'border-[#d1ccc6] dark:border-[#3a4150]'
+                      }`}>
+                        {recurrenceEndType === 'specific_date' && (
+                          <Check className="w-3 h-3 text-white" />
+                        )}
+                      </div>
                       <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
                         Specific date
                       </span>
-                    </label>
+                    </button>
 
                     {recurrenceEndType === 'specific_date' && (
                       <input
@@ -694,52 +759,99 @@ export function CreateEventModal({
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
+      </div>
 
-        {/* Footer */}
-        <div className="sticky bottom-0 z-10 bg-white dark:bg-[#1e222a] border-t border-[#e1ddd8] dark:border-[#262b35] px-6 py-4">
-          <div className="flex items-center justify-between">
+      {/* Footer */}
+      <div className="px-6 py-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+        <div className="flex items-center justify-between">
+          {/* Progress Indicator - 3 dots */}
+          <div className="flex items-center gap-2">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  i <= getStepIndex()
+                    ? 'bg-brand-accent'
+                    : 'bg-[#e1ddd8] dark:bg-[#262b35]'
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Action Button */}
+          {step === 'schedule' ? (
             <button
               type="button"
-              onClick={step === 'info' ? onClose : goToPrevStep}
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-albert font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors disabled:opacity-50"
+              onClick={handleSubmit}
+              disabled={isSubmitting || isCreatingMeeting}
+              className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {step === 'info' ? (
-                'Cancel'
-              ) : (
-                <>
-                  <ArrowLeft className="w-4 h-4" />
-                  Back
-                </>
-              )}
+              {(isSubmitting || isCreatingMeeting) && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isCreatingMeeting ? 'Creating meeting...' : isSubmitting ? 'Creating...' : 'Create Event'}
             </button>
+          ) : (
+            <button
+              type="button"
+              onClick={goToNextStep}
+              className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors"
+            >
+              Continue
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
-            {step === 'schedule' ? (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSubmitting || isCreatingMeeting}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-accent hover:bg-brand-accent/90 text-white text-sm font-albert font-semibold rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {(isSubmitting || isCreatingMeeting) && <Loader2 className="w-4 h-4 animate-spin" />}
-                {isCreatingMeeting ? 'Creating meeting...' : isSubmitting ? 'Creating...' : 'Create Event'}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={goToNextStep}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-brand-accent hover:bg-brand-accent/90 text-white text-sm font-albert font-semibold rounded-full transition-colors"
-              >
-                Next
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
+  // Render mobile drawer or desktop dialog
+  if (isMobile) {
+    return (
+      <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DrawerContent className="h-[90vh] max-h-[90vh]">
+          {wizardContent}
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-[100]" onClose={onClose}>
+        {/* Backdrop */}
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 z-[99] bg-black/40 backdrop-blur-sm" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 z-[100] overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
+                {wizardContent}
+              </Dialog.Panel>
+            </Transition.Child>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </Dialog>
+    </Transition>
   );
 }

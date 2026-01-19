@@ -116,13 +116,13 @@ export function MeetingProviderSelector({
     const isConnected = isProviderConnected(provider.id);
     const Icon = provider.icon;
 
-    const tabContent = (
+    const tabButton = (
       <button
         type="button"
         onClick={() => handleProviderClick(provider)}
         disabled={isDisabled}
         className={`
-          flex-1 py-2 px-3 rounded-lg font-albert font-medium text-sm transition-colors
+          w-full py-2 px-3 rounded-lg font-albert font-medium text-sm transition-colors
           flex items-center justify-center gap-2
           ${isSelected
             ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
@@ -142,23 +142,25 @@ export function MeetingProviderSelector({
       </button>
     );
 
-    // Wrap disabled providers in tooltip
-    if (isDisabled && provider.requiresConnection) {
-      return (
-        <TooltipProvider key={provider.id}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="flex-1">{tabContent}</span>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{getDisabledTooltip(provider.id)}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    }
-
-    return <span key={provider.id} className="flex-1">{tabContent}</span>;
+    // Always use flex-1 wrapper for even distribution, put tooltip inside
+    return (
+      <div key={provider.id} className="flex-1">
+        {isDisabled && provider.requiresConnection ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="block">{tabButton}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{getDisabledTooltip(provider.id)}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          tabButton
+        )}
+      </div>
+    );
   };
 
   // Render status area based on selected provider
