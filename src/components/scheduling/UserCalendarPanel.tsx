@@ -499,7 +499,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
               href={event.meetingLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-brand-accent to-brand-accent/90 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:opacity-90 active:scale-95 transition-all duration-200"
+              className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-accent text-white rounded-xl text-sm font-semibold hover:bg-brand-accent/90 active:scale-[0.98] transition-all duration-200"
             >
               <ExternalLink className="w-4 h-4" />
               Join Call
