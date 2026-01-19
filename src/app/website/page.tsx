@@ -13,8 +13,9 @@
  */
 
 import { headers } from 'next/headers';
-import { notFound, redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
+import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { getBrandingForDomain } from '@/lib/server/branding';
@@ -73,6 +74,8 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function WebsitePage({ searchParams }: WebsitePageProps) {
   const headersList = await headers();
   const hostname = headersList.get('host') || '';
+  const params = await searchParams;
+  const isPreviewMode = params.preview === 'true';
 
   // Resolve tenant (organization) from hostname
   const tenantResult = await resolveTenant(hostname, null, null);
@@ -85,6 +88,16 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps) {
   const organizationId = tenantResult.tenant.organizationId;
   const subdomain = tenantResult.tenant.subdomain;
 
+  // For preview mode, verify the user is a coach in this org
+  let isCoachPreview = false;
+  if (isPreviewMode) {
+    const { userId, orgId } = await auth();
+    if (userId && orgId === organizationId) {
+      // User is authenticated and in the correct org - allow preview
+      isCoachPreview = true;
+    }
+  }
+
   // Fetch website configuration
   const websiteDoc = await adminDb
     .collection('org_websites')
@@ -92,8 +105,12 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps) {
     .get();
 
   if (!websiteDoc.exists) {
-    // No website configured - redirect to sign-in
-    redirect('/sign-in');
+    // No website configured - redirect to sign-in (unless coach preview)
+    if (!isCoachPreview) {
+      redirect('/sign-in');
+    }
+    // For coach preview without a website doc, show a placeholder message
+    redirect('/coach?tab=website');
   }
 
   const website = {
@@ -101,8 +118,8 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps) {
     ...websiteDoc.data(),
   } as OrgWebsite;
 
-  // Check if website is enabled
-  if (!website.enabled) {
+  // Check if website is enabled (skip check for coach preview)
+  if (!website.enabled && !isCoachPreview) {
     redirect('/sign-in');
   }
 
@@ -167,6 +184,7 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps) {
       coachImageUrl={coachImageUrl}
       funnels={funnels}
       subdomain={subdomain}
+      isPreviewMode={isCoachPreview}
     />
   );
 }

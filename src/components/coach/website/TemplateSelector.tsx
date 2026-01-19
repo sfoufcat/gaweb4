@@ -11,55 +11,104 @@ interface TemplateSelectorProps {
   onChange: (template: WebsiteTemplateName) => void;
 }
 
-const TEMPLATES: {
+interface TemplateConfig {
   id: WebsiteTemplateName;
   name: string;
   description: string;
-  preview: {
-    bg: string;
-    hero: string;
-    line1: string;
-    line2: string;
-    cta: string;
-  };
-}[] = [
+}
+
+const TEMPLATES: TemplateConfig[] = [
   {
     id: 'classic',
     name: 'Classic',
     description: 'Elegant & warm, perfect for wellness coaches',
-    preview: {
-      bg: 'bg-gradient-to-b from-[#fdfcfb] to-[#f8f5f2]',
-      hero: 'bg-gradient-to-r from-amber-200 via-orange-200 to-amber-300',
-      line1: 'bg-amber-400/40',
-      line2: 'bg-amber-400/25',
-      cta: 'bg-gradient-to-r from-amber-500 to-orange-500',
-    },
   },
   {
     id: 'modern',
     name: 'Modern',
     description: 'Bold & dynamic, great for business coaches',
-    preview: {
-      bg: 'bg-gradient-to-b from-slate-50 to-blue-50',
-      hero: 'bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-500',
-      line1: 'bg-indigo-400/40',
-      line2: 'bg-indigo-400/25',
-      cta: 'bg-gradient-to-r from-blue-600 to-indigo-600',
-    },
   },
   {
     id: 'minimal',
     name: 'Minimal',
     description: 'Clean & professional, ideal for consultants',
-    preview: {
-      bg: 'bg-gradient-to-b from-white to-slate-50',
-      hero: 'bg-gradient-to-r from-emerald-300 via-teal-300 to-emerald-400',
-      line1: 'bg-emerald-400/40',
-      line2: 'bg-emerald-400/25',
-      cta: 'bg-gradient-to-r from-emerald-600 to-teal-600',
-    },
   },
 ];
+
+// Classic preview - centered hero with decorative elements
+function ClassicPreview() {
+  return (
+    <div className="h-full bg-gradient-to-b from-[#fef7ed] to-[#fef3e2] p-2 flex flex-col">
+      {/* Nav */}
+      <div className="flex justify-between items-center mb-2">
+        <div className="w-6 h-1.5 rounded-full bg-amber-400/50" />
+        <div className="flex gap-1">
+          <div className="w-3 h-1 rounded-full bg-amber-300/40" />
+          <div className="w-4 h-1.5 rounded-full bg-amber-500" />
+        </div>
+      </div>
+      {/* Centered hero */}
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-300 to-orange-400 mb-2 shadow-sm" />
+        <div className="h-1.5 w-2/3 rounded-full bg-amber-800/20 mb-1" />
+        <div className="h-1 w-1/2 rounded-full bg-amber-800/10" />
+      </div>
+      {/* CTA */}
+      <div className="flex justify-center">
+        <div className="h-3 w-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 shadow-sm" />
+      </div>
+    </div>
+  );
+}
+
+// Modern preview - asymmetric bold layout
+function ModernPreview() {
+  return (
+    <div className="h-full bg-gradient-to-br from-slate-900 to-indigo-950 p-2 flex flex-col">
+      {/* Nav */}
+      <div className="flex justify-between items-center mb-2">
+        <div className="w-5 h-1.5 rounded bg-white/30" />
+        <div className="flex gap-1">
+          <div className="w-6 h-1.5 rounded bg-indigo-400" />
+        </div>
+      </div>
+      {/* Split hero */}
+      <div className="flex-1 flex gap-2">
+        <div className="flex-1 flex flex-col justify-center">
+          <div className="h-2 w-full rounded bg-white/90 mb-1" />
+          <div className="h-1.5 w-3/4 rounded bg-white/50 mb-2" />
+          <div className="h-3 w-10 rounded bg-gradient-to-r from-indigo-500 to-purple-500 shadow-lg" />
+        </div>
+        <div className="w-10 h-full rounded-lg bg-gradient-to-b from-indigo-400/30 to-purple-500/30 border border-indigo-400/20" />
+      </div>
+    </div>
+  );
+}
+
+// Minimal preview - clean whitespace focused
+function MinimalPreview() {
+  return (
+    <div className="h-full bg-white p-2 flex flex-col">
+      {/* Nav */}
+      <div className="flex justify-between items-center mb-3">
+        <div className="w-4 h-4 rounded bg-slate-100 border border-slate-200" />
+        <div className="flex gap-2 items-center">
+          <div className="w-4 h-0.5 rounded-full bg-slate-300" />
+          <div className="w-4 h-0.5 rounded-full bg-slate-300" />
+          <div className="w-6 h-1.5 rounded border border-slate-900" />
+        </div>
+      </div>
+      {/* Minimal hero */}
+      <div className="flex-1 flex flex-col justify-center">
+        <div className="h-1.5 w-full rounded-full bg-slate-800 mb-1.5" />
+        <div className="h-1 w-2/3 rounded-full bg-slate-300 mb-3" />
+        <div className="h-2.5 w-8 rounded border border-slate-900" />
+      </div>
+      {/* Bottom line */}
+      <div className="h-px w-full bg-slate-200" />
+    </div>
+  );
+}
 
 export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
   return (
@@ -98,34 +147,10 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
               )}
 
               {/* Template preview */}
-              <div className={cn(
-                'w-full h-20 sm:h-24 rounded-lg mb-3 overflow-hidden shadow-sm',
-                template.preview.bg
-              )}>
-                {/* Mini preview of template layout */}
-                <div className="h-full p-2 flex flex-col">
-                  {/* Hero placeholder */}
-                  <div className={cn(
-                    'h-7 sm:h-8 rounded-md mb-1.5',
-                    template.preview.hero
-                  )} />
-                  {/* Content lines */}
-                  <div className="flex-1 flex flex-col justify-center gap-1">
-                    <div className={cn(
-                      'h-1.5 w-3/4 rounded-full',
-                      template.preview.line1
-                    )} />
-                    <div className={cn(
-                      'h-1.5 w-1/2 rounded-full',
-                      template.preview.line2
-                    )} />
-                  </div>
-                  {/* CTA placeholder */}
-                  <div className={cn(
-                    'h-3.5 sm:h-4 w-1/3 rounded-md',
-                    template.preview.cta
-                  )} />
-                </div>
+              <div className="w-full h-20 sm:h-24 rounded-lg mb-3 overflow-hidden shadow-sm border border-black/5">
+                {template.id === 'classic' && <ClassicPreview />}
+                {template.id === 'modern' && <ModernPreview />}
+                {template.id === 'minimal' && <MinimalPreview />}
               </div>
 
               <h4 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-0.5">

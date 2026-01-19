@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { Users, User, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -148,15 +148,16 @@ export function SyncTemplateDialog({
 
   const isSingleTargetMode = !!singleCohortId;
 
-  // Set provided data
+  // Set provided data - only if there's actual data (length > 0)
+  // Using length check prevents infinite loops when parent passes new [] reference each render
   useEffect(() => {
-    if (providedEnrollments) {
+    if (providedEnrollments && providedEnrollments.length > 0) {
       setEnrollments(providedEnrollments);
     }
   }, [providedEnrollments]);
 
   useEffect(() => {
-    if (providedCohorts) {
+    if (providedCohorts && providedCohorts.length > 0) {
       setCohorts(providedCohorts);
     }
   }, [providedCohorts]);
@@ -186,15 +187,20 @@ export function SyncTemplateDialog({
     }
   }, [open, targetType, programId, providedEnrollments, providedCohorts, isSingleTargetMode]);
 
-  // Reset state when dialog closes
+  // Track previous open state to detect close transitions
+  const prevOpenRef = useRef(open);
+
+  // Reset state only when dialog transitions from open to closed
   useEffect(() => {
-    if (!open) {
+    if (prevOpenRef.current && !open) {
+      // Dialog just closed - reset state
       setError(null);
       setSuccess(null);
       setSyncFields(DEFAULT_SYNC_FIELDS);
       setSelectedIds(new Set());
       setTargetMode('all');
     }
+    prevOpenRef.current = open;
   }, [open]);
 
   const allFieldsSelected = Object.values(syncFields).every(v => v);

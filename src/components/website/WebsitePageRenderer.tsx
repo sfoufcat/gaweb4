@@ -20,13 +20,14 @@ interface WebsiteBranding {
   };
 }
 
-interface WebsitePageRendererProps {
+export interface WebsitePageRendererProps {
   website: OrgWebsite;
   branding: WebsiteBranding | null;
   coachName: string;
   coachImageUrl?: string;
   funnels: Array<Pick<Funnel, 'id' | 'slug'> & { programSlug?: string }>;
   subdomain: string;
+  isPreviewMode?: boolean;
 }
 
 export function WebsitePageRenderer({
@@ -36,6 +37,7 @@ export function WebsitePageRenderer({
   coachImageUrl,
   funnels,
   subdomain,
+  isPreviewMode = false,
 }: WebsitePageRendererProps) {
   // Get accent color from branding - supports both OrgBranding and ServerBranding
   const accentLight = branding?.colors?.accentLight || branding?.primaryColor || '#a07855';
@@ -62,6 +64,21 @@ export function WebsitePageRenderer({
 
   return (
     <div className="min-h-screen">
+      {/* Preview Mode Banner */}
+      {isPreviewMode && (
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-white text-center py-2 px-4 text-sm font-medium">
+          <span>Preview Mode</span>
+          <span className="mx-2">•</span>
+          <span className="opacity-90">This is how visitors will see your website</span>
+          <a
+            href="/coach?tab=website"
+            className="ml-3 underline hover:no-underline"
+          >
+            Back to Editor
+          </a>
+        </div>
+      )}
+
       {/* Navigation */}
       <WebsiteNav
         branding={branding}
@@ -70,10 +87,11 @@ export function WebsitePageRenderer({
         joinButtonText={website.heroCtaText || 'Get Started'}
         joinUrl={heroCtaUrl}
         accentColor={accentLight}
+        isPreviewMode={isPreviewMode}
       />
 
-      {/* Spacer for fixed nav */}
-      <div className="h-16" />
+      {/* Spacer for fixed nav (+ preview banner if present) */}
+      <div className={isPreviewMode ? 'h-[104px]' : 'h-16'} />
 
       {/* Main Landing Page Content - reuses existing templates */}
       <LandingPageRenderer

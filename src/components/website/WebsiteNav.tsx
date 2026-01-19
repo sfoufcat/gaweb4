@@ -20,6 +20,7 @@ interface WebsiteNavProps {
   joinButtonText: string;
   joinUrl: string;
   accentColor: string;
+  isPreviewMode?: boolean;
 }
 
 export function WebsiteNav({
@@ -29,6 +30,7 @@ export function WebsiteNav({
   joinButtonText,
   joinUrl,
   accentColor,
+  isPreviewMode = false,
 }: WebsiteNavProps) {
   const logoUrl = branding?.horizontalLogoUrl || branding?.logoUrl || null;
   const appTitle = branding?.appTitle || 'Coaching';
@@ -38,7 +40,7 @@ export function WebsiteNav({
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#0a0c10]/80 backdrop-blur-xl border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50"
+      className={`fixed left-0 right-0 z-50 bg-white/80 dark:bg-[#0a0c10]/80 backdrop-blur-xl border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50 ${isPreviewMode ? 'top-10' : 'top-0'}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
