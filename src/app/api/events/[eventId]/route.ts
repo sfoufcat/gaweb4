@@ -234,6 +234,17 @@ export async function DELETE(
     // Cancel notification jobs
     await cancelEventJobs(eventId);
 
+    // Restore call usage credit if this event already deducted from enrollment
+    if (existingEvent.callUsageDeducted && existingEvent.enrollmentId) {
+      try {
+        await restoreEnrollmentCallUsage(existingEvent.enrollmentId, eventId);
+        console.log(`[EVENT_DELETE] Restored call credit for enrollment ${existingEvent.enrollmentId}`);
+      } catch (restoreError) {
+        // Log but don't fail the deletion
+        console.error(`[EVENT_DELETE] Failed to restore call credit:`, restoreError);
+      }
+    }
+
     if (hardDelete) {
       // Permanently delete
       await eventRef.delete();
@@ -277,6 +288,61 @@ export async function DELETE(
       { status: 500 }
     );
   }
+}
+
+// ============================================================================
+// HELPER: Restore Call Usage Credit
+// ============================================================================
+
+/**
+ * Restore a call credit to an enrollment when an event is cancelled.
+ * This decrements the usage counters that were incremented when the call happened.
+ */
+async function restoreEnrollmentCallUsage(
+  enrollmentId: string,
+  eventId: string
+): Promise<void> {
+  await adminDb.runTransaction(async (transaction) => {
+    // Fetch enrollment
+    const enrollmentRef = adminDb.collection('program_enrollments').doc(enrollmentId);
+    const enrollmentDoc = await transaction.get(enrollmentRef);
+
+    if (!enrollmentDoc.exists) {
+      throw new Error('Enrollment not found');
+    }
+
+    // Fetch event to confirm it was deducted
+    const eventRef = adminDb.collection('events').doc(eventId);
+    const eventDoc = await transaction.get(eventRef);
+
+    if (!eventDoc.exists) {
+      throw new Error('Event not found');
+    }
+
+    // Double-check the event was actually deducted
+    if (eventDoc.data()?.callUsageDeducted !== true) {
+      return; // Nothing to restore
+    }
+
+    const enrollment = enrollmentDoc.data();
+    const callUsage = enrollment?.callUsage || {};
+
+    // Decrement counters (but don't go below 0)
+    const callsInWindow = Math.max(0, (callUsage.callsInWindow || 0) - 1);
+    const callsThisWeek = Math.max(0, (callUsage.callsThisWeek || 0) - 1);
+
+    // Update enrollment with decremented usage
+    transaction.update(enrollmentRef, {
+      'callUsage.callsInWindow': callsInWindow,
+      'callUsage.callsThisWeek': callsThisWeek,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Mark event as no longer deducted (in case of soft delete)
+    transaction.update(eventRef, {
+      callUsageDeducted: false,
+    });
+  });
 }
 
 

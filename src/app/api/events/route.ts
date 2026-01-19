@@ -28,6 +28,22 @@ import { generateDemoEvents } from '@/lib/demo-data';
 import type { UnifiedEvent, EventType, EventScope, EventStatus, ProgramInstance } from '@/types';
 
 // ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Get the start of the current week (Monday 00:00:00 UTC)
+ */
+function getWeekStart(date: Date = new Date()): Date {
+  const d = new Date(date);
+  const day = d.getUTCDay();
+  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+  d.setUTCDate(diff);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+// ============================================================================
 // GET - List Events
 // ============================================================================
 
@@ -219,6 +235,95 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PROGRAM CALL ALLOWANCE CHECK
+    // For program calls, verify client hasn't exceeded their allowance
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (body.isProgramCall && body.enrollmentId) {
+      try {
+        const enrollmentDoc = await adminDb
+          .collection('program_enrollments')
+          .doc(body.enrollmentId)
+          .get();
+
+        if (!enrollmentDoc.exists) {
+          return NextResponse.json(
+            { error: 'Enrollment not found', code: 'ENROLLMENT_NOT_FOUND' },
+            { status: 404 }
+          );
+        }
+
+        const enrollment = enrollmentDoc.data();
+        const programDoc = await adminDb.collection('programs').doc(enrollment?.programId).get();
+
+        if (programDoc.exists) {
+          const program = programDoc.data();
+          const monthlyAllowance = program?.callCreditsPerMonth || 0;
+          const weeklyLimit = program?.maxCallsPerWeek;
+
+          // Only enforce limits if program has allowance configured
+          if (monthlyAllowance > 0) {
+            const callUsage = enrollment?.callUsage || {};
+            const nowDate = new Date();
+
+            // Calculate rolling 30-day window usage
+            let callsInWindow = callUsage.callsInWindow || 0;
+            if (callUsage.windowStart) {
+              const windowEnd = new Date(new Date(callUsage.windowStart).getTime() + 30 * 24 * 60 * 60 * 1000);
+              if (nowDate > windowEnd) {
+                // Window expired, reset
+                callsInWindow = 0;
+              }
+            }
+
+            const callsRemaining = monthlyAllowance - callsInWindow;
+
+            // Check monthly limit
+            if (callsRemaining <= 0 && !body.isExtraCall) {
+              return NextResponse.json(
+                {
+                  error: 'Monthly call limit reached. Purchase an extra call to continue.',
+                  code: 'MONTHLY_LIMIT_REACHED',
+                  callsRemaining: 0,
+                  monthlyAllowance,
+                },
+                { status: 400 }
+              );
+            }
+
+            // Check weekly limit if configured
+            if (weeklyLimit) {
+              let callsThisWeek = callUsage.callsThisWeek || 0;
+              if (callUsage.weekStart) {
+                // Calculate current week start (Monday UTC)
+                const currentWeekStart = getWeekStart(nowDate);
+                if (new Date(callUsage.weekStart) < currentWeekStart) {
+                  // New week, reset
+                  callsThisWeek = 0;
+                }
+              }
+
+              const weeklyRemaining = weeklyLimit - callsThisWeek;
+              if (weeklyRemaining <= 0) {
+                return NextResponse.json(
+                  {
+                    error: 'Weekly call limit reached. Try again next week.',
+                    code: 'WEEKLY_LIMIT_REACHED',
+                    weeklyRemaining: 0,
+                    weeklyLimit,
+                  },
+                  { status: 400 }
+                );
+              }
+            }
+          }
+        }
+      } catch (limitError) {
+        console.error('[EVENTS_POST] Error checking call limits:', limitError);
+        // Don't fail the request on limit check error - log and continue
+      }
+    }
+
     // Program instance linking - calculate week/day if instanceId is provided
     let instanceId: string | undefined = body.instanceId;
     let weekIndex: number | undefined;
@@ -331,6 +436,12 @@ export async function POST(request: NextRequest) {
       instanceId: instanceId || undefined,
       weekIndex: weekIndex,
       dayIndex: dayIndex,
+
+      // Program call tracking (for allowance deduction)
+      isProgramCall: body.isProgramCall || false,
+      enrollmentId: body.enrollmentId || undefined,
+      isExtraCall: body.isExtraCall || false,
+      callUsageDeducted: false,
 
       isRecurring: body.isRecurring || false,
       recurrence: body.recurrence || undefined,

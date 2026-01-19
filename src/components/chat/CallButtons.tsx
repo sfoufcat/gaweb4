@@ -265,45 +265,44 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
     }
   }, [videoClient, channel, router, setActiveCall, clerkUser]);
 
-  // Check if event is a program call (linked to program instance)
-  const isProgramCall = useCallback((event: UnifiedEvent): boolean => {
-    return !!(event.isProgramCall || event.instanceId);
-  }, []);
-
-  // Handle join button click - check credits for non-program calls
+  // Handle join button click - ALL in-app calls require org credits
   const handleJoinClick = useCallback((event: UnifiedEvent) => {
-    // Program calls don't need credit check - summaries are included
-    if (isProgramCall(event)) {
-      joinCall(event);
+    // Check if event has external meeting link - if so, open that instead
+    if (event.meetingLink) {
+      window.open(event.meetingLink, '_blank');
       return;
     }
 
-    // Non-program call: check if org has credits
+    // ALL in-app calls require org credits
     if (!orgHasCredits) {
-      // Show warning dialog
+      // Block join, show dialog
       setPendingCallEvent(event);
       setShowCreditWarning(true);
       return;
     }
 
-    // Has credits, proceed
+    // Has credits, proceed with in-app call
     joinCall(event);
-  }, [isProgramCall, orgHasCredits, joinCall]);
+  }, [orgHasCredits, joinCall]);
 
-  // Credit warning dialog for non-program calls (rendered alongside content)
+  // No credits dialog - blocks in-app call
   const creditWarningDialog = (
     <AlertDialog open={showCreditWarning} onOpenChange={setShowCreditWarning}>
       <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
-            Summary Not Available
+            <AlertTriangle className="w-5 h-5 text-red-500" />
+            No Credits Available
           </AlertDialogTitle>
           <AlertDialogDescription className="text-left">
-            This call isn&apos;t linked to a program and your organization has no
-            transcription credits remaining.
+            Your organization has no transcription credits remaining.
+            In-app calls require credits for recording and AI summary generation.
             <br /><br />
-            The call will still work, but no AI summary will be generated afterward.
+            To make this call, you can:
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>Purchase more credits</li>
+              <li>Use an external meeting link (Zoom, Meet, etc.)</li>
+            </ul>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -315,13 +314,14 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={() => {
-              if (pendingCallEvent) {
-                joinCall(pendingCallEvent);
-              }
+              setShowCreditWarning(false);
+              setPendingCallEvent(null);
+              // Navigate to billing/credits page
+              router.push('/coach/settings?tab=billing');
             }}
-            className="bg-green-500 hover:bg-green-600"
+            className="bg-primary hover:bg-primary/90"
           >
-            Join Anyway
+            Buy Credits
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

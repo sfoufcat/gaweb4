@@ -220,35 +220,30 @@ async function handleRecordingReady(payload: StreamWebhookPayload): Promise<void
     return;
   }
 
-  // Determine if this is a program call (has instanceId from custom data or event)
+  // Determine if this is a program call (for enrollment tracking)
   const isProgramCall = !!(call.custom?.instanceId || call.custom?.isProgramCall);
 
-  // Program calls: Always generate summary - included with program enrollment
-  // Non-program calls: Check and deduct coach credits first
-  let creditsDeducted = 0;
+  // ALL calls require coach org credits (for recording + summary)
+  const creditsNeeded = calculateCreditsUsed(durationSeconds);
+  const { available, remainingMinutes } = await checkCreditsAvailable(organizationId, creditsNeeded);
 
-  if (isProgramCall) {
-    console.log(`[STREAM_VIDEO_WEBHOOK] Program call - summary included with enrollment`);
-  } else {
-    // Check credits availability for non-program calls
-    const creditsNeeded = calculateCreditsUsed(durationSeconds);
-    const { available, remainingMinutes } = await checkCreditsAvailable(organizationId, creditsNeeded);
-
-    if (!available) {
-      console.log(`[STREAM_VIDEO_WEBHOOK] Non-program call: Insufficient credits (need ${creditsNeeded}, have ${remainingMinutes})`);
-      return;
-    }
-
-    // Deduct credits before processing
-    const deductResult = await deductCredits(organizationId, creditsNeeded);
-    if (!deductResult.success) {
-      console.error(`[STREAM_VIDEO_WEBHOOK] Failed to deduct credits: ${deductResult.error}`);
-      return;
-    }
-
-    creditsDeducted = creditsNeeded;
-    console.log(`[STREAM_VIDEO_WEBHOOK] Non-program call - deducted ${creditsNeeded} credits`);
+  if (!available) {
+    console.log(`[STREAM_VIDEO_WEBHOOK] Insufficient credits (need ${creditsNeeded}, have ${remainingMinutes})`);
+    return;
   }
+
+  // Deduct org credits before processing
+  const deductResult = await deductCredits(organizationId, creditsNeeded);
+  if (!deductResult.success) {
+    console.error(`[STREAM_VIDEO_WEBHOOK] Failed to deduct credits: ${deductResult.error}`);
+    return;
+  }
+
+  const creditsDeducted = creditsNeeded;
+  console.log(`[STREAM_VIDEO_WEBHOOK] Deducted ${creditsNeeded} org credits${isProgramCall ? ' (program call)' : ''}`);
+
+  // Get enrollment ID from event for program calls
+  let enrollmentId: string | undefined;
 
   try {
     // Get participant info
@@ -257,10 +252,11 @@ async function handleRecordingReady(payload: StreamWebhookPayload): Promise<void
     const clientUserId = call.custom?.clientUserId || participants.find(p => p.user_id !== hostUserId)?.user_id;
     const clientName = participants.find(p => p.user_id === clientUserId)?.user?.name;
 
-    // Fetch event to get program instance linking fields
+    // Fetch event to get program instance linking fields and enrollmentId
     let instanceId: string | undefined;
     let weekIndex: number | undefined;
     let dayIndex: number | undefined;
+    let callUsageDeducted = false;
 
     if (eventId) {
       const eventDoc = await adminDb.collection('events').doc(eventId).get();
@@ -269,6 +265,8 @@ async function handleRecordingReady(payload: StreamWebhookPayload): Promise<void
         instanceId = eventData?.instanceId;
         weekIndex = eventData?.weekIndex;
         dayIndex = eventData?.dayIndex;
+        enrollmentId = eventData?.enrollmentId;
+        callUsageDeducted = eventData?.callUsageDeducted === true;
       }
     }
 
@@ -318,6 +316,17 @@ async function handleRecordingReady(payload: StreamWebhookPayload): Promise<void
         callSummaryId: summaryResult.summaryId,
         updatedAt: FieldValue.serverTimestamp(),
       });
+    }
+
+    // For program calls: deduct from client's call allowance (enrollment.callUsage)
+    if (isProgramCall && enrollmentId && eventId && !callUsageDeducted) {
+      try {
+        await deductEnrollmentCallUsage(enrollmentId, eventId);
+        console.log(`[STREAM_VIDEO_WEBHOOK] Deducted call from enrollment ${enrollmentId}`);
+      } catch (deductError) {
+        // Log but don't fail - the call was successful, just usage tracking failed
+        console.error(`[STREAM_VIDEO_WEBHOOK] Failed to deduct enrollment usage:`, deductError);
+      }
     }
 
     console.log(`[STREAM_VIDEO_WEBHOOK] Successfully processed recording for call ${callId}`);
@@ -393,4 +402,97 @@ async function waitForTranscription(
   }
 
   throw new Error('Transcription timeout');
+}
+
+/**
+ * Get the start of the current week (Monday 00:00:00 UTC)
+ */
+function getWeekStart(date: Date = new Date()): Date {
+  const d = new Date(date);
+  const day = d.getUTCDay();
+  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+  d.setUTCDate(diff);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Deduct a call from the client's enrollment call allowance
+ * Called after a program call is successfully processed
+ */
+async function deductEnrollmentCallUsage(
+  enrollmentId: string,
+  eventId: string
+): Promise<void> {
+  await adminDb.runTransaction(async (transaction) => {
+    // Fetch enrollment
+    const enrollmentRef = adminDb.collection('program_enrollments').doc(enrollmentId);
+    const enrollmentDoc = await transaction.get(enrollmentRef);
+
+    if (!enrollmentDoc.exists) {
+      throw new Error('Enrollment not found');
+    }
+
+    // Fetch event to check if already deducted
+    const eventRef = adminDb.collection('events').doc(eventId);
+    const eventDoc = await transaction.get(eventRef);
+
+    if (!eventDoc.exists) {
+      throw new Error('Event not found');
+    }
+
+    // If already deducted, skip
+    if (eventDoc.data()?.callUsageDeducted === true) {
+      return;
+    }
+
+    const enrollment = enrollmentDoc.data();
+    const callUsage = enrollment?.callUsage || {};
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    // Calculate rolling 30-day window
+    let windowStart = callUsage.windowStart;
+    let callsInWindow = callUsage.callsInWindow || 0;
+
+    if (windowStart) {
+      const windowEnd = new Date(new Date(windowStart).getTime() + 30 * 24 * 60 * 60 * 1000);
+      if (now > windowEnd) {
+        // Window expired, reset
+        windowStart = nowIso;
+        callsInWindow = 0;
+      }
+    } else {
+      // No existing window, start now
+      windowStart = nowIso;
+    }
+
+    // Calculate weekly usage
+    const currentWeekStart = getWeekStart(now);
+    let weekStart = callUsage.weekStart;
+    let callsThisWeek = callUsage.callsThisWeek || 0;
+
+    if (!weekStart || new Date(weekStart) < currentWeekStart) {
+      // New week, reset
+      weekStart = currentWeekStart.toISOString();
+      callsThisWeek = 0;
+    }
+
+    // Update enrollment with incremented usage
+    transaction.update(enrollmentRef, {
+      callUsage: {
+        windowStart,
+        callsInWindow: callsInWindow + 1,
+        weekStart,
+        callsThisWeek: callsThisWeek + 1,
+        lastCallAt: nowIso,
+      },
+      updatedAt: nowIso,
+    });
+
+    // Mark event as deducted
+    transaction.update(eventRef, {
+      callUsageDeducted: true,
+    });
+  });
 }

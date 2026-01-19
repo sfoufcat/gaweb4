@@ -14,6 +14,9 @@ import {
   CalendarClock,
   Loader2,
   ExternalLink,
+  Edit2,
+  Link as LinkIcon,
+  Save,
 } from 'lucide-react';
 import type { UnifiedEvent } from '@/types';
 
@@ -26,6 +29,10 @@ interface EventDetailPopupProps {
   isLoading?: boolean;
   /** Position for desktop popup (near clicked element) - x,y are the click coordinates */
   position?: { x: number; y: number };
+  /** Whether the current user is the host/coach (can edit meeting link) */
+  isHost?: boolean;
+  /** Callback when event is updated (e.g., meeting link changed) */
+  onEventUpdated?: () => void;
 }
 
 /**
@@ -43,9 +50,50 @@ export function EventDetailPopup({
   onCounterPropose,
   isLoading = false,
   position,
+  isHost = false,
+  onEventUpdated,
 }: EventDetailPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
   const [computedPosition, setComputedPosition] = useState<{ top: number; left: number } | null>(null);
+
+  // Meeting link editing state
+  const [isEditingLink, setIsEditingLink] = useState(false);
+  const [meetingLinkInput, setMeetingLinkInput] = useState(event.meetingLink || '');
+  const [isSavingLink, setIsSavingLink] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  // Update input when event changes
+  useEffect(() => {
+    setMeetingLinkInput(event.meetingLink || '');
+  }, [event.meetingLink]);
+
+  // Save meeting link
+  const handleSaveMeetingLink = useCallback(async () => {
+    if (isSavingLink) return;
+
+    setIsSavingLink(true);
+    setLinkError(null);
+
+    try {
+      const response = await fetch(`/api/events/${event.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meetingLink: meetingLinkInput.trim() || null }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to save meeting link');
+      }
+
+      setIsEditingLink(false);
+      onEventUpdated?.();
+    } catch (error) {
+      setLinkError(error instanceof Error ? error.message : 'Failed to save');
+    } finally {
+      setIsSavingLink(false);
+    }
+  }, [event.id, meetingLinkInput, isSavingLink, onEventUpdated]);
 
   // Calculate optimal position after popup renders (so we know its size)
   useLayoutEffect(() => {
@@ -264,18 +312,82 @@ export function EventDetailPopup({
             </div>
           )}
 
-          {/* Meeting Link (for confirmed events) */}
-          {!isPending && event.meetingLink && (
-            <a
-              href={event.meetingLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 bg-brand-accent/10 text-brand-accent rounded-lg font-albert font-medium text-sm hover:bg-brand-accent/20 transition-colors"
-            >
-              <Video className="w-4 h-4" />
-              Join Meeting
-              <ExternalLink className="w-3 h-3 ml-auto" />
-            </a>
+          {/* Meeting Link Section (for confirmed events) */}
+          {!isPending && (
+            <div className="space-y-2">
+              {isEditingLink ? (
+                // Editing mode - show input
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <LinkIcon className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                    <input
+                      type="url"
+                      value={meetingLinkInput}
+                      onChange={(e) => setMeetingLinkInput(e.target.value)}
+                      placeholder="https://zoom.us/j/... or https://meet.google.com/..."
+                      className="flex-1 px-3 py-2 text-sm bg-[#f9f8f7] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                      autoFocus
+                    />
+                  </div>
+                  {linkError && (
+                    <p className="text-xs text-red-500">{linkError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setIsEditingLink(false);
+                        setMeetingLinkInput(event.meetingLink || '');
+                        setLinkError(null);
+                      }}
+                      disabled={isSavingLink}
+                      className="flex-1 px-3 py-2 text-sm bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-lg hover:bg-[#e8e4df] dark:hover:bg-[#313746] disabled:opacity-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveMeetingLink}
+                      disabled={isSavingLink}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors"
+                    >
+                      {isSavingLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      Save
+                    </button>
+                  </div>
+                </div>
+              ) : event.meetingLink ? (
+                // Has meeting link - show link and edit button for hosts
+                <div className="flex items-center gap-2">
+                  <a
+                    href={event.meetingLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center gap-2 px-4 py-2 bg-brand-accent/10 text-brand-accent rounded-lg font-albert font-medium text-sm hover:bg-brand-accent/20 transition-colors"
+                  >
+                    <Video className="w-4 h-4" />
+                    Join Meeting
+                    <ExternalLink className="w-3 h-3 ml-auto" />
+                  </a>
+                  {isHost && (
+                    <button
+                      onClick={() => setIsEditingLink(true)}
+                      className="p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                      title="Edit meeting link"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ) : isHost ? (
+                // No meeting link and is host - show add button
+                <button
+                  onClick={() => setIsEditingLink(true)}
+                  className="flex items-center gap-2 px-4 py-2 w-full bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-lg font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
+                >
+                  <LinkIcon className="w-4 h-4" />
+                  Add External Meeting Link
+                </button>
+              ) : null}
+            </div>
           )}
 
           {/* Proposed Times Section (for pending events) */}

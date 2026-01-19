@@ -23,6 +23,7 @@ import {
   CalendarClock,
 } from 'lucide-react';
 import { useSchedulingEvents, usePendingProposals, useSchedulingActions } from '@/hooks/useScheduling';
+import { useOrgCredits } from '@/hooks/useOrgCredits';
 import { ScheduleCallModal } from './ScheduleCallModal';
 import { EventDetailPopup } from './EventDetailPopup';
 import { CounterProposeModal } from './CounterProposeModal';
@@ -119,11 +120,16 @@ interface EventCardProps {
   onClick?: (e: React.MouseEvent) => void;
   onRespond?: (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => void;
   onCounterPropose?: (eventId: string) => void;
+  hasOrgCredits?: boolean;
+  isCoach?: boolean;
 }
 
-function EventCard({ event, compact = false, onClick, onRespond, onCounterPropose }: EventCardProps) {
+function EventCard({ event, compact = false, onClick, onRespond, onCounterPropose, hasOrgCredits = true, isCoach = false }: EventCardProps) {
   // Check if this is a pending proposal
   const isPending = event.schedulingStatus === 'proposed' || event.schedulingStatus === 'counter_proposed';
+  const isConfirmed = event.schedulingStatus === 'confirmed';
+  // Show credit warning for coaches on confirmed in-app calls when no credits
+  const showCreditWarning = isCoach && isConfirmed && !hasOrgCredits && !event.meetingLink;
 
   // Use pending colors for pending events, otherwise use event type colors
   const typeColors = isPending ? PENDING_COLORS : (EVENT_TYPE_COLORS[event.eventType] || EVENT_TYPE_COLORS.coaching_1on1);
@@ -162,10 +168,11 @@ function EventCard({ event, compact = false, onClick, onRespond, onCounterPropos
 
     return (
       <div
-        className={`px-2 py-1 rounded text-xs font-albert truncate ${typeColors.bg} ${typeColors.border} border ${typeColors.text} ${onClick ? 'cursor-pointer hover:opacity-80' : ''}`}
-        title={compactLabel}
+        className={`px-2 py-1 rounded text-xs font-albert truncate ${typeColors.bg} ${typeColors.border} border ${typeColors.text} ${onClick ? 'cursor-pointer hover:opacity-80' : ''} ${showCreditWarning ? 'ring-2 ring-red-400 ring-offset-1' : ''}`}
+        title={showCreditWarning ? `${compactLabel} (No Credits)` : compactLabel}
         onClick={onClick}
       >
+        {showCreditWarning && <AlertCircle className="w-3 h-3 inline mr-1 text-red-500" />}
         {compactLabel}
       </div>
     );
@@ -173,8 +180,15 @@ function EventCard({ event, compact = false, onClick, onRespond, onCounterPropos
 
   return (
     <div
-      className={`p-3 rounded-xl ${typeColors.bg} ${typeColors.border} border`}
+      className={`p-3 rounded-xl ${typeColors.bg} ${typeColors.border} border ${showCreditWarning ? 'ring-2 ring-red-400' : ''}`}
     >
+      {/* Credit warning for coaches */}
+      {showCreditWarning && (
+        <div className="flex items-center gap-1.5 mb-2 px-2 py-1 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg text-xs font-medium">
+          <AlertCircle className="w-3.5 h-3.5" />
+          <span>No Credits - Add external link or buy credits</span>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className={`font-albert font-medium truncate ${typeColors.text}`}>
@@ -443,6 +457,10 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  // Check org credits for coaches (to show warnings on events)
+  const isCoach = mode === 'coach';
+  const { hasCredits: orgHasCredits } = useOrgCredits(isCoach);
 
   // Event detail popup states
   const [selectedEvent, setSelectedEvent] = useState<UnifiedEvent | null>(null);
@@ -829,6 +847,8 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
                         event={event}
                         compact
                         onClick={(e) => handleEventClick(event, e)}
+                        hasOrgCredits={orgHasCredits}
+                        isCoach={isCoach}
                       />
                     ))}
                     {dayEvents.length > 3 && (
@@ -857,6 +877,8 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
                   event={event}
                   onRespond={handleRespond}
                   onCounterPropose={handleCounterPropose}
+                  hasOrgCredits={orgHasCredits}
+                  isCoach={isCoach}
                 />
               ))
             )}
@@ -912,6 +934,8 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
           onCounterPropose={handleCounterPropose}
           isLoading={isRespondLoading}
           position={popupPosition || undefined}
+          isHost={isCoach}
+          onEventUpdated={refetch}
         />
       )}
 

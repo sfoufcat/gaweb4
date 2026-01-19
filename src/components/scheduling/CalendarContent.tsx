@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { useSchedulingEvents, useSchedulingActions, usePendingProposals } from '@/hooks/useScheduling';
+import { useOrgCredits } from '@/hooks/useOrgCredits';
 import { RescheduleCallModal } from './RescheduleCallModal';
 import { CounterProposeModal } from './CounterProposeModal';
 import type { UnifiedEvent } from '@/types';
@@ -75,9 +76,11 @@ interface EventItemProps {
   onReschedule?: (event: UnifiedEvent) => void;
   onCounterPropose?: (eventId: string) => void;
   hideDate?: boolean;
+  hasOrgCredits?: boolean; // If false, show warning for coaches on in-app calls
+  isCoach?: boolean; // Whether current user is a coach
 }
 
-function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, onCounterPropose, hideDate }: EventItemProps) {
+function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, onCounterPropose, hideDate, hasOrgCredits = true, isCoach = false }: EventItemProps) {
   const [acceptedTimeId, setAcceptedTimeId] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
@@ -242,7 +245,14 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                 {typeInfo.label}
               </p>
             </div>
-            {isConfirmed && (
+            {/* Credit warning for coaches when org has no credits */}
+            {isCoach && isConfirmed && !hasOrgCredits && !event.meetingLink && (
+              <span className="flex items-center gap-1 px-2.5 py-1 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-full text-xs font-medium" title="Add external meeting link or purchase credits">
+                <AlertCircle className="w-3.5 h-3.5" />
+                No Credits
+              </span>
+            )}
+            {isConfirmed && (hasOrgCredits || event.meetingLink) && (
               <span className="flex items-center gap-1 px-2.5 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
                 <CheckCircle className="w-3.5 h-3.5" />
                 Confirmed
@@ -567,6 +577,11 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
   const [counterProposeError, setCounterProposeError] = useState<string | null>(null);
   const { respondToProposal, cancelEvent, isLoading: respondLoading } = useSchedulingActions();
 
+  // Check if user is a coach and get org credits status
+  const userRole = (user?.publicMetadata as { orgRole?: string })?.orgRole;
+  const isCoach = userRole === 'coach' || userRole === 'super_coach' || userRole === 'admin' || userRole === 'super_admin';
+  const { hasCredits: hasOrgCredits } = useOrgCredits(isCoach);
+
   // Calculate date range for current month view
   const dateRange = useMemo(() => {
     const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -746,6 +761,8 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
                   currentUserId={currentUserId}
                   onRespond={handleRespond}
                   onCounterPropose={handleCounterPropose}
+                  hasOrgCredits={hasOrgCredits}
+                  isCoach={isCoach}
                 />
               ))}
             </div>
@@ -802,6 +819,8 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
                           onCancel={handleCancel}
                           onReschedule={handleReschedule}
                           hideDate
+                          hasOrgCredits={hasOrgCredits}
+                          isCoach={isCoach}
                         />
                       ))}
                     </div>
@@ -824,7 +843,7 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
                   <DateSeparator date={new Date(dateKey + 'T00:00:00')} />
                   <div className="space-y-3">
                     {dateEvents.map(event => (
-                      <EventItem key={event.id} event={event} currentUserId={currentUserId} hideDate />
+                      <EventItem key={event.id} event={event} currentUserId={currentUserId} hideDate hasOrgCredits={hasOrgCredits} isCoach={isCoach} />
                     ))}
                   </div>
                 </div>
