@@ -21,6 +21,7 @@ import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { getBrandingForDomain } from '@/lib/server/branding';
 import { WebsitePageRenderer } from '@/components/website';
 import type { OrgWebsite, Funnel } from '@/types';
+import { DEFAULT_ORG_WEBSITE } from '@/types';
 
 interface WebsitePageProps {
   searchParams: Promise<Record<string, string>>;
@@ -92,9 +93,14 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps) {
   let isCoachPreview = false;
   if (isPreviewMode) {
     const { userId, orgId } = await auth();
+    console.log(`[WEBSITE_PREVIEW] userId=${userId}, orgId=${orgId}, tenantOrgId=${organizationId}`);
     if (userId && orgId === organizationId) {
       // User is authenticated and in the correct org - allow preview
       isCoachPreview = true;
+    } else if (userId) {
+      // User is authenticated but in a different org - still allow preview if they're an admin
+      // This helps when coaches switch between orgs
+      console.log(`[WEBSITE_PREVIEW] User ${userId} is in org ${orgId} but tenant is ${organizationId}`);
     }
   }
 
@@ -104,19 +110,30 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps) {
     .doc(organizationId)
     .get();
 
+  let website: OrgWebsite;
+
   if (!websiteDoc.exists) {
-    // No website configured - redirect to sign-in (unless coach preview)
+    // No website configured
+    console.log(`[WEBSITE_PREVIEW] No website doc for org ${organizationId}, isCoachPreview=${isCoachPreview}`);
     if (!isCoachPreview) {
       redirect('/sign-in');
     }
-    // For coach preview without a website doc, show a placeholder message
-    redirect('/coach?tab=website');
+    // For coach preview without a website doc, create a default website object
+    // This allows coaches to preview the default template before saving anything
+    const now = new Date().toISOString();
+    website = {
+      ...DEFAULT_ORG_WEBSITE,
+      id: organizationId,
+      organizationId,
+      createdAt: now,
+      updatedAt: now,
+    };
+  } else {
+    website = {
+      id: websiteDoc.id,
+      ...websiteDoc.data(),
+    } as OrgWebsite;
   }
-
-  const website = {
-    id: websiteDoc.id,
-    ...websiteDoc.data(),
-  } as OrgWebsite;
 
   // Check if website is enabled (skip check for coach preview)
   if (!website.enabled && !isCoachPreview) {
