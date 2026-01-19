@@ -3,38 +3,39 @@
 import React from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { ArrowRight, ArrowUpRight, Check, ChevronDown, Plus, Minus, Star } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, Plus, Minus, Star, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WebsiteTemplateProps } from './types';
 
 const fadeIn = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as const } },
+  visible: { opacity: 1, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as const } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
 const stagger = {
   visible: {
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.08,
       delayChildren: 0.1,
     },
   },
 };
 
 /**
- * Minimal Website Template - 2026 Clean SaaS Design
+ * Minimal Website Template - Inspired by Fluence Framer Template
  *
- * Inspired by Draftr Framer template:
- * - Light, airy design with subtle gradients
- * - Clean typography with excellent readability
- * - Lots of whitespace
- * - Soft shadows and rounded corners
- * - Pastel accent gradients
+ * Features:
+ * - Light backgrounds with soft gradients
+ * - Inter/General Sans typography
+ * - Frosted glass cards with backdrop blur
+ * - Soft shadows and large rounded corners
+ * - Pastel accent colors
+ * - Premium SaaS aesthetic with glassmorphism
  */
 export function WebsiteMinimalTemplate({
   headline,
@@ -50,30 +51,41 @@ export function WebsiteMinimalTemplate({
   faqs,
   ctaText,
   ctaUrl,
-  accentLight = '#6366f1',
-  accentDark = '#4f46e5',
+  accentLight = '#80aafd',
+  accentDark = '#5b8def',
   onServiceClick,
 }: WebsiteTemplateProps) {
   const [openFaqIndex, setOpenFaqIndex] = React.useState<number | null>(null);
 
   return (
-    <div className="w-full overflow-x-hidden bg-white dark:bg-[#0f0f0f]">
+    <div className="w-full overflow-x-hidden bg-white dark:bg-[#0d0d0f]">
       {/* Hero Section */}
-      <section className="relative min-h-[85vh] flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 pt-16 pb-24">
-        {/* Subtle gradient background */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 pt-16 pb-24">
+        {/* Background gradient */}
         <div className="absolute inset-0 overflow-hidden">
           <div
             className="absolute inset-0"
             style={{
               background: `
-                radial-gradient(ellipse 100% 80% at 50% 0%, ${accentLight}08 0%, transparent 50%),
-                radial-gradient(ellipse 80% 60% at 100% 50%, ${accentLight}05 0%, transparent 40%),
-                radial-gradient(ellipse 60% 50% at 0% 80%, ${accentDark}04 0%, transparent 40%)
+                radial-gradient(ellipse 100% 60% at 50% 0%, ${accentLight}15 0%, transparent 50%),
+                radial-gradient(ellipse 50% 40% at 100% 0%, ${accentDark}08 0%, transparent 40%),
+                linear-gradient(to bottom, white, #f8fafc)
+              `,
+            }}
+          />
+          <div
+            className="dark:block hidden absolute inset-0"
+            style={{
+              background: `
+                radial-gradient(ellipse 100% 60% at 50% 0%, ${accentLight}10 0%, transparent 50%),
+                radial-gradient(ellipse 50% 40% at 100% 0%, ${accentDark}05 0%, transparent 40%),
+                linear-gradient(to bottom, #0d0d0f, #111113)
               `,
             }}
           />
         </div>
 
+        {/* Hero Content */}
         <motion.div
           initial="hidden"
           animate="visible"
@@ -83,32 +95,26 @@ export function WebsiteMinimalTemplate({
           {/* Badge */}
           <motion.div variants={fadeInUp} className="mb-8 flex justify-center">
             <span
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border shadow-sm"
               style={{
-                backgroundColor: `${accentLight}08`,
-                borderColor: `${accentLight}15`,
-                color: accentLight,
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                borderColor: `${accentLight}30`,
+                color: accentDark,
               }}
             >
-              <span
-                className="px-2 py-0.5 rounded-full text-xs font-semibold text-white"
-                style={{ backgroundColor: accentLight }}
-              >
-                New
-              </span>
-              Transform Your Life Today
+              <Sparkles className="w-4 h-4" />
+              Start your transformation today
             </span>
           </motion.div>
 
           <motion.h1
             variants={fadeInUp}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight text-[#111] dark:text-white mb-6 leading-[1.1]"
-            style={{ fontFamily: 'var(--font-albert), system-ui, sans-serif' }}
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-gray-900 dark:text-white mb-6 leading-[1.1]"
           >
             {headline.split(' ').map((word, i, arr) => (
               <span key={i}>
                 {i === arr.length - 1 ? (
-                  <span className="italic">{word}</span>
+                  <span className="italic" style={{ color: accentDark }}>{word}</span>
                 ) : (
                   word + ' '
                 )}
@@ -118,7 +124,7 @@ export function WebsiteMinimalTemplate({
 
           <motion.p
             variants={fadeInUp}
-            className="text-lg sm:text-xl text-[#666] dark:text-[#999] mb-10 max-w-2xl mx-auto leading-relaxed"
+            className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed"
           >
             {subheadline}
           </motion.p>
@@ -126,42 +132,66 @@ export function WebsiteMinimalTemplate({
           <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
               href={ctaUrl}
-              className="group inline-flex items-center gap-3 px-7 py-3.5 text-base font-medium text-white rounded-full transition-all duration-300 hover:opacity-90 shadow-lg"
+              className="group inline-flex items-center gap-3 px-8 py-4 text-base font-semibold text-white rounded-2xl transition-all duration-300 hover:scale-[1.02] shadow-lg"
               style={{
-                backgroundColor: accentLight,
-                boxShadow: `0 4px 20px ${accentLight}40`,
+                background: `linear-gradient(135deg, ${accentLight} 0%, ${accentDark} 100%)`,
+                boxShadow: `0 8px 32px ${accentLight}35`,
               }}
             >
               {ctaText}
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+            </a>
+            <a
+              href="#about"
+              className="inline-flex items-center gap-2 px-6 py-4 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              Learn more
+              <ChevronDown className="w-4 h-4" />
             </a>
           </motion.div>
 
-          {/* Trusted by */}
+          {/* Floating social proof */}
           {testimonials.length > 0 && (
             <motion.div
               variants={fadeIn}
-              className="mt-12 flex items-center justify-center gap-4"
+              className="mt-16"
             >
-              <div className="flex -space-x-2">
-                {testimonials.slice(0, 3).map((t, i) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 rounded-full border-2 border-white dark:border-[#0f0f0f] flex items-center justify-center text-xs font-semibold text-white"
-                    style={{ backgroundColor: accentLight }}
-                  >
-                    {t.author.charAt(0)}
+              <div
+                className="inline-flex items-center gap-4 px-6 py-4 rounded-2xl border shadow-lg backdrop-blur-sm"
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.8)',
+                  borderColor: 'rgba(0,0,0,0.05)',
+                }}
+              >
+                <div className="flex -space-x-2">
+                  {testimonials.slice(0, 4).map((t, i) => (
+                    <div
+                      key={i}
+                      className="w-10 h-10 rounded-full border-2 border-white flex items-center justify-center text-sm font-semibold text-white shadow-sm"
+                      style={{
+                        background: `linear-gradient(135deg, ${accentLight} 0%, ${accentDark} 100%)`,
+                      }}
+                    >
+                      {t.author.charAt(0)}
+                    </div>
+                  ))}
+                </div>
+                <div className="text-left">
+                  <div className="flex gap-0.5 mb-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                    ))}
                   </div>
-                ))}
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <span className="font-semibold text-gray-900 dark:text-white">{testimonials.length * 50}+</span> happy clients
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-[#666] dark:text-[#888]">
-                Trusted by <span className="font-semibold text-[#111] dark:text-white">{testimonials.length * 100}+</span> clients
-              </p>
             </motion.div>
           )}
         </motion.div>
 
-        {/* Hero Image / App Preview */}
+        {/* Hero Image with floating card effect */}
         {heroImageUrl && (
           <motion.div
             initial={{ opacity: 0, y: 40 }}
@@ -170,9 +200,10 @@ export function WebsiteMinimalTemplate({
             className="relative mt-16 w-full max-w-5xl mx-auto px-4"
           >
             <div
-              className="relative rounded-2xl overflow-hidden border border-[#e5e5e5] dark:border-[#262626] shadow-2xl"
+              className="relative rounded-3xl overflow-hidden border shadow-2xl"
               style={{
-                boxShadow: `0 25px 50px -12px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.02)`,
+                borderColor: 'rgba(0,0,0,0.08)',
+                boxShadow: `0 25px 80px -20px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)`,
               }}
             >
               <Image
@@ -183,20 +214,8 @@ export function WebsiteMinimalTemplate({
                 className="w-full object-cover"
                 priority
               />
-            </div>
-            {/* Floating cards decoration */}
-            <div
-              className="absolute -right-8 top-1/4 w-48 h-32 rounded-xl border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#1a1a1a] shadow-lg p-4 hidden lg:block"
-              style={{ transform: 'rotate(6deg)' }}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full" style={{ backgroundColor: `${accentLight}20` }} />
-                <div className="h-3 w-20 rounded bg-[#eee] dark:bg-[#333]" />
-              </div>
-              <div className="space-y-2">
-                <div className="h-2 w-full rounded bg-[#f5f5f5] dark:bg-[#262626]" />
-                <div className="h-2 w-3/4 rounded bg-[#f5f5f5] dark:bg-[#262626]" />
-              </div>
+              {/* Bottom fade */}
+              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white dark:from-[#0d0d0f] to-transparent" />
             </div>
           </motion.div>
         )}
@@ -204,20 +223,23 @@ export function WebsiteMinimalTemplate({
 
       {/* About/Coach Section */}
       {(coachBio || credentials.length > 0) && (
-        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
+        <section id="about" className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gray-50/50 dark:bg-[#111113]">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: "-100px" }}
               variants={stagger}
-              className="grid lg:grid-cols-2 gap-16 items-center"
+              className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center"
             >
               {/* Coach Image */}
               <motion.div variants={fadeInUp} className="relative order-2 lg:order-1">
                 {coachImageUrl ? (
                   <div className="relative">
-                    <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-xl">
+                    <div
+                      className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl"
+                      style={{ boxShadow: `0 25px 50px -12px rgba(0,0,0,0.15)` }}
+                    >
                       <Image
                         src={coachImageUrl}
                         alt={coachName}
@@ -225,23 +247,22 @@ export function WebsiteMinimalTemplate({
                         className="object-cover"
                       />
                     </div>
-                    {/* Badge overlay */}
+                    {/* Decorative elements */}
                     <div
-                      className="absolute -bottom-4 -right-4 px-4 py-2 rounded-xl bg-white dark:bg-[#1a1a1a] shadow-lg border border-[#e5e5e5] dark:border-[#262626]"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
-                        <span className="font-semibold text-[#111] dark:text-white">4.9</span>
-                        <span className="text-sm text-[#666] dark:text-[#888]">rating</span>
-                      </div>
-                    </div>
+                      className="absolute -top-4 -right-4 w-32 h-32 rounded-3xl -z-10"
+                      style={{ backgroundColor: `${accentLight}15` }}
+                    />
+                    <div
+                      className="absolute -bottom-6 -left-6 w-24 h-24 rounded-2xl -z-10"
+                      style={{ backgroundColor: `${accentDark}10` }}
+                    />
                   </div>
                 ) : (
                   <div
-                    className="aspect-[4/5] rounded-3xl flex items-center justify-center"
+                    className="aspect-[4/5] rounded-3xl flex items-center justify-center shadow-xl"
                     style={{ backgroundColor: `${accentLight}08` }}
                   >
-                    <span className="text-8xl font-semibold" style={{ color: accentLight }}>
+                    <span className="text-9xl font-bold" style={{ color: accentLight }}>
                       {coachName.charAt(0)}
                     </span>
                   </div>
@@ -251,16 +272,16 @@ export function WebsiteMinimalTemplate({
               {/* Coach Info */}
               <motion.div variants={fadeInUp} className="space-y-8 order-1 lg:order-2">
                 <div>
-                  <p
-                    className="text-sm font-semibold tracking-wider uppercase mb-4"
-                    style={{ color: accentLight }}
+                  <span
+                    className="inline-block text-sm font-semibold tracking-wider uppercase mb-4"
+                    style={{ color: accentDark }}
                   >
-                    {coachHeadline || 'About'}
-                  </p>
-                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-[#111] dark:text-white mb-6 leading-tight">
-                    Meet {coachName}
+                    {coachHeadline || 'About Me'}
+                  </span>
+                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
+                    Hi, I'm <span style={{ color: accentDark }}>{coachName}</span>
                   </h2>
-                  <p className="text-lg text-[#666] dark:text-[#999] leading-relaxed whitespace-pre-line">
+                  <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
                     {coachBio}
                   </p>
                 </div>
@@ -268,14 +289,17 @@ export function WebsiteMinimalTemplate({
                 {credentials.length > 0 && (
                   <div className="space-y-3">
                     {credentials.map((credential, index) => (
-                      <div key={index} className="flex items-start gap-3">
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-[#18181b] border border-gray-100 dark:border-gray-800 shadow-sm"
+                      >
                         <div
-                          className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
+                          className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
                           style={{ backgroundColor: `${accentLight}15` }}
                         >
-                          <Check className="w-3 h-3" style={{ color: accentLight }} />
+                          <Check className="w-4 h-4" style={{ color: accentDark }} />
                         </div>
-                        <span className="text-[#444] dark:text-[#bbb]">{credential}</span>
+                        <span className="text-gray-700 dark:text-gray-300">{credential}</span>
                       </div>
                     ))}
                   </div>
@@ -288,7 +312,7 @@ export function WebsiteMinimalTemplate({
 
       {/* Services Section */}
       {services.length > 0 && (
-        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-[#fafafa] dark:bg-[#0a0a0a]">
+        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -297,18 +321,18 @@ export function WebsiteMinimalTemplate({
               variants={stagger}
               className="text-center mb-16"
             >
-              <motion.p
+              <motion.span
                 variants={fadeInUp}
-                className="text-sm font-semibold tracking-wider uppercase mb-4"
-                style={{ color: accentLight }}
-              >
-                Services
-              </motion.p>
-              <motion.h2
-                variants={fadeInUp}
-                className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-[#111] dark:text-white"
+                className="inline-block text-sm font-semibold tracking-wider uppercase mb-4"
+                style={{ color: accentDark }}
               >
                 What I Offer
+              </motion.span>
+              <motion.h2
+                variants={fadeInUp}
+                className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white"
+              >
+                Services designed for <span className="italic" style={{ color: accentDark }}>you</span>
               </motion.h2>
             </motion.div>
 
@@ -324,29 +348,32 @@ export function WebsiteMinimalTemplate({
                   key={service.id}
                   variants={fadeInUp}
                   whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                  className="group p-8 rounded-2xl bg-white dark:bg-[#141414] border border-[#e5e5e5] dark:border-[#262626] hover:shadow-xl transition-all duration-300 cursor-pointer"
+                  className="group p-8 rounded-3xl bg-white dark:bg-[#18181b] border border-gray-100 dark:border-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
                   onClick={() => onServiceClick?.(service)}
                 >
+                  {/* Icon */}
                   <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-6"
-                    style={{ backgroundColor: `${accentLight}10` }}
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-sm"
+                    style={{
+                      background: `linear-gradient(135deg, ${accentLight}15 0%, ${accentDark}10 100%)`,
+                    }}
                   >
-                    <span className="text-xl">{getServiceIcon(service.icon)}</span>
+                    <span className="text-2xl">{getServiceIcon(service.icon)}</span>
                   </div>
 
-                  <h3 className="text-xl font-semibold text-[#111] dark:text-white mb-3">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
                     {service.title}
                   </h3>
-                  <p className="text-[#666] dark:text-[#999] leading-relaxed mb-6">
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
                     {service.description}
                   </p>
 
                   <span
-                    className="inline-flex items-center gap-2 text-sm font-medium transition-colors"
-                    style={{ color: accentLight }}
+                    className="inline-flex items-center gap-2 font-semibold transition-colors group-hover:gap-3"
+                    style={{ color: accentDark }}
                   >
                     Learn more
-                    <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </span>
                 </motion.div>
               ))}
@@ -357,7 +384,7 @@ export function WebsiteMinimalTemplate({
 
       {/* Testimonials Section */}
       {testimonials.length > 0 && (
-        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
+        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gray-50/50 dark:bg-[#111113]">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -366,18 +393,18 @@ export function WebsiteMinimalTemplate({
               variants={stagger}
               className="text-center mb-16"
             >
-              <motion.p
+              <motion.span
                 variants={fadeInUp}
-                className="text-sm font-semibold tracking-wider uppercase mb-4"
-                style={{ color: accentLight }}
+                className="inline-block text-sm font-semibold tracking-wider uppercase mb-4"
+                style={{ color: accentDark }}
               >
                 Testimonials
-              </motion.p>
+              </motion.span>
               <motion.h2
                 variants={fadeInUp}
-                className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-[#111] dark:text-white"
+                className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white"
               >
-                What Clients Say
+                Hear from my <span className="italic" style={{ color: accentDark }}>clients</span>
               </motion.h2>
             </motion.div>
 
@@ -392,35 +419,37 @@ export function WebsiteMinimalTemplate({
                 <motion.div
                   key={index}
                   variants={fadeInUp}
-                  className="p-8 rounded-2xl bg-[#fafafa] dark:bg-[#141414] border border-[#e5e5e5] dark:border-[#262626]"
+                  className="p-8 rounded-3xl bg-white dark:bg-[#18181b] border border-gray-100 dark:border-gray-800 shadow-lg"
                 >
                   <div className="flex gap-1 mb-4">
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
                         className={cn(
-                          "w-4 h-4",
-                          i < (testimonial.rating || 5) ? "fill-amber-400 text-amber-400" : "text-[#ddd] dark:text-[#333]"
+                          "w-5 h-5",
+                          i < (testimonial.rating || 5) ? "fill-amber-400 text-amber-400" : "text-gray-200 dark:text-gray-700"
                         )}
                       />
                     ))}
                   </div>
 
-                  <p className="text-[#444] dark:text-[#bbb] leading-relaxed mb-6">
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
                     "{testimonial.text}"
                   </p>
 
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white"
-                      style={{ backgroundColor: accentLight }}
+                      className="w-12 h-12 rounded-full flex items-center justify-center font-semibold text-white shadow-md"
+                      style={{
+                        background: `linear-gradient(135deg, ${accentLight} 0%, ${accentDark} 100%)`,
+                      }}
                     >
                       {testimonial.author.charAt(0)}
                     </div>
                     <div>
-                      <p className="font-semibold text-[#111] dark:text-white">{testimonial.author}</p>
+                      <p className="font-semibold text-gray-900 dark:text-white">{testimonial.author}</p>
                       {testimonial.role && (
-                        <p className="text-sm text-[#666] dark:text-[#888]">{testimonial.role}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-500">{testimonial.role}</p>
                       )}
                     </div>
                   </div>
@@ -433,7 +462,7 @@ export function WebsiteMinimalTemplate({
 
       {/* FAQ Section */}
       {faqs.length > 0 && (
-        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-[#fafafa] dark:bg-[#0a0a0a]">
+        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto">
             <motion.div
               initial="hidden"
@@ -442,18 +471,18 @@ export function WebsiteMinimalTemplate({
               variants={stagger}
               className="text-center mb-16"
             >
-              <motion.p
+              <motion.span
                 variants={fadeInUp}
-                className="text-sm font-semibold tracking-wider uppercase mb-4"
-                style={{ color: accentLight }}
+                className="inline-block text-sm font-semibold tracking-wider uppercase mb-4"
+                style={{ color: accentDark }}
               >
                 FAQ
-              </motion.p>
+              </motion.span>
               <motion.h2
                 variants={fadeInUp}
-                className="text-3xl sm:text-4xl font-semibold text-[#111] dark:text-white"
+                className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white"
               >
-                Questions & Answers
+                Common questions
               </motion.h2>
             </motion.div>
 
@@ -462,29 +491,33 @@ export function WebsiteMinimalTemplate({
               whileInView="visible"
               viewport={{ once: true, margin: "-100px" }}
               variants={stagger}
-              className="space-y-3"
+              className="space-y-4"
             >
               {faqs.map((faq, index) => (
                 <motion.div
                   key={index}
                   variants={fadeInUp}
-                  className="rounded-xl overflow-hidden bg-white dark:bg-[#141414] border border-[#e5e5e5] dark:border-[#262626]"
+                  className="rounded-2xl overflow-hidden bg-white dark:bg-[#18181b] border border-gray-100 dark:border-gray-800 shadow-md"
                 >
                   <button
                     onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
-                    className="w-full flex items-center justify-between p-5 text-left"
+                    className="w-full flex items-center justify-between p-6 text-left"
                   >
-                    <span className="font-medium text-[#111] dark:text-white pr-4">
+                    <span className="text-lg font-semibold text-gray-900 dark:text-white pr-4">
                       {faq.question}
                     </span>
                     <div
-                      className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center"
-                      style={{ backgroundColor: openFaqIndex === index ? `${accentLight}15` : 'transparent' }}
+                      className={cn(
+                        "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300"
+                      )}
+                      style={{
+                        backgroundColor: openFaqIndex === index ? `${accentLight}20` : 'transparent',
+                      }}
                     >
                       {openFaqIndex === index ? (
-                        <Minus className="w-4 h-4" style={{ color: accentLight }} />
+                        <Minus className="w-4 h-4" style={{ color: accentDark }} />
                       ) : (
-                        <Plus className="w-4 h-4 text-[#666] dark:text-[#888]" />
+                        <Plus className="w-4 h-4 text-gray-400" />
                       )}
                     </div>
                   </button>
@@ -494,10 +527,10 @@ export function WebsiteMinimalTemplate({
                       height: openFaqIndex === index ? 'auto' : 0,
                       opacity: openFaqIndex === index ? 1 : 0,
                     }}
-                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ duration: 0.3 }}
                     className="overflow-hidden"
                   >
-                    <p className="px-5 pb-5 text-[#666] dark:text-[#999] leading-relaxed">
+                    <p className="px-6 pb-6 text-gray-600 dark:text-gray-400 leading-relaxed">
                       {faq.answer}
                     </p>
                   </motion.div>
@@ -508,61 +541,49 @@ export function WebsiteMinimalTemplate({
         </section>
       )}
 
-      {/* Bottom CTA */}
+      {/* Bottom CTA Section */}
       <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
           variants={stagger}
-          className="max-w-4xl mx-auto text-center"
+          className="max-w-4xl mx-auto"
         >
           <motion.div
             variants={fadeInUp}
-            className="relative rounded-3xl p-12 lg:p-16 overflow-hidden"
+            className="relative rounded-[2.5rem] p-12 lg:p-16 text-center overflow-hidden border shadow-2xl"
             style={{
-              background: `linear-gradient(135deg, ${accentLight}08 0%, ${accentDark}05 100%)`,
-              border: `1px solid ${accentLight}15`,
+              background: `linear-gradient(135deg, ${accentLight} 0%, ${accentDark} 100%)`,
+              borderColor: 'rgba(255,255,255,0.2)',
             }}
           >
-            {/* Decorative gradient */}
-            <div
-              className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-30"
-              style={{ backgroundColor: accentLight }}
-            />
+            {/* Decorative elements */}
+            <div className="absolute top-0 left-1/4 w-64 h-64 bg-white/20 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 right-1/4 w-48 h-48 bg-white/15 rounded-full blur-2xl" />
 
             <motion.h2
               variants={fadeInUp}
-              className="relative text-3xl sm:text-4xl lg:text-5xl font-semibold text-[#111] dark:text-white mb-6"
+              className="relative text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6"
             >
-              Ready to get started?
+              Ready to begin?
             </motion.h2>
             <motion.p
               variants={fadeInUp}
-              className="relative text-lg text-[#666] dark:text-[#999] mb-10 max-w-xl mx-auto"
+              className="relative text-xl text-white/90 mb-10 max-w-xl mx-auto"
             >
-              Take the first step towards transformation. Schedule a free consultation today.
+              Take the first step today. Your transformation awaits.
             </motion.p>
             <motion.div variants={fadeInUp} className="relative">
               <a
                 href={ctaUrl}
-                className="group inline-flex items-center gap-3 px-8 py-4 text-base font-medium text-white rounded-full transition-all duration-300 hover:opacity-90 shadow-lg"
-                style={{
-                  backgroundColor: accentLight,
-                  boxShadow: `0 4px 20px ${accentLight}40`,
-                }}
+                className="inline-flex items-center gap-3 px-10 py-5 text-lg font-semibold rounded-2xl bg-white transition-all duration-300 hover:scale-[1.02] shadow-lg group"
+                style={{ color: accentDark }}
               >
                 {ctaText}
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
               </a>
             </motion.div>
-
-            <motion.p
-              variants={fadeIn}
-              className="relative mt-6 text-sm text-[#888] dark:text-[#666]"
-            >
-              Free consultation • No commitment required
-            </motion.p>
           </motion.div>
         </motion.div>
       </section>

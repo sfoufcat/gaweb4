@@ -958,6 +958,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     pathname.startsWith('/sign-in') ||
     pathname.startsWith('/coach/onboarding') ||
     pathname.startsWith('/coach/welcome') ||
+    pathname.startsWith('/website') ||  // Public website - full-screen, no sidebar
     pathname === '/upgrade-premium/form' ||
     pathname === '/get-coach/form' ||
     pathname.startsWith('/invite') ||

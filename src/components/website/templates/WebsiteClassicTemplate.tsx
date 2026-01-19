@@ -3,37 +3,37 @@
 import React from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, ChevronDown, Star, Quote, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, Star, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WebsiteTemplateProps } from './types';
 
 const fadeInUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const } },
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
 const fadeIn = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.8 } },
+  visible: { opacity: 1, transition: { duration: 0.6 } },
 };
 
 const stagger = {
   visible: {
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.08,
     },
   },
 };
 
 /**
- * Classic Website Template - 2026 SaaS Design
+ * Classic Website Template - Inspired by Draftr Framer Template
  *
- * Premium, warm design with:
- * - Full-width layout with generous padding
- * - Soft gradient backgrounds with subtle noise
- * - Large rounded corners (2xl/3xl)
- * - Elegant typography with good hierarchy
- * - Subtle glow effects on accent elements
+ * Features:
+ * - Deep purple accent with light backgrounds (#f0f2f6)
+ * - Inter font family
+ * - Clean, modern SaaS aesthetic
+ * - Large hero with app preview
+ * - Generous whitespace
  */
 export function WebsiteClassicTemplate({
   headline,
@@ -49,74 +49,63 @@ export function WebsiteClassicTemplate({
   faqs,
   ctaText,
   ctaUrl,
-  accentLight = '#a07855',
-  accentDark = '#8b6544',
+  accentLight = '#5235ef',
+  accentDark = '#3d28b8',
   onServiceClick,
 }: WebsiteTemplateProps) {
   const [openFaqIndex, setOpenFaqIndex] = React.useState<number | null>(null);
 
   return (
-    <div className="w-full overflow-x-hidden bg-[#fdfcfb] dark:bg-[#09090b]">
+    <div className="w-full overflow-x-hidden bg-[#f7f8fa] dark:bg-[#0a0a0b]">
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-8 pb-24">
-        {/* Gradient Background */}
-        <div className="absolute inset-0 overflow-hidden">
-          {/* Main gradient */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: `
-                radial-gradient(ellipse 80% 50% at 50% -20%, ${accentLight}15 0%, transparent 50%),
-                radial-gradient(ellipse 60% 40% at 80% 60%, ${accentLight}08 0%, transparent 40%),
-                radial-gradient(ellipse 50% 30% at 20% 80%, ${accentDark}06 0%, transparent 40%)
-              `,
-            }}
-          />
-          {/* Subtle grid pattern */}
-          <div
-            className="absolute inset-0 opacity-[0.015] dark:opacity-[0.03]"
-            style={{
-              backgroundImage: `
-                linear-gradient(to right, #000 1px, transparent 1px),
-                linear-gradient(to bottom, #000 1px, transparent 1px)
-              `,
-              backgroundSize: '64px 64px',
-            }}
-          />
-        </div>
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 pt-8 pb-16">
+        {/* Background gradient */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `
+              radial-gradient(ellipse 80% 50% at 50% -10%, ${accentLight}12 0%, transparent 60%),
+              radial-gradient(ellipse 50% 40% at 90% 20%, ${accentLight}08 0%, transparent 50%),
+              radial-gradient(ellipse 40% 30% at 10% 80%, ${accentDark}06 0%, transparent 40%)
+            `,
+          }}
+        />
 
         {/* Hero Content */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={stagger}
-          className="relative z-10 max-w-5xl mx-auto text-center"
+          className="relative z-10 max-w-4xl mx-auto text-center pt-12"
         >
           {/* Badge */}
           <motion.div variants={fadeInUp} className="mb-8">
             <span
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border backdrop-blur-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm"
               style={{
-                backgroundColor: `${accentLight}08`,
-                borderColor: `${accentLight}20`,
+                background: `linear-gradient(135deg, ${accentLight}15 0%, ${accentLight}08 100%)`,
+                border: `1px solid ${accentLight}20`,
                 color: accentLight,
               }}
             >
-              <Sparkles className="w-4 h-4" />
-              Transform Your Life
+              <span
+                className="w-2 h-2 rounded-full animate-pulse"
+                style={{ backgroundColor: accentLight }}
+              />
+              Welcome to your transformation
             </span>
           </motion.div>
 
           <motion.h1
             variants={fadeInUp}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-[#1a1a1a] dark:text-white mb-6 leading-[1.1]"
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-[#101011] dark:text-white mb-6 leading-[1.1]"
           >
             {headline}
           </motion.h1>
 
           <motion.p
             variants={fadeInUp}
-            className="text-lg sm:text-xl text-[#5f5a55] dark:text-[#a1a1aa] mb-10 max-w-2xl mx-auto leading-relaxed"
+            className="text-lg sm:text-xl text-[#606266] dark:text-[#a7a7a7] mb-10 max-w-2xl mx-auto leading-relaxed"
           >
             {subheadline}
           </motion.p>
@@ -124,10 +113,10 @@ export function WebsiteClassicTemplate({
           <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
               href={ctaUrl}
-              className="group inline-flex items-center gap-3 px-8 py-4 text-base font-semibold text-white rounded-2xl transition-all duration-300 hover:scale-[1.02] shadow-lg"
+              className="group inline-flex items-center gap-3 px-8 py-4 text-base font-semibold text-white rounded-xl transition-all duration-300 hover:scale-[1.02]"
               style={{
                 backgroundColor: accentLight,
-                boxShadow: `0 8px 32px ${accentLight}40, 0 0 0 1px ${accentLight}`,
+                boxShadow: `0 4px 24px ${accentLight}40`,
               }}
             >
               {ctaText}
@@ -135,44 +124,77 @@ export function WebsiteClassicTemplate({
             </a>
             <a
               href="#about"
-              className="inline-flex items-center gap-2 px-6 py-4 text-base font-medium text-[#5f5a55] dark:text-[#a1a1aa] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
+              className="group inline-flex items-center gap-2 px-6 py-4 text-base font-medium text-[#606266] dark:text-[#a7a7a7] hover:text-[#101011] dark:hover:text-white transition-colors"
             >
+              <Play className="w-5 h-5" />
               Learn more
-              <ChevronDown className="w-4 h-4" />
             </a>
           </motion.div>
 
-          {/* Hero Image Preview */}
-          {heroImageUrl && (
+          {/* Social proof */}
+          {testimonials.length > 0 && (
             <motion.div
               variants={fadeIn}
-              className="mt-16 relative"
+              className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4"
             >
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-black/5 dark:border-white/5">
-                <Image
-                  src={heroImageUrl}
-                  alt="Hero"
-                  width={1200}
-                  height={675}
-                  className="w-full object-cover"
-                  priority
-                />
-                {/* Gradient overlay at bottom */}
-                <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#fdfcfb] dark:from-[#09090b] to-transparent" />
+              <div className="flex -space-x-2">
+                {testimonials.slice(0, 4).map((t, i) => (
+                  <div
+                    key={i}
+                    className="w-10 h-10 rounded-full border-2 border-[#f7f8fa] dark:border-[#0a0a0b] flex items-center justify-center text-sm font-semibold text-white"
+                    style={{
+                      backgroundColor: accentLight,
+                      opacity: 1 - (i * 0.15),
+                    }}
+                  >
+                    {t.author.charAt(0)}
+                  </div>
+                ))}
               </div>
-              {/* Decorative glow */}
-              <div
-                className="absolute -inset-4 -z-10 blur-3xl opacity-20"
-                style={{ backgroundColor: accentLight }}
-              />
+              <div className="flex items-center gap-2 text-sm text-[#606266] dark:text-[#a7a7a7]">
+                <div className="flex gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <span>Loved by <span className="font-semibold text-[#101011] dark:text-white">{testimonials.length * 50}+</span> clients</span>
+              </div>
             </motion.div>
           )}
         </motion.div>
+
+        {/* Hero Image / App Preview */}
+        {heroImageUrl && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="relative mt-16 w-full max-w-5xl mx-auto px-4"
+          >
+            <div
+              className="relative rounded-2xl overflow-hidden"
+              style={{
+                boxShadow: `0 25px 80px -20px ${accentLight}30, 0 0 0 1px rgba(0,0,0,0.05)`,
+              }}
+            >
+              <Image
+                src={heroImageUrl}
+                alt="Hero"
+                width={1200}
+                height={675}
+                className="w-full object-cover"
+                priority
+              />
+              {/* Gradient overlay at bottom */}
+              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#f7f8fa] dark:from-[#0a0a0b] to-transparent" />
+            </div>
+          </motion.div>
+        )}
       </section>
 
       {/* About/Coach Section */}
       {(coachBio || credentials.length > 0) && (
-        <section id="about" className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
+        <section id="about" className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-white dark:bg-[#111113]">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -185,7 +207,10 @@ export function WebsiteClassicTemplate({
               <motion.div variants={fadeInUp} className="relative order-2 lg:order-1">
                 {coachImageUrl ? (
                   <div className="relative">
-                    <div className="relative aspect-[4/5] rounded-3xl overflow-hidden">
+                    <div
+                      className="relative aspect-[4/5] rounded-2xl overflow-hidden"
+                      style={{ boxShadow: `0 30px 60px -20px ${accentLight}25` }}
+                    >
                       <Image
                         src={coachImageUrl}
                         alt={coachName}
@@ -193,20 +218,16 @@ export function WebsiteClassicTemplate({
                         className="object-cover"
                       />
                     </div>
-                    {/* Decorative elements */}
+                    {/* Decorative accent */}
                     <div
-                      className="absolute -bottom-6 -right-6 w-48 h-48 rounded-3xl -z-10"
-                      style={{ backgroundColor: `${accentLight}10` }}
-                    />
-                    <div
-                      className="absolute -top-6 -left-6 w-32 h-32 rounded-full -z-10"
-                      style={{ backgroundColor: `${accentDark}08` }}
+                      className="absolute -bottom-4 -right-4 w-24 h-24 rounded-2xl -z-10"
+                      style={{ backgroundColor: `${accentLight}15` }}
                     />
                   </div>
                 ) : (
                   <div
-                    className="aspect-[4/5] rounded-3xl flex items-center justify-center"
-                    style={{ backgroundColor: `${accentLight}08` }}
+                    className="aspect-[4/5] rounded-2xl flex items-center justify-center"
+                    style={{ backgroundColor: `${accentLight}10` }}
                   >
                     <span className="text-8xl font-bold" style={{ color: accentLight }}>
                       {coachName.charAt(0)}
@@ -222,33 +243,42 @@ export function WebsiteClassicTemplate({
                     className="text-sm font-semibold tracking-wider uppercase mb-4"
                     style={{ color: accentLight }}
                   >
-                    {coachHeadline || 'About Your Coach'}
+                    {coachHeadline || 'Meet Your Coach'}
                   </p>
-                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#1a1a1a] dark:text-white mb-6 leading-tight">
-                    Meet {coachName}
+                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#101011] dark:text-white mb-6 leading-tight">
+                    Hi, I'm {coachName}
                   </h2>
-                  <p className="text-lg text-[#5f5a55] dark:text-[#a1a1aa] leading-relaxed whitespace-pre-line">
+                  <p className="text-lg text-[#606266] dark:text-[#a7a7a7] leading-relaxed whitespace-pre-line">
                     {coachBio}
                   </p>
                 </div>
 
                 {credentials.length > 0 && (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {credentials.map((credential, index) => (
-                      <div key={index} className="flex items-start gap-4">
+                      <div key={index} className="flex items-start gap-3">
                         <div
                           className="flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center mt-0.5"
                           style={{ backgroundColor: `${accentLight}15` }}
                         >
                           <Check className="w-4 h-4" style={{ color: accentLight }} />
                         </div>
-                        <span className="text-[#1a1a1a] dark:text-[#e5e5e5]">
+                        <span className="text-[#101011] dark:text-[#e5e5e5]">
                           {credential}
                         </span>
                       </div>
                     ))}
                   </div>
                 )}
+
+                <a
+                  href={ctaUrl}
+                  className="inline-flex items-center gap-2 font-semibold transition-colors"
+                  style={{ color: accentLight }}
+                >
+                  Work with me
+                  <ArrowRight className="w-4 h-4" />
+                </a>
               </motion.div>
             </motion.div>
           </div>
@@ -275,7 +305,7 @@ export function WebsiteClassicTemplate({
               </motion.p>
               <motion.h2
                 variants={fadeInUp}
-                className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#1a1a1a] dark:text-white"
+                className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#101011] dark:text-white"
               >
                 How I Can Help You
               </motion.h2>
@@ -293,21 +323,21 @@ export function WebsiteClassicTemplate({
                   key={service.id}
                   variants={fadeInUp}
                   whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                  className="group p-8 rounded-3xl bg-white dark:bg-[#18181b] border border-[#e5e5e5]/50 dark:border-[#27272a] hover:border-[#d4d4d4] dark:hover:border-[#3f3f46] transition-all duration-300 cursor-pointer hover:shadow-xl"
+                  className="group p-8 rounded-2xl bg-white dark:bg-[#111113] border border-[#e5e7eb] dark:border-[#222225] hover:border-[#d1d5db] dark:hover:border-[#333338] transition-all duration-300 cursor-pointer hover:shadow-xl"
                   onClick={() => onServiceClick?.(service)}
                 >
                   {/* Icon */}
                   <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6"
+                    className="w-14 h-14 rounded-xl flex items-center justify-center mb-6"
                     style={{ backgroundColor: `${accentLight}10` }}
                   >
                     <span className="text-2xl">{getServiceIcon(service.icon)}</span>
                   </div>
 
-                  <h3 className="text-xl font-bold text-[#1a1a1a] dark:text-white mb-3">
+                  <h3 className="text-xl font-bold text-[#101011] dark:text-white mb-3">
                     {service.title}
                   </h3>
-                  <p className="text-[#5f5a55] dark:text-[#a1a1aa] leading-relaxed mb-6">
+                  <p className="text-[#606266] dark:text-[#a7a7a7] leading-relaxed mb-6">
                     {service.description}
                   </p>
 
@@ -327,19 +357,8 @@ export function WebsiteClassicTemplate({
 
       {/* Testimonials Section */}
       {testimonials.length > 0 && (
-        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-          {/* Background gradient */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: `
-                radial-gradient(ellipse 60% 40% at 20% 50%, ${accentLight}06 0%, transparent 50%),
-                radial-gradient(ellipse 50% 30% at 80% 50%, ${accentDark}04 0%, transparent 40%)
-              `,
-            }}
-          />
-
-          <div className="max-w-6xl mx-auto relative">
+        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-white dark:bg-[#111113]">
+          <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
               whileInView="visible"
@@ -356,7 +375,7 @@ export function WebsiteClassicTemplate({
               </motion.p>
               <motion.h2
                 variants={fadeInUp}
-                className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#1a1a1a] dark:text-white"
+                className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#101011] dark:text-white"
               >
                 What My Clients Say
               </motion.h2>
@@ -373,7 +392,7 @@ export function WebsiteClassicTemplate({
                 <motion.div
                   key={index}
                   variants={fadeInUp}
-                  className="p-8 rounded-3xl bg-white dark:bg-[#18181b] border border-[#e5e5e5]/50 dark:border-[#27272a]"
+                  className="p-8 rounded-2xl bg-[#f7f8fa] dark:bg-[#0a0a0b] border border-[#e5e7eb] dark:border-[#222225]"
                 >
                   {/* Rating */}
                   {testimonial.rating && (
@@ -390,7 +409,7 @@ export function WebsiteClassicTemplate({
                     </div>
                   )}
 
-                  <p className="text-[#1a1a1a] dark:text-[#e5e5e5] leading-relaxed mb-6">
+                  <p className="text-[#101011] dark:text-[#e5e5e5] leading-relaxed mb-6">
                     "{testimonial.text}"
                   </p>
 
@@ -402,11 +421,11 @@ export function WebsiteClassicTemplate({
                       {testimonial.author.charAt(0)}
                     </div>
                     <div>
-                      <p className="font-semibold text-[#1a1a1a] dark:text-white">
+                      <p className="font-semibold text-[#101011] dark:text-white">
                         {testimonial.author}
                       </p>
                       {testimonial.role && (
-                        <p className="text-sm text-[#5f5a55] dark:text-[#71717a]">
+                        <p className="text-sm text-[#606266] dark:text-[#a7a7a7]">
                           {testimonial.role}
                         </p>
                       )}
@@ -439,7 +458,7 @@ export function WebsiteClassicTemplate({
               </motion.p>
               <motion.h2
                 variants={fadeInUp}
-                className="text-3xl sm:text-4xl font-bold text-[#1a1a1a] dark:text-white"
+                className="text-3xl sm:text-4xl font-bold text-[#101011] dark:text-white"
               >
                 Frequently Asked Questions
               </motion.h2>
@@ -456,18 +475,18 @@ export function WebsiteClassicTemplate({
                 <motion.div
                   key={index}
                   variants={fadeInUp}
-                  className="rounded-2xl overflow-hidden bg-white dark:bg-[#18181b] border border-[#e5e5e5]/50 dark:border-[#27272a]"
+                  className="rounded-xl overflow-hidden bg-white dark:bg-[#111113] border border-[#e5e7eb] dark:border-[#222225]"
                 >
                   <button
                     onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
                     className="w-full flex items-center justify-between p-6 text-left"
                   >
-                    <span className="text-lg font-semibold text-[#1a1a1a] dark:text-white pr-4">
+                    <span className="text-lg font-semibold text-[#101011] dark:text-white pr-4">
                       {faq.question}
                     </span>
                     <ChevronDown
                       className={cn(
-                        "w-5 h-5 flex-shrink-0 transition-transform duration-300 text-[#5f5a55] dark:text-[#71717a]",
+                        "w-5 h-5 flex-shrink-0 transition-transform duration-300 text-[#606266] dark:text-[#a7a7a7]",
                         openFaqIndex === index ? "rotate-180" : ""
                       )}
                     />
@@ -481,7 +500,7 @@ export function WebsiteClassicTemplate({
                     transition={{ duration: 0.3 }}
                     className="overflow-hidden"
                   >
-                    <p className="px-6 pb-6 text-[#5f5a55] dark:text-[#a1a1aa] leading-relaxed">
+                    <p className="px-6 pb-6 text-[#606266] dark:text-[#a7a7a7] leading-relaxed">
                       {faq.answer}
                     </p>
                   </motion.div>
@@ -503,7 +522,7 @@ export function WebsiteClassicTemplate({
         >
           <motion.div
             variants={fadeInUp}
-            className="relative rounded-[2rem] p-12 lg:p-16 text-center overflow-hidden"
+            className="relative rounded-3xl p-12 lg:p-16 text-center overflow-hidden"
             style={{
               background: `linear-gradient(135deg, ${accentLight} 0%, ${accentDark} 100%)`,
             }}
@@ -527,7 +546,7 @@ export function WebsiteClassicTemplate({
             <motion.div variants={fadeInUp} className="relative">
               <a
                 href={ctaUrl}
-                className="inline-flex items-center gap-3 px-8 py-4 text-lg font-semibold rounded-2xl bg-white transition-all duration-300 hover:scale-[1.02] group"
+                className="inline-flex items-center gap-3 px-8 py-4 text-lg font-semibold rounded-xl bg-white transition-all duration-300 hover:scale-[1.02] group"
                 style={{ color: accentDark }}
               >
                 {ctaText}
