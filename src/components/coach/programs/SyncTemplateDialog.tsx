@@ -142,6 +142,18 @@ export function SyncTemplateDialog({
   singleCohortName,
   onSyncComplete,
 }: SyncTemplateDialogProps) {
+  // Client-side only rendering to avoid hydration issues with Dialog portal
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Don't render anything until mounted on client
+  if (!isMounted) {
+    return null;
+  }
+
   // Don't render anything when closed
   if (!open) {
     return null;
@@ -532,7 +544,7 @@ function SyncTemplateDialogContent({
           <label className="flex items-center gap-3 cursor-pointer">
             <BrandedCheckbox
               checked={preserveData}
-              onChange={() => setPreserveData(v => !v)}
+              onChange={(checked) => setPreserveData(checked)}
             />
             <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
               Preserve {targetLabel}-specific data (recordings, notes, linked calls)

@@ -7,7 +7,6 @@ import {
   X,
   ArrowRight,
   ArrowLeft,
-  Upload,
   Loader2,
   BookOpen,
   Layers,
@@ -21,39 +20,10 @@ import {
   DrawerContent,
 } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { MediaUpload } from '@/components/admin/MediaUpload';
 
 // Wizard step types
 type WizardStep = 'info' | 'structure';
-
-// Category options
-const CATEGORY_OPTIONS = [
-  'Mindset',
-  'Productivity',
-  'Health & Fitness',
-  'Business',
-  'Marketing',
-  'Sales',
-  'Leadership',
-  'Personal Development',
-  'Finance',
-  'Relationships',
-  'Other',
-];
-
-// Level options
-const LEVEL_OPTIONS = [
-  'Beginner',
-  'Intermediate',
-  'Advanced',
-];
 
 // Wizard data collected across steps
 interface CourseWizardData {
@@ -61,8 +31,6 @@ interface CourseWizardData {
   title: string;
   description: string;
   coverImage: string;
-  category: string;
-  level: string;
   programIds: string[];
   // Step 2: Structure & Pricing
   numModules: number;
@@ -76,8 +44,6 @@ const DEFAULT_WIZARD_DATA: CourseWizardData = {
   title: '',
   description: '',
   coverImage: '',
-  category: '',
-  level: '',
   programIds: [],
   numModules: 1,
   lessonsPerModule: 1,
@@ -111,8 +77,6 @@ export function CreateCourseModal({
   const [step, setStep] = useState<WizardStep>('info');
   const [wizardData, setWizardData] = useState<CourseWizardData>(DEFAULT_WIZARD_DATA);
   const [isCreating, setIsCreating] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loadingPrograms, setLoadingPrograms] = useState(false);
@@ -175,7 +139,6 @@ export function CreateCourseModal({
       setStep('info');
       setWizardData(DEFAULT_WIZARD_DATA);
       setIsCreating(false);
-      setUploadError(null);
       setCreateError(null);
     }
   }, [isOpen]);
@@ -221,8 +184,8 @@ export function CreateCourseModal({
         title: wizardData.title,
         shortDescription: wizardData.description,
         coverImageUrl: wizardData.coverImage,
-        category: wizardData.category,
-        level: wizardData.level,
+        category: 'General',
+        level: 'Beginner',
         programIds: wizardData.programIds,
         modules,
         priceInCents: wizardData.pricing === 'paid' ? wizardData.price * 100 : 0,
@@ -254,38 +217,6 @@ export function CreateCourseModal({
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingImage(true);
-    setUploadError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', 'course-cover');
-
-      const response = await fetch(uploadEndpoint, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Upload failed');
-      }
-
-      const data = await response.json();
-      updateWizardData({ coverImage: data.url });
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      setUploadError(error instanceof Error ? error.message : 'Failed to upload image');
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
   // Get step index for progress indicator
   const getStepIndex = () => {
     const steps: WizardStep[] = ['info', 'structure'];
@@ -299,9 +230,7 @@ export function CreateCourseModal({
         return (
           wizardData.title.trim().length > 0 &&
           wizardData.description.trim().length > 0 &&
-          wizardData.coverImage.length > 0 &&
-          wizardData.category.length > 0 &&
-          wizardData.level.length > 0
+          wizardData.coverImage.length > 0
         );
       case 'structure':
         return wizardData.numModules >= 1 && wizardData.lessonsPerModule >= 1;
@@ -322,7 +251,7 @@ export function CreateCourseModal({
 
   // Wizard content (shared between Dialog and Drawer)
   const wizardContent = (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full max-h-[80vh]">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <div className="flex items-center gap-3">
@@ -335,14 +264,10 @@ export function CreateCourseModal({
             </button>
           )}
           <div>
-            <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
-              {step === 'info' && 'Create New Course'}
+            <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
+              {step === 'info' && 'New Course'}
               {step === 'structure' && 'Structure & Pricing'}
             </h2>
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-              {step === 'info' && 'Add course details and cover image'}
-              {step === 'structure' && 'Configure modules, lessons, and pricing'}
-            </p>
           </div>
         </div>
         <button
@@ -354,7 +279,7 @@ export function CreateCourseModal({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="flex-1 overflow-y-auto px-6 py-5">
         <AnimatePresence mode="wait">
           {step === 'info' && (
             <motion.div
@@ -363,17 +288,15 @@ export function CreateCourseModal({
               initial={isInitialMount.current ? false : "initial"}
               animate="animate"
               exit="exit"
-              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
             >
               <InfoStep
                 data={wizardData}
                 onChange={updateWizardData}
-                onImageUpload={handleImageUpload}
-                uploadingImage={uploadingImage}
-                uploadError={uploadError}
                 programs={programs}
                 loadingPrograms={loadingPrograms}
                 onToggleProgram={toggleProgram}
+                uploadEndpoint={uploadEndpoint}
               />
             </motion.div>
           )}
@@ -385,7 +308,7 @@ export function CreateCourseModal({
               initial="initial"
               animate="animate"
               exit="exit"
-              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
             >
               <StructureStep
                 data={wizardData}
@@ -418,7 +341,7 @@ export function CreateCourseModal({
           <button
             onClick={step === 'structure' ? handleCreateCourse : goToNextStep}
             disabled={!canProceed() || isCreating}
-            className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-5 py-2 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
             {isCreating ? (
               <>
@@ -446,7 +369,7 @@ export function CreateCourseModal({
   if (isMobile) {
     return (
       <Drawer open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-        <DrawerContent className="h-[90vh] max-h-[90vh]">
+        <DrawerContent className="max-h-[90vh]">
           {wizardContent}
         </DrawerContent>
       </Drawer>
@@ -480,7 +403,7 @@ export function CreateCourseModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
+              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
                 {wizardContent}
               </Dialog.Panel>
             </Transition.Child>
@@ -497,184 +420,98 @@ export function CreateCourseModal({
 interface InfoStepProps {
   data: CourseWizardData;
   onChange: (updates: Partial<CourseWizardData>) => void;
-  onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  uploadingImage: boolean;
-  uploadError: string | null;
   programs: Program[];
   loadingPrograms: boolean;
   onToggleProgram: (programId: string) => void;
+  uploadEndpoint: string;
 }
 
 function InfoStep({
   data,
   onChange,
-  onImageUpload,
-  uploadingImage,
-  uploadError,
   programs,
   loadingPrograms,
   onToggleProgram,
+  uploadEndpoint,
 }: InfoStepProps) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Course Title */}
       <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-          Course Title <span className="text-red-500">*</span>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
+          Title <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           value={data.title}
           onChange={(e) => onChange({ title: e.target.value })}
           placeholder='e.g., "Mastering Productivity"'
-          className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
+          className="w-full px-3 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
         />
       </div>
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
           Description <span className="text-red-500">*</span>
         </label>
         <textarea
           value={data.description}
           onChange={(e) => onChange({ description: e.target.value })}
-          placeholder="What will students learn in this course?"
-          rows={3}
-          className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors resize-none"
+          placeholder="What will students learn?"
+          rows={2}
+          className="w-full px-3 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors resize-none text-sm"
         />
       </div>
 
       {/* Cover Image */}
       <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
           Cover Image <span className="text-red-500">*</span>
         </label>
-
-        {data.coverImage ? (
-          <div className="relative rounded-xl overflow-hidden border border-[#e1ddd8] dark:border-[#262b35]">
-            <img
-              src={data.coverImage}
-              alt="Cover preview"
-              className="w-full h-32 object-cover"
-            />
-            <button
-              onClick={() => onChange({ coverImage: '' })}
-              className="absolute top-2 right-2 p-2 rounded-lg bg-black/50 text-white hover:bg-black/70 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ) : (
-          <label className="flex flex-col items-center justify-center w-full h-32 rounded-xl border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#1d222b] cursor-pointer hover:border-brand-accent/50 transition-colors">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={onImageUpload}
-              className="hidden"
-            />
-            {uploadingImage ? (
-              <Loader2 className="w-6 h-6 text-brand-accent animate-spin" />
-            ) : (
-              <>
-                <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center mb-2">
-                  <Upload className="w-5 h-5 text-brand-accent" />
-                </div>
-                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  Click to upload cover image
-                </p>
-              </>
-            )}
-          </label>
-        )}
-
-        {uploadError && (
-          <p className="text-sm text-red-500 dark:text-red-400 mt-2 font-albert">
-            {uploadError}
-          </p>
-        )}
-      </div>
-
-      {/* Category & Level Row */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Category */}
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            Category <span className="text-red-500">*</span>
-          </label>
-          <Select
-            value={data.category}
-            onValueChange={(value) => onChange({ category: value })}
-          >
-            <SelectTrigger className="w-full h-12 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b]">
-              <SelectValue placeholder="Select..." />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORY_OPTIONS.map(cat => (
-                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Level */}
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            Level <span className="text-red-500">*</span>
-          </label>
-          <Select
-            value={data.level}
-            onValueChange={(value) => onChange({ level: value })}
-          >
-            <SelectTrigger className="w-full h-12 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b]">
-              <SelectValue placeholder="Select..." />
-            </SelectTrigger>
-            <SelectContent>
-              {LEVEL_OPTIONS.map(level => (
-                <SelectItem key={level} value={level}>{level}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <MediaUpload
+          value={data.coverImage}
+          onChange={(url) => onChange({ coverImage: url })}
+          folder="courses"
+          type="image"
+          uploadEndpoint={uploadEndpoint}
+          hideLabel
+          aspectRatio="16:9"
+        />
       </div>
 
       {/* Link to Programs */}
-      <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-          Link to Programs
-          <span className="text-[#8c8a87] dark:text-[#8b8f9a] font-normal ml-2">(optional)</span>
-        </label>
-        <p className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert mb-3">
-          Select programs where this course will be available
-        </p>
+      {programs.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
+            Link to Programs
+            <span className="text-[#8c8a87] dark:text-[#8b8f9a] font-normal ml-1.5">(optional)</span>
+          </label>
 
-        {loadingPrograms ? (
-          <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Loading programs...
-          </div>
-        ) : programs.length === 0 ? (
-          <p className="text-sm text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
-            No programs available. Course will be available to all users.
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {programs.map(program => (
-              <button
-                key={program.id}
-                onClick={() => onToggleProgram(program.id)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
-                  data.programIds.includes(program.id)
-                    ? 'bg-brand-accent text-white'
-                    : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e8e5e1] dark:hover:bg-[#2d333f]'
-                }`}
-              >
-                {program.name}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+          {loadingPrograms ? (
+            <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading...
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {programs.map(program => (
+                <button
+                  key={program.id}
+                  onClick={() => onToggleProgram(program.id)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-albert transition-colors ${
+                    data.programIds.includes(program.id)
+                      ? 'bg-brand-accent text-white'
+                      : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e8e5e1] dark:hover:bg-[#2d333f]'
+                  }`}
+                >
+                  {program.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -690,32 +527,32 @@ interface StructureStepProps {
 
 function StructureStep({ data, onChange, error }: StructureStepProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Modules & Lessons */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         {/* Modules */}
-        <div className="p-6 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 border border-[#e1ddd8]/60 dark:border-[#262b35]/60 text-center">
-          <div className="w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center mx-auto mb-3">
-            <BookOpen className="w-6 h-6 text-brand-accent" />
+        <div className="p-4 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 border border-[#e1ddd8]/60 dark:border-[#262b35]/60 text-center">
+          <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center mx-auto mb-2">
+            <BookOpen className="w-5 h-5 text-brand-accent" />
           </div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+          <label className="block text-xs font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
             Modules
           </label>
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-3">
             <button
               onClick={() => onChange({ numModules: Math.max(1, data.numModules - 1) })}
               disabled={data.numModules <= 1}
-              className="w-10 h-10 rounded-xl bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#f3f1ef] dark:hover:bg-[#2d333f] transition-colors border border-[#e1ddd8] dark:border-[#262b35]"
+              className="w-8 h-8 rounded-lg bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#f3f1ef] dark:hover:bg-[#2d333f] transition-colors border border-[#e1ddd8] dark:border-[#262b35]"
             >
               −
             </button>
-            <span className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums w-12 text-center">
+            <span className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums w-8 text-center">
               {data.numModules}
             </span>
             <button
               onClick={() => onChange({ numModules: Math.min(20, data.numModules + 1) })}
               disabled={data.numModules >= 20}
-              className="w-10 h-10 rounded-xl bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#f3f1ef] dark:hover:bg-[#2d333f] transition-colors border border-[#e1ddd8] dark:border-[#262b35]"
+              className="w-8 h-8 rounded-lg bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#f3f1ef] dark:hover:bg-[#2d333f] transition-colors border border-[#e1ddd8] dark:border-[#262b35]"
             >
               +
             </button>
@@ -723,28 +560,28 @@ function StructureStep({ data, onChange, error }: StructureStepProps) {
         </div>
 
         {/* Lessons per module */}
-        <div className="p-6 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 border border-[#e1ddd8]/60 dark:border-[#262b35]/60 text-center">
-          <div className="w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center mx-auto mb-3">
-            <Layers className="w-6 h-6 text-brand-accent" />
+        <div className="p-4 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 border border-[#e1ddd8]/60 dark:border-[#262b35]/60 text-center">
+          <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center mx-auto mb-2">
+            <Layers className="w-5 h-5 text-brand-accent" />
           </div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+          <label className="block text-xs font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
             Lessons / Module
           </label>
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-3">
             <button
               onClick={() => onChange({ lessonsPerModule: Math.max(1, data.lessonsPerModule - 1) })}
               disabled={data.lessonsPerModule <= 1}
-              className="w-10 h-10 rounded-xl bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#f3f1ef] dark:hover:bg-[#2d333f] transition-colors border border-[#e1ddd8] dark:border-[#262b35]"
+              className="w-8 h-8 rounded-lg bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#f3f1ef] dark:hover:bg-[#2d333f] transition-colors border border-[#e1ddd8] dark:border-[#262b35]"
             >
               −
             </button>
-            <span className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums w-12 text-center">
+            <span className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tabular-nums w-8 text-center">
               {data.lessonsPerModule}
             </span>
             <button
               onClick={() => onChange({ lessonsPerModule: Math.min(20, data.lessonsPerModule + 1) })}
               disabled={data.lessonsPerModule >= 20}
-              className="w-10 h-10 rounded-xl bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#f3f1ef] dark:hover:bg-[#2d333f] transition-colors border border-[#e1ddd8] dark:border-[#262b35]"
+              className="w-8 h-8 rounded-lg bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#f3f1ef] dark:hover:bg-[#2d333f] transition-colors border border-[#e1ddd8] dark:border-[#262b35]"
             >
               +
             </button>
@@ -753,38 +590,38 @@ function StructureStep({ data, onChange, error }: StructureStepProps) {
       </div>
 
       {/* Total summary */}
-      <p className="text-center text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-        This course will have <span className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{data.numModules * data.lessonsPerModule}</span> total lessons
+      <p className="text-center text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+        <span className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{data.numModules * data.lessonsPerModule}</span> total lessons
       </p>
 
       {/* Pricing */}
       <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
           Pricing
         </label>
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-2 gap-2 mb-2">
           <button
             onClick={() => onChange({ pricing: 'free' })}
-            className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
+            className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
               data.pricing === 'free'
                 ? 'border-brand-accent bg-brand-accent/5'
                 : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
             }`}
           >
-            <span className={`text-lg font-semibold ${data.pricing === 'free' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`}>
+            <span className={`font-semibold text-sm ${data.pricing === 'free' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`}>
               Free
             </span>
           </button>
           <button
             onClick={() => onChange({ pricing: 'paid' })}
-            className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
+            className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
               data.pricing === 'paid'
                 ? 'border-brand-accent bg-brand-accent/5'
                 : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
             }`}
           >
-            <DollarSign className={`w-5 h-5 ${data.pricing === 'paid' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
-            <span className={`text-lg font-semibold ${data.pricing === 'paid' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`}>
+            <DollarSign className={`w-4 h-4 ${data.pricing === 'paid' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+            <span className={`font-semibold text-sm ${data.pricing === 'paid' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`}>
               Paid
             </span>
           </button>
@@ -793,13 +630,13 @@ function StructureStep({ data, onChange, error }: StructureStepProps) {
         {/* Price Input */}
         {data.pricing === 'paid' && (
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5f5a55] dark:text-[#b2b6c2] font-albert">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">$</span>
             <input
               type="number"
               value={data.price || ''}
               onChange={(e) => onChange({ price: Math.max(0, parseInt(e.target.value) || 0) })}
               placeholder="0"
-              className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
+              className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
             />
           </div>
         )}
@@ -807,31 +644,31 @@ function StructureStep({ data, onChange, error }: StructureStepProps) {
 
       {/* Visibility */}
       <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
           Visibility
         </label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => onChange({ isPublic: true })}
-            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+            className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
               data.isPublic
                 ? 'border-brand-accent bg-brand-accent/5'
                 : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
             }`}
           >
-            <Globe className={`w-5 h-5 ${data.isPublic ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
-            <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">Public</span>
+            <Globe className={`w-4 h-4 ${data.isPublic ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+            <span className={`font-albert font-medium text-sm ${data.isPublic ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`}>Public</span>
           </button>
           <button
             onClick={() => onChange({ isPublic: false })}
-            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+            className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
               !data.isPublic
                 ? 'border-brand-accent bg-brand-accent/5'
                 : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
             }`}
           >
-            <Lock className={`w-5 h-5 ${!data.isPublic ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
-            <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">Private</span>
+            <Lock className={`w-4 h-4 ${!data.isPublic ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+            <span className={`font-albert font-medium text-sm ${!data.isPublic ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`}>Private</span>
           </button>
         </div>
       </div>

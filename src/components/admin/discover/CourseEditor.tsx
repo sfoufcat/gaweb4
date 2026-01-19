@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import type { DiscoverCourse, CourseModule, CourseLesson } from '@/types/discover';
 import type { UserTrack } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { ArrowLeft, Layers, BookOpen, Clock, ChevronDown, ChevronUp, Trash2, Play, Plus, Settings2, GripVertical, Folder } from 'lucide-react';
+import { ArrowLeft, Layers, BookOpen, Clock, ChevronDown, ChevronRight, Trash2, Play, Plus, Settings2, GripVertical, Folder, LayoutGrid, BarChart3 } from 'lucide-react';
+import { CourseOverview } from './CourseOverview';
 
 // Generate unique ID for new modules/lessons
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -91,6 +93,7 @@ export function CourseEditor({
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set([0]));
   const [fetchingDuration, setFetchingDuration] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'content'>(isEditing ? 'overview' : 'content');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -231,18 +234,8 @@ export function CourseEditor({
     }
   };
 
-  const moveModuleUp = (index: number) => {
-    if (index === 0) return;
-    const newModules = [...formData.modules];
-    [newModules[index - 1], newModules[index]] = [newModules[index], newModules[index - 1]];
-    setFormData(prev => ({ ...prev, modules: newModules }));
-  };
-
-  const moveModuleDown = (index: number) => {
-    if (index === formData.modules.length - 1) return;
-    const newModules = [...formData.modules];
-    [newModules[index], newModules[index + 1]] = [newModules[index + 1], newModules[index]];
-    setFormData(prev => ({ ...prev, modules: newModules }));
+  const handleModulesReorder = (reorderedModules: CourseModule[]) => {
+    setFormData(prev => ({ ...prev, modules: reorderedModules }));
   };
 
   // Lesson operations
@@ -275,20 +268,9 @@ export function CourseEditor({
     }
   };
 
-  const moveLessonUp = (moduleIndex: number, lessonIndex: number) => {
-    if (lessonIndex === 0) return;
+  const handleLessonsReorder = (moduleIndex: number, reorderedLessons: CourseLesson[]) => {
     const module = formData.modules[moduleIndex];
-    const newLessons = [...module.lessons];
-    [newLessons[lessonIndex - 1], newLessons[lessonIndex]] = [newLessons[lessonIndex], newLessons[lessonIndex - 1]];
-    updateModule(moduleIndex, { ...module, lessons: newLessons });
-  };
-
-  const moveLessonDown = (moduleIndex: number, lessonIndex: number) => {
-    const module = formData.modules[moduleIndex];
-    if (lessonIndex === module.lessons.length - 1) return;
-    const newLessons = [...module.lessons];
-    [newLessons[lessonIndex], newLessons[lessonIndex + 1]] = [newLessons[lessonIndex + 1], newLessons[lessonIndex]];
-    updateModule(moduleIndex, { ...module, lessons: newLessons });
+    updateModule(moduleIndex, { ...module, lessons: reorderedLessons });
   };
 
   const toggleModule = (index: number) => {
@@ -341,6 +323,36 @@ export function CourseEditor({
               {formData.title || 'New Course'}
             </h1>
           </div>
+
+          {/* Tab Navigation - only show for existing courses */}
+          {isEditing && (
+            <div className="flex items-center gap-1 bg-[#f3f1ef] dark:bg-[#11141b] rounded-xl p-1 ml-4">
+              <button
+                type="button"
+                onClick={() => setActiveTab('overview')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
+                  activeTab === 'overview'
+                    ? 'bg-white dark:bg-[#1c2028] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                Overview
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('content')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
+                  activeTab === 'content'
+                    ? 'bg-white dark:bg-[#1c2028] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white'
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Content
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -390,162 +402,211 @@ export function CourseEditor({
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar - Module/Lesson Tree */}
-        <div className="w-80 flex-shrink-0 border-r border-[#e1ddd8] dark:border-[#262b35] flex flex-col bg-[#faf8f6] dark:bg-[#0d0f14]">
-          {/* Sidebar Header */}
-          <div className="px-4 py-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-              <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Structure</span>
-            </div>
+        {/* Overview Tab Content */}
+        {activeTab === 'overview' && isEditing && course && (
+          <div className="flex-1 overflow-y-auto">
+            <CourseOverview
+              course={course}
+              apiEndpoint={apiEndpoint}
+            />
           </div>
+        )}
+
+        {/* Content Tab or New Course - Sidebar + Editor */}
+        {(activeTab === 'content' || !isEditing) && (
+          <>
+        {/* Sidebar - Module/Lesson Tree */}
+        <div className="w-80 flex-shrink-0 flex flex-col bg-[#faf8f6] dark:bg-[#0d0f14] p-4">
+          {/* Sidebar Container with rounded border */}
+          <div className="flex-1 flex flex-col border border-[#e1ddd8] dark:border-[#262b35] rounded-2xl overflow-hidden bg-white/50 dark:bg-[#171b22]/50">
+            {/* Sidebar Header */}
+            <div className="px-4 py-3 border-b border-[#e8e4df] dark:border-[#262b35] flex items-center justify-between bg-[#faf8f6]/80 dark:bg-[#0d0f14]/80">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Structure</span>
+              </div>
+            </div>
 
           {/* Module List */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {formData.modules.map((module, moduleIndex) => {
-              const moduleColor = MODULE_COLORS[moduleIndex % MODULE_COLORS.length];
-              const isExpanded = expandedModules.has(moduleIndex);
-              const isModuleSelected = selectedModuleIndex === moduleIndex && selectedLessonIndex === null;
+          <div className="flex-1 overflow-y-auto p-4">
+            <Reorder.Group
+              axis="y"
+              values={formData.modules}
+              onReorder={handleModulesReorder}
+              className="space-y-3"
+            >
+              {formData.modules.map((module, moduleIndex) => {
+                const moduleColor = MODULE_COLORS[moduleIndex % MODULE_COLORS.length];
+                const isExpanded = expandedModules.has(moduleIndex);
+                const isModuleSelected = selectedModuleIndex === moduleIndex && selectedLessonIndex === null;
 
-              return (
-                <div key={module.id} className={`rounded-xl overflow-hidden border border-[#e1ddd8] dark:border-[#262b35] ${moduleColor.bg}`}>
-                  {/* Module Header */}
-                  <div
-                    className={`px-3 py-2.5 flex items-center gap-2 cursor-pointer transition-colors ${
-                      isModuleSelected ? 'bg-brand-accent/10 dark:bg-brand-accent/15' : 'hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a]'
-                    }`}
-                    onClick={() => {
-                      setSelectedModuleIndex(moduleIndex);
-                      setSelectedLessonIndex(null);
-                      toggleModule(moduleIndex);
-                    }}
+                return (
+                  <Reorder.Item
+                    key={module.id}
+                    value={module}
+                    className={`rounded-2xl overflow-hidden ${moduleColor.bg} shadow-sm`}
                   >
-                    <div className="flex items-center gap-1 opacity-50 hover:opacity-100">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); moveModuleUp(moduleIndex); }}
-                        disabled={moduleIndex === 0}
-                        className="p-0.5 disabled:opacity-30"
-                      >
-                        <ChevronUp className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); moveModuleDown(moduleIndex); }}
-                        disabled={moduleIndex === formData.modules.length - 1}
-                        className="p-0.5 disabled:opacity-30"
-                      >
-                        <ChevronDown className="w-3 h-3" />
-                      </button>
-                    </div>
-
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${moduleColor.icon}`}>
-                      <Folder className={`w-5 h-5 ${moduleColor.iconText}`} />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <input
-                        type="text"
-                        value={module.title}
-                        onChange={(e) => { e.stopPropagation(); updateModule(moduleIndex, { ...module, title: e.target.value }); }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full bg-transparent border-none p-0 font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none font-albert"
-                        placeholder="Module name"
-                      />
-                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                        {module.lessons.length} lesson{module.lessons.length !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteModule(moduleIndex); }}
-                      className="p-1.5 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                    {/* Module Header */}
+                    <div
+                      className={`px-3 py-3 flex items-center gap-3 cursor-pointer transition-all duration-200 group ${
+                        isModuleSelected
+                          ? 'bg-brand-accent/8 shadow-[inset_0_0_0_2px_rgba(var(--brand-accent-rgb),0.2)]'
+                          : 'hover:bg-white/50 dark:hover:bg-white/5'
+                      }`}
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      {/* Drag handle */}
+                      <div className="touch-none cursor-grab active:cursor-grabbing">
+                        <GripVertical className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
+                      </div>
 
-                    <ChevronDown className={`w-4 h-4 text-[#9ca3af] transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                  </div>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${moduleColor.icon}`}>
+                        <Folder className={`w-5 h-5 ${moduleColor.iconText}`} />
+                      </div>
 
-                  {/* Lessons */}
-                  {isExpanded && (
-                    <div className="border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-                      {module.lessons.map((lesson, lessonIndex) => {
-                        const isLessonSelected = selectedModuleIndex === moduleIndex && selectedLessonIndex === lessonIndex;
+                      <div
+                        onClick={() => {
+                          setSelectedModuleIndex(moduleIndex);
+                          setSelectedLessonIndex(null);
+                        }}
+                        className="flex-1 min-w-0"
+                      >
+                        <input
+                          type="text"
+                          value={module.title}
+                          onChange={(e) => updateModule(moduleIndex, { ...module, title: e.target.value })}
+                          onClick={(e) => e.stopPropagation()}
+                          className={`w-full bg-transparent border-none p-0 font-semibold focus:outline-none font-albert ${
+                            isModuleSelected ? 'text-brand-accent' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                          }`}
+                          placeholder="Module name"
+                        />
+                        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                          {module.lessons.length} lesson{module.lessons.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
 
-                        return (
-                          <div
-                            key={lesson.id}
-                            className={`group/lesson px-3 py-2 flex items-center gap-2 cursor-pointer transition-colors border-b border-[#e1ddd8]/30 dark:border-[#262b35]/30 last:border-b-0 ${
-                              isLessonSelected ? 'bg-brand-accent/10 dark:bg-brand-accent/15' : 'hover:bg-[#f5f3f0] dark:hover:bg-[#1e222a]'
-                            }`}
-                            onClick={() => {
-                              setSelectedModuleIndex(moduleIndex);
-                              setSelectedLessonIndex(lessonIndex);
-                            }}
-                          >
-                            <div className="flex items-center gap-1 opacity-0 group-hover/lesson:opacity-50 hover:!opacity-100">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); moveLessonUp(moduleIndex, lessonIndex); }}
-                                disabled={lessonIndex === 0}
-                                className="p-0.5 disabled:opacity-30"
-                              >
-                                <ChevronUp className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); moveLessonDown(moduleIndex, lessonIndex); }}
-                                disabled={lessonIndex === module.lessons.length - 1}
-                                className="p-0.5 disabled:opacity-30"
-                              >
-                                <ChevronDown className="w-3 h-3" />
-                              </button>
-                            </div>
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteModule(moduleIndex); }}
+                          className="p-2 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
 
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100/70 dark:bg-gray-900/25">
-                              <Play className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                            </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleModule(moduleIndex);
+                          }}
+                          className="p-2 hover:bg-[#e1ddd8]/50 dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
 
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                                {lesson.title || 'Untitled Lesson'}
-                              </p>
-                              {lesson.durationMinutes && (
-                                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                                  {lesson.durationMinutes} min
-                                </p>
-                              )}
-                            </div>
-
-                            <button
-                              onClick={(e) => { e.stopPropagation(); deleteLesson(moduleIndex, lessonIndex); }}
-                              className="p-1 text-[#9ca3af] hover:text-red-500 opacity-0 group-hover/lesson:opacity-100 transition-all"
+                    {/* Animated expandable lessons */}
+                    <AnimatePresence initial={false}>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2, ease: "easeInOut" }}
+                          style={{ overflow: "hidden" }}
+                        >
+                          <div className="border-t border-[#e1ddd8]/30 dark:border-[#262b35]/30">
+                            <Reorder.Group
+                              axis="y"
+                              values={module.lessons}
+                              onReorder={(lessons) => handleLessonsReorder(moduleIndex, lessons)}
+                              className="py-1"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              {module.lessons.map((lesson, lessonIndex) => {
+                                const isLessonSelected = selectedModuleIndex === moduleIndex && selectedLessonIndex === lessonIndex;
+
+                                return (
+                                  <Reorder.Item
+                                    key={lesson.id}
+                                    value={lesson}
+                                    className="mx-2 my-1"
+                                  >
+                                    <div
+                                      className={`group/lesson pl-2 pr-3 py-2 flex items-center gap-2 cursor-pointer transition-all duration-150 rounded-xl ${
+                                        isLessonSelected
+                                          ? 'bg-brand-accent/10 dark:bg-brand-accent/15 shadow-[inset_0_0_0_1px_rgba(var(--brand-accent-rgb),0.2)]'
+                                          : 'hover:bg-white/60 dark:hover:bg-white/5'
+                                      }`}
+                                      onClick={() => {
+                                        setSelectedModuleIndex(moduleIndex);
+                                        setSelectedLessonIndex(lessonIndex);
+                                      }}
+                                    >
+                                      {/* Drag handle for lessons */}
+                                      <div className="touch-none cursor-grab active:cursor-grabbing opacity-0 group-hover/lesson:opacity-100 transition-opacity">
+                                        <GripVertical className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+                                      </div>
+
+                                      <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/70 dark:bg-gray-900/25 flex-shrink-0">
+                                        <Play className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                                      </div>
+
+                                      <div className="flex-1 min-w-0">
+                                        <p className={`text-sm font-medium truncate ${
+                                          isLessonSelected ? 'text-brand-accent' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                                        }`}>
+                                          {lesson.title || 'Untitled Lesson'}
+                                        </p>
+                                        {lesson.durationMinutes && (
+                                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                                            {lesson.durationMinutes} min
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); deleteLesson(moduleIndex, lessonIndex); }}
+                                        className="p-1.5 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg opacity-0 group-hover/lesson:opacity-100 transition-all"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </Reorder.Item>
+                                );
+                              })}
+                            </Reorder.Group>
+
+                            {/* Add Lesson Button */}
+                            <button
+                              onClick={() => addLesson(moduleIndex)}
+                              className="w-full px-4 py-2.5 flex items-center gap-2 text-sm text-brand-accent hover:bg-brand-accent/5 transition-colors font-medium"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Add Lesson
                             </button>
                           </div>
-                        );
-                      })}
-
-                      {/* Add Lesson Button */}
-                      <button
-                        onClick={() => addLesson(moduleIndex)}
-                        className="w-full px-3 py-2 flex items-center gap-2 text-sm text-brand-accent hover:bg-brand-accent/5 transition-colors"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Lesson
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </Reorder.Item>
+                );
+              })}
+            </Reorder.Group>
 
             {/* Add Module Button */}
             <button
               onClick={addModule}
-              className="w-full py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-sm text-brand-accent hover:border-brand-accent hover:bg-brand-accent/5 transition-colors font-albert font-medium flex items-center justify-center gap-2"
+              className="w-full mt-3 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-2xl text-sm text-brand-accent hover:border-brand-accent hover:bg-brand-accent/5 transition-colors font-albert font-medium flex items-center justify-center gap-2"
             >
               <Layers className="w-4 h-4" />
               Add Module
             </button>
+          </div>
           </div>
         </div>
 
@@ -667,6 +728,8 @@ export function CourseEditor({
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
 
       {/* Basic Info Sheet */}

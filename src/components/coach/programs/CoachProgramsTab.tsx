@@ -1946,7 +1946,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       const program = allPrograms.find(p => p.id === initialProgramId);
       if (program) {
         setSelectedProgram(program);
-        setViewMode('days');
+        setViewMode('overview');
       }
       // Mark that we've attempted restoration (whether found or not)
       hasRestoredInitialSelection.current = true;
@@ -2539,9 +2539,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           // The useEffect checks prevProgramId, so same ID won't trigger re-fetch
           setSelectedProgram(prev => prev ? { ...prev, ...data.program } : data.program);
         } else {
-          // For new programs: Select it normally and navigate to days view
+          // For new programs: Select it normally and navigate to overview
           setSelectedProgram(data.program);
-          handleViewModeChange('days');
+          handleViewModeChange('overview');
         }
       }
     } catch (err) {
