@@ -2,24 +2,19 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowRight, Check, ChevronDown, Star, Sparkles, Play } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowRight, ArrowUpRight, Check, ChevronDown, Star, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WebsiteTemplateProps } from './types';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
-const fadeInLeft = {
-  hidden: { opacity: 0, x: -40 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const } },
-};
-
-const fadeInRight = {
-  hidden: { opacity: 0, x: 40 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const } },
+const fadeIn = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 1 } },
 };
 
 const stagger = {
@@ -31,14 +26,14 @@ const stagger = {
 };
 
 /**
- * Modern Website Template
+ * Modern Website Template - 2026 Dark SaaS Design
  *
- * Bold, contemporary design with:
- * - Split-screen two-column hero
- * - Geometric shapes and gradients
- * - Large typography with strong contrast
- * - Horizontal scrolling testimonials
- * - Modern card designs with glassmorphism
+ * Inspired by Xtract/Fluence Framer templates:
+ * - Dark theme with gradient orbs
+ * - Glowing accent elements
+ * - Large typography with gradient text
+ * - Full-width sections with generous spacing
+ * - Animated gradient backgrounds
  */
 export function WebsiteModernTemplate({
   headline,
@@ -54,303 +49,217 @@ export function WebsiteModernTemplate({
   faqs,
   ctaText,
   ctaUrl,
-  accentLight = '#6366f1',
-  accentDark = '#4f46e5',
+  accentLight = '#8b5cf6',
+  accentDark = '#6d28d9',
   onServiceClick,
 }: WebsiteTemplateProps) {
   const [openFaqIndex, setOpenFaqIndex] = React.useState<number | null>(null);
-  const heroRef = React.useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"]
-  });
-
-  const heroImageY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
-  const heroTextY = useTransform(scrollYProgress, [0, 1], ["0%", "10%"]);
 
   return (
-    <div className="w-full overflow-x-hidden">
-      {/* Hero Section - Two Column Split */}
-      <section ref={heroRef} className="relative min-h-screen flex items-stretch overflow-hidden">
-        {/* Left Column - Content */}
-        <div className="relative z-10 w-full lg:w-1/2 flex items-center bg-white dark:bg-[#0a0c10]">
-          {/* Decorative gradient blob */}
+    <div className="w-full overflow-x-hidden bg-[#030014] text-white">
+      {/* Hero Section */}
+      <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-16 pb-24">
+        {/* Animated Background */}
+        <div className="absolute inset-0 overflow-hidden">
+          {/* Main gradient orb */}
           <div
-            className="absolute top-20 -left-20 w-80 h-80 rounded-full blur-3xl opacity-30"
-            style={{ background: `radial-gradient(circle, ${accentLight}50, transparent 70%)` }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-[120px] opacity-30"
+            style={{
+              background: `radial-gradient(circle, ${accentLight} 0%, ${accentDark} 40%, transparent 70%)`,
+            }}
           />
-
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={stagger}
-            style={{ y: heroTextY }}
-            className="relative px-8 lg:px-16 xl:px-24 py-16 max-w-2xl"
-          >
-            <motion.div
-              variants={fadeInUp}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 text-sm font-medium"
-              style={{
-                backgroundColor: `${accentLight}15`,
-                color: accentLight
-              }}
-            >
-              <Sparkles className="w-4 h-4" />
-              Transform Your Life Today
-            </motion.div>
-
-            <motion.h1
-              variants={fadeInUp}
-              className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight text-[#1a1a1a] dark:text-white mb-6 leading-[1.1]"
-            >
-              {headline}
-            </motion.h1>
-
-            <motion.p
-              variants={fadeInUp}
-              className="text-lg sm:text-xl text-[#5f5a55] dark:text-[#b2b6c2] mb-10 leading-relaxed"
-            >
-              {subheadline}
-            </motion.p>
-
-            <motion.div variants={fadeInUp} className="flex flex-wrap gap-4">
-              <a
-                href={ctaUrl}
-                className="inline-flex items-center gap-3 px-8 py-4 text-lg font-bold text-white rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl group"
-                style={{
-                  background: `linear-gradient(135deg, ${accentLight} 0%, ${accentDark} 100%)`,
-                }}
-              >
-                {ctaText}
-                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-              </a>
-              <button
-                className="inline-flex items-center gap-3 px-6 py-4 text-lg font-semibold text-[#1a1a1a] dark:text-white rounded-xl border-2 border-[#e1ddd8] dark:border-[#262b35] hover:border-[#5f5a55] dark:hover:border-[#5f5a55] transition-all duration-300"
-              >
-                <Play className="w-5 h-5" style={{ color: accentLight }} />
-                Watch Video
-              </button>
-            </motion.div>
-
-            {/* Social Proof Mini */}
-            {testimonials.length > 0 && (
-              <motion.div variants={fadeInUp} className="mt-12 flex items-center gap-4">
-                <div className="flex -space-x-3">
-                  {testimonials.slice(0, 4).map((t, i) => (
-                    <div
-                      key={i}
-                      className="w-10 h-10 rounded-full border-2 border-white dark:border-[#0a0c10] flex items-center justify-center text-white text-sm font-semibold"
-                      style={{
-                        backgroundColor: `hsl(${(i * 60 + 200) % 360}, 70%, 50%)`,
-                        zIndex: 4 - i
-                      }}
-                    >
-                      {t.author.charAt(0)}
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <div className="flex gap-0.5 mb-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-[#5f5a55] dark:text-[#7d8190]">
-                    Loved by <span className="font-semibold text-[#1a1a1a] dark:text-white">{testimonials.length * 50}+</span> clients
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </motion.div>
-        </div>
-
-        {/* Right Column - Image */}
-        <motion.div
-          className="hidden lg:block w-1/2 relative"
-          style={{ y: heroImageY }}
-        >
-          {heroImageUrl ? (
-            <Image
-              src={heroImageUrl}
-              alt="Hero"
-              fill
-              className="object-cover"
-              priority
-            />
-          ) : coachImageUrl ? (
-            <Image
-              src={coachImageUrl}
-              alt={coachName}
-              fill
-              className="object-cover"
-              priority
-            />
-          ) : (
-            <div
-              className="absolute inset-0"
-              style={{
-                background: `linear-gradient(135deg, ${accentLight}30 0%, ${accentDark}50 100%)`,
-              }}
-            >
-              {/* Decorative geometric shapes */}
-              <div className="absolute top-1/4 left-1/4 w-40 h-40 rounded-full border-4 opacity-20" style={{ borderColor: accentLight }} />
-              <div className="absolute bottom-1/3 right-1/4 w-60 h-60 rounded-3xl rotate-12 opacity-15" style={{ backgroundColor: accentDark }} />
-              <div className="absolute top-1/2 left-1/2 w-20 h-20 rounded-lg -rotate-12 opacity-20" style={{ backgroundColor: accentLight }} />
-            </div>
-          )}
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-white/20 dark:to-[#0a0c10]/20" />
-        </motion.div>
-      </section>
-
-      {/* Stats/Trust Bar */}
-      <section className="py-12 border-y border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#0a0c10]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { value: '500+', label: 'Clients Transformed' },
-              { value: '10+', label: 'Years Experience' },
-              { value: '98%', label: 'Success Rate' },
-              { value: '4.9', label: 'Average Rating' },
-            ].map((stat, i) => (
-              <motion.div
+          {/* Secondary orbs */}
+          <div
+            className="absolute top-1/4 right-1/4 w-[400px] h-[400px] rounded-full blur-[100px] opacity-20"
+            style={{ backgroundColor: accentLight }}
+          />
+          <div
+            className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] rounded-full blur-[80px] opacity-15"
+            style={{ backgroundColor: accentDark }}
+          />
+          {/* Star field */}
+          <div className="absolute inset-0 opacity-50">
+            {[...Array(50)].map((_, i) => (
+              <div
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                viewport={{ once: true }}
-                className="text-center"
-              >
-                <p
-                  className="text-3xl md:text-4xl font-black mb-1"
-                  style={{ color: accentLight }}
-                >
-                  {stat.value}
-                </p>
-                <p className="text-sm text-[#5f5a55] dark:text-[#7d8190]">{stat.label}</p>
-              </motion.div>
+                className="absolute w-0.5 h-0.5 bg-white rounded-full"
+                style={{
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  opacity: Math.random() * 0.5 + 0.2,
+                }}
+              />
             ))}
           </div>
+          {/* Grid overlay */}
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: `
+                linear-gradient(to right, #fff 1px, transparent 1px),
+                linear-gradient(to bottom, #fff 1px, transparent 1px)
+              `,
+              backgroundSize: '80px 80px',
+            }}
+          />
         </div>
+
+        {/* Hero Content */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={stagger}
+          className="relative z-10 max-w-5xl mx-auto text-center"
+        >
+          {/* Badge */}
+          <motion.div variants={fadeInUp} className="mb-8 flex justify-center">
+            <span
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border backdrop-blur-md"
+              style={{
+                backgroundColor: `${accentLight}10`,
+                borderColor: `${accentLight}30`,
+                boxShadow: `0 0 20px ${accentLight}20`,
+              }}
+            >
+              <span
+                className="w-2 h-2 rounded-full animate-pulse"
+                style={{ backgroundColor: accentLight }}
+              />
+              Transform Your Life
+            </span>
+          </motion.div>
+
+          <motion.h1
+            variants={fadeInUp}
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-8 leading-[1.05]"
+          >
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage: `linear-gradient(135deg, #fff 0%, ${accentLight} 50%, ${accentDark} 100%)`,
+              }}
+            >
+              {headline}
+            </span>
+          </motion.h1>
+
+          <motion.p
+            variants={fadeInUp}
+            className="text-lg sm:text-xl text-white/60 mb-12 max-w-2xl mx-auto leading-relaxed"
+          >
+            {subheadline}
+          </motion.p>
+
+          <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a
+              href={ctaUrl}
+              className="group inline-flex items-center gap-3 px-8 py-4 text-base font-semibold text-white rounded-2xl transition-all duration-300 hover:scale-[1.02]"
+              style={{
+                background: `linear-gradient(135deg, ${accentLight} 0%, ${accentDark} 100%)`,
+                boxShadow: `0 0 40px ${accentLight}40`,
+              }}
+            >
+              {ctaText}
+              <ArrowUpRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </a>
+            <a
+              href="#services"
+              className="inline-flex items-center gap-2 px-6 py-4 text-base font-medium text-white/70 hover:text-white border border-white/10 hover:border-white/20 rounded-2xl transition-all duration-300 backdrop-blur-sm"
+            >
+              View Services
+            </a>
+          </motion.div>
+
+          {/* Floating Testimonial Preview */}
+          {testimonials.length > 0 && (
+            <motion.div
+              variants={fadeIn}
+              className="mt-20 flex items-center justify-center gap-4"
+            >
+              <div className="flex -space-x-3">
+                {testimonials.slice(0, 4).map((t, i) => (
+                  <div
+                    key={i}
+                    className="w-10 h-10 rounded-full border-2 border-[#030014] flex items-center justify-center text-sm font-semibold"
+                    style={{
+                      background: `linear-gradient(135deg, ${accentLight}${80 - i * 15} 0%, ${accentDark} 100%)`,
+                    }}
+                  >
+                    {t.author.charAt(0)}
+                  </div>
+                ))}
+              </div>
+              <div className="text-left">
+                <div className="flex gap-1 mb-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <p className="text-sm text-white/50">
+                  Trusted by <span className="text-white">{testimonials.length * 50}+</span> clients
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </motion.div>
+
+        {/* Hero Image */}
+        {heroImageUrl && (
+          <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.5 }}
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-6xl px-4"
+          >
+            <div
+              className="relative rounded-t-3xl overflow-hidden border border-white/10"
+              style={{ boxShadow: `0 -20px 80px ${accentLight}20` }}
+            >
+              <Image
+                src={heroImageUrl}
+                alt="Hero"
+                width={1400}
+                height={700}
+                className="w-full object-cover"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#030014] via-transparent to-transparent" />
+            </div>
+          </motion.div>
+        )}
       </section>
 
-      {/* About/Coach Section - Reversed Layout */}
-      {(coachBio || credentials.length > 0) && (
-        <section className="py-24 lg:py-32 bg-[#faf8f6] dark:bg-[#05070b]">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
-              variants={stagger}
-              className="grid lg:grid-cols-2 gap-16 items-center"
-            >
-              {/* Coach Info - Left */}
-              <motion.div variants={fadeInLeft} className="order-2 lg:order-1 space-y-8">
-                <div>
-                  <motion.div
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 text-sm font-medium"
-                    style={{
-                      backgroundColor: `${accentLight}15`,
-                      color: accentLight
-                    }}
-                  >
-                    {coachHeadline || 'Your Coach'}
-                  </motion.div>
-                  <h2 className="text-4xl sm:text-5xl font-black text-[#1a1a1a] dark:text-white mb-6">
-                    Hi, I'm {coachName}
-                  </h2>
-                  <p className="text-lg text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed whitespace-pre-line">
-                    {coachBio}
-                  </p>
-                </div>
-
-                {credentials.length > 0 && (
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {credentials.map((credential, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-[#0a0c10] border border-[#e1ddd8] dark:border-[#262b35]"
-                      >
-                        <div
-                          className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: `${accentLight}15` }}
-                        >
-                          <Check className="w-5 h-5" style={{ color: accentLight }} />
-                        </div>
-                        <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#e5e5e5]">
-                          {credential}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-
-              {/* Coach Image - Right */}
-              <motion.div variants={fadeInRight} className="order-1 lg:order-2 relative">
-                {coachImageUrl ? (
-                  <div className="relative">
-                    <div className="relative aspect-square rounded-3xl overflow-hidden shadow-2xl">
-                      <Image
-                        src={coachImageUrl}
-                        alt={coachName}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    {/* Decorative elements */}
-                    <div
-                      className="absolute -top-6 -right-6 w-24 h-24 rounded-2xl -z-10"
-                      style={{ backgroundColor: `${accentLight}30` }}
-                    />
-                    <div
-                      className="absolute -bottom-6 -left-6 w-32 h-32 rounded-full -z-10"
-                      style={{ backgroundColor: `${accentDark}20` }}
-                    />
-                  </div>
-                ) : (
-                  <div
-                    className="aspect-square rounded-3xl flex items-center justify-center"
-                    style={{
-                      background: `linear-gradient(135deg, ${accentLight}20 0%, ${accentDark}30 100%)`
-                    }}
-                  >
-                    <span className="text-9xl font-black" style={{ color: accentLight }}>
-                      {coachName.charAt(0)}
-                    </span>
-                  </div>
-                )}
-              </motion.div>
-            </motion.div>
-          </div>
-        </section>
-      )}
-
-      {/* Services Section - Bento Grid Style */}
+      {/* Services Section */}
       {services.length > 0 && (
-        <section className="py-24 lg:py-32 bg-white dark:bg-[#0a0c10]">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+        <section id="services" className="py-32 px-4 sm:px-6 lg:px-8 relative">
+          {/* Background glow */}
+          <div
+            className="absolute top-1/2 left-0 w-[500px] h-[500px] rounded-full blur-[150px] opacity-10"
+            style={{ backgroundColor: accentLight }}
+          />
+
+          <div className="max-w-6xl mx-auto relative">
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: "-100px" }}
               variants={stagger}
-              className="mb-16"
+              className="mb-20"
             >
               <motion.div
                 variants={fadeInUp}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 text-sm font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border backdrop-blur-sm mb-6"
                 style={{
-                  backgroundColor: `${accentLight}15`,
-                  color: accentLight
+                  backgroundColor: `${accentLight}08`,
+                  borderColor: `${accentLight}20`,
                 }}
               >
+                <Sparkles className="w-4 h-4" style={{ color: accentLight }} />
                 Services
               </motion.div>
               <motion.h2
                 variants={fadeInUp}
-                className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#1a1a1a] dark:text-white max-w-3xl"
+                className="text-4xl sm:text-5xl lg:text-6xl font-bold max-w-3xl"
               >
                 Everything you need to{' '}
                 <span style={{ color: accentLight }}>succeed</span>
@@ -370,53 +279,56 @@ export function WebsiteModernTemplate({
                   variants={fadeInUp}
                   whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                   className={cn(
-                    "group relative p-8 rounded-3xl cursor-pointer transition-all duration-300",
-                    "bg-[#faf8f6] dark:bg-[#05070b]",
-                    "hover:shadow-2xl",
-                    index === 0 && services.length > 2 ? "lg:col-span-2 lg:row-span-2" : ""
+                    "group relative p-8 rounded-3xl cursor-pointer transition-all duration-300 border border-white/5 hover:border-white/10 backdrop-blur-sm",
+                    "bg-gradient-to-b from-white/[0.03] to-transparent",
+                    index === 0 && services.length > 2 ? "md:col-span-2 md:row-span-2" : ""
                   )}
                   onClick={() => onServiceClick?.(service)}
+                  style={{
+                    boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.03)`,
+                  }}
                 >
-                  {/* Gradient border on hover */}
+                  {/* Glow effect on hover */}
                   <div
-                    className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10"
+                    className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                     style={{
-                      padding: '2px',
-                      background: `linear-gradient(135deg, ${accentLight}, ${accentDark})`,
+                      background: `radial-gradient(circle at 50% 0%, ${accentLight}10, transparent 50%)`,
                     }}
                   />
 
-                  {/* Icon */}
-                  <div
-                    className={cn(
-                      "rounded-2xl flex items-center justify-center mb-6",
-                      index === 0 && services.length > 2 ? "w-20 h-20" : "w-14 h-14"
-                    )}
-                    style={{
-                      background: `linear-gradient(135deg, ${accentLight}20, ${accentDark}20)`
-                    }}
-                  >
-                    <span className={index === 0 && services.length > 2 ? "text-4xl" : "text-2xl"}>
-                      {getServiceIcon(service.icon)}
-                    </span>
-                  </div>
+                  <div className="relative z-10">
+                    <div
+                      className={cn(
+                        "rounded-2xl flex items-center justify-center mb-6",
+                        index === 0 && services.length > 2 ? "w-16 h-16" : "w-14 h-14"
+                      )}
+                      style={{
+                        background: `linear-gradient(135deg, ${accentLight}20 0%, ${accentDark}10 100%)`,
+                        boxShadow: `0 0 20px ${accentLight}10`,
+                      }}
+                    >
+                      <span className={index === 0 && services.length > 2 ? "text-3xl" : "text-2xl"}>
+                        {getServiceIcon(service.icon)}
+                      </span>
+                    </div>
 
-                  <h3 className={cn(
-                    "font-bold text-[#1a1a1a] dark:text-white mb-3",
-                    index === 0 && services.length > 2 ? "text-2xl lg:text-3xl" : "text-xl"
-                  )}>
-                    {service.title}
-                  </h3>
-                  <p className={cn(
-                    "text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed",
-                    index === 0 && services.length > 2 ? "text-lg" : ""
-                  )}>
-                    {service.description}
-                  </p>
+                    <h3 className={cn(
+                      "font-bold text-white mb-3",
+                      index === 0 && services.length > 2 ? "text-2xl lg:text-3xl" : "text-xl"
+                    )}>
+                      {service.title}
+                    </h3>
+                    <p className={cn(
+                      "text-white/50 leading-relaxed",
+                      index === 0 && services.length > 2 ? "text-lg" : ""
+                    )}>
+                      {service.description}
+                    </p>
 
-                  <div className="mt-6 flex items-center gap-2 font-semibold" style={{ color: accentLight }}>
-                    <span>Learn more</span>
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-2" />
+                    <div className="mt-6 flex items-center gap-2 font-semibold" style={{ color: accentLight }}>
+                      <span>Learn more</span>
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-2" />
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -425,85 +337,179 @@ export function WebsiteModernTemplate({
         </section>
       )}
 
-      {/* Testimonials - Horizontal Scroll Cards */}
+      {/* About/Coach Section */}
+      {(coachBio || credentials.length > 0) && (
+        <section className="py-32 px-4 sm:px-6 lg:px-8 relative">
+          <div
+            className="absolute top-1/2 right-0 w-[600px] h-[600px] rounded-full blur-[150px] opacity-10"
+            style={{ backgroundColor: accentDark }}
+          />
+
+          <div className="max-w-6xl mx-auto relative">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={stagger}
+              className="grid lg:grid-cols-2 gap-16 items-center"
+            >
+              {/* Coach Image */}
+              <motion.div variants={fadeInUp} className="relative">
+                {coachImageUrl ? (
+                  <div className="relative">
+                    <div
+                      className="relative aspect-square rounded-3xl overflow-hidden border border-white/10"
+                      style={{ boxShadow: `0 0 60px ${accentLight}15` }}
+                    >
+                      <Image
+                        src={coachImageUrl}
+                        alt={coachName}
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#030014]/80 via-transparent to-transparent" />
+                    </div>
+                    {/* Decorative ring */}
+                    <div
+                      className="absolute -inset-4 rounded-[2rem] border opacity-20 -z-10"
+                      style={{ borderColor: accentLight }}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="aspect-square rounded-3xl flex items-center justify-center border border-white/10"
+                    style={{
+                      background: `linear-gradient(135deg, ${accentLight}10 0%, ${accentDark}05 100%)`,
+                    }}
+                  >
+                    <span className="text-9xl font-bold" style={{ color: accentLight }}>
+                      {coachName.charAt(0)}
+                    </span>
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Coach Info */}
+              <motion.div variants={fadeInUp} className="space-y-8">
+                <div>
+                  <div
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border backdrop-blur-sm mb-6"
+                    style={{
+                      backgroundColor: `${accentLight}08`,
+                      borderColor: `${accentLight}20`,
+                    }}
+                  >
+                    {coachHeadline || 'Your Coach'}
+                  </div>
+                  <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">
+                    Meet {coachName}
+                  </h2>
+                  <p className="text-lg text-white/60 leading-relaxed whitespace-pre-line">
+                    {coachBio}
+                  </p>
+                </div>
+
+                {credentials.length > 0 && (
+                  <div className="grid gap-4">
+                    {credentials.map((credential, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-4 p-4 rounded-2xl border border-white/5 bg-white/[0.02]"
+                      >
+                        <div
+                          className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+                          style={{
+                            background: `linear-gradient(135deg, ${accentLight}20 0%, ${accentDark}10 100%)`,
+                          }}
+                        >
+                          <Check className="w-5 h-5" style={{ color: accentLight }} />
+                        </div>
+                        <span className="text-white/80">{credential}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* Testimonials Section */}
       {testimonials.length > 0 && (
-        <section className="py-24 lg:py-32 bg-[#faf8f6] dark:bg-[#05070b] overflow-hidden">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8 mb-12">
+        <section className="py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+          <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}
               variants={stagger}
+              className="mb-16"
             >
               <motion.div
                 variants={fadeInUp}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 text-sm font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border backdrop-blur-sm mb-6"
                 style={{
-                  backgroundColor: `${accentLight}15`,
-                  color: accentLight
+                  backgroundColor: `${accentLight}08`,
+                  borderColor: `${accentLight}20`,
                 }}
               >
                 Testimonials
               </motion.div>
               <motion.h2
                 variants={fadeInUp}
-                className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#1a1a1a] dark:text-white"
+                className="text-4xl sm:text-5xl lg:text-6xl font-bold"
               >
                 Real stories, real results
               </motion.h2>
             </motion.div>
-          </div>
 
-          <div className="relative">
             <motion.div
-              initial={{ x: 0 }}
-              animate={{ x: '-50%' }}
-              transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
-              className="flex gap-6 w-max"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={stagger}
+              className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
-              {[...testimonials, ...testimonials].map((testimonial, index) => (
-                <div
+              {testimonials.map((testimonial, index) => (
+                <motion.div
                   key={index}
-                  className="w-[400px] flex-shrink-0 bg-white dark:bg-[#0a0c10] rounded-3xl p-8 border border-[#e1ddd8] dark:border-[#262b35]"
+                  variants={fadeInUp}
+                  className="p-8 rounded-3xl border border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent backdrop-blur-sm"
                 >
-                  {/* Rating */}
                   <div className="flex gap-1 mb-4">
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
                         className={cn(
-                          "w-5 h-5",
-                          i < (testimonial.rating || 5) ? "fill-amber-400 text-amber-400" : "text-gray-300"
+                          "w-4 h-4",
+                          i < (testimonial.rating || 5) ? "fill-amber-400 text-amber-400" : "text-white/20"
                         )}
                       />
                     ))}
                   </div>
 
-                  <p className="text-[#1a1a1a] dark:text-[#e5e5e5] text-lg leading-relaxed mb-6">
+                  <p className="text-white/80 leading-relaxed mb-6">
                     "{testimonial.text}"
                   </p>
 
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white"
+                      className="w-10 h-10 rounded-full flex items-center justify-center font-semibold"
                       style={{
-                        background: `linear-gradient(135deg, ${accentLight}, ${accentDark})`
+                        background: `linear-gradient(135deg, ${accentLight} 0%, ${accentDark} 100%)`,
                       }}
                     >
                       {testimonial.author.charAt(0)}
                     </div>
                     <div>
-                      <p className="font-bold text-[#1a1a1a] dark:text-white">
-                        {testimonial.author}
-                      </p>
+                      <p className="font-semibold text-white">{testimonial.author}</p>
                       {testimonial.role && (
-                        <p className="text-sm text-[#5f5a55] dark:text-[#7d8190]">
-                          {testimonial.role}
-                        </p>
+                        <p className="text-sm text-white/50">{testimonial.role}</p>
                       )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </motion.div>
           </div>
@@ -512,8 +518,8 @@ export function WebsiteModernTemplate({
 
       {/* FAQ Section */}
       {faqs.length > 0 && (
-        <section className="py-24 lg:py-32 bg-white dark:bg-[#0a0c10]">
-          <div className="max-w-4xl mx-auto px-6 lg:px-8">
+        <section className="py-32 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto">
             <motion.div
               initial="hidden"
               whileInView="visible"
@@ -523,17 +529,17 @@ export function WebsiteModernTemplate({
             >
               <motion.div
                 variants={fadeInUp}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 text-sm font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border backdrop-blur-sm mb-6"
                 style={{
-                  backgroundColor: `${accentLight}15`,
-                  color: accentLight
+                  backgroundColor: `${accentLight}08`,
+                  borderColor: `${accentLight}20`,
                 }}
               >
                 FAQ
               </motion.div>
               <motion.h2
                 variants={fadeInUp}
-                className="text-4xl sm:text-5xl font-black text-[#1a1a1a] dark:text-white"
+                className="text-4xl sm:text-5xl font-bold"
               >
                 Got questions?
               </motion.h2>
@@ -551,35 +557,31 @@ export function WebsiteModernTemplate({
                   key={index}
                   variants={fadeInUp}
                   className={cn(
-                    "rounded-2xl overflow-hidden transition-all duration-300",
+                    "rounded-2xl overflow-hidden border transition-all duration-300",
                     openFaqIndex === index
-                      ? "bg-gradient-to-r shadow-lg"
-                      : "bg-[#faf8f6] dark:bg-[#05070b]"
+                      ? "border-white/10 bg-white/[0.03]"
+                      : "border-white/5 bg-transparent"
                   )}
-                  style={openFaqIndex === index ? {
-                    background: `linear-gradient(135deg, ${accentLight}10, ${accentDark}10)`
-                  } : {}}
                 >
                   <button
                     onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
                     className="w-full flex items-center justify-between p-6 text-left"
                   >
-                    <span className="text-lg font-bold text-[#1a1a1a] dark:text-white pr-4">
+                    <span className="text-lg font-semibold text-white pr-4">
                       {faq.question}
                     </span>
                     <div
-                      className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
-                        openFaqIndex === index ? "" : ""
-                      )}
-                      style={{ backgroundColor: `${accentLight}20` }}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300"
+                      style={{
+                        backgroundColor: openFaqIndex === index ? `${accentLight}20` : 'transparent',
+                      }}
                     >
                       <ChevronDown
                         className={cn(
                           "w-5 h-5 transition-transform duration-300",
                           openFaqIndex === index ? "rotate-180" : ""
                         )}
-                        style={{ color: accentLight }}
+                        style={{ color: openFaqIndex === index ? accentLight : 'rgba(255,255,255,0.5)' }}
                       />
                     </div>
                   </button>
@@ -592,7 +594,7 @@ export function WebsiteModernTemplate({
                     transition={{ duration: 0.3 }}
                     className="overflow-hidden"
                   >
-                    <p className="px-6 pb-6 text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed text-lg">
+                    <p className="px-6 pb-6 text-white/60 leading-relaxed">
                       {faq.answer}
                     </p>
                   </motion.div>
@@ -603,27 +605,12 @@ export function WebsiteModernTemplate({
         </section>
       )}
 
-      {/* Bottom CTA - Glassmorphism Card */}
-      <section className="py-24 lg:py-32 relative overflow-hidden">
-        {/* Background with mesh gradient */}
+      {/* Bottom CTA */}
+      <section className="py-32 px-4 sm:px-6 lg:px-8 relative">
         <div
           className="absolute inset-0"
           style={{
-            background: `
-              radial-gradient(circle at 20% 50%, ${accentLight}20 0%, transparent 50%),
-              radial-gradient(circle at 80% 50%, ${accentDark}20 0%, transparent 50%),
-              linear-gradient(180deg, #faf8f6 0%, #fff 100%)
-            `,
-          }}
-        />
-        <div
-          className="absolute inset-0 dark:block hidden"
-          style={{
-            background: `
-              radial-gradient(circle at 20% 50%, ${accentLight}10 0%, transparent 50%),
-              radial-gradient(circle at 80% 50%, ${accentDark}10 0%, transparent 50%),
-              linear-gradient(180deg, #05070b 0%, #0a0c10 100%)
-            `,
+            background: `radial-gradient(ellipse 80% 50% at 50% 100%, ${accentLight}15 0%, transparent 50%)`,
           }}
         />
 
@@ -632,41 +619,33 @@ export function WebsiteModernTemplate({
           whileInView="visible"
           viewport={{ once: true }}
           variants={stagger}
-          className="relative z-10 max-w-5xl mx-auto px-6"
+          className="max-w-4xl mx-auto text-center relative"
         >
-          <motion.div
+          <motion.h2
             variants={fadeInUp}
-            className="rounded-[2rem] p-12 lg:p-16 text-center relative overflow-hidden"
-            style={{
-              background: `linear-gradient(135deg, ${accentLight}, ${accentDark})`,
-            }}
+            className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6"
           >
-            {/* Decorative shapes */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
-
-            <motion.h2
-              variants={fadeInUp}
-              className="relative text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-6"
+            Ready to start your{' '}
+            <span style={{ color: accentLight }}>journey</span>?
+          </motion.h2>
+          <motion.p
+            variants={fadeInUp}
+            className="text-xl text-white/60 mb-12 max-w-2xl mx-auto"
+          >
+            Join hundreds of others who have transformed their lives. Your success story starts here.
+          </motion.p>
+          <motion.div variants={fadeInUp}>
+            <a
+              href={ctaUrl}
+              className="group inline-flex items-center gap-3 px-10 py-5 text-lg font-semibold text-white rounded-2xl transition-all duration-300 hover:scale-[1.02]"
+              style={{
+                background: `linear-gradient(135deg, ${accentLight} 0%, ${accentDark} 100%)`,
+                boxShadow: `0 0 60px ${accentLight}40`,
+              }}
             >
-              Ready to start your journey?
-            </motion.h2>
-            <motion.p
-              variants={fadeInUp}
-              className="relative text-xl text-white/90 mb-10 max-w-2xl mx-auto"
-            >
-              Join hundreds of others who have transformed their lives. Your success story starts here.
-            </motion.p>
-            <motion.div variants={fadeInUp} className="relative">
-              <a
-                href={ctaUrl}
-                className="inline-flex items-center gap-3 px-10 py-5 text-lg font-bold rounded-2xl bg-white transition-all duration-300 hover:scale-105 hover:shadow-2xl group"
-                style={{ color: accentDark }}
-              >
-                {ctaText}
-                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-              </a>
-            </motion.div>
+              {ctaText}
+              <ArrowUpRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </a>
           </motion.div>
         </motion.div>
       </section>
