@@ -2,8 +2,9 @@
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, ArrowUpRight, Check, ChevronDown, Star } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Check, ChevronDown, Star, Mail, Phone, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WebsiteTemplateProps } from './types';
 
@@ -18,6 +19,7 @@ const fadeIn = {
 };
 
 const stagger = {
+  hidden: {},
   visible: {
     transition: {
       staggerChildren: 0.1,
@@ -25,16 +27,26 @@ const stagger = {
   },
 };
 
+// Dark gradient palette for service cards (purple/magenta theme)
+const darkGradients = [
+  'linear-gradient(135deg, #2d1b4e 0%, #1a1024 100%)', // Deep purple
+  'linear-gradient(135deg, #1b2d4e 0%, #101a24 100%)', // Deep blue
+  'linear-gradient(135deg, #4e1b3d 0%, #24101a 100%)', // Deep magenta
+  'linear-gradient(135deg, #1b4e3d 0%, #10241a 100%)', // Deep teal
+  'linear-gradient(135deg, #4e3d1b 0%, #241a10 100%)', // Deep amber
+  'linear-gradient(135deg, #3d1b4e 0%, #1a1024 100%)', // Deep violet
+];
+
 /**
- * Modern Website Template - Inspired by Xtract/Fluence Framer Templates
+ * Modern Website Template - Dark Premium Aesthetic with Draftr Enhancements
  *
  * Features:
  * - Pure black background (#000000)
  * - Purple/magenta gradient accents
- * - Figtree typography with tight letter spacing
- * - Large gradient orbs with blur
- * - Glassmorphism cards
- * - Premium AI/SaaS agency aesthetic
+ * - Dark gradient service cards
+ * - Transformation steps section (dark theme)
+ * - Bento-style dark feature section
+ * - Rich multi-column footer
  */
 export function WebsiteModernTemplate({
   headline,
@@ -46,19 +58,38 @@ export function WebsiteModernTemplate({
   coachHeadline,
   credentials,
   services,
+  transformationHeadline,
+  transformationSteps,
+  transformationImageUrl,
   testimonials,
   faqs,
   ctaText,
   ctaUrl,
+  footerCompanyName,
+  footerTagline,
+  footerEmail,
+  footerPhone,
+  footerAddress,
+  logoUrl,
   accentLight = '#814ac8',
   accentDark = '#df7afe',
   onServiceClick,
 }: WebsiteTemplateProps) {
   const [openFaqIndex, setOpenFaqIndex] = React.useState<number | null>(null);
 
+  // Build navigation links based on available sections
+  const navLinks = React.useMemo(() => {
+    const links: { label: string; href: string }[] = [];
+    if (coachBio || credentials.length > 0) links.push({ label: 'About', href: '#about' });
+    if (services.length > 0) links.push({ label: 'Services', href: '#services' });
+    if (testimonials.length > 0) links.push({ label: 'Testimonials', href: '#testimonials' });
+    if (faqs.length > 0) links.push({ label: 'FAQ', href: '#faq' });
+    return links;
+  }, [coachBio, credentials.length, services.length, testimonials.length, faqs.length]);
+
   return (
     <div className="w-full overflow-x-hidden bg-black text-white">
-      {/* Hero Section */}
+      {/* ========== HERO SECTION ========== */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 pt-16 pb-24">
         {/* Animated Background */}
         <div className="absolute inset-0 overflow-hidden">
@@ -214,7 +245,7 @@ export function WebsiteModernTemplate({
         )}
       </section>
 
-      {/* Services Section */}
+      {/* ========== SERVICES SECTION - DARK GRADIENT CARDS ========== */}
       {services.length > 0 && (
         <section id="services" className="py-32 px-4 sm:px-6 lg:px-8 relative">
           {/* Background accent */}
@@ -262,55 +293,58 @@ export function WebsiteModernTemplate({
                 <motion.div
                   key={service.id}
                   variants={fadeInUp}
-                  whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
                   className={cn(
-                    "group relative p-8 rounded-2xl cursor-pointer transition-all duration-300",
-                    "bg-white/[0.03] border border-white/[0.06] hover:border-white/10",
-                    "backdrop-blur-sm",
-                    index === 0 && services.length > 2 ? "md:col-span-2 md:row-span-2" : ""
+                    "group rounded-[1.5rem] overflow-hidden transition-all duration-300",
+                    service.funnelId && "cursor-pointer hover:scale-[1.02]"
                   )}
-                  onClick={() => onServiceClick?.(service)}
+                  style={{
+                    boxShadow: '0 4px 24px rgba(0, 0, 0, 0.3)',
+                  }}
+                  onClick={() => service.funnelId && onServiceClick?.(service)}
                 >
-                  {/* Hover glow effect */}
+                  {/* Dark gradient illustration area */}
                   <div
-                    className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{
-                      background: `radial-gradient(circle at 50% 0%, ${accentLight}15, transparent 50%)`,
-                    }}
-                  />
-
-                  <div className="relative z-10">
+                    className="relative h-48 flex items-center justify-center overflow-hidden"
+                    style={{ background: darkGradients[index % darkGradients.length] }}
+                  >
+                    {/* Glow effect */}
                     <div
-                      className={cn(
-                        "rounded-xl flex items-center justify-center mb-6",
-                        index === 0 && services.length > 2 ? "w-16 h-16" : "w-14 h-14"
-                      )}
+                      className="absolute inset-0 opacity-30"
                       style={{
-                        background: `linear-gradient(135deg, ${accentLight}25 0%, ${accentDark}15 100%)`,
+                        background: `radial-gradient(circle at 50% 50%, ${accentLight}40 0%, transparent 60%)`,
                       }}
-                    >
-                      <span className={index === 0 && services.length > 2 ? "text-3xl" : "text-2xl"}>
-                        {getServiceIcon(service.icon)}
-                      </span>
-                    </div>
+                    />
+                    {/* Decorative floating shapes */}
+                    <div className="absolute top-4 right-4 w-16 h-16 rounded-2xl bg-white/5 backdrop-blur-sm" />
+                    <div className="absolute bottom-4 left-4 w-12 h-12 rounded-xl bg-white/5" />
 
-                    <h3 className={cn(
-                      "font-bold text-white mb-3",
-                      index === 0 && services.length > 2 ? "text-2xl lg:text-3xl" : "text-xl"
-                    )}>
+                    {/* Large emoji icon */}
+                    <span className="text-6xl transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                      {getServiceIcon(service.icon)}
+                    </span>
+                  </div>
+
+                  {/* Content */}
+                  <div
+                    className="p-8"
+                    style={{ backgroundColor: '#0a0a0b' }}
+                  >
+                    <h3 className="text-xl font-bold text-white mb-3" style={{ letterSpacing: '-0.01em' }}>
                       {service.title}
                     </h3>
-                    <p className={cn(
-                      "text-white/50 leading-relaxed",
-                      index === 0 && services.length > 2 ? "text-lg" : ""
-                    )}>
+                    <p className="text-white/50 leading-relaxed mb-6">
                       {service.description}
                     </p>
 
-                    <div className="mt-6 flex items-center gap-2 font-semibold" style={{ color: accentDark }}>
-                      <span>Learn more</span>
-                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-2" />
-                    </div>
+                    {service.funnelId && (
+                      <span
+                        className="inline-flex items-center gap-2 font-semibold transition-all group-hover:gap-3"
+                        style={{ color: accentDark }}
+                      >
+                        Learn more
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -319,9 +353,231 @@ export function WebsiteModernTemplate({
         </section>
       )}
 
-      {/* About/Coach Section */}
-      {(coachBio || credentials.length > 0) && (
+      {/* ========== TRANSFORMATION STEPS SECTION ========== */}
+      {transformationSteps && transformationSteps.length > 0 && (
         <section className="py-32 px-4 sm:px-6 lg:px-8 relative">
+          <div
+            className="absolute top-1/2 right-0 w-[500px] h-[500px] rounded-full opacity-10"
+            style={{
+              backgroundColor: accentDark,
+              filter: 'blur(120px)',
+            }}
+          />
+
+          <div className="max-w-6xl mx-auto relative">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={stagger}
+              className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center"
+            >
+              {/* Steps */}
+              <div className="space-y-4">
+                <motion.span
+                  variants={fadeInUp}
+                  className="inline-block text-sm font-medium uppercase tracking-wider mb-2"
+                  style={{ color: accentDark }}
+                >
+                  Your Journey
+                </motion.span>
+                <motion.h2
+                  variants={fadeInUp}
+                  className="text-4xl sm:text-5xl font-bold text-white mb-12"
+                  style={{ letterSpacing: '-0.02em' }}
+                >
+                  {transformationHeadline || 'Simplify your transformation'}
+                </motion.h2>
+
+                <div className="space-y-8">
+                  {transformationSteps.map((step, index) => (
+                    <motion.div
+                      key={step.id}
+                      variants={fadeInUp}
+                      className="flex gap-6"
+                    >
+                      {/* Number badge */}
+                      <div
+                        className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold"
+                        style={{
+                          background: `linear-gradient(135deg, ${accentLight}25 0%, ${accentDark}15 100%)`,
+                          color: accentDark,
+                        }}
+                      >
+                        {String(index + 1).padStart(2, '0')}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white mb-2">
+                          {step.title}
+                        </h3>
+                        <p className="text-white/50 leading-relaxed">
+                          {step.description}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Image */}
+              <motion.div variants={fadeInUp} className="relative">
+                {transformationImageUrl ? (
+                  <div
+                    className="relative rounded-2xl overflow-hidden border border-white/10"
+                    style={{ boxShadow: `0 0 60px ${accentLight}20` }}
+                  >
+                    <Image
+                      src={transformationImageUrl}
+                      alt="Transformation"
+                      width={600}
+                      height={500}
+                      className="w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  </div>
+                ) : (
+                  <div
+                    className="aspect-[5/4] rounded-2xl flex items-center justify-center border border-white/10"
+                    style={{
+                      background: `linear-gradient(135deg, ${accentLight}15 0%, ${accentDark}10 100%)`,
+                    }}
+                  >
+                    <div className="text-center">
+                      <span className="text-7xl">🚀</span>
+                      <p className="mt-4 text-white/50 font-medium">Your transformation awaits</p>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* ========== DARK FEATURE SECTION (BENTO STYLE) ========== */}
+      {services.length >= 3 && (
+        <section className="py-32 px-4 sm:px-6 lg:px-8 bg-[#050506]">
+          <div className="max-w-6xl mx-auto">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={stagger}
+              className="text-center mb-16"
+            >
+              <motion.h2
+                variants={fadeInUp}
+                className="text-4xl sm:text-5xl font-bold"
+                style={{ letterSpacing: '-0.02em' }}
+              >
+                Power up your journey with
+                <br />
+                <span className="bg-clip-text text-transparent" style={{
+                  backgroundImage: `linear-gradient(135deg, ${accentLight} 0%, ${accentDark} 100%)`,
+                }}>
+                  next-gen coaching
+                </span>
+              </motion.h2>
+            </motion.div>
+
+            {/* Large feature cards - first 2 services */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={stagger}
+              className="grid md:grid-cols-2 gap-6 mb-6"
+            >
+              {services.slice(0, 2).map((service, index) => (
+                <motion.div
+                  key={service.id}
+                  variants={fadeInUp}
+                  className={cn(
+                    "group rounded-[1.5rem] bg-[#0a0a0b] border border-white/[0.06] overflow-hidden",
+                    service.funnelId && "cursor-pointer hover:border-white/10"
+                  )}
+                  onClick={() => service.funnelId && onServiceClick?.(service)}
+                >
+                  {/* Illustration area */}
+                  <div
+                    className="h-56 flex items-center justify-center relative overflow-hidden"
+                    style={{
+                      background: index === 0
+                        ? `linear-gradient(135deg, ${accentLight}10 0%, transparent 100%)`
+                        : `linear-gradient(135deg, ${accentDark}10 0%, transparent 100%)`,
+                    }}
+                  >
+                    {/* Animated glow */}
+                    <div
+                      className="absolute inset-0 opacity-20"
+                      style={{
+                        backgroundImage: `radial-gradient(circle at 50% 50%, ${index === 0 ? accentLight : accentDark} 0%, transparent 70%)`,
+                      }}
+                    />
+                    <span className="text-7xl transform group-hover:scale-110 transition-transform duration-300">
+                      {getServiceIcon(service.icon)}
+                    </span>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-8">
+                    <h3 className="text-xl font-bold text-white mb-3">
+                      {service.title}
+                    </h3>
+                    <p className="text-white/50 leading-relaxed">
+                      {service.description}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Small feature cards - next 3 services */}
+            {services.length > 2 && (
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-100px" }}
+                variants={stagger}
+                className="grid md:grid-cols-3 gap-6"
+              >
+                {services.slice(2, 5).map((service) => (
+                  <motion.div
+                    key={service.id}
+                    variants={fadeInUp}
+                    className={cn(
+                      "group p-8 rounded-[1.5rem] bg-[#0a0a0b] border border-white/[0.06]",
+                      service.funnelId && "cursor-pointer hover:border-white/10"
+                    )}
+                    onClick={() => service.funnelId && onServiceClick?.(service)}
+                  >
+                    {/* Icon */}
+                    <div
+                      className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6"
+                      style={{
+                        background: `linear-gradient(135deg, ${accentLight}25 0%, ${accentDark}15 100%)`,
+                      }}
+                    >
+                      <span className="text-3xl">{getServiceIcon(service.icon)}</span>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-white mb-2">
+                      {service.title}
+                    </h3>
+                    <p className="text-white/50 text-sm leading-relaxed">
+                      {service.description}
+                    </p>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ========== ABOUT/COACH SECTION ========== */}
+      {(coachBio || credentials.length > 0) && (
+        <section id="about" className="py-32 px-4 sm:px-6 lg:px-8 relative">
           <div
             className="absolute top-1/2 right-0 w-[500px] h-[500px] rounded-full opacity-10"
             style={{
@@ -412,9 +668,9 @@ export function WebsiteModernTemplate({
         </section>
       )}
 
-      {/* Testimonials Section */}
+      {/* ========== TESTIMONIALS SECTION ========== */}
       {testimonials.length > 0 && (
-        <section className="py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <section id="testimonials" className="py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -491,9 +747,9 @@ export function WebsiteModernTemplate({
         </section>
       )}
 
-      {/* FAQ Section */}
+      {/* ========== FAQ SECTION ========== */}
       {faqs.length > 0 && (
-        <section className="py-32 px-4 sm:px-6 lg:px-8">
+        <section id="faq" className="py-32 px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto">
             <motion.div
               initial="hidden"
@@ -578,7 +834,7 @@ export function WebsiteModernTemplate({
         </section>
       )}
 
-      {/* Bottom CTA */}
+      {/* ========== BOTTOM CTA ========== */}
       <section className="py-32 px-4 sm:px-6 lg:px-8 relative">
         <div
           className="absolute inset-0"
@@ -623,6 +879,96 @@ export function WebsiteModernTemplate({
           </motion.div>
         </motion.div>
       </section>
+
+      {/* ========== FOOTER ========== */}
+      <footer className="py-16 px-4 sm:px-6 lg:px-8 border-t border-white/[0.06]">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-12 mb-12">
+            {/* Brand Column */}
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                {logoUrl ? (
+                  <Image
+                    src={logoUrl}
+                    alt={footerCompanyName || coachName}
+                    width={140}
+                    height={40}
+                    className="h-10 w-auto object-contain brightness-0 invert"
+                  />
+                ) : (
+                  <span className="text-2xl font-bold text-white">
+                    {footerCompanyName || coachName}
+                  </span>
+                )}
+              </div>
+              {footerTagline && (
+                <p className="text-white/50 leading-relaxed mb-6">
+                  {footerTagline}
+                </p>
+              )}
+            </div>
+
+            {/* Quick Links Column */}
+            <div>
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
+                Quick Links
+              </h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="#" className="text-white/50 hover:text-white transition-colors">
+                    Home
+                  </Link>
+                </li>
+                {navLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="text-white/50 hover:text-white transition-colors">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contact Column */}
+            <div>
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
+                Contact
+              </h4>
+              <ul className="space-y-3">
+                {footerEmail && (
+                  <li className="flex items-center gap-3 text-white/50">
+                    <Mail className="w-4 h-4 flex-shrink-0" style={{ color: accentDark }} />
+                    <a href={`mailto:${footerEmail}`} className="hover:text-white transition-colors">
+                      {footerEmail}
+                    </a>
+                  </li>
+                )}
+                {footerPhone && (
+                  <li className="flex items-center gap-3 text-white/50">
+                    <Phone className="w-4 h-4 flex-shrink-0" style={{ color: accentDark }} />
+                    <a href={`tel:${footerPhone}`} className="hover:text-white transition-colors">
+                      {footerPhone}
+                    </a>
+                  </li>
+                )}
+                {footerAddress && (
+                  <li className="flex items-start gap-3 text-white/50">
+                    <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: accentDark }} />
+                    <span>{footerAddress}</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+
+          {/* Copyright */}
+          <div className="pt-8 border-t border-white/[0.06]">
+            <p className="text-center text-sm text-white/40">
+              © {new Date().getFullYear()} {footerCompanyName || coachName}. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

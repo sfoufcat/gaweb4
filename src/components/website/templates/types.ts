@@ -1,4 +1,4 @@
-import type { ProgramTestimonial, ProgramFAQ, WebsiteService } from '@/types';
+import type { ProgramTestimonial, ProgramFAQ, WebsiteService, TransformationStep } from '@/types';
 
 export interface WebsiteTemplateProps {
   // Hero
@@ -18,9 +18,22 @@ export interface WebsiteTemplateProps {
   // Services
   services: WebsiteService[];
 
+  // Transformation/Journey section
+  transformationHeadline?: string;
+  transformationSteps?: TransformationStep[];
+  transformationImageUrl?: string;
+
   // Social Proof
   testimonials: ProgramTestimonial[];
   faqs: ProgramFAQ[];
+
+  // Footer
+  footerCompanyName?: string;
+  footerTagline?: string;
+  footerEmail?: string;
+  footerPhone?: string;
+  footerAddress?: string;
+  logoUrl?: string;
 
   // Styling
   accentLight?: string;

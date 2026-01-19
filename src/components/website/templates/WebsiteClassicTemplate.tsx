@@ -2,22 +2,29 @@
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, ChevronDown, Star, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, Star, Sparkles, Mail, Phone, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WebsiteTemplateProps } from './types';
 
+// Animation variants
 const fadeInUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } },
+  hidden: { opacity: 0, y: 24 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }
+  },
 };
 
 const fadeIn = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.6 } },
+  visible: { opacity: 1, transition: { duration: 0.5 } },
 };
 
 const stagger = {
+  hidden: {},
   visible: {
     transition: {
       staggerChildren: 0.1,
@@ -29,7 +36,7 @@ const float = {
   initial: { y: 0 },
   animate: {
     y: [-8, 8, -8],
-    transition: { duration: 6, repeat: Infinity, ease: 'easeInOut' },
+    transition: { duration: 6, repeat: Infinity, ease: 'easeInOut' as const },
   },
 };
 
@@ -37,20 +44,30 @@ const floatDelayed = {
   initial: { y: 0 },
   animate: {
     y: [8, -8, 8],
-    transition: { duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 },
+    transition: { duration: 5, repeat: Infinity, ease: 'easeInOut' as const, delay: 0.5 },
   },
 };
 
+// Pastel gradient palette for service cards
+const pastelGradients = [
+  'linear-gradient(135deg, #FFE4E8 0%, #FFF0F3 50%, #FFFFFF 100%)', // Pink
+  'linear-gradient(135deg, #FFF8E6 0%, #FFFBF0 50%, #FFFFFF 100%)', // Yellow
+  'linear-gradient(135deg, #E8F4FF 0%, #F0F8FF 50%, #FFFFFF 100%)', // Blue
+  'linear-gradient(135deg, #F0E6FF 0%, #F5F0FF 50%, #FFFFFF 100%)', // Purple
+  'linear-gradient(135deg, #E6FFF0 0%, #F0FFF5 50%, #FFFFFF 100%)', // Mint
+  'linear-gradient(135deg, #FFF0E6 0%, #FFF5F0 50%, #FFFFFF 100%)', // Peach
+];
+
 /**
- * Classic Website Template - 2026 Framer/Draftr Style
+ * Classic Website Template - Draftr 2026 Style
  *
  * Features:
  * - Floating glassmorphism nav
  * - Large hero with gradient mesh background
- * - Floating decorative cards
- * - 24px+ rounded corners everywhere
- * - Soft shadows and glow effects
- * - Modern SaaS aesthetic
+ * - Pastel gradient service cards
+ * - Transformation steps section
+ * - Dark feature highlight section
+ * - Rich multi-column footer
  */
 export function WebsiteClassicTemplate({
   headline,
@@ -62,23 +79,41 @@ export function WebsiteClassicTemplate({
   coachHeadline,
   credentials,
   services,
+  transformationHeadline,
+  transformationSteps,
+  transformationImageUrl,
   testimonials,
   faqs,
   ctaText,
   ctaUrl,
+  footerCompanyName,
+  footerTagline,
+  footerEmail,
+  footerPhone,
+  footerAddress,
+  logoUrl,
   accentLight = '#6366f1',
   accentDark = '#4f46e5',
   onServiceClick,
 }: WebsiteTemplateProps) {
   const [openFaqIndex, setOpenFaqIndex] = React.useState<number | null>(null);
 
+  // Build navigation links based on available sections
+  const navLinks = React.useMemo(() => {
+    const links: { label: string; href: string }[] = [];
+    if (coachBio || credentials.length > 0) links.push({ label: 'About', href: '#about' });
+    if (services.length > 0) links.push({ label: 'Services', href: '#services' });
+    if (testimonials.length > 0) links.push({ label: 'Testimonials', href: '#testimonials' });
+    if (faqs.length > 0) links.push({ label: 'FAQ', href: '#faq' });
+    return links;
+  }, [coachBio, credentials.length, services.length, testimonials.length, faqs.length]);
+
   return (
     <div className="w-full overflow-x-hidden bg-[#fafafa]">
-      {/* Hero Section - Full viewport with gradient mesh */}
+      {/* ========== HERO SECTION ========== */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Gradient mesh background */}
         <div className="absolute inset-0 overflow-hidden">
-          {/* Main gradient */}
           <div
             className="absolute inset-0"
             style={{
@@ -189,6 +224,7 @@ export function WebsiteClassicTemplate({
           <motion.h1
             variants={fadeInUp}
             className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-gray-900 mb-8 leading-[1.1]"
+            style={{ letterSpacing: '-0.02em' }}
           >
             {headline}
           </motion.h1>
@@ -274,7 +310,6 @@ export function WebsiteClassicTemplate({
                 className="w-full object-cover"
                 priority
               />
-              {/* Gradient overlay at bottom */}
               <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#fafafa] to-transparent" />
             </div>
           </motion.div>
@@ -297,14 +332,14 @@ export function WebsiteClassicTemplate({
         </motion.div>
       </section>
 
-      {/* About/Coach Section */}
+      {/* ========== ABOUT/COACH SECTION ========== */}
       {(coachBio || credentials.length > 0) && (
-        <section id="about" className="py-32 px-4 sm:px-6 lg:px-8 bg-white">
+        <section id="about" className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
+              viewport={{ once: true, amount: 0.2 }}
               variants={stagger}
               className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center"
             >
@@ -354,7 +389,7 @@ export function WebsiteClassicTemplate({
                   >
                     {coachHeadline || 'Meet Your Coach'}
                   </p>
-                  <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-8 leading-tight">
+                  <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-8 leading-tight" style={{ letterSpacing: '-0.02em' }}>
                     Hi, I'm {coachName}
                   </h2>
                   <p className="text-lg text-gray-600 leading-relaxed whitespace-pre-line">
@@ -394,16 +429,16 @@ export function WebsiteClassicTemplate({
         </section>
       )}
 
-      {/* Services Section */}
+      {/* ========== SERVICES SECTION - DRAFTR STYLE ========== */}
       {services.length > 0 && (
-        <section className="py-32 px-4 sm:px-6 lg:px-8 bg-[#fafafa]">
+        <section id="services" className="py-24 px-4 sm:px-6 lg:px-8 bg-[#fafafa]">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
+              viewport={{ once: true, amount: 0.2 }}
               variants={stagger}
-              className="text-center mb-20"
+              className="text-center mb-16"
             >
               <motion.p
                 variants={fadeInUp}
@@ -415,6 +450,7 @@ export function WebsiteClassicTemplate({
               <motion.h2
                 variants={fadeInUp}
                 className="text-4xl sm:text-5xl font-bold text-gray-900"
+                style={{ letterSpacing: '-0.02em' }}
               >
                 How I Can Help You
               </motion.h2>
@@ -423,49 +459,57 @@ export function WebsiteClassicTemplate({
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
+              viewport={{ once: true, amount: 0.2 }}
               variants={stagger}
               className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
             >
-              {services.map((service) => (
+              {services.map((service, index) => (
                 <motion.div
                   key={service.id}
                   variants={fadeInUp}
-                  whileHover={{ y: -8, transition: { duration: 0.3 } }}
-                  className="group p-8 rounded-[1.5rem] bg-white border border-gray-100 hover:border-gray-200 transition-all duration-300 cursor-pointer"
+                  className={cn(
+                    "group rounded-[1.75rem] bg-white border border-gray-100 overflow-hidden transition-all duration-300",
+                    service.funnelId && "cursor-pointer hover:-translate-y-2 hover:shadow-xl"
+                  )}
                   style={{
-                    boxShadow: '0 4px 24px rgba(0, 0, 0, 0.04)',
+                    boxShadow: '0 4px 24px rgba(0, 0, 0, 0.06)',
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = `0 20px 50px -15px ${accentLight}20`;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.04)';
-                  }}
-                  onClick={() => onServiceClick?.(service)}
+                  onClick={() => service.funnelId && onServiceClick?.(service)}
                 >
-                  {/* Icon */}
+                  {/* Pastel gradient illustration area */}
                   <div
-                    className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
-                    style={{ backgroundColor: `${accentLight}08` }}
+                    className="relative h-48 flex items-center justify-center overflow-hidden"
+                    style={{ background: pastelGradients[index % pastelGradients.length] }}
                   >
-                    <span className="text-3xl">{getServiceIcon(service.icon)}</span>
+                    {/* Decorative floating shapes */}
+                    <div className="absolute top-4 right-4 w-16 h-16 rounded-2xl bg-white/40 backdrop-blur-sm" />
+                    <div className="absolute bottom-4 left-4 w-12 h-12 rounded-xl bg-white/30" />
+
+                    {/* Large emoji icon */}
+                    <span className="text-6xl transform group-hover:scale-110 transition-transform duration-300">
+                      {getServiceIcon(service.icon)}
+                    </span>
                   </div>
 
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">
-                    {service.title}
-                  </h3>
-                  <p className="text-gray-600 leading-relaxed mb-6">
-                    {service.description}
-                  </p>
+                  {/* Content */}
+                  <div className="p-8">
+                    <h3 className="text-xl font-bold text-gray-900 mb-3" style={{ letterSpacing: '-0.01em' }}>
+                      {service.title}
+                    </h3>
+                    <p className="text-gray-600 leading-relaxed mb-6">
+                      {service.description}
+                    </p>
 
-                  <span
-                    className="inline-flex items-center gap-2 font-semibold transition-all group-hover:gap-3"
-                    style={{ color: accentLight }}
-                  >
-                    Learn more
-                    <ArrowRight className="w-4 h-4" />
-                  </span>
+                    {service.funnelId && (
+                      <span
+                        className="inline-flex items-center gap-2 font-semibold transition-all group-hover:gap-3"
+                        style={{ color: accentLight }}
+                      >
+                        Learn more
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    )}
+                  </div>
                 </motion.div>
               ))}
             </motion.div>
@@ -473,16 +517,225 @@ export function WebsiteClassicTemplate({
         </section>
       )}
 
-      {/* Testimonials Section */}
-      {testimonials.length > 0 && (
-        <section className="py-32 px-4 sm:px-6 lg:px-8 bg-white">
+      {/* ========== TRANSFORMATION STEPS SECTION ========== */}
+      {transformationSteps && transformationSteps.length > 0 && (
+        <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
+              viewport={{ once: true, amount: 0.2 }}
               variants={stagger}
-              className="text-center mb-20"
+              className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center"
+            >
+              {/* Steps */}
+              <div className="space-y-4">
+                <motion.p
+                  variants={fadeInUp}
+                  className="text-sm font-semibold tracking-wider uppercase mb-2"
+                  style={{ color: accentLight }}
+                >
+                  Your Journey
+                </motion.p>
+                <motion.h2
+                  variants={fadeInUp}
+                  className="text-4xl sm:text-5xl font-bold text-gray-900 mb-12"
+                  style={{ letterSpacing: '-0.02em' }}
+                >
+                  {transformationHeadline || 'Simplify your transformation'}
+                </motion.h2>
+
+                <div className="space-y-8">
+                  {transformationSteps.map((step, index) => (
+                    <motion.div
+                      key={step.id}
+                      variants={fadeInUp}
+                      className="flex gap-6"
+                    >
+                      {/* Number badge */}
+                      <div
+                        className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold"
+                        style={{
+                          backgroundColor: `${accentLight}10`,
+                          color: accentLight,
+                        }}
+                      >
+                        {String(index + 1).padStart(2, '0')}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">
+                          {step.title}
+                        </h3>
+                        <p className="text-gray-600 leading-relaxed">
+                          {step.description}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Image */}
+              <motion.div variants={fadeInUp} className="relative">
+                {transformationImageUrl ? (
+                  <div
+                    className="relative rounded-[2rem] overflow-hidden"
+                    style={{
+                      boxShadow: '0 40px 80px -20px rgba(0, 0, 0, 0.15)',
+                    }}
+                  >
+                    <Image
+                      src={transformationImageUrl}
+                      alt="Transformation"
+                      width={600}
+                      height={500}
+                      className="w-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="aspect-[5/4] rounded-[2rem] flex items-center justify-center"
+                    style={{
+                      background: `linear-gradient(135deg, ${accentLight}15 0%, ${accentDark}10 100%)`,
+                    }}
+                  >
+                    <div className="text-center">
+                      <span className="text-7xl">🚀</span>
+                      <p className="mt-4 text-gray-500 font-medium">Your transformation awaits</p>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* ========== DARK FEATURE SECTION ========== */}
+      {services.length >= 3 && (
+        <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[#101011]">
+          <div className="max-w-6xl mx-auto">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.2 }}
+              variants={stagger}
+              className="text-center mb-16"
+            >
+              <motion.h2
+                variants={fadeInUp}
+                className="text-4xl sm:text-5xl font-bold text-white"
+                style={{ letterSpacing: '-0.02em' }}
+              >
+                Power up your journey with
+                <br />
+                <span className="text-gray-400">next-gen coaching</span>
+              </motion.h2>
+            </motion.div>
+
+            {/* Large feature cards - first 2 services */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.2 }}
+              variants={stagger}
+              className="grid md:grid-cols-2 gap-6 mb-6"
+            >
+              {services.slice(0, 2).map((service, index) => (
+                <motion.div
+                  key={service.id}
+                  variants={fadeInUp}
+                  className={cn(
+                    "group rounded-[1.5rem] bg-[#1a1a1b] border border-[#2a2a2b] overflow-hidden",
+                    service.funnelId && "cursor-pointer hover:border-[#3a3a3b]"
+                  )}
+                  onClick={() => service.funnelId && onServiceClick?.(service)}
+                >
+                  {/* Illustration area */}
+                  <div
+                    className="h-56 flex items-center justify-center relative overflow-hidden"
+                    style={{
+                      background: index === 0
+                        ? 'linear-gradient(135deg, #1a1a1b 0%, #252528 100%)'
+                        : 'linear-gradient(135deg, #252528 0%, #1a1a1b 100%)',
+                    }}
+                  >
+                    {/* Decorative elements */}
+                    <div
+                      className="absolute inset-0 opacity-10"
+                      style={{
+                        backgroundImage: `radial-gradient(circle at 50% 50%, ${accentLight} 0%, transparent 70%)`,
+                      }}
+                    />
+                    <span className="text-7xl transform group-hover:scale-110 transition-transform duration-300">
+                      {getServiceIcon(service.icon)}
+                    </span>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-8">
+                    <h3 className="text-xl font-bold text-white mb-3">
+                      {service.title}
+                    </h3>
+                    <p className="text-gray-400 leading-relaxed">
+                      {service.description}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Small feature cards - next 3 services */}
+            {services.length > 2 && (
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                variants={stagger}
+                className="grid md:grid-cols-3 gap-6"
+              >
+                {services.slice(2, 5).map((service) => (
+                  <motion.div
+                    key={service.id}
+                    variants={fadeInUp}
+                    className={cn(
+                      "group p-8 rounded-[1.5rem] bg-[#1a1a1b] border border-[#2a2a2b]",
+                      service.funnelId && "cursor-pointer hover:border-[#3a3a3b]"
+                    )}
+                    onClick={() => service.funnelId && onServiceClick?.(service)}
+                  >
+                    {/* Icon */}
+                    <div
+                      className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6"
+                      style={{ backgroundColor: `${accentLight}15` }}
+                    >
+                      <span className="text-3xl">{getServiceIcon(service.icon)}</span>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-white mb-2">
+                      {service.title}
+                    </h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      {service.description}
+                    </p>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ========== TESTIMONIALS SECTION ========== */}
+      {testimonials.length > 0 && (
+        <section id="testimonials" className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+          <div className="max-w-6xl mx-auto">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.2 }}
+              variants={stagger}
+              className="text-center mb-16"
             >
               <motion.p
                 variants={fadeInUp}
@@ -494,6 +747,7 @@ export function WebsiteClassicTemplate({
               <motion.h2
                 variants={fadeInUp}
                 className="text-4xl sm:text-5xl font-bold text-gray-900"
+                style={{ letterSpacing: '-0.02em' }}
               >
                 What My Clients Say
               </motion.h2>
@@ -502,7 +756,7 @@ export function WebsiteClassicTemplate({
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
+              viewport={{ once: true, amount: 0.2 }}
               variants={stagger}
               className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
             >
@@ -510,7 +764,7 @@ export function WebsiteClassicTemplate({
                 <motion.div
                   key={index}
                   variants={fadeInUp}
-                  className="p-8 rounded-[1.5rem] bg-[#fafafa] border border-gray-100"
+                  className="p-8 rounded-[1.75rem] bg-[#fafafa] border border-gray-100"
                 >
                   {/* Rating */}
                   {testimonial.rating && (
@@ -558,14 +812,14 @@ export function WebsiteClassicTemplate({
         </section>
       )}
 
-      {/* FAQ Section */}
+      {/* ========== FAQ SECTION ========== */}
       {faqs.length > 0 && (
-        <section className="py-32 px-4 sm:px-6 lg:px-8 bg-[#fafafa]">
+        <section id="faq" className="py-24 px-4 sm:px-6 lg:px-8 bg-[#fafafa]">
           <div className="max-w-3xl mx-auto">
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
+              viewport={{ once: true, amount: 0.2 }}
               variants={stagger}
               className="text-center mb-16"
             >
@@ -579,6 +833,7 @@ export function WebsiteClassicTemplate({
               <motion.h2
                 variants={fadeInUp}
                 className="text-4xl sm:text-5xl font-bold text-gray-900"
+                style={{ letterSpacing: '-0.02em' }}
               >
                 Frequently Asked Questions
               </motion.h2>
@@ -587,7 +842,7 @@ export function WebsiteClassicTemplate({
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
+              viewport={{ once: true, amount: 0.2 }}
               variants={stagger}
               className="space-y-4"
             >
@@ -635,8 +890,8 @@ export function WebsiteClassicTemplate({
         </section>
       )}
 
-      {/* Bottom CTA Section */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-white">
+      {/* ========== BOTTOM CTA SECTION ========== */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
         <motion.div
           initial="hidden"
           whileInView="visible"
@@ -659,6 +914,7 @@ export function WebsiteClassicTemplate({
             <motion.h2
               variants={fadeInUp}
               className="relative text-4xl sm:text-5xl font-bold text-white mb-6"
+              style={{ letterSpacing: '-0.02em' }}
             >
               Ready to Transform?
             </motion.h2>
@@ -684,6 +940,96 @@ export function WebsiteClassicTemplate({
           </motion.div>
         </motion.div>
       </section>
+
+      {/* ========== FOOTER ========== */}
+      <footer className="py-16 px-4 sm:px-6 lg:px-8 bg-[#fafafa] border-t border-gray-200">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-12 mb-12">
+            {/* Brand Column */}
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                {logoUrl ? (
+                  <Image
+                    src={logoUrl}
+                    alt={footerCompanyName || coachName}
+                    width={140}
+                    height={40}
+                    className="h-10 w-auto object-contain"
+                  />
+                ) : (
+                  <span className="text-2xl font-bold text-gray-900">
+                    {footerCompanyName || coachName}
+                  </span>
+                )}
+              </div>
+              {footerTagline && (
+                <p className="text-gray-600 leading-relaxed mb-6">
+                  {footerTagline}
+                </p>
+              )}
+            </div>
+
+            {/* Quick Links Column */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">
+                Quick Links
+              </h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="#" className="text-gray-600 hover:text-gray-900 transition-colors">
+                    Home
+                  </Link>
+                </li>
+                {navLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="text-gray-600 hover:text-gray-900 transition-colors">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contact Column */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">
+                Contact
+              </h4>
+              <ul className="space-y-3">
+                {footerEmail && (
+                  <li className="flex items-center gap-3 text-gray-600">
+                    <Mail className="w-4 h-4 flex-shrink-0" style={{ color: accentLight }} />
+                    <a href={`mailto:${footerEmail}`} className="hover:text-gray-900 transition-colors">
+                      {footerEmail}
+                    </a>
+                  </li>
+                )}
+                {footerPhone && (
+                  <li className="flex items-center gap-3 text-gray-600">
+                    <Phone className="w-4 h-4 flex-shrink-0" style={{ color: accentLight }} />
+                    <a href={`tel:${footerPhone}`} className="hover:text-gray-900 transition-colors">
+                      {footerPhone}
+                    </a>
+                  </li>
+                )}
+                {footerAddress && (
+                  <li className="flex items-start gap-3 text-gray-600">
+                    <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: accentLight }} />
+                    <span>{footerAddress}</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+
+          {/* Copyright */}
+          <div className="pt-8 border-t border-gray-200">
+            <p className="text-center text-sm text-gray-500">
+              © {new Date().getFullYear()} {footerCompanyName || coachName}. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

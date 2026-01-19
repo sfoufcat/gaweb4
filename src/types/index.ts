@@ -3214,6 +3214,15 @@ export interface WebsiteService {
 }
 
 /**
+ * Transformation Step for website journey section
+ */
+export interface TransformationStep {
+  id: string;
+  title: string;
+  description: string;
+}
+
+/**
  * Organization Website
  * Stored in Firestore: org_websites/{organizationId}
  *
@@ -3264,6 +3273,18 @@ export interface OrgWebsite {
   metaTitle?: string;                // Page title for search engines
   metaDescription?: string;          // Meta description
   ogImageUrl?: string;               // Social sharing image
+
+  // Transformation/Journey section
+  transformationHeadline?: string;   // "Your Transformation Journey"
+  transformationSteps?: TransformationStep[];
+  transformationImageUrl?: string;   // Right-side mockup image
+
+  // Footer contact info
+  footerCompanyName?: string;
+  footerTagline?: string;            // "Transforming lives through coaching"
+  footerEmail?: string;
+  footerPhone?: string;
+  footerAddress?: string;
 
   createdAt: string;                 // ISO timestamp
   updatedAt: string;                 // ISO timestamp

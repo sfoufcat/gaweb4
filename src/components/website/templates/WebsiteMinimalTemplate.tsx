@@ -2,8 +2,9 @@
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, ChevronDown, Plus, Minus, Star, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, Plus, Minus, Star, Sparkles, Mail, Phone, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WebsiteTemplateProps } from './types';
 
@@ -18,6 +19,7 @@ const fadeInUp = {
 };
 
 const stagger = {
+  hidden: {},
   visible: {
     transition: {
       staggerChildren: 0.08,
@@ -26,8 +28,18 @@ const stagger = {
   },
 };
 
+// Soft pastel gradient palette for minimal aesthetic
+const softGradients = [
+  'linear-gradient(135deg, #F0F4FF 0%, #F8FAFF 50%, #FFFFFF 100%)', // Soft Blue
+  'linear-gradient(135deg, #FFF0F5 0%, #FFF8FA 50%, #FFFFFF 100%)', // Soft Pink
+  'linear-gradient(135deg, #F0FFF4 0%, #F8FFFA 50%, #FFFFFF 100%)', // Soft Mint
+  'linear-gradient(135deg, #FFF8F0 0%, #FFFAF8 50%, #FFFFFF 100%)', // Soft Peach
+  'linear-gradient(135deg, #F5F0FF 0%, #FAF8FF 50%, #FFFFFF 100%)', // Soft Lavender
+  'linear-gradient(135deg, #FFFFF0 0%, #FFFFF8 50%, #FFFFFF 100%)', // Soft Cream
+];
+
 /**
- * Minimal Website Template - Inspired by Fluence Framer Template
+ * Minimal Website Template - Clean & Elegant with Draftr Enhancements
  *
  * Features:
  * - Light backgrounds with soft gradients
@@ -36,6 +48,7 @@ const stagger = {
  * - Soft shadows and large rounded corners
  * - Pastel accent colors
  * - Premium SaaS aesthetic with glassmorphism
+ * - Enhanced sections: Services, Transformation, Dark Features, Footer
  */
 export function WebsiteMinimalTemplate({
   headline,
@@ -47,19 +60,38 @@ export function WebsiteMinimalTemplate({
   coachHeadline,
   credentials,
   services,
+  transformationHeadline,
+  transformationSteps,
+  transformationImageUrl,
   testimonials,
   faqs,
   ctaText,
   ctaUrl,
+  footerCompanyName,
+  footerTagline,
+  footerEmail,
+  footerPhone,
+  footerAddress,
+  logoUrl,
   accentLight = '#80aafd',
   accentDark = '#5b8def',
   onServiceClick,
 }: WebsiteTemplateProps) {
   const [openFaqIndex, setOpenFaqIndex] = React.useState<number | null>(null);
 
+  // Build navigation links based on available sections
+  const navLinks = React.useMemo(() => {
+    const links: { label: string; href: string }[] = [];
+    if (coachBio || credentials.length > 0) links.push({ label: 'About', href: '#about' });
+    if (services.length > 0) links.push({ label: 'Services', href: '#services' });
+    if (testimonials.length > 0) links.push({ label: 'Testimonials', href: '#testimonials' });
+    if (faqs.length > 0) links.push({ label: 'FAQ', href: '#faq' });
+    return links;
+  }, [coachBio, credentials.length, services.length, testimonials.length, faqs.length]);
+
   return (
     <div className="w-full overflow-x-hidden bg-white dark:bg-[#0d0d0f]">
-      {/* Hero Section */}
+      {/* ========== HERO SECTION ========== */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 pt-16 pb-24">
         {/* Background gradient */}
         <div className="absolute inset-0 overflow-hidden">
@@ -221,7 +253,7 @@ export function WebsiteMinimalTemplate({
         )}
       </section>
 
-      {/* About/Coach Section */}
+      {/* ========== ABOUT/COACH SECTION ========== */}
       {(coachBio || credentials.length > 0) && (
         <section id="about" className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gray-50/50 dark:bg-[#111113]">
           <div className="max-w-6xl mx-auto">
@@ -310,9 +342,9 @@ export function WebsiteMinimalTemplate({
         </section>
       )}
 
-      {/* Services Section */}
+      {/* ========== SERVICES SECTION - SOFT GRADIENT CARDS ========== */}
       {services.length > 0 && (
-        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
+        <section id="services" className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -343,38 +375,53 @@ export function WebsiteMinimalTemplate({
               variants={stagger}
               className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
-              {services.map((service) => (
+              {services.map((service, index) => (
                 <motion.div
                   key={service.id}
                   variants={fadeInUp}
-                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                  className="group p-8 rounded-3xl bg-white dark:bg-[#18181b] border border-gray-100 dark:border-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
-                  onClick={() => onServiceClick?.(service)}
+                  className={cn(
+                    "group rounded-[1.75rem] bg-white dark:bg-[#18181b] border border-gray-100 dark:border-gray-800 overflow-hidden transition-all duration-300",
+                    service.funnelId && "cursor-pointer hover:-translate-y-2 hover:shadow-xl"
+                  )}
+                  style={{
+                    boxShadow: '0 4px 24px rgba(0, 0, 0, 0.04)',
+                  }}
+                  onClick={() => service.funnelId && onServiceClick?.(service)}
                 >
-                  {/* Icon */}
+                  {/* Soft gradient illustration area */}
                   <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-sm"
-                    style={{
-                      background: `linear-gradient(135deg, ${accentLight}15 0%, ${accentDark}10 100%)`,
-                    }}
+                    className="relative h-44 flex items-center justify-center overflow-hidden"
+                    style={{ background: softGradients[index % softGradients.length] }}
                   >
-                    <span className="text-2xl">{getServiceIcon(service.icon)}</span>
+                    {/* Decorative floating shapes */}
+                    <div className="absolute top-3 right-3 w-12 h-12 rounded-xl bg-white/50 dark:bg-white/10" />
+                    <div className="absolute bottom-3 left-3 w-8 h-8 rounded-lg bg-white/40 dark:bg-white/5" />
+
+                    {/* Large emoji icon */}
+                    <span className="text-5xl transform group-hover:scale-110 transition-transform duration-300">
+                      {getServiceIcon(service.icon)}
+                    </span>
                   </div>
 
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                    {service.title}
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
-                    {service.description}
-                  </p>
+                  {/* Content */}
+                  <div className="p-8">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                      {service.title}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+                      {service.description}
+                    </p>
 
-                  <span
-                    className="inline-flex items-center gap-2 font-semibold transition-colors group-hover:gap-3"
-                    style={{ color: accentDark }}
-                  >
-                    Learn more
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                  </span>
+                    {service.funnelId && (
+                      <span
+                        className="inline-flex items-center gap-2 font-semibold transition-all group-hover:gap-3"
+                        style={{ color: accentDark }}
+                      >
+                        Learn more
+                        <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                      </span>
+                    )}
+                  </div>
                 </motion.div>
               ))}
             </motion.div>
@@ -382,9 +429,221 @@ export function WebsiteMinimalTemplate({
         </section>
       )}
 
-      {/* Testimonials Section */}
-      {testimonials.length > 0 && (
+      {/* ========== TRANSFORMATION STEPS SECTION ========== */}
+      {transformationSteps && transformationSteps.length > 0 && (
         <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gray-50/50 dark:bg-[#111113]">
+          <div className="max-w-6xl mx-auto">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={stagger}
+              className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center"
+            >
+              {/* Steps */}
+              <div className="space-y-4">
+                <motion.span
+                  variants={fadeInUp}
+                  className="inline-block text-sm font-semibold tracking-wider uppercase mb-2"
+                  style={{ color: accentDark }}
+                >
+                  Your Journey
+                </motion.span>
+                <motion.h2
+                  variants={fadeInUp}
+                  className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-12 leading-tight"
+                >
+                  {transformationHeadline || 'Simplify your transformation'}
+                </motion.h2>
+
+                <div className="space-y-6">
+                  {transformationSteps.map((step, index) => (
+                    <motion.div
+                      key={step.id}
+                      variants={fadeInUp}
+                      className="flex gap-5"
+                    >
+                      {/* Number badge */}
+                      <div
+                        className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold"
+                        style={{
+                          backgroundColor: `${accentLight}15`,
+                          color: accentDark,
+                        }}
+                      >
+                        {String(index + 1).padStart(2, '0')}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                          {step.title}
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                          {step.description}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Image */}
+              <motion.div variants={fadeInUp} className="relative">
+                {transformationImageUrl ? (
+                  <div
+                    className="relative rounded-3xl overflow-hidden"
+                    style={{
+                      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
+                    }}
+                  >
+                    <Image
+                      src={transformationImageUrl}
+                      alt="Transformation"
+                      width={600}
+                      height={500}
+                      className="w-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="aspect-[5/4] rounded-3xl flex items-center justify-center"
+                    style={{
+                      background: `linear-gradient(135deg, ${accentLight}10 0%, ${accentDark}05 100%)`,
+                    }}
+                  >
+                    <div className="text-center">
+                      <span className="text-6xl">🚀</span>
+                      <p className="mt-4 text-gray-500 dark:text-gray-400 font-medium">Your transformation awaits</p>
+                    </div>
+                  </div>
+                )}
+                {/* Decorative element */}
+                <div
+                  className="absolute -bottom-4 -right-4 w-24 h-24 rounded-2xl -z-10"
+                  style={{ backgroundColor: `${accentLight}10` }}
+                />
+              </motion.div>
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* ========== DARK FEATURE SECTION ========== */}
+      {services.length >= 3 && (
+        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-[#0d0d0f]">
+          <div className="max-w-6xl mx-auto">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={stagger}
+              className="text-center mb-16"
+            >
+              <motion.h2
+                variants={fadeInUp}
+                className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white"
+              >
+                Power up your journey with
+                <br />
+                <span className="italic" style={{ color: accentLight }}>next-gen coaching</span>
+              </motion.h2>
+            </motion.div>
+
+            {/* Large feature cards - first 2 services */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={stagger}
+              className="grid md:grid-cols-2 gap-6 mb-6"
+            >
+              {services.slice(0, 2).map((service, index) => (
+                <motion.div
+                  key={service.id}
+                  variants={fadeInUp}
+                  className={cn(
+                    "group rounded-2xl bg-[#18181b] border border-gray-800 overflow-hidden",
+                    service.funnelId && "cursor-pointer hover:border-gray-700"
+                  )}
+                  onClick={() => service.funnelId && onServiceClick?.(service)}
+                >
+                  {/* Illustration area */}
+                  <div
+                    className="h-48 flex items-center justify-center relative overflow-hidden"
+                    style={{
+                      background: index === 0
+                        ? `linear-gradient(135deg, ${accentLight}08 0%, transparent 100%)`
+                        : `linear-gradient(135deg, ${accentDark}08 0%, transparent 100%)`,
+                    }}
+                  >
+                    {/* Subtle glow */}
+                    <div
+                      className="absolute inset-0 opacity-20"
+                      style={{
+                        backgroundImage: `radial-gradient(circle at 50% 50%, ${index === 0 ? accentLight : accentDark} 0%, transparent 70%)`,
+                      }}
+                    />
+                    <span className="text-6xl transform group-hover:scale-110 transition-transform duration-300">
+                      {getServiceIcon(service.icon)}
+                    </span>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-8">
+                    <h3 className="text-xl font-bold text-white mb-3">
+                      {service.title}
+                    </h3>
+                    <p className="text-gray-400 leading-relaxed">
+                      {service.description}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Small feature cards - next 3 services */}
+            {services.length > 2 && (
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-100px" }}
+                variants={stagger}
+                className="grid md:grid-cols-3 gap-6"
+              >
+                {services.slice(2, 5).map((service) => (
+                  <motion.div
+                    key={service.id}
+                    variants={fadeInUp}
+                    className={cn(
+                      "group p-6 rounded-2xl bg-[#18181b] border border-gray-800",
+                      service.funnelId && "cursor-pointer hover:border-gray-700"
+                    )}
+                    onClick={() => service.funnelId && onServiceClick?.(service)}
+                  >
+                    {/* Icon */}
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center mb-5"
+                      style={{ backgroundColor: `${accentLight}15` }}
+                    >
+                      <span className="text-2xl">{getServiceIcon(service.icon)}</span>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-white mb-2">
+                      {service.title}
+                    </h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      {service.description}
+                    </p>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ========== TESTIMONIALS SECTION ========== */}
+      {testimonials.length > 0 && (
+        <section id="testimonials" className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gray-50/50 dark:bg-[#111113]">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -460,9 +719,9 @@ export function WebsiteMinimalTemplate({
         </section>
       )}
 
-      {/* FAQ Section */}
+      {/* ========== FAQ SECTION ========== */}
       {faqs.length > 0 && (
-        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
+        <section id="faq" className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto">
             <motion.div
               initial="hidden"
@@ -541,7 +800,7 @@ export function WebsiteMinimalTemplate({
         </section>
       )}
 
-      {/* Bottom CTA Section */}
+      {/* ========== BOTTOM CTA SECTION ========== */}
       <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
         <motion.div
           initial="hidden"
@@ -587,6 +846,96 @@ export function WebsiteMinimalTemplate({
           </motion.div>
         </motion.div>
       </section>
+
+      {/* ========== FOOTER ========== */}
+      <footer className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-[#111113] border-t border-gray-100 dark:border-gray-800">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-12 mb-12">
+            {/* Brand Column */}
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                {logoUrl ? (
+                  <Image
+                    src={logoUrl}
+                    alt={footerCompanyName || coachName}
+                    width={140}
+                    height={40}
+                    className="h-10 w-auto object-contain"
+                  />
+                ) : (
+                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {footerCompanyName || coachName}
+                  </span>
+                )}
+              </div>
+              {footerTagline && (
+                <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+                  {footerTagline}
+                </p>
+              )}
+            </div>
+
+            {/* Quick Links Column */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
+                Quick Links
+              </h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    Home
+                  </Link>
+                </li>
+                {navLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contact Column */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
+                Contact
+              </h4>
+              <ul className="space-y-3">
+                {footerEmail && (
+                  <li className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+                    <Mail className="w-4 h-4 flex-shrink-0" style={{ color: accentDark }} />
+                    <a href={`mailto:${footerEmail}`} className="hover:text-gray-900 dark:hover:text-white transition-colors">
+                      {footerEmail}
+                    </a>
+                  </li>
+                )}
+                {footerPhone && (
+                  <li className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+                    <Phone className="w-4 h-4 flex-shrink-0" style={{ color: accentDark }} />
+                    <a href={`tel:${footerPhone}`} className="hover:text-gray-900 dark:hover:text-white transition-colors">
+                      {footerPhone}
+                    </a>
+                  </li>
+                )}
+                {footerAddress && (
+                  <li className="flex items-start gap-3 text-gray-600 dark:text-gray-400">
+                    <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: accentDark }} />
+                    <span>{footerAddress}</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+
+          {/* Copyright */}
+          <div className="pt-8 border-t border-gray-200 dark:border-gray-800">
+            <p className="text-center text-sm text-gray-500 dark:text-gray-500">
+              © {new Date().getFullYear()} {footerCompanyName || coachName}. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -99,6 +99,17 @@ export function WebsitePageRenderer({
       accentLight,
       accentDark,
       onServiceClick: handleServiceClick,
+      // Transformation section props
+      transformationHeadline: website.transformationHeadline,
+      transformationSteps: website.transformationSteps,
+      transformationImageUrl: website.transformationImageUrl,
+      // Footer props
+      footerCompanyName: website.footerCompanyName || branding?.appTitle,
+      footerTagline: website.footerTagline,
+      footerEmail: website.footerEmail,
+      footerPhone: website.footerPhone,
+      footerAddress: website.footerAddress,
+      logoUrl: branding?.horizontalLogoUrl || branding?.logoUrl,
     };
 
     switch (website.template) {
@@ -142,17 +153,8 @@ export function WebsitePageRenderer({
 
       {/* No spacer needed - floating nav overlays content */}
 
-      {/* Website Template Content */}
+      {/* Website Template Content (includes rich footer) */}
       {renderTemplate()}
-
-      {/* Simple Footer */}
-      <footer className="py-8 bg-[#faf8f6] dark:bg-[#05070b] border-t border-[#e1ddd8] dark:border-[#262b35]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-[#5f5a55] dark:text-[#7d8190] font-albert">
-            © {new Date().getFullYear()} {branding?.appTitle || coachName}. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
