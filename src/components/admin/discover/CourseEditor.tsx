@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Layers, BookOpen, Clock, ChevronDown, ChevronRight, Trash2, Play, Plus, Settings2, GripVertical, Folder, LayoutGrid, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Layers, BookOpen, Clock, ChevronDown, ChevronRight, Trash2, Play, Plus, Settings2, GripVertical, Folder, LayoutGrid, BarChart3, Lock, Unlock } from 'lucide-react';
 import { CourseOverview } from './CourseOverview';
 
 // Generate unique ID for new modules/lessons
@@ -637,12 +637,13 @@ export function CourseEditor({
                 <button
                   type="button"
                   onClick={() => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, isLocked: !selectedLesson.isLocked })}
-                  className={`text-xs px-3 py-1.5 rounded-full font-medium font-albert transition-colors ${
+                  className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium font-albert transition-colors ${
                     selectedLesson.isLocked
                       ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
                   }`}
                 >
+                  {selectedLesson.isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                   {selectedLesson.isLocked ? 'Locked' : 'Unlocked'}
                 </button>
               </div>
@@ -654,25 +655,23 @@ export function CourseEditor({
                   <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                     Video
                   </label>
-                  <div className="max-h-[200px] overflow-hidden rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
-                    <MediaUpload
-                      value={selectedLesson.videoUrl || ''}
-                      onChange={async (url) => {
-                        updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url });
-                        if (url) {
-                          const duration = await fetchVideoDuration(url);
-                          if (duration) {
-                            updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url, durationMinutes: duration });
-                          }
+                  <MediaUpload
+                    value={selectedLesson.videoUrl || ''}
+                    onChange={async (url) => {
+                      updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url });
+                      if (url) {
+                        const duration = await fetchVideoDuration(url);
+                        if (duration) {
+                          updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url, durationMinutes: duration });
                         }
-                      }}
-                      folder="courses/lessons"
-                      type="video"
-                      uploadEndpoint={uploadEndpoint}
-                      hideLabel
-                      aspectRatio="16:9"
-                    />
-                  </div>
+                      }
+                    }}
+                    folder="courses/lessons"
+                    type="video"
+                    uploadEndpoint={uploadEndpoint}
+                    hideLabel
+                    aspectRatio="16:9"
+                  />
                 </div>
 
                 {/* Thumbnail - Collapsible */}

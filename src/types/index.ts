@@ -3194,6 +3194,103 @@ export const DEFAULT_EMAIL_SETTINGS: OrgEmailSettings = {
 };
 
 // =============================================================================
+// ORGANIZATION WEBSITE
+// =============================================================================
+
+/**
+ * Website template names (reuses landing page template aesthetic)
+ */
+export type WebsiteTemplateName = 'classic' | 'modern' | 'minimal';
+
+/**
+ * Website service/offering item
+ */
+export interface WebsiteService {
+  id: string;
+  title: string;
+  description: string;
+  icon?: string;                   // Icon key from featureIconMap (e.g., 'video', 'users', 'book')
+  funnelId: string;                // Must link to a funnel
+}
+
+/**
+ * Organization Website
+ * Stored in Firestore: org_websites/{organizationId}
+ *
+ * When enabled, replaces the sign-in page for unauthenticated visitors
+ * on the organization's subdomain or custom domain.
+ */
+export interface OrgWebsite {
+  id: string;                        // Same as organizationId
+  organizationId: string;            // Clerk Organization ID
+  enabled: boolean;                  // Master toggle - when true, shows website to unauthenticated visitors
+
+  // Template - reuses existing landing page templates
+  template: WebsiteTemplateName;
+
+  // Hero section
+  heroHeadline: string;
+  heroSubheadline: string;
+  heroImageUrl?: string;             // Optional hero background/cover image
+  heroCtaText?: string;              // Join button text (default: "Get Started")
+  heroCtaFunnelId: string | null;    // Required funnel for main join CTA
+
+  // Coach/About section (same pattern as ProgramLandingPageEditor)
+  coachBio: string;
+  coachBullets: string[];            // Key credentials/achievements
+  coachHeadline?: string;            // Section headline (default: "About Your Coach")
+
+  // Services/Offerings section
+  servicesHeadline?: string;         // Section headline (default: "What I Offer")
+  services: WebsiteService[];
+
+  // Testimonials (reuses ProgramTestimonial type)
+  testimonials: ProgramTestimonial[];
+
+  // FAQs (reuses ProgramFAQ type)
+  faqs: ProgramFAQ[];
+
+  // Footer CTA section
+  ctaHeadline?: string;              // e.g., "Ready to Transform?"
+  ctaSubheadline?: string;           // e.g., "Join hundreds of clients..."
+  ctaButtonText?: string;            // CTA button text
+  ctaFunnelId?: string | null;       // Optional different funnel (defaults to heroCtaFunnelId)
+
+  // Navigation settings
+  showSignIn: boolean;               // Show Sign In button (default: true)
+  signInButtonText?: string;         // Custom text (default: "Sign In")
+
+  // SEO
+  metaTitle?: string;                // Page title for search engines
+  metaDescription?: string;          // Meta description
+  ogImageUrl?: string;               // Social sharing image
+
+  createdAt: string;                 // ISO timestamp
+  updatedAt: string;                 // ISO timestamp
+}
+
+/**
+ * Default website values for new organizations
+ */
+export const DEFAULT_ORG_WEBSITE: Omit<OrgWebsite, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'> = {
+  enabled: false,
+  template: 'classic',
+  heroHeadline: '',
+  heroSubheadline: '',
+  heroCtaText: 'Get Started',
+  heroCtaFunnelId: null,
+  coachBio: '',
+  coachBullets: [],
+  coachHeadline: 'About Your Coach',
+  servicesHeadline: 'What I Offer',
+  services: [],
+  testimonials: [],
+  faqs: [],
+  showSignIn: true,
+  signInButtonText: 'Sign In',
+};
+
+// =============================================================================
 // TENANT DOMAIN TYPES
 // =============================================================================
 

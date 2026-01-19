@@ -1234,6 +1234,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
 
 
       {/* View Content */}
+      <div key={viewMode} className="animate-fadeIn">
       {viewMode === 'members' ? (
         // Members View
         <div>

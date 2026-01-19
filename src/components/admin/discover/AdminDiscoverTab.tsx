@@ -85,7 +85,7 @@ export function AdminDiscoverTab({
       </div>
 
       {/* Content */}
-      <div>
+      <div key={activeSubTab} className="animate-fadeIn">
         {activeSubTab === 'events' && <AdminEventsSection apiEndpoint={`${apiBasePath}/events`} />}
         {activeSubTab === 'articles' && <AdminArticlesSection apiEndpoint={`${apiBasePath}/articles`} />}
         {activeSubTab === 'courses' && (

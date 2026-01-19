@@ -96,7 +96,7 @@ function SchedulingTab() {
       </div>
 
       {/* Content */}
-      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+      <div key={activeSubTab} className="animate-fadeIn bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
         {activeSubTab === 'calendar' ? (
           <CalendarView mode="coach" />
         ) : activeSubTab === 'availability' ? (
@@ -999,7 +999,7 @@ export default function CoachPage() {
           </div>
 
           {/* Clients Tab - Consolidated Users + Coaching Clients */}
-          <TabsContent value="clients">
+          <TabsContent value="clients" className="animate-fadeIn">
             {selectedClientId ? (
               <>
                 {/* Back Button */}
@@ -1016,12 +1016,12 @@ export default function CoachPage() {
                 />
               </>
             ) : (
-              <AdminUsersTab 
-                currentUserRole={role || 'user'} 
+              <AdminUsersTab
+                currentUserRole={role || 'user'}
                 apiEndpoint={
-                  isLimitedOrgCoach 
+                  isLimitedOrgCoach
                     ? '/api/coach/my-clients'  // Limited: only their assigned clients
-                    : role === 'coach' 
+                    : role === 'coach'
                       ? '/api/coach/org-users'  // Full access: all org users
                       : '/api/admin/users'      // Admin: all users
                 }
@@ -1037,14 +1037,14 @@ export default function CoachPage() {
           </TabsContent>
 
           {/* Squads Tab */}
-          <TabsContent value="squads">
+          <TabsContent value="squads" className="animate-fadeIn">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <CoachSquadsTab apiBasePath="/api/coach/org-squads" initialSquadId={initialSquadId} onSquadSelect={handleSquadSelect} />
             </div>
           </TabsContent>
 
           {/* Discover Content Tab - Uses org-scoped API for coaches */}
-          <TabsContent value="discover">
+          <TabsContent value="discover" className="animate-fadeIn">
             <AdminDiscoverTab
               apiBasePath={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-discover' : '/api/admin/discover'}
               initialSubTab={initialDiscoverSubTab}
@@ -1055,56 +1055,56 @@ export default function CoachPage() {
           </TabsContent>
 
           {/* Upgrade Forms Tab - Uses org-scoped API for coaches */}
-          <TabsContent value="upgrade-forms">
+          <TabsContent value="upgrade-forms" className="animate-fadeIn">
             <AdminPremiumUpgradeFormsTab 
               apiEndpoint={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-forms/premium-upgrade' : '/api/admin/premium-upgrade-forms'}
             />
           </TabsContent>
 
           {/* Coaching Intake Forms Tab - Uses org-scoped API for coaches */}
-          <TabsContent value="coaching-forms">
+          <TabsContent value="coaching-forms" className="animate-fadeIn">
             <AdminCoachingIntakeFormsTab 
               apiEndpoint={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-forms/coaching-intake' : '/api/admin/coaching-intake-forms'}
             />
           </TabsContent>
 
           {/* Funnels Tab */}
-          <TabsContent value="funnels">
+          <TabsContent value="funnels" className="animate-fadeIn">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <CoachFunnelsTab initialFunnelId={initialFunnelId} onFunnelSelect={handleFunnelSelect} />
             </div>
           </TabsContent>
 
           {/* Check-ins Tab */}
-          <TabsContent value="checkins">
+          <TabsContent value="checkins" className="animate-fadeIn">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <CoachCheckInsTab initialFlowId={initialFlowId} onFlowSelect={handleFlowSelect} />
             </div>
           </TabsContent>
 
           {/* Onboarding Tab */}
-          <TabsContent value="onboarding">
+          <TabsContent value="onboarding" className="animate-fadeIn">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <CoachOnboardingFlowTab />
             </div>
           </TabsContent>
 
           {/* Referrals Tab */}
-          <TabsContent value="referrals">
+          <TabsContent value="referrals" className="animate-fadeIn">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <CoachReferralsTab />
             </div>
           </TabsContent>
 
           {/* Programs Tab - New system */}
-          <TabsContent value="programs">
+          <TabsContent value="programs" className="animate-fadeIn">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <CoachProgramsTab apiBasePath="/api/coach/org-programs" initialProgramId={initialProgramId} onProgramSelect={handleProgramSelect} />
             </div>
           </TabsContent>
 
           {/* Analytics Tab */}
-          <TabsContent value="analytics">
+          <TabsContent value="analytics" className="animate-fadeIn">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <AnalyticsDashboard 
                 initialSubTab={initialAnalyticsSubTab}
@@ -1116,41 +1116,41 @@ export default function CoachPage() {
           </TabsContent>
 
           {/* Discounts Tab */}
-          <TabsContent value="discounts">
+          <TabsContent value="discounts" className="animate-fadeIn">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <DiscountCodesTab />
             </div>
           </TabsContent>
 
           {/* Channels Tab */}
-          <TabsContent value="channels">
+          <TabsContent value="channels" className="animate-fadeIn">
             <ChannelManagementTab />
           </TabsContent>
 
           {/* Scheduling Tab */}
-          <TabsContent value="scheduling">
+          <TabsContent value="scheduling" className="animate-fadeIn">
             <SchedulingTab />
           </TabsContent>
 
           {/* Integrations Tab */}
-          <TabsContent value="integrations">
+          <TabsContent value="integrations" className="animate-fadeIn">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <IntegrationsTab coachTier={subscription?.tier} />
             </div>
           </TabsContent>
 
           {/* Customize Branding Tab */}
-          <TabsContent value="customize">
+          <TabsContent value="customize" className="animate-fadeIn">
             <CustomizeBrandingTab initialSubtab={initialCustomizeSubtab} onSubtabChange={handleCustomizeSubtabChange} />
           </TabsContent>
 
           {/* Plan & Billing Tab */}
-          <TabsContent value="plan">
+          <TabsContent value="plan" className="animate-fadeIn">
             <CoachPlanTab />
           </TabsContent>
 
           {/* Support & Feedback Tab */}
-          <TabsContent value="support">
+          <TabsContent value="support" className="animate-fadeIn">
             <CoachSupportTab />
           </TabsContent>
         </Tabs>
