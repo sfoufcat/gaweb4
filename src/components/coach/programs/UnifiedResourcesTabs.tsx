@@ -58,6 +58,12 @@ interface ResourceItem {
   programId?: string;
 }
 
+// Content completion data for showing "X/Y completed" badges
+export interface ContentCompletionData {
+  completedCount: number;
+  totalCount: number;
+}
+
 interface UnifiedResourcesTabsProps {
   // Unified resource assignments
   resourceAssignments: WeekResourceAssignment[];
@@ -75,6 +81,9 @@ interface UnifiedResourcesTabsProps {
 
   // Whether to show weekend days (Day 6, Day 7)
   includeWeekends?: boolean;
+
+  // Content completion data by resourceId (for showing "X/Y completed" badges)
+  contentCompletion?: Map<string, ContentCompletionData>;
 }
 
 // DayTag selector dropdown - uses portal to escape overflow:hidden containers
@@ -154,7 +163,7 @@ function DayTagSelector({
   );
 }
 
-// Linked item display with dayTag selector
+// Linked item display with dayTag selector and optional completion badge
 function LinkedResourceItem({
   assignment,
   title,
@@ -162,6 +171,7 @@ function LinkedResourceItem({
   onRemove,
   onDayTagChange,
   includeWeekends,
+  completion,
 }: {
   assignment: WeekResourceAssignment;
   title: string;
@@ -169,6 +179,7 @@ function LinkedResourceItem({
   onRemove: () => void;
   onDayTagChange: (dayTag: ResourceDayTag) => void;
   includeWeekends?: boolean;
+  completion?: ContentCompletionData;
 }) {
   return (
     <div className="flex items-center gap-3 p-3 bg-white dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] group">
@@ -176,6 +187,21 @@ function LinkedResourceItem({
       <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
         {title}
       </span>
+      {/* Completion badge */}
+      {completion && completion.totalCount > 0 && (
+        <span
+          className={cn(
+            'text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap',
+            completion.completedCount === completion.totalCount
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+              : completion.completedCount > 0
+              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+              : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#8c8c8c] dark:text-[#7d8190]'
+          )}
+        >
+          {completion.completedCount}/{completion.totalCount}
+        </span>
+      )}
       <DayTagSelector
         value={assignment.dayTag}
         onChange={onDayTagChange}
@@ -202,6 +228,7 @@ export function UnifiedResourcesTabs({
   availableQuestionnaires,
   programId,
   includeWeekends = true,
+  contentCompletion,
 }: UnifiedResourcesTabsProps) {
   const [activeTab, setActiveTab] = useState<ResourceType>('courses');
 
@@ -397,6 +424,7 @@ export function UnifiedResourcesTabs({
                       onRemove={() => removeResource(assignment.id)}
                       onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
                       includeWeekends={includeWeekends}
+                      completion={contentCompletion?.get(assignment.resourceId)}
                     />
                   );
                 })}
@@ -424,6 +452,7 @@ export function UnifiedResourcesTabs({
                     onRemove={() => removeResource(assignment.id)}
                     onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
                     includeWeekends={includeWeekends}
+                    completion={contentCompletion?.get(assignment.resourceId)}
                   />
                 ))}
               </div>

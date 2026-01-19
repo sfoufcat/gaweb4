@@ -44,6 +44,12 @@ type TaskData = ProgramTaskTemplate | ProgramInstanceTask;
 // Week type can be either template or instance (both have resourceAssignments)
 type WeekData = ProgramWeek | ProgramInstanceWeek;
 
+// Content completion data for showing "X/Y completed" badges
+interface ContentCompletionData {
+  completedCount: number;
+  totalCount: number;
+}
+
 interface DayPreviewPopupProps {
   isOpen: boolean;
   onClose: () => void;
@@ -61,6 +67,8 @@ interface DayPreviewPopupProps {
   articles?: Record<string, DiscoverArticle>;
   // Progress tracking
   contentProgress?: ContentProgress[];
+  // Content completion data by resourceId (for showing "X/Y completed" badges)
+  contentCompletion?: Map<string, ContentCompletionData>;
 }
 
 export function DayPreviewPopup({
@@ -77,6 +85,7 @@ export function DayPreviewPopup({
   courses = {},
   articles = {},
   contentProgress = [],
+  contentCompletion,
 }: DayPreviewPopupProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -366,7 +375,10 @@ export function DayPreviewPopup({
                     <div className="space-y-2">
                       {courseAssignments.map((assignment) => {
                         const course = courses[assignment.resourceId];
-                        const completed = isContentCompleted('course', assignment.resourceId);
+                        const completion = contentCompletion?.get(assignment.resourceId);
+                        const completed = completion
+                          ? completion.completedCount === completion.totalCount && completion.totalCount > 0
+                          : isContentCompleted('course', assignment.resourceId);
                         return (
                           <div
                             key={assignment.id}
@@ -382,9 +394,22 @@ export function DayPreviewPopup({
                                 {assignment.isRequired && ' · Required'}
                               </p>
                             </div>
-                            {completed && (
+                            {/* Completion badge or checkmark */}
+                            {completion && completion.totalCount > 0 ? (
+                              <span
+                                className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${
+                                  completion.completedCount === completion.totalCount
+                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                    : completion.completedCount > 0
+                                    ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                                    : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#8c8c8c] dark:text-[#7d8190]'
+                                }`}
+                              >
+                                {completion.completedCount}/{completion.totalCount}
+                              </span>
+                            ) : completed ? (
                               <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            )}
+                            ) : null}
                           </div>
                         );
                       })}
@@ -401,7 +426,10 @@ export function DayPreviewPopup({
                     <div className="space-y-2">
                       {articleAssignments.map((assignment) => {
                         const article = articles[assignment.resourceId];
-                        const completed = isContentCompleted('article', assignment.resourceId);
+                        const completion = contentCompletion?.get(assignment.resourceId);
+                        const completed = completion
+                          ? completion.completedCount === completion.totalCount && completion.totalCount > 0
+                          : isContentCompleted('article', assignment.resourceId);
                         return (
                           <div
                             key={assignment.id}
@@ -417,9 +445,20 @@ export function DayPreviewPopup({
                                 {assignment.isRequired && ' · Required'}
                               </p>
                             </div>
-                            {completed && (
+                            {/* Completion badge or checkmark */}
+                            {completion && completion.totalCount > 0 ? (
+                              <span
+                                className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${
+                                  completion.completedCount === completion.totalCount
+                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                    : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#8c8c8c] dark:text-[#7d8190]'
+                                }`}
+                              >
+                                {completion.completedCount}/{completion.totalCount}
+                              </span>
+                            ) : completed ? (
                               <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            )}
+                            ) : null}
                           </div>
                         );
                       })}

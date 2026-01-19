@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { ResourceLinkDropdown } from './ResourceLinkDropdown';
 import { CallSummaryViewModal } from './CallSummaryViewModal';
 import { DayCourseSelector } from './DayCourseSelector';
-import { UnifiedResourcesTabs } from './UnifiedResourcesTabs';
+import { UnifiedResourcesTabs, type ContentCompletionData } from './UnifiedResourcesTabs';
 import { CreditPurchaseModal } from '@/components/coach/CreditPurchaseModal';
 import { DayPreviewPopup } from './DayPreviewPopup';
 import { ScheduleCallModal } from '@/components/scheduling';
@@ -743,6 +743,71 @@ export function WeekEditor({
 
   // Day Preview popup state
   const [previewDayNumber, setPreviewDayNumber] = useState<number | null>(null);
+
+  // Content completion data for courses/articles (for showing "X/Y completed" badges)
+  const [contentCompletion, setContentCompletion] = useState<Map<string, ContentCompletionData>>(new Map());
+
+  // Fetch content completion data when viewing cohort/client instance
+  useEffect(() => {
+    if (!programId) return;
+
+    // Only fetch completion data when in cohort or client mode
+    const shouldFetch = cohortId || clientUserId;
+    if (!shouldFetch) return;
+
+    const fetchContentCompletion = async () => {
+      try {
+        // Use the dashboard API to get content completion data
+        const url = clientUserId
+          ? `/api/coach/org-programs/${programId}/dashboard/client/${clientUserId}`
+          : `/api/coach/org-programs/${programId}/dashboard`;
+
+        const res = await fetch(url);
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        // Build completion map from the response
+        const completionMap = new Map<string, ContentCompletionData>();
+
+        if (clientUserId && data.currentWeekContent) {
+          // Client mode: use currentWeekContent data
+          const modules = data.currentWeekContent?.modules || [];
+          modules.forEach((module: { moduleId: string; lessons?: { completed: boolean }[] }) => {
+            const totalLessons = module.lessons?.length || 0;
+            const completedLessons = module.lessons?.filter((l: { completed: boolean }) => l.completed).length || 0;
+            completionMap.set(module.moduleId, {
+              completedCount: completedLessons,
+              totalCount: totalLessons,
+            });
+          });
+
+          const articles = data.currentWeekContent?.articles || [];
+          articles.forEach((article: { articleId: string; completed: boolean }) => {
+            completionMap.set(article.articleId, {
+              completedCount: article.completed ? 1 : 0,
+              totalCount: 1,
+            });
+          });
+        } else if (data.contentCompletion) {
+          // Cohort/program mode: use contentCompletion array
+          const contentItems = data.contentCompletion || [];
+          contentItems.forEach((item: { contentId: string; completedCount: number; totalCount: number }) => {
+            completionMap.set(item.contentId, {
+              completedCount: item.completedCount,
+              totalCount: item.totalCount,
+            });
+          });
+        }
+
+        setContentCompletion(completionMap);
+      } catch (err) {
+        console.error('[WeekEditor] Error fetching content completion:', err);
+      }
+    };
+
+    fetchContentCompletion();
+  }, [programId, cohortId, clientUserId]);
 
   // Check for in-progress recordings on mount and poll until complete
   // Supports both cohort mode (group programs) and 1:1 mode (individual programs)
@@ -2933,6 +2998,7 @@ export function WeekEditor({
           availableQuestionnaires={availableQuestionnaires}
           programId={programId}
           includeWeekends={includeWeekends}
+          contentCompletion={contentCompletion}
         />
       </CollapsibleSection>
 

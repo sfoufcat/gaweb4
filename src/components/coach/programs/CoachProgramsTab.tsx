@@ -6132,8 +6132,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             const startDate = new Date(e.target.value);
                             const endDate = new Date(startDate);
                             endDate.setDate(endDate.getDate() + (selectedProgram?.lengthDays || 30) - 1);
-                            setCohortFormData({ 
-                              ...cohortFormData, 
+                            setCohortFormData({
+                              ...cohortFormData,
                               startDate: e.target.value,
                               endDate: endDate.toISOString().split('T')[0],
                             });
@@ -6143,14 +6143,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                          End Date
+                          Duration
                         </label>
-                        <input
-                          type="date"
-                          value={cohortFormData.endDate}
-                          onChange={(e) => setCohortFormData({ ...cohortFormData, endDate: e.target.value })}
-                          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                        />
+                        <div className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-[#f9f8f6] dark:bg-[#0d1017] text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">
+                          {selectedProgram?.lengthDays || 30} days (from program)
+                        </div>
                       </div>
                     </div>
 
@@ -6168,12 +6165,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       />
                     </div>
 
-                    <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                    <label className="flex items-center gap-2.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
                       <input
                         type="checkbox"
                         checked={cohortFormData.enrollmentOpen}
                         onChange={(e) => setCohortFormData({ ...cohortFormData, enrollmentOpen: e.target.checked })}
-                        className="rounded"
+                        className="w-4.5 h-4.5 rounded border-[#d1ccc6] dark:border-[#3a4050] accent-[var(--brand-accent)] cursor-pointer"
                       />
                       Enrollment open
                     </label>
@@ -6183,29 +6180,29 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
                         After program ends
                       </label>
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                      <div className="space-y-2.5">
+                        <label className="flex items-center gap-2.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
                           <input
                             type="radio"
                             name="afterProgramEnds"
                             checked={!cohortFormData.convertSquadsToCommunity}
                             onChange={() => setCohortFormData({ ...cohortFormData, convertSquadsToCommunity: false })}
-                            className="text-brand-accent"
+                            className="w-4.5 h-4.5 accent-[var(--brand-accent)] cursor-pointer"
                           />
                           Close squad after grace period
                         </label>
-                        <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                        <label className="flex items-center gap-2.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
                           <input
                             type="radio"
                             name="afterProgramEnds"
                             checked={cohortFormData.convertSquadsToCommunity}
                             onChange={() => setCohortFormData({ ...cohortFormData, convertSquadsToCommunity: true })}
-                            className="text-brand-accent"
+                            className="w-4.5 h-4.5 accent-[var(--brand-accent)] cursor-pointer"
                           />
                           Convert to squad
                         </label>
                       </div>
-                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
+                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1.5 font-albert">
                         Squads remain active for alumni to stay connected
                       </p>
                     </div>
