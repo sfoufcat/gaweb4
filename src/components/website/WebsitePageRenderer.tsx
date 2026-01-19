@@ -62,12 +62,10 @@ export function WebsitePageRenderer({
     ? funnelUrls[website.heroCtaFunnelId] || '/join'
     : '/join';
 
-  // Handle service click - navigate to funnel or show modal
+  // Handle service click - navigate to funnel
   const handleServiceClick = (service: WebsiteService) => {
     if (service.funnelId && funnelUrls[service.funnelId]) {
       router.push(funnelUrls[service.funnelId]);
-    } else if (service.externalUrl) {
-      window.open(service.externalUrl, '_blank');
     }
   };
 
