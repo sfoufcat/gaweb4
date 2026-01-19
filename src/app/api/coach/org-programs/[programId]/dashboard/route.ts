@@ -492,13 +492,15 @@ export async function GET(
 
     const assignedContentTitleMap = new Map<string, string>();
 
-    // Fetch course titles
+    // Fetch course titles (check both 'courses' and 'discover_courses' collections for compatibility)
     if (assignedCourseIds.length > 0) {
       const batchSize = 30;
       for (let i = 0; i < assignedCourseIds.length; i += batchSize) {
         const batch = assignedCourseIds.slice(i, i + batchSize);
+
+        // First try the main 'courses' collection (where coach courses are stored)
         const courseDocs = await adminDb
-          .collection('discover_courses')
+          .collection('courses')
           .where('__name__', 'in', batch)
           .get();
 
@@ -506,16 +508,34 @@ export async function GET(
           const data = doc.data();
           assignedContentTitleMap.set(doc.id, data.title || `Course ${doc.id.slice(0, 8)}`);
         });
+
+        // Also check 'discover_courses' for any IDs not found (legacy/admin courses)
+        const foundIds = new Set(courseDocs.docs.map(d => d.id));
+        const missingIds = batch.filter(id => !foundIds.has(id));
+
+        if (missingIds.length > 0) {
+          const discoverCourseDocs = await adminDb
+            .collection('discover_courses')
+            .where('__name__', 'in', missingIds)
+            .get();
+
+          discoverCourseDocs.docs.forEach((doc) => {
+            const data = doc.data();
+            assignedContentTitleMap.set(doc.id, data.title || `Course ${doc.id.slice(0, 8)}`);
+          });
+        }
       }
     }
 
-    // Fetch article titles
+    // Fetch article titles (check both 'articles' and 'discover_articles' collections for compatibility)
     if (assignedArticleIds.length > 0) {
       const batchSize = 30;
       for (let i = 0; i < assignedArticleIds.length; i += batchSize) {
         const batch = assignedArticleIds.slice(i, i + batchSize);
+
+        // First try the main 'articles' collection (where coach articles are stored)
         const articleDocs = await adminDb
-          .collection('discover_articles')
+          .collection('articles')
           .where('__name__', 'in', batch)
           .get();
 
@@ -523,6 +543,22 @@ export async function GET(
           const data = doc.data();
           assignedContentTitleMap.set(doc.id, data.title || `Article ${doc.id.slice(0, 8)}`);
         });
+
+        // Also check 'discover_articles' for any IDs not found (legacy/admin articles)
+        const foundIds = new Set(articleDocs.docs.map(d => d.id));
+        const missingIds = batch.filter(id => !foundIds.has(id));
+
+        if (missingIds.length > 0) {
+          const discoverArticleDocs = await adminDb
+            .collection('discover_articles')
+            .where('__name__', 'in', missingIds)
+            .get();
+
+          discoverArticleDocs.docs.forEach((doc) => {
+            const data = doc.data();
+            assignedContentTitleMap.set(doc.id, data.title || `Article ${doc.id.slice(0, 8)}`);
+          });
+        }
       }
     }
 

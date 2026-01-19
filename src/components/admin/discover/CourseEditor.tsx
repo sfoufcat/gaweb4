@@ -24,6 +24,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ArrowLeft, Layers, BookOpen, Clock, ChevronDown, ChevronRight, Trash2, Play, Plus, Settings2, GripVertical, Folder, LayoutGrid, BarChart3 } from 'lucide-react';
 import { CourseOverview } from './CourseOverview';
 
@@ -92,8 +102,9 @@ export function CourseEditor({
   const [selectedModuleIndex, setSelectedModuleIndex] = useState<number | null>(null);
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set([0]));
-  const [fetchingDuration, setFetchingDuration] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'content'>(isEditing ? 'overview' : 'content');
+  const [deleteModuleIndex, setDeleteModuleIndex] = useState<number | null>(null);
+  const [deleteLessonInfo, setDeleteLessonInfo] = useState<{ moduleIndex: number; lessonIndex: number } | null>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -226,12 +237,17 @@ export function CourseEditor({
   };
 
   const deleteModule = (index: number) => {
-    if (!confirm('Delete this module and all its lessons?')) return;
-    setFormData(prev => ({ ...prev, modules: prev.modules.filter((_, i) => i !== index) }));
-    if (selectedModuleIndex === index) {
+    setDeleteModuleIndex(index);
+  };
+
+  const confirmDeleteModule = () => {
+    if (deleteModuleIndex === null) return;
+    setFormData(prev => ({ ...prev, modules: prev.modules.filter((_, i) => i !== deleteModuleIndex) }));
+    if (selectedModuleIndex === deleteModuleIndex) {
       setSelectedModuleIndex(null);
       setSelectedLessonIndex(null);
     }
+    setDeleteModuleIndex(null);
   };
 
   const handleModulesReorder = (reorderedModules: CourseModule[]) => {
@@ -260,12 +276,18 @@ export function CourseEditor({
   };
 
   const deleteLesson = (moduleIndex: number, lessonIndex: number) => {
-    if (!confirm('Delete this lesson?')) return;
+    setDeleteLessonInfo({ moduleIndex, lessonIndex });
+  };
+
+  const confirmDeleteLesson = () => {
+    if (!deleteLessonInfo) return;
+    const { moduleIndex, lessonIndex } = deleteLessonInfo;
     const module = formData.modules[moduleIndex];
     updateModule(moduleIndex, { ...module, lessons: module.lessons.filter((_, i) => i !== lessonIndex) });
-    if (selectedLessonIndex === lessonIndex) {
+    if (selectedLessonIndex === lessonIndex && selectedModuleIndex === moduleIndex) {
       setSelectedLessonIndex(null);
     }
+    setDeleteLessonInfo(null);
   };
 
   const handleLessonsReorder = (moduleIndex: number, reorderedLessons: CourseLesson[]) => {
@@ -295,16 +317,6 @@ export function CourseEditor({
   const selectedLesson = selectedModuleIndex !== null && selectedLessonIndex !== null
     ? formData.modules[selectedModuleIndex]?.lessons[selectedLessonIndex]
     : null;
-
-  const handleFetchDuration = async () => {
-    if (!selectedLesson?.videoUrl || selectedModuleIndex === null || selectedLessonIndex === null) return;
-    setFetchingDuration(true);
-    const duration = await fetchVideoDuration(selectedLesson.videoUrl);
-    setFetchingDuration(false);
-    if (duration) {
-      updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, durationMinutes: duration });
-    }
-  };
 
   return (
     <div className="flex flex-col h-full min-h-screen">
@@ -413,10 +425,10 @@ export function CourseEditor({
         {/* Content Tab or New Course - Sidebar + Editor */}
         {(activeTab === 'content' || !isEditing) && (
           <div className="h-full flex rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
-        {/* Sidebar - Module/Lesson Tree */}
-        <div className="w-[420px] flex-shrink-0 flex flex-col border-r border-[#e8e4df] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#0d0f14]">
+        {/* Sidebar - Module/Lesson Tree (hidden on mobile when lesson selected) */}
+        <div className={`w-full md:w-[420px] flex-shrink-0 flex flex-col border-r border-[#e8e4df] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#0d0f14] ${selectedLesson ? 'hidden md:flex' : 'flex'}`}>
           {/* Sidebar Header */}
-          <div className="px-6 py-4 flex items-center gap-2">
+          <div className="px-6 py-4 flex items-center gap-2 border-b border-[#e8e4df] dark:border-[#262b35]">
             <LayoutGrid className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Structure</span>
           </div>
@@ -603,65 +615,82 @@ export function CourseEditor({
           </div>
         </div>
 
-        {/* Content Area - Lesson Editor */}
-        <div className="flex-1 overflow-y-auto bg-white dark:bg-[#171b22]">
+        {/* Content Area - Lesson Editor (shown on mobile when lesson selected) */}
+        <div className={`flex-1 overflow-y-auto bg-white dark:bg-[#171b22] ${selectedLesson ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
           {selectedLesson && selectedModuleIndex !== null && selectedLessonIndex !== null ? (
-            <div className="max-w-5xl mx-auto px-10 py-8 space-y-8">
-              {/* Lesson Title */}
-              <div>
-                <input
-                  type="text"
-                  value={selectedLesson.title}
-                  onChange={(e) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, title: e.target.value })}
-                  placeholder="Lesson title..."
-                  className="w-full px-0 py-2 text-2xl font-semibold border-none bg-transparent focus:outline-none focus:ring-0 font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#b2b6c2] dark:placeholder:text-[#5f5a55]"
+            <div className="max-w-4xl mx-auto px-6 md:px-10 py-6 md:py-8 space-y-6 w-full">
+              {/* Mobile Back Button */}
+              <button
+                type="button"
+                onClick={() => { setSelectedModuleIndex(null); setSelectedLessonIndex(null); }}
+                className="md:hidden flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white mb-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Structure
+              </button>
+
+              {/* Title Row with Locked toggle */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-2 font-albert">
+                    Lesson Title
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedLesson.title}
+                    onChange={(e) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, title: e.target.value })}
+                    placeholder="Enter lesson title..."
+                    className="w-full px-4 py-3 text-lg border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert bg-white dark:bg-[#0d0f14]"
+                  />
+                </div>
+                <div className="sm:pt-7">
+                  <label className="inline-flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#0d0f14] transition-colors">
+                    <BrandedCheckbox
+                      checked={selectedLesson.isLocked || false}
+                      onChange={(checked) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, isLocked: checked })}
+                    />
+                    <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                      Locked
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Video Section - Full Width 16:9 */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  Video
+                </label>
+                <MediaUpload
+                  value={selectedLesson.videoUrl || ''}
+                  onChange={async (url) => {
+                    updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url });
+                    // Auto-detect duration when video is uploaded
+                    if (url) {
+                      const duration = await fetchVideoDuration(url);
+                      if (duration) {
+                        updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url, durationMinutes: duration });
+                      }
+                    }
+                  }}
+                  folder="courses/lessons"
+                  type="video"
+                  uploadEndpoint={uploadEndpoint}
+                  hideLabel
+                  aspectRatio="16:9"
                 />
               </div>
 
-              {/* Media Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Video Upload - Takes 2/3 */}
-                <div className="lg:col-span-2 space-y-3">
-                  <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                    Video
-                  </label>
-                  <MediaUpload
-                    value={selectedLesson.videoUrl || ''}
-                    onChange={(url) => {
-                      updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url });
-                    }}
-                    folder="courses/lessons"
-                    type="video"
-                    uploadEndpoint={uploadEndpoint}
-                    hideLabel
-                  />
-                  {selectedLesson.videoUrl && (
-                    <button
-                      type="button"
-                      onClick={handleFetchDuration}
-                      disabled={fetchingDuration}
-                      className="px-3 py-1.5 text-xs bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20 rounded-lg font-albert font-medium disabled:opacity-50 flex items-center gap-1.5"
-                    >
-                      {fetchingDuration ? (
-                        <>
-                          <div className="w-3 h-3 border-2 border-brand-accent/30 border-t-brand-accent rounded-full animate-spin" />
-                          Fetching...
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="w-3 h-3" />
-                          Auto-detect duration
-                        </>
-                      )}
-                    </button>
+              {/* Thumbnail - Inline Collapsible */}
+              <details className="group">
+                <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white font-albert select-none">
+                  <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
+                  Custom Thumbnail
+                  {selectedLesson.videoThumbnailUrl && (
+                    <span className="text-xs text-brand-accent ml-1">(Set)</span>
                   )}
-                </div>
-
-                {/* Thumbnail - Takes 1/3 */}
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                    Thumbnail
-                  </label>
+                </summary>
+                <div className="mt-3 pl-6">
                   <MediaUpload
                     value={selectedLesson.videoThumbnailUrl || ''}
                     onChange={(url) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoThumbnailUrl: url })}
@@ -669,41 +698,13 @@ export function CourseEditor({
                     type="image"
                     uploadEndpoint={uploadEndpoint}
                     hideLabel
-                    previewSize="thumbnail"
+                    aspectRatio="16:9"
                   />
+                  <p className="text-xs text-[#9ca3af] mt-2 font-albert">
+                    Optional. If not set, the video&apos;s first frame will be used.
+                  </p>
                 </div>
-              </div>
-
-              {/* Settings Row */}
-              <div className="flex items-center gap-8 py-4 border-y border-[#e8e4df] dark:border-[#262b35]">
-                <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                    Duration
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      value={selectedLesson.durationMinutes || ''}
-                      onChange={(e) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, durationMinutes: e.target.value ? parseInt(e.target.value) : undefined })}
-                      placeholder="0"
-                      className="w-20 px-3 py-2 text-center border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert bg-white dark:bg-[#0d0f14]"
-                    />
-                    <span className="text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">min</span>
-                  </div>
-                </div>
-
-                <div className="h-6 w-px bg-[#e8e4df] dark:bg-[#262b35]" />
-
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <BrandedCheckbox
-                    checked={selectedLesson.isLocked || false}
-                    onChange={(checked) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, isLocked: checked })}
-                  />
-                  <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                    Locked
-                  </span>
-                </label>
-              </div>
+              </details>
 
               {/* Notes Section */}
               <div className="space-y-3">
@@ -712,7 +713,7 @@ export function CourseEditor({
                   onChange={(notes) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, notes })}
                   label="Lesson Notes"
                   placeholder="Summary, key points, or additional resources..."
-                  rows={8}
+                  rows={10}
                   showMediaToolbar={true}
                   mediaFolder="courses/lessons"
                   uploadEndpoint={uploadEndpoint}
@@ -721,10 +722,14 @@ export function CourseEditor({
             </div>
           ) : (
             <div className="h-full flex items-center justify-center text-[#5f5a55] dark:text-[#b2b6c2]">
-              <div className="text-center">
-                <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="font-albert">Select a lesson to edit</p>
-                <p className="text-sm mt-1">Or add a new module to get started</p>
+              <div className="text-center px-6">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center">
+                  <BookOpen className="w-8 h-8 opacity-40" />
+                </div>
+                <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">No lesson selected</p>
+                <p className="text-sm mt-1 max-w-xs mx-auto">
+                  Select a lesson from the structure to edit, or create a new module to get started
+                </p>
               </div>
             </div>
           )}
@@ -869,6 +874,48 @@ export function CourseEditor({
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Delete Module Confirmation Dialog */}
+      <AlertDialog open={deleteModuleIndex !== null} onOpenChange={(open) => !open && setDeleteModuleIndex(null)}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-albert">Delete Module</AlertDialogTitle>
+            <AlertDialogDescription className="font-albert">
+              Are you sure you want to delete this module and all its lessons? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-albert">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteModule}
+              className="bg-red-500 hover:bg-red-600 text-white font-albert"
+            >
+              Delete Module
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Lesson Confirmation Dialog */}
+      <AlertDialog open={deleteLessonInfo !== null} onOpenChange={(open) => !open && setDeleteLessonInfo(null)}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-albert">Delete Lesson</AlertDialogTitle>
+            <AlertDialogDescription className="font-albert">
+              Are you sure you want to delete this lesson? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-albert">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteLesson}
+              className="bg-red-500 hover:bg-red-600 text-white font-albert"
+            >
+              Delete Lesson
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

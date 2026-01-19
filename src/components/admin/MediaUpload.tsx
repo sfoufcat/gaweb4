@@ -97,8 +97,10 @@ export function MediaUpload({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const dragCounterRef = useRef(0);
 
   const acceptedTypes = getAcceptedTypes(type);
   const maxSize = getMaxSize(type);
@@ -241,10 +243,7 @@ export function MediaUpload({
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     // Validate file type
     if (!acceptedTypes.includes(file.type)) {
       const typeLabel = type === 'image' ? 'image (JPG, PNG, WebP, GIF)'
@@ -265,6 +264,49 @@ export function MediaUpload({
       await handleDirectUpload(file);
     } else {
       await handleServerUpload(file);
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processFile(file);
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+
+    if (uploading) return;
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await processFile(file);
     }
   };
 
@@ -367,12 +409,18 @@ export function MediaUpload({
           ) : (
             <div
               onClick={() => !uploading && fileInputRef.current?.click()}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
               className={`
-                relative rounded-lg border-2 border-dashed transition-colors
+                relative rounded-lg border-2 border-dashed transition-all
                 ${previewSize === 'thumbnail' ? 'w-20 h-20' : `w-full ${getAspectRatioClass(aspectRatio)}`}
                 ${uploading
-                  ? 'border-brand-accent bg-brand-accent/5 cursor-wait' 
-                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent hover:bg-[#faf8f6] dark:hover:bg-white/5 cursor-pointer'
+                  ? 'border-brand-accent bg-brand-accent/5 cursor-wait'
+                  : isDragging
+                    ? 'border-brand-accent bg-brand-accent/10 ring-2 ring-brand-accent/20 scale-[1.02]'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent hover:bg-[#faf8f6] dark:hover:bg-white/5 cursor-pointer'
                 }
               `}
             >
@@ -440,7 +488,9 @@ export function MediaUpload({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                       )}
-                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Click to upload {getTypeLabel()}</p>
+                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                        {isDragging ? `Drop ${getTypeLabel()} here` : `Drag & drop or click to upload`}
+                      </p>
                       <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]/70 font-albert mt-1">{getFormatHint()}</p>
                     </>
                   )}

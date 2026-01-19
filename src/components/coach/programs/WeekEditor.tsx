@@ -2838,18 +2838,31 @@ export function WeekEditor({
               </div>
             </div>
           ) : recordingStatus === 'completed' ? (
-            /* Completed state */
+            /* Completed state - persistent until refresh */
             <div className="p-4 border border-green-500/30 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium text-green-800 dark:text-green-300">
-                    Summary generated successfully!
-                  </p>
-                  <p className="text-xs text-green-600 dark:text-green-400">
-                    Linked to this week&apos;s call summaries
-                  </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Check className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                      Summary Generated
+                    </p>
+                    <p className="text-xs text-green-600 dark:text-green-400">
+                      Linked to this week&apos;s call summaries
+                    </p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => {
+                    setRecordingStatus('idle');
+                    setRecordingFile(null);
+                    setRecordingError(null);
+                    setPendingRecordingId(null);
+                  }}
+                  className="text-xs text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-200 underline underline-offset-2 transition-colors"
+                >
+                  Upload another
+                </button>
               </div>
             </div>
           ) : recordingStatus === 'error' ? (

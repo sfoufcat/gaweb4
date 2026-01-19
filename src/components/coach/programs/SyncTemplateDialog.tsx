@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { Users, User, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { BrandedCheckbox, BrandedRadio } from '@/components/ui/checkbox';
 import type { ProgramEnrollment, ProgramCohort, TemplateSyncOptions } from '@/types';
 
 // ============================================================================
@@ -33,12 +32,10 @@ interface SyncTemplateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   programId: string;
-  weekNumber?: number; // Optional: if not provided, syncs all weeks
+  weekNumber?: number;
   targetType: 'clients' | 'cohorts';
-  // Optional: pass pre-loaded data to avoid fetching
   enrollments?: EnrollmentWithUser[];
   cohorts?: ProgramCohort[];
-  // For single-target mode (e.g., syncing to one specific cohort)
   singleCohortId?: string;
   singleCohortName?: string;
   onSyncComplete?: () => void;
@@ -53,10 +50,6 @@ interface SyncFieldOptions {
   syncNotes: boolean;
   syncHabits: boolean;
 }
-
-// ============================================================================
-// Constants
-// ============================================================================
 
 const DEFAULT_SYNC_FIELDS: SyncFieldOptions = {
   syncName: false,
@@ -90,7 +83,6 @@ async function getInstanceForEnrollment(enrollmentId: string): Promise<string | 
     if (data.instances?.length > 0) {
       return data.instances[0].id;
     }
-    // Create instance if doesn't exist
     const createRes = await fetch('/api/instances', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -112,7 +104,6 @@ async function getInstanceForCohort(cohortId: string, programId: string): Promis
     if (data.instances?.length > 0) {
       return data.instances[0].id;
     }
-    // Create instance if doesn't exist
     const createRes = await fetch('/api/instances', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -142,81 +133,38 @@ export function SyncTemplateDialog({
   singleCohortName,
   onSyncComplete,
 }: SyncTemplateDialogProps) {
-  // Client-side only rendering to avoid hydration issues with Dialog portal
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // Don't render anything until mounted on client
-  if (!isMounted) {
-    return null;
-  }
-
-  // Don't render anything when closed
-  if (!open) {
-    return null;
-  }
-
-  return (
-    <SyncTemplateDialogContent
-      open={open}
-      onOpenChange={onOpenChange}
-      programId={programId}
-      weekNumber={weekNumber}
-      targetType={targetType}
-      providedEnrollments={providedEnrollments}
-      providedCohorts={providedCohorts}
-      singleCohortId={singleCohortId}
-      singleCohortName={singleCohortName}
-      onSyncComplete={onSyncComplete}
-    />
-  );
-}
-
-// Inner component that only mounts when dialog is open
-function SyncTemplateDialogContent({
-  open,
-  onOpenChange,
-  programId,
-  weekNumber,
-  targetType,
-  providedEnrollments,
-  providedCohorts,
-  singleCohortId,
-  singleCohortName,
-  onSyncComplete,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  programId: string;
-  weekNumber?: number;
-  targetType: 'clients' | 'cohorts';
-  providedEnrollments?: EnrollmentWithUser[];
-  providedCohorts?: ProgramCohort[];
-  singleCohortId?: string;
-  singleCohortName?: string;
-  onSyncComplete?: () => void;
-}) {
-  // Single target mode - syncing to one specific cohort
-  const isSingleTargetMode = !!singleCohortId;
-  // State
   const [isSyncing, setIsSyncing] = useState(false);
-  const [targetMode, setTargetMode] = useState<'all' | 'select'>('all');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [preserveData, setPreserveData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [syncFields, setSyncFields] = useState<SyncFieldOptions>(DEFAULT_SYNC_FIELDS);
+  const [preserveData, setPreserveData] = useState(true);
 
-  // Data loading state
-  const [enrollments, setEnrollments] = useState<EnrollmentWithUser[]>(providedEnrollments || []);
-  const [cohorts, setCohorts] = useState<ProgramCohort[]>(providedCohorts || []);
-  const [isLoading, setIsLoading] = useState(!providedEnrollments && !providedCohorts);
+  // Data for multi-target mode
+  const [enrollments, setEnrollments] = useState<EnrollmentWithUser[]>([]);
+  const [cohorts, setCohorts] = useState<ProgramCohort[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [targetMode, setTargetMode] = useState<'all' | 'select'>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Fetch data if not provided
+  const isSingleTargetMode = !!singleCohortId;
+
+  // Set provided data
   useEffect(() => {
+    if (providedEnrollments) {
+      setEnrollments(providedEnrollments);
+    }
+  }, [providedEnrollments]);
+
+  useEffect(() => {
+    if (providedCohorts) {
+      setCohorts(providedCohorts);
+    }
+  }, [providedCohorts]);
+
+  // Fetch data when dialog opens (if not provided)
+  useEffect(() => {
+    if (!open || isSingleTargetMode) return;
+
     if (targetType === 'clients' && !providedEnrollments) {
       setIsLoading(true);
       fetch(`/api/coach/org-programs/${programId}/enrollments`)
@@ -236,13 +184,23 @@ function SyncTemplateDialogContent({
         })
         .catch(() => setIsLoading(false));
     }
-  }, [targetType, programId, providedEnrollments, providedCohorts]);
+  }, [open, targetType, programId, providedEnrollments, providedCohorts, isSingleTargetMode]);
 
-  // Helpers
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setError(null);
+      setSuccess(null);
+      setSyncFields(DEFAULT_SYNC_FIELDS);
+      setSelectedIds(new Set());
+      setTargetMode('all');
+    }
+  }, [open]);
+
   const allFieldsSelected = Object.values(syncFields).every(v => v);
   const someFieldsSelected = Object.values(syncFields).some(v => v);
 
-  const toggleSelectAll = () => {
+  const toggleSelectAll = useCallback(() => {
     const newValue = !allFieldsSelected;
     setSyncFields({
       syncName: newValue,
@@ -253,11 +211,11 @@ function SyncTemplateDialogContent({
       syncNotes: newValue,
       syncHabits: newValue,
     });
-  };
+  }, [allFieldsSelected]);
 
-  const toggleField = (key: keyof SyncFieldOptions) => {
+  const toggleField = useCallback((key: keyof SyncFieldOptions) => {
     setSyncFields(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  }, []);
 
   const getClientName = (enrollment: EnrollmentWithUser) => {
     if (enrollment.user?.firstName || enrollment.user?.lastName) {
@@ -270,23 +228,18 @@ function SyncTemplateDialogContent({
     return cohort.name || `Cohort ${cohort.id.slice(-6)}`;
   };
 
-  // Filter to active items
   const activeEnrollments = enrollments.filter(e => e.status === 'active' || e.status === 'upcoming');
   const activeCohorts = cohorts.filter(c => c.status === 'active' || c.status === 'upcoming');
-
   const targets = targetType === 'clients' ? activeEnrollments : activeCohorts;
   const targetLabel = targetType === 'clients' ? 'client' : 'cohort';
   const targetLabelPlural = targetType === 'clients' ? 'clients' : 'cohorts';
 
-  // Handle sync
   const handleSync = async () => {
     if (!someFieldsSelected) {
       setError('Please select at least one field to sync');
       return;
     }
 
-    // In single target mode, sync directly to the specified cohort
-    // In multi-target mode, sync to selected targets
     const targetsToSync = isSingleTargetMode
       ? [{ id: singleCohortId!, name: singleCohortName || 'Cohort' }]
       : targetMode === 'all'
@@ -318,28 +271,18 @@ function SyncTemplateDialogContent({
 
       let successCount = 0;
       let errorCount = 0;
-      const errors: string[] = [];
 
       for (const target of targetsToSync) {
         try {
-          // Get or create instance
           const instanceId = isSingleTargetMode || targetType === 'cohorts'
             ? await getInstanceForCohort(target.id, programId)
             : await getInstanceForEnrollment(target.id);
 
           if (!instanceId) {
-            const name = isSingleTargetMode
-              ? (singleCohortName || 'Cohort')
-              : targetType === 'clients'
-                ? getClientName(target as EnrollmentWithUser)
-                : getCohortName(target as ProgramCohort);
-            errors.push(`Failed to get instance for ${name}`);
             errorCount++;
             continue;
           }
 
-          // Sync template to instance
-          // If weekNumber is specified, sync that week; otherwise sync all weeks (pass undefined)
           const res = await fetch(`/api/instances/${instanceId}/sync-template`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -353,50 +296,60 @@ function SyncTemplateDialogContent({
           if (res.ok) {
             successCount++;
           } else {
-            const data = await res.json().catch(() => ({}));
-            const name = isSingleTargetMode
-              ? (singleCohortName || 'Cohort')
-              : targetType === 'clients'
-                ? getClientName(target as EnrollmentWithUser)
-                : getCohortName(target as ProgramCohort);
-            errors.push(`${name}: ${data.error || 'Sync failed'}`);
             errorCount++;
           }
-        } catch (err) {
-          const name = isSingleTargetMode
-            ? (singleCohortName || 'Cohort')
-            : targetType === 'clients'
-              ? getClientName(target as EnrollmentWithUser)
-              : getCohortName(target as ProgramCohort);
-          errors.push(`${name}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        } catch {
           errorCount++;
         }
       }
 
-      // Show result
       const weekLabel = weekNumber ? `Week ${weekNumber}` : 'all weeks';
       if (successCount > 0 && errorCount === 0) {
-        setSuccess(isSingleTargetMode
-          ? `Synced ${weekLabel} to ${singleCohortName || 'cohort'}`
-          : `Synced ${weekLabel} to ${successCount} ${successCount > 1 ? targetLabelPlural : targetLabel}`);
+        setSuccess(`Synced ${weekLabel} successfully`);
       } else if (successCount > 0) {
-        setSuccess(`Synced to ${successCount} ${targetLabelPlural}, ${errorCount} failed`);
+        setSuccess(`Synced to ${successCount}, ${errorCount} failed`);
       } else {
-        throw new Error(errors[0] || 'Failed to sync template');
+        throw new Error('Failed to sync template');
       }
 
-      // Close after showing success
       setTimeout(() => {
         onOpenChange(false);
         onSyncComplete?.();
       }, 1500);
     } catch (err) {
-      console.error('Sync error:', err);
       setError(err instanceof Error ? err.message : 'Failed to sync template');
     } finally {
       setIsSyncing(false);
     }
   };
+
+  const dialogTitle = isSingleTargetMode
+    ? `Sync to ${singleCohortName || 'Cohort'}`
+    : `Sync to ${targetType === 'clients' ? 'Clients' : 'Cohorts'}`;
+
+  const dialogDesc = isSingleTargetMode
+    ? `Push ${weekNumber ? `Week ${weekNumber}` : 'template'} changes.`
+    : `Push ${weekNumber ? `Week ${weekNumber}` : 'template'} changes to ${targetLabelPlural}.`;
+
+  const handleTargetModeChange = useCallback((mode: 'all' | 'select') => {
+    setTargetMode(mode);
+  }, []);
+
+  const handleToggleTarget = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handlePreserveDataChange = useCallback(() => {
+    setPreserveData(p => !p);
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -404,28 +357,22 @@ function SyncTemplateDialogContent({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-5 h-5 text-brand-accent" />
-            {isSingleTargetMode
-              ? `Sync to ${singleCohortName || 'Cohort'}`
-              : `Sync to ${targetType === 'clients' ? 'Clients' : 'Cohorts'}`}
+            {dialogTitle}
           </DialogTitle>
-          <DialogDescription>
-            {isSingleTargetMode
-              ? `Push ${weekNumber ? `Week ${weekNumber}` : 'template'} changes to ${singleCohortName || 'this cohort'}.`
-              : `Push ${weekNumber ? `Week ${weekNumber}` : 'template'} changes to ${targetLabelPlural}.`}
-          </DialogDescription>
+          <DialogDescription>{dialogDesc}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 py-2">
           {/* What to sync */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+              <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
                 Select what to sync:
-              </label>
+              </span>
               <button
                 type="button"
                 onClick={toggleSelectAll}
-                className="text-xs font-medium font-albert text-brand-accent hover:text-brand-accent/80 transition-colors"
+                className="text-xs font-medium text-brand-accent hover:text-brand-accent/80"
               >
                 {allFieldsSelected ? 'Deselect all' : 'Select all'}
               </button>
@@ -433,11 +380,13 @@ function SyncTemplateDialogContent({
             <div className="space-y-2">
               {FIELD_OPTIONS.map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-3 cursor-pointer group">
-                  <BrandedCheckbox
+                  <input
+                    type="checkbox"
                     checked={syncFields[key]}
                     onChange={() => toggleField(key)}
+                    className="w-4 h-4 accent-[var(--brand-accent)] cursor-pointer"
                   />
-                  <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors">
+                  <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors">
                     {label}
                   </span>
                 </label>
@@ -445,109 +394,106 @@ function SyncTemplateDialogContent({
             </div>
           </div>
 
-          {/* Apply to - hide in single target mode */}
+          {/* Apply to - only show in multi-target mode */}
           {!isSingleTargetMode && (
-          <div>
-            <label className="text-sm font-medium font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 block">
-              Apply to:
-            </label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <BrandedRadio
-                  checked={targetMode === 'all'}
-                  onChange={() => setTargetMode('all')}
-                  name="targetMode"
-                />
-                <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  All {targetLabelPlural} ({targets.length})
-                </span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <BrandedRadio
-                  checked={targetMode === 'select'}
-                  onChange={() => setTargetMode('select')}
-                  name="targetMode"
-                />
-                <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  Select specific {targetLabelPlural}
-                </span>
-              </label>
-            </div>
-
-            {/* Target list when in select mode */}
-            {targetMode === 'select' && (
-              <div className="mt-3 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
-                  </div>
-                ) : targets.length === 0 ? (
-                  <div className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
-                    No {targetLabelPlural} found
-                  </div>
-                ) : (
-                  targets.map(target => {
-                    const id = target.id;
-                    const isSelected = selectedIds.has(id);
-                    const name = targetType === 'clients'
-                      ? getClientName(target as EnrollmentWithUser)
-                      : getCohortName(target as ProgramCohort);
-                    const imageUrl = targetType === 'clients'
-                      ? (target as EnrollmentWithUser).user?.imageUrl
-                      : undefined;
-
-                    return (
-                      <label
-                        key={id}
-                        className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                      >
-                        <BrandedCheckbox
-                          checked={isSelected}
-                          onChange={() => {
-                            setSelectedIds(prev => {
-                              const next = new Set(prev);
-                              if (isSelected) {
-                                next.delete(id);
-                              } else {
-                                next.add(id);
-                              }
-                              return next;
-                            });
-                          }}
-                        />
-                        {imageUrl ? (
-                          <Image
-                            src={imageUrl}
-                            alt={name}
-                            width={24}
-                            height={24}
-                            className="rounded-full"
-                          />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-brand-accent/10 flex items-center justify-center">
-                            <User className="w-3.5 h-3.5 text-brand-accent" />
-                          </div>
-                        )}
-                        <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
-                          {name}
-                        </span>
-                      </label>
-                    );
-                  })
-                )}
+            <div>
+              <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 block">
+                Apply to:
+              </span>
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="targetMode"
+                    checked={targetMode === 'all'}
+                    onChange={() => handleTargetModeChange('all')}
+                    className="w-4 h-4 accent-[var(--brand-accent)]"
+                  />
+                  <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    All {targetLabelPlural} ({targets.length})
+                  </span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="targetMode"
+                    checked={targetMode === 'select'}
+                    onChange={() => handleTargetModeChange('select')}
+                    className="w-4 h-4 accent-[var(--brand-accent)]"
+                  />
+                  <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    Select specific {targetLabelPlural}
+                  </span>
+                </label>
               </div>
-            )}
-          </div>
+
+              {targetMode === 'select' && (
+                <div className="mt-3 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
+                    </div>
+                  ) : targets.length === 0 ? (
+                    <div className="text-sm text-gray-500 py-4 text-center">
+                      No {targetLabelPlural} found
+                    </div>
+                  ) : (
+                    targets.map(target => {
+                      const id = target.id;
+                      const isSelected = selectedIds.has(id);
+                      const name = targetType === 'clients'
+                        ? getClientName(target as EnrollmentWithUser)
+                        : getCohortName(target as ProgramCohort);
+                      const imageUrl = targetType === 'clients'
+                        ? (target as EnrollmentWithUser).user?.imageUrl
+                        : undefined;
+
+                      return (
+                        <label
+                          key={id}
+                          className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleTarget(id)}
+                            className="w-4 h-4 accent-[var(--brand-accent)]"
+                          />
+                          {imageUrl ? (
+                            <Image
+                              src={imageUrl}
+                              alt={name}
+                              width={24}
+                              height={24}
+                              className="rounded-full"
+                            />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-brand-accent/10 flex items-center justify-center">
+                              <User className="w-3.5 h-3.5 text-brand-accent" />
+                            </div>
+                          )}
+                          <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                            {name}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Preserve data option */}
-          <label className="flex items-center gap-3 cursor-pointer">
-            <BrandedCheckbox
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <input
+              type="checkbox"
               checked={preserveData}
-              onChange={(checked) => setPreserveData(checked)}
+              onChange={handlePreserveDataChange}
+              className="w-4 h-4 accent-[var(--brand-accent)] cursor-pointer"
             />
-            <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
-              Preserve {targetLabel}-specific data (recordings, notes, linked calls)
+            <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors">
+              Preserve {targetLabel}-specific data
             </span>
           </label>
 
@@ -573,7 +519,7 @@ function SyncTemplateDialogContent({
           <Button
             onClick={handleSync}
             disabled={isSyncing || !someFieldsSelected}
-            className="bg-brand-accent hover:bg-brand-accent/90"
+            className="bg-brand-accent hover:bg-brand-accent/90 text-white"
           >
             {isSyncing ? (
               <>

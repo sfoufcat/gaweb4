@@ -10,7 +10,9 @@ export interface ContentCompletionItem {
   title: string;
   completedCount: number;
   totalCount: number;
-  completionRate: number;
+  /** Completion percentage (0-100). API may return as completionPercent or completionRate */
+  completionRate?: number;
+  completionPercent?: number;
 }
 
 interface ContentCompletionListProps {
@@ -90,6 +92,8 @@ export function ContentCompletionList({ items, className }: ContentCompletionLis
         {items.map((item) => {
           const config = TYPE_CONFIG[item.contentType];
           const TypeIcon = config.icon;
+          // Support both completionRate and completionPercent from API
+          const rate = item.completionRate ?? item.completionPercent ?? 0;
 
           return (
             <div
@@ -116,13 +120,13 @@ export function ContentCompletionList({ items, className }: ContentCompletionLis
                       <div
                         className={cn(
                           'h-full rounded-full transition-all',
-                          item.completionRate >= 80
+                          rate >= 80
                             ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
-                            : item.completionRate >= 50
+                            : rate >= 50
                             ? 'bg-gradient-to-r from-blue-400 to-blue-500'
                             : 'bg-gradient-to-r from-amber-400 to-amber-500'
                         )}
-                        style={{ width: `${item.completionRate}%` }}
+                        style={{ width: `${rate}%` }}
                       />
                     </div>
                   </div>
@@ -131,14 +135,14 @@ export function ContentCompletionList({ items, className }: ContentCompletionLis
                   <p
                     className={cn(
                       'text-lg font-bold font-albert',
-                      item.completionRate >= 80
+                      rate >= 80
                         ? 'text-emerald-600 dark:text-emerald-400'
-                        : item.completionRate >= 50
+                        : rate >= 50
                         ? 'text-blue-600 dark:text-blue-400'
                         : 'text-amber-600 dark:text-amber-400'
                     )}
                   >
-                    {item.completionRate}%
+                    {rate}%
                   </p>
                 </div>
               </div>

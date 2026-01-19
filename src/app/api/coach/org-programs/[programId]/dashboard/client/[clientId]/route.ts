@@ -232,46 +232,66 @@ export async function GET(
       const courseMetaMap = new Map<string, { title: string; lessons: { id: string; title: string; order: number }[] }>();
 
       if (courseIds.length > 0) {
+        // Helper to process course doc data
+        const processCourseDoc = (doc: FirebaseFirestore.DocumentSnapshot) => {
+          const data = doc.data();
+          if (!data) return;
+
+          // Lessons can be in different structures depending on course format
+          let lessons: { id: string; title: string; order: number }[] = [];
+
+          if (data.lessons && Array.isArray(data.lessons)) {
+            lessons = data.lessons.map((lesson: { id?: string; title?: string; order?: number }, idx: number) => ({
+              id: lesson.id || `lesson-${idx}`,
+              title: lesson.title || `Lesson ${idx + 1}`,
+              order: lesson.order ?? idx,
+            }));
+          } else if (data.modules && Array.isArray(data.modules)) {
+            // Flat list of lessons from all modules
+            data.modules.forEach((mod: { lessons?: { id?: string; title?: string; order?: number }[] }, modIdx: number) => {
+              if (mod.lessons && Array.isArray(mod.lessons)) {
+                mod.lessons.forEach((lesson, lesIdx: number) => {
+                  lessons.push({
+                    id: lesson.id || `lesson-${modIdx}-${lesIdx}`,
+                    title: lesson.title || `Lesson ${lessons.length + 1}`,
+                    order: lessons.length,
+                  });
+                });
+              }
+            });
+          }
+
+          courseMetaMap.set(doc.id, {
+            title: data.title || 'Course',
+            lessons,
+          });
+        };
+
         // Firestore 'in' query limited to 30 items
         const batchSize = 30;
         for (let i = 0; i < courseIds.length; i += batchSize) {
           const batch = courseIds.slice(i, i + batchSize);
+
+          // First try the main 'courses' collection (where coach courses are stored)
           const courseDocs = await adminDb
-            .collection('discover_courses')
+            .collection('courses')
             .where('__name__', 'in', batch)
             .get();
 
-          courseDocs.forEach((doc) => {
-            const data = doc.data();
-            // Lessons can be in different structures depending on course format
-            let lessons: { id: string; title: string; order: number }[] = [];
+          courseDocs.forEach(processCourseDoc);
 
-            if (data.lessons && Array.isArray(data.lessons)) {
-              lessons = data.lessons.map((lesson: { id?: string; title?: string; order?: number }, idx: number) => ({
-                id: lesson.id || `lesson-${idx}`,
-                title: lesson.title || `Lesson ${idx + 1}`,
-                order: lesson.order ?? idx,
-              }));
-            } else if (data.modules && Array.isArray(data.modules)) {
-              // Flat list of lessons from all modules
-              data.modules.forEach((mod: { lessons?: { id?: string; title?: string; order?: number }[] }, modIdx: number) => {
-                if (mod.lessons && Array.isArray(mod.lessons)) {
-                  mod.lessons.forEach((lesson, lesIdx: number) => {
-                    lessons.push({
-                      id: lesson.id || `lesson-${modIdx}-${lesIdx}`,
-                      title: lesson.title || `Lesson ${lessons.length + 1}`,
-                      order: lessons.length,
-                    });
-                  });
-                }
-              });
-            }
+          // Also check 'discover_courses' for any IDs not found (legacy/admin courses)
+          const foundIds = new Set(courseDocs.docs.map(d => d.id));
+          const missingIds = batch.filter(id => !foundIds.has(id));
 
-            courseMetaMap.set(doc.id, {
-              title: data.title || 'Course',
-              lessons,
-            });
-          });
+          if (missingIds.length > 0) {
+            const discoverCourseDocs = await adminDb
+              .collection('discover_courses')
+              .where('__name__', 'in', missingIds)
+              .get();
+
+            discoverCourseDocs.forEach(processCourseDoc);
+          }
         }
       }
 
@@ -323,8 +343,10 @@ export async function GET(
         const batchSize = 30;
         for (let i = 0; i < articleIds.length; i += batchSize) {
           const batch = articleIds.slice(i, i + batchSize);
+
+          // First try the main 'articles' collection (where coach articles are stored)
           const articleDocs = await adminDb
-            .collection('discover_articles')
+            .collection('articles')
             .where('__name__', 'in', batch)
             .get();
 
@@ -334,6 +356,24 @@ export async function GET(
               title: data.title || 'Article',
             });
           });
+
+          // Also check 'discover_articles' for any IDs not found (legacy/admin articles)
+          const foundIds = new Set(articleDocs.docs.map(d => d.id));
+          const missingIds = batch.filter(id => !foundIds.has(id));
+
+          if (missingIds.length > 0) {
+            const discoverArticleDocs = await adminDb
+              .collection('discover_articles')
+              .where('__name__', 'in', missingIds)
+              .get();
+
+            discoverArticleDocs.forEach((doc) => {
+              const data = doc.data();
+              articleMetaMap.set(doc.id, {
+                title: data.title || 'Article',
+              });
+            });
+          }
         }
       }
 
