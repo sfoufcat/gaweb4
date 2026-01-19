@@ -135,6 +135,15 @@ export function DayPreviewPopup({
     if (fromResources.length > 0) {
       return fromResources;
     }
+    // Check if there are ANY course resources in the week (just not for this day)
+    // If so, don't fall back to legacy format - the user is using the new format
+    const allCourseResources = (week?.resourceAssignments || []).filter(
+      (r) => r.resourceType === 'course'
+    );
+    if (allCourseResources.length > 0) {
+      // Using new format but no courses for this specific day
+      return [];
+    }
     // Fallback: Convert week.courseAssignments (DayCourseAssignment[]) to WeekResourceAssignment format
     // These are week-level assignments (no day-specific tagging in legacy format)
     const legacyCourses = (week as ProgramWeek)?.courseAssignments || [];
