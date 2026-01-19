@@ -221,7 +221,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '0ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
           <div className="flex items-center gap-2 mb-2">
             <Eye className="w-5 h-5 text-blue-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Views</span>
@@ -232,7 +232,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Funnel sessions</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '50ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
           <div className="flex items-center gap-2 mb-2">
             <MousePointer className="w-5 h-5 text-purple-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Completions</span>
@@ -243,7 +243,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Conversions</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '100ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
           <div className="flex items-center gap-2 mb-2">
             <TrendingDown className="w-5 h-5 text-brand-accent" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Conversion Rate</span>
@@ -254,7 +254,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Overall</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '150ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
           <div className="flex items-center gap-2 mb-2">
             <DollarSign className="w-5 h-5 text-emerald-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Revenue</span>
@@ -282,8 +282,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
           {displayFunnels.map((funnel, index) => (
             <div 
               key={funnel.id}
-              className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden animate-fadeIn"
-              style={{ animationDelay: `${200 + index * 50}ms` }}
+              className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden"
             >
               {/* Funnel Header */}
               <button

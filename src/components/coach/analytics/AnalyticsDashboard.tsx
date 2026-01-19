@@ -74,7 +74,7 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics', initi
       </div>
 
       {/* Tab Content */}
-      <div>
+      <div key={activeTab} className="animate-fadeIn">
         {activeTab === 'clients' && <ClientActivityTab apiBasePath={apiBasePath} />}
         {activeTab === 'community' && <AnalyticsTab apiBasePath={apiBasePath} initialSquadId={initialSquadId} onSquadSelect={onSquadSelect} />}
         {activeTab === 'feed' && <FeedAnalyticsTab apiBasePath={apiBasePath} />}

@@ -211,7 +211,7 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
       
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '0ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
           <div className="flex items-center gap-2 mb-2">
             <Package className="w-5 h-5 text-brand-accent" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Programs</span>
@@ -222,7 +222,7 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">{displaySummary.totalEnrollments} enrollments</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '50ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-blue-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Squads</span>
@@ -233,7 +233,7 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">{displaySummary.totalMembers} members</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '100ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
           <div className="flex items-center gap-2 mb-2">
             <BookOpen className="w-5 h-5 text-purple-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Content</span>
@@ -244,7 +244,7 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Paid items</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '150ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
           <div className="flex items-center gap-2 mb-2">
             <DollarSign className="w-5 h-5 text-emerald-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Revenue</span>
@@ -285,7 +285,6 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
                     <div 
                       key={program.id} 
                       className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
-                      style={{ animationDelay: `${index * 50}ms` }}
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -333,7 +332,6 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
                     <div 
                       key={squad.id} 
                       className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
-                      style={{ animationDelay: `${index * 50}ms` }}
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -380,7 +378,6 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
                     <div 
                       key={item.id} 
                       className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
-                      style={{ animationDelay: `${index * 50}ms` }}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">

@@ -314,7 +314,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '0ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-brand-accent" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Total</span>
@@ -325,7 +325,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Clients</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '50ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Heart className="w-5 h-5 text-emerald-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Thriving</span>
@@ -336,7 +336,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">4+ days active</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '100ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Activity className="w-5 h-5 text-amber-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Active</span>
@@ -347,7 +347,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Some activity</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '150ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <AlertCircle className="w-5 h-5 text-red-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Inactive</span>
@@ -358,7 +358,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">No activity</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '200ms' }}>
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-5 h-5 text-orange-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">At Risk</span>
