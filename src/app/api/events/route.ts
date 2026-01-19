@@ -26,6 +26,7 @@ import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
 import { generateDemoEvents } from '@/lib/demo-data';
 import type { UnifiedEvent, EventType, EventScope, EventStatus, ProgramInstance } from '@/types';
+import Stripe from 'stripe';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -324,6 +325,63 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // EXTRA CALL PAYMENT VERIFICATION (Client-Side Only)
+    // If client selects extra call with a price, verify payment before creating
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (body.isExtraCall && !isCoachLed && body.enrollmentId) {
+      try {
+        // Get program to check price
+        const enrollmentDoc = await adminDb.collection('program_enrollments').doc(body.enrollmentId).get();
+        if (enrollmentDoc.exists) {
+          const enrollment = enrollmentDoc.data();
+          const programDoc = await adminDb.collection('programs').doc(enrollment?.programId).get();
+
+          if (programDoc.exists) {
+            const program = programDoc.data();
+            const pricePerExtraCallCents = program?.pricePerExtraCallCents || 0;
+
+            // If extra calls have a price, require payment
+            if (pricePerExtraCallCents > 0) {
+              if (!body.paymentIntentId) {
+                return NextResponse.json(
+                  {
+                    error: 'Payment required for extra call',
+                    code: 'PAYMENT_REQUIRED',
+                    pricePerExtraCallCents,
+                  },
+                  { status: 402 }
+                );
+              }
+
+              // Verify payment with Stripe
+              const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+              const paymentIntent = await stripe.paymentIntents.retrieve(body.paymentIntentId);
+
+              if (paymentIntent.status !== 'succeeded') {
+                return NextResponse.json(
+                  {
+                    error: 'Payment not completed',
+                    code: 'PAYMENT_INCOMPLETE',
+                    paymentStatus: paymentIntent.status,
+                  },
+                  { status: 402 }
+                );
+              }
+
+              console.log(`[EVENTS_POST] Extra call payment verified: ${body.paymentIntentId}`);
+            }
+          }
+        }
+      } catch (paymentError) {
+        console.error('[EVENTS_POST] Error verifying extra call payment:', paymentError);
+        return NextResponse.json(
+          { error: 'Failed to verify payment', code: 'PAYMENT_VERIFICATION_FAILED' },
+          { status: 500 }
+        );
+      }
+    }
+
     // Program instance linking - calculate week/day if instanceId is provided
     let instanceId: string | undefined = body.instanceId;
     let weekIndex: number | undefined;
@@ -442,6 +500,7 @@ export async function POST(request: NextRequest) {
       enrollmentId: body.enrollmentId || undefined,
       isExtraCall: body.isExtraCall || false,
       callUsageDeducted: false,
+      paymentIntentId: body.paymentIntentId || undefined, // For paid extra calls
 
       isRecurring: body.isRecurring || false,
       recurrence: body.recurrence || undefined,

@@ -20,6 +20,8 @@ export interface CallUsageData {
   weekResetDate: string;
   // Extra call pricing
   pricePerExtraCallCents: number | null;
+  // Booking mode
+  callBookingMode: 'propose' | 'direct';
   // Program info
   programId: string;
   programName: string;

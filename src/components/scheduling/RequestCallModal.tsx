@@ -14,10 +14,16 @@ import {
   DollarSign,
   Globe,
   Sparkles,
+  CreditCard,
 } from 'lucide-react';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useAvailableSlots } from '@/hooks/useAvailability';
 import { useSchedulingActions } from '@/hooks/useScheduling';
 import { useCallUsage, formatCallUsageStatus, formatWeeklyLimitStatus, formatExtraCallPrice } from '@/hooks/useCallUsage';
+
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 interface RequestCallModalProps {
   isOpen: boolean;
@@ -45,6 +51,98 @@ interface ProposedTimeSlot {
 }
 
 type CallTypeOption = 'program' | 'extra';
+
+/**
+ * PaymentForm component for Stripe Elements
+ */
+interface PaymentFormProps {
+  onSuccess: (paymentIntentId: string) => void;
+  onCancel: () => void;
+  amount: number;
+  isSubmitting: boolean;
+  setIsSubmitting: (val: boolean) => void;
+}
+
+function PaymentForm({ onSuccess, onCancel, amount, isSubmitting, setIsSubmitting }: PaymentFormProps) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [error, setError] = useState<string | null>(null);
+
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const { error: submitError, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.href,
+        },
+        redirect: 'if_required',
+      });
+
+      if (submitError) {
+        setError(submitError.message || 'Payment failed');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (paymentIntent && paymentIntent.status === 'succeeded') {
+        onSuccess(paymentIntent.id);
+      } else {
+        setError('Payment was not completed');
+        setIsSubmitting(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Payment failed');
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handlePaymentSubmit} className="space-y-4">
+      <div className="p-4 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl">
+        <PaymentElement />
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl text-red-600 dark:text-red-400">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+
+      <div className="flex items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={isSubmitting}
+          className="px-6 py-3 text-[#5f5a55] dark:text-[#b2b6c2] font-albert font-medium hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors disabled:opacity-50"
+        >
+          Back
+        </button>
+        <button
+          type="submit"
+          disabled={!stripe || isSubmitting}
+          className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl font-albert font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isSubmitting ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <CreditCard className="w-4 h-4" />
+          )}
+          Pay ${(amount / 100).toFixed(2)}
+        </button>
+      </div>
+    </form>
+  );
+}
 
 /**
  * RequestCallModal
@@ -76,6 +174,10 @@ export function RequestCallModal({
     hasAllowance,
   } = useCallUsage(enrollmentId, isOpen);
 
+  // Booking mode: 'propose' = client proposes times, 'direct' = client books directly
+  const callBookingMode = usage?.callBookingMode || 'propose';
+  const isDirectBooking = callBookingMode === 'direct';
+
   // Form state
   const [duration, setDuration] = useState(60);
   const [description, setDescription] = useState('');
@@ -88,6 +190,14 @@ export function RequestCallModal({
 
   // Success state
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Payment state for extra calls
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentClientSecret, setPaymentClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false);
 
   // Date range for available slots (next 30 days)
   const dateRange = useMemo(() => {
@@ -162,35 +272,100 @@ export function RequestCallModal({
     setProposedSlots(prev => prev.filter(s => s.id !== slotId));
   }, []);
 
-  // Handle form submission
-  const handleSubmit = async () => {
-    if (proposedSlots.length === 0) return;
+  // Check if payment is required for extra calls
+  const requiresPayment = showCallTypeSelector && callType === 'extra' && extraCallPrice > 0;
+
+  // Initialize payment for extra calls
+  const initializePayment = useCallback(async () => {
+    if (!enrollmentId) return;
+
+    setIsCreatingPayment(true);
+    setPaymentError(null);
 
     try {
-      // Convert proposed slots to the API format
-      const proposedTimes = proposedSlots.map(slot => {
-        const startDateTime = new Date(`${slot.date}T${slot.startTime}`);
-        const endDateTime = new Date(`${slot.date}T${slot.endTime}`);
-        return {
-          startDateTime: startDateTime.toISOString(),
-          endDateTime: endDateTime.toISOString(),
-        };
-      });
-
-      await requestCall({
-        proposedTimes,
-        description,
-        duration,
-        // Pass program call info if applicable
-        ...(showCallTypeSelector && {
-          isProgramCall: callType === 'program',
-          isExtraCall: callType === 'extra',
+      const response = await fetch('/api/scheduling/extra-call-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           enrollmentId,
+          durationMinutes: duration,
         }),
       });
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initialize payment');
+      }
+
+      setPaymentClientSecret(data.clientSecret);
+      setPaymentIntentId(data.paymentIntentId);
+      setShowPayment(true);
+    } catch (err) {
+      setPaymentError(err instanceof Error ? err.message : 'Failed to initialize payment');
+    } finally {
+      setIsCreatingPayment(false);
+    }
+  }, [enrollmentId, duration]);
+
+  // Handle form submission (after payment if required)
+  const handleSubmit = async (paidPaymentIntentId?: string) => {
+    // For direct booking: need selectedDate and selectedTime
+    // For propose mode: need at least one proposedSlot
+    if (isDirectBooking) {
+      if (!selectedDate || !selectedTime) return;
+    } else {
+      if (proposedSlots.length === 0) return;
+    }
+
+    try {
+      if (isDirectBooking) {
+        // Direct booking: single confirmed event
+        const startDateTime = new Date(`${selectedDate}T${selectedTime}`);
+        const endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
+
+        await requestCall({
+          directBooking: true,
+          startDateTime: startDateTime.toISOString(),
+          endDateTime: endDateTime.toISOString(),
+          description,
+          duration,
+          // Pass program call info if applicable
+          ...(showCallTypeSelector && {
+            isProgramCall: callType === 'program',
+            isExtraCall: callType === 'extra',
+            enrollmentId,
+            ...(paidPaymentIntentId && { paymentIntentId: paidPaymentIntentId }),
+          }),
+        });
+      } else {
+        // Propose mode: multiple proposed times
+        const proposedTimes = proposedSlots.map(slot => {
+          const startDateTime = new Date(`${slot.date}T${slot.startTime}`);
+          const endDateTime = new Date(`${slot.date}T${slot.endTime}`);
+          return {
+            startDateTime: startDateTime.toISOString(),
+            endDateTime: endDateTime.toISOString(),
+          };
+        });
+
+        await requestCall({
+          proposedTimes,
+          description,
+          duration,
+          // Pass program call info if applicable
+          ...(showCallTypeSelector && {
+            isProgramCall: callType === 'program',
+            isExtraCall: callType === 'extra',
+            enrollmentId,
+            ...(paidPaymentIntentId && { paymentIntentId: paidPaymentIntentId }),
+          }),
+        });
+      }
+
       // Show success message before closing
       setShowSuccess(true);
+      setShowPayment(false);
       onSuccess?.();
 
       // Auto-close after showing success
@@ -202,6 +377,15 @@ export function RequestCallModal({
       // Error is handled by the hook
     }
   };
+
+  // Handle "Continue" button - either go to payment or submit directly
+  const handleContinue = useCallback(() => {
+    if (requiresPayment) {
+      initializePayment();
+    } else {
+      handleSubmit();
+    }
+  }, [requiresPayment, initializePayment]);
 
   // Format date for display
   const formatDate = (dateStr: string) => {
@@ -282,10 +466,12 @@ export function RequestCallModal({
               <CheckCircle className="w-8 h-8 text-green-500" />
             </div>
             <h3 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-              Request Sent!
+              {isDirectBooking ? 'Call Booked!' : 'Request Sent!'}
             </h3>
             <p className="text-[#5f5a55] dark:text-[#b2b6c2]">
-              Your call request has been sent to {coachName}. You&apos;ll be notified when they respond.
+              {isDirectBooking
+                ? `Your call with ${coachName} has been confirmed.`
+                : `Your call request has been sent to ${coachName}. You'll be notified when they respond.`}
             </p>
           </div>
         ) : (
@@ -432,7 +618,7 @@ export function RequestCallModal({
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
                   <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Select Date & Time
+                    {isDirectBooking ? 'Select Your Time Slot' : 'Select Date & Time'}
                   </span>
                 </div>
                 <div className="flex items-center gap-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
@@ -441,7 +627,9 @@ export function RequestCallModal({
                 </div>
               </div>
               <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-                Propose times that work for you. Times shown in your local timezone.
+                {isDirectBooking
+                  ? 'Select an available time slot to book your call.'
+                  : 'Propose times that work for you. Times shown in your local timezone.'}
               </p>
             </div>
 
@@ -508,8 +696,8 @@ export function RequestCallModal({
                     </div>
                   )}
 
-                  {/* Add Time Button */}
-                  {selectedDate && selectedTime && (
+                  {/* Add Time Button - only for propose mode */}
+                  {!isDirectBooking && selectedDate && selectedTime && (
                     <button
                       onClick={addProposedSlot}
                       className="flex items-center gap-2 px-4 py-2 bg-brand-accent/10 text-brand-accent rounded-lg font-albert font-medium hover:bg-brand-accent/20 transition-colors"
@@ -518,13 +706,23 @@ export function RequestCallModal({
                       Add this time
                     </button>
                   )}
+
+                  {/* Selected time confirmation - for direct booking */}
+                  {isDirectBooking && selectedDate && selectedTime && (
+                    <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-xl">
+                      <Check className="w-4 h-4 text-green-500" />
+                      <span className="font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        {formatDate(selectedDate)} at {formatTime(selectedTime)} ({duration} min)
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
             </div>
           </div>
 
-          {/* Proposed Times List */}
-          {proposedSlots.length > 0 && (
+          {/* Proposed Times List - only for propose mode */}
+          {!isDirectBooking && proposedSlots.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                 Your Proposed Times
@@ -568,17 +766,62 @@ export function RequestCallModal({
           </div>
 
           {/* Error Message */}
-          {error && (
+          {(error || paymentError) && (
             <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl text-red-600 dark:text-red-400">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <p className="text-sm">{error}</p>
+              <p className="text-sm">{error || paymentError}</p>
             </div>
           )}
         </div>
         )}
 
-        {/* Footer - hide when showing success */}
-        {!showSuccess && (
+        {/* Payment View - show when payment is required and initialized */}
+        {showPayment && paymentClientSecret && (
+          <div className="p-6 space-y-6">
+            <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-xl">
+              <CreditCard className="w-5 h-5 text-green-600" />
+              <div>
+                <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  Complete Payment
+                </p>
+                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                  Pay {formatPrice(extraCallPrice)} for your extra call
+                </p>
+              </div>
+            </div>
+
+            <Elements
+              stripe={stripePromise}
+              options={{
+                clientSecret: paymentClientSecret,
+                appearance: {
+                  theme: 'stripe',
+                  variables: {
+                    colorPrimary: '#1a1a1a',
+                    borderRadius: '12px',
+                  },
+                },
+              }}
+            >
+              <PaymentForm
+                amount={extraCallPrice}
+                onSuccess={(paidIntentId) => {
+                  handleSubmit(paidIntentId);
+                }}
+                onCancel={() => {
+                  setShowPayment(false);
+                  setPaymentClientSecret(null);
+                  setPaymentIntentId(null);
+                }}
+                isSubmitting={isPaymentSubmitting}
+                setIsSubmitting={setIsPaymentSubmitting}
+              />
+            </Elements>
+          </div>
+        )}
+
+        {/* Footer - hide when showing success or payment */}
+        {!showSuccess && !showPayment && (
         <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
           <button
             onClick={onClose}
@@ -587,12 +830,22 @@ export function RequestCallModal({
             Cancel
           </button>
           <button
-            onClick={handleSubmit}
-            disabled={proposedSlots.length === 0 || isLoading || (showCallTypeSelector && !canScheduleProgramCall && callType === 'program')}
+            onClick={handleContinue}
+            disabled={
+              // Different validation for direct booking vs propose mode
+              (isDirectBooking ? (!selectedDate || !selectedTime) : proposedSlots.length === 0) ||
+              isLoading ||
+              isCreatingPayment ||
+              (showCallTypeSelector && !canScheduleProgramCall && callType === 'program')
+            }
             className="flex items-center gap-2 px-6 py-3 bg-[#1a1a1a] dark:bg-brand-accent text-white rounded-xl font-albert font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
-            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            Send Request
+            {(isLoading || isCreatingPayment) && <Loader2 className="w-4 h-4 animate-spin" />}
+            {requiresPayment
+              ? 'Continue to Payment'
+              : isDirectBooking
+                ? 'Book Call'
+                : 'Send Request'}
           </button>
         </div>
         )}

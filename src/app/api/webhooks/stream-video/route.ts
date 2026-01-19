@@ -163,6 +163,24 @@ async function handleRecordingReady(payload: StreamWebhookPayload): Promise<void
 
   console.log(`[STREAM_VIDEO_WEBHOOK] Recording ready for call ${callId} in org ${organizationId}`);
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DEDUPLICATION CHECK - Prevent double-processing of same recording
+  // ═══════════════════════════════════════════════════════════════════════════
+  const existingTranscription = await adminDb
+    .collection('organizations')
+    .doc(organizationId)
+    .collection('platform_transcriptions')
+    .where('callId', '==', callId)
+    .where('status', 'in', ['completed', 'processing'])
+    .limit(1)
+    .get();
+
+  if (!existingTranscription.empty) {
+    const existingDoc = existingTranscription.docs[0];
+    console.log(`[STREAM_VIDEO_WEBHOOK] Call ${callId} already processed (transcription ${existingDoc.id}, status: ${existingDoc.data()?.status}), skipping`);
+    return;
+  }
+
   // Calculate recording duration in seconds
   const startTime = new Date(call_recording.start_time).getTime();
   const endTime = new Date(call_recording.end_time).getTime();

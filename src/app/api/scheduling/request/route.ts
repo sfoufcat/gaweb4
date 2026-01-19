@@ -38,29 +38,32 @@ export async function POST(request: NextRequest) {
       title,
       description,
       duration = 60,
+      // Program call tracking
+      isProgramCall,
+      isExtraCall,
+      enrollmentId,
+      paymentIntentId,
+      // Direct booking mode - creates confirmed event without coach approval
+      directBooking,
+      // For direct booking: single time slot
+      startDateTime: directStartDateTime,
+      endDateTime: directEndDateTime,
     } = body;
 
-    // Validate proposed times
-    if (!proposedTimes || !Array.isArray(proposedTimes) || proposedTimes.length === 0) {
-      return NextResponse.json(
-        { error: 'At least one proposed time is required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate proposed times format
-    for (const time of proposedTimes) {
-      if (!time.startDateTime || !time.endDateTime) {
+    // Validate time inputs based on booking mode
+    if (directBooking) {
+      // Direct booking: requires single startDateTime and endDateTime
+      if (!directStartDateTime || !directEndDateTime) {
         return NextResponse.json(
-          { error: 'Each proposed time must have startDateTime and endDateTime' },
+          { error: 'startDateTime and endDateTime are required for direct booking' },
           { status: 400 }
         );
       }
-      const start = new Date(time.startDateTime);
-      const end = new Date(time.endDateTime);
+      const start = new Date(directStartDateTime);
+      const end = new Date(directEndDateTime);
       if (isNaN(start.getTime()) || isNaN(end.getTime())) {
         return NextResponse.json(
-          { error: 'Invalid date format for proposed times' },
+          { error: 'Invalid date format' },
           { status: 400 }
         );
       }
@@ -69,6 +72,38 @@ export async function POST(request: NextRequest) {
           { error: 'Start time must be before end time' },
           { status: 400 }
         );
+      }
+    } else {
+      // Propose mode: requires proposedTimes array
+      if (!proposedTimes || !Array.isArray(proposedTimes) || proposedTimes.length === 0) {
+        return NextResponse.json(
+          { error: 'At least one proposed time is required' },
+          { status: 400 }
+        );
+      }
+
+      // Validate proposed times format
+      for (const time of proposedTimes) {
+        if (!time.startDateTime || !time.endDateTime) {
+          return NextResponse.json(
+            { error: 'Each proposed time must have startDateTime and endDateTime' },
+            { status: 400 }
+          );
+        }
+        const start = new Date(time.startDateTime);
+        const end = new Date(time.endDateTime);
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          return NextResponse.json(
+            { error: 'Invalid date format for proposed times' },
+            { status: 400 }
+          );
+        }
+        if (start >= end) {
+          return NextResponse.json(
+            { error: 'Start time must be before end time' },
+            { status: 400 }
+          );
+        }
       }
     }
 
@@ -168,66 +203,127 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
 
-    // Create proposed time objects
-    const formattedProposedTimes: ProposedTime[] = proposedTimes.map((time: { startDateTime: string; endDateTime: string }, index: number) => ({
-      id: `proposed_${Date.now()}_${index}`,
-      startDateTime: new Date(time.startDateTime).toISOString(),
-      endDateTime: new Date(time.endDateTime).toISOString(),
-      proposedBy: userId,
-      proposedAt: now,
-      status: 'pending' as const,
-    }));
-
-    // Use the first proposed time as the initial event time
-    const firstProposed = formattedProposedTimes[0];
-
     // Check pricing
     const isPaid = callSettings?.pricingModel === 'per_call' || callSettings?.pricingModel === 'both';
     const priceInCents = isPaid ? callSettings?.pricePerCallCents : undefined;
 
     // Create the event
     const eventRef = adminDb.collection('events').doc();
-    const eventData: UnifiedEvent = {
-      id: eventRef.id,
-      title: title || clientName,
-      description: description || `Call request from ${clientName}`,
-      startDateTime: firstProposed.startDateTime,
-      endDateTime: firstProposed.endDateTime,
-      timezone,
-      durationMinutes: duration,
-      locationType: 'online',
-      locationLabel: 'Video Call',
-      eventType: 'coaching_1on1',
-      scope: 'private',
-      participantModel: 'invite_only',
-      approvalType: 'none',
-      status: 'pending_approval', // Needs coach acceptance
-      organizationId: orgId,
-      isRecurring: false,
-      createdByUserId: userId,
-      hostUserId: coachId,
-      hostName: coachName,
-      hostAvatarUrl: coachAvatarUrl,
-      isCoachLed: false, // Client-initiated
-      attendeeIds: [coachId, userId],
-      sendChatReminders: true,
-      // Scheduling-specific fields
-      schedulingStatus: 'proposed',
-      proposedBy: userId,
-      proposedTimes: formattedProposedTimes,
-      schedulingNotes: description,
-      // Pricing fields
-      isPaid,
-      priceInCents,
-      createdAt: now,
-      updatedAt: now,
-    };
+    let eventData: UnifiedEvent;
+
+    if (directBooking) {
+      // Direct booking: Create confirmed event immediately
+      const startDT = new Date(directStartDateTime).toISOString();
+      const endDT = new Date(directEndDateTime).toISOString();
+
+      eventData = {
+        id: eventRef.id,
+        title: title || `Call with ${clientName}`,
+        description: description || `Coaching call booked by ${clientName}`,
+        startDateTime: startDT,
+        endDateTime: endDT,
+        timezone,
+        durationMinutes: duration,
+        locationType: 'online',
+        locationLabel: 'Video Call',
+        eventType: 'coaching_1on1',
+        scope: 'private',
+        participantModel: 'invite_only',
+        approvalType: 'none',
+        status: 'confirmed', // Direct booking = confirmed immediately
+        organizationId: orgId,
+        isRecurring: false,
+        createdByUserId: userId,
+        hostUserId: coachId,
+        hostName: coachName,
+        hostAvatarUrl: coachAvatarUrl,
+        isCoachLed: false, // Client-initiated
+        attendeeIds: [coachId, userId],
+        sendChatReminders: true,
+        // No proposed times for direct booking
+        schedulingStatus: 'confirmed',
+        schedulingNotes: description,
+        // Pricing fields
+        isPaid,
+        priceInCents,
+        // Program call tracking
+        isProgramCall: isProgramCall || false,
+        isExtraCall: isExtraCall || false,
+        enrollmentId: enrollmentId || undefined,
+        paymentIntentId: paymentIntentId || undefined,
+        callUsageDeducted: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+    } else {
+      // Propose mode: Create pending event with proposed times
+      const formattedProposedTimes: ProposedTime[] = proposedTimes.map((time: { startDateTime: string; endDateTime: string }, index: number) => ({
+        id: `proposed_${Date.now()}_${index}`,
+        startDateTime: new Date(time.startDateTime).toISOString(),
+        endDateTime: new Date(time.endDateTime).toISOString(),
+        proposedBy: userId,
+        proposedAt: now,
+        status: 'pending' as const,
+      }));
+
+      // Use the first proposed time as the initial event time
+      const firstProposed = formattedProposedTimes[0];
+
+      eventData = {
+        id: eventRef.id,
+        title: title || clientName,
+        description: description || `Call request from ${clientName}`,
+        startDateTime: firstProposed.startDateTime,
+        endDateTime: firstProposed.endDateTime,
+        timezone,
+        durationMinutes: duration,
+        locationType: 'online',
+        locationLabel: 'Video Call',
+        eventType: 'coaching_1on1',
+        scope: 'private',
+        participantModel: 'invite_only',
+        approvalType: 'none',
+        status: 'pending_approval', // Needs coach acceptance
+        organizationId: orgId,
+        isRecurring: false,
+        createdByUserId: userId,
+        hostUserId: coachId,
+        hostName: coachName,
+        hostAvatarUrl: coachAvatarUrl,
+        isCoachLed: false, // Client-initiated
+        attendeeIds: [coachId, userId],
+        sendChatReminders: true,
+        // Scheduling-specific fields
+        schedulingStatus: 'proposed',
+        proposedBy: userId,
+        proposedTimes: formattedProposedTimes,
+        schedulingNotes: description,
+        // Pricing fields
+        isPaid,
+        priceInCents,
+        // Program call tracking
+        isProgramCall: isProgramCall || false,
+        isExtraCall: isExtraCall || false,
+        enrollmentId: enrollmentId || undefined,
+        paymentIntentId: paymentIntentId || undefined,
+        callUsageDeducted: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+    }
 
     await eventRef.set(eventData);
 
-    // Send notification to coach about call request
+    // Send notification to coach
     try {
-      await notifyCallRequested(eventData, coachId);
+      if (directBooking) {
+        // For direct booking, notify coach about the confirmed call
+        // TODO: Create notifyCallBooked function for direct bookings
+        console.log('[SCHEDULING_REQUEST] Direct booking notification - call confirmed');
+      } else {
+        // For propose mode, notify coach about the request
+        await notifyCallRequested(eventData, coachId);
+      }
     } catch (notifyErr) {
       console.error('[SCHEDULING_REQUEST] Failed to send notification:', notifyErr);
       // Don't fail the request if notification fails
@@ -236,7 +332,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       event: eventData,
       success: true,
-      message: 'Call request sent to coach',
+      message: directBooking ? 'Call booked successfully' : 'Call request sent to coach',
+      directBooking: !!directBooking,
       isPaid,
       priceInCents,
     });

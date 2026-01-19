@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Users, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,6 +46,23 @@ const DEFAULT_SYNC_FIELDS: SyncFieldOptions = {
   syncHabits: true,
 };
 
+// Helper to compute initial fields from editedFields set
+function computeInitialSyncFields(editedFields?: Set<string>): SyncFieldOptions {
+  if (editedFields && editedFields.size > 0) {
+    return {
+      syncName: editedFields.has('syncName'),
+      syncTheme: editedFields.has('syncTheme'),
+      syncPrompt: editedFields.has('syncPrompt'),
+      syncTasks: editedFields.has('syncTasks'),
+      syncFocus: editedFields.has('syncFocus'),
+      syncNotes: editedFields.has('syncNotes'),
+      syncHabits: editedFields.has('syncHabits'),
+    };
+  }
+  // Default: all selected for cohort sync (since cohort content is empty initially)
+  return DEFAULT_SYNC_FIELDS;
+}
+
 export function SyncToCohortDialog({
   open,
   onOpenChange,
@@ -56,34 +73,7 @@ export function SyncToCohortDialog({
   editedFields,
   onSyncComplete,
 }: SyncToCohortDialogProps) {
-  // Store editedFields in a ref to avoid re-render loops from Set reference changes
-  const editedFieldsRef = useRef<Set<string> | undefined>(editedFields);
-
-  // Update ref when editedFields changes (without triggering re-render)
-  useEffect(() => {
-    editedFieldsRef.current = editedFields;
-  }, [editedFields]);
-
-  // Memoized function to compute initial sync fields from ref
-  const getInitialSyncFields = useCallback((): SyncFieldOptions => {
-    const fields = editedFieldsRef.current;
-    if (fields && fields.size > 0) {
-      return {
-        syncName: fields.has('syncName'),
-        syncTheme: fields.has('syncTheme'),
-        syncPrompt: fields.has('syncPrompt'),
-        syncTasks: fields.has('syncTasks'),
-        syncFocus: fields.has('syncFocus'),
-        syncNotes: fields.has('syncNotes'),
-        syncHabits: fields.has('syncHabits'),
-      };
-    }
-    // Default: all selected for cohort sync (since cohort content is empty initially)
-    return DEFAULT_SYNC_FIELDS;
-  }, []);
-
   // All useState hooks grouped together (React Rules of Hooks)
-  const [isMounted, setIsMounted] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [preserveCohortData, setPreserveCohortData] = useState(true);
   const [distributeAfterSync, setDistributeAfterSync] = useState(true);
@@ -91,13 +81,19 @@ export function SyncToCohortDialog({
   const [success, setSuccess] = useState<string | null>(null);
   const [syncFields, setSyncFields] = useState<SyncFieldOptions>(DEFAULT_SYNC_FIELDS);
 
-  // useRef hooks
-  const wasOpenRef = useRef(false);
+  // Track previous open state to detect open transitions
+  const prevOpenRef = useRef(false);
 
-  // useEffect hooks - client-side only rendering to avoid hydration issues with portals
+  // Reset state when dialog opens (transitions from closed to open)
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    if (open && !prevOpenRef.current) {
+      // Dialog just opened - initialize
+      setSyncFields(computeInitialSyncFields(editedFields));
+      setError(null);
+      setSuccess(null);
+    }
+    prevOpenRef.current = open;
+  }, [open, editedFields]);
 
   // Select all / deselect all helper
   const allFieldsSelected = Object.values(syncFields).every(v => v);
@@ -113,17 +109,6 @@ export function SyncToCohortDialog({
       syncHabits: newValue,
     });
   };
-
-  // Reset syncFields only when dialog opens (transitions from closed to open)
-  useEffect(() => {
-    if (open && !wasOpenRef.current) {
-      // Dialog just opened - initialize fields from ref (stable reference)
-      setSyncFields(getInitialSyncFields());
-      setError(null);
-      setSuccess(null);
-    }
-    wasOpenRef.current = open;
-  }, [open, getInitialSyncFields]);
 
   const toggleField = (field: keyof SyncFieldOptions) => {
     setSyncFields(prev => ({ ...prev, [field]: !prev[field] }));
@@ -203,8 +188,8 @@ export function SyncToCohortDialog({
     { key: 'syncHabits', label: 'Habits' },
   ];
 
-  // Don't render the dialog portal until mounted on client
-  if (!isMounted) {
+  // Don't render anything when closed - this prevents any SSR/hydration issues
+  if (!open) {
     return null;
   }
 

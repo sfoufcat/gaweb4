@@ -39,19 +39,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify state matches (should be verified against stored state)
-    // For now, state contains orgId for validation
-    if (state !== orgId) {
+    // Decode state to get orgId, userId, and originDomain
+    let stateData: { orgId: string; userId: string; provider: string; originDomain?: string; timestamp?: number };
+    try {
+      stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+    } catch {
       return NextResponse.redirect(
         new URL('/coach/settings?tab=integrations&error=invalid_state', request.url)
       );
     }
 
-    // Get redirect URI for token exchange
-    const redirectUri = new URL(
-      '/api/coach/integrations/google_sheets/callback',
-      request.url
-    ).toString();
+    const { originDomain } = stateData;
+
+    // Verify state orgId matches authenticated user's orgId
+    if (stateData.orgId !== orgId) {
+      return NextResponse.redirect(
+        new URL('/coach/settings?tab=integrations&error=invalid_state', request.url)
+      );
+    }
+
+    // Determine redirect base URL - use originDomain if available
+    const redirectBase = originDomain ? `https://${originDomain}` : request.url;
+
+    // Get redirect URI for token exchange - must match authorization URL
+    const baseUrl = process.env.GOOGLE_OAUTH_REDIRECT_BASE_URL || 'https://calendar.coachful.co';
+    const redirectUri = `${baseUrl}/api/coach/integrations/google_sheets/callback`;
 
     // Exchange code for tokens
     const tokens = await exchangeGoogleSheetsCodeForTokens(code, redirectUri);
@@ -98,9 +110,11 @@ export async function GET(request: NextRequest) {
       userId
     );
 
-    // Redirect back to settings with success
+    console.log(`[Google Sheets OAuth] Successfully connected for org ${orgId}, redirecting to ${redirectBase}`);
+
+    // Redirect back to settings with success (use originDomain to go back to user's org)
     return NextResponse.redirect(
-      new URL('/coach/settings?tab=integrations&success=google_sheets', request.url)
+      new URL('/coach/settings?tab=integrations&success=google_sheets', redirectBase)
     );
   } catch (error) {
     console.error('[Google Sheets OAuth] Callback error:', error);

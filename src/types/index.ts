@@ -4923,6 +4923,7 @@ export interface UnifiedEvent {
   // ═══════════════════════════════════════════════════════════════════════════
   // PROGRAM CALL TRACKING (for call allowance system)
   // ═══════════════════════════════════════════════════════════════════════════
+  enrollmentId?: string;            // FK to program_enrollments (for call allowance tracking)
   isProgramCall?: boolean;          // true = uses client's program allowance
   isExtraCall?: boolean;            // true = paid beyond allowance
   callUsageDeducted?: boolean;      // true = already counted against allowance

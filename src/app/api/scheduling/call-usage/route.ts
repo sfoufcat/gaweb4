@@ -31,6 +31,8 @@ interface CallUsageResponse {
   weekResetDate: string;
   // Extra call pricing
   pricePerExtraCallCents: number | null;
+  // Booking mode
+  callBookingMode: 'propose' | 'direct';
   // Program info
   programId: string;
   programName: string;
@@ -266,6 +268,7 @@ export async function GET(request: NextRequest) {
       weeklyRemaining,
       weekResetDate: getNextMonday().toISOString(),
       pricePerExtraCallCents: program.pricePerExtraCallCents || null,
+      callBookingMode: program.callBookingMode || 'propose',
       programId: program.id || programDoc.id,
       programName: program.name,
       enrollmentId: enrollment.id,

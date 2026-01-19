@@ -157,10 +157,19 @@ interface ProposeCallOptions {
 }
 
 interface RequestCallOptions {
-  proposedTimes: Array<{ startDateTime: string; endDateTime: string }>;
+  proposedTimes?: Array<{ startDateTime: string; endDateTime: string }>;
   title?: string;
   description?: string;
   duration?: number;
+  // Program call tracking
+  isProgramCall?: boolean;
+  isExtraCall?: boolean;
+  enrollmentId?: string;
+  paymentIntentId?: string; // For paid extra calls
+  // Direct booking mode (skips coach approval)
+  directBooking?: boolean;
+  startDateTime?: string; // For direct booking
+  endDateTime?: string; // For direct booking
 }
 
 interface RespondOptions {

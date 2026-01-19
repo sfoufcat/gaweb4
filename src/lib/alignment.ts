@@ -21,6 +21,7 @@
 
 import { adminDb } from './firebase-admin';
 import { invalidateSquadCache } from './squad-alignment';
+import { getTodayInTimezone, DEFAULT_TIMEZONE } from './timezone';
 import type { 
   UserAlignment, 
   UserAlignmentSummary, 
@@ -33,26 +34,47 @@ import type {
 import { DEFAULT_ALIGNMENT_CONFIG } from '@/types';
 
 /**
- * Get today's date in YYYY-MM-DD format
- * Uses the user's local date based on server time
+ * Get user's timezone from Firestore
+ * Falls back to UTC if not set
  */
-export function getTodayDate(): string {
+async function getUserTimezone(userId: string): Promise<string> {
+  try {
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    return userDoc.exists ? (userDoc.data()?.timezone || DEFAULT_TIMEZONE) : DEFAULT_TIMEZONE;
+  } catch {
+    return DEFAULT_TIMEZONE;
+  }
+}
+
+/**
+ * Get today's date in YYYY-MM-DD format
+ * Uses timezone-aware calculation when timezone is provided
+ * @param timezone Optional IANA timezone string (e.g., "Europe/Amsterdam")
+ */
+export function getTodayDate(timezone?: string): string {
+  if (timezone) {
+    return getTodayInTimezone(timezone);
+  }
   return new Date().toISOString().split('T')[0];
 }
 
 /**
  * Get yesterday's date in YYYY-MM-DD format
+ * @param timezone Optional IANA timezone string
  */
-export function getYesterdayDate(): string {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  return yesterday.toISOString().split('T')[0];
+export function getYesterdayDate(timezone?: string): string {
+  const today = getTodayDate(timezone);
+  const date = new Date(today + 'T12:00:00'); // Use noon to avoid DST issues
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().split('T')[0];
 }
 
 /**
  * Check if a date string (YYYY-MM-DD) falls on a weekend
+ * @param dateString Date in YYYY-MM-DD format
+ * @param _timezone Optional timezone (not used for date string check, but kept for API consistency)
  */
-function isWeekendDate(dateString: string): boolean {
+function isWeekendDate(dateString: string, _timezone?: string): boolean {
   const date = new Date(dateString + 'T12:00:00'); // Use noon to avoid timezone issues
   const day = date.getDay();
   return day === 0 || day === 6; // Sunday or Saturday
@@ -62,16 +84,18 @@ function isWeekendDate(dateString: string): boolean {
  * Get the last weekday date (skipping Saturday and Sunday)
  * Used for streak calculation to bridge over weekends
  * e.g., On Monday, this returns Friday
+ * @param fromDate Date in YYYY-MM-DD format
+ * @param timezone Optional IANA timezone string
  */
-function getLastWeekdayDate(fromDate: string): string {
+function getLastWeekdayDate(fromDate: string, timezone?: string): string {
   const date = new Date(fromDate + 'T12:00:00');
   date.setDate(date.getDate() - 1); // Start with yesterday
-  
+
   // Keep going back until we find a weekday
-  while (isWeekendDate(date.toISOString().split('T')[0])) {
+  while (isWeekendDate(date.toISOString().split('T')[0], timezone)) {
     date.setDate(date.getDate() - 1);
   }
-  
+
   return date.toISOString().split('T')[0];
 }
 
@@ -589,49 +613,72 @@ async function invalidateUserSquadCache(userId: string, organizationId: string):
 /**
  * Check if the user's streak should be reset to 0 within an organization
  * Called on page load to proactively show broken streaks
- * 
- * If the previous day (or weekday if weekends disabled) wasn't fully aligned, 
+ *
+ * If the previous day (or weekday if weekends disabled) wasn't fully aligned,
  * reset streak to 0 immediately rather than waiting until the user next hits 100%
  * Multi-tenancy: Streak is tracked separately per organization
+ *
+ * @param userId User ID
+ * @param organizationId Organization ID
+ * @param today Today's date in YYYY-MM-DD format (should be timezone-aware)
+ * @param timezone User's IANA timezone string
  */
-async function checkAndResetBrokenStreak(userId: string, organizationId: string, today: string): Promise<void> {
+async function checkAndResetBrokenStreak(userId: string, organizationId: string, today: string, timezone: string): Promise<void> {
   const summaryDocId = getAlignmentSummaryDocId(organizationId, userId);
   const summaryRef = adminDb.collection('userAlignmentSummary').doc(summaryDocId);
-  
+
   try {
     // Get org config to check weekend setting
     const config = await getOrgAlignmentConfig(organizationId);
     const weekendStreakEnabled = config.weekendStreakEnabled === true;
-    
+
     const summaryDoc = await summaryRef.get();
-    
+
     if (!summaryDoc.exists) return; // No streak to reset
-    
+
     const summary = summaryDoc.data() as UserAlignmentSummary;
-    
+
     // If already at 0, nothing to do
     if (summary.currentStreak === 0) return;
-    
-    // Skip check on weekends only if weekend streak is disabled (default behavior)
-    if (!weekendStreakEnabled && isWeekendDate(today)) return;
-    
-    // Get the expected last aligned date based on weekend setting
-    const expectedLastDate = weekendStreakEnabled 
-      ? getYesterdayDate() 
-      : getLastWeekdayDate(today);
-    
-    // If last aligned date matches expected date, streak is intact
-    if (summary.lastAlignedDate === expectedLastDate) return;
-    
+
     // If last aligned date is today, streak is intact (already aligned today)
     if (summary.lastAlignedDate === today) return;
-    
+
+    // On weekends with weekendStreakEnabled=false:
+    // - Don't require weekend alignment
+    // - BUT still check if streak was broken on a previous weekday
+    if (!weekendStreakEnabled && isWeekendDate(today, timezone)) {
+      // Check if last aligned date was the most recent weekday (Friday)
+      const lastRequiredDate = getLastWeekdayDate(today, timezone);
+
+      // If last aligned date matches Friday (or more recent), streak intact
+      if (summary.lastAlignedDate === lastRequiredDate) {
+        return; // Streak intact, no action needed
+      }
+
+      // Streak is broken - reset to 0
+      await summaryRef.update({
+        currentStreak: 0,
+        updatedAt: new Date().toISOString(),
+      });
+      console.log(`[ALIGNMENT] Reset broken streak on weekend for user ${userId} in org ${organizationId} (last aligned: ${summary.lastAlignedDate}, required: ${lastRequiredDate})`);
+      return;
+    }
+
+    // Get the expected last aligned date based on weekend setting
+    const expectedLastDate = weekendStreakEnabled
+      ? getYesterdayDate(timezone)
+      : getLastWeekdayDate(today, timezone);
+
+    // If last aligned date matches expected date, streak is intact
+    if (summary.lastAlignedDate === expectedLastDate) return;
+
     // There's a gap - reset streak to 0
     await summaryRef.update({
       currentStreak: 0,
       updatedAt: new Date().toISOString(),
     });
-    
+
     console.log(`[ALIGNMENT] Reset broken streak for user ${userId} in org ${organizationId} (last aligned: ${summary.lastAlignedDate}, expected: ${expectedLastDate})`);
   } catch (error) {
     console.error('[ALIGNMENT] Error checking/resetting broken streak:', error);
