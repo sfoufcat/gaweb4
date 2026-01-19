@@ -68,14 +68,14 @@ export async function GET(request: NextRequest) {
       squadMap.set(doc.id, {
         name: squad.name,
         chatChannelId: squad.chatChannelId ?? undefined,
-        image: squad.avatarUrl || squad.imageUrl,
+        image: squad.avatarUrl,
       });
 
       if (squad.chatChannelId) {
         channelToSquadMap.set(squad.chatChannelId, {
           squadId: doc.id,
           squadName: squad.name,
-          image: squad.avatarUrl || squad.imageUrl,
+          image: squad.avatarUrl,
         });
       }
     }
