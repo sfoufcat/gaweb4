@@ -31,7 +31,7 @@ import {
   Save,
   X,
 } from 'lucide-react';
-import { SyncToCohortDialog } from './SyncToCohortDialog';
+import { SyncTemplateDialog } from './SyncTemplateDialog';
 
 // Selection types (same as ProgramSidebarNav for compatibility)
 export type SidebarSelection =
@@ -50,6 +50,7 @@ interface ModuleWeeksSidebarProps {
   onWeeksReorder: (moduleId: string, weeks: ProgramWeek[]) => Promise<void>;
   onWeekMoveToModule: (weekId: string, targetModuleId: string, targetIndex: number) => Promise<void>;
   onAddModule: () => void;
+  onAddWeek?: (moduleId: string) => Promise<void>;
   onDeleteModule?: (moduleId: string, action: 'move' | 'delete') => Promise<void>;
   onFillWithAI?: () => void;
   onFillWeek?: (weekNumber: number) => void;
@@ -361,6 +362,7 @@ export function ModuleWeeksSidebar({
   onModulesReorder,
   onWeeksReorder,
   onAddModule,
+  onAddWeek,
   onDeleteModule,
   onFillWeek,
   onAutoDistributeWeeks,
@@ -1594,6 +1596,20 @@ export function ModuleWeeksSidebar({
                     </div>
                   )}
 
+                  {/* Add Week button - only in template mode */}
+                  {canReorderModules && onAddWeek && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddWeek(module.id);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 text-xs text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/5 transition-colors font-albert"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Week
+                    </button>
+                  )}
+
                   {/* Module-ending divider - slim elegant separator */}
                   <div className={`h-px ${
                     moduleStatus === 'past'
@@ -1605,10 +1621,22 @@ export function ModuleWeeksSidebar({
                 </>
               ) : (
                 /* Empty state for module with no weeks */
-                <div className="p-6 text-center border-t border-[#e1ddd8] dark:border-[#262b35]">
-                  <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                <div className="p-4 text-center border-t border-[#e1ddd8] dark:border-[#262b35]">
+                  <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert mb-3">
                     No weeks in this module
                   </p>
+                  {canReorderModules && onAddWeek && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddWeek(module.id);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors font-albert"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Week
+                    </button>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -1883,14 +1911,15 @@ export function ModuleWeeksSidebar({
         </div>
       )}
 
-      {/* Sync to Cohort Dialog */}
+      {/* Sync Template to Cohort Dialog */}
       {cohortId && (
-        <SyncToCohortDialog
+        <SyncTemplateDialog
           open={showSyncToCohortDialog}
           onOpenChange={setShowSyncToCohortDialog}
           programId={program.id}
-          cohortId={cohortId}
-          cohortName={currentCohort?.name}
+          targetType="cohorts"
+          singleCohortId={cohortId}
+          singleCohortName={currentCohort?.name}
           onSyncComplete={async () => {
             // Refresh instance data to show synced content
             if (onRefreshInstance) {

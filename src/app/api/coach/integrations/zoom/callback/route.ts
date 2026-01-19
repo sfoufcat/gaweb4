@@ -4,44 +4,84 @@
  * GET /api/coach/integrations/zoom/callback
  *
  * Handles the OAuth callback from Zoom and stores the integration credentials.
+ *
+ * IMPORTANT: This callback receives requests on a fixed domain (calendar.coachful.co)
+ * because Zoom OAuth requires exact redirect URI matching. The user's original
+ * org info is preserved in the state parameter and used for storage.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { storeIntegration, type ZoomSettings } from '@/lib/integrations';
 import { getOrgDomain } from '@/lib/tenant/resolveTenant';
 
 export async function GET(req: NextRequest) {
+  // Decode state early to get originDomain for error redirects
+  const searchParams = req.nextUrl.searchParams;
+  const state = searchParams.get('state');
+
+  let stateData: { orgId: string; userId: string; provider: string; originDomain?: string; timestamp?: number } | null = null;
+  let redirectBase = req.url;
+
+  if (state) {
+    try {
+      stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+      if (stateData?.originDomain) {
+        redirectBase = `https://${stateData.originDomain}`;
+      }
+    } catch {
+      // Will handle below
+    }
+  }
+
   try {
-    const searchParams = req.nextUrl.searchParams;
+    const { userId } = await auth();
+
+    // Only require user authentication, not org context
+    // The org context comes from the state parameter (original domain)
+    if (!userId) {
+      return NextResponse.redirect(new URL('/sign-in', redirectBase));
+    }
+
     const code = searchParams.get('code');
-    const state = searchParams.get('state');
     const error = searchParams.get('error');
 
     // Handle OAuth errors
     if (error) {
       console.error('[ZOOM_CALLBACK] OAuth error:', error);
       return NextResponse.redirect(
-        new URL(`/coach/settings?tab=integrations&error=${encodeURIComponent(error)}`, req.url)
+        new URL(`/coach/settings?tab=integrations&error=${encodeURIComponent(error)}`, redirectBase)
       );
     }
 
-    if (!code || !state) {
+    if (!code || !state || !stateData) {
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=missing_params', req.url)
+        new URL('/coach/settings?tab=integrations&error=missing_params', redirectBase)
       );
     }
 
-    // Decode state to get orgId, userId, and originDomain
-    let stateData: { orgId: string; userId: string; provider: string; originDomain?: string; timestamp?: number };
-    try {
-      stateData = JSON.parse(Buffer.from(state, 'base64').toString());
-    } catch {
+    const { orgId: stateOrgId, userId: stateUserId, originDomain } = stateData;
+
+    // Verify the authenticated user matches the one who started the OAuth flow
+    if (stateUserId !== userId) {
+      console.error('[ZOOM_CALLBACK] User mismatch:', { stateUserId, userId });
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=invalid_state', req.url)
+        new URL('/coach/settings?tab=integrations&error=user_mismatch', redirectBase)
       );
     }
 
-    const { orgId, userId, originDomain } = stateData;
+    // Verify the user is a member of the organization from state
+    // This is the security check - we trust stateOrgId but verify membership
+    const client = await clerkClient();
+    const memberships = await client.users.getOrganizationMembershipList({ userId });
+    const isMember = memberships.data.some(m => m.organization.id === stateOrgId);
+
+    if (!isMember) {
+      console.error('[ZOOM_CALLBACK] User not member of org:', { userId, stateOrgId });
+      return NextResponse.redirect(
+        new URL('/coach/settings?tab=integrations&error=not_org_member', redirectBase)
+      );
+    }
 
     // Exchange code for tokens
     const clientId = process.env.ZOOM_OAUTH_CLIENT_ID;
@@ -53,7 +93,7 @@ export async function GET(req: NextRequest) {
     if (!clientId || !clientSecret) {
       console.error('[ZOOM_CALLBACK] Missing OAuth credentials');
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=server_config', req.url)
+        new URL('/coach/settings?tab=integrations&error=server_config', redirectBase)
       );
     }
 
@@ -77,7 +117,7 @@ export async function GET(req: NextRequest) {
       const errorData = await tokenResponse.json();
       console.error('[ZOOM_CALLBACK] Token exchange failed:', errorData);
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=token_exchange', req.url)
+        new URL('/coach/settings?tab=integrations&error=token_exchange', redirectBase)
       );
     }
 
@@ -105,7 +145,7 @@ export async function GET(req: NextRequest) {
     // Calculate token expiry
     const expiresAt = new Date(Date.now() + expires_in * 1000);
 
-    // Store the integration
+    // Store the integration using the ORIGINAL org from state (not callback domain's org)
     const settings: ZoomSettings = {
       provider: 'zoom',
       autoCreateMeetings: true,
@@ -115,7 +155,7 @@ export async function GET(req: NextRequest) {
     };
 
     await storeIntegration(
-      orgId,
+      stateOrgId,
       'zoom',
       {
         accessToken: access_token,
@@ -131,15 +171,15 @@ export async function GET(req: NextRequest) {
       userId
     );
 
-    console.log(`[ZOOM_CALLBACK] Successfully connected for org ${orgId}`);
+    console.log(`[ZOOM_CALLBACK] Successfully connected for org ${stateOrgId}`);
 
     // Two-step redirect pattern: subdomain first, then custom domain
     // This ensures Clerk session is established on *.coachful.co before redirecting to custom domain
-    const orgDomain = await getOrgDomain(orgId);
+    const orgDomain = await getOrgDomain(stateOrgId);
 
     // Default to origin domain if no subdomain found
     if (!orgDomain?.subdomain) {
-      console.log(`[ZOOM_CALLBACK] No subdomain found for org ${orgId}, redirecting to origin`);
+      console.log(`[ZOOM_CALLBACK] No subdomain found for org ${stateOrgId}, redirecting to origin`);
       const redirectDomain = originDomain || 'app.coachful.co';
       const successUrl = new URL('/coach', `https://${redirectDomain}`);
       successUrl.searchParams.set('tab', 'scheduling');
@@ -165,8 +205,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(successUrl);
   } catch (error) {
     console.error('[ZOOM_CALLBACK] Error:', error);
+    // Use redirectBase (derived from state) for error redirect too
     return NextResponse.redirect(
-      new URL('/coach/settings?tab=integrations&error=unknown', req.url)
+      new URL('/coach/settings?tab=integrations&error=unknown', redirectBase)
     );
   }
 }

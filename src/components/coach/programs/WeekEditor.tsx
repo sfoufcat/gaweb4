@@ -11,8 +11,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { MediaUpload } from '@/components/admin/MediaUpload';
-import { SyncToClientsDialog } from './SyncToClientsDialog';
-import { SyncToCohortsDialog } from './SyncToCohortsDialog';
+import { SyncTemplateDialog } from './SyncTemplateDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInstanceIdLookup } from '@/hooks/useProgramInstanceBridge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -714,10 +713,6 @@ export function WeekEditor({
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [showSyncButton, setShowSyncButton] = useState(false);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
-  const [cohortSyncDialogOpen, setCohortSyncDialogOpen] = useState(false);
-
-  // Track which fields have been edited (for smart sync pre-selection)
-  const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
 
   // Recording upload and summary generation state
   const [recordingFile, setRecordingFile] = useState<File | null>(null);
@@ -954,10 +949,6 @@ export function WeekEditor({
     }
   }, [cohortId, taskMemberData]);
 
-  // Helper to track field edits
-  const trackFieldEdit = useCallback((syncFieldKey: string) => {
-    setEditedFields(prev => new Set(prev).add(syncFieldKey));
-  }, []);
 
   // DnD sensors for weekly tasks
   const sensors = useSensors(
@@ -1082,7 +1073,6 @@ export function WeekEditor({
     }
     setShowSyncButton(false);
     setSaveStatus('idle');
-    setEditedFields(new Set());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [week.id, weekDataFingerprint, clientContextId, viewContext]);
 
@@ -1177,7 +1167,6 @@ export function WeekEditor({
       }
       setShowSyncButton(false);
       setSaveStatus('idle');
-      setEditedFields(new Set());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewContext, clientContextId, week.id, week.weekNumber]);
@@ -1203,7 +1192,6 @@ export function WeekEditor({
       setHasChanges(false);
       setShowSyncButton(false);
       setSaveStatus('idle');
-      setEditedFields(new Set());
     }
   }, [editorContext?.resetVersion, week.weekNumber, week.id]);
 
@@ -1400,7 +1388,6 @@ export function WeekEditor({
         pendingData: pendingDataForContext,
         apiEndpoint: endpoint,
         httpMethod,
-        editedFields: Array.from(editedFields),
       });
     } else if (editorContext && !changed) {
       // Remove from pending changes if no longer changed
@@ -1409,9 +1396,9 @@ export function WeekEditor({
     }
   // Note: Removed getDefaultFormData from deps as it's not used in this effect
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData, week.id, week.weekNumber, week.name, week.theme, week.description, week.weeklyPrompt, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.weeklyTasks, week.currentFocus, week.notes, week.linkedSummaryIds, week.linkedCallEventIds, week.linkedArticleIds, week.linkedDownloadIds, week.linkedLinkIds, week.linkedQuestionnaireIds, week.courseAssignments, editorContext, programId, viewContext, clientContextId, getApiEndpoint, editedFields, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
+  }, [formData, week.id, week.weekNumber, week.name, week.theme, week.description, week.weeklyPrompt, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.weeklyTasks, week.currentFocus, week.notes, week.linkedSummaryIds, week.linkedCallEventIds, week.linkedArticleIds, week.linkedDownloadIds, week.linkedLinkIds, week.linkedQuestionnaireIds, week.courseAssignments, editorContext, programId, viewContext, clientContextId, getApiEndpoint, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
 
-  // handleSave is only used by the SyncToClientsDialog now
+  // handleSave is only used by the SyncTemplateDialog now
   const handleSave = async () => {
     if (!onSave) {
       console.warn('WeekEditor: onSave prop not provided');
@@ -1670,14 +1657,12 @@ export function WeekEditor({
     };
     setFormData({ ...formData, weeklyTasks: [...formData.weeklyTasks, task] });
     setNewTask('');
-    trackFieldEdit('syncTasks');
   };
 
   // Add multiple tasks at once (from summary action items)
   const addTasksFromSummary = (tasks: ProgramTaskTemplate[]) => {
     if (tasks.length === 0) return;
     setFormData({ ...formData, weeklyTasks: [...formData.weeklyTasks, ...tasks] });
-    trackFieldEdit('syncTasks');
   };
 
   // Calculate days in week based on actual week range (handles onboarding/closing weeks with fewer days)
@@ -1711,7 +1696,6 @@ export function WeekEditor({
     const updated = [...formData.weeklyTasks];
     updated[index] = { ...updated[index], isPrimary: !updated[index].isPrimary };
     setFormData({ ...formData, weeklyTasks: updated });
-    trackFieldEdit('syncTasks');
   };
 
   // Remove a task
@@ -1720,7 +1704,6 @@ export function WeekEditor({
       ...formData,
       weeklyTasks: formData.weeklyTasks.filter((_, i) => i !== index),
     });
-    trackFieldEdit('syncTasks');
   };
 
   // Handle dayTag change - just update the metadata, distribution handles the rest
@@ -1728,7 +1711,6 @@ export function WeekEditor({
     const updated = [...formData.weeklyTasks];
     updated[index] = { ...updated[index], dayTag: newDayTag };
     setFormData({ ...formData, weeklyTasks: updated });
-    trackFieldEdit('syncTasks');
   };
 
   // Focus management (max 3)
@@ -1736,7 +1718,6 @@ export function WeekEditor({
     if (!newFocus.trim() || formData.currentFocus.length >= 3) return;
     setFormData({ ...formData, currentFocus: [...formData.currentFocus, newFocus.trim()] });
     setNewFocus('');
-    trackFieldEdit('syncFocus');
   };
 
   const removeFocus = (index: number) => {
@@ -1744,7 +1725,6 @@ export function WeekEditor({
       ...formData,
       currentFocus: formData.currentFocus.filter((_, i) => i !== index),
     });
-    trackFieldEdit('syncFocus');
   };
 
   // Notes management (max 3)
@@ -1752,7 +1732,6 @@ export function WeekEditor({
     if (!newNote.trim() || formData.notes.length >= 3) return;
     setFormData({ ...formData, notes: [...formData.notes, newNote.trim()] });
     setNewNote('');
-    trackFieldEdit('syncNotes');
   };
 
   const removeNote = (index: number) => {
@@ -1760,7 +1739,6 @@ export function WeekEditor({
       ...formData,
       notes: formData.notes.filter((_, i) => i !== index),
     });
-    trackFieldEdit('syncNotes');
   };
 
   // Handle recording file selection
@@ -2085,7 +2063,7 @@ export function WeekEditor({
           {programType === 'group' && !isClientView && !cohortId && (
             <Button
               variant="outline"
-              onClick={() => setCohortSyncDialogOpen(true)}
+              onClick={() => setSyncDialogOpen(true)}
               className="flex items-center gap-1.5 border-brand-accent text-brand-accent hover:bg-brand-accent/10 h-8 sm:h-9 text-xs sm:text-sm px-2.5 sm:px-3"
             >
               <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -2121,7 +2099,7 @@ export function WeekEditor({
           <input
             type="text"
             value={formData.theme}
-            onChange={(e) => { setFormData({ ...formData, theme: e.target.value }); trackFieldEdit('syncTheme'); }}
+            onChange={(e) => { setFormData({ ...formData, theme: e.target.value }); }}
             placeholder="e.g., Building Foundations"
             className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
           />
@@ -2134,7 +2112,7 @@ export function WeekEditor({
           </label>
           <textarea
             value={formData.description}
-            onChange={(e) => { setFormData({ ...formData, description: e.target.value }); trackFieldEdit('syncName'); }}
+            onChange={(e) => { setFormData({ ...formData, description: e.target.value }); }}
             placeholder="What clients will accomplish this week..."
             rows={2}
             className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
@@ -2148,7 +2126,7 @@ export function WeekEditor({
           </label>
           <textarea
             value={formData.weeklyPrompt}
-            onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); trackFieldEdit('syncPrompt'); }}
+            onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); }}
             placeholder="Motivational message or guidance for this week..."
             rows={2}
             className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
@@ -3070,35 +3048,17 @@ export function WeekEditor({
         </div>
       </CollapsibleSection>
 
-      {/* Sync to Clients Dialog */}
+      {/* Sync Template Dialog */}
       {programId && (
-        <SyncToClientsDialog
+        <SyncTemplateDialog
           open={syncDialogOpen}
           onOpenChange={setSyncDialogOpen}
           programId={programId}
           weekNumber={week.weekNumber}
+          targetType={programType === 'group' ? 'cohorts' : 'clients'}
           enrollments={enrollments}
-          editedFields={editedFields}
-          onSyncComplete={() => {
-            setShowSyncButton(false);
-            setEditedFields(new Set());
-          }}
-        />
-      )}
-
-      {/* Sync to Cohorts Dialog */}
-      {programId && programType === 'group' && (
-        <SyncToCohortsDialog
-          open={cohortSyncDialogOpen}
-          onOpenChange={setCohortSyncDialogOpen}
-          programId={programId}
-          weekNumber={week.weekNumber}
           cohorts={cohorts}
-          editedFields={editedFields}
-          onSyncComplete={() => {
-            setShowSyncButton(false);
-            setEditedFields(new Set());
-          }}
+          onSyncComplete={() => setShowSyncButton(false)}
         />
       )}
 

@@ -23,7 +23,7 @@ const FULL_NAV_GROUPS: NavGroup[] = [
       { value: 'clients', label: 'Clients' },
       { value: 'programs', label: 'Programs' },
       { value: 'squads', label: 'Squads' },
-      { value: 'discover', label: 'Content' },
+      { value: 'discover', label: 'Resources' },
     ],
   },
   {
@@ -67,7 +67,7 @@ const LIMITED_NAV_GROUPS: NavGroup[] = [
     items: [
       { value: 'clients', label: 'Clients' },
       { value: 'squads', label: 'Squads' },
-      { value: 'discover', label: 'Content' },
+      { value: 'discover', label: 'Resources' },
     ],
   },
 ];

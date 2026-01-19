@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CourseEditor } from './CourseEditor';
+import { CreateCourseModal } from './CreateCourseModal';
 
 // Track options for dropdown
 const TRACK_OPTIONS: { value: UserTrack | ''; label: string }[] = [
@@ -77,6 +78,7 @@ export function AdminCoursesSection({
   const [viewMode, setViewMode] = useState<'list' | 'editor'>('list');
   const [selectedCourse, setSelectedCourse] = useState<DiscoverCourse | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Derive endpoints from API endpoint - use coach endpoints for coach routes
   const isCoachContext = apiEndpoint.includes('/coach/');
@@ -115,10 +117,8 @@ export function AdminCoursesSection({
   useEffect(() => {
     if (initialCourseId && courses.length > 0 && viewMode === 'list') {
       if (initialCourseId === 'new') {
-        // Creating new course
-        setIsCreating(true);
-        setSelectedCourse(null);
-        setViewMode('editor');
+        // Creating new course - open the modal
+        setShowCreateModal(true);
       } else {
         // Editing existing course
         const course = courses.find(c => c.id === initialCourseId);
@@ -139,12 +139,26 @@ export function AdminCoursesSection({
     onCourseSelect?.(course.id);
   };
 
-  // Handle creating new course
+  // Handle creating new course - open the modal
   const handleCreateCourse = () => {
-    setSelectedCourse(null);
-    setIsCreating(true);
-    setViewMode('editor');
-    onCourseSelect?.('new');
+    setShowCreateModal(true);
+  };
+
+  // Handle course created from modal - navigate to editor
+  const handleCourseCreated = async (courseId: string) => {
+    setShowCreateModal(false);
+    await fetchCourses();
+    // Find the newly created course and open editor
+    const response = await fetch(`${apiEndpoint}/${courseId}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.course) {
+        setSelectedCourse(data.course);
+        setIsCreating(false);
+        setViewMode('editor');
+        onCourseSelect?.(courseId);
+      }
+    }
   };
 
   // Handle closing editor
@@ -489,6 +503,16 @@ export function AdminCoursesSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Course Modal */}
+      <CreateCourseModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCourseCreated={handleCourseCreated}
+        apiEndpoint={apiEndpoint}
+        programsApiEndpoint={programsApiEndpoint}
+        uploadEndpoint={uploadEndpoint}
+      />
     </>
   );
 }

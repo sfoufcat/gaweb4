@@ -983,6 +983,74 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     }
   }, [selectedProgram, programModules, apiBasePath]);
 
+  // Add a new week to a specific module
+  const handleAddWeek = useCallback(async (moduleId: string) => {
+    if (!selectedProgram) return;
+
+    const daysPerWeek = selectedProgram.includeWeekends !== false ? 7 : 5;
+    const currentLengthDays = selectedProgram.lengthDays || 30;
+
+    // Calculate next week number (excluding special weeks 0 and -1)
+    const regularWeeks = programWeeks.filter(w => w.weekNumber > 0);
+    const nextWeekNumber = regularWeeks.length > 0
+      ? Math.max(...regularWeeks.map(w => w.weekNumber)) + 1
+      : 1;
+
+    // Calculate day range for new week (at the end of the program)
+    const newStartDay = currentLengthDays + 1;
+    const newEndDay = currentLengthDays + daysPerWeek;
+    const newLengthDays = newEndDay;
+
+    try {
+      console.log('[onAddWeek] Adding week:', { moduleId, nextWeekNumber, newStartDay, newEndDay, newLengthDays });
+
+      // Step 1: Update program lengthDays first
+      const updateRes = await fetch(`${apiBasePath}/${selectedProgram.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lengthDays: newLengthDays }),
+      });
+
+      if (!updateRes.ok) {
+        const errorData = await updateRes.json().catch(() => ({}));
+        console.error('[onAddWeek] Failed to update lengthDays:', updateRes.status, errorData);
+        alert(`Failed to update program length: ${errorData.error || updateRes.statusText}`);
+        return;
+      }
+
+      // Step 2: Create the new week
+      const createRes = await fetch(`${apiBasePath}/${selectedProgram.id}/weeks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          moduleId,
+          weekNumber: nextWeekNumber,
+          startDayIndex: newStartDay,
+          endDayIndex: newEndDay,
+          name: `Week ${nextWeekNumber}`,
+          distribution: 'spread',
+        }),
+      });
+
+      if (!createRes.ok) {
+        const errorData = await createRes.json().catch(() => ({}));
+        console.error('[onAddWeek] Failed to create week:', createRes.status, errorData);
+        alert(`Failed to create week: ${errorData.error || createRes.statusText}`);
+        return;
+      }
+
+      const data = await createRes.json();
+      console.log('[onAddWeek] Created week:', data);
+
+      // Update local state
+      setSelectedProgram(prev => prev ? { ...prev, lengthDays: newLengthDays } : prev);
+      setProgramWeeks(prev => [...prev, data.week]);
+    } catch (err) {
+      console.error('[onAddWeek] Error:', err);
+      alert('Failed to add week. Check console for details.');
+    }
+  }, [selectedProgram, programWeeks, apiBasePath]);
+
   const handleFillWeek = useCallback((weekNumber: number) => {
     const existingWeek = programWeeks.find(w => w.weekNumber === weekNumber);
     if (existingWeek) {
@@ -4074,6 +4142,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               viewContext={clientViewContext}
               onSelect={handleSidebarSelect}
               onAddModule={handleAddModule}
+              onAddWeek={handleAddWeek}
               onFillWithAI={handleFillWithAI}
               onFillWeek={handleFillWeek}
               onWeekDistributionChange={handleWeekDistributionChange}

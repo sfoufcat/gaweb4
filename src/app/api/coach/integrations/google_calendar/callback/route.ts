@@ -1,49 +1,89 @@
 /**
  * Google Calendar OAuth Callback
- * 
+ *
  * GET /api/coach/integrations/google_calendar/callback
- * 
+ *
  * Handles the OAuth callback from Google and stores the integration credentials.
+ *
+ * IMPORTANT: This callback receives requests on a fixed domain (calendar.coachful.co)
+ * because Google OAuth requires exact redirect URI matching. The user's original
+ * org info is preserved in the state parameter and used for storage.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { storeIntegration, type GoogleCalendarSettings } from '@/lib/integrations';
 
 export async function GET(req: NextRequest) {
+  // Decode state early to get originDomain for error redirects
+  const searchParams = req.nextUrl.searchParams;
+  const state = searchParams.get('state');
+
+  let stateData: { orgId: string; userId: string; provider: string; originDomain?: string; timestamp?: number } | null = null;
+  let redirectBase = req.url;
+
+  if (state) {
+    try {
+      stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+      if (stateData?.originDomain) {
+        redirectBase = `https://${stateData.originDomain}`;
+      }
+    } catch {
+      // Will handle below
+    }
+  }
+
   try {
-    const searchParams = req.nextUrl.searchParams;
+    const { userId } = await auth();
+
+    // Only require user authentication, not org context
+    // The org context comes from the state parameter (original domain)
+    if (!userId) {
+      return NextResponse.redirect(new URL('/sign-in', redirectBase));
+    }
+
     const code = searchParams.get('code');
-    const state = searchParams.get('state');
     const error = searchParams.get('error');
 
     // Handle OAuth errors
     if (error) {
       console.error('[GOOGLE_CALENDAR_CALLBACK] OAuth error:', error);
       return NextResponse.redirect(
-        new URL(`/coach/settings?tab=integrations&error=${encodeURIComponent(error)}`, req.url)
+        new URL(`/coach/settings?tab=integrations&error=${encodeURIComponent(error)}`, redirectBase)
       );
     }
 
-    if (!code || !state) {
+    if (!code || !state || !stateData) {
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=missing_params', req.url)
+        new URL('/coach/settings?tab=integrations&error=missing_params', redirectBase)
       );
     }
 
-    // Decode state to get orgId, userId, and originDomain
-    let stateData: { orgId: string; userId: string; provider: string; originDomain?: string; timestamp?: number };
-    try {
-      stateData = JSON.parse(Buffer.from(state, 'base64').toString());
-    } catch {
+    const { orgId: stateOrgId, userId: stateUserId, originDomain } = stateData;
+
+    // Verify the authenticated user matches the one who started the OAuth flow
+    if (stateUserId !== userId) {
+      console.error('[GOOGLE_CALENDAR_CALLBACK] User mismatch:', { stateUserId, userId });
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=invalid_state', req.url)
+        new URL('/coach/settings?tab=integrations&error=user_mismatch', redirectBase)
       );
     }
 
-    const { orgId, userId, originDomain } = stateData;
+    // Verify the user is a member of the organization from state
+    // This is the security check - we trust stateOrgId but verify membership
+    const client = await clerkClient();
+    const memberships = await client.users.getOrganizationMembershipList({ userId });
+    const isMember = memberships.data.some(m => m.organization.id === stateOrgId);
 
-    // Determine redirect base URL - use originDomain if available, otherwise fallback
-    const redirectBase = originDomain ? `https://${originDomain}` : req.url;
+    if (!isMember) {
+      console.error('[GOOGLE_CALENDAR_CALLBACK] User not member of org:', { userId, stateOrgId });
+      return NextResponse.redirect(
+        new URL('/coach/settings?tab=integrations&error=not_org_member', redirectBase)
+      );
+    }
+
+    // Use originDomain for redirect, falling back to current URL
+    const finalRedirectBase = originDomain ? `https://${originDomain}` : redirectBase;
 
     // Exchange code for tokens
     const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
@@ -55,7 +95,7 @@ export async function GET(req: NextRequest) {
     if (!clientId || !clientSecret) {
       console.error('[GOOGLE_CALENDAR_CALLBACK] Missing OAuth credentials');
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=server_config', req.url)
+        new URL('/coach/settings?tab=integrations&error=server_config', redirectBase)
       );
     }
 
@@ -77,7 +117,7 @@ export async function GET(req: NextRequest) {
       const errorData = await tokenResponse.json();
       console.error('[GOOGLE_CALENDAR_CALLBACK] Token exchange failed:', errorData);
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=token_exchange', req.url)
+        new URL('/coach/settings?tab=integrations&error=token_exchange', redirectBase)
       );
     }
 
@@ -129,7 +169,7 @@ export async function GET(req: NextRequest) {
     // Calculate token expiry
     const expiresAt = new Date(Date.now() + expires_in * 1000);
 
-    // Store the integration
+    // Store the integration using the ORIGINAL org from state (not callback domain's org)
     const settings: GoogleCalendarSettings = {
       provider: 'google_calendar',
       calendarId,
@@ -143,7 +183,7 @@ export async function GET(req: NextRequest) {
     };
 
     await storeIntegration(
-      orgId,
+      stateOrgId,
       'google_calendar',
       {
         accessToken: access_token,
@@ -162,19 +202,17 @@ export async function GET(req: NextRequest) {
       userId
     );
 
-    console.log(`[GOOGLE_CALENDAR_CALLBACK] Successfully connected for org ${orgId}, redirecting to ${redirectBase}`);
+    console.log(`[GOOGLE_CALENDAR_CALLBACK] Successfully connected for org ${stateOrgId}, redirecting to ${finalRedirectBase}`);
 
-    // Redirect back to settings with success (use originDomain to go back to user's org)
+    // ALWAYS redirect back to origin domain to restore correct org context
     return NextResponse.redirect(
-      new URL('/coach/settings?tab=integrations&connected=google_calendar', redirectBase)
+      new URL('/coach/settings?tab=integrations&connected=google_calendar', finalRedirectBase)
     );
   } catch (error) {
     console.error('[GOOGLE_CALENDAR_CALLBACK] Error:', error);
+    // Use redirectBase (derived from state) for error redirect too
     return NextResponse.redirect(
-      new URL('/coach/settings?tab=integrations&error=unknown', req.url)
+      new URL('/coach/settings?tab=integrations&error=unknown', redirectBase)
     );
   }
 }
-
-
-
