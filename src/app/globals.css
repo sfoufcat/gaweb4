@@ -541,6 +541,104 @@
     background-size: 200% 100%;
   }
 
+  /* AI Text Shimmer Animation - Inspired by AI SDK */
+  @keyframes ai-shimmer {
+    0% {
+      background-position: 200% 50%;
+    }
+    100% {
+      background-position: -200% 50%;
+    }
+  }
+
+  .animate-ai-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--brand-accent-light) 0%,
+      #c49a6c 25%,
+      var(--brand-accent-light) 50%,
+      #c49a6c 75%,
+      var(--brand-accent-light) 100%
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: ai-shimmer 3s linear infinite;
+  }
+
+  .dark .animate-ai-shimmer {
+    background: linear-gradient(
+      90deg,
+      #b8896a 0%,
+      #d4a574 25%,
+      #b8896a 50%,
+      #d4a574 75%,
+      #b8896a 100%
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+
+  /* AI Loading Dots */
+  @keyframes ai-dot-bounce {
+    0%, 80%, 100% {
+      transform: translateY(0);
+      opacity: 0.4;
+    }
+    40% {
+      transform: translateY(-6px);
+      opacity: 1;
+    }
+  }
+
+  .ai-loading-dots span {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin: 0 3px;
+    border-radius: 50%;
+    background: var(--brand-accent-light);
+    animation: ai-dot-bounce 1.4s ease-in-out infinite;
+  }
+
+  .ai-loading-dots span:nth-child(1) {
+    animation-delay: 0s;
+  }
+
+  .ai-loading-dots span:nth-child(2) {
+    animation-delay: 0.16s;
+  }
+
+  .ai-loading-dots span:nth-child(3) {
+    animation-delay: 0.32s;
+  }
+
+  .dark .ai-loading-dots span {
+    background: var(--brand-accent-dark);
+  }
+
+  /* AI Pulse Ring */
+  @keyframes ai-pulse-ring {
+    0% {
+      transform: scale(1);
+      opacity: 0.5;
+    }
+    50% {
+      transform: scale(1.5);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 0;
+    }
+  }
+
+  .animate-ai-pulse-ring {
+    animation: ai-pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
   /* Hover lift effect for post cards */
   .hover-lift {
     transition: transform 0.2s ease, box-shadow 0.2s ease;

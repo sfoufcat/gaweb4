@@ -287,6 +287,9 @@ export function buildTenantConfigData(
 
 /**
  * Sync tenant data to Edge Config (both subdomain and custom domain keys)
+ *
+ * IMPORTANT: This function preserves the existing subscription data if not provided.
+ * This prevents accidental subscription data loss when updating other fields like branding.
  */
 export async function syncTenantToEdgeConfig(
   organizationId: string,
@@ -300,17 +303,27 @@ export async function syncTenantToEdgeConfig(
   subscription?: TenantSubscriptionData,
   websiteEnabled?: boolean
 ): Promise<void> {
-  const data = buildTenantConfigData(organizationId, subdomain, branding, verifiedCustomDomain, coachingPromo, feedEnabled, programEmptyStateBehavior, squadEmptyStateBehavior, subscription, websiteEnabled);
-  
+  // Fetch existing config to preserve subscription if not explicitly provided
+  let effectiveSubscription = subscription;
+  if (subscription === undefined) {
+    const existingConfig = await getTenantBySubdomain(subdomain);
+    if (existingConfig?.subscription) {
+      effectiveSubscription = existingConfig.subscription;
+      console.log(`[TENANT_EDGE_CONFIG] Preserving existing subscription for ${subdomain}: ${effectiveSubscription.plan}`);
+    }
+  }
+
+  const data = buildTenantConfigData(organizationId, subdomain, branding, verifiedCustomDomain, coachingPromo, feedEnabled, programEmptyStateBehavior, squadEmptyStateBehavior, effectiveSubscription, websiteEnabled);
+
   const items: EdgeConfigItem[] = [
     { operation: 'upsert', key: getSubdomainKey(subdomain), value: data },
   ];
-  
+
   // Also set custom domain key if verified
   if (verifiedCustomDomain) {
     items.push({ operation: 'upsert', key: getCustomDomainKey(verifiedCustomDomain), value: data });
   }
-  
+
   await updateEdgeConfig(items);
 }
 

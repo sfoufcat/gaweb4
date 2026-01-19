@@ -278,16 +278,15 @@ export function CoachWebsiteTab() {
               Unsaved changes
             </span>
           )}
-          {/* Preview Button - always show so coaches can preview before enabling */}
+          {/* Preview Button - icon only like program LP */}
           <a
             href="/website?preview=true"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
-            title="Preview Website"
+            className="p-2 hover:bg-[#faf8f6] dark:hover:bg-white/5 rounded-lg transition-colors"
+            title="Preview website"
           >
-            <Eye className="w-4 h-4 flex-shrink-0" />
-            <span className="hidden sm:inline">Preview</span>
+            <Eye className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
           </a>
           {/* Generate with AI Button - borderless style */}
           <button

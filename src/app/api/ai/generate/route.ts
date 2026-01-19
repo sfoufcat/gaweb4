@@ -77,34 +77,52 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Validate user prompt
-    if (!userPrompt || typeof userPrompt !== 'string') {
+    // Check if we have alternative context sources (PDF or org content)
+    const hasPdfContent = !!(context?.pdfContent && context.pdfContent.length > 0);
+    const hasOrgContent = !!(context?.orgContent && (
+      context.orgContent.programs?.length ||
+      context.orgContent.squads?.length ||
+      context.orgContent.program ||
+      context.orgContent.squad
+    ));
+    const hasAlternativeContext = hasPdfContent || hasOrgContent;
+
+    // Validate user prompt - allow empty if we have alternative context
+    if (userPrompt && typeof userPrompt !== 'string') {
       return NextResponse.json(
-        { error: 'userPrompt is required and must be a string' },
+        { error: 'userPrompt must be a string' },
         { status: 400 }
       );
     }
-    
-    if (userPrompt.length < 10) {
+
+    const promptLength = (userPrompt || '').length;
+
+    // Require either a prompt or alternative context
+    if (promptLength < 10 && !hasAlternativeContext) {
       return NextResponse.json(
-        { error: 'userPrompt must be at least 10 characters' },
+        { error: 'Please provide a prompt (at least 10 characters), upload a PDF, or use your existing content' },
         { status: 400 }
       );
     }
-    
-    if (userPrompt.length > 5000) {
+
+    if (promptLength > 5000) {
       return NextResponse.json(
         { error: 'userPrompt must be 5000 characters or less' },
         { status: 400 }
       );
     }
+
+    // Use a default prompt if none provided but we have context
+    const effectivePrompt = promptLength >= 10
+      ? userPrompt
+      : 'Generate content based on my existing programs and squads.';
     
     // Generate content
     const result = await generate({
       orgId: organizationId,
       userId,
       useCase,
-      userPrompt,
+      userPrompt: effectivePrompt,
       context,
     });
     
