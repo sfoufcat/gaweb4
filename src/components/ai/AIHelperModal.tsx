@@ -499,8 +499,13 @@ export function AIHelperModal({
   };
   
   const handleGenerate = async () => {
-    if (!userPrompt.trim() || userPrompt.length < 10) {
-      setError('Please enter a more detailed prompt (at least 10 characters)');
+    // Allow generation if we have PDF content OR org content, even without a detailed prompt
+    const hasPdfContent = pdfResult?.success && pdfResult.text;
+    const hasOrgContent = !!orgContent;
+    const hasUserPrompt = userPrompt.trim().length >= 10;
+
+    if (!hasUserPrompt && !hasPdfContent && !hasOrgContent) {
+      setError('Please enter a prompt, upload a PDF, or use your existing content');
       return;
     }
 
@@ -884,7 +889,11 @@ export function AIHelperModal({
                 </Button>
                 <Button
                   onClick={handleGenerate}
-                  disabled={userPrompt.trim().length < 10}
+                  disabled={
+                    userPrompt.trim().length < 10 &&
+                    !(pdfResult?.success && pdfResult.text) &&
+                    !orgContent
+                  }
                   className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
                 >
                   <Sparkles className="w-4 h-4" />

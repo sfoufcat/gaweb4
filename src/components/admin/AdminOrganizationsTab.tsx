@@ -371,7 +371,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                           <SelectTrigger className="w-full font-albert">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-[10001]">
                             <SelectItem value="starter" className="font-albert">
                               <span className="inline-flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-slate-400"></span>
