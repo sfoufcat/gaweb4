@@ -307,62 +307,24 @@ export function CourseEditor({
   return (
     <div className="flex flex-col h-full min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 -ml-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h1 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate max-w-[300px]">
-            {formData.title || 'New Course'}
-          </h1>
-        </div>
+      <div className="border-b border-[#e1ddd8] dark:border-[#262b35]">
+        {/* Top row: back + title + actions */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 -ml-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors flex-shrink-0"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-base sm:text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+              {formData.title || 'New Course'}
+            </h1>
+          </div>
 
-        <div className="flex items-center gap-3">
-          {/* Tab Navigation - only show for existing courses */}
-          {isEditing && (
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab('overview')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
-                  activeTab === 'overview'
-                    ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
-                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
-                }`}
-              >
-                <BarChart3 className="w-4 h-4" />
-                Overview
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('content')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
-                  activeTab === 'content'
-                    ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
-                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
-                }`}
-              >
-                <LayoutGrid className="w-4 h-4" />
-                Content
-              </button>
-              {/* Settings Button - right of Content tab */}
-              <button
-                type="button"
-                onClick={() => setBasicInfoOpen(true)}
-                className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                title="Course Settings"
-              >
-                <Settings2 className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {/* Settings Button for new courses */}
-          {!isEditing && (
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            {/* Settings Button */}
             <button
               type="button"
               onClick={() => setBasicInfoOpen(true)}
@@ -371,40 +333,70 @@ export function CourseEditor({
             >
               <Settings2 className="w-4 h-4" />
             </button>
-          )}
 
-          {/* Stats */}
-          <div className="hidden sm:flex items-center gap-4 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-            <span className="flex items-center gap-1.5">
-              <Layers className="w-4 h-4" />
-              {formData.modules.length}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <BookOpen className="w-4 h-4" />
-              {totalLessons}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4" />
-              {totalDuration} min
-            </span>
+            {/* Stats - hidden on mobile */}
+            <div className="hidden lg:flex items-center gap-4 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+              <span className="flex items-center gap-1.5">
+                <Layers className="w-4 h-4" />
+                {formData.modules.length}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <BookOpen className="w-4 h-4" />
+                {totalLessons}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-4 h-4" />
+                {totalDuration} min
+              </span>
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={saving}
+              className="hidden sm:inline-flex border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#262b35] font-albert"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={saving || !formData.title.trim()}
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert text-sm sm:text-base px-3 sm:px-4"
+            >
+              {saving ? 'Saving...' : isEditing ? 'Update' : 'Create'}
+            </Button>
           </div>
-
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={saving}
-            className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#262b35] font-albert"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={saving || !formData.title.trim()}
-            className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
-          >
-            {saving ? 'Saving...' : isEditing ? 'Update' : 'Create'}
-          </Button>
         </div>
+
+        {/* Tab Navigation - second row on mobile, inline on desktop for existing courses */}
+        {isEditing && (
+          <div className="flex items-center gap-1 px-4 sm:px-6 pb-3 overflow-x-auto scrollbar-hide">
+            <button
+              type="button"
+              onClick={() => setActiveTab('overview')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all whitespace-nowrap ${
+                activeTab === 'overview'
+                  ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('content')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all whitespace-nowrap ${
+                activeTab === 'content'
+                  ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              Content
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Main Content */}

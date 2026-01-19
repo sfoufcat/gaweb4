@@ -5,7 +5,130 @@
  * These are server-side only and should never be exposed to clients.
  */
 
-import type { AIGenerationContext, ProgramStructure } from './types';
+import type { AIGenerationContext, ProgramStructure, OrgContentContext } from './types';
+
+// =============================================================================
+// HELPER FUNCTIONS FOR CONTEXT BUILDING
+// =============================================================================
+
+/**
+ * Build a section of the prompt with PDF content
+ */
+function buildPdfContextSection(context?: AIGenerationContext): string {
+  if (!context?.pdfContent) return '';
+
+  const fileName = context.pdfFileName ? ` (${context.pdfFileName})` : '';
+  return `
+
+UPLOADED DOCUMENT${fileName}:
+---
+${context.pdfContent}
+---
+
+Use relevant information from this document to inform your generation. Extract key details about the coaching approach, target audience, offerings, and brand voice.`;
+}
+
+/**
+ * Build a section with organization content for "Use my content" feature
+ */
+function buildOrgContentSection(orgContent?: OrgContentContext, useCase?: string): string {
+  if (!orgContent) return '';
+
+  const parts: string[] = [];
+
+  // For website generation, include all programs and squads
+  if (orgContent.programs && orgContent.programs.length > 0) {
+    parts.push('EXISTING PROGRAMS:');
+    orgContent.programs.forEach((p, i) => {
+      parts.push(`${i + 1}. "${p.name}" (${p.lengthDays} days, ${p.type})`);
+      if (p.description) parts.push(`   Description: ${p.description}`);
+      if (p.keyOutcomes && p.keyOutcomes.length > 0) {
+        parts.push(`   Key Outcomes: ${p.keyOutcomes.join(', ')}`);
+      }
+      if (p.features && p.features.length > 0) {
+        parts.push(`   Features: ${p.features.map((f) => f.title).join(', ')}`);
+      }
+      if (p.weekTitles && p.weekTitles.length > 0) {
+        parts.push(`   Week Themes: ${p.weekTitles.slice(0, 5).join(', ')}${p.weekTitles.length > 5 ? '...' : ''}`);
+      }
+    });
+  }
+
+  if (orgContent.squads && orgContent.squads.length > 0) {
+    parts.push('\nEXISTING COMMUNITIES/SQUADS:');
+    orgContent.squads.forEach((s, i) => {
+      parts.push(`${i + 1}. "${s.name}"`);
+      if (s.description) parts.push(`   Description: ${s.description}`);
+      if (s.keyOutcomes && s.keyOutcomes.length > 0) {
+        parts.push(`   Key Benefits: ${s.keyOutcomes.join(', ')}`);
+      }
+    });
+  }
+
+  // For specific program context
+  if (orgContent.program) {
+    parts.push('PROGRAM DETAILS:');
+    parts.push(`Name: "${orgContent.program.name}"`);
+    parts.push(`Type: ${orgContent.program.type} coaching`);
+    parts.push(`Duration: ${orgContent.program.lengthDays} days`);
+    if (orgContent.program.description) {
+      parts.push(`Description: ${orgContent.program.description}`);
+    }
+    if (orgContent.program.keyOutcomes && orgContent.program.keyOutcomes.length > 0) {
+      parts.push(`Key Outcomes:\n${orgContent.program.keyOutcomes.map((o) => `- ${o}`).join('\n')}`);
+    }
+    if (orgContent.program.features && orgContent.program.features.length > 0) {
+      parts.push(`Features:\n${orgContent.program.features.map((f) => `- ${f.title}${f.description ? `: ${f.description}` : ''}`).join('\n')}`);
+    }
+    if (orgContent.program.weekTitles && orgContent.program.weekTitles.length > 0) {
+      parts.push(`Week Themes: ${orgContent.program.weekTitles.join(', ')}`);
+    }
+  }
+
+  // For specific squad context
+  if (orgContent.squad) {
+    parts.push('SQUAD/COMMUNITY DETAILS:');
+    parts.push(`Name: "${orgContent.squad.name}"`);
+    if (orgContent.squad.description) {
+      parts.push(`Description: ${orgContent.squad.description}`);
+    }
+    if (orgContent.squad.keyOutcomes && orgContent.squad.keyOutcomes.length > 0) {
+      parts.push(`Key Benefits:\n${orgContent.squad.keyOutcomes.map((o) => `- ${o}`).join('\n')}`);
+    }
+    if (orgContent.squad.features && orgContent.squad.features.length > 0) {
+      parts.push(`Features:\n${orgContent.squad.features.map((f) => `- ${f.title}${f.description ? `: ${f.description}` : ''}`).join('\n')}`);
+    }
+  }
+
+  // Include coach bio if available
+  if (orgContent.coachBio) {
+    parts.push(`\nCOACH BIO:\n${orgContent.coachBio}`);
+  }
+
+  // Include existing testimonials for reference (but still use placeholders in output)
+  if (orgContent.existingTestimonials && orgContent.existingTestimonials.length > 0) {
+    parts.push('\nEXISTING TESTIMONIAL THEMES (for reference, still use placeholder names in output):');
+    orgContent.existingTestimonials.slice(0, 3).forEach((t) => {
+      parts.push(`- "${t.text.slice(0, 100)}${t.text.length > 100 ? '...' : ''}"`);
+    });
+  }
+
+  // Include existing FAQs for reference
+  if (orgContent.existingFaqs && orgContent.existingFaqs.length > 0) {
+    parts.push('\nEXISTING FAQ TOPICS (for reference):');
+    orgContent.existingFaqs.slice(0, 5).forEach((f) => {
+      parts.push(`- ${f.question}`);
+    });
+  }
+
+  if (parts.length === 0) return '';
+
+  return `
+
+EXISTING ORGANIZATION CONTENT:
+Use this information to create authentic, specific content that accurately represents the coach's actual offerings.
+${parts.join('\n')}`;
+}
 
 // =============================================================================
 // PROGRAM CONTENT GENERATION
@@ -84,19 +207,24 @@ export function buildProgramContentPrompt(
   const contextSection = contextParts.length > 0
     ? `\n\nPROGRAM CONTEXT:\n${contextParts.join('\n')}`
     : '';
-  
+
+  // Add PDF content if provided
+  const pdfSection = buildPdfContextSection(context);
+
+  // Add org content if provided
+  const orgSection = buildOrgContentSection(context?.orgContent, 'PROGRAM_CONTENT');
+
   const user = `Generate a ${duration}-${structure === 'weeks' ? 'week' : 'day'} coaching program with the following structure:
 - Structure: ${structure}
 - Duration: ${duration} ${structure}
 - Generate content for ALL ${duration} ${structure}
-
-${contextSection}
+${contextSection}${orgSection}${pdfSection}
 
 COACH'S REQUEST:
 ${userPrompt}
 
 Remember: Output ONLY the JSON object. No explanations, no markdown formatting.`;
-  
+
   return { system: PROGRAM_CONTENT_SYSTEM_PROMPT, user };
 }
 
@@ -194,13 +322,19 @@ export function buildLandingPagePrompt(
   const contextSection = contextParts.length > 0
     ? `\n\n${entityType.toUpperCase()} CONTEXT:\n${contextParts.join('\n')}`
     : '';
-  
-  const entityDescription = entityType === 'program' 
-    ? 'coaching program' 
+
+  // Add PDF content if provided
+  const pdfSection = buildPdfContextSection(context);
+
+  // Add org content if provided
+  const orgSection = buildOrgContentSection(context?.orgContent, entityType === 'program' ? 'LANDING_PAGE_PROGRAM' : 'LANDING_PAGE_SQUAD');
+
+  const entityDescription = entityType === 'program'
+    ? 'coaching program'
     : 'community/squad';
-  
+
   const user = `Generate landing page copy for a ${entityDescription}.
-${contextSection}
+${contextSection}${orgSection}${pdfSection}
 
 COACH'S REQUEST:
 ${userPrompt}
@@ -302,15 +436,21 @@ export function buildWebsiteContentPrompt(
     ? `\n\nCOACH CONTEXT:\n${contextParts.join('\n')}`
     : '';
 
+  // Add PDF content if provided
+  const pdfSection = buildPdfContextSection(context);
+
+  // Add org content if provided - for website, this includes all programs and squads
+  const orgSection = buildOrgContentSection(context?.orgContent, 'LANDING_PAGE_WEBSITE');
+
   const user = `Generate website content for a coach's main website.
-${contextSection}
+${contextSection}${orgSection}${pdfSection}
 
 COACH'S REQUEST:
 ${userPrompt}
 
 IMPORTANT REMINDERS:
 - This is the coach's main website, not a specific program landing page
-- Services should be broad categories (e.g., "1:1 Coaching", "Group Programs", "Workshops")
+- Services should be broad categories (e.g., "1:1 Coaching", "Group Programs", "Workshops")${context?.orgContent?.programs?.length ? ' - but you can reference the coach\'s actual programs listed above' : ''}
 - Testimonials must use placeholder names like "Client A", "Client B", or "Past Participant"
 - Include 4-8 FAQ items that address common objections about coaching
 - SEO meta title must be under 60 characters, meta description under 160 characters

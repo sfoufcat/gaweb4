@@ -632,9 +632,17 @@ export function CreateEventModal({
                 </div>
               </div>
 
+              {/* Animated container for conditional selectors */}
+              <AnimatePresence mode="wait">
               {/* Cohort Selector (when cohort_call is selected) */}
               {eventType === 'cohort_call' && (
-                <div className="space-y-3">
+                <motion.div
+                  key="cohort-selector"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                  className="space-y-3 overflow-hidden">
                   {/* Program Selector */}
                   <div>
                     <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
@@ -714,12 +722,19 @@ export function CreateEventModal({
                       )}
                     </div>
                   )}
-                </div>
+                </motion.div>
               )}
 
               {/* Squad Selector (when squad_call is selected) */}
               {eventType === 'squad_call' && (
-                <div>
+                <motion.div
+                  key="squad-selector"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                  className="overflow-hidden"
+                >
                   <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                     Select Squad <span className="text-red-500">*</span>
                   </label>
@@ -728,48 +743,22 @@ export function CreateEventModal({
                       No squads found in your organization
                     </p>
                   ) : (
-                    <div className="space-y-2">
+                    <select
+                      value={selectedSquadId}
+                      onChange={(e) => setSelectedSquadId(e.target.value)}
+                      className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                    >
+                      <option value="">Select a squad...</option>
                       {squads.map((squad) => (
-                        <button
-                          key={squad.id}
-                          type="button"
-                          onClick={() => setSelectedSquadId(squad.id)}
-                          className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-colors ${
-                            selectedSquadId === squad.id
-                              ? 'border-brand-accent bg-brand-accent/5'
-                              : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                              selectedSquadId === squad.id
-                                ? 'bg-brand-accent/20'
-                                : 'bg-[#f3f1ef] dark:bg-[#262b35]'
-                            }`}>
-                              <UserCheck className={`w-4 h-4 ${selectedSquadId === squad.id ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
-                            </div>
-                            <div className="text-left">
-                              <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{squad.name}</p>
-                              {squad.description && (
-                                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate max-w-[200px]">
-                                  {squad.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          {selectedSquadId === squad.id ? (
-                            <div className="w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center">
-                              <Check className="w-3 h-3 text-white" />
-                            </div>
-                          ) : (
-                            <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                          )}
-                        </button>
+                        <option key={squad.id} value={squad.id}>
+                          {squad.name}
+                        </option>
                       ))}
-                    </div>
+                    </select>
                   )}
-                </div>
+                </motion.div>
               )}
+              </AnimatePresence>
 
               {/* Meeting Provider */}
               <MeetingProviderSelector

@@ -22,6 +22,11 @@
  *     price?: number,
  *     currency?: string,
  *     constraints?: string,
+ *     // PDF Upload feature
+ *     pdfContent?: string,      // Extracted text from uploaded PDF
+ *     pdfFileName?: string,     // Original filename for context
+ *     // "Use my content" feature
+ *     orgContent?: OrgContentContext,  // Organization programs/squads data
  *   }
  * }
  *

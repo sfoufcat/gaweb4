@@ -6629,8 +6629,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         onApply={handleApplyAIProgramContent}
         hasExistingContent={programDays.length > 0}
         overwriteWarning="This will replace all existing program days, tasks, and habits."
+        programId={selectedProgram?.id}
       />
-      
+
       {/* AI Landing Page Modal */}
       <AIHelperModal
         isOpen={isAILandingPageModalOpen}
@@ -6649,6 +6650,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         onApply={handleApplyAILandingPage}
         hasExistingContent={!!(landingPageFormData.coachBio || landingPageFormData.keyOutcomes.length > 0)}
         overwriteWarning="This will replace your existing landing page content."
+        programId={selectedProgram?.id}
       />
 
       {/* Week Fill Modal */}

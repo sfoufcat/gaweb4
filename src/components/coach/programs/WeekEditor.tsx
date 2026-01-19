@@ -275,15 +275,19 @@ function SortableWeeklyTask({
 
         {/* Cohort completion badge */}
         {isCohortMode && (
-          <span
-            className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-              isCohortCompleted
-                ? 'text-brand-accent bg-brand-accent/10'
-                : 'text-muted-foreground bg-muted'
-            }`}
-          >
-            {completedCount}/{totalMembers}
-          </span>
+          isLoading && !hasCohortData ? (
+            <span className="shrink-0 w-10 h-5 rounded-full bg-[#f5f2ef] dark:bg-[#262b35] animate-pulse" />
+          ) : (
+            <span
+              className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${
+                isCohortCompleted
+                  ? 'text-brand-accent bg-brand-accent/10'
+                  : 'text-[#8c8780] dark:text-[#9ca3af] bg-[#f5f2ef] dark:bg-[#262b35]'
+              }`}
+            >
+              {completedCount}/{totalMembers}
+            </span>
+          )
         )}
 
         {/* Task Actions Group - badges and Focus toggle */}

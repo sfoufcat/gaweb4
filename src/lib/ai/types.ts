@@ -160,6 +160,44 @@ export interface WebsiteContentDraft {
 // GENERATION REQUEST/RESPONSE
 // =============================================================================
 
+// Organization content for "Use my content" feature
+export interface OrgContentContext {
+  programs?: Array<{
+    name: string;
+    description: string;
+    keyOutcomes: string[];
+    features: Array<{ title: string; description?: string }>;
+    lengthDays: number;
+    type: 'group' | 'individual';
+    weekTitles?: string[];
+  }>;
+  squads?: Array<{
+    name: string;
+    description: string;
+    keyOutcomes: string[];
+    features: Array<{ title: string; description?: string }>;
+  }>;
+  program?: {
+    name: string;
+    description: string;
+    keyOutcomes: string[];
+    features: Array<{ title: string; description?: string }>;
+    lengthDays: number;
+    type: 'group' | 'individual';
+    weekTitles?: string[];
+  };
+  squad?: {
+    name: string;
+    description: string;
+    keyOutcomes: string[];
+    features: Array<{ title: string; description?: string }>;
+  };
+  coachBio?: string;
+  existingTestimonials?: Array<{ text: string; author: string; role?: string }>;
+  existingFaqs?: Array<{ question: string; answer: string }>;
+  summary?: string;
+}
+
 export interface AIGenerationContext {
   // Common fields
   programName?: string;
@@ -169,17 +207,24 @@ export interface AIGenerationContext {
   targetAudience?: string;
   duration?: number; // in days
   structure?: ProgramStructure;
-  
+
   // Program-specific
   programType?: 'group' | 'individual';
   existingContentCount?: number;
-  
+
   // Landing page-specific
   price?: number;
   currency?: string;
-  
+
   // Custom constraints
   constraints?: string;
+
+  // PDF content (extracted text from uploaded PDF)
+  pdfContent?: string;
+  pdfFileName?: string;
+
+  // Organization content (from "Use my content" feature)
+  orgContent?: OrgContentContext;
 }
 
 export interface AIGenerationRequest {

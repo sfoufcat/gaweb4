@@ -387,6 +387,7 @@ const isAlwaysAllowedRoute = createRouteMatcher([
   '/api/webhooks(.*)',
   '/api/tenant/resolve',
   '/api/org/branding',
+  '/api/subscription/check-status',
 ]);
 
 // =============================================================================

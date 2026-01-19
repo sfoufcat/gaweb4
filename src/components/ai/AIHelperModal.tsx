@@ -1,25 +1,31 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  Sparkles, 
-  X, 
-  RefreshCw, 
-  Check, 
+import {
+  Sparkles,
+  X,
+  RefreshCw,
+  Check,
   AlertTriangle,
   ChevronDown,
   ChevronRight,
   Clock,
   Zap,
+  Upload,
+  FileText,
+  Database,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { extractPdfText, formatFileSize, type PdfExtractionResult } from '@/lib/pdf-utils';
 import type {
   AIUseCase,
   AIGenerationContext,
   ProgramContentDraft,
   LandingPageDraft,
   WebsiteContentDraft,
+  OrgContentContext,
 } from '@/lib/ai/types';
 
 // =============================================================================
@@ -38,6 +44,10 @@ interface AIHelperModalProps {
   hasExistingContent?: boolean;
   /** Custom warning message for overwrite */
   overwriteWarning?: string;
+  /** For program-specific contexts (LANDING_PAGE_PROGRAM, PROGRAM_CONTENT) */
+  programId?: string;
+  /** For squad-specific contexts (LANDING_PAGE_SQUAD) */
+  squadId?: string;
 }
 
 type ModalStep = 'input' | 'generating' | 'preview' | 'error';
@@ -386,6 +396,8 @@ export function AIHelperModal({
   onApply,
   hasExistingContent = false,
   overwriteWarning,
+  programId,
+  squadId,
 }: AIHelperModalProps) {
   const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<ModalStep>('input');
@@ -393,11 +405,22 @@ export function AIHelperModal({
   const [draft, setDraft] = useState<ProgramContentDraft | LandingPageDraft | WebsiteContentDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
-  
+
+  // PDF upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfResult, setPdfResult] = useState<PdfExtractionResult | null>(null);
+  const [isExtractingPdf, setIsExtractingPdf] = useState(false);
+
+  // "Use my content" state
+  const [orgContent, setOrgContent] = useState<OrgContentContext | null>(null);
+  const [isLoadingOrgContent, setIsLoadingOrgContent] = useState(false);
+  const [orgContentError, setOrgContentError] = useState<string | null>(null);
+
   useEffect(() => {
     setMounted(true);
   }, []);
-  
+
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -406,38 +429,119 @@ export function AIHelperModal({
       setDraft(null);
       setError(null);
       setIsApplying(false);
+      setPdfFile(null);
+      setPdfResult(null);
+      setOrgContent(null);
+      setOrgContentError(null);
     }
   }, [isOpen]);
+
+  // Handle PDF file selection
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setPdfFile(file);
+    setIsExtractingPdf(true);
+    setPdfResult(null);
+
+    try {
+      const result = await extractPdfText(file);
+      setPdfResult(result);
+      if (!result.success) {
+        setError(result.error || 'Failed to extract PDF content');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to process PDF');
+    } finally {
+      setIsExtractingPdf(false);
+    }
+  };
+
+  // Remove PDF
+  const handleRemovePdf = () => {
+    setPdfFile(null);
+    setPdfResult(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Fetch organization content for "Use my content"
+  const handleUseMyContent = async () => {
+    setIsLoadingOrgContent(true);
+    setOrgContentError(null);
+
+    try {
+      const params = new URLSearchParams({ useCase });
+      if (programId) params.append('programId', programId);
+      if (squadId) params.append('squadId', squadId);
+
+      const response = await fetch(`/api/coach/ai-context?${params}`);
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to fetch content');
+      }
+
+      const data = await response.json();
+      setOrgContent(data);
+    } catch (err) {
+      setOrgContentError(err instanceof Error ? err.message : 'Failed to load content');
+    } finally {
+      setIsLoadingOrgContent(false);
+    }
+  };
+
+  // Remove org content
+  const handleRemoveOrgContent = () => {
+    setOrgContent(null);
+    setOrgContentError(null);
+  };
   
   const handleGenerate = async () => {
     if (!userPrompt.trim() || userPrompt.length < 10) {
       setError('Please enter a more detailed prompt (at least 10 characters)');
       return;
     }
-    
+
     setStep('generating');
     setError(null);
-    
+
     try {
+      // Build enhanced context with PDF and org content
+      const enhancedContext: AIGenerationContext = {
+        ...context,
+      };
+
+      // Add PDF content if available
+      if (pdfResult?.success && pdfResult.text) {
+        enhancedContext.pdfContent = pdfResult.text;
+        enhancedContext.pdfFileName = pdfFile?.name;
+      }
+
+      // Add org content if available
+      if (orgContent) {
+        enhancedContext.orgContent = orgContent;
+      }
+
       const response = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           useCase,
           userPrompt,
-          context,
+          context: enhancedContext,
         }),
       });
-      
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to generate content');
       }
-      
+
       const data = await response.json();
       setDraft(data.draft);
       setStep('preview');
-      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');
       setStep('error');
@@ -518,7 +622,7 @@ export function AIHelperModal({
                     </span>
                     <div className="mt-1 flex flex-wrap gap-2">
                       {contextItems.map((item, i) => (
-                        <span 
+                        <span
                           key={i}
                           className="px-2 py-1 bg-white dark:bg-[#171b22] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] rounded-md border border-[#e1ddd8] dark:border-[#262b35]"
                         >
@@ -528,7 +632,113 @@ export function AIHelperModal({
                     </div>
                   </div>
                 )}
-                
+
+                {/* Content Source Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  {/* Use My Content Button */}
+                  <button
+                    type="button"
+                    onClick={handleUseMyContent}
+                    disabled={isLoadingOrgContent || !!orgContent}
+                    className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] bg-[#faf8f6] dark:bg-[#1e222a] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoadingOrgContent ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Database className="w-4 h-4" />
+                    )}
+                    {orgContent ? 'Content loaded' : 'Use my content'}
+                  </button>
+
+                  {/* Upload PDF Button */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isExtractingPdf || !!pdfFile}
+                    className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] bg-[#faf8f6] dark:bg-[#1e222a] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isExtractingPdf ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                    {pdfFile ? 'PDF uploaded' : 'Upload PDF'}
+                  </button>
+
+                  {/* Hidden File Input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </div>
+
+                {/* PDF Status Indicator */}
+                {pdfFile && pdfResult && (
+                  <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                          {pdfFile.name}
+                        </p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400">
+                          {pdfResult.success
+                            ? `${pdfResult.charCount.toLocaleString()} chars extracted${pdfResult.truncated ? ' (truncated)' : ''}`
+                            : pdfResult.error || 'Failed to extract'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemovePdf}
+                      className="p-1 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
+                    >
+                      <X className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Org Content Status Indicator */}
+                {orgContent && (
+                  <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Database className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      <div>
+                        <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                          Using your content
+                        </p>
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          {orgContent.summary ||
+                            [
+                              orgContent.programs?.length && `${orgContent.programs.length} program${orgContent.programs.length > 1 ? 's' : ''}`,
+                              orgContent.squads?.length && `${orgContent.squads.length} squad${orgContent.squads.length > 1 ? 's' : ''}`,
+                              orgContent.program && `Program: ${orgContent.program.name}`,
+                              orgContent.squad && `Squad: ${orgContent.squad.name}`,
+                            ].filter(Boolean).join(', ') || 'Content loaded'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveOrgContent}
+                      className="p-1 hover:bg-green-100 dark:hover:bg-green-800/50 rounded transition-colors"
+                    >
+                      <X className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Org Content Error */}
+                {orgContentError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg text-sm">
+                    {orgContentError}
+                  </div>
+                )}
+
                 {/* Prompt Input */}
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">

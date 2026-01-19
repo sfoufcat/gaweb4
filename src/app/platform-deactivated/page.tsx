@@ -23,9 +23,24 @@ export default function PlatformDeactivatedPage() {
   
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    // Wait a moment then reload to check if subscription is reactivated
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    window.location.reload();
+    try {
+      // Call API to check current subscription status (bypasses cached session)
+      const response = await fetch('/api/subscription/check-status');
+      const data = await response.json();
+
+      if (data.isActive && data.redirectTo) {
+        // Subscription is now active - redirect to dashboard
+        window.location.href = data.redirectTo;
+        return;
+      }
+
+      // Still inactive - reload the page to refresh any other state
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to check subscription status:', error);
+      // Fall back to simple reload
+      window.location.reload();
+    }
   };
   
   return (

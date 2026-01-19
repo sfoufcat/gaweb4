@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
+import { Pencil, Trash2 } from 'lucide-react';
 import type { DiscoverCourse } from '@/types/discover';
 import type { UserTrack } from '@/types';
 import {
@@ -388,91 +390,93 @@ export function AdminCoursesSection({
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="font-albert">Title</TableHead>
-                <TableHead className="font-albert">Category</TableHead>
-                <TableHead className="font-albert">Level</TableHead>
-                <TableHead className="font-albert">Track</TableHead>
-                <TableHead className="font-albert">Modules</TableHead>
-                <TableHead className="font-albert">Lessons</TableHead>
-                <TableHead className="font-albert">Featured</TableHead>
-                <TableHead className="font-albert">Trending</TableHead>
-                <TableHead className="font-albert text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCourses.map(course => (
-                <TableRow key={course.id}>
-                  <TableCell className="font-albert font-medium max-w-[200px] truncate">
-                    {course.title}
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {course.category}
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {course.level}
-                  </TableCell>
-                  <TableCell>
-                    {course.track ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 font-albert">
-                        {getTrackDisplayName(course.track)}
-                      </span>
-                    ) : (
-                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] text-sm font-albert">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {course.totalModules || course.modules?.length || 0}
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {course.totalLessons || course.modules?.reduce((sum, m) => sum + m.lessons.length, 0) || 0}
-                  </TableCell>
-                  <TableCell>
-                    {course.featured ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 font-albert">
-                        Yes
-                      </span>
-                    ) : (
-                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] text-sm font-albert">No</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {course.trending ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 font-albert">
-                        Yes
-                      </span>
-                    ) : (
-                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] text-sm font-albert">No</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditCourse(course)}
-                        className="text-brand-accent hover:text-brand-accent/90 hover:bg-brand-accent/10 font-albert"
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setCourseToDelete(course)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 font-albert"
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {/* Course Cards */}
+        <div className="space-y-2">
+          {filteredCourses.map(course => (
+            <div
+              key={course.id}
+              onClick={() => handleEditCourse(course)}
+              className="flex items-center gap-4 p-3 rounded-xl bg-white dark:bg-[#171b22] border border-[#e8e4df] dark:border-[#262b35] hover:border-brand-accent/50 dark:hover:border-brand-accent/50 cursor-pointer transition-all group"
+            >
+              {/* Cover Image */}
+              <div className="relative w-20 h-14 sm:w-24 sm:h-16 rounded-lg overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
+                {course.coverImageUrl ? (
+                  <Image
+                    src={course.coverImageUrl}
+                    alt={course.title}
+                    fill
+                    className="object-cover"
+                    sizes="96px"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-[#a7a39e] dark:text-[#5f6470]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+
+              {/* Course Info */}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-brand-accent transition-colors">
+                  {course.title}
+                </h3>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  <span>{course.category}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="hidden sm:inline">{course.level}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="hidden sm:inline">{course.totalModules || course.modules?.length || 0} modules</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="hidden sm:inline">{course.totalLessons || course.modules?.reduce((sum, m) => sum + m.lessons.length, 0) || 0} lessons</span>
+                </div>
+              </div>
+
+              {/* Badges */}
+              <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                {course.featured && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-albert">
+                    Featured
+                  </span>
+                )}
+                {course.trending && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-albert">
+                    Trending
+                  </span>
+                )}
+                {course.track && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-albert">
+                    {getTrackDisplayName(course.track)}
+                  </span>
+                )}
+              </div>
+
+              {/* Action Icons */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditCourse(course);
+                  }}
+                  className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
+                  title="Edit"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCourseToDelete(course);
+                  }}
+                  className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                  title="Delete"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
 
         {filteredCourses.length === 0 && (

@@ -1600,6 +1600,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
         onApply={handleApplyAILandingPage}
         hasExistingContent={!!(landingPageFormData.coachBio || landingPageFormData.keyOutcomes.length > 0)}
         overwriteWarning="This will replace your existing landing page content."
+        squadId={selectedSquad?.id}
       />
 
       {/* Limit Reached Modal */}
