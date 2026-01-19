@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, X, Trash2, Repeat, Users, ChevronDown, ChevronUp, Image as ImageIcon, FileText, Plus, Video, Link2, Loader2, Settings } from 'lucide-react';
+import { Calendar, Clock, X, Trash2, Repeat, Users, ChevronDown, ChevronUp, Image as ImageIcon, FileText, Plus, Loader2 } from 'lucide-react';
+import { MeetingProviderSelector, MeetingProviderType, isMeetingProviderReady } from '@/components/scheduling/MeetingProviderSelector';
+import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import type { Squad, RecurrenceFrequency, EventVisibility } from '@/types';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import {
@@ -65,13 +67,6 @@ const COMMON_TIMEZONES = [
   { value: 'UTC', label: 'UTC' },
 ];
 
-// Location presets
-const LOCATION_PRESETS = [
-  'Squad chat',
-  'Zoom',
-  'Google Meet',
-  'Microsoft Teams',
-];
 
 // Recurrence options
 const RECURRENCE_OPTIONS: { value: RecurrenceFrequency | 'none'; label: string }[] = [
@@ -110,17 +105,21 @@ export function SquadCallEditForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
+  // Coach integrations for meeting provider
+  const { zoom, googleMeet } = useCoachIntegrations();
+
   // Form state
   const [date, setDate] = useState('');
   const [time, setTime] = useState('10:00');
   const [timezone, setTimezone] = useState('America/New_York');
-  const [location, setLocation] = useState('Squad chat');
-  const [customLocation, setCustomLocation] = useState('');
   const [title, setTitle] = useState('');
-  
-  // Track if using a preset or custom location
-  const [useCustomLocation, setUseCustomLocation] = useState(false);
+
+  // Meeting provider state
+  const [meetingProvider, setMeetingProvider] = useState<MeetingProviderType>('manual');
+  const [manualMeetingLink, setManualMeetingLink] = useState('');
+  const [useManualOverride, setUseManualOverride] = useState(false);
+  const [isCreatingMeeting, setIsCreatingMeeting] = useState(false);
   
   // Recurrence settings
   const [recurrence, setRecurrence] = useState<RecurrenceFrequency | 'none'>('none');
@@ -148,49 +147,8 @@ export function SquadCallEditForm({
   // Track if the event is recurring (for showing cancel options)
   const [isRecurringEvent, setIsRecurringEvent] = useState(false);
 
-  // Meeting provider integration state
-  const [meetingProvider, setMeetingProvider] = useState<'zoom' | 'google_meet' | 'manual'>('manual');
-  const [autoCreateMeeting, setAutoCreateMeeting] = useState(false);
-  const [isCreatingMeeting, setIsCreatingMeeting] = useState(false);
-  const [connectedIntegrations, setConnectedIntegrations] = useState<{
-    zoom: boolean;
-    google_meet: boolean;
-  }>({ zoom: false, google_meet: false });
-  
   // Whether we're editing an existing call (legacy or unified)
   const isEditing = !!existingEventId || !!squad.nextCallDateTime;
-
-  // Fetch connected meeting integrations on mount
-  useEffect(() => {
-    const fetchIntegrations = async () => {
-      try {
-        const response = await fetch('/api/coach/integrations');
-        if (response.ok) {
-          const data = await response.json();
-          const integrations = data.integrations || [];
-
-          // Check for Zoom integration
-          const zoomConnected = integrations.some(
-            (i: { provider: string; status: string }) => i.provider === 'zoom' && i.status === 'connected'
-          );
-
-          // Check for Google Calendar with Meet Links enabled
-          const googleCalendar = integrations.find(
-            (i: { provider: string; status: string }) => i.provider === 'google_calendar' && i.status === 'connected'
-          );
-          const googleMeetEnabled = googleCalendar?.settings?.enableMeetLinks === true;
-
-          setConnectedIntegrations({
-            zoom: zoomConnected,
-            google_meet: googleMeetEnabled,
-          });
-        }
-      } catch (err) {
-        console.error('Error fetching integrations:', err);
-      }
-    };
-    fetchIntegrations();
-  }, []);
 
   // Auto-sync recurrence day of week when date changes
   useEffect(() => {
@@ -244,26 +202,33 @@ export function SquadCallEditForm({
       const response = await fetch(`/api/events/${eventId}`);
       if (response.ok) {
         const { event } = await response.json();
-        
+
         const callDate = new Date(event.startDateTime);
         const callTz = event.timezone || 'America/New_York';
-        
+
         setDate(formatDateForInput(callDate, callTz));
         setTime(formatTimeForInput(callDate, callTz));
         setTimezone(callTz);
-        
-        const loc = event.locationLabel || 'Squad chat';
-        if (LOCATION_PRESETS.includes(loc)) {
-          setLocation(loc);
-          setUseCustomLocation(false);
+
+        // Load meeting provider settings
+        if (event.meetingProvider === 'zoom' || event.meetingProvider === 'google_meet') {
+          setMeetingProvider(event.meetingProvider);
+          // If there's a manual link stored, use manual override
+          if (event.meetingLink) {
+            setManualMeetingLink(event.meetingLink);
+            setUseManualOverride(true);
+          }
+        } else if (event.meetingLink) {
+          setMeetingProvider('manual');
+          setManualMeetingLink(event.meetingLink);
         } else {
-          setUseCustomLocation(true);
-          setCustomLocation(loc);
+          setMeetingProvider('manual');
+          setManualMeetingLink('');
         }
-        
+
         setTitle(event.title || '');
         setVisibility(event.visibility || 'squad_only');
-        
+
         // Load recurrence settings
         if (event.isRecurring && event.recurrence) {
           setRecurrence(event.recurrence.frequency);
@@ -278,7 +243,7 @@ export function SquadCallEditForm({
           setRecurrence('none');
           setIsRecurringEvent(false);
         }
-        
+
         // Load rich content fields
         setCoverImageUrl(event.coverImageUrl || '');
         setDescription(event.description || event.longDescription || '');
@@ -294,20 +259,21 @@ export function SquadCallEditForm({
   const loadFromSquadFields = () => {
     const callDate = new Date(squad.nextCallDateTime!);
     const callTz = squad.nextCallTimezone || 'America/New_York';
-    
+
     setDate(formatDateForInput(callDate, callTz));
     setTime(formatTimeForInput(callDate, callTz));
     setTimezone(callTz);
-    
-    const loc = squad.nextCallLocation || 'Squad chat';
-    if (LOCATION_PRESETS.includes(loc)) {
-      setLocation(loc);
-      setUseCustomLocation(false);
+
+    // Load location as manual link if it's a URL
+    const loc = squad.nextCallLocation || '';
+    if (loc.startsWith('http')) {
+      setMeetingProvider('manual');
+      setManualMeetingLink(loc);
     } else {
-      setUseCustomLocation(true);
-      setCustomLocation(loc);
+      setMeetingProvider('manual');
+      setManualMeetingLink('');
     }
-    
+
     setTitle(squad.nextCallTitle || '');
     setRecurrence('none');
     setIsRecurringEvent(false);
@@ -320,15 +286,17 @@ export function SquadCallEditForm({
     setDate(tomorrow.toISOString().split('T')[0]);
     setTime('10:00');
     setTimezone(squad.timezone || 'America/New_York');
-    setLocation('Squad chat');
-    setCustomLocation('');
-    setUseCustomLocation(false);
     setTitle('');
     setRecurrence('none');
     setRecurrenceEndDate('');
     setShowRecurrenceDetails(false);
     setIsRecurringEvent(false);
     setVisibility('squad_only');
+
+    // Reset meeting provider state
+    setMeetingProvider('manual');
+    setManualMeetingLink('');
+    setUseManualOverride(false);
     // Reset rich content
     setShowRichContent(false);
     setCoverImageUrl('');
@@ -362,21 +330,28 @@ export function SquadCallEditForm({
   
   const handleSubmit = async () => {
     if (isSubmitting) return;
-    
+
     setError(null);
-    
+
     // Validate required fields
     if (!date || !time) {
       setError('Please select a date and time');
       return;
     }
-    
-    const finalLocation = useCustomLocation ? customLocation.trim() : location;
-    if (!finalLocation) {
-      setError('Please enter a location');
+
+    // Validate meeting provider selection
+    const integrations = { zoom: { connected: zoom.connected }, googleMeet: { connected: googleMeet.connected } };
+    if (!isMeetingProviderReady(meetingProvider, integrations, useManualOverride, manualMeetingLink)) {
+      if (meetingProvider === 'manual') {
+        setError('Please enter a meeting link');
+      } else if (useManualOverride) {
+        setError('Please enter a meeting link or disable manual override');
+      } else {
+        setError('Please connect ' + (meetingProvider === 'zoom' ? 'Zoom' : 'Google Meet') + ' in Settings');
+      }
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
 
@@ -391,12 +366,13 @@ export function SquadCallEditForm({
       const dateInTz = new Date(localDate.toLocaleString('en-US', { timeZone: timezone }));
       const utcDate = new Date(localDate.getTime() - (dateInTz.getTime() - localDate.getTime()));
 
-      // Auto-create meeting if enabled
-      let autoCreatedMeetingUrl: string | undefined;
-      let autoCreatedMeetingId: string | undefined;
-      let autoCreatedMeetingProvider: 'zoom' | 'google_meet' | undefined;
+      // Determine meeting URL and provider
+      let finalMeetingUrl: string | undefined;
+      let finalMeetingId: string | undefined;
+      let finalMeetingProvider: 'zoom' | 'google_meet' | 'manual' | undefined;
 
-      if (autoCreateMeeting && meetingProvider !== 'manual') {
+      // Auto-create meeting if using Zoom/Meet and not using manual override
+      if ((meetingProvider === 'zoom' || meetingProvider === 'google_meet') && !useManualOverride) {
         setIsCreatingMeeting(true);
         try {
           const meetingTitle = title.trim() || `${squad.name} Call`;
@@ -415,11 +391,11 @@ export function SquadCallEditForm({
 
             if (response.ok) {
               const data = await response.json();
-              autoCreatedMeetingUrl = data.meetingUrl;
-              autoCreatedMeetingId = data.meetingId;
-              autoCreatedMeetingProvider = 'zoom';
+              finalMeetingUrl = data.meetingUrl;
+              finalMeetingId = data.meetingId;
+              finalMeetingProvider = 'zoom';
             } else {
-              console.error('Failed to create Zoom meeting');
+              throw new Error('Failed to create Zoom meeting');
             }
           } else if (meetingProvider === 'google_meet') {
             // Calculate end time (1 hour after start)
@@ -439,25 +415,28 @@ export function SquadCallEditForm({
 
             if (response.ok) {
               const data = await response.json();
-              autoCreatedMeetingUrl = data.meetingUrl;
-              autoCreatedMeetingId = data.eventId;
-              autoCreatedMeetingProvider = 'google_meet';
+              finalMeetingUrl = data.meetingUrl;
+              finalMeetingId = data.eventId;
+              finalMeetingProvider = 'google_meet';
             } else {
-              console.error('Failed to create Google Meet');
+              throw new Error('Failed to create Google Meet');
             }
           }
-        } catch (err) {
-          console.error('Error creating meeting:', err);
         } finally {
           setIsCreatingMeeting(false);
         }
+      } else {
+        // Use manual link
+        finalMeetingUrl = manualMeetingLink.trim() || undefined;
+        // For squad calls, we don't use 'in_app' so this will always be 'manual', 'zoom', or 'google_meet'
+        finalMeetingProvider = meetingProvider === 'in_app' ? 'manual' : meetingProvider;
       }
 
       // Build recurrence pattern if needed
       const recurrencePattern = recurrence !== 'none' ? {
         frequency: recurrence,
-        dayOfWeek: recurrence === 'weekly' || recurrence === 'biweekly' 
-          ? recurrenceDayOfWeek 
+        dayOfWeek: recurrence === 'weekly' || recurrence === 'biweekly'
+          ? recurrenceDayOfWeek
           : undefined,
         dayOfMonth: recurrence === 'monthly' ? day : undefined,
         time: time,
@@ -465,7 +444,7 @@ export function SquadCallEditForm({
         startDate: date,
         endDate: recurrenceEndDate || undefined,
       } : undefined;
-      
+
       // Build event data
       const eventData = {
         title: title.trim() || 'Squad call',
@@ -473,12 +452,12 @@ export function SquadCallEditForm({
         startDateTime: utcDate.toISOString(),
         timezone,
         durationMinutes: 60,
-        
-        locationType: autoCreatedMeetingUrl || finalLocation.startsWith('http') ? 'online' : 'chat',
-        locationLabel: autoCreatedMeetingProvider === 'zoom' ? 'Zoom' : autoCreatedMeetingProvider === 'google_meet' ? 'Google Meet' : finalLocation,
-        meetingLink: autoCreatedMeetingUrl || (finalLocation.startsWith('http') ? finalLocation : undefined),
-        meetingProvider: autoCreatedMeetingProvider,
-        externalMeetingId: autoCreatedMeetingId,
+
+        locationType: finalMeetingUrl ? 'online' : 'chat',
+        locationLabel: finalMeetingProvider === 'zoom' ? 'Zoom' : finalMeetingProvider === 'google_meet' ? 'Google Meet' : 'Meeting',
+        meetingLink: finalMeetingUrl,
+        meetingProvider: finalMeetingProvider,
+        externalMeetingId: finalMeetingId,
         
         eventType: 'squad_call',
         scope: 'squad',
@@ -754,165 +733,16 @@ export function SquadCallEditForm({
             </div>
           )}
           
-          {/* Location */}
-          <div>
-            <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
-              <MapPin className="inline w-4 h-4 mr-1 -mt-0.5" />
-              Location
-            </label>
-            
-            {!useCustomLocation ? (
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  {LOCATION_PRESETS.map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setLocation(preset)}
-                      className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all ${
-                        location === preset
-                          ? 'bg-brand-accent text-white'
-                          : 'bg-[#f3f1ef] dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d]'
-                      }`}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setUseCustomLocation(true)}
-                  className="text-[13px] text-brand-accent hover:underline font-albert"
-                >
-                  + Add custom location/link
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={customLocation}
-                  onChange={(e) => setCustomLocation(e.target.value)}
-                  placeholder="e.g., https://zoom.us/j/... or meeting room name"
-                  className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUseCustomLocation(false);
-                    setCustomLocation('');
-                  }}
-                  className="text-[13px] text-brand-accent hover:underline font-albert"
-                >
-                  ← Use preset location
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Video Meeting Provider */}
-          {(connectedIntegrations.zoom || connectedIntegrations.google_meet) && (
-            <div className="p-4 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
-              <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-3">
-                <Video className="inline w-4 h-4 mr-1.5 -mt-0.5 text-brand-accent" />
-                Video Meeting
-              </label>
-
-              {/* Provider Selection */}
-              <div className="flex flex-wrap gap-2 mb-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMeetingProvider('manual');
-                    setAutoCreateMeeting(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all flex items-center gap-1.5 ${
-                    meetingProvider === 'manual'
-                      ? 'bg-brand-accent text-white'
-                      : 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d] border border-[#e1ddd8] dark:border-[#3a3f4a]'
-                  }`}
-                >
-                  <Link2 className="w-3.5 h-3.5" />
-                  Manual Link
-                </button>
-                {connectedIntegrations.zoom && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMeetingProvider('zoom');
-                      setAutoCreateMeeting(true);
-                    }}
-                    className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all flex items-center gap-1.5 ${
-                      meetingProvider === 'zoom'
-                        ? 'bg-[#2D8CFF] text-white'
-                        : 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d] border border-[#e1ddd8] dark:border-[#3a3f4a]'
-                    }`}
-                  >
-                    <Video className="w-3.5 h-3.5" />
-                    Zoom
-                  </button>
-                )}
-                {connectedIntegrations.google_meet && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMeetingProvider('google_meet');
-                      setAutoCreateMeeting(true);
-                    }}
-                    className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all flex items-center gap-1.5 ${
-                      meetingProvider === 'google_meet'
-                        ? 'bg-[#00897B] text-white'
-                        : 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d] border border-[#e1ddd8] dark:border-[#3a3f4a]'
-                    }`}
-                  >
-                    <Video className="w-3.5 h-3.5" />
-                    Google Meet
-                  </button>
-                )}
-              </div>
-
-              {/* Auto-create toggle */}
-              {meetingProvider !== 'manual' && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={autoCreateMeeting}
-                    onChange={(e) => setAutoCreateMeeting(e.target.checked)}
-                    className="w-4 h-4 rounded border-2 border-[#d4cfc9] dark:border-[#3a3f4a] text-brand-accent focus:ring-brand-accent focus:ring-offset-0 cursor-pointer"
-                  />
-                  <span className="font-albert text-[13px] text-text-primary dark:text-[#f5f5f8]">
-                    Auto-create {meetingProvider === 'zoom' ? 'Zoom' : 'Google Meet'} link
-                  </span>
-                </label>
-              )}
-            </div>
-          )}
-
-          {/* Connect prompt if no integrations */}
-          {!connectedIntegrations.zoom && !connectedIntegrations.google_meet && (
-            <div className="p-4 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl border border-dashed border-[#d4cfc9] dark:border-[#3a3f4a]">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#e9e5e0] dark:bg-[#262b35] flex items-center justify-center flex-shrink-0">
-                  <Video className="w-4 h-4 text-text-secondary" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-albert text-[13px] text-text-primary dark:text-[#f5f5f8] font-medium">
-                    Auto-create video meeting links
-                  </p>
-                  <p className="font-albert text-[12px] text-text-secondary dark:text-[#7d8190] mt-0.5">
-                    Connect Zoom or Google Meet to automatically generate meeting links when scheduling calls.
-                  </p>
-                  <a
-                    href="/coach?tab=scheduling"
-                    className="inline-flex items-center gap-1.5 mt-2 font-albert text-[12px] text-brand-accent hover:text-brand-accent/90 font-medium"
-                  >
-                    <Settings className="w-3.5 h-3.5" />
-                    Connect in Settings
-                  </a>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Meeting Provider Selector */}
+          <MeetingProviderSelector
+            allowInApp={false}
+            value={meetingProvider}
+            onChange={setMeetingProvider}
+            manualLink={manualMeetingLink}
+            onManualLinkChange={setManualMeetingLink}
+            useManualOverride={useManualOverride}
+            onUseManualOverrideChange={setUseManualOverride}
+          />
 
           {/* Title (Optional) */}
           <div>

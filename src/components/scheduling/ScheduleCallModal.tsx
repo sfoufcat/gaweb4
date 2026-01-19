@@ -5,10 +5,6 @@ import { createPortal } from 'react-dom';
 import {
   X,
   Calendar,
-  Clock,
-  Video,
-  MessageCircle,
-  MapPin,
   Loader2,
   Plus,
   Trash2,
@@ -21,7 +17,9 @@ import {
 import { useAvailableSlots } from '@/hooks/useAvailability';
 import { useSchedulingActions } from '@/hooks/useScheduling';
 import { useCallUsage, formatCallUsageStatus, formatExtraCallPrice } from '@/hooks/useCallUsage';
+import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
+import { MeetingProviderSelector, type MeetingProviderType, isMeetingProviderReady } from './MeetingProviderSelector';
 import type { ProgramEnrollment, ProgramInstance } from '@/types';
 
 type CallTypeOption = 'program' | 'extra';
@@ -40,11 +38,6 @@ const DURATION_OPTIONS = [
   { value: 60, label: '1 hour' },
   { value: 90, label: '1.5 hours' },
   { value: 120, label: '2 hours' },
-];
-
-const LOCATION_OPTIONS = [
-  { value: 'online', label: 'Video Call', icon: Video },
-  { value: 'chat', label: 'In-App Chat', icon: MessageCircle },
 ];
 
 const RECURRENCE_OPTIONS = [
@@ -97,13 +90,16 @@ export function ScheduleCallModal({
   onSuccess,
 }: ScheduleCallModalProps) {
   const { proposeCall, isLoading, error } = useSchedulingActions();
+  const { zoom, googleMeet } = useCoachIntegrations();
 
   // Form state
   const [mode, setMode] = useState<'propose' | 'confirm'>('propose');
   const [duration, setDuration] = useState(60);
-  const [locationType, setLocationType] = useState<'online' | 'chat'>('online');
-  const [locationLabel, setLocationLabel] = useState('');
-  const [meetingLink, setMeetingLink] = useState('');
+  const [meetingProvider, setMeetingProvider] = useState<MeetingProviderType>('in_app');
+  const [manualMeetingLink, setManualMeetingLink] = useState('');
+  const [useManualOverride, setUseManualOverride] = useState(false);
+  const [isCreatingMeeting, setIsCreatingMeeting] = useState(false);
+  const [meetingError, setMeetingError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [recurrence, setRecurrence] = useState('none');
@@ -273,6 +269,21 @@ export function ScheduleCallModal({
   const handleSubmit = async () => {
     if (proposedSlots.length === 0) return;
 
+    // Check if meeting provider selection is ready
+    const providerReady = isMeetingProviderReady(
+      meetingProvider,
+      { zoom, googleMeet },
+      useManualOverride,
+      manualMeetingLink
+    );
+
+    if (!providerReady) {
+      setMeetingError('Please configure your meeting link or select a connected provider');
+      return;
+    }
+
+    setMeetingError(null);
+
     try {
       // Convert proposed slots to the API format
       const proposedTimes = proposedSlots.map(slot => {
@@ -317,6 +328,97 @@ export function ScheduleCallModal({
         }
       }
 
+      // Handle meeting creation based on provider
+      let finalMeetingUrl: string | undefined;
+      let externalMeetingId: string | undefined;
+      let finalMeetingProvider: 'zoom' | 'google_meet' | 'stream' | 'manual' | undefined;
+
+      const firstSlot = proposedSlots[0];
+      const startDateTime = new Date(`${firstSlot.date}T${firstSlot.startTime}`);
+      const endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
+
+      if (meetingProvider === 'in_app') {
+        // In-app call via Stream Video
+        finalMeetingProvider = 'stream';
+      } else if (meetingProvider === 'zoom' && zoom.connected && !useManualOverride) {
+        // Auto-create Zoom meeting
+        setIsCreatingMeeting(true);
+        try {
+          const response = await fetch('/api/coach/integrations/zoom/meetings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              topic: title || `Call with ${clientName}`,
+              startTime: startDateTime.toISOString(),
+              duration,
+              timezone,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            finalMeetingUrl = data.meetingUrl;
+            externalMeetingId = data.meetingId;
+            finalMeetingProvider = 'zoom';
+          } else {
+            throw new Error('Failed to create Zoom meeting');
+          }
+        } catch (err) {
+          console.error('Error creating Zoom meeting:', err);
+          setMeetingError('Failed to create Zoom meeting. Please try again or use a manual link.');
+          setIsCreatingMeeting(false);
+          return;
+        } finally {
+          setIsCreatingMeeting(false);
+        }
+      } else if (meetingProvider === 'google_meet' && googleMeet.connected && !useManualOverride) {
+        // Auto-create Google Meet
+        setIsCreatingMeeting(true);
+        try {
+          const response = await fetch('/api/coach/integrations/google_meet/meetings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              summary: title || `Call with ${clientName}`,
+              startTime: startDateTime.toISOString(),
+              endTime: endDateTime.toISOString(),
+              timezone,
+              description: notes || `Coaching call with ${clientName}`,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            finalMeetingUrl = data.meetingUrl;
+            externalMeetingId = data.eventId;
+            finalMeetingProvider = 'google_meet';
+          } else {
+            throw new Error('Failed to create Google Meet');
+          }
+        } catch (err) {
+          console.error('Error creating Google Meet:', err);
+          setMeetingError('Failed to create Google Meet. Please try again or use a manual link.');
+          setIsCreatingMeeting(false);
+          return;
+        } finally {
+          setIsCreatingMeeting(false);
+        }
+      } else if (meetingProvider === 'manual' || useManualOverride) {
+        // Manual link
+        finalMeetingUrl = manualMeetingLink.trim();
+        finalMeetingProvider = 'manual';
+      }
+
+      // Determine location type based on provider
+      const locationType = meetingProvider === 'in_app' ? 'chat' : 'online';
+      const locationLabel = meetingProvider === 'in_app'
+        ? 'In-App Call'
+        : meetingProvider === 'zoom'
+          ? 'Zoom'
+          : meetingProvider === 'google_meet'
+            ? 'Google Meet'
+            : 'Video Call';
+
       await proposeCall({
         clientId,
         proposedTimes,
@@ -324,8 +426,10 @@ export function ScheduleCallModal({
         description: notes,
         duration,
         locationType,
-        locationLabel: locationLabel || (locationType === 'online' ? 'Video Call' : 'In-App Chat'),
-        meetingLink: locationType === 'online' ? meetingLink : undefined,
+        locationLabel,
+        meetingLink: finalMeetingUrl,
+        meetingProvider: finalMeetingProvider,
+        externalMeetingId,
         schedulingNotes: notes,
         isRecurring: recurrence !== 'none',
         recurrence: recurrenceConfig,
@@ -458,65 +562,45 @@ export function ScheduleCallModal({
               : 'Schedule a confirmed call at a specific time.'}
           </p>
 
-          {/* Duration & Location */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                Duration
-              </label>
-              <div className="relative">
-                <select
-                  value={duration}
-                  onChange={(e) => setDuration(parseInt(e.target.value))}
-                  className="w-full px-4 py-3 pr-10 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent appearance-none cursor-pointer"
-                >
-                  {DURATION_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                  <svg className="h-5 w-5 text-brand-accent" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                Location
-              </label>
-              <div className="relative">
-                <select
-                  value={locationType}
-                  onChange={(e) => setLocationType(e.target.value as 'online' | 'chat')}
-                  className="w-full px-4 py-3 pr-10 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent appearance-none cursor-pointer"
-                >
-                  {LOCATION_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                  <svg className="h-5 w-5 text-brand-accent" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </div>
+          {/* Duration */}
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+              Duration
+            </label>
+            <div className="relative">
+              <select
+                value={duration}
+                onChange={(e) => setDuration(parseInt(e.target.value))}
+                className="w-full px-4 py-3 pr-10 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent appearance-none cursor-pointer"
+              >
+                {DURATION_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                <svg className="h-5 w-5 text-brand-accent" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
               </div>
             </div>
           </div>
 
-          {/* Meeting Link (for video calls) */}
-          {locationType === 'online' && (
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                Meeting Link (optional)
-              </label>
-              <input
-                type="url"
-                value={meetingLink}
-                onChange={(e) => setMeetingLink(e.target.value)}
-                placeholder="https://zoom.us/j/... or leave empty for in-app call"
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-brand-accent"
-              />
+          {/* Meeting Provider Selection */}
+          <MeetingProviderSelector
+            allowInApp={true}
+            value={meetingProvider}
+            onChange={setMeetingProvider}
+            manualLink={manualMeetingLink}
+            onManualLinkChange={setManualMeetingLink}
+            useManualOverride={useManualOverride}
+            onUseManualOverrideChange={setUseManualOverride}
+          />
+
+          {/* Meeting Error */}
+          {meetingError && (
+            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl text-amber-600 dark:text-amber-400">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <p className="text-sm">{meetingError}</p>
             </div>
           )}
 
@@ -908,11 +992,11 @@ export function ScheduleCallModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={proposedSlots.length === 0 || isLoading}
+            disabled={proposedSlots.length === 0 || isLoading || isCreatingMeeting}
             className="flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
-            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {mode === 'propose' ? 'Send Proposal' : 'Confirm Call'}
+            {(isLoading || isCreatingMeeting) && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isCreatingMeeting ? 'Creating Meeting...' : mode === 'propose' ? 'Send Proposal' : 'Confirm Call'}
           </button>
         </div>
       </div>

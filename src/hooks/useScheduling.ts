@@ -140,6 +140,8 @@ interface ProposeCallOptions {
   locationType?: 'online' | 'chat';
   locationLabel?: string;
   meetingLink?: string;
+  meetingProvider?: 'zoom' | 'google_meet' | 'stream' | 'manual';
+  externalMeetingId?: string;
   schedulingNotes?: string;
   respondBy?: string;
   isRecurring?: boolean;

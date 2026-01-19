@@ -6,7 +6,6 @@ import {
   X,
   Calendar,
   Clock,
-  Video,
   Loader2,
   Plus,
   Trash2,
@@ -15,11 +14,11 @@ import {
   Repeat,
   Globe,
   Link2,
-  ExternalLink,
 } from 'lucide-react';
 import { useAvailableSlots } from '@/hooks/useAvailability';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
+import { MeetingProviderSelector, type MeetingProviderType, isMeetingProviderReady } from './MeetingProviderSelector';
 
 /**
  * Minimal cohort info needed for scheduling
@@ -59,7 +58,6 @@ const RECURRENCE_OPTIONS = [
   { value: 'monthly', label: 'Monthly' },
 ];
 
-type MeetingProvider = 'zoom' | 'google_meet' | 'manual';
 type RecurrenceEndType = 'end_of_cohort' | 'specific_date' | 'occurrences';
 
 interface ProposedTimeSlot {
@@ -96,8 +94,9 @@ export function ScheduleCohortEventModal({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [duration, setDuration] = useState(60);
-  const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>('manual');
+  const [meetingProvider, setMeetingProvider] = useState<MeetingProviderType>('manual');
   const [manualMeetingLink, setManualMeetingLink] = useState('');
+  const [useManualOverride, setUseManualOverride] = useState(false);
 
   // Selected times
   const [proposedSlots, setProposedSlots] = useState<ProposedTimeSlot[]>([]);
@@ -248,8 +247,8 @@ export function ScheduleCohortEventModal({
       return;
     }
 
-    // Validate meeting link for manual mode
-    if (meetingProvider === 'manual' && !manualMeetingLink.trim()) {
+    // Validate meeting link for manual mode or manual override
+    if ((meetingProvider === 'manual' || useManualOverride) && !manualMeetingLink.trim()) {
       setError('Please enter a meeting link');
       return;
     }
@@ -266,8 +265,8 @@ export function ScheduleCohortEventModal({
       let meetingId: string | undefined;
       let finalMeetingProvider: 'zoom' | 'google_meet' | 'manual' | undefined;
 
-      // Auto-create meeting if Zoom or Google Meet selected and connected
-      if (meetingProvider === 'zoom' && zoom.connected) {
+      // Auto-create meeting if Zoom or Google Meet selected and connected (and not using manual override)
+      if (meetingProvider === 'zoom' && zoom.connected && !useManualOverride) {
         setIsCreatingMeeting(true);
         try {
           const response = await fetch('/api/coach/integrations/zoom/meetings', {
@@ -295,7 +294,7 @@ export function ScheduleCohortEventModal({
         } finally {
           setIsCreatingMeeting(false);
         }
-      } else if (meetingProvider === 'google_meet' && googleMeet.connected) {
+      } else if (meetingProvider === 'google_meet' && googleMeet.connected && !useManualOverride) {
         setIsCreatingMeeting(true);
         try {
           const response = await fetch('/api/coach/integrations/google_meet/meetings', {
@@ -324,7 +323,7 @@ export function ScheduleCohortEventModal({
         } finally {
           setIsCreatingMeeting(false);
         }
-      } else if (meetingProvider === 'manual') {
+      } else if (meetingProvider === 'manual' || useManualOverride) {
         meetingUrl = manualMeetingLink.trim();
         finalMeetingProvider = 'manual';
       }
@@ -542,110 +541,15 @@ export function ScheduleCohortEventModal({
           </div>
 
           {/* Meeting Provider Selection */}
-          <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-              <Video className="w-4 h-4 inline mr-2" />
-              Meeting Link
-            </label>
-
-            <div className="flex p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl mb-3">
-              <button
-                onClick={() => setMeetingProvider('zoom')}
-                className={`flex-1 py-2 px-3 rounded-lg font-albert font-medium text-sm transition-colors flex items-center justify-center gap-2 ${
-                  meetingProvider === 'zoom'
-                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                    : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-                }`}
-              >
-                Zoom
-                {zoom.connected && <Check className="w-3 h-3 text-green-500" />}
-              </button>
-              <button
-                onClick={() => setMeetingProvider('google_meet')}
-                className={`flex-1 py-2 px-3 rounded-lg font-albert font-medium text-sm transition-colors flex items-center justify-center gap-2 ${
-                  meetingProvider === 'google_meet'
-                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                    : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-                }`}
-              >
-                Google Meet
-                {googleMeet.connected && <Check className="w-3 h-3 text-green-500" />}
-              </button>
-              <button
-                onClick={() => setMeetingProvider('manual')}
-                className={`flex-1 py-2 px-3 rounded-lg font-albert font-medium text-sm transition-colors ${
-                  meetingProvider === 'manual'
-                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                    : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-                }`}
-              >
-                Manual Link
-              </button>
-            </div>
-
-            {/* Provider-specific content */}
-            {meetingProvider === 'zoom' && !zoom.connected && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl">
-                <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4" />
-                  Zoom not connected.
-                  <a
-                    href="/coach?tab=settings&section=integrations"
-                    className="underline flex items-center gap-1"
-                    target="_blank"
-                  >
-                    Connect Zoom <ExternalLink className="w-3 h-3" />
-                  </a>
-                </p>
-              </div>
-            )}
-
-            {meetingProvider === 'zoom' && zoom.connected && (
-              <div className="p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-xl">
-                <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
-                  <Check className="w-4 h-4" />
-                  Zoom meeting will be created automatically
-                  {zoom.accountEmail && <span className="text-xs opacity-75">({zoom.accountEmail})</span>}
-                </p>
-              </div>
-            )}
-
-            {meetingProvider === 'google_meet' && !googleMeet.connected && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl">
-                <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4" />
-                  Google Meet not enabled.
-                  <a
-                    href="/coach?tab=settings&section=integrations"
-                    className="underline flex items-center gap-1"
-                    target="_blank"
-                  >
-                    Connect Google Calendar <ExternalLink className="w-3 h-3" />
-                  </a>
-                </p>
-              </div>
-            )}
-
-            {meetingProvider === 'google_meet' && googleMeet.connected && (
-              <div className="p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-xl">
-                <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
-                  <Check className="w-4 h-4" />
-                  Google Meet link will be created automatically
-                  {googleMeet.accountEmail && <span className="text-xs opacity-75">({googleMeet.accountEmail})</span>}
-                </p>
-              </div>
-            )}
-
-            {meetingProvider === 'manual' && (
-              <input
-                type="url"
-                value={manualMeetingLink}
-                onChange={(e) => setManualMeetingLink(e.target.value)}
-                placeholder="https://zoom.us/j/... or https://meet.google.com/..."
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-brand-accent"
-              />
-            )}
-          </div>
+          <MeetingProviderSelector
+            allowInApp={false}
+            value={meetingProvider}
+            onChange={setMeetingProvider}
+            manualLink={manualMeetingLink}
+            onManualLinkChange={setManualMeetingLink}
+            useManualOverride={useManualOverride}
+            onUseManualOverrideChange={setUseManualOverride}
+          />
 
           {/* Date & Time Selection */}
           <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
