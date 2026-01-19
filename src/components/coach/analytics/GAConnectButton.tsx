@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BarChart2, X, Check, Loader2 } from 'lucide-react';
+import { BarChart2, X, Check, Loader2, Pencil } from 'lucide-react';
 
 interface GAConnectButtonProps {
   apiBasePath?: string;
@@ -80,8 +80,23 @@ export function GAConnectButton({ apiBasePath = '/api/coach/analytics' }: GAConn
             : 'bg-[#e1ddd8]/50 text-[#5f5a55] hover:bg-[#e1ddd8] dark:bg-[#272d38]/50 dark:text-[#b2b6c2] dark:hover:bg-[#272d38]'
         }`}
       >
-        <BarChart2 className="w-4 h-4" />
-        {loading ? 'Loading...' : isConfigured ? 'GA Connected' : 'Connect Google Analytics'}
+        {loading ? (
+          <>
+            <BarChart2 className="w-4 h-4" />
+            Loading...
+          </>
+        ) : isConfigured ? (
+          <>
+            <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            Google Analytics
+            <Pencil className="w-3.5 h-3.5 ml-0.5" />
+          </>
+        ) : (
+          <>
+            <BarChart2 className="w-4 h-4" />
+            Connect Google Analytics
+          </>
+        )}
       </button>
 
       {/* Modal - rendered via portal to escape overflow-hidden containers */}

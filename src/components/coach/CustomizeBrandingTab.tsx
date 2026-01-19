@@ -1448,7 +1448,7 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert tracking-[-0.5px]">
               Customize Your Branding
@@ -1460,7 +1460,7 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
           </div>
           <button
             onClick={() => window.location.href = '/?tour=true'}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef]/50 dark:hover:bg-[#262b35]/50 rounded-lg transition-colors font-albert self-start"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef]/50 dark:hover:bg-[#262b35]/50 rounded-lg transition-colors font-albert self-start md:self-auto md:shrink-0"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Restart Tour

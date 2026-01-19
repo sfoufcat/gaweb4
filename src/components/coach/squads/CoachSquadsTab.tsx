@@ -5,17 +5,19 @@ import Image from 'next/image';
 import type { Squad, SquadMember, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier } from '@/types';
 import { ProgramLandingPageEditor } from '../programs/ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
-import { 
-  Plus, 
+import {
+  Plus,
   Users,
   User,
   Target,
-  ChevronRight, 
-  UserMinus, 
-  FileText, 
-  Gift, 
-  Globe, 
-  Lock, 
+  ChevronRight,
+  ChevronDown,
+  Check,
+  UserMinus,
+  FileText,
+  Gift,
+  Globe,
+  Lock,
   Edit2,
   Trash2,
   ExternalLink,
@@ -25,10 +27,16 @@ import {
   Eye,
   Search
 } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { AIHelperModal } from '@/components/ai';
 import type { LandingPageDraft, ProgramContentDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
 import { SquadFormDialog } from '@/components/admin/SquadFormDialog';
+import { CreateSquadModal } from '@/components/admin/CreateSquadModal';
 import { SquadView } from '@/components/squad/SquadView';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SquadVisibilityBadge } from '@/components/ui/program-badges';
@@ -108,6 +116,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
   const [updatingCoach, setUpdatingCoach] = useState(false);
   
   // Modal states
+  const [isCreateSquadModalOpen, setIsCreateSquadModalOpen] = useState(false);
   const [isSquadModalOpen, setIsSquadModalOpen] = useState(false);
   const [editingSquad, setEditingSquad] = useState<Squad | null>(null);
   const [deleteConfirmSquad, setDeleteConfirmSquad] = useState<Squad | null>(null);
@@ -115,7 +124,10 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
   
   // AI Helper modal
   const [isAILandingPageModalOpen, setIsAILandingPageModalOpen] = useState(false);
-  
+
+  // Mobile page dropdown state
+  const [isPageDropdownOpen, setIsPageDropdownOpen] = useState(false);
+
   // Plan tier for limit checking
   const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
   const { checkLimit, showLimitModal, modalProps } = useLimitCheck(currentTier);
@@ -770,8 +782,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
                     showLimitModal('max_squads', displaySquads.length);
                     return;
                   }
-                  setEditingSquad(null);
-                  setIsSquadModalOpen(true);
+                  setIsCreateSquadModalOpen(true);
                 }}
                 className="text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-medium font-albert transition-colors duration-200 text-[15px] !px-2.5 flex-shrink-0"
               >
@@ -842,7 +853,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
             </p>
             {displaySquads.length === 0 && !isDemoMode && (
               <Button
-                onClick={() => setIsSquadModalOpen(true)}
+                onClick={() => setIsCreateSquadModalOpen(true)}
                 className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -967,7 +978,33 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
           </div>
         )}
 
-        {/* Squad Form Dialog */}
+        {/* Create Squad Modal (multi-step wizard) */}
+        <CreateSquadModal
+          isOpen={isCreateSquadModalOpen}
+          onClose={() => setIsCreateSquadModalOpen(false)}
+          onSquadCreated={() => {
+            setIsCreateSquadModalOpen(false);
+            fetchSquads();
+          }}
+          apiBasePath={apiBasePath}
+          coachesApiEndpoint="/api/coach/org-coaches"
+          uploadEndpoint="/api/coach/org-upload-media"
+          demoMode={isDemoMode}
+          onDemoCreate={(data) => {
+            demoSession.addSquad({
+              name: data.name,
+              slug: data.name.toLowerCase().replace(/\s+/g, '-'),
+              description: data.description,
+              memberCount: 0,
+              isPublic: data.visibility === 'public',
+              priceInCents: data.pricing === 'paid' ? data.priceInCents : undefined,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+          }}
+        />
+
+        {/* Squad Form Dialog (for editing) */}
         <SquadFormDialog
           squad={editingSquad}
           open={isSquadModalOpen}
@@ -994,17 +1031,6 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
                 priceInCents: formData.priceInCents || undefined,
                 updatedAt: new Date().toISOString(),
               });
-            } else {
-              demoSession.addSquad({
-                name: formData.name,
-                slug: formData.slug,
-                description: formData.description,
-                memberCount: 0,
-                isPublic: formData.visibility === 'public',
-                priceInCents: formData.priceInCents || undefined,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              });
             }
           }}
         />
@@ -1015,41 +1041,174 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
   // Detail view (Members, Landing, Referrals)
   return (
     <div>
-      {/* Header with back button and tabs */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleBackToList}
-            className="p-2 hover:bg-[#faf8f6] dark:hover:bg-white/5 rounded-lg transition-colors"
-          >
-            <ChevronRight className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2] rotate-180" />
-          </button>
-          <div className="flex items-center gap-3">
-            {selectedSquad.avatarUrl ? (
-              <Image
-                src={selectedSquad.avatarUrl}
-                alt={selectedSquad.name}
-                width={40}
-                height={40}
-                className="w-10 h-10 rounded-lg object-cover"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-brand-accent" />
-              </div>
-            )}
-            <div>
-              <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                {selectedSquad.name}
-              </h2>
-              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                {selectedSquad.memberCount || 0} members • {selectedSquad.visibility === 'private' ? 'Private' : 'Public'}
-              </p>
+      {/* Header with back button, name, tabs, and actions */}
+      <div className="flex items-center gap-3 mb-6 overflow-x-auto scrollbar-hide">
+        {/* Back button */}
+        <button
+          onClick={handleBackToList}
+          className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
+          title="Back to Squads"
+        >
+          <ChevronRight className="w-5 h-5 rotate-180" />
+        </button>
+
+        {/* Squad avatar and name */}
+        <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
+          {selectedSquad.avatarUrl ? (
+            <Image
+              src={selectedSquad.avatarUrl}
+              alt={selectedSquad.name}
+              width={36}
+              height={36}
+              className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-lg bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+              <Users className="w-4 h-4 text-brand-accent" />
             </div>
+          )}
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate max-w-[200px]">
+              {selectedSquad.name}
+            </h2>
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              {selectedSquad.memberCount || 0} members • {selectedSquad.visibility === 'private' ? 'Private' : 'Public'}
+            </p>
           </div>
         </div>
-        
-        <div className="flex items-center gap-2">
+
+        {/* Divider */}
+        <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
+
+        {/* Desktop Tabs - matching program style */}
+        <div className="hidden md:flex items-center gap-1 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setViewMode('members')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+              viewMode === 'members'
+                ? 'bg-[#ebe8e4] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                : 'text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Members
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('squad-view')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+              viewMode === 'squad-view'
+                ? 'bg-[#ebe8e4] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                : 'text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+            }`}
+          >
+            <Eye className="w-4 h-4" />
+            Squad View
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('landing')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+              viewMode === 'landing'
+                ? 'bg-[#ebe8e4] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                : 'text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Landing Page
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('referrals')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+              viewMode === 'referrals'
+                ? 'bg-[#ebe8e4] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                : 'text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+            }`}
+          >
+            <Gift className="w-4 h-4" />
+            Referrals
+          </button>
+        </div>
+
+        {/* Mobile Dropdown */}
+        <div className="md:hidden flex-shrink-0">
+          <Popover open={isPageDropdownOpen} onOpenChange={setIsPageDropdownOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] rounded-lg transition-colors"
+              >
+                {viewMode === 'members' && <><Users className="w-4 h-4" />Members</>}
+                {viewMode === 'squad-view' && <><Eye className="w-4 h-4" />Squad View</>}
+                {viewMode === 'landing' && <><FileText className="w-4 h-4" />Landing Page</>}
+                {viewMode === 'referrals' && <><Gift className="w-4 h-4" />Referrals</>}
+                <ChevronDown className="w-4 h-4 ml-1" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-1" align="start">
+              <button
+                type="button"
+                onClick={() => { setViewMode('members'); setIsPageDropdownOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                  viewMode === 'members'
+                    ? 'bg-brand-accent/10 text-brand-accent'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                Members
+                {viewMode === 'members' && <Check className="w-4 h-4 ml-auto" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setViewMode('squad-view'); setIsPageDropdownOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                  viewMode === 'squad-view'
+                    ? 'bg-brand-accent/10 text-brand-accent'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                }`}
+              >
+                <Eye className="w-4 h-4" />
+                Squad View
+                {viewMode === 'squad-view' && <Check className="w-4 h-4 ml-auto" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setViewMode('landing'); setIsPageDropdownOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                  viewMode === 'landing'
+                    ? 'bg-brand-accent/10 text-brand-accent'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                Landing Page
+                {viewMode === 'landing' && <Check className="w-4 h-4 ml-auto" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setViewMode('referrals'); setIsPageDropdownOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                  viewMode === 'referrals'
+                    ? 'bg-brand-accent/10 text-brand-accent'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                }`}
+              >
+                <Gift className="w-4 h-4" />
+                Referrals
+                {viewMode === 'referrals' && <Check className="w-4 h-4 ml-auto" />}
+              </button>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Button
             variant="outline"
             size="sm"
@@ -1072,53 +1231,6 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 mb-6 border-b border-[#e1ddd8] dark:border-[#262b35] pb-2">
-        <button
-          onClick={() => setViewMode('members')}
-          className={`px-3 py-1.5 rounded-lg text-sm font-albert ${
-            viewMode === 'members'
-              ? 'bg-brand-accent/10 text-brand-accent'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-          }`}
-        >
-          <Users className="w-3.5 h-3.5 inline mr-1.5" />
-          Members
-        </button>
-        <button
-          onClick={() => setViewMode('squad-view')}
-          className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
-            viewMode === 'squad-view'
-              ? 'bg-brand-accent/10 text-brand-accent'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-          }`}
-        >
-          <Eye className="w-3.5 h-3.5" />
-          Squad View
-        </button>
-        <button
-          onClick={() => setViewMode('landing')}
-          className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
-            viewMode === 'landing'
-              ? 'bg-brand-accent/10 text-brand-accent'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-          }`}
-        >
-          <FileText className="w-3.5 h-3.5" />
-          Landing Page
-        </button>
-        <button
-          onClick={() => setViewMode('referrals')}
-          className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
-            viewMode === 'referrals'
-              ? 'bg-brand-accent/10 text-brand-accent'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-          }`}
-        >
-          <Gift className="w-3.5 h-3.5" />
-          Referrals
-        </button>
-      </div>
 
       {/* View Content */}
       {viewMode === 'members' ? (

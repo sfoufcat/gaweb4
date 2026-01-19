@@ -34,6 +34,7 @@ interface ChannelStats {
   lastMessageAt: string | null;
   createdAt: string | null;
   image?: string;
+  icon?: string; // Icon identifier for org channels (e.g., 'megaphone', 'chat', 'sparkles')
 }
 
 interface DailyChatStats {
@@ -59,20 +60,22 @@ export async function GET(request: NextRequest) {
       .where('organizationId', '==', organizationId)
       .get();
     
-    const squadMap = new Map<string, { name: string; chatChannelId?: string }>();
-    const channelToSquadMap = new Map<string, { squadId: string; squadName: string }>();
-    
+    const squadMap = new Map<string, { name: string; chatChannelId?: string; image?: string }>();
+    const channelToSquadMap = new Map<string, { squadId: string; squadName: string; image?: string }>();
+
     for (const doc of squadsSnapshot.docs) {
       const squad = { id: doc.id, ...doc.data() } as Squad;
       squadMap.set(doc.id, {
         name: squad.name,
         chatChannelId: squad.chatChannelId ?? undefined,
+        image: squad.avatarUrl || squad.imageUrl,
       });
-      
+
       if (squad.chatChannelId) {
         channelToSquadMap.set(squad.chatChannelId, {
           squadId: doc.id,
           squadName: squad.name,
+          image: squad.avatarUrl || squad.imageUrl,
         });
       }
     }
@@ -80,6 +83,16 @@ export async function GET(request: NextRequest) {
     // Get organization channels from Firestore
     const orgChannels = await getOrgChannels(organizationId);
     const orgChannelIds = orgChannels.map(ch => ch.streamChannelId);
+
+    // Create a map of org channel stream IDs to their metadata (icon, imageUrl)
+    const orgChannelMetaMap = new Map<string, { icon?: string; imageUrl?: string; title: string }>();
+    for (const orgCh of orgChannels) {
+      orgChannelMetaMap.set(orgCh.streamChannelId, {
+        icon: orgCh.icon,
+        imageUrl: orgCh.imageUrl,
+        title: orgCh.title,
+      });
+    }
 
     // Query Stream Chat for channels belonging to this organization
     let channels: ChannelStats[] = [];
@@ -112,6 +125,7 @@ export async function GET(request: NextRequest) {
       for (const channel of channelsResponse) {
         const channelId = channel.id || '';
         const squadInfo = channelToSquadMap.get(channelId);
+        const orgChannelMeta = orgChannelMetaMap.get(channelId);
 
         // Get message count from channel state
         const state = channel.state;
@@ -127,10 +141,27 @@ export async function GET(request: NextRequest) {
         // Access channel data safely with type assertion for custom fields
         const channelData = channel.data as Record<string, unknown> | undefined;
 
+        // Determine image: squad image > org channel imageUrl > stream channel image
+        let channelImage: string | undefined = undefined;
+        let channelIcon: string | undefined = undefined;
+
+        if (squadInfo?.image) {
+          channelImage = squadInfo.image;
+        } else if (orgChannelMeta?.imageUrl) {
+          channelImage = orgChannelMeta.imageUrl;
+        } else if (channelData?.image) {
+          channelImage = channelData.image as string;
+        }
+
+        // Get icon for org channels
+        if (orgChannelMeta?.icon) {
+          channelIcon = orgChannelMeta.icon;
+        }
+
         channels.push({
           channelId,
           channelType: channel.type || 'messaging',
-          name: (channelData?.name as string) || squadInfo?.squadName || channelId,
+          name: orgChannelMeta?.title || (channelData?.name as string) || squadInfo?.squadName || channelId,
           squadId: squadInfo?.squadId,
           squadName: squadInfo?.squadName,
           memberCount: Object.keys(state?.members || {}).length,
@@ -138,7 +169,8 @@ export async function GET(request: NextRequest) {
           messagesLast7Days,
           lastMessageAt: state?.last_message_at?.toISOString() || null,
           createdAt: (channelData?.created_at as string) || null,
-          image: (channelData?.image as string) || undefined,
+          image: channelImage,
+          icon: channelIcon,
         });
 
         totalMessages += messageCount;
@@ -162,8 +194,25 @@ export async function GET(request: NextRequest) {
             messagesLast7Days: 0,
             lastMessageAt: null,
             createdAt: null,
+            image: squad.image,
           });
         }
+      }
+
+      // Also add org channels in fallback
+      for (const orgCh of orgChannels) {
+        channels.push({
+          channelId: orgCh.streamChannelId,
+          channelType: 'messaging',
+          name: orgCh.title,
+          memberCount: 0,
+          messageCount: 0,
+          messagesLast7Days: 0,
+          lastMessageAt: null,
+          createdAt: null,
+          image: orgCh.imageUrl,
+          icon: orgCh.icon,
+        });
       }
     }
 

@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { SquadFormDialog } from './SquadFormDialog';
+import { CreateSquadModal } from './CreateSquadModal';
 
 interface AdminSquadsTabProps {
   currentUserRole: UserRole;
@@ -338,15 +339,21 @@ export function AdminSquadsTab({
         )}
       </div>
 
-      {/* Create/Edit Squad Dialog */}
-      {(showCreateDialog || squadToEdit) && (
+      {/* Create Squad Modal (multi-step wizard) */}
+      <CreateSquadModal
+        isOpen={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        onSquadCreated={handleSquadSaved}
+        apiBasePath={apiEndpoint}
+        coachesApiEndpoint={coachesApiEndpoint}
+      />
+
+      {/* Edit Squad Dialog */}
+      {squadToEdit && (
         <SquadFormDialog
           squad={squadToEdit}
-          open={showCreateDialog || !!squadToEdit}
-          onClose={() => {
-            setShowCreateDialog(false);
-            setSquadToEdit(null);
-          }}
+          open={!!squadToEdit}
+          onClose={() => setSquadToEdit(null)}
           onSave={handleSquadSaved}
           apiBasePath={apiEndpoint}
           coachesApiEndpoint={coachesApiEndpoint}

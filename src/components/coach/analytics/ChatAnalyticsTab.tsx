@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  MessageCircle, 
-  Users, 
+import {
+  MessageCircle,
+  Users,
   Calendar,
   TrendingUp,
   AlertCircle,
@@ -11,6 +11,10 @@ import {
   ArrowUpDown,
   Hash,
   Eye,
+  Megaphone,
+  MessageSquare,
+  Sparkles,
+  type LucideIcon,
 } from 'lucide-react';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { generateDemoChatAnalytics } from '@/lib/demo-data';
@@ -27,7 +31,16 @@ interface ChannelStats {
   lastMessageAt: string | null;
   createdAt: string | null;
   image?: string;
+  icon?: string; // Icon identifier for org channels (e.g., 'megaphone', 'chat', 'sparkles')
 }
+
+// Map icon string identifiers to Lucide icons
+const CHANNEL_ICON_MAP: Record<string, LucideIcon> = {
+  megaphone: Megaphone,
+  chat: MessageSquare,
+  sparkles: Sparkles,
+  hash: Hash,
+};
 
 type ActivityLevel = 'thriving' | 'active' | 'inactive';
 
@@ -408,11 +421,17 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
                               alt={channel.name}
                               className="w-10 h-10 rounded-lg object-cover"
                             />
-                          ) : (
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent flex items-center justify-center text-white">
-                              <Hash className="w-5 h-5" />
-                            </div>
-                          )}
+                          ) : (() => {
+                            // Get the appropriate icon component
+                            const IconComponent = channel.icon
+                              ? CHANNEL_ICON_MAP[channel.icon] || Hash
+                              : Hash;
+                            return (
+                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent flex items-center justify-center text-white">
+                                <IconComponent className="w-5 h-5" />
+                              </div>
+                            );
+                          })()}
                           <div>
                             <div className="flex items-center gap-2">
                               <h4 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] text-sm">{channel.name}</h4>

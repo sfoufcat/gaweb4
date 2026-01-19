@@ -72,8 +72,8 @@ interface CoachFunnelsTabProps {
 }
 
 const CONTENT_TYPE_OPTIONS: { value: FunnelContentType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: 'article', label: 'Articles', icon: FileText },
   { value: 'course', label: 'Courses', icon: BookOpen },
+  { value: 'article', label: 'Articles', icon: FileText },
   { value: 'event', label: 'Events', icon: Calendar },
   { value: 'download', label: 'Downloads', icon: Download },
   { value: 'link', label: 'Links', icon: LinkIcon },
@@ -101,7 +101,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
   
   // Tab state
   const [activeTab, setActiveTab] = useState<FunnelTargetType>('program');
-  const [selectedContentType, setSelectedContentType] = useState<FunnelContentType>('article');
+  const [selectedContentType, setSelectedContentType] = useState<FunnelContentType>('course');
   
   // Tenant required state - shown when accessing from platform domain
   const [tenantRequired, setTenantRequired] = useState<{
@@ -620,7 +620,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
           }`}
         >
           <FileText className="w-4 h-4" />
-          Content
+          Resources
         </button>
       </div>
 
