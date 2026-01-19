@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LandingPageEditor, type LandingPageFormData } from '@/components/shared/LandingPageEditor';
 import { InfluencePromptEditor } from './InfluencePromptEditor';
 import { AIHelperModal } from '@/components/ai';
-import type { LandingPageDraft, ProgramContentDraft, AIGenerationContext } from '@/lib/ai/types';
+import type { LandingPageDraft, ProgramContentDraft, WebsiteContentDraft, AIGenerationContext } from '@/lib/ai/types';
 import { hasPermission } from '@/lib/coach-permissions';
 import { Button } from '@/components/ui/button';
 
@@ -1647,7 +1647,7 @@ function LandingPageConfigEditor({ config, onChange }: LandingPageConfigEditorPr
   };
   
   // Apply AI-generated landing page content
-  const handleApplyAIContent = async (draft: ProgramContentDraft | LandingPageDraft) => {
+  const handleApplyAIContent = async (draft: ProgramContentDraft | LandingPageDraft | WebsiteContentDraft) => {
     const lpDraft = draft as LandingPageDraft;
     
     // Map AI-generated content to landing page config
@@ -1747,7 +1747,7 @@ function LandingPageConfigEditor({ config, onChange }: LandingPageConfigEditorPr
           programName: formData.headline || 'Your Program',
           niche: formData.subheadline?.slice(0, 100),
         } as AIGenerationContext}
-        onApply={handleApplyAIContent}
+        onApply={handleApplyAIContent as (draft: ProgramContentDraft | LandingPageDraft | WebsiteContentDraft) => void}
         hasExistingContent={hasExistingContent}
         overwriteWarning="This will replace your existing landing page content."
       />

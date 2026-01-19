@@ -37,7 +37,7 @@ import {
 import { ScheduleCallModal } from '@/components/scheduling';
 import { ClientDetailSlideOver } from '@/components/coach';
 import { AIHelperModal } from '@/components/ai';
-import type { ProgramContentDraft, LandingPageDraft, AIGenerationContext } from '@/lib/ai/types';
+import type { ProgramContentDraft, LandingPageDraft, WebsiteContentDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { NewProgramModal } from './NewProgramModal';
@@ -2743,7 +2743,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   };
 
   // Apply AI-generated program content (all days at once)
-  const handleApplyAIProgramContent = async (draft: ProgramContentDraft | LandingPageDraft) => {
+  const handleApplyAIProgramContent = async (draft: ProgramContentDraft | LandingPageDraft | WebsiteContentDraft) => {
     if (!selectedProgram) return;
     
     const programDraft = draft as ProgramContentDraft;
@@ -2820,7 +2820,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   };
   
   // Apply AI-generated landing page content
-  const handleApplyAILandingPage = async (draft: ProgramContentDraft | LandingPageDraft) => {
+  const handleApplyAILandingPage = async (draft: ProgramContentDraft | LandingPageDraft | WebsiteContentDraft) => {
     if (!selectedProgram) return;
     
     const lpDraft = draft as LandingPageDraft;

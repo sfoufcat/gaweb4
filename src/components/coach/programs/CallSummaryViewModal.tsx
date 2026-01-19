@@ -71,8 +71,14 @@ export function CallSummaryViewModal({
   };
 
   const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const totalSeconds = Math.round(seconds);
+    const hours = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -124,13 +130,13 @@ export function CallSummaryViewModal({
                   <MessageSquare className="h-4 w-4 text-brand-accent" />
                   Key Discussion Points
                 </h4>
-                <ul className="space-y-2">
+                <ul className="space-y-1.5 pl-1">
                   {summary.summary.keyDiscussionPoints.map((point, index) => (
                     <li
                       key={index}
-                      className="text-sm text-muted-foreground flex gap-2"
+                      className="text-sm text-muted-foreground flex items-baseline gap-2"
                     >
-                      <span className="text-brand-accent mt-1">•</span>
+                      <span className="text-brand-accent text-xs leading-none">•</span>
                       <span>{point}</span>
                     </li>
                   ))}
@@ -158,13 +164,13 @@ export function CallSummaryViewModal({
                   <Sparkles className="h-4 w-4 text-green-500" />
                   Breakthroughs
                 </h4>
-                <ul className="space-y-2">
+                <ul className="space-y-1.5 pl-1">
                   {summary.summary.breakthroughs.map((breakthrough, index) => (
                     <li
                       key={index}
-                      className="text-sm text-green-700 dark:text-green-400 flex gap-2"
+                      className="text-sm text-green-700 dark:text-green-400 flex items-baseline gap-2"
                     >
-                      <span className="text-green-500 mt-1">•</span>
+                      <span className="text-green-500 text-xs leading-none">•</span>
                       <span>{breakthrough}</span>
                     </li>
                   ))}
@@ -179,13 +185,13 @@ export function CallSummaryViewModal({
                   <AlertCircle className="h-4 w-4 text-amber-500" />
                   Challenges
                 </h4>
-                <ul className="space-y-2">
+                <ul className="space-y-1.5 pl-1">
                   {summary.summary.challenges.map((challenge, index) => (
                     <li
                       key={index}
-                      className="text-sm text-muted-foreground flex gap-2"
+                      className="text-sm text-muted-foreground flex items-baseline gap-2"
                     >
-                      <span className="text-amber-500 mt-1">•</span>
+                      <span className="text-amber-500 text-xs leading-none">•</span>
                       <span>{challenge}</span>
                     </li>
                   ))}
@@ -204,7 +210,7 @@ export function CallSummaryViewModal({
                   {summary.actionItems.map((item) => (
                     <li
                       key={item.id}
-                      className="flex items-start gap-2 text-sm p-2 rounded-md bg-muted/50"
+                      className="flex items-start gap-2.5 text-sm px-3 py-2.5 rounded-xl bg-[#f8f7f6] dark:bg-[#1a1d24] border border-[#e8e6e3] dark:border-[#2a2d35]"
                     >
                       <Badge
                         variant={
@@ -248,13 +254,13 @@ export function CallSummaryViewModal({
                   <HelpCircle className="h-4 w-4 text-purple-500" />
                   Follow-up Questions
                 </h4>
-                <ul className="space-y-2">
+                <ul className="space-y-1.5 pl-1">
                   {summary.followUpQuestions.map((question, index) => (
                     <li
                       key={index}
-                      className="text-sm text-muted-foreground flex gap-2"
+                      className="text-sm text-muted-foreground flex items-baseline gap-2"
                     >
-                      <span className="text-purple-500 mt-1">{index + 1}.</span>
+                      <span className="text-purple-500 text-xs leading-none w-4 shrink-0">{index + 1}.</span>
                       <span>{question}</span>
                     </li>
                   ))}

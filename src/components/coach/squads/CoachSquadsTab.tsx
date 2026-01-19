@@ -33,7 +33,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { AIHelperModal } from '@/components/ai';
-import type { LandingPageDraft, ProgramContentDraft, AIGenerationContext } from '@/lib/ai/types';
+import type { LandingPageDraft, ProgramContentDraft, WebsiteContentDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
 import { SquadFormDialog } from '@/components/admin/SquadFormDialog';
 import { CreateSquadModal } from '@/components/admin/CreateSquadModal';
@@ -215,16 +215,19 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
     return squads;
   }, [isDemoMode, demoSession.squads, squads]);
 
-  // Restore selection from URL param on mount
+  // Track if user explicitly navigated back to list
+  const [hasNavigatedBack, setHasNavigatedBack] = useState(false);
+
+  // Restore selection from URL param on mount (only once, not after user navigates back)
   useEffect(() => {
-    if (initialSquadId && displaySquads.length > 0 && !selectedSquad) {
+    if (initialSquadId && displaySquads.length > 0 && !selectedSquad && !hasNavigatedBack) {
       const squad = displaySquads.find(s => s.id === initialSquadId);
       if (squad) {
         setSelectedSquad(squad);
         setViewMode('members');
       }
     }
-  }, [initialSquadId, displaySquads, selectedSquad]);
+  }, [initialSquadId, displaySquads, selectedSquad, hasNavigatedBack]);
 
   // Notify parent when selection changes (for URL persistence)
   useEffect(() => {
@@ -380,11 +383,13 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
   }, [viewMode, selectedSquad]);
 
   const handleSelectSquad = (squad: SquadWithStats) => {
+    setHasNavigatedBack(false); // Reset so URL restoration can work again if needed
     setSelectedSquad(squad);
     setViewMode('members');
   };
 
   const handleBackToList = () => {
+    setHasNavigatedBack(true);
     setSelectedSquad(null);
     setViewMode('list');
     setSquadMembers([]);
@@ -558,7 +563,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
   };
   
   // Apply AI-generated landing page content for squad
-  const handleApplyAILandingPage = async (draft: ProgramContentDraft | LandingPageDraft) => {
+  const handleApplyAILandingPage = async (draft: ProgramContentDraft | LandingPageDraft | WebsiteContentDraft) => {
     if (!selectedSquad) return;
     
     const lpDraft = draft as LandingPageDraft;

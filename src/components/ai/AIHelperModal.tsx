@@ -33,7 +33,7 @@ interface AIHelperModalProps {
   description: string;
   useCase: AIUseCase;
   context?: AIGenerationContext;
-  onApply: (draft: ProgramContentDraft | LandingPageDraft | WebsiteContentDraft) => void;
+  onApply: (draft: ProgramContentDraft | LandingPageDraft | WebsiteContentDraft) => void | Promise<void>;
   /** Whether existing content exists that will be overwritten */
   hasExistingContent?: boolean;
   /** Custom warning message for overwrite */

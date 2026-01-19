@@ -318,11 +318,12 @@ export function CreateSquadModal({
         <div className="flex items-center gap-3">
           {step !== 'info' && (
             <button
+              type="button"
               onClick={() => {
                 setShowCloseWarning(false);
                 goToPreviousStep();
               }}
-              className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+              className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -341,8 +342,9 @@ export function CreateSquadModal({
           </div>
         </div>
         <button
+          type="button"
           onClick={handleCloseAttempt}
-          className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+          className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -362,14 +364,16 @@ export function CreateSquadModal({
               </p>
               <div className="flex gap-2 mt-3">
                 <button
+                  type="button"
                   onClick={handleClose}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer"
                 >
                   Discard
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowCloseWarning(false)}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors cursor-pointer"
                 >
                   Continue Editing
                 </button>
@@ -456,9 +460,10 @@ export function CreateSquadModal({
 
           {/* Action Buttons */}
           <button
+            type="button"
             onClick={step === 'pricing' ? handleCreateSquad : goToNextStep}
             disabled={!canProceed() || isCreating}
-            className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {isCreating ? (
               <>
@@ -520,7 +525,7 @@ export function CreateSquadModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
+              <Dialog.Panel className="w-full max-w-xl transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all max-h-[85vh] flex flex-col">
                 {wizardContent}
               </Dialog.Panel>
             </Transition.Child>
@@ -542,7 +547,7 @@ interface InfoStepProps {
 
 function InfoStep({ data, onChange, uploadEndpoint }: InfoStepProps) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Squad Name */}
       <div>
         <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
@@ -557,25 +562,6 @@ function InfoStep({ data, onChange, uploadEndpoint }: InfoStepProps) {
         />
       </div>
 
-      {/* Cover Image */}
-      <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-          Squad Picture <span className="text-red-500">*</span>
-        </label>
-        <MediaUpload
-          value={data.avatarUrl}
-          onChange={(url) => onChange({ avatarUrl: url })}
-          folder="squads"
-          type="image"
-          uploadEndpoint={uploadEndpoint}
-          hideLabel
-          aspectRatio="1:1"
-        />
-        <p className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert mt-2">
-          Recommended: 512 x 512px
-        </p>
-      </div>
-
       {/* Description */}
       <div>
         <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
@@ -585,12 +571,31 @@ function InfoStep({ data, onChange, uploadEndpoint }: InfoStepProps) {
           value={data.description}
           onChange={(e) => onChange({ description: e.target.value.slice(0, 200) })}
           placeholder="What's this squad about?"
-          rows={3}
+          rows={2}
           maxLength={200}
           className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors resize-none"
         />
         <p className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert mt-1">
           {data.description.length}/200 characters
+        </p>
+      </div>
+
+      {/* Cover Image - 16:9 */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          Cover Image <span className="text-red-500">*</span>
+        </label>
+        <MediaUpload
+          value={data.avatarUrl}
+          onChange={(url) => onChange({ avatarUrl: url })}
+          folder="squads"
+          type="image"
+          uploadEndpoint={uploadEndpoint}
+          hideLabel
+          aspectRatio="16:9"
+        />
+        <p className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert mt-2">
+          Recommended: 1920 x 1080px
         </p>
       </div>
     </div>
@@ -618,9 +623,9 @@ function DetailsStep({ data, onChange, coaches }: DetailsStepProps) {
           <SelectTrigger className="w-full h-12 px-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             <SelectValue placeholder="Select timezone" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="z-[200]">
             {POPULAR_TIMEZONES.map((tz) => (
-              <SelectItem key={tz.value} value={tz.value} className="font-albert">
+              <SelectItem key={tz.value} value={tz.value} className="font-albert cursor-pointer">
                 {tz.label}
               </SelectItem>
             ))}
@@ -640,10 +645,10 @@ function DetailsStep({ data, onChange, coaches }: DetailsStepProps) {
           <SelectTrigger className="w-full h-12 px-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             <SelectValue placeholder="Select a coach" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none" className="font-albert">No coach assigned</SelectItem>
+          <SelectContent className="z-[200]">
+            <SelectItem value="none" className="font-albert cursor-pointer">No coach assigned</SelectItem>
             {coaches.map((coach) => (
-              <SelectItem key={coach.id} value={coach.id} className="font-albert">
+              <SelectItem key={coach.id} value={coach.id} className="font-albert cursor-pointer">
                 {coach.name || `${coach.firstName} ${coach.lastName}`}
               </SelectItem>
             ))}
@@ -660,7 +665,7 @@ function DetailsStep({ data, onChange, coaches }: DetailsStepProps) {
           Max Capacity <span className="text-[#8c8a87] dark:text-[#8b8f9a] font-normal">(optional)</span>
         </label>
         <div className="relative">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
             <Users className="w-5 h-5 text-[#8c8a87] dark:text-[#8b8f9a]" />
           </div>
           <input
@@ -701,8 +706,9 @@ function PricingStep({ data, onChange, stripeConnected, stripeLoading, error }: 
         </label>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <button
+            type="button"
             onClick={() => onChange({ pricing: 'free', priceInCents: 0, subscriptionEnabled: false })}
-            className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
+            className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer ${
               data.pricing === 'free'
                 ? 'border-brand-accent bg-brand-accent/5'
                 : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
@@ -711,8 +717,9 @@ function PricingStep({ data, onChange, stripeConnected, stripeLoading, error }: 
             <span className={`text-lg font-semibold ${data.pricing === 'free' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`}>Free</span>
           </button>
           <button
+            type="button"
             onClick={() => onChange({ pricing: 'paid' })}
-            className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
+            className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer ${
               data.pricing === 'paid'
                 ? 'border-brand-accent bg-brand-accent/5'
                 : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
@@ -760,8 +767,8 @@ function PricingStep({ data, onChange, stripeConnected, stripeLoading, error }: 
               />
             </div>
 
-            {/* Subscription Settings */}
-            {stripeConnected && data.priceInCents > 0 && (
+            {/* Subscription Settings - always visible when paid is selected */}
+            {stripeConnected && (
               <div className="p-4 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b]/50 border border-[#e1ddd8] dark:border-[#262b35]">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -802,10 +809,10 @@ function PricingStep({ data, onChange, stripeConnected, stripeLoading, error }: 
                       <SelectTrigger className="w-full font-albert text-sm">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="monthly" className="font-albert">Monthly (${(data.priceInCents / 100).toFixed(2)}/month)</SelectItem>
-                        <SelectItem value="quarterly" className="font-albert">Quarterly (${(data.priceInCents / 100).toFixed(2)}/3 months)</SelectItem>
-                        <SelectItem value="yearly" className="font-albert">Yearly (${(data.priceInCents / 100).toFixed(2)}/year)</SelectItem>
+                      <SelectContent className="z-[200]">
+                        <SelectItem value="monthly" className="font-albert cursor-pointer">Monthly (${(data.priceInCents / 100).toFixed(2)}/month)</SelectItem>
+                        <SelectItem value="quarterly" className="font-albert cursor-pointer">Quarterly (${(data.priceInCents / 100).toFixed(2)}/3 months)</SelectItem>
+                        <SelectItem value="yearly" className="font-albert cursor-pointer">Yearly (${(data.priceInCents / 100).toFixed(2)}/year)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -823,8 +830,9 @@ function PricingStep({ data, onChange, stripeConnected, stripeLoading, error }: 
         </label>
         <div className="grid grid-cols-2 gap-3">
           <button
+            type="button"
             onClick={() => onChange({ visibility: 'public' })}
-            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${
               data.visibility === 'public'
                 ? 'border-brand-accent bg-brand-accent/5'
                 : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
@@ -843,8 +851,9 @@ function PricingStep({ data, onChange, stripeConnected, stripeLoading, error }: 
             </div>
           </button>
           <button
+            type="button"
             onClick={() => onChange({ visibility: 'private' })}
-            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${
               data.visibility === 'private'
                 ? 'border-brand-accent bg-brand-accent/5'
                 : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
