@@ -38,7 +38,7 @@ export function LayoutModeSync() {
       searchParams.get('edit') === 'true' && 
       searchParams.get('fromOnboarding') === 'true';
     
-    const isFullscreenPage = 
+    const isFullscreenPage =
       (pathname === '/' && isMarketingDomain) ||  // Only fullscreen on marketing domain root
       pathname?.startsWith('/onboarding') ||
       pathname?.startsWith('/start') ||
@@ -47,6 +47,7 @@ export function LayoutModeSync() {
       pathname?.startsWith('/sign-in') ||
       pathname?.startsWith('/coach/onboarding') ||
       pathname?.startsWith('/coach/welcome') ||
+      pathname?.startsWith('/website') ||  // Public website - fullscreen
       pathname === '/upgrade-premium/form' ||
       pathname === '/get-coach/form' ||
       pathname?.startsWith('/invite') ||

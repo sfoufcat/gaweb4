@@ -35,6 +35,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -627,18 +634,24 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
       {/* Filters */}
       <div className="flex gap-4">
         {activeTab === 'program' && (
-          <select
-            value={selectedProgramId}
-            onChange={(e) => setSelectedProgramId(e.target.value)}
-            className="px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent"
+          <Select
+            value={selectedProgramId || 'all'}
+            onValueChange={(value) => setSelectedProgramId(value === 'all' ? '' : value)}
           >
-            <option value="">All Programs</option>
-            {programs.map(program => (
-              <option key={program.id} value={program.id}>
-                {program.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-[200px] bg-white dark:bg-[#1a1f27] border-[#e1ddd8] dark:border-[#262b35] text-text-primary dark:text-[#f5f5f8]">
+              <SelectValue placeholder="All Programs" />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-[#1a1f27] border-[#e1ddd8] dark:border-[#262b35]">
+              <SelectItem value="all" className="text-text-primary dark:text-[#f5f5f8]">
+                All Programs
+              </SelectItem>
+              {programs.map(program => (
+                <SelectItem key={program.id} value={program.id} className="text-text-primary dark:text-[#f5f5f8]">
+                  {program.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
         
         {activeTab === 'content' && (

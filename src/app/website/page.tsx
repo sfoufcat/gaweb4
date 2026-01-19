@@ -172,25 +172,85 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps) {
     .where('isActive', '==', true)
     .get();
 
-  const funnels: Array<{ id: string; slug: string; programSlug?: string }> = [];
+  const funnels: Array<{ id: string; slug: string; programSlug?: string; url?: string }> = [];
 
-  for (const doc of funnelsSnapshot.docs) {
-    const funnel = doc.data() as Funnel;
+  // Helper function to build funnel URL
+  const buildFunnelUrl = async (funnel: Funnel, funnelId: string): Promise<{ programSlug?: string; url: string }> => {
     let programSlug: string | undefined;
+    let url: string | undefined;
 
-    // If funnel targets a program, get the program slug
+    // Build URL based on funnel target type
     if (funnel.targetType === 'program' && funnel.programId) {
+      // Program funnel: /join/[programSlug]/[funnelSlug]
       const programDoc = await adminDb.collection('programs').doc(funnel.programId).get();
       if (programDoc.exists) {
         programSlug = (programDoc.data() as { slug?: string }).slug;
+        if (programSlug) {
+          url = `/join/${programSlug}/${funnel.slug}`;
+        } else {
+          console.warn(`[WEBSITE] Program ${funnel.programId} has no slug for funnel ${funnelId}`);
+        }
+      } else {
+        console.warn(`[WEBSITE] Program ${funnel.programId} not found for funnel ${funnelId}`);
       }
+    } else if (funnel.targetType === 'squad' && funnel.squadId) {
+      // Squad funnel: /join/squad/[squadSlug]/[funnelSlug]
+      const squadDoc = await adminDb.collection('squads').doc(funnel.squadId).get();
+      if (squadDoc.exists) {
+        const squadSlug = (squadDoc.data() as { slug?: string }).slug;
+        if (squadSlug) {
+          url = `/join/squad/${squadSlug}/${funnel.slug}`;
+        } else {
+          console.warn(`[WEBSITE] Squad ${funnel.squadId} has no slug for funnel ${funnelId}`);
+        }
+      } else {
+        console.warn(`[WEBSITE] Squad ${funnel.squadId} not found for funnel ${funnelId}`);
+      }
+    } else if (funnel.targetType === 'content' && funnel.contentType && funnel.contentId) {
+      // Content funnel: /join/content/[contentType]/[contentId]/[funnelSlug]
+      url = `/join/content/${funnel.contentType}/${funnel.contentId}/${funnel.slug}`;
+    } else {
+      console.warn(`[WEBSITE] Funnel ${funnelId} has incomplete target configuration (targetType=${funnel.targetType})`);
     }
+
+    // Fallback to sign-in if we couldn't build a proper funnel URL
+    return { programSlug, url: url || '/sign-in' };
+  };
+
+  for (const doc of funnelsSnapshot.docs) {
+    const funnel = doc.data() as Funnel;
+    const { programSlug, url } = await buildFunnelUrl(funnel, doc.id);
 
     funnels.push({
       id: doc.id,
       slug: funnel.slug,
-      programSlug: programSlug || 'default',
+      programSlug,
+      url,
     });
+  }
+
+  // If heroCtaFunnelId is set but not in our list, try to fetch it directly
+  // This handles cases where the funnel might be inactive or have issues
+  if (website.heroCtaFunnelId && !funnels.find(f => f.id === website.heroCtaFunnelId)) {
+    console.log(`[WEBSITE] heroCtaFunnelId ${website.heroCtaFunnelId} not in active funnels, fetching directly`);
+    const funnelDoc = await adminDb.collection('funnels').doc(website.heroCtaFunnelId).get();
+    if (funnelDoc.exists) {
+      const funnel = funnelDoc.data() as Funnel;
+      const { programSlug, url } = await buildFunnelUrl(funnel, funnelDoc.id);
+      if (url) {
+        funnels.push({
+          id: funnelDoc.id,
+          slug: funnel.slug,
+          programSlug,
+          url,
+        });
+        console.log(`[WEBSITE] Added heroCtaFunnel: ${url}`);
+      } else {
+        console.error(`[WEBSITE] Could not build URL for heroCtaFunnelId ${website.heroCtaFunnelId}`);
+      }
+    } else {
+      console.error(`[WEBSITE] heroCtaFunnelId ${website.heroCtaFunnelId} not found in funnels collection`);
+    }
   }
 
   return (

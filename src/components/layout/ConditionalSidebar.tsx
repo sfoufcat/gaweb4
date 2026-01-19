@@ -99,16 +99,19 @@ export function ConditionalSidebar({ layoutMode }: ConditionalSidebarProps) {
   
   // Hide sidebar on coach welcome page (fullscreen experience)
   const isCoachWelcome = pathname?.startsWith('/coach/welcome');
-  
+
+  // Hide sidebar on public website pages (fullscreen experience)
+  const isWebsitePage = pathname?.startsWith('/website');
+
   // Check for marketing domain (client-side only)
   // On marketing domain root (/), we hide sidebar but this isn't detectable by pathname alone
   const isMarketingDomainRoot = typeof window !== 'undefined' && 
     (window.location.hostname === 'coachful.co' || window.location.hostname === 'www.coachful.co') &&
     pathname === '/';
   
-  const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || 
-    isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || 
-    isInvitePage || isMarketplacePage || isCoachOnboarding || isCoachWelcome || isMarketingDomainRoot;
+  const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage ||
+    isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm ||
+    isInvitePage || isMarketplacePage || isCoachOnboarding || isCoachWelcome || isWebsitePage || isMarketingDomainRoot;
   
   if (shouldHideSidebar) {
     console.log('[ConditionalSidebar] Hiding due to pathname:', {
@@ -124,6 +127,7 @@ export function ConditionalSidebar({ layoutMode }: ConditionalSidebarProps) {
       isMarketplacePage,
       isCoachOnboarding,
       isCoachWelcome,
+      isWebsitePage,
       isMarketingDomainRoot,
     });
     return null;

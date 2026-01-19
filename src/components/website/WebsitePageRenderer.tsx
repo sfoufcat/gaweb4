@@ -28,7 +28,7 @@ export interface WebsitePageRendererProps {
   branding: WebsiteBranding | null;
   coachName: string;
   coachImageUrl?: string;
-  funnels: Array<Pick<Funnel, 'id' | 'slug'> & { programSlug?: string }>;
+  funnels: Array<Pick<Funnel, 'id' | 'slug'> & { programSlug?: string; url?: string }>;
   subdomain: string;
   isPreviewMode?: boolean;
 }
@@ -48,19 +48,30 @@ export function WebsitePageRenderer({
   const accentLight = branding?.colors?.accentLight || branding?.primaryColor || '#a07855';
   const accentDark = branding?.colors?.accentDark || branding?.primaryColor || '#8b6544';
 
-  // Build funnel URLs map
+  // Build funnel URLs map from pre-computed URLs
   const funnelUrls: Record<string, string> = {};
   funnels.forEach((funnel) => {
-    // Build the join URL for this funnel
-    // Format: /join/[programSlug]/[funnelSlug] or just /join/default/[funnelSlug]
-    const programSlug = funnel.programSlug || 'default';
-    funnelUrls[funnel.id] = `/join/${programSlug}/${funnel.slug}`;
+    if (funnel.url) {
+      funnelUrls[funnel.id] = funnel.url;
+    }
   });
 
   // Get hero CTA URL
-  const heroCtaUrl = website.heroCtaFunnelId
-    ? funnelUrls[website.heroCtaFunnelId] || '/join'
-    : '/join';
+  // Priority: 1) Funnel URL if heroCtaFunnelId is set and found
+  //           2) /sign-in as fallback
+  let heroCtaUrl = '/sign-in';
+  if (website.heroCtaFunnelId) {
+    // Check if it's a special value or an actual funnel ID
+    if (website.heroCtaFunnelId === 'signup' || website.heroCtaFunnelId === 'sign-in') {
+      heroCtaUrl = '/sign-in';
+    } else if (funnelUrls[website.heroCtaFunnelId]) {
+      heroCtaUrl = funnelUrls[website.heroCtaFunnelId];
+    } else {
+      // Funnel ID set but not found - log warning and fallback
+      console.warn(`[WebsitePageRenderer] heroCtaFunnelId ${website.heroCtaFunnelId} not found in funnels, falling back to /sign-in`);
+      heroCtaUrl = '/sign-in';
+    }
+  }
 
   // Handle service click - navigate to funnel
   const handleServiceClick = (service: WebsiteService) => {
