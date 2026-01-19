@@ -195,6 +195,7 @@ export async function PUT(req: Request) {
         menuOrder: brandingData?.menuOrder ?? DEFAULT_MENU_ORDER,
       };
 
+      // Use syncTenantToEdgeConfig which preserves existing subscription data
       if (subdomain) {
         await syncTenantToEdgeConfig(
           organizationId,
@@ -205,13 +206,14 @@ export async function PUT(req: Request) {
           feedEnabled,
           undefined, // programEmptyStateBehavior
           undefined, // squadEmptyStateBehavior
-          undefined, // subscription
+          undefined, // subscription - will be preserved by syncTenantToEdgeConfig
           website.enabled // websiteEnabled
         );
         console.log(`[COACH_ORG_WEBSITE] Synced websiteEnabled=${website.enabled} to Edge Config for subdomain: ${subdomain}`);
       } else if (verifiedCustomDomain) {
+        // For custom domain without subdomain, also use syncTenantToEdgeConfig to preserve subscription
         const fallbackSubdomain = `org-${organizationId.substring(0, 8)}`;
-        const configData = buildTenantConfigData(
+        await syncTenantToEdgeConfig(
           organizationId,
           fallbackSubdomain,
           edgeBranding,
@@ -220,10 +222,9 @@ export async function PUT(req: Request) {
           feedEnabled,
           undefined, // programEmptyStateBehavior
           undefined, // squadEmptyStateBehavior
-          undefined, // subscription
+          undefined, // subscription - will be preserved by syncTenantToEdgeConfig
           website.enabled // websiteEnabled
         );
-        await setTenantByCustomDomain(verifiedCustomDomain, configData);
         console.log(`[COACH_ORG_WEBSITE] Synced websiteEnabled=${website.enabled} to Edge Config for custom domain: ${verifiedCustomDomain}`);
       }
     } catch (edgeError) {

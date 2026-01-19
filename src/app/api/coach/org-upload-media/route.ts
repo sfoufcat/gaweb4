@@ -17,7 +17,7 @@ import sharp from 'sharp';
  * 
  * Expects: multipart/form-data with:
  *   - file: File
- *   - folder: 'events' | 'articles' | 'courses' | 'courses/lessons' | 'images'
+ *   - folder: 'events' | 'articles' | 'courses' | 'courses/lessons' | 'images' | 'programs' | 'squads' | 'websites'
  * 
  * Returns: { url: string, originalSize?: number, compressedSize?: number }
  */
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    if (!folder || !['events', 'articles', 'courses', 'courses/lessons', 'images', 'programs', 'squads'].includes(folder)) {
+    if (!folder || !['events', 'articles', 'courses', 'courses/lessons', 'images', 'programs', 'squads', 'websites'].includes(folder)) {
       return NextResponse.json({ error: 'Invalid folder specified' }, { status: 400 });
     }
 

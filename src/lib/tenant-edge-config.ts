@@ -306,7 +306,12 @@ export async function syncTenantToEdgeConfig(
   // Fetch existing config to preserve subscription if not explicitly provided
   let effectiveSubscription = subscription;
   if (subscription === undefined) {
-    const existingConfig = await getTenantBySubdomain(subdomain);
+    // Try subdomain first, then custom domain if provided
+    let existingConfig = await getTenantBySubdomain(subdomain);
+    if (!existingConfig?.subscription && verifiedCustomDomain) {
+      // Subdomain lookup failed or had no subscription, try custom domain
+      existingConfig = await getTenantByCustomDomain(verifiedCustomDomain);
+    }
     if (existingConfig?.subscription) {
       effectiveSubscription = existingConfig.subscription;
       console.log(`[TENANT_EDGE_CONFIG] Preserving existing subscription for ${subdomain}: ${effectiveSubscription.plan}`);
