@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 /**
@@ -195,12 +196,13 @@ function PollFormContent({
                 Active Till
               </span>
               <div className="flex items-center gap-1.5">
-                <input
-                  type="date"
+                <DatePicker
                   value={dateValue}
-                  onChange={(e) => setDateValue(e.target.value)}
-                  min={format(new Date(), 'yyyy-MM-dd')}
-                  className="bg-[rgba(118,118,128,0.12)] rounded-[6px] px-3 py-1.5 font-['SF_Pro'] text-[17px] text-[#000000] tracking-[-0.43px]"
+                  onChange={(d) => setDateValue(d)}
+                  minDate={new Date()}
+                  placeholder="Date"
+                  displayFormat="MMM d"
+                  className="bg-[rgba(118,118,128,0.12)] rounded-[6px] border-0"
                 />
                 <input
                   type="time"

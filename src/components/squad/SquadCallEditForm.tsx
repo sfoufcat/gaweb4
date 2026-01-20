@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, X, Trash2, Repeat, Users, ChevronDown, ChevronUp, Image as ImageIcon, FileText, Plus, Loader2 } from 'lucide-react';
 import { MeetingProviderSelector, MeetingProviderType, isMeetingProviderReady } from '@/components/scheduling/MeetingProviderSelector';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import type { Squad, RecurrenceFrequency, EventVisibility } from '@/types';
 import { MediaUpload } from '@/components/admin/MediaUpload';
@@ -592,10 +593,16 @@ export function SquadCallEditForm({
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" hideCloseButton>
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-brand-accent" />
-              {isEditing ? 'Edit squad call' : 'Schedule squad call'}
-            </DialogTitle>
+            <div className="flex items-center gap-3">
+              <DialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-brand-accent" />
+                {isEditing ? 'Edit squad call' : 'Schedule squad call'}
+              </DialogTitle>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                <Users className="w-3.5 h-3.5" />
+                Squad Event
+              </span>
+            </div>
             <button
               onClick={onClose}
               className="p-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
@@ -619,12 +626,11 @@ export function SquadCallEditForm({
               <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
                 Date
               </label>
-              <input
-                type="date"
+              <DatePicker
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                min={minDate}
-                className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all"
+                onChange={(d) => setDate(d)}
+                minDate={new Date(minDate)}
+                placeholder="Select date"
               />
             </div>
             
@@ -722,12 +728,12 @@ export function SquadCallEditForm({
                 <label className="block font-albert font-medium text-[13px] text-text-primary dark:text-[#f5f5f8] mb-2">
                   End date <span className="text-text-secondary font-normal">(optional)</span>
                 </label>
-                <input
-                  type="date"
+                <DatePicker
                   value={recurrenceEndDate}
-                  onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                  min={date}
-                  className="w-full px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[13px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all"
+                  onChange={(d) => setRecurrenceEndDate(d)}
+                  minDate={date ? new Date(date + 'T00:00:00') : new Date()}
+                  placeholder="End date"
+                  displayFormat="MMM d, yyyy"
                 />
               </div>
             </div>

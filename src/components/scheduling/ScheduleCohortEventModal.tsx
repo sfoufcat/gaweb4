@@ -19,6 +19,7 @@ import { useAvailableSlots } from '@/hooks/useAvailability';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
 import { MeetingProviderSelector, type MeetingProviderType, isMeetingProviderReady } from './MeetingProviderSelector';
+import { DatePicker } from '@/components/ui/date-picker';
 
 /**
  * Minimal cohort info needed for scheduling
@@ -472,13 +473,21 @@ export function ScheduleCohortEventModal({
 
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 sm:border-b border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
-          <div>
-            <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-              Schedule Event
-            </h2>
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-              for {cohort.name}
-            </p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                Schedule Event
+              </h2>
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                for {cohort.name}
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              Cohort Event
+            </span>
           </div>
           <button
             onClick={onClose}
@@ -759,13 +768,15 @@ export function ScheduleCohortEventModal({
                         Ends on specific date
                       </span>
                       {recurrenceEnd === 'specific_date' && (
-                        <input
-                          type="date"
-                          value={recurrenceEndDate}
-                          onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                          min={proposedSlots[0]?.date || new Date().toISOString().split('T')[0]}
-                          className="mt-2 w-full px-3 py-2 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
-                        />
+                        <div className="mt-2">
+                          <DatePicker
+                            value={recurrenceEndDate}
+                            onChange={(date) => setRecurrenceEndDate(date)}
+                            minDate={proposedSlots[0]?.date ? new Date(proposedSlots[0].date + 'T00:00:00') : new Date()}
+                            placeholder="End date"
+                            displayFormat="MMM d, yyyy"
+                          />
+                        </div>
                       )}
                     </div>
                   </label>

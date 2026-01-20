@@ -47,6 +47,7 @@ import type { OrgEnrollmentRules } from '@/types';
 import { DEFAULT_ENROLLMENT_RULES } from '@/types';
 import { BrandedCheckbox, BrandedRadio } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
+import { DatePicker } from '@/components/ui/date-picker';
 import { format } from 'date-fns';
 import { StatusBadge, TypeBadge, VisibilityBadge } from '@/components/ui/program-badges';
 import { CoachSelector } from '@/components/coach/CoachSelector';

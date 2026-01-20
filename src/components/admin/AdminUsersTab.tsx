@@ -56,6 +56,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import { InviteClientsDialog } from '@/components/coach/InviteClientsDialog';
 
 // Program enrollment info returned from API

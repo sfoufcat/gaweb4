@@ -4,6 +4,7 @@ import { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { X } from 'lucide-react';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { Button } from '@/components/ui/button';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
@@ -156,11 +157,10 @@ export function ArticleSettingsModal({
           {/* Published Date */}
           <div>
             <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1.5 font-albert">Published Date</label>
-            <input
-              type="date"
+            <DatePicker
               value={formData.publishedAt}
-              onChange={e => onChange({ publishedAt: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
+              onChange={(date) => onChange({ publishedAt: date })}
+              placeholder="Select date"
             />
           </div>
         </div>

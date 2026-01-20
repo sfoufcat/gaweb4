@@ -20,6 +20,7 @@ import { useCallUsage, formatCallUsageStatus, formatExtraCallPrice } from '@/hoo
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
 import { MeetingProviderSelector, type MeetingProviderType, isMeetingProviderReady } from './MeetingProviderSelector';
+import { DatePicker } from '@/components/ui/date-picker';
 import type { ProgramEnrollment, ProgramInstance } from '@/types';
 
 type CallTypeOption = 'program' | 'extra';
@@ -901,13 +902,15 @@ export function ScheduleCallModal({
                         Ends on specific date
                       </span>
                       {recurrenceEnd === 'specific_date' && (
-                        <input
-                          type="date"
-                          value={recurrenceEndDate}
-                          onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                          min={proposedSlots[0]?.date || new Date().toISOString().split('T')[0]}
-                          className="mt-2 w-full px-3 py-2 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
-                        />
+                        <div className="mt-2">
+                          <DatePicker
+                            value={recurrenceEndDate}
+                            onChange={(date) => setRecurrenceEndDate(date)}
+                            minDate={proposedSlots[0]?.date ? new Date(proposedSlots[0].date + 'T00:00:00') : new Date()}
+                            placeholder="End date"
+                            displayFormat="MMM d, yyyy"
+                          />
+                        </div>
                       )}
                     </div>
                   </label>

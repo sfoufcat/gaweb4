@@ -117,7 +117,7 @@ export function WebsiteClassicTemplate({
   return (
     <div className="w-full overflow-x-hidden bg-[#fafafa]">
       {/* ========== HERO SECTION ========== */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
         {/* Gradient mesh background */}
         <div className="absolute inset-0 overflow-hidden">
           <div
@@ -338,7 +338,7 @@ export function WebsiteClassicTemplate({
 
       {/* ========== ABOUT/COACH SECTION ========== */}
       {(coachBio || credentials.length > 0) && (
-        <section id="about" className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+        <section id="about" className="py-24 bg-white">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -435,7 +435,7 @@ export function WebsiteClassicTemplate({
 
       {/* ========== SERVICES SECTION - DRAFTR STYLE ========== */}
       {services.length > 0 && (
-        <section id="services" className="py-24 px-4 sm:px-6 lg:px-8 bg-[#fafafa]">
+        <section id="services" className="py-24 bg-[#fafafa]">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -523,7 +523,7 @@ export function WebsiteClassicTemplate({
 
       {/* ========== TRANSFORMATION STEPS SECTION ========== */}
       {transformationSteps && transformationSteps.length > 0 && (
-        <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+        <section className="py-24 bg-white">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -617,7 +617,7 @@ export function WebsiteClassicTemplate({
 
       {/* ========== DARK FEATURE SECTION ========== */}
       {services.length >= 3 && (
-        <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[#101011]">
+        <section className="py-24 bg-[#101011]">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -732,7 +732,7 @@ export function WebsiteClassicTemplate({
 
       {/* ========== TESTIMONIALS SECTION ========== */}
       {testimonials.length > 0 && (
-        <section id="testimonials" className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+        <section id="testimonials" className="py-24 bg-white">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -818,7 +818,7 @@ export function WebsiteClassicTemplate({
 
       {/* ========== FAQ SECTION ========== */}
       {faqs.length > 0 && (
-        <section id="faq" className="py-24 px-4 sm:px-6 lg:px-8 bg-[#fafafa]">
+        <section id="faq" className="py-24 bg-[#fafafa]">
           <div className="max-w-3xl mx-auto">
             <motion.div
               initial="hidden"
@@ -895,7 +895,7 @@ export function WebsiteClassicTemplate({
       )}
 
       {/* ========== BOTTOM CTA SECTION ========== */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+      <section className="py-24 bg-white">
         <motion.div
           initial="hidden"
           whileInView="visible"
@@ -946,7 +946,7 @@ export function WebsiteClassicTemplate({
       </section>
 
       {/* ========== FOOTER ========== */}
-      <footer className="py-16 px-4 sm:px-6 lg:px-8 bg-[#fafafa] border-t border-gray-200">
+      <footer className="py-16 bg-[#fafafa] border-t border-gray-200">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-3 gap-12 mb-12">
             {/* Brand Column */}

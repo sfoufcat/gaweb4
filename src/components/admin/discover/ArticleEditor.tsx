@@ -11,6 +11,7 @@ import { CategorySelector } from '@/components/admin/CategorySelector';
 import { ContentPricingFields, type ContentPricingData } from '@/components/admin/ContentPricingFields';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { ArticleSettingsModal } from './ArticleSettingsModal';
+import { DatePicker } from '@/components/ui/date-picker';
 import { ArrowLeft, Settings2, Pencil } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
@@ -178,9 +179,9 @@ export function ArticleEditor({
                 <button
                   type="button"
                   onClick={handleTitleEditClick}
-                  className="p-1.5 text-[#9ca3af] hover:text-[#5f5a55] dark:hover:text-[#b2b6c2] transition-colors flex-shrink-0"
+                  className="p-1 text-[#c5c2be] hover:text-[#9ca3af] dark:text-[#5f6470] dark:hover:text-[#b2b6c2] transition-colors flex-shrink-0"
                 >
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="w-3 h-3" />
                 </button>
               )}
             </div>
@@ -389,11 +390,10 @@ export function ArticleEditor({
                   <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
                     Published Date
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={formData.publishedAt}
-                    onChange={e => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
+                    onChange={(date) => setFormData(prev => ({ ...prev, publishedAt: date }))}
+                    placeholder="Select date"
                   />
                 </div>
               </div>

@@ -70,6 +70,7 @@ import {
 } from '@/components/ui/select';
 import { SendDMModal, type DMRecipient } from '@/components/coach/SendDMModal';
 import { ScheduleCallModal } from '@/components/scheduling';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import type { 
   ClientCoachingData, 
@@ -2197,11 +2198,10 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           <div className="space-y-4 py-3">
             <div>
               <label className="block font-albert font-medium text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">Date</label>
-              <input
-                type="date"
+              <DatePicker
                 value={sessionDate}
-                onChange={(e) => setSessionDate(e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
+                onChange={(date) => setSessionDate(date)}
+                placeholder="Select date"
               />
             </div>
             <div>

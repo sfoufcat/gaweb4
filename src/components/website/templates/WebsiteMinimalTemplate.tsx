@@ -92,7 +92,7 @@ export function WebsiteMinimalTemplate({
   return (
     <div className="w-full overflow-x-hidden bg-white dark:bg-[#0d0d0f]">
       {/* ========== HERO SECTION ========== */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 pt-16 pb-24">
+      <section className="relative min-h-screen flex flex-col items-center justify-center pt-16 pb-24">
         {/* Background gradient */}
         <div className="absolute inset-0 overflow-hidden">
           <div
@@ -255,7 +255,7 @@ export function WebsiteMinimalTemplate({
 
       {/* ========== ABOUT/COACH SECTION ========== */}
       {(coachBio || credentials.length > 0) && (
-        <section id="about" className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gray-50/50 dark:bg-[#111113]">
+        <section id="about" className="py-24 lg:py-32 bg-gray-50/50 dark:bg-[#111113]">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -431,7 +431,7 @@ export function WebsiteMinimalTemplate({
 
       {/* ========== TRANSFORMATION STEPS SECTION ========== */}
       {transformationSteps && transformationSteps.length > 0 && (
-        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gray-50/50 dark:bg-[#111113]">
+        <section className="py-24 lg:py-32 bg-gray-50/50 dark:bg-[#111113]">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -529,7 +529,7 @@ export function WebsiteMinimalTemplate({
 
       {/* ========== DARK FEATURE SECTION ========== */}
       {services.length >= 3 && (
-        <section className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-[#0d0d0f]">
+        <section className="py-24 lg:py-32 bg-[#0d0d0f]">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -643,7 +643,7 @@ export function WebsiteMinimalTemplate({
 
       {/* ========== TESTIMONIALS SECTION ========== */}
       {testimonials.length > 0 && (
-        <section id="testimonials" className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8 bg-gray-50/50 dark:bg-[#111113]">
+        <section id="testimonials" className="py-24 lg:py-32 bg-gray-50/50 dark:bg-[#111113]">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -848,7 +848,7 @@ export function WebsiteMinimalTemplate({
       </section>
 
       {/* ========== FOOTER ========== */}
-      <footer className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-[#111113] border-t border-gray-100 dark:border-gray-800">
+      <footer className="py-16 bg-gray-50 dark:bg-[#111113] border-t border-gray-100 dark:border-gray-800">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-3 gap-12 mb-12">
             {/* Brand Column */}

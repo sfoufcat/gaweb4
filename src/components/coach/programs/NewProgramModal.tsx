@@ -31,6 +31,7 @@ import {
   Drawer,
   DrawerContent,
 } from '@/components/ui/drawer';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -1242,18 +1243,12 @@ function CohortStep({ data, onChange, programData, endDateDisplay, error }: Coho
         <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
           Start Date <span className="text-red-500">*</span>
         </label>
-        <div className="relative">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2">
-            <CalendarDays className="w-5 h-5 text-[#8c8a87] dark:text-[#8b8f9a]" />
-          </div>
-          <input
-            type="date"
-            value={data.startDate}
-            onChange={(e) => onChange({ startDate: e.target.value })}
-            min={new Date().toISOString().split('T')[0]}
-            className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
-          />
-        </div>
+        <DatePicker
+          value={data.startDate}
+          onChange={(date) => onChange({ startDate: date })}
+          minDate={new Date()}
+          placeholder="Select start date"
+        />
         {/* End Date Display */}
         <div className="mt-2 flex items-center gap-2">
           <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-albert ${

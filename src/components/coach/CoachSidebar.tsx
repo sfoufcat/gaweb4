@@ -24,6 +24,7 @@ const FULL_NAV_GROUPS: NavGroup[] = [
       { value: 'programs', label: 'Programs' },
       { value: 'squads', label: 'Squads' },
       { value: 'discover', label: 'Resources' },
+      { value: 'scheduling', label: 'Scheduling' },
     ],
   },
   {
@@ -39,14 +40,13 @@ const FULL_NAV_GROUPS: NavGroup[] = [
     items: [
       { value: 'channels', label: 'Chats' },
       { value: 'checkins', label: 'Check-ins' },
-      { value: 'referrals', label: 'Referrals' },
       { value: 'onboarding', label: 'Onboarding' },
     ],
   },
   {
     name: 'Business',
     items: [
-      { value: 'scheduling', label: 'Scheduling' },
+      { value: 'referrals', label: 'Referrals' },
       { value: 'discounts', label: 'Discounts' },
       { value: 'integrations', label: 'Integrations' },
     ],

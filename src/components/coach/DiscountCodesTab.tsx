@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog as HeadlessDialog, Transition } from '@headlessui/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { DiscountCode, DiscountType, DiscountApplicableTo, DiscountContentType, Program, Squad } from '@/types';
 
@@ -971,11 +972,11 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                 <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
                   Expires
                 </label>
-                <input
-                  type="date"
+                <DatePicker
                   value={formData.expiresAt}
-                  onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                  onChange={(date) => setFormData({ ...formData, expiresAt: date })}
+                  minDate={new Date()}
+                  placeholder="Select expiry date"
                 />
               </div>
             </div>

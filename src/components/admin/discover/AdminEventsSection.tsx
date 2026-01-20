@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import {
@@ -500,13 +501,11 @@ function EventFormDialog({
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Date *</label>
-                <input
-                  type="date"
-                  required
+                <DatePicker
                   value={formData.date}
-                  onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  onChange={(date) => setFormData(prev => ({ ...prev, date }))}
+                  minDate={new Date()}
+                  placeholder="Select date"
                 />
               </div>
               <div>
@@ -618,12 +617,12 @@ function EventFormDialog({
                   <label className="block text-xs font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1">
                     End date (optional)
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={formData.recurrenceEndDate}
-                    onChange={e => setFormData(prev => ({ ...prev, recurrenceEndDate: e.target.value }))}
-                    min={formData.date}
-                    className="w-full px-2 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                    onChange={(date) => setFormData(prev => ({ ...prev, recurrenceEndDate: date }))}
+                    minDate={formData.date ? new Date(formData.date + 'T00:00:00') : new Date()}
+                    placeholder="End date"
+                    displayFormat="MMM d, yyyy"
                   />
                 </div>
               )}

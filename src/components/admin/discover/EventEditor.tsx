@@ -11,6 +11,7 @@ import { CategorySelector } from '@/components/admin/CategorySelector';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { MeetingProviderSelector, type MeetingProviderType } from '@/components/scheduling/MeetingProviderSelector';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -741,6 +742,12 @@ export function EventEditor({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Event Type Badge */}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+              <Globe className="w-3.5 h-3.5" />
+              Community Event
+            </span>
+
             {/* External Link (only for existing events) */}
             {isEditing && event && (
               <a
@@ -890,12 +897,11 @@ export function EventEditor({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 font-albert">Date</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={formData.date}
-                      onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2.5 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                      onChange={(date) => setFormData(prev => ({ ...prev, date }))}
+                      minDate={new Date()}
+                      placeholder="Select date"
                     />
                   </div>
 

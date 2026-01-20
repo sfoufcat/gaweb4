@@ -24,6 +24,7 @@ import {
   Drawer,
   DrawerContent,
 } from '@/components/ui/drawer';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
   SelectContent,
@@ -810,12 +811,11 @@ export function CreateEventModal({
                     <Calendar className="inline w-4 h-4 mr-1 -mt-0.5" />
                     Date
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    min={minDate}
-                    className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                    onChange={(d) => setDate(d)}
+                    minDate={new Date(minDate)}
+                    placeholder="Select date"
                   />
                 </div>
                 <div>
@@ -971,12 +971,12 @@ export function CreateEventModal({
                     </button>
 
                     {recurrenceEndType === 'specific_date' && (
-                      <input
-                        type="date"
+                      <DatePicker
                         value={recurrenceEndDate}
-                        onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                        min={date}
-                        className="w-full px-3 py-2 text-sm bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                        onChange={(d) => setRecurrenceEndDate(d)}
+                        minDate={date ? new Date(date + 'T00:00:00') : new Date()}
+                        placeholder="End date"
+                        displayFormat="MMM d, yyyy"
                       />
                     )}
                   </div>

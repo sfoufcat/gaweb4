@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { DatePicker } from '@/components/ui/date-picker';
 
 /**
  * CallSuggestionModal Component
@@ -332,12 +333,11 @@ export function CallSuggestionModal({
               <label className="block font-albert font-medium text-[14px] text-text-primary mb-2">
                 Date
               </label>
-              <input
-                type="date"
+              <DatePicker
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                min={minDate}
-                className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all"
+                onChange={(d) => setDate(d)}
+                minDate={new Date(minDate)}
+                placeholder="Select date"
               />
             </div>
             

@@ -273,23 +273,28 @@ export function EventDetailPopup({
 
         {/* Content */}
         <div className="p-5 space-y-4 overflow-y-auto max-h-[calc(85vh-130px)] sm:max-h-[calc(70vh-130px)]">
-          {/* Event Type */}
-          <div className="flex items-center gap-3 text-[#5f5a55] dark:text-[#b2b6c2]">
+          {/* Event Type Badge */}
+          <div className="flex items-center gap-2">
             {event.eventType === 'coaching_1on1' ? (
-              <>
-                <User className="w-4 h-4" />
-                <span className="text-sm">1-on-1 Coaching Call</span>
-              </>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                <User className="w-3.5 h-3.5" />
+                1-on-1 Call
+              </span>
             ) : event.eventType === 'squad_call' ? (
-              <>
-                <Users className="w-4 h-4" />
-                <span className="text-sm">Squad Call</span>
-              </>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                <Users className="w-3.5 h-3.5" />
+                Squad Event
+              </span>
+            ) : event.eventType === 'cohort_call' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+                <Users className="w-3.5 h-3.5" />
+                Cohort Event
+              </span>
             ) : (
-              <>
-                <Video className="w-4 h-4" />
-                <span className="text-sm">{event.eventType?.replace(/_/g, ' ')}</span>
-              </>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                <Video className="w-3.5 h-3.5" />
+                Community Event
+              </span>
             )}
           </div>
 
@@ -312,14 +317,39 @@ export function EventDetailPopup({
             </div>
           )}
 
-          {/* Meeting Link Section (for confirmed events) */}
+          {/* Location Section (for confirmed events) */}
           {!isPending && (
             <div className="space-y-2">
+              {/* Location display */}
+              <div className="flex items-center gap-3 text-[#5f5a55] dark:text-[#b2b6c2]">
+                <LinkIcon className="w-4 h-4" />
+                <span className="text-sm">
+                  {event.locationType === 'chat' ? (
+                    'In-App Video Call'
+                  ) : event.meetingProvider === 'zoom' ? (
+                    'Zoom'
+                  ) : event.meetingProvider === 'google_meet' ? (
+                    'Google Meet'
+                  ) : event.meetingProvider === 'stream' ? (
+                    'In-App Video Call'
+                  ) : event.locationLabel ? (
+                    event.locationLabel
+                  ) : event.meetingLink ? (
+                    // Extract platform from URL
+                    event.meetingLink.includes('zoom') ? 'Zoom' :
+                    event.meetingLink.includes('meet.google') ? 'Google Meet' :
+                    event.meetingLink.includes('teams') ? 'Microsoft Teams' :
+                    'External Meeting'
+                  ) : (
+                    'Location not set'
+                  )}
+                </span>
+              </div>
+
               {isEditingLink ? (
                 // Editing mode - show input
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <LinkIcon className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
                     <input
                       type="url"
                       value={meetingLinkInput}
@@ -377,6 +407,12 @@ export function EventDetailPopup({
                     </button>
                   )}
                 </div>
+              ) : event.locationType === 'chat' || event.meetingProvider === 'stream' ? (
+                // In-app call - no external link needed
+                <div className="flex items-center gap-2 px-4 py-2 bg-brand-accent/10 text-brand-accent rounded-lg font-albert font-medium text-sm">
+                  <Video className="w-4 h-4" />
+                  Video call will be in-app
+                </div>
               ) : isHost ? (
                 // No meeting link and is host - show add button
                 <button
@@ -384,9 +420,15 @@ export function EventDetailPopup({
                   className="flex items-center gap-2 px-4 py-2 w-full bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-lg font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
                 >
                   <LinkIcon className="w-4 h-4" />
-                  Add External Meeting Link
+                  Add Meeting Link
                 </button>
-              ) : null}
+              ) : (
+                // No link and not host - show placeholder
+                <div className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-lg font-albert text-sm">
+                  <LinkIcon className="w-4 h-4" />
+                  Meeting link will be shared soon
+                </div>
+              )}
             </div>
           )}
 
