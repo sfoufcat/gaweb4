@@ -19,24 +19,24 @@ interface MetricItemProps {
 function MetricItem({ label, value, icon: Icon, accentColor, isAlert }: MetricItemProps) {
   return (
     <div className={cn(
-      'flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl transition-all duration-200',
+      'flex items-center gap-2.5 px-3 py-2 rounded-2xl transition-all duration-200',
       'bg-white/50 dark:bg-white/5',
       'hover:bg-white/80 dark:hover:bg-white/10',
       isAlert && value !== '0' && value !== 0 && 'ring-1 ring-red-300/50 dark:ring-red-500/30'
     )}>
       <div className={cn(
-        'p-1 sm:p-1.5 rounded-lg sm:rounded-xl',
+        'p-1.5 rounded-xl',
         'bg-gradient-to-br from-white/80 to-white/40 dark:from-white/10 dark:to-white/5',
         'border border-white/50 dark:border-white/10',
         'shadow-sm'
       )}>
-        <Icon className={cn('w-3 h-3 sm:w-3.5 sm:h-3.5', accentColor.replace('bg-', 'text-').replace('/20', ''))} />
+        <Icon className={cn('w-3.5 h-3.5', accentColor.replace('bg-', 'text-').replace('/20', ''))} />
       </div>
       <div className="flex flex-col min-w-0">
-        <span className="text-xs sm:text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert leading-tight truncate">
+        <span className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert leading-tight truncate">
           {value}
         </span>
-        <span className="text-[9px] sm:text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert leading-tight truncate">
+        <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert leading-tight truncate">
           {label}
         </span>
       </div>
@@ -47,19 +47,21 @@ function MetricItem({ label, value, icon: Icon, accentColor, isAlert }: MetricIt
 function LoadingSkeleton() {
   return (
     <div className={cn(
-      'relative overflow-hidden rounded-2xl p-2.5 sm:p-3',
+      'relative overflow-hidden rounded-2xl p-3',
       'bg-white/60 dark:bg-[#171b22]/60',
       'backdrop-blur-xl',
       'border border-white/50 dark:border-white/10',
       'shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)]'
     )}>
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-1">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-8 sm:h-10 flex-1 bg-white/50 dark:bg-white/5 rounded-xl sm:rounded-2xl animate-pulse" />
-          ))}
+        <div className="flex items-center gap-2 flex-1">
+          {/* Mobile: 2 items, Desktop: 4 items */}
+          <div className="h-10 flex-1 bg-white/50 dark:bg-white/5 rounded-2xl animate-pulse" />
+          <div className="h-10 flex-1 bg-white/50 dark:bg-white/5 rounded-2xl animate-pulse" />
+          <div className="h-10 flex-1 bg-white/50 dark:bg-white/5 rounded-2xl animate-pulse hidden sm:block" />
+          <div className="h-10 flex-1 bg-white/50 dark:bg-white/5 rounded-2xl animate-pulse hidden sm:block" />
         </div>
-        <div className="h-7 sm:h-8 w-20 sm:w-24 bg-white/50 dark:bg-white/5 rounded-full animate-pulse flex-shrink-0" />
+        <div className="h-8 w-24 bg-white/50 dark:bg-white/5 rounded-full animate-pulse flex-shrink-0" />
       </div>
     </div>
   );
@@ -119,7 +121,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
     <div className={cn(className)}>
       {/* Single horizontal glass strip */}
       <div className={cn(
-        'relative overflow-hidden rounded-2xl p-2.5 sm:p-3',
+        'relative overflow-hidden rounded-2xl p-3',
         'bg-white/60 dark:bg-[#171b22]/60',
         'backdrop-blur-xl',
         'border border-white/50 dark:border-white/10',
@@ -128,9 +130,9 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
         {/* Subtle gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-r from-white/40 via-transparent to-white/20 dark:from-white/5 dark:to-white/0 pointer-events-none" />
 
-        <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3">
+        <div className="relative z-10 flex items-center justify-between gap-3">
           {/* Metrics row - flex with equal distribution */}
-          <div className="flex items-center gap-1 sm:gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             <MetricItem
               label="Revenue"
               value={formatCurrency(totalRevenue)}
@@ -162,19 +164,11 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
 
             <div className="w-px h-6 sm:h-8 bg-[#e1ddd8]/50 dark:bg-white/10 flex-shrink-0 hidden sm:block" />
 
-            {/* Program - show on both but different labels */}
+            {/* Program - desktop only */}
             <div className="hidden sm:block">
               <MetricItem
                 label="Top Program"
                 value={programNameDesktop}
-                icon={Trophy}
-                accentColor="bg-amber-500/20"
-              />
-            </div>
-            <div className="block sm:hidden">
-              <MetricItem
-                label="Program"
-                value={programName}
                 icon={Trophy}
                 accentColor="bg-amber-500/20"
               />
@@ -185,7 +179,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
           <Link
             href="/coach"
             className={cn(
-              'flex-shrink-0 inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium',
+              'flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium',
               'text-[#1a1a1a] dark:text-[#f5f5f8]',
               'rounded-full',
               'bg-white/70 dark:bg-white/10',
@@ -196,7 +190,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
             )}
           >
             Dashboard
-            <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+            <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
       </div>
