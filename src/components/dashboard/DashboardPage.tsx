@@ -41,6 +41,7 @@ import { RequestCallCard, CalendarButton, CalendarIconButton } from '@/component
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { DEMO_USER } from '@/lib/demo-utils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { CoachOverviewHeader } from '@/components/dashboard/CoachOverviewHeader';
 
 /**
  * Homepage / Dashboard
@@ -1679,6 +1680,9 @@ export function DashboardPage() {
           </p>
         )}
       </div>
+
+      {/* Coach Overview Header - only for coaches */}
+      {isCoachUser && <CoachOverviewHeader />}
 
       {/* DYNAMIC WIDGET CAROUSEL (Mobile) / GRID (Desktop) */}
       <div data-tour="dynamic-section" className="relative mb-6">
