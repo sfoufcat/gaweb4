@@ -3,7 +3,7 @@
 // Force dynamic rendering for this page
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { FirebaseUser, Habit, EmailPreferences } from '@/types';
@@ -17,6 +17,7 @@ import { ProfileSkeleton } from '@/components/profile/ProfileSkeleton';
 import { openOrCreateDirectChat } from '@/lib/chat';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { DEMO_USER } from '@/lib/demo-utils';
+import { useOrgSettings } from '@/hooks/useOrgSettings';
 
 /**
  * Profile Page
@@ -44,7 +45,8 @@ export default function ProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isDemoMode, openSignupModal } = useDemoMode();
-  
+  const { settings: orgSettings } = useOrgSettings();
+
   const [userData, setUserData] = useState<UserData | null>(null);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -381,6 +383,13 @@ export default function ProfilePage() {
   // Show profile view
   const isOwnProfile = userData?.isOwnProfile !== false;
 
+  // Check if user has payment record for this org's Stripe Connect account
+  const hasPaymentRecord = useMemo(() => {
+    const accountId = orgSettings?.stripeConnectAccountId;
+    const customerIds = userData?.user?.stripeConnectedCustomerIds;
+    return !!(accountId && customerIds?.[accountId]);
+  }, [orgSettings?.stripeConnectAccountId, userData?.user?.stripeConnectedCustomerIds]);
+
   // Handle message button click for other profiles
   const handleMessageClick = async () => {
     // Use viewingUserId (from query param) as it's the Clerk ID
@@ -453,6 +462,7 @@ export default function ProfilePage() {
             isOpen={isSettingsOpen}
             onClose={() => setIsSettingsOpen(false)}
             initialEmailPreferences={emailPreferences}
+            hasPaymentRecord={hasPaymentRecord}
           />
         </>
       )}

@@ -308,6 +308,9 @@ export interface FirebaseUser extends ClerkUser {
   notificationPreferences?: NotificationPreferences;
   emailPreferences?: EmailPreferences; // User's email notification preferences
   timezone?: string; // IANA timezone e.g. "Europe/Amsterdam" for notification scheduling
+
+  // Stripe Connect - customer IDs per connected account (for billing portal access)
+  stripeConnectedCustomerIds?: Record<string, string>; // { [stripeConnectAccountId]: customerId }
 }
 
 export interface IdentityHistoryEntry {

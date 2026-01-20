@@ -83,13 +83,10 @@ export default function DiscoverPage() {
     return upcomingEvents.filter(e => !ownedContentIds.eventIds.has(e.id));
   }, [upcomingEvents, ownedContentIds.eventIds]);
 
+  // Filter out owned past events (ones user RSVPed to) - they appear in My Content
   const availablePastEvents = useMemo(() => {
     return pastEvents.filter(e => !ownedContentIds.eventIds.has(e.id));
   }, [pastEvents, ownedContentIds.eventIds]);
-
-  // Debug: Log past events data
-  console.log('[Discover] pastEvents from hook:', pastEvents.length, pastEvents.map(e => ({ id: e.id, title: e.title, date: e.date })));
-  console.log('[Discover] availablePastEvents after filter:', availablePastEvents.length);
 
   // Get selected category name for filtering
   const selectedCategoryName = useMemo(() => {

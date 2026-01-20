@@ -9,6 +9,7 @@ interface SettingsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   initialEmailPreferences?: EmailPreferences;
+  hasPaymentRecord?: boolean;
 }
 
 // Default email preferences (all enabled by default)
@@ -22,10 +23,11 @@ const DEFAULT_EMAIL_PREFERENCES: EmailPreferences = {
   coachingCall1h: true,
 };
 
-export function SettingsDrawer({ 
-  isOpen, 
+export function SettingsDrawer({
+  isOpen,
   onClose,
-  initialEmailPreferences 
+  initialEmailPreferences,
+  hasPaymentRecord = false,
 }: SettingsDrawerProps) {
   const { openUserProfile } = useClerk();
   
@@ -248,7 +250,7 @@ export function SettingsDrawer({
                         </h3>
                         <button
                           onClick={handleManagePayments}
-                          disabled={isLoadingPortal}
+                          disabled={isLoadingPortal || !hasPaymentRecord}
                           className="w-full py-4 px-6 bg-white dark:bg-[#171b22] border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl font-sans font-medium text-base text-text-primary dark:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
                         >
                           <span>Manage Payments</span>
@@ -264,7 +266,9 @@ export function SettingsDrawer({
                           )}
                         </button>
                         <p className="mt-2 px-1 font-sans text-xs text-text-secondary dark:text-[#b2b6c2]">
-                          Update payment method or view invoices
+                          {hasPaymentRecord
+                            ? 'Update payment method or view invoices'
+                            : 'No payment history yet'}
                         </p>
                       </div>
 
