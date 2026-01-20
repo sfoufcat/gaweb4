@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Layers, BookOpen, Clock, ChevronDown, ChevronRight, Trash2, Play, Plus, Settings2, GripVertical, Folder, LayoutGrid, BarChart3, Lock, Unlock } from 'lucide-react';
+import { ArrowLeft, Layers, BookOpen, Clock, ChevronDown, ChevronRight, Trash2, Play, Plus, Settings2, GripVertical, Folder, LayoutGrid, BarChart3, Lock, Unlock, Pencil } from 'lucide-react';
 import { CourseOverview } from './CourseOverview';
 
 // Generate unique ID for new modules/lessons
@@ -318,44 +318,36 @@ export function CourseEditor({
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <button
-              type="button"
-              onClick={() => setBasicInfoOpen(true)}
-              className="flex items-center gap-1.5 min-w-0 group"
-              title="Edit course settings"
-            >
-              <h1 className="text-base sm:text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-brand-accent transition-colors">
-                {formData.title || 'New Course'}
-              </h1>
-              <Settings2 className="w-3.5 h-3.5 text-[#9ca3af] group-hover:text-brand-accent transition-colors flex-shrink-0" />
-            </button>
+            <h1 className="text-base sm:text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+              {formData.title || 'New Course'}
+            </h1>
+          </div>
 
-            {/* Tab Navigation - inline with title */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            {/* Tab Navigation */}
             {isEditing && (
               <>
                 {/* Mobile: dropdown style */}
-                <div className="sm:hidden relative ml-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab(activeTab === 'overview' ? 'content' : 'overview')}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-                  >
-                    {activeTab === 'overview' ? (
-                      <>
-                        <BarChart3 className="w-3.5 h-3.5" />
-                        <span>Overview</span>
-                      </>
-                    ) : (
-                      <>
-                        <LayoutGrid className="w-3.5 h-3.5" />
-                        <span>Content</span>
-                      </>
-                    )}
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab(activeTab === 'overview' ? 'content' : 'overview')}
+                  className="sm:hidden flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                >
+                  {activeTab === 'overview' ? (
+                    <>
+                      <BarChart3 className="w-3.5 h-3.5" />
+                      <span>Overview</span>
+                    </>
+                  ) : (
+                    <>
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                      <span>Content</span>
+                    </>
+                  )}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
                 {/* Desktop: tab buttons */}
-                <div className="hidden sm:flex items-center gap-1 ml-4">
+                <div className="hidden sm:flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setActiveTab('overview')}
@@ -383,9 +375,17 @@ export function CourseEditor({
                 </div>
               </>
             )}
-          </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            {/* Settings Button */}
+            <button
+              type="button"
+              onClick={() => setBasicInfoOpen(true)}
+              className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+              title="Course Settings"
+            >
+              <Settings2 className="w-4 h-4" />
+            </button>
+
             {/* Stats - hidden on mobile */}
             <div className="hidden lg:flex items-center gap-4 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
               <span className="flex items-center gap-1.5">
@@ -648,6 +648,7 @@ export function CourseEditor({
                   placeholder="Lesson title..."
                   className="flex-1 text-base font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] font-albert"
                 />
+                <Pencil className="w-3 h-3 text-[#c4c0bb] dark:text-[#5f6470] flex-shrink-0" />
                 <button
                   type="button"
                   onClick={() => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, isLocked: !selectedLesson.isLocked })}
@@ -697,7 +698,7 @@ export function CourseEditor({
                       <span className="text-xs text-brand-accent ml-1">(Set)</span>
                     )}
                   </summary>
-                  <div className="mt-3 pl-6">
+                  <div className="mt-3">
                     <MediaUpload
                       value={selectedLesson.videoThumbnailUrl || ''}
                       onChange={(url) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoThumbnailUrl: url })}

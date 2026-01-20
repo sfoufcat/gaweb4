@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { DiscoverCourse } from '@/types/discover';
 import type { UserTrack } from '@/types';
 import {
@@ -59,12 +59,15 @@ interface AdminCoursesSectionProps {
   initialCourseId?: string | null;
   /** Callback when course selection changes (for URL persistence) */
   onCourseSelect?: (courseId: string | null) => void;
+  /** Callback when editor mode changes (for hiding parent UI) */
+  onEditorModeChange?: (isEditing: boolean) => void;
 }
 
 export function AdminCoursesSection({
   apiEndpoint = '/api/admin/discover/courses',
   initialCourseId,
   onCourseSelect,
+  onEditorModeChange,
 }: AdminCoursesSectionProps) {
   const [courses, setCourses] = useState<DiscoverCourse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +78,8 @@ export function AdminCoursesSection({
   const [trackFilter, setTrackFilter] = useState('');
   const [courseToDelete, setCourseToDelete] = useState<DiscoverCourse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // View mode state: 'list' or 'editor'
   const [viewMode, setViewMode] = useState<'list' | 'editor'>('list');
@@ -114,6 +119,11 @@ export function AdminCoursesSection({
     fetchCourses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Notify parent when editor mode changes
+  useEffect(() => {
+    onEditorModeChange?.(viewMode === 'editor');
+  }, [viewMode, onEditorModeChange]);
 
   // Handle initial course ID from URL
   useEffect(() => {
@@ -216,6 +226,18 @@ export function AdminCoursesSection({
     
     return filtered;
   }, [courses, searchQuery, categoryFilter, levelFilter, trackFilter]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryFilter, levelFilter, trackFilter]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredCourses.length / ITEMS_PER_PAGE);
+  const paginatedCourses = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredCourses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredCourses, currentPage, ITEMS_PER_PAGE]);
 
   const handleDelete = async () => {
     if (!courseToDelete) return;
@@ -392,7 +414,7 @@ export function AdminCoursesSection({
 
         {/* Course Cards */}
         <div className="p-3 space-y-2">
-          {filteredCourses.map(course => (
+          {paginatedCourses.map(course => (
             <div
               key={course.id}
               onClick={() => handleEditCourse(course)}
@@ -483,6 +505,44 @@ export function AdminCoursesSection({
           <div className="px-3 pb-3">
             <div className="p-12 text-center">
               <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No courses found</p>
+            </div>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-[#e1ddd8] dark:border-[#262b35]/50 flex items-center justify-between">
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredCourses.length)} of {filteredCourses.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded-lg text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`min-w-[32px] h-8 px-2 rounded-lg text-sm font-medium font-albert transition-colors ${
+                    currentPage === page
+                      ? 'bg-brand-accent text-white'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-1.5 rounded-lg text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         )}

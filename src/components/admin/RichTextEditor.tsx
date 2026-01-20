@@ -517,13 +517,13 @@ export function RichTextEditor({
   }, [editor]);
 
   const editorContent = (
-    <div className="space-y-1">
+    <div>
       {label && !isExpanded && (
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1.5 font-albert">
           {label} {required && '*'}
         </label>
       )}
-      
+
       {/* Formatting Toolbar */}
       <EditorToolbar
         editor={editor}
@@ -550,7 +550,7 @@ export function RichTextEditor({
       
       {/* Help text */}
       {!isExpanded && (
-        <p className="text-xs text-[#5f5a55] dark:text-[#7d8190] font-albert">
+        <p className="mt-1.5 text-xs text-[#5f5a55] dark:text-[#7d8190] font-albert">
           Supports Markdown formatting. Use the toolbar or keyboard shortcuts (Ctrl+B for bold, Ctrl+I for italic).
         </p>
       )}

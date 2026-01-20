@@ -789,6 +789,16 @@ body {
   overflow-x: hidden;
 }
 
+/* Fullscreen pages (website, etc.) - transparent body/html to let template control background */
+body[data-layout="fullscreen"],
+body[data-layout="fullscreen"].bg-app-bg,
+html:has(body[data-layout="fullscreen"]) {
+  background-color: transparent !important;
+  background: transparent !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 /* Dark mode skeleton / loading state styles */
 html.dark .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;

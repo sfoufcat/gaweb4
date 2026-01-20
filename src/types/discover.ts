@@ -95,6 +95,7 @@ export type DiscoverEvent = {
   maxAttendees?: number;
   createdAt: string;
   updatedAt: string;
+  isRecurring?: boolean; // if true, this is a recurring event
   
   // Pricing & Gating
   priceInCents?: number;

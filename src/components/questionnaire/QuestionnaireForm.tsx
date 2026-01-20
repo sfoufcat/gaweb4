@@ -2,8 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Send, Loader2, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ChevronLeft, Send, Loader2, ArrowRight } from 'lucide-react';
 import { QuestionRenderer } from './QuestionRenderer';
 import type { Questionnaire, QuestionnaireAnswer, QuestionnaireQuestion } from '@/types/questionnaire';
 
@@ -324,75 +323,104 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
   const isPageOnlyInfoSteps = currentPage && !currentPage.isPageBreak &&
     currentPage.questions.every(q => q.type === 'info');
 
-  return (
-    <div className="min-h-screen flex flex-col" onKeyDown={handleKeyDown}>
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-[#f9f8f6]/95 dark:bg-[#11141b]/95 backdrop-blur-sm border-b border-[#e1ddd8] dark:border-[#262b35]/50">
-        <div className="max-w-3xl mx-auto px-6 py-4">
-          <h1 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {questionnaire.title}
-          </h1>
-          {questionnaire.description && (
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-              {questionnaire.description}
-            </p>
-          )}
+  // Button text logic
+  const getButtonText = () => {
+    if (submitting) return 'Submitting...';
+    if (isLastPage) return 'Submit';
+    if (currentPage?.isPageBreak || isPageOnlyInfoSteps) return 'Continue';
+    return 'Next';
+  };
 
-          {/* Progress bar */}
-          <div className="mt-4 h-1.5 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
+  return (
+    <div
+      className="min-h-[100dvh] flex flex-col bg-gradient-to-b from-[#faf9f7] to-[#f5f3f0] dark:from-[#0f1218] dark:to-[#0a0c10]"
+      onKeyDown={handleKeyDown}
+    >
+      {/* Minimal top header with progress */}
+      <header className="w-full px-4 sm:px-6 pt-6 pb-4">
+        <div className="max-w-xl mx-auto">
+          {/* Progress indicator - elegant thin line with glow */}
+          <div className="relative">
+            <div className="h-0.5 bg-[#e8e4df] dark:bg-[#1e232d] rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-brand-accent to-brand-accent/80 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+              />
+            </div>
+            {/* Subtle glow effect on progress */}
             <motion.div
-              className="h-full bg-brand-accent rounded-full"
+              className="absolute top-0 h-0.5 bg-brand-accent/30 blur-sm rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
             />
           </div>
-          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-2">
-            {actualQuestions.length > 0 ? (
-              <>Question {Math.min(currentQuestionNumber, actualQuestions.length)} of {actualQuestions.length}</>
-            ) : (
-              <>Step {currentPageIndex + 1} of {pages.length}</>
+
+          {/* Step indicator */}
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-xs font-medium text-[#8a857f] dark:text-[#6b7280] font-albert tracking-wide uppercase">
+              {actualQuestions.length > 0 ? (
+                <>Question {Math.min(currentQuestionNumber, actualQuestions.length)} of {actualQuestions.length}</>
+              ) : (
+                <>Step {currentPageIndex + 1} of {pages.length}</>
+              )}
+            </p>
+            {!isFirstPage && (
+              <button
+                onClick={goToPrevious}
+                disabled={submitting}
+                className="flex items-center gap-1 text-xs font-medium text-[#8a857f] dark:text-[#6b7280] hover:text-[#5f5a55] dark:hover:text-[#9ca3af] transition-colors font-albert"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                Back
+              </button>
             )}
-          </p>
+          </div>
         </div>
       </header>
 
-      {/* Question area */}
-      <main className="flex-1 px-6 py-8">
-        <div className="w-full max-w-2xl mx-auto">
+      {/* Main content area - centered */}
+      <main className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-6">
+        <div className="w-full max-w-xl mx-auto">
           <AnimatePresence mode="wait">
             {currentPage?.isPageBreak ? (
               // Page Break Transition Screen
               <motion.div
                 key={currentPage.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                className="text-center py-16"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                className="text-center py-12"
               >
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.3 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1, duration: 0.4 }}
                   className="space-y-6"
                 >
                   {currentPage.pageBreakQuestion?.title && (
-                    <h2 className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    <h2 className="text-3xl sm:text-4xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert leading-tight">
                       {currentPage.pageBreakQuestion.title}
                     </h2>
                   )}
                   {currentPage.pageBreakQuestion?.description && (
-                    <p className="text-lg text-[#5f5a55] dark:text-[#b2b6c2] font-albert max-w-md mx-auto">
+                    <p className="text-lg text-[#5f5a55] dark:text-[#9ca3af] font-albert max-w-md mx-auto leading-relaxed">
                       {currentPage.pageBreakQuestion.description}
                     </p>
                   )}
                   {!currentPage.pageBreakQuestion?.title && !currentPage.pageBreakQuestion?.description && (
                     <div className="space-y-4">
-                      <div className="w-16 h-16 mx-auto rounded-full bg-brand-accent/10 flex items-center justify-center">
-                        <ArrowRight className="w-8 h-8 text-brand-accent" />
-                      </div>
-                      <p className="text-lg text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                      <motion.div
+                        className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 flex items-center justify-center"
+                        animate={{ scale: [1, 1.05, 1] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        <ArrowRight className="w-7 h-7 text-brand-accent" />
+                      </motion.div>
+                      <p className="text-lg text-[#5f5a55] dark:text-[#9ca3af] font-albert">
                         Ready for the next section?
                       </p>
                     </div>
@@ -400,16 +428,16 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
                 </motion.div>
               </motion.div>
             ) : currentPage && currentPage.questions.length > 0 ? (
-              // Page with questions - render all questions on this page
+              // Page with questions
               <motion.div
                 key={currentPage.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                 className="space-y-8"
               >
-                {currentPage.questions.map((question, index) => (
+                {currentPage.questions.map((question) => (
                   <div key={question.id}>
                     <QuestionRenderer
                       question={question}
@@ -425,46 +453,37 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
         </div>
       </main>
 
-      {/* Footer navigation */}
-      <footer className="sticky bottom-0 bg-[#f9f8f6]/95 dark:bg-[#11141b]/95 backdrop-blur-sm border-t border-[#e1ddd8] dark:border-[#262b35]/50">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Button
-            variant="outline"
-            onClick={goToPrevious}
-            disabled={isFirstPage || submitting}
-            className="font-albert"
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Previous
-          </Button>
-
-          <Button
+      {/* Footer with action button - proper safe area handling */}
+      <footer className="w-full px-4 sm:px-6 pb-6 pt-4" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+        <div className="max-w-xl mx-auto">
+          <motion.button
             onClick={goToNext}
             disabled={submitting}
-            className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert font-medium"
+            whileHover={{ scale: submitting ? 1 : 1.01 }}
+            whileTap={{ scale: submitting ? 1 : 0.98 }}
+            className="w-full h-14 bg-brand-accent hover:bg-brand-accent/90 disabled:opacity-70 disabled:cursor-not-allowed text-white font-albert font-semibold text-base rounded-2xl shadow-lg shadow-brand-accent/20 hover:shadow-xl hover:shadow-brand-accent/25 transition-all flex items-center justify-center gap-2"
           >
             {submitting ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Submitting...
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Submitting...</span>
               </>
             ) : isLastPage ? (
               <>
-                <Send className="w-4 h-4 mr-2" />
-                Submit
-              </>
-            ) : currentPage?.isPageBreak || isPageOnlyInfoSteps ? (
-              <>
-                Continue
-                <ChevronRight className="w-4 h-4 ml-2" />
+                <Send className="w-4 h-4" />
+                <span>Submit</span>
               </>
             ) : (
-              <>
-                Next
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </>
+              <span>{getButtonText()}</span>
             )}
-          </Button>
+          </motion.button>
+
+          {/* Keyboard hint on desktop */}
+          {!currentPage?.isPageBreak && currentPage?.questions.length === 1 && (
+            <p className="hidden sm:block text-center text-xs text-[#a3a09b] dark:text-[#4b5563] font-albert mt-3">
+              Press <kbd className="px-1.5 py-0.5 bg-[#e8e4df] dark:bg-[#1e232d] rounded text-[#5f5a55] dark:text-[#9ca3af]">Enter</kbd> to continue
+            </p>
+          )}
         </div>
       </footer>
     </div>

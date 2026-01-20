@@ -1,17 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Clock, MapPin, Repeat, ChevronDown, ChevronUp, Image as ImageIcon, AlertCircle, Plus } from 'lucide-react';
+import Image from 'next/image';
+import { Calendar, Clock, MapPin, Repeat, ChevronDown, ChevronUp, Image as ImageIcon, AlertCircle, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { DiscoverEvent } from '@/types/discover';
 import type { RecurrenceFrequency } from '@/types';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -880,6 +873,8 @@ function EventFormDialog({
   );
 }
 
+const ITEMS_PER_PAGE = 10;
+
 interface AdminEventsSectionProps {
   apiEndpoint?: string;
 }
@@ -894,6 +889,7 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Derive upload endpoint from API endpoint - use coach upload for coach routes
   const uploadEndpoint = apiEndpoint.includes('/coach/') 
@@ -926,7 +922,7 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
 
   const filteredEvents = useMemo(() => {
     let filtered = events;
-    
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(event =>
@@ -934,9 +930,21 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
         (event.hostName || '').toLowerCase().includes(query)
       );
     }
-    
+
     return filtered;
   }, [events, searchQuery]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredEvents.length / ITEMS_PER_PAGE);
+  const paginatedEvents = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredEvents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredEvents, currentPage]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const handleDelete = async () => {
     if (!eventToDelete) return;
@@ -990,19 +998,26 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
 
   if (loading) {
     return (
-      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl p-6 animate-pulse">
-        <div className="flex items-center justify-between mb-6">
-          <div className="h-6 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-          <div className="h-10 w-28 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl animate-pulse overflow-hidden">
+        <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="h-6 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              <div className="h-4 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded mt-1" />
+            </div>
+            <div className="h-8 w-28 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+          </div>
         </div>
-        <div className="space-y-4">
+        <div className="p-3 space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex gap-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-              <div className="w-16 h-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg flex-shrink-0" />
+            <div key={i} className="flex items-center gap-4 p-3 bg-white dark:bg-[#171b22] border border-[#e8e4df] dark:border-[#262b35] rounded-xl">
+              <div className="w-20 h-14 sm:w-24 sm:h-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg flex-shrink-0" />
               <div className="flex-1 space-y-2">
                 <div className="h-5 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                <div className="h-4 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                <div className="h-4 w-40 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                <div className="h-4 w-64 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              </div>
+              <div className="hidden md:flex gap-2">
+                <div className="h-5 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
               </div>
             </div>
           ))}
@@ -1027,20 +1042,23 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
 
   return (
     <>
-      <div className="bg-white/60 dark:bg-[#171b22]/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
         {/* Header */}
-        <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">Events</h2>
-              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert mt-1">
+        <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+          <div className="flex items-center gap-4">
+            <div className="flex-shrink-0">
+              <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Events</h2>
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
                 {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''}
               </p>
             </div>
-            
-            <div className="flex flex-wrap items-center gap-3">
+
+            <div className="flex items-center gap-3 ml-auto">
               {/* Search */}
               <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9ca3af]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
                 <input
                   type="text"
                   placeholder="Search events..."
@@ -1048,99 +1066,144 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
                   onChange={e => setSearchQuery(e.target.value)}
                   className="pl-9 pr-4 py-1.5 w-48 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
                 />
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
               </div>
-              
+
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
-                title="Create Event"
+                className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200 whitespace-nowrap"
               >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Create Event</span>
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create Event
               </button>
             </div>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="font-albert">Title</TableHead>
-                <TableHead className="font-albert">Date</TableHead>
-                <TableHead className="font-albert">Time</TableHead>
-                <TableHead className="font-albert">Location</TableHead>
-                <TableHead className="font-albert">Host</TableHead>
-                <TableHead className="font-albert">Featured</TableHead>
-                <TableHead className="font-albert text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredEvents.map(event => (
-                <TableRow key={event.id}>
-                  <TableCell className="font-albert font-medium max-w-[200px] truncate">
-                    {event.title}
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {formatDate(event.date)}
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {event.startTime}–{event.endTime} {event.timezone}
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {event.locationLabel || '—'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {event.hostName || '—'}
-                  </TableCell>
-                  <TableCell>
-                    {event.featured ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-albert">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                        Featured
-                      </span>
-                    ) : (
-                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] text-sm font-albert">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => { setEventToEdit(event); setIsFormOpen(true); }}
-                        className="text-brand-accent hover:text-brand-accent/90 hover:bg-brand-accent/10 font-albert"
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEventToDelete(event)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 font-albert"
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {/* Event Cards */}
+        <div className="p-3 space-y-2">
+          {paginatedEvents.map(event => (
+            <div
+              key={event.id}
+              onClick={() => { setEventToEdit(event); setIsFormOpen(true); }}
+              className="flex items-center gap-4 p-3 rounded-xl bg-white dark:bg-[#171b22] border border-[#e8e4df] dark:border-[#262b35] hover:border-brand-accent/50 dark:hover:border-brand-accent/50 cursor-pointer transition-all group"
+            >
+              {/* Cover Image */}
+              <div className="relative w-20 h-14 sm:w-24 sm:h-16 rounded-lg overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
+                {event.coverImageUrl ? (
+                  <Image
+                    src={event.coverImageUrl}
+                    alt={event.title}
+                    fill
+                    className="object-cover"
+                    sizes="96px"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Calendar className="w-6 h-6 text-[#a7a39e] dark:text-[#5f6470]" />
+                  </div>
+                )}
+              </div>
+
+              {/* Event Info */}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-brand-accent transition-colors">
+                  {event.title}
+                </h3>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  <span>{formatDate(event.date)}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="hidden sm:inline">{event.startTime}–{event.endTime}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="hidden sm:inline flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {event.locationLabel || 'Online'}
+                  </span>
+                  {event.hostName && (
+                    <>
+                      <span className="hidden md:inline">•</span>
+                      <span className="hidden md:inline">{event.hostName}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Badges */}
+              <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                {event.featured && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-albert">
+                    Featured
+                  </span>
+                )}
+                {event.isRecurring && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-albert">
+                    Recurring
+                  </span>
+                )}
+              </div>
+
+              {/* Action Icons */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEventToEdit(event);
+                    setIsFormOpen(true);
+                  }}
+                  className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
+                  title="Edit"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEventToDelete(event);
+                  }}
+                  className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                  title="Delete"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
 
         {filteredEvents.length === 0 && (
-          <div className="p-12 text-center">
-            <p className="text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert">No events found</p>
+          <div className="px-3 pb-3">
+            <div className="p-12 text-center">
+              <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No events found</p>
+            </div>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-[#e1ddd8] dark:border-[#262b35]/50 flex items-center justify-between">
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredEvents.length)} of {filteredEvents.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>

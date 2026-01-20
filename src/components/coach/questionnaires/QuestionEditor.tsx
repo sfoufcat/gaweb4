@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Copy, X, Loader2 } from 'lucide-react';
 import { QuestionOptionEditor } from './QuestionOptionEditor';
 import { SkipLogicEditor } from './SkipLogicEditor';
@@ -396,15 +397,28 @@ export function QuestionEditor({
                 {showSkipLogic ? 'Hide skip logic' : 'Add skip logic'}
               </button>
 
-              {showSkipLogic && (
-                <div className="mt-4">
-                  <SkipLogicEditor
-                    question={question}
-                    allQuestions={allQuestions}
-                    onUpdate={skipLogic => onUpdate({ skipLogic })}
-                  />
-                </div>
-              )}
+              <AnimatePresence initial={false}>
+                {showSkipLogic && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{
+                      height: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
+                      opacity: { duration: 0.2, delay: showSkipLogic ? 0.1 : 0 }
+                    }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4">
+                      <SkipLogicEditor
+                        question={question}
+                        allQuestions={allQuestions}
+                        onUpdate={skipLogic => onUpdate({ skipLogic })}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
       </div>
