@@ -253,6 +253,27 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps) {
     }
   }
 
+  // Fetch published programs for display on website
+  const programsSnapshot = await adminDb
+    .collection('programs')
+    .where('organizationId', '==', organizationId)
+    .where('isPublished', '==', true)
+    .limit(6)
+    .get();
+
+  const programs = programsSnapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      name: data.name || 'Untitled Program',
+      slug: data.slug || doc.id,
+      description: data.description,
+      coverImageUrl: data.coverImageUrl,
+      type: data.type || 'group',
+      priceInCents: data.priceInCents,
+    };
+  });
+
   return (
     <WebsitePageRenderer
       website={website}
@@ -262,6 +283,7 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps) {
       funnels={funnels}
       subdomain={subdomain}
       isPreviewMode={isCoachPreview}
+      programs={programs}
     />
   );
 }

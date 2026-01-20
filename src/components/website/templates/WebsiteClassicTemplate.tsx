@@ -85,10 +85,15 @@ export function WebsiteClassicTemplate({
   coachHeadline,
   credentials,
   services,
+  servicesHeadline: _servicesHeadline,
+  programs: _programs,
+  programsHeadline: _programsHeadline,
+  programsSubheadline: _programsSubheadline,
   transformationHeadline,
   transformationSteps,
   transformationImageUrl,
   testimonials,
+  testimonialsHeadline: _testimonialsHeadline,
   faqs,
   ctaText,
   ctaUrl,
@@ -101,6 +106,7 @@ export function WebsiteClassicTemplate({
   accentLight = '#6366f1',
   accentDark = '#4f46e5',
   onServiceClick,
+  onProgramClick: _onProgramClick,
 }: WebsiteTemplateProps) {
   const [openFaqIndex, setOpenFaqIndex] = React.useState<number | null>(null);
 

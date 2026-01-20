@@ -58,10 +58,15 @@ export function WebsiteModernTemplate({
   coachHeadline,
   credentials,
   services,
+  servicesHeadline: _servicesHeadline,
+  programs: _programs,
+  programsHeadline: _programsHeadline,
+  programsSubheadline: _programsSubheadline,
   transformationHeadline,
   transformationSteps,
   transformationImageUrl,
   testimonials,
+  testimonialsHeadline: _testimonialsHeadline,
   faqs,
   ctaText,
   ctaUrl,
@@ -74,6 +79,7 @@ export function WebsiteModernTemplate({
   accentLight = '#814ac8',
   accentDark = '#df7afe',
   onServiceClick,
+  onProgramClick: _onProgramClick,
 }: WebsiteTemplateProps) {
   const [openFaqIndex, setOpenFaqIndex] = React.useState<number | null>(null);
 

@@ -9,6 +9,7 @@ import {
   WebsiteMinimalTemplate,
 } from './templates';
 import type { OrgWebsite, Funnel, WebsiteService } from '@/types';
+import type { WebsiteProgram } from './templates/types';
 
 // Simple branding interface for website rendering
 // Can accept either full OrgBranding or simplified ServerBranding
@@ -31,6 +32,7 @@ export interface WebsitePageRendererProps {
   funnels: Array<Pick<Funnel, 'id' | 'slug'> & { programSlug?: string; url?: string }>;
   subdomain: string;
   isPreviewMode?: boolean;
+  programs?: WebsiteProgram[];
 }
 
 export function WebsitePageRenderer({
@@ -41,6 +43,7 @@ export function WebsitePageRenderer({
   funnels,
   subdomain,
   isPreviewMode = false,
+  programs,
 }: WebsitePageRendererProps) {
   const router = useRouter();
 
@@ -80,6 +83,11 @@ export function WebsitePageRenderer({
     }
   };
 
+  // Handle program click - navigate to program landing page
+  const handleProgramClick = (program: WebsiteProgram) => {
+    router.push(`/programs/${program.slug}`);
+  };
+
   // Build navigation links based on available sections
   const navLinks: NavLink[] = React.useMemo(() => {
     const links: NavLink[] = [];
@@ -115,11 +123,15 @@ export function WebsitePageRenderer({
       coachHeadline: website.coachHeadline,
       credentials: website.coachBullets || [],
       services: website.services || [],
+      servicesHeadline: website.servicesHeadline,
       testimonials: website.testimonials || [],
       faqs: website.faqs || [],
       accentLight,
       accentDark,
       onServiceClick: handleServiceClick,
+      // Programs section
+      programs: programs,
+      onProgramClick: handleProgramClick,
       // Transformation section props
       transformationHeadline: website.transformationHeadline,
       transformationSteps: website.transformationSteps,

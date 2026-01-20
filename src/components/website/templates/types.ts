@@ -1,5 +1,16 @@
 import type { ProgramTestimonial, ProgramFAQ, WebsiteService, TransformationStep } from '@/types';
 
+// Simplified program type for website display
+export interface WebsiteProgram {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  coverImageUrl?: string;
+  type: 'group' | 'individual';
+  priceInCents?: number;
+}
+
 export interface WebsiteTemplateProps {
   // Hero
   headline: string;
@@ -17,6 +28,13 @@ export interface WebsiteTemplateProps {
 
   // Services
   services: WebsiteService[];
+  servicesHeadline?: string;
+  servicesSubheadline?: string;
+
+  // Programs/Insights section
+  programs?: WebsiteProgram[];
+  programsHeadline?: string;
+  programsSubheadline?: string;
 
   // Transformation/Journey section
   transformationHeadline?: string;
@@ -25,6 +43,7 @@ export interface WebsiteTemplateProps {
 
   // Social Proof
   testimonials: ProgramTestimonial[];
+  testimonialsHeadline?: string;
   faqs: ProgramFAQ[];
 
   // Footer
@@ -41,4 +60,5 @@ export interface WebsiteTemplateProps {
 
   // Callbacks
   onServiceClick?: (service: WebsiteService) => void;
+  onProgramClick?: (program: WebsiteProgram) => void;
 }
