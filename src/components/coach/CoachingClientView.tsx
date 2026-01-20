@@ -30,9 +30,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useDemoMode } from '@/contexts/DemoModeContext';
-import type { 
-  ClientCoachingData, 
-  FirebaseUser, 
+import { DatePicker } from '@/components/ui/date-picker';
+import type {
+  ClientCoachingData,
+  FirebaseUser,
   Coach,
   CoachingActionItem,
   CoachingSessionHistory,
@@ -1058,12 +1059,11 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block font-albert font-medium text-[14px] text-[#1a1a1a] mb-2">Date</label>
-                <input
-                  type="date"
+                <DatePicker
                   value={callDate}
-                  onChange={(e) => setCallDate(e.target.value)}
-                  min={minDate}
-                  className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
+                  onChange={(date) => setCallDate(date)}
+                  minDate={new Date(minDate)}
+                  placeholder="Select date"
                 />
               </div>
               <div>
@@ -1189,11 +1189,10 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
           <div className="space-y-4 py-3">
             <div>
               <label className="block font-albert font-medium text-[14px] text-[#1a1a1a] mb-2">Date</label>
-              <input
-                type="date"
+              <DatePicker
                 value={sessionDate}
-                onChange={(e) => setSessionDate(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
+                onChange={(date) => setSessionDate(date)}
+                placeholder="Select date"
               />
             </div>
             <div>

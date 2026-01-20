@@ -1721,12 +1721,11 @@ export function AdminUsersTab({
                       <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                         Expiration Date (optional)
                       </label>
-                      <input
-                        type="date"
+                      <DatePicker
                         value={manualExpiresAt}
-                        onChange={(e) => setManualExpiresAt(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="w-full h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 focus:border-brand-accent font-albert disabled:opacity-50"
+                        onChange={(date) => setManualExpiresAt(date)}
+                        minDate={new Date()}
+                        placeholder="Select expiry date"
                         disabled={subdomainLoading}
                       />
                       <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">

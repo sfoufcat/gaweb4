@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTypewriter } from '@/hooks/useTypewriter';
 import { CalendarIcon } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface GoalInputProps {
   value: string;
@@ -95,32 +96,17 @@ export function GoalInput({
         />
       </div>
 
-      {/* Date Picker - Styled native input (visible) */}
+      {/* Date Picker - Beautiful app-native DatePicker */}
       <div className="mt-2">
-        <div className="relative">
-          <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#a7a39e] pointer-events-none z-10" />
-          <input
-            id="goal-date"
-            ref={dateInputRef}
-            type="date"
-            value={targetDate || ''}
-            onChange={(e) => onDateChange(e.target.value)}
-            min={new Date().toISOString().split('T')[0]}
-            placeholder="By when?"
-            className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] hover:border-brand-accent focus:border-brand-accent focus:outline-none focus:ring-0 transition-all font-sans text-[18px] tracking-[-0.5px] leading-[1.2] text-text-primary cursor-pointer"
-            style={{
-              colorScheme: 'light',
-            }}
-            aria-label="Select target date"
-          />
-          {!targetDate && (
-            <span className="absolute left-12 top-1/2 -translate-y-1/2 font-sans text-[18px] tracking-[-0.5px] leading-[1.2] text-[#a7a39e] pointer-events-none">
-              By when?
-            </span>
-          )}
-        </div>
+        <DatePicker
+          value={targetDate || ''}
+          onChange={(date) => onDateChange(date)}
+          minDate={new Date()}
+          placeholder="By when?"
+          className="w-full text-[18px]"
+        />
       </div>
-      
+
       {error && (
         <p className="mt-3 text-sm text-red-600 font-sans animate-in fade-in slide-in-from-top-1 relative z-20">
           {error}

@@ -6,6 +6,7 @@ import { useUser } from '@clerk/nextjs';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function EditGoalPage() {
   const router = useRouter();
@@ -371,12 +372,11 @@ export default function EditGoalPage() {
           <label className="block font-sans text-[24px] text-text-secondary tracking-[-0.5px] leading-[1.2] mb-1">
             Complete by:
           </label>
-          <input
-            type="date"
+          <DatePicker
             value={targetDate}
-            onChange={(e) => setTargetDate(e.target.value)}
-            className="font-sans text-[24px] text-text-primary tracking-[-0.5px] leading-[1.2] bg-transparent border-none outline-none cursor-pointer"
-            style={{ colorScheme: 'light' }}
+            onChange={(date) => setTargetDate(date)}
+            placeholder="Select date"
+            displayFormat="MMMM d, yyyy"
           />
         </div>
 

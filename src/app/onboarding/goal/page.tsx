@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import type { GoalValidationResult } from '@/types';
 import { useBrandingValues } from '@/contexts/BrandingContext';
+import { DatePicker } from '@/components/ui/date-picker';
 
 const EXAMPLE_GOALS = [
   "lose 10 kg",
@@ -300,17 +301,22 @@ export default function GoalPage() {
               <div className="font-sans text-[24px] lg:text-[28px] text-text-primary tracking-[-0.5px] leading-[1.2]">
                 <label className="block mb-2">By...</label>
                 {!showValidatedGoal && !showSuggestion ? (
-                  <input
-                    type="date"
+                  <DatePicker
                     value={targetDate || ''}
-                    min={minDate}
-                    onChange={handleDateChange}
-                    onBlur={handleDateBlur}
+                    onChange={(date) => {
+                      setTargetDate(date || null);
+                      // Clear error if valid date selected
+                      if (error === 'Please select a date in the future.') {
+                        setError('');
+                      }
+                    }}
+                    minDate={new Date(minDate)}
                     disabled={isValidating || isSaving}
-                    className="w-full bg-transparent border-b-2 border-[#e1ddd8] focus:border-brand-accent outline-none pb-4 text-text-muted transition-colors"
+                    placeholder="Select target date"
+                    className="w-full bg-transparent border-0 border-b-2 border-[#e1ddd8] focus:border-brand-accent rounded-none pb-4 text-text-muted"
                   />
                 ) : (
-                  <motion.p 
+                  <motion.p
                     className="border-b-2 border-[#e1ddd8] pb-4 text-text-muted"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}

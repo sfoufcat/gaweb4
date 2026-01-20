@@ -26,6 +26,7 @@ import type { Program, ProgramCohort, ProgramDay, ProgramFeature, ProgramTestimo
 import { ProgramLandingSkeleton } from '@/components/program/ProgramLandingSkeleton';
 import { ProgramPaymentModal } from '@/components/program/ProgramPaymentModal';
 import { OrderBumpList, calculateBumpTotal } from '@/components/checkout';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface CohortWithAvailability extends ProgramCohort {
   spotsRemaining: number;
@@ -779,16 +780,14 @@ export default function ProgramDetailPage() {
                           <Calendar className="w-5 h-5" style={{ color: accentLight }} />
                           <span className="font-semibold font-albert text-[14px]">Choose your start date</span>
                         </div>
-                        <input
-                          type="date"
+                        <DatePicker
                           value={selectedStartDate}
-                          onChange={(e) => setSelectedStartDate(e.target.value)}
-                          min={program.defaultStartDate || new Date().toISOString().split('T')[0]}
-                          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#3a3f4b] rounded-lg bg-white dark:bg-[#1d222b] text-text-primary font-albert text-[14px] focus:outline-none focus:ring-2 transition-colors"
-                          style={{ ['--tw-ring-color' as string]: accentLight }}
+                          onChange={(date) => setSelectedStartDate(date)}
+                          minDate={program.defaultStartDate ? new Date(program.defaultStartDate + 'T00:00:00') : new Date()}
+                          placeholder="Select start date"
                         />
                         <p className="text-[12px] text-text-secondary mt-2">
-                          {program.defaultStartDate 
+                          {program.defaultStartDate
                             ? `Earliest start date: ${formatDate(program.defaultStartDate)}`
                             : 'Select when you want to begin your journey'
                           }
