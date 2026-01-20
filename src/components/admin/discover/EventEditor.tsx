@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import type { DiscoverEvent } from '@/types/discover';
 import type { RecurrenceFrequency } from '@/types';
@@ -11,6 +11,7 @@ import { CategorySelector } from '@/components/admin/CategorySelector';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { MeetingProviderSelector, type MeetingProviderType } from '@/components/scheduling/MeetingProviderSelector';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
+import { PastEventEditor } from './PastEventEditor';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -329,6 +330,27 @@ export function EventEditor({
   apiEndpoint,
 }: EventEditorProps) {
   const isEditing = !!event;
+
+  // Check if this is a past event (event date + end time has passed)
+  const isPastEvent = useMemo(() => {
+    if (!event?.date) return false;
+    // Create date from event date and end time (or start time if no end time)
+    const eventTime = event.endTime || event.startTime || '23:59';
+    const eventDateTime = new Date(`${event.date}T${eventTime}`);
+    return eventDateTime < new Date();
+  }, [event?.date, event?.endTime, event?.startTime]);
+
+  // For past events being edited, render simplified PastEventEditor
+  if (isPastEvent && isEditing && event) {
+    return (
+      <PastEventEditor
+        event={event}
+        onClose={onClose}
+        onSave={onSave}
+        apiEndpoint={apiEndpoint}
+      />
+    );
+  }
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);

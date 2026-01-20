@@ -71,6 +71,7 @@ export const INTEGRATION_PROVIDERS: Record<IntegrationProvider, IntegrationProvi
     scopes: [
       'https://www.googleapis.com/auth/calendar.events',
       'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/drive.readonly', // For fetching Meet recordings from Google Drive
     ],
     requiredTier: 'starter',
     docsUrl: 'https://developers.google.com/calendar',

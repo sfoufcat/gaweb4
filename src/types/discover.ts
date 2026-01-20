@@ -80,6 +80,8 @@ export type DiscoverEvent = {
   };
   zoomLink?: string;     // meeting link, only visible after RSVP
   recordingUrl?: string; // recording link for past events
+  meetingProvider?: 'zoom' | 'google_meet' | 'manual'; // which provider was used for the meeting
+  externalMeetingId?: string; // Zoom meeting ID or Google Calendar event ID for fetching recordings
   hostName: string;
   hostAvatarUrl?: string;
   // For public Discover

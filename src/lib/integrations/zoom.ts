@@ -314,3 +314,126 @@ export async function getZoomMeeting(
     };
   }
 }
+
+/**
+ * Recording type from Zoom API
+ */
+interface ZoomRecording {
+  id: string;
+  recording_type: string;
+  file_type: string;
+  file_size: number;
+  play_url?: string;
+  download_url?: string;
+  status: string;
+}
+
+/**
+ * Get Zoom cloud recordings for a meeting
+ * 
+ * Note: This requires the meeting to have been recorded to the cloud.
+ * If the meeting was recorded locally, no recordings will be available via API.
+ */
+export async function getZoomRecordings(
+  orgId: string,
+  meetingId: string
+): Promise<{
+  success: boolean;
+  recordingUrl?: string;
+  recordings?: Array<{
+    type: string;
+    playUrl?: string;
+    downloadUrl?: string;
+    shareUrl?: string;
+  }>;
+  error?: string;
+}> {
+  try {
+    const integration = await getIntegration(orgId, 'zoom', true);
+
+    if (!integration) {
+      return { success: false, error: 'Zoom integration not connected' };
+    }
+
+    const accessToken = await getValidZoomAccessToken(
+      orgId,
+      integration.id,
+      integration.accessToken,
+      integration.refreshToken,
+      integration.expiresAt as Date | string | undefined
+    );
+
+    if (!accessToken) {
+      return { success: false, error: 'Failed to get valid Zoom access token' };
+    }
+
+    // Fetch recordings for the meeting
+    const response = await fetch(
+      `https://api.zoom.us/v2/meetings/${meetingId}/recordings`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    // 404 means no recordings exist for this meeting
+    if (response.status === 404) {
+      return {
+        success: true,
+        recordings: [],
+        error: 'No cloud recordings found for this meeting',
+      };
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[ZOOM] Get recordings failed:', errorData);
+      return {
+        success: false,
+        error: errorData.message || 'Failed to get Zoom recordings',
+      };
+    }
+
+    const data = await response.json();
+
+    // Extract recording files
+    const recordingFiles: ZoomRecording[] = data.recording_files || [];
+    
+    // Find the main video recording (shared_screen_with_speaker_view or similar)
+    const videoRecordings = recordingFiles.filter(
+      (r) => r.file_type === 'MP4' && r.status === 'completed'
+    );
+
+    if (videoRecordings.length === 0) {
+      return {
+        success: true,
+        recordings: [],
+        error: 'No completed video recordings found',
+      };
+    }
+
+    // Get the share URL for the meeting (this is the best URL for sharing)
+    const shareUrl = data.share_url;
+
+    // Map recordings to our format
+    const recordings = videoRecordings.map((r) => ({
+      type: r.recording_type,
+      playUrl: r.play_url,
+      downloadUrl: r.download_url,
+      shareUrl: shareUrl,
+    }));
+
+    return {
+      success: true,
+      recordingUrl: shareUrl || recordings[0]?.playUrl || recordings[0]?.downloadUrl,
+      recordings,
+    };
+  } catch (error) {
+    console.error('[ZOOM] Get recordings error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}

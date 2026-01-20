@@ -153,6 +153,8 @@ export async function PATCH(
       'shortDescription', 'longDescription', 'bulletPoints', 'additionalInfo',
       'hostUserId', 'hostName', 'hostAvatarUrl', 'featured', 'category',
       'programIds', 'maxAttendees', 'recordingUrl', 'visibility',
+      // Meeting provider and recording fields
+      'meetingProvider', 'externalMeetingId',
       // Pricing fields
       'priceInCents', 'currency', 'purchaseType', 'isPublic',
       'keyOutcomes', 'features', 'testimonials', 'faqs'
