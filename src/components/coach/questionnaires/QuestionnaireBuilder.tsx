@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Reorder, useDragControls, motion, AnimatePresence } from 'framer-motion';
-import { Plus, GripVertical, ArrowLeft, Settings, Copy, Check, Send, X, CheckCircle2 } from 'lucide-react';
+import { Plus, GripVertical, ArrowLeft, Settings, Copy, Check, Send, X, CheckCircle2, BarChart3 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
@@ -22,6 +22,8 @@ interface QuestionnaireBuilderProps {
   onSave: (data: Partial<Questionnaire>) => Promise<void>;
   onBack: () => void;
   onPreview?: () => void;
+  onViewResponses?: () => void;
+  responseCount?: number;
 }
 
 export function QuestionnaireBuilder({
@@ -29,6 +31,8 @@ export function QuestionnaireBuilder({
   onSave,
   onBack,
   onPreview,
+  onViewResponses,
+  responseCount = 0,
 }: QuestionnaireBuilderProps) {
   const [title, setTitle] = useState(questionnaire.title);
   const [description, setDescription] = useState(questionnaire.description || '');
@@ -47,7 +51,7 @@ export function QuestionnaireBuilder({
   const [showSettings, setShowSettings] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -206,10 +210,10 @@ export function QuestionnaireBuilder({
   };
 
   return (
-    <div className="min-h-screen bg-[#f9f8f6] dark:bg-[#11141b]">
+    <div className="h-screen flex flex-col bg-[#f9f8f6] dark:bg-[#11141b]">
       {/* Header - Redesigned */}
-      <div className="sticky top-0 z-10 bg-[#f9f8f6]/95 dark:bg-[#11141b]/95 backdrop-blur-sm border-b border-[#e1ddd8] dark:border-[#262b35]/50">
-        <div className="max-w-4xl mx-auto px-6 py-4">
+      <div className="flex-shrink-0 z-10 bg-[#f9f8f6]/95 dark:bg-[#11141b]/95 backdrop-blur-sm border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+        <div className="px-6 py-4">
           {/* Row 1: Back, Title, Status, Actions */}
           <div className="flex items-center gap-3">
             {/* Back button */}
@@ -256,18 +260,36 @@ export function QuestionnaireBuilder({
                 )}
               </button>
 
-              {/* Settings */}
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className={`p-2 rounded-lg transition-colors ${
-                  showSettings
-                    ? 'bg-brand-accent text-white'
-                    : 'hover:bg-[#e1ddd8]/50 dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]'
-                }`}
-                title="Settings"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
+              {/* Stats / View Responses */}
+              {onViewResponses && (
+                <button
+                  onClick={onViewResponses}
+                  className="relative p-2 rounded-lg hover:bg-[#e1ddd8]/50 dark:hover:bg-[#262b35] transition-colors"
+                  title="View responses"
+                >
+                  <BarChart3 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                  {responseCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 text-[10px] font-medium bg-brand-accent text-white rounded-full">
+                      {responseCount > 99 ? '99+' : responseCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {/* Settings - only show button on mobile, desktop has sidebar */}
+              {!isDesktop && (
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    showSettings
+                      ? 'bg-brand-accent text-white'
+                      : 'hover:bg-[#e1ddd8]/50 dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]'
+                  }`}
+                  title="Settings"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              )}
 
               {/* Publish button */}
               <button
@@ -316,84 +338,151 @@ export function QuestionnaireBuilder({
         </div>
       </div>
 
-      {/* Settings Modal - Dialog on desktop, Drawer on mobile */}
-      <SettingsModal
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-        isDesktop={isDesktop}
-        isActive={isActive}
-        setIsActive={setIsActive}
-        allowMultipleResponses={allowMultipleResponses}
-        setAllowMultipleResponses={setAllowMultipleResponses}
-        programIds={programIds}
-        setProgramIds={setProgramIds}
-        shareableLink={typeof window !== 'undefined' ? `${window.location.origin}/q/${questionnaire.slug}` : `/q/${questionnaire.slug}`}
-      />
+      {/* Settings Modal - Only for mobile, desktop uses sidebar */}
+      {!isDesktop && (
+        <SettingsModal
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          isActive={isActive}
+          setIsActive={setIsActive}
+          allowMultipleResponses={allowMultipleResponses}
+          setAllowMultipleResponses={setAllowMultipleResponses}
+          programIds={programIds}
+          setProgramIds={setProgramIds}
+          shareableLink={typeof window !== 'undefined' ? `${window.location.origin}/q/${questionnaire.slug}` : `/q/${questionnaire.slug}`}
+        />
+      )}
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        {/* Questions */}
-        <div className="space-y-4">
-          {questions.length > 0 ? (
-            <Reorder.Group
-              axis="y"
-              values={questions}
-              onReorder={handleReorder}
-              className="space-y-4"
-            >
-              {questions.map(question => (
-                <QuestionItem
-                  key={question.id}
-                  question={question}
-                  onUpdate={updates => handleUpdateQuestion(question.id, updates)}
-                  onDelete={() => handleDeleteQuestion(question.id)}
-                  onDuplicate={() => handleDuplicateQuestion(question)}
-                  allQuestions={questions}
-                />
-              ))}
-            </Reorder.Group>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
-                No steps yet. Add your first step to get started.
-              </p>
+      {/* Content with Desktop Sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className={`mx-auto px-6 py-8 ${isDesktop ? 'max-w-3xl' : 'max-w-4xl'}`}>
+            {/* Questions */}
+            <div className="space-y-4">
+              {questions.length > 0 ? (
+                <Reorder.Group
+                  axis="y"
+                  values={questions}
+                  onReorder={handleReorder}
+                  className="space-y-4"
+                >
+                  {questions.map(question => (
+                    <QuestionItem
+                      key={question.id}
+                      question={question}
+                      onUpdate={updates => handleUpdateQuestion(question.id, updates)}
+                      onDelete={() => handleDeleteQuestion(question.id)}
+                      onDuplicate={() => handleDuplicateQuestion(question)}
+                      allQuestions={questions}
+                    />
+                  ))}
+                </Reorder.Group>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
+                    No steps yet. Add your first step to get started.
+                  </p>
+                </div>
+              )}
+
+              {/* Add Step Button */}
+              <AnimatePresence mode="wait">
+                {showTypeSelector ? (
+                  <QuestionTypeSelector
+                    key="selector"
+                    onSelect={handleAddQuestion}
+                    onCancel={() => setShowTypeSelector(false)}
+                  />
+                ) : (
+                  <motion.button
+                    key="add-button"
+                    ref={addButtonRef}
+                    onClick={() => setShowTypeSelector(true)}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-brand-accent hover:bg-brand-accent/5 transition-colors text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent font-albert"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Step
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
-          )}
-
-          {/* Add Step Button */}
-          <AnimatePresence mode="wait">
-            {showTypeSelector ? (
-              <QuestionTypeSelector
-                key="selector"
-                onSelect={handleAddQuestion}
-                onCancel={() => setShowTypeSelector(false)}
-              />
-            ) : (
-              <motion.button
-                key="add-button"
-                ref={addButtonRef}
-                onClick={() => setShowTypeSelector(true)}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-brand-accent hover:bg-brand-accent/5 transition-colors text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent font-albert"
-              >
-                <Plus className="w-5 h-5" />
-                Add Step
-              </motion.button>
-            )}
-          </AnimatePresence>
+          </div>
         </div>
+
+        {/* Desktop Sidebar */}
+        {isDesktop && (
+          <div className="w-80 flex-shrink-0 border-l border-[#e1ddd8] dark:border-[#262b35] overflow-y-auto bg-white dark:bg-[#171b22]">
+            <div className="p-5 space-y-5">
+              {/* Active toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    Active
+                  </h4>
+                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                    Allow responses
+                  </p>
+                </div>
+                <Switch checked={isActive} onCheckedChange={setIsActive} />
+              </div>
+
+              <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
+
+              {/* Allow Multiple Responses toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    Multiple Responses
+                  </h4>
+                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                    Same user can submit multiple times
+                  </p>
+                </div>
+                <Switch checked={allowMultipleResponses} onCheckedChange={setAllowMultipleResponses} />
+              </div>
+
+              <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
+
+              {/* Program Association */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                  Programs
+                </label>
+                <ProgramSelector
+                  value={programIds}
+                  onChange={setProgramIds}
+                  placeholder="Select programs..."
+                  programsApiEndpoint="/api/coach/org-programs"
+                />
+              </div>
+
+              <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
+
+              {/* Shareable Link */}
+              <div>
+                <p className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                  Shareable Link
+                </p>
+                <code className="block w-full bg-[#f3f1ef] dark:bg-[#262b35] px-3 py-2 rounded-lg text-xs text-[#1a1a1a] dark:text-[#f5f5f8] break-all">
+                  {typeof window !== 'undefined' ? `${window.location.origin}/q/${questionnaire.slug}` : `/q/${questionnaire.slug}`}
+                </code>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// Settings Modal Component
+// Settings Modal Component - Mobile only (desktop uses sidebar)
 function SettingsModal({
   isOpen,
   onClose,
-  isDesktop,
   isActive,
   setIsActive,
   allowMultipleResponses,
@@ -404,7 +493,6 @@ function SettingsModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  isDesktop: boolean;
   isActive: boolean;
   setIsActive: (value: boolean) => void;
   allowMultipleResponses: boolean;
@@ -413,89 +501,73 @@ function SettingsModal({
   setProgramIds: (value: string[]) => void;
   shareableLink: string;
 }) {
-  const content = (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-          Settings
-        </h3>
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-        >
-          <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-        </button>
-      </div>
-
-      <div className="space-y-5">
-        {/* Active toggle */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              Active
-            </h4>
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-              When active, the questionnaire can receive responses
-            </p>
-          </div>
-          <Switch checked={isActive} onCheckedChange={setIsActive} />
-        </div>
-
-        {/* Allow Multiple Responses toggle */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              Allow Multiple Responses
-            </h4>
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-              Allow the same user to submit multiple times
-            </p>
-          </div>
-          <Switch checked={allowMultipleResponses} onCheckedChange={setAllowMultipleResponses} />
-        </div>
-
-        {/* Program Association */}
-        <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]/50">
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-            Programs
-          </label>
-          <ProgramSelector
-            value={programIds}
-            onChange={setProgramIds}
-            placeholder="Select programs for this questionnaire..."
-            programsApiEndpoint="/api/coach/org-programs"
-          />
-        </div>
-
-        {/* Shareable Link */}
-        <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]/50">
-          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            Shareable Link:{' '}
-            <code className="bg-[#f3f1ef] dark:bg-[#262b35] px-2 py-0.5 rounded text-[#1a1a1a] dark:text-[#f5f5f8]">
-              {shareableLink}
-            </code>
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Desktop: Use Dialog (centered modal)
-  if (isDesktop) {
-    return (
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-md p-0" hideCloseButton>
-          {content}
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Mobile: Use Drawer (slide-up)
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()} shouldScaleBackground={false}>
       <DrawerContent className="max-h-[85dvh]">
-        {content}
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              Settings
+            </h3>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            >
+              <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+            </button>
+          </div>
+
+          <div className="space-y-5">
+            {/* Active toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  Active
+                </h4>
+                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                  When active, the questionnaire can receive responses
+                </p>
+              </div>
+              <Switch checked={isActive} onCheckedChange={setIsActive} />
+            </div>
+
+            {/* Allow Multiple Responses toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  Allow Multiple Responses
+                </h4>
+                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                  Allow the same user to submit multiple times
+                </p>
+              </div>
+              <Switch checked={allowMultipleResponses} onCheckedChange={setAllowMultipleResponses} />
+            </div>
+
+            {/* Program Association */}
+            <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]/50">
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                Programs
+              </label>
+              <ProgramSelector
+                value={programIds}
+                onChange={setProgramIds}
+                placeholder="Select programs for this questionnaire..."
+                programsApiEndpoint="/api/coach/org-programs"
+              />
+            </div>
+
+            {/* Shareable Link */}
+            <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]/50">
+              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                Shareable Link:{' '}
+                <code className="bg-[#f3f1ef] dark:bg-[#262b35] px-2 py-0.5 rounded text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  {shareableLink}
+                </code>
+              </p>
+            </div>
+          </div>
+        </div>
       </DrawerContent>
     </Drawer>
   );

@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Pencil, Trash2, Eye, Copy, Check, ClipboardList } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, BarChart3, Copy, Check, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QuestionnaireBuilder } from '@/components/coach/questionnaires/QuestionnaireBuilder';
 import { ResponsesViewer } from '@/components/coach/questionnaires/ResponsesViewer';
@@ -202,6 +202,8 @@ export function AdminQuestionnairesSection({
         questionnaire={selectedQuestionnaire}
         onSave={handleSave}
         onBack={handleBackToList}
+        onViewResponses={() => handleViewResponses(selectedQuestionnaire)}
+        responseCount={selectedQuestionnaire.responseCount || 0}
       />
     );
   }
@@ -495,7 +497,7 @@ export function AdminQuestionnairesSection({
                         className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
                         title="View responses"
                       >
-                        <Eye className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                        <BarChart3 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
                       </button>
 
                       {/* Edit */}

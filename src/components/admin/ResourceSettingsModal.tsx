@@ -176,7 +176,8 @@ function SettingsContent({
   };
 
   return (
-    <div className="space-y-5 overflow-y-auto max-h-[70vh] md:max-h-[75vh] scrollbar-thin">
+    <div className="overflow-y-auto max-h-[70vh] md:max-h-[75vh] scrollbar-thin">
+      <div className="space-y-5 px-5 py-5">
       {/* Basic Info */}
       <div className="space-y-4">
         <div>
@@ -188,7 +189,7 @@ function SettingsContent({
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
             placeholder={`Enter ${typeLabels[type]?.toLowerCase() || 'resource'} title...`}
-            className="w-full px-3 py-2.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert bg-white dark:bg-[#0d0f14]"
+            className="w-full px-3 py-2.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent ring-offset-1 font-albert bg-white dark:bg-[#0d0f14]"
           />
         </div>
 
@@ -394,6 +395,7 @@ function SettingsContent({
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }
@@ -422,16 +424,14 @@ export function ResourceSettingsModal(props: ResourceSettingsModalProps) {
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-xl p-0 gap-0">
+        <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-5 py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
             <DialogTitle className="flex items-center gap-2 text-base font-semibold font-albert">
               <Settings2 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
               {title}
             </DialogTitle>
           </DialogHeader>
-          <div className="p-5">
-            <SettingsContent {...props} />
-          </div>
+          <SettingsContent {...props} />
         </DialogContent>
       </Dialog>
     );

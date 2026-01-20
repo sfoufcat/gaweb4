@@ -254,7 +254,7 @@ export function ResponsesViewer({
   return (
     <div className="min-h-screen bg-[#f9f8f6] dark:bg-[#11141b]">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-[#171b22] border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+      <div className="sticky top-0 z-10 bg-[#f9f8f6]/80 dark:bg-[#11141b]/80 backdrop-blur-xl border-b border-[#e1ddd8] dark:border-[#262b35]/50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -303,13 +303,13 @@ export function ResponsesViewer({
       {/* Content */}
       <div className="max-w-7xl mx-auto p-6">
         {!data?.responses.length ? (
-          <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]/50 p-12 text-center">
+          <div className="rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]/50 p-12 text-center">
             <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
               No responses yet. Share your questionnaire link to start collecting responses.
             </p>
           </div>
         ) : (
-          <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]/50 overflow-hidden">
+          <div className="rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]/50 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -343,7 +343,7 @@ export function ResponsesViewer({
                         className="border-b border-[#e1ddd8] dark:border-[#262b35]/50 hover:bg-[#f9f8f6] dark:hover:bg-[#11141b]/50"
                       >
                         {/* Respondent */}
-                        <td className="px-4 py-3 sticky left-0 bg-white dark:bg-[#171b22] z-10">
+                        <td className="px-4 py-3 sticky left-0 bg-[#f9f8f6] dark:bg-[#11141b] z-10">
                           <div className="flex items-center gap-3">
                             {response.userAvatarUrl ? (
                               <img
