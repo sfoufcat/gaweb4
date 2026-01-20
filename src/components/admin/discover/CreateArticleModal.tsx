@@ -487,7 +487,7 @@ function DetailsStep({ data, onChange, error, programsApiEndpoint, categoriesApi
         <div className="grid grid-cols-2 gap-2 mb-2">
           <button
             onClick={() => onChange({ pricing: 'free' })}
-            className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
+            className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
               data.pricing === 'free'
                 ? 'border-brand-accent bg-brand-accent/5'
                 : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
@@ -499,7 +499,7 @@ function DetailsStep({ data, onChange, error, programsApiEndpoint, categoriesApi
           </button>
           <button
             onClick={() => onChange({ pricing: 'paid' })}
-            className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
+            className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
               data.pricing === 'paid'
                 ? 'border-brand-accent bg-brand-accent/5'
                 : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
