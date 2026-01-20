@@ -153,6 +153,21 @@ export default async function RootLayout({
               `,
             }}
           />
+          {/* Inline script to prevent flash of wrong layout mode on marketing domain */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function() {
+                  try {
+                    var h = window.location.hostname;
+                    if (h === 'coachful.co' || h === 'www.coachful.co') {
+                      document.body.setAttribute('data-layout', 'fullscreen');
+                    }
+                  } catch (e) {}
+                })();
+              `,
+            }}
+          />
           {/* Google Ads (gtag.js) - Platform-level conversion tracking for coach signups */}
           <script async src="https://www.googletagmanager.com/gtag/js?id=AW-16653181105" />
           <script
