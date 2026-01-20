@@ -138,9 +138,31 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
               accentColor="bg-emerald-500/20"
             />
 
-            <div className="w-px h-6 sm:h-8 bg-[#e1ddd8]/50 dark:bg-white/10 flex-shrink-0 hidden xs:block" />
+            <div className="w-px h-6 sm:h-8 bg-[#e1ddd8]/50 dark:bg-white/10 flex-shrink-0 hidden sm:block" />
 
-            {/* Show different truncation on mobile vs desktop */}
+            <MetricItem
+              label="Active"
+              value={activeClients}
+              icon={TrendingUp}
+              accentColor="bg-blue-500/20"
+            />
+
+            <div className="w-px h-6 sm:h-8 bg-[#e1ddd8]/50 dark:bg-white/10 flex-shrink-0 hidden sm:block" />
+
+            {/* Health - desktop only */}
+            <div className="hidden sm:block">
+              <MetricItem
+                label={atRiskCount > 0 ? 'At-Risk' : 'Health'}
+                value={atRiskCount > 0 ? atRiskCount : '✓'}
+                icon={atRiskCount > 0 ? AlertTriangle : Users}
+                accentColor={atRiskCount > 0 ? 'bg-red-500/20' : 'bg-violet-500/20'}
+                isAlert={atRiskCount > 0}
+              />
+            </div>
+
+            <div className="w-px h-6 sm:h-8 bg-[#e1ddd8]/50 dark:bg-white/10 flex-shrink-0 hidden sm:block" />
+
+            {/* Program - show on both but different labels */}
             <div className="hidden sm:block">
               <MetricItem
                 label="Top Program"
@@ -157,25 +179,6 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
                 accentColor="bg-amber-500/20"
               />
             </div>
-
-            <div className="w-px h-6 sm:h-8 bg-[#e1ddd8]/50 dark:bg-white/10 flex-shrink-0 hidden xs:block" />
-
-            <MetricItem
-              label="Active"
-              value={activeClients}
-              icon={TrendingUp}
-              accentColor="bg-blue-500/20"
-            />
-
-            <div className="w-px h-6 sm:h-8 bg-[#e1ddd8]/50 dark:bg-white/10 flex-shrink-0 hidden xs:block" />
-
-            <MetricItem
-              label={atRiskCount > 0 ? 'Risk' : 'Health'}
-              value={atRiskCount > 0 ? atRiskCount : '✓'}
-              icon={atRiskCount > 0 ? AlertTriangle : Users}
-              accentColor={atRiskCount > 0 ? 'bg-red-500/20' : 'bg-violet-500/20'}
-              isAlert={atRiskCount > 0}
-            />
           </div>
 
           {/* Dashboard link */}
@@ -192,8 +195,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
               'transition-all duration-200'
             )}
           >
-            <span className="hidden sm:inline">Dashboard</span>
-            <span className="sm:hidden">Coach</span>
+            Dashboard
             <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
           </Link>
         </div>
