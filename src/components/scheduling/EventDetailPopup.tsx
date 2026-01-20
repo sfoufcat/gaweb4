@@ -320,32 +320,6 @@ export function EventDetailPopup({
           {/* Location Section (for confirmed events) */}
           {!isPending && (
             <div className="space-y-2">
-              {/* Location display */}
-              <div className="flex items-center gap-3 text-[#5f5a55] dark:text-[#b2b6c2]">
-                <LinkIcon className="w-4 h-4" />
-                <span className="text-sm">
-                  {event.locationType === 'chat' ? (
-                    'In-App Video Call'
-                  ) : event.meetingProvider === 'zoom' ? (
-                    'Zoom'
-                  ) : event.meetingProvider === 'google_meet' ? (
-                    'Google Meet'
-                  ) : event.meetingProvider === 'stream' ? (
-                    'In-App Video Call'
-                  ) : event.locationLabel ? (
-                    event.locationLabel
-                  ) : event.meetingLink ? (
-                    // Extract platform from URL
-                    event.meetingLink.includes('zoom') ? 'Zoom' :
-                    event.meetingLink.includes('meet.google') ? 'Google Meet' :
-                    event.meetingLink.includes('teams') ? 'Microsoft Teams' :
-                    'External Meeting'
-                  ) : (
-                    'Location not set'
-                  )}
-                </span>
-              </div>
-
               {isEditingLink ? (
                 // Editing mode - show input
                 <div className="space-y-2">
@@ -384,46 +358,68 @@ export function EventDetailPopup({
                     </button>
                   </div>
                 </div>
-              ) : event.meetingLink ? (
-                // Has meeting link - show link and edit button for hosts
-                <div className="flex items-center gap-2">
-                  <a
-                    href={event.meetingLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 flex items-center gap-2 px-4 py-2 bg-brand-accent/10 text-brand-accent rounded-lg font-albert font-medium text-sm hover:bg-brand-accent/20 transition-colors"
-                  >
-                    <Video className="w-4 h-4" />
-                    Join Meeting
-                    <ExternalLink className="w-3 h-3 ml-auto" />
-                  </a>
-                  {isHost && (
-                    <button
-                      onClick={() => setIsEditingLink(true)}
-                      className="p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                      title="Edit meeting link"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  )}
+              ) : (
+                // Location display with action icons on same row
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-[#5f5a55] dark:text-[#b2b6c2]">
+                    <LinkIcon className="w-4 h-4" />
+                    <span className="text-sm">
+                      {event.locationType === 'chat' ? (
+                        'In-App Video Call'
+                      ) : event.meetingProvider === 'zoom' ? (
+                        'Zoom'
+                      ) : event.meetingProvider === 'google_meet' ? (
+                        'Google Meet'
+                      ) : event.meetingProvider === 'stream' ? (
+                        'In-App Video Call'
+                      ) : event.locationLabel ? (
+                        event.locationLabel
+                      ) : event.meetingLink ? (
+                        // Extract platform from URL
+                        event.meetingLink.includes('zoom') ? 'Zoom' :
+                        event.meetingLink.includes('meet.google') ? 'Google Meet' :
+                        event.meetingLink.includes('teams') ? 'Microsoft Teams' :
+                        'External Meeting'
+                      ) : (
+                        'Location not set'
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {event.meetingLink && (
+                      <a
+                        href={event.meetingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 text-[#5f5a55] hover:text-brand-accent dark:text-[#b2b6c2] dark:hover:text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                        title="Open meeting link"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
+                    {isHost && (
+                      <button
+                        onClick={() => setIsEditingLink(true)}
+                        className="p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                        title={event.meetingLink ? "Edit meeting link" : "Add meeting link"}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              ) : event.locationType === 'chat' || event.meetingProvider === 'stream' ? (
-                // In-app call - no external link needed
+              )}
+
+              {/* In-app call notice */}
+              {!isEditingLink && (event.locationType === 'chat' || event.meetingProvider === 'stream') && !event.meetingLink && (
                 <div className="flex items-center gap-2 px-4 py-2 bg-brand-accent/10 text-brand-accent rounded-lg font-albert font-medium text-sm">
                   <Video className="w-4 h-4" />
                   Video call will be in-app
                 </div>
-              ) : isHost ? (
-                // No meeting link and is host - show add button
-                <button
-                  onClick={() => setIsEditingLink(true)}
-                  className="flex items-center gap-2 px-4 py-2 w-full bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-lg font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
-                >
-                  <LinkIcon className="w-4 h-4" />
-                  Add Meeting Link
-                </button>
-              ) : (
-                // No link and not host - show placeholder
+              )}
+
+              {/* No link placeholder for non-hosts */}
+              {!isEditingLink && !event.meetingLink && !isHost && event.locationType !== 'chat' && event.meetingProvider !== 'stream' && (
                 <div className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-lg font-albert text-sm">
                   <LinkIcon className="w-4 h-4" />
                   Meeting link will be shared soon

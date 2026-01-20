@@ -30,11 +30,13 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-// Group events by date (YYYY-MM-DD)
+// Group events by date (YYYY-MM-DD) using local timezone
 function groupEventsByDate(events: UnifiedEvent[]): Map<string, UnifiedEvent[]> {
   const grouped = new Map<string, UnifiedEvent[]>();
   for (const event of events) {
-    const dateKey = new Date(event.startDateTime).toISOString().split('T')[0];
+    // Use local date, not UTC date, so events display on the correct calendar day
+    const eventDate = new Date(event.startDateTime);
+    const dateKey = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
     if (!grouped.has(dateKey)) {
       grouped.set(dateKey, []);
     }

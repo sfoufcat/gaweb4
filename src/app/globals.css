@@ -784,6 +784,11 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Fullscreen pages should not reserve scrollbar space */
+html:has(body[data-layout="fullscreen"]) {
+  scrollbar-gutter: auto;
+}
+
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;

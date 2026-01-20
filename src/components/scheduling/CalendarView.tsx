@@ -550,7 +550,9 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
   const eventsByDate = useMemo(() => {
     const grouped: Record<string, UnifiedEvent[]> = {};
     for (const event of allEventsForGrid) {
-      const dateKey = new Date(event.startDateTime).toISOString().split('T')[0];
+      // Use local date, not UTC date, so events display on the correct calendar day
+      const eventDate = new Date(event.startDateTime);
+      const dateKey = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
       }
