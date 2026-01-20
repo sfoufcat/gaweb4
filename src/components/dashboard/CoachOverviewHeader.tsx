@@ -70,7 +70,7 @@ function MetricCard({
 
 function LoadingSkeleton() {
   return (
-    <div className="mb-8">
+    <div>
       <div className="flex items-center justify-between mb-4">
         <div className="h-6 w-40 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
         <div className="h-9 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full animate-pulse" />
@@ -137,7 +137,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
   };
 
   return (
-    <div className={cn('mb-8', className)}>
+    <div className={cn(className)}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
