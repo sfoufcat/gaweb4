@@ -852,9 +852,6 @@ export default function CoachPage() {
           </div>
         )}
 
-        {/* Coach Dashboard Overview Stats */}
-        <CoachDashboardOverview onTabChange={(tab) => handleTabChange(tab as CoachTab)} />
-
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as CoachTab)} className="w-full">
           {/* Mobile Navigation - horizontal scroll with section groups */}
@@ -1023,6 +1020,9 @@ export default function CoachPage() {
 
           {/* Clients Tab - Consolidated Users + Coaching Clients */}
           <TabsContent value="clients" className="animate-fadeIn">
+            {/* Overview Stats - only shown on Clients tab */}
+            {!selectedClientId && <CoachDashboardOverview onTabChange={(tab) => handleTabChange(tab as CoachTab)} />}
+
             {selectedClientId ? (
               <>
                 {/* Back Button */}

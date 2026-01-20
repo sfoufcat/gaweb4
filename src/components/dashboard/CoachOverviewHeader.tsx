@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
-import { DollarSign, Trophy, Users, AlertTriangle, ArrowRight, TrendingUp, Sparkles } from 'lucide-react';
+import { DollarSign, Trophy, Users, AlertTriangle, ArrowRight, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -13,9 +13,10 @@ interface MetricCardProps {
   value: string | number;
   subValue?: string;
   icon: React.ElementType;
-  gradient: string;
+  iconColor: string;
+  iconBg: string;
   href?: string;
-  isHighlight?: boolean;
+  isAlert?: boolean;
 }
 
 function MetricCard({
@@ -23,50 +24,39 @@ function MetricCard({
   value,
   subValue,
   icon: Icon,
-  gradient,
+  iconColor,
+  iconBg,
   href,
-  isHighlight,
+  isAlert,
 }: MetricCardProps) {
   const content = (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl p-4 transition-all duration-300',
-        'hover:scale-[1.03] hover:shadow-xl',
+        'flex flex-col p-4 rounded-2xl transition-all duration-200',
+        'bg-white dark:bg-[#171b22]',
+        'border border-[#e1ddd8] dark:border-[#262b35]',
+        'shadow-sm hover:shadow-md hover:scale-[1.02]',
         href && 'cursor-pointer',
-        gradient
+        isAlert && value !== '0' && value !== 0 && 'ring-2 ring-red-200 dark:ring-red-900/50'
       )}
     >
-      {/* Subtle pattern overlay */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-white/20" />
-        <div className="absolute -left-2 -bottom-2 w-16 h-16 rounded-full bg-white/10" />
+      <div className="flex items-center gap-2 mb-3">
+        <div className={cn('p-2 rounded-xl', iconBg)}>
+          <Icon className={cn('w-4 h-4', iconColor)} />
+        </div>
       </div>
-
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-3">
-          <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
-            <Icon className="w-4 h-4 text-white" />
-          </div>
-          {isHighlight && (
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm">
-              <Sparkles className="w-3 h-3 text-white" />
-              <span className="text-[10px] font-medium text-white uppercase tracking-wide">Top</span>
-            </div>
-          )}
-        </div>
-        <div className="space-y-0.5">
-          <p className="text-2xl font-bold text-white font-albert tracking-tight drop-shadow-sm">
-            {value}
+      <div className="space-y-0.5">
+        <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-tight">
+          {value}
+        </p>
+        <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+          {label}
+        </p>
+        {subValue && (
+          <p className="text-xs text-[#a7a39e] dark:text-[#5f6470] font-albert">
+            {subValue}
           </p>
-          <p className="text-sm text-white/80 font-albert font-medium">
-            {label}
-          </p>
-          {subValue && (
-            <p className="text-xs text-white/60 font-albert">
-              {subValue}
-            </p>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
@@ -81,20 +71,15 @@ function MetricCard({
 function LoadingSkeleton() {
   return (
     <div className="mb-8">
-      {/* Header skeleton */}
       <div className="flex items-center justify-between mb-4">
         <div className="h-6 w-40 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
         <div className="h-9 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full animate-pulse" />
       </div>
-      {/* Cards skeleton */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="h-32 rounded-2xl animate-pulse"
-            style={{
-              background: `linear-gradient(135deg, rgba(160, 120, 85, ${0.1 + i * 0.05}) 0%, rgba(140, 100, 70, ${0.1 + i * 0.05}) 100%)`
-            }}
+            className="h-28 bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] animate-pulse"
           />
         ))}
       </div>
@@ -107,7 +92,6 @@ interface CoachOverviewHeaderProps {
 }
 
 export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
-  // Fetch product analytics (revenue + top program)
   const { data: productData, isLoading: productsLoading } = useSWR(
     '/api/coach/analytics/products',
     fetcher,
@@ -117,7 +101,6 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
     }
   );
 
-  // Fetch client analytics (active + at-risk)
   const { data: clientData, isLoading: clientsLoading } = useSWR(
     '/api/coach/analytics/clients',
     fetcher,
@@ -133,7 +116,6 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
     return <LoadingSkeleton />;
   }
 
-  // Extract metrics
   const totalRevenue = productData?.summary?.totalRevenue ?? 0;
   const topProgram = productData?.programs?.[0];
   const activeClients =
@@ -142,7 +124,6 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
   const activeRate = clientData?.summary?.activeRate ?? 0;
   const totalClients = clientData?.summary?.totalClients ?? 0;
 
-  // Format currency
   const formatCurrency = (amount: number) => {
     if (amount >= 1000) {
       return `$${(amount / 1000).toFixed(1)}k`;
@@ -169,7 +150,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
         </div>
         <Link
           href="/coach"
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-[#a07855] to-[#8a6847] hover:from-[#8a6847] hover:to-[#7a5837] transition-all duration-200 rounded-full shadow-md hover:shadow-lg hover:scale-[1.02]"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#a07855] hover:text-[#8a6847] transition-colors rounded-full border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] hover:bg-[#f7f5f3] dark:hover:bg-[#1d222b]"
         >
           Dashboard
           <ArrowRight className="w-4 h-4" />
@@ -181,20 +162,21 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
         <MetricCard
           label="Revenue"
           value={formatCurrency(totalRevenue)}
-          subValue="All time earnings"
+          subValue="All time"
           icon={DollarSign}
-          gradient="bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20"
+          iconColor="text-emerald-600 dark:text-emerald-400"
+          iconBg="bg-emerald-100 dark:bg-emerald-900/30"
           href="/coach?tab=analytics"
         />
 
         <MetricCard
           label="Top Program"
-          value={topProgram?.name ? (topProgram.name.length > 10 ? topProgram.name.slice(0, 10) + '…' : topProgram.name) : '—'}
+          value={topProgram?.name ? (topProgram.name.length > 12 ? topProgram.name.slice(0, 12) + '…' : topProgram.name) : '—'}
           subValue={topProgram ? `${topProgram.enrolledCount} enrolled` : 'Create your first'}
           icon={Trophy}
-          gradient="bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/20"
+          iconColor="text-amber-600 dark:text-amber-400"
+          iconBg="bg-amber-100 dark:bg-amber-900/30"
           href="/coach?tab=programs"
-          isHighlight={!!topProgram}
         />
 
         <MetricCard
@@ -202,20 +184,20 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
           value={activeClients}
           subValue={`${Math.round(activeRate)}% engagement`}
           icon={TrendingUp}
-          gradient="bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20"
+          iconColor="text-blue-600 dark:text-blue-400"
+          iconBg="bg-blue-100 dark:bg-blue-900/30"
           href="/coach?tab=clients"
         />
 
         <MetricCard
           label={atRiskCount > 0 ? 'At-Risk' : 'Client Health'}
           value={atRiskCount > 0 ? atRiskCount : '✓'}
-          subValue={atRiskCount > 0 ? 'Need your attention' : 'All clients thriving'}
+          subValue={atRiskCount > 0 ? 'Need attention' : 'All thriving'}
           icon={atRiskCount > 0 ? AlertTriangle : Users}
-          gradient={atRiskCount > 0
-            ? 'bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/20'
-            : 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/20'
-          }
+          iconColor={atRiskCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-violet-600 dark:text-violet-400'}
+          iconBg={atRiskCount > 0 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-violet-100 dark:bg-violet-900/30'}
           href="/coach?tab=clients"
+          isAlert={atRiskCount > 0}
         />
       </div>
     </div>
