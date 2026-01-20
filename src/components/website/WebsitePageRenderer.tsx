@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { WebsiteNav } from './WebsiteNav';
+import { WebsiteNav, NavLink } from './WebsiteNav';
 import {
   WebsiteClassicTemplate,
   WebsiteModernTemplate,
@@ -80,6 +80,27 @@ export function WebsitePageRenderer({
     }
   };
 
+  // Build navigation links based on available sections
+  const navLinks: NavLink[] = React.useMemo(() => {
+    const links: NavLink[] = [];
+    if (website.coachBio || (website.coachBullets && website.coachBullets.length > 0)) {
+      links.push({ label: 'About', href: '#about' });
+    }
+    if (website.services && website.services.length > 0) {
+      links.push({ label: 'Services', href: '#services' });
+    }
+    if (website.testimonials && website.testimonials.length > 0) {
+      links.push({ label: 'Testimonials', href: '#testimonials' });
+    }
+    if (website.faqs && website.faqs.length > 0) {
+      links.push({ label: 'FAQ', href: '#faq' });
+    }
+    return links;
+  }, [website.coachBio, website.coachBullets, website.services, website.testimonials, website.faqs]);
+
+  // Determine if nav should be dark (for modern template)
+  const isDarkNav = website.template === 'modern';
+
   // Select template based on website settings
   const renderTemplate = () => {
     const commonProps = {
@@ -124,7 +145,7 @@ export function WebsitePageRenderer({
   };
 
   return (
-    <div className="min-h-screen">
+    <>
       {/* Preview Mode Banner */}
       {isPreviewMode && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-white text-center py-2 px-4 text-sm font-medium">
@@ -149,12 +170,12 @@ export function WebsitePageRenderer({
         joinUrl={heroCtaUrl}
         accentColor={accentLight}
         isPreviewMode={isPreviewMode}
+        navLinks={navLinks}
+        isDark={isDarkNav}
       />
-
-      {/* No spacer needed - floating nav overlays content */}
 
       {/* Website Template Content (includes rich footer) */}
       {renderTemplate()}
-    </div>
+    </>
   );
 }
