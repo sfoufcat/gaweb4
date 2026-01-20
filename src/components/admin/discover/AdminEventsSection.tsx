@@ -1177,7 +1177,7 @@ export function AdminEventsSection({
                   <span className="hidden sm:inline">•</span>
                   <span className="hidden sm:inline">{event.startTime}–{event.endTime}</span>
                   <span className="hidden sm:inline">•</span>
-                  <span className="hidden sm:inline flex items-center gap-1">
+                  <span className="hidden sm:inline-flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
                     {event.locationLabel || 'Online'}
                   </span>

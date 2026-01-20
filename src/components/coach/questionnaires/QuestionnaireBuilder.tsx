@@ -356,8 +356,8 @@ export function QuestionnaireBuilder({
       {/* Content with Desktop Sidebar */}
       <div className="flex-1 flex overflow-hidden gap-6 p-6">
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
-          <div className="px-6 py-8 max-w-4xl mx-auto">
+        <div className="flex-1 overflow-y-auto">
+          <div className={`${isDesktop ? 'max-w-4xl' : 'max-w-3xl'} mx-auto`}>
             {/* Questions */}
             <div className="space-y-4">
               {questions.length > 0 ? (
@@ -415,7 +415,7 @@ export function QuestionnaireBuilder({
 
         {/* Desktop Sidebar */}
         {isDesktop && (
-          <div className="w-72 flex-shrink-0 overflow-y-auto bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
+          <div className="w-80 flex-shrink-0 overflow-y-auto bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
             <div className="p-5 space-y-5">
               {/* Active toggle */}
               <div className="flex items-center justify-between">

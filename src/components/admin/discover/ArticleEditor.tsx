@@ -217,9 +217,9 @@ export function ArticleEditor({
 
       {/* Content with Desktop Sidebar */}
       <div className="flex-1 flex overflow-hidden gap-6 p-6">
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
-          <div className="p-6 sm:p-8 max-w-4xl">
+        {/* Main Content Area - Inline editing without container */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl">
             {/* Cover Image Section - Mobile only */}
             {!isDesktop && (
               <div className="mb-8">
@@ -290,7 +290,7 @@ export function ArticleEditor({
 
         {/* Desktop Sidebar */}
         {isDesktop && (
-          <div className="w-72 flex-shrink-0 overflow-y-auto bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
+          <div className="w-80 flex-shrink-0 overflow-y-auto bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
             <div className="p-5 space-y-5">
               {/* Cover Image */}
               <div>
@@ -302,7 +302,7 @@ export function ArticleEditor({
                     <img
                       src={formData.coverImageUrl}
                       alt="Cover"
-                      className="w-full h-36 object-cover"
+                      className="w-full h-40 object-cover"
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                       <button
