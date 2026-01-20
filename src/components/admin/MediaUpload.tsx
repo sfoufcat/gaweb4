@@ -71,6 +71,98 @@ const isVideoUrl = (url: string) => {
   return /\.(mp4|webm|mov)(\?|$)/i.test(url);
 };
 
+const isImageUrl = (url: string) => {
+  return /\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(url);
+};
+
+const getFileTypeFromUrl = (url: string): { type: string; icon: 'pdf' | 'word' | 'excel' | 'powerpoint' | 'zip' | 'audio' | 'generic'; color: string } => {
+  const ext = url.split('.').pop()?.toLowerCase()?.split('?')[0] || '';
+
+  if (ext === 'pdf') return { type: 'PDF', icon: 'pdf', color: '#dc2626' };
+  if (['doc', 'docx'].includes(ext)) return { type: 'Word', icon: 'word', color: '#2563eb' };
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return { type: 'Excel', icon: 'excel', color: '#16a34a' };
+  if (['ppt', 'pptx'].includes(ext)) return { type: 'PowerPoint', icon: 'powerpoint', color: '#ea580c' };
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return { type: 'Archive', icon: 'zip', color: '#eab308' };
+  if (['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(ext)) return { type: 'Audio', icon: 'audio', color: '#8b5cf6' };
+
+  return { type: ext.toUpperCase() || 'File', icon: 'generic', color: '#6b7280' };
+};
+
+const getFileNameFromUrl = (url: string): string => {
+  try {
+    const path = new URL(url).pathname;
+    const filename = path.split('/').pop() || 'file';
+    // Remove timestamp prefix if present (e.g., "1234567890-filename.pdf" -> "filename.pdf")
+    return filename.replace(/^\d+-/, '');
+  } catch {
+    return url.split('/').pop()?.split('?')[0] || 'file';
+  }
+};
+
+const FileIcon = ({ icon, size = 24 }: { icon: 'pdf' | 'word' | 'excel' | 'powerpoint' | 'zip' | 'audio' | 'generic'; size?: number }) => {
+  const iconMap = {
+    pdf: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+        <path d="M10 12h4" />
+        <path d="M10 16h4" />
+        <path d="M8 12h.01" />
+        <path d="M8 16h.01" />
+      </svg>
+    ),
+    word: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+        <path d="M8 13h2l1 4 1-4h2" />
+      </svg>
+    ),
+    excel: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+        <path d="M8 13v4" />
+        <path d="M12 13v4" />
+        <path d="M16 13v4" />
+        <path d="M8 13h8" />
+        <path d="M8 15.5h8" />
+      </svg>
+    ),
+    powerpoint: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+        <rect x="8" y="12" width="8" height="6" rx="1" />
+      </svg>
+    ),
+    zip: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+        <path d="M10 12h1v1h-1z" />
+        <path d="M13 12h1v1h-1z" />
+        <path d="M10 15h1v1h-1z" />
+        <path d="M13 15h1v1h-1z" />
+      </svg>
+    ),
+    audio: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 18V5l12-2v13" />
+        <circle cx="6" cy="18" r="3" />
+        <circle cx="18" cy="16" r="3" />
+      </svg>
+    ),
+    generic: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+      </svg>
+    ),
+  };
+  return iconMap[icon];
+};
+
 const getAspectRatioClass = (ratio?: '2:1' | '16:9' | '1:1' | '4:3') => {
   switch (ratio) {
     case '2:1': return 'aspect-[2/1]';
@@ -109,12 +201,12 @@ export function MediaUpload({
   const acceptedTypes = getAcceptedTypes(type);
   const maxSize = getMaxSize(type);
 
-  // Determine if we should use direct upload (for coach endpoints with video files)
+  // Determine if we should use direct upload (for large files that exceed Vercel's body limit)
   const shouldUseDirectUpload = (file: File) => {
     const isCoachEndpoint = uploadEndpoint.includes('/api/coach/');
-    const isVideo = file.type.startsWith('video/');
     const exceedsLimit = file.size > VERCEL_BODY_LIMIT;
-    return isCoachEndpoint && isVideo && exceedsLimit;
+    // Use direct upload for any file type that exceeds the limit (videos, large documents, etc.)
+    return isCoachEndpoint && exceedsLimit;
   };
 
   // Direct upload to Firebase Storage via signed URL (bypasses Vercel 4.5MB limit)
@@ -227,7 +319,17 @@ export function MediaUpload({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Upload failed');
+        // Provide user-friendly error messages
+        if (response.status === 413 || data.code === 'FILE_TOO_LARGE_FOR_SERVER') {
+          throw new Error(`File too large (${formatFileSize(file.size)}). Maximum size for this upload type is ${formatFileSize(VERCEL_BODY_LIMIT)}.`);
+        }
+        if (response.status === 401) {
+          throw new Error('Please sign in to upload files.');
+        }
+        if (response.status === 403) {
+          throw new Error('You don\'t have permission to upload files.');
+        }
+        throw new Error(data.error || data.details || 'Upload failed. Please try again.');
       }
 
       const data = await response.json();
@@ -241,7 +343,13 @@ export function MediaUpload({
       }, 200);
     } catch (err) {
       console.error('Upload error:', err);
-      setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
+      const message = err instanceof Error ? err.message : 'Upload failed. Please try again.';
+      // Make network errors more friendly
+      if (message === 'Failed to fetch' || message.includes('NetworkError')) {
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        setError(message);
+      }
       setUploading(false);
       setProgress(0);
     }
@@ -261,6 +369,13 @@ export function MediaUpload({
     // Validate file size
     if (file.size > maxSize) {
       setError(`File size must be less than ${formatFileSize(maxSize)}`);
+      return;
+    }
+
+    // Check if file exceeds Vercel limit but direct upload isn't available
+    const isCoachEndpoint = uploadEndpoint.includes('/api/coach/');
+    if (file.size > VERCEL_BODY_LIMIT && !isCoachEndpoint) {
+      setError(`File too large (${formatFileSize(file.size)}). Files larger than ${formatFileSize(VERCEL_BODY_LIMIT)} require using the coach dashboard.`);
       return;
     }
 
@@ -323,6 +438,10 @@ export function MediaUpload({
   };
 
   const isVideo = value && isVideoUrl(value);
+  const isImage = value && isImageUrl(value);
+  const isFile = value && !isVideo && !isImage;
+  const fileInfo = isFile ? getFileTypeFromUrl(value) : null;
+  const fileName = isFile ? getFileNameFromUrl(value) : null;
 
   // Get label text based on type
   const getTypeLabel = () => {
@@ -375,20 +494,43 @@ export function MediaUpload({
           {/* Preview or Upload area */}
           {value ? (
             <div className={`relative ${previewSize === 'thumbnail' ? 'inline-block' : ''}`}>
-              <div className={`relative rounded-lg overflow-hidden bg-[#f5f2ed] border border-[#e1ddd8] dark:border-[#262b35] ${
+              <div className={`relative rounded-lg overflow-hidden bg-[#f5f2ed] dark:bg-[#1a1f2a] border border-[#e1ddd8] dark:border-[#262b35] ${
                 previewSize === 'thumbnail' ? 'w-20 h-20' : 'w-full'
               }`}>
                 {isVideo ? (
                   <video
                     src={value}
                     controls
-                    className={previewSize === 'thumbnail' 
-                      ? "w-full h-full object-cover bg-black" 
+                    className={previewSize === 'thumbnail'
+                      ? "w-full h-full object-cover bg-black"
                       : "w-full h-auto max-h-48 object-contain bg-black"}
                   />
+                ) : isFile && fileInfo ? (
+                  // File preview (PDF, Word, Excel, etc.)
+                  <div className={`flex items-center gap-3 p-4 ${
+                    previewSize === 'thumbnail' ? 'flex-col justify-center h-full p-2' : ''
+                  }`}>
+                    <div
+                      className={`flex-shrink-0 ${previewSize === 'thumbnail' ? '' : 'p-3 rounded-lg bg-white dark:bg-[#11141b]'}`}
+                      style={{ color: fileInfo.color }}
+                    >
+                      <FileIcon icon={fileInfo.icon} size={previewSize === 'thumbnail' ? 28 : 36} />
+                    </div>
+                    {previewSize !== 'thumbnail' && (
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate font-albert">
+                          {fileName}
+                        </p>
+                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                          {fileInfo.type} Document
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <div className={previewSize === 'thumbnail' 
-                    ? "relative w-full h-full" 
+                  // Image preview
+                  <div className={previewSize === 'thumbnail'
+                    ? "relative w-full h-full"
                     : `relative w-full ${getAspectRatioClass(aspectRatio)}`}>
                     <Image
                       src={value}
@@ -403,7 +545,7 @@ export function MediaUpload({
               <button
                 type="button"
                 onClick={handleClear}
-                className={`absolute bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors shadow-sm ${
+                className={`absolute bg-white/90 dark:bg-[#1a1f2a]/90 backdrop-blur-sm rounded-full hover:bg-white dark:hover:bg-[#1a1f2a] transition-colors shadow-sm ${
                   previewSize === 'thumbnail' ? '-top-1 -right-1 p-1' : 'top-2 right-2 p-1.5'
                 }`}
                 title={`Remove ${getTypeLabel()}`}

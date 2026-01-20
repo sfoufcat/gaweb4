@@ -12,7 +12,6 @@ import {
   Globe,
   Lock,
   DollarSign,
-  Sparkles,
 } from 'lucide-react';
 import {
   Drawer,
@@ -306,10 +305,7 @@ export function CreateArticleModal({
                 Creating...
               </>
             ) : step === 'details' ? (
-              <>
-                Create Article
-                <Sparkles className="w-4 h-4" />
-              </>
+              'Create Article'
             ) : (
               <>
                 Continue

@@ -24,6 +24,13 @@ import {
   Drawer,
   DrawerContent,
 } from '@/components/ui/drawer';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
@@ -499,7 +506,7 @@ export function CreateEventModal({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-6">
         {error && (
           <div className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
             <p className="text-red-600 dark:text-red-400 text-sm font-albert">{error}</p>
@@ -581,7 +588,7 @@ export function CreateEventModal({
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
                   Event Type
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-3 -mx-0.5 px-0.5">
                   {EVENT_TYPES.map((type) => {
                     const Icon = type.icon;
                     const isSelected = eventType === type.value;
@@ -653,21 +660,28 @@ export function CreateEventModal({
                         No group programs with cohorts found
                       </p>
                     ) : (
-                      <select
+                      <Select
                         value={selectedProgramId}
-                        onChange={(e) => {
-                          setSelectedProgramId(e.target.value);
+                        onValueChange={(value) => {
+                          setSelectedProgramId(value);
                           setSelectedCohortId(''); // Reset cohort when program changes
                         }}
-                        className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
                       >
-                        <option value="">Select a program...</option>
-                        {groupPrograms.map((program) => (
-                          <option key={program.id} value={program.id}>
-                            {program.name}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                          <SelectValue placeholder="Select a program..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
+                          {groupPrograms.map((program) => (
+                            <SelectItem
+                              key={program.id}
+                              value={program.id}
+                              className="cursor-pointer font-albert"
+                            >
+                              {program.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                   </div>
 
@@ -743,18 +757,22 @@ export function CreateEventModal({
                       No squads found in your organization
                     </p>
                   ) : (
-                    <select
-                      value={selectedSquadId}
-                      onChange={(e) => setSelectedSquadId(e.target.value)}
-                      className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
-                    >
-                      <option value="">Select a squad...</option>
-                      {squads.map((squad) => (
-                        <option key={squad.id} value={squad.id}>
-                          {squad.name}
-                        </option>
-                      ))}
-                    </select>
+                    <Select value={selectedSquadId} onValueChange={setSelectedSquadId}>
+                      <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                        <SelectValue placeholder="Select a squad..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
+                        {squads.map((squad) => (
+                          <SelectItem
+                            key={squad.id}
+                            value={squad.id}
+                            className="cursor-pointer font-albert"
+                          >
+                            {squad.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
                 </motion.div>
               )}
@@ -845,17 +863,22 @@ export function CreateEventModal({
                   <Globe className="inline w-4 h-4 mr-1 -mt-0.5" />
                   Timezone
                 </label>
-                <select
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
-                >
-                  {COMMON_TIMEZONES.map((tz) => (
-                    <option key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </option>
-                  ))}
-                </select>
+                <Select value={timezone} onValueChange={setTimezone}>
+                  <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg max-h-60">
+                    {COMMON_TIMEZONES.map((tz) => (
+                      <SelectItem
+                        key={tz.value}
+                        value={tz.value}
+                        className="cursor-pointer font-albert"
+                      >
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Recurrence */}
@@ -864,17 +887,22 @@ export function CreateEventModal({
                   <Repeat className="inline w-4 h-4 mr-1 -mt-0.5" />
                   Repeat
                 </label>
-                <select
-                  value={recurrence}
-                  onChange={(e) => setRecurrence(e.target.value as RecurrenceFrequency | 'none')}
-                  className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
-                >
-                  {RECURRENCE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <Select value={recurrence} onValueChange={(value) => setRecurrence(value as RecurrenceFrequency | 'none')}>
+                  <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
+                    {RECURRENCE_OPTIONS.map((opt) => (
+                      <SelectItem
+                        key={opt.value}
+                        value={opt.value}
+                        className="cursor-pointer font-albert"
+                      >
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
                 {/* Recurrence End Options */}
                 {recurrence !== 'none' && (
