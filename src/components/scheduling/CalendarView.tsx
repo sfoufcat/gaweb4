@@ -820,7 +820,8 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
           {/* Calendar cells */}
           <div className="grid grid-cols-7">
             {calendarDays.map(({ date, isCurrentMonth }, index) => {
-              const dateKey = date.toISOString().split('T')[0];
+              // Use local date components to match how events are grouped
+              const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
               const dayEvents = eventsByDate[dateKey] || [];
               const isCurrentDay = isToday(date);
 
