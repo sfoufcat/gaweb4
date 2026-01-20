@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
-import { DollarSign, Globe, ShoppingBag, AlertTriangle, ChevronDown, Check } from 'lucide-react';
+import { DollarSign, AlertTriangle, ChevronDown, Check } from 'lucide-react';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
 import { Button } from '@/components/ui/button';
 import {
@@ -140,7 +140,7 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
   const currencySymbol = CURRENCIES.find(c => c.code === value.currency)?.symbol || '$';
 
   return (
-    <div className="space-y-4 p-4 bg-gradient-to-br from-brand-accent/5 via-transparent to-transparent border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
+    <div className="space-y-4 p-6 bg-white dark:bg-[#171b22] border border-[#e8e4df] dark:border-[#262b35] rounded-2xl">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center">
           <DollarSign className="w-4 h-4 text-brand-accent" />
@@ -225,66 +225,6 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
                 value={value.currency}
                 onChange={(currency) => onChange({ ...value, currency })}
               />
-            </div>
-          </div>
-
-          {/* Purchase Type */}
-          <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-              Purchase Experience
-            </label>
-            <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={() => onChange({ ...value, purchaseType: 'popup' })}
-                className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                  value.purchaseType === 'popup'
-                    ? 'border-brand-accent bg-brand-accent/5'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
-                }`}
-              >
-                <ShoppingBag className={`w-5 h-5 ${
-                  value.purchaseType === 'popup' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-                }`} />
-                <div className="text-left">
-                  <span className={`block text-sm font-medium font-albert ${
-                    value.purchaseType === 'popup'
-                      ? 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-                  }`}>
-                    Quick Popup
-                  </span>
-                  <span className="block text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                    Slide-up checkout
-                  </span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onChange({ ...value, purchaseType: 'landing_page' })}
-                className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                  value.purchaseType === 'landing_page'
-                    ? 'border-brand-accent bg-brand-accent/5'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
-                }`}
-              >
-                <Globe className={`w-5 h-5 ${
-                  value.purchaseType === 'landing_page' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-                }`} />
-                <div className="text-left">
-                  <span className={`block text-sm font-medium font-albert ${
-                    value.purchaseType === 'landing_page'
-                      ? 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-                  }`}>
-                    Landing Page
-                  </span>
-                  <span className="block text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                    Full sales page
-                  </span>
-                </div>
-              </button>
             </div>
           </div>
         </div>

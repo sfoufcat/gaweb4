@@ -183,7 +183,7 @@ export function ArticleEditor({
             )}
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 ml-4">
             {/* Settings Button - Mobile only */}
             {!isDesktop && (
               <button
@@ -215,14 +215,14 @@ export function ArticleEditor({
         </div>
       </div>
 
-      {/* Content with Desktop Sidebar */}
-      <div className="flex-1 flex overflow-hidden gap-6 p-6">
-        {/* Main Content Area - Inline editing without container */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl">
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className={`${isDesktop ? 'flex gap-6 p-6' : 'p-4'}`}>
+          {/* Main Content */}
+          <div className="flex-1 max-w-3xl">
             {/* Cover Image Section - Mobile only */}
             {!isDesktop && (
-              <div className="mb-8">
+              <div className="mb-6">
                 {formData.coverImageUrl ? (
                   <div className="relative group rounded-xl overflow-hidden">
                     <img
@@ -260,22 +260,23 @@ export function ArticleEditor({
               </div>
             )}
 
-            {/* Content Editor - Inline, no extra container */}
+            {/* Inline Article Editor - Notion-like */}
             <RichTextEditor
               value={formData.content}
               onChange={(content) => setFormData(prev => ({ ...prev, content }))}
-              label="Content"
+              label="Article"
               required
               rows={24}
               placeholder="Write your article content here..."
               showMediaToolbar={true}
               mediaFolder="articles"
               uploadEndpoint={uploadEndpoint}
+              variant="inline"
             />
 
             {/* Pricing & Access - Below content on desktop */}
             {isDesktop && (
-              <div className="mt-8 pt-8 border-t border-[#e1ddd8] dark:border-[#262b35]">
+              <div className="mt-8 pt-8 border-t border-[#e1ddd8]/60 dark:border-[#262b35]/60">
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert">
                   Pricing & Access
                 </label>
@@ -286,15 +287,13 @@ export function ArticleEditor({
               </div>
             )}
           </div>
-        </div>
 
-        {/* Desktop Sidebar */}
-        {isDesktop && (
-          <div className="w-80 flex-shrink-0 overflow-y-auto bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
-            <div className="p-5 space-y-5">
-              {/* Cover Image */}
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+          {/* Desktop Sidebar - Stacked sections */}
+          {isDesktop && (
+            <div className="w-80 flex-shrink-0 space-y-4">
+              {/* Cover Image Section */}
+              <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40 p-5">
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert">
                   Cover Image
                 </label>
                 {formData.coverImageUrl ? (
@@ -302,7 +301,7 @@ export function ArticleEditor({
                     <img
                       src={formData.coverImageUrl}
                       alt="Cover"
-                      className="w-full h-40 object-cover"
+                      className="w-full h-44 object-cover"
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                       <button
@@ -328,83 +327,78 @@ export function ArticleEditor({
                 )}
               </div>
 
-              <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
+              {/* Author Section */}
+              <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40 p-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                    Author
+                  </label>
+                  <AuthorSelector
+                    value={formData.authorId}
+                    onChange={({ authorId, authorName }) =>
+                      setFormData(prev => ({ ...prev, authorId, authorName }))
+                    }
+                    placeholder="Select author..."
+                    coachesApiEndpoint={coachesApiEndpoint}
+                  />
+                </div>
 
-              {/* Author */}
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                  Author
-                </label>
-                <AuthorSelector
-                  value={formData.authorId}
-                  onChange={({ authorId, authorName }) =>
-                    setFormData(prev => ({ ...prev, authorId, authorName }))
-                  }
-                  placeholder="Select author..."
-                  coachesApiEndpoint={coachesApiEndpoint}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                    Author Title
+                    <span className="text-[#8c8a87] dark:text-[#8b8f9a] font-normal ml-1">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.authorTitle}
+                    onChange={e => setFormData(prev => ({ ...prev, authorTitle: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
+                    placeholder="e.g., Life Coach, CEO"
+                  />
+                </div>
               </div>
 
-              {/* Author Title */}
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                  Author Title
-                  <span className="text-[#8c8a87] dark:text-[#8b8f9a] font-normal ml-1">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.authorTitle}
-                  onChange={e => setFormData(prev => ({ ...prev, authorTitle: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
-                  placeholder="e.g., Life Coach, CEO"
-                />
+              {/* Organization Section */}
+              <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40 p-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                    Category
+                  </label>
+                  <CategorySelector
+                    value={formData.category}
+                    onChange={(category) => setFormData(prev => ({ ...prev, category }))}
+                    placeholder="Select or create..."
+                    categoriesApiEndpoint={categoriesApiEndpoint}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                    Programs
+                  </label>
+                  <ProgramSelector
+                    value={formData.programIds}
+                    onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
+                    placeholder="Select programs..."
+                    programsApiEndpoint={programsApiEndpoint}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                    Published Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.publishedAt}
+                    onChange={e => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
+                  />
+                </div>
               </div>
 
-              <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
-
-              {/* Category */}
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                  Category
-                </label>
-                <CategorySelector
-                  value={formData.category}
-                  onChange={(category) => setFormData(prev => ({ ...prev, category }))}
-                  placeholder="Select or create..."
-                  categoriesApiEndpoint={categoriesApiEndpoint}
-                />
-              </div>
-
-              {/* Programs */}
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                  Programs
-                </label>
-                <ProgramSelector
-                  value={formData.programIds}
-                  onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
-                  placeholder="Select programs..."
-                  programsApiEndpoint={programsApiEndpoint}
-                />
-              </div>
-
-              {/* Published Date */}
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                  Published Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.publishedAt}
-                  onChange={e => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
-                />
-              </div>
-
-              <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
-
-              {/* Display Options */}
-              <div>
+              {/* Display Options Section */}
+              <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40 p-5">
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert">
                   Display Options
                 </label>
@@ -436,8 +430,8 @@ export function ArticleEditor({
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Settings Modal - Mobile only */}

@@ -4,7 +4,7 @@ import { use, useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import { BackButton, CopyLinkButton, AddToContentButton, RichContent, ContentLandingPage, ContentPurchaseSheet } from '@/components/discover';
+import { BackButton, CopyLinkButton, AddToContentButton, RichContent, ContentPurchaseSheet } from '@/components/discover';
 import { Button } from '@/components/ui/button';
 import { User, AlertCircle, CheckCircle, BookOpen, RotateCcw } from 'lucide-react';
 import type { DiscoverArticle } from '@/types/discover';
@@ -180,34 +180,7 @@ export default function ArticleDetailPage({ params }: ArticlePageProps) {
     );
   }
 
-  // Show landing page for paid content
-  if (article.purchaseType === 'landing_page') {
-    return (
-      <ContentLandingPage
-        content={{
-          id: article.id,
-          type: 'article',
-          title: article.title,
-          description: article.content?.substring(0, 200) + '...',
-          coverImageUrl: article.coverImageUrl,
-          priceInCents: article.priceInCents || 0,
-          currency: article.currency,
-          coachName: article.coachName || article.authorName,
-          coachImageUrl: article.coachImageUrl || article.authorAvatarUrl,
-          coachBio: article.authorBio,
-          keyOutcomes: article.keyOutcomes,
-          features: article.features,
-          testimonials: article.testimonials,
-          faqs: article.faqs,
-        }}
-        isOwned={isOwned}
-        includedInProgramName={includedInProgramName}
-        onAccessContent={() => window.location.reload()}
-      />
-    );
-  }
-
-  // Default: Show simple purchase view (popup style)
+  // Show simple purchase view (popup style)
   return (
     <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] pb-24 lg:pb-8">
       {/* Header */}

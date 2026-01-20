@@ -4,7 +4,7 @@ import { use, useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import { BackButton, CopyLinkButton, AddToContentButton, RichContent, ContentLandingPage, ContentPurchaseSheet } from '@/components/discover';
+import { BackButton, CopyLinkButton, AddToContentButton, RichContent, ContentPurchaseSheet } from '@/components/discover';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, CheckCircle, CheckCircle2 } from 'lucide-react';
 import { useContentProgress } from '@/hooks/useContentProgress';
@@ -160,7 +160,7 @@ export default function CourseDetailPage({ params }: CoursePageProps) {
   if (error || !data) {
     return (
       <div className="min-h-screen px-4 py-8 bg-[#faf8f6] dark:bg-[#05070b]">
-        <BackButton />
+        <BackButton href="/discover" />
         <div className="text-center mt-12">
           <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-text-primary font-albert mb-2">
@@ -210,38 +210,12 @@ export default function CourseDetailPage({ params }: CoursePageProps) {
     );
   }
 
-  // Show landing page for paid content
-  if (course.purchaseType === 'landing_page') {
-    return (
-      <ContentLandingPage
-        content={{
-          id: course.id,
-          type: 'course',
-          title: course.title,
-          description: course.shortDescription || course.longDescription,
-          coverImageUrl: course.coverImageUrl,
-          priceInCents: course.priceInCents || 0,
-          currency: course.currency,
-          coachName: course.coachName,
-          coachImageUrl: course.coachImageUrl,
-          keyOutcomes: course.keyOutcomes,
-          features: course.features,
-          testimonials: course.testimonials,
-          faqs: course.faqs,
-        }}
-        isOwned={isOwned}
-        includedInProgramName={includedInProgramName}
-        onAccessContent={() => fetchCourse()}
-      />
-    );
-  }
-
-  // Default: Show simple purchase view (popup style)
+  // Show simple purchase view (popup style)
   return (
     <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] pb-24 lg:pb-8">
       {/* Header */}
       <section className="px-4 py-5">
-        <BackButton />
+        <BackButton href="/discover" />
       </section>
 
       {/* Course Preview */}
@@ -409,7 +383,7 @@ function CourseContent({
         <div className="flex flex-col gap-3">
           {/* Navigation Row */}
           <div className="flex items-center justify-between">
-            <BackButton />
+            <BackButton href="/discover" />
             <div className="flex items-center gap-2">
               <AddToContentButton
                 contentType="course"

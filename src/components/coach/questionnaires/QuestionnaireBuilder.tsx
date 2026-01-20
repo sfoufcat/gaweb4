@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Reorder, useDragControls, motion, AnimatePresence } from 'framer-motion';
 import { Plus, GripVertical, ArrowLeft, Settings, Copy, Check, Send, X, CheckCircle2, BarChart3 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
@@ -53,7 +52,6 @@ export function QuestionnaireBuilder({
 
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -69,45 +67,15 @@ export function QuestionnaireBuilder({
     setHasUnsavedChanges(hasChanges);
   }, [title, description, questions, isActive, allowMultipleResponses, programIds, questionnaire]);
 
-  // Auto-save debounced
-  const debouncedSave = useCallback(
-    (data: Partial<Questionnaire>) => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      saveTimeoutRef.current = setTimeout(async () => {
-        setSaving(true);
-        try {
-          await onSave(data);
-          setSaved(true);
-          setTimeout(() => setSaved(false), 2000);
-        } catch (error) {
-          console.error('Error saving:', error);
-        } finally {
-          setSaving(false);
-        }
-      }, 500);
-    },
-    [onSave]
-  );
-
-  // Manual save (also publishes by setting isActive to true)
+  // Manual save - saves all current state
   const handleManualSave = async () => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
     setSaving(true);
     try {
-      // When publishing, also set isActive to true
-      const shouldPublish = !isActive;
-      if (shouldPublish) {
-        setIsActive(true);
-      }
       await onSave({
         title,
         description,
         questions,
-        isActive: true, // Always set to active when manually saving/publishing
+        isActive,
         allowMultipleResponses,
         programIds,
       });
@@ -119,46 +87,6 @@ export function QuestionnaireBuilder({
       setSaving(false);
     }
   };
-
-  // Save when title changes
-  useEffect(() => {
-    if (title !== questionnaire.title) {
-      debouncedSave({ title });
-    }
-  }, [title, questionnaire.title, debouncedSave]);
-
-  // Save when description changes
-  useEffect(() => {
-    if (description !== (questionnaire.description || '')) {
-      debouncedSave({ description });
-    }
-  }, [description, questionnaire.description, debouncedSave]);
-
-  // Save when questions change
-  useEffect(() => {
-    if (JSON.stringify(questions) !== JSON.stringify(questionnaire.questions)) {
-      debouncedSave({ questions });
-    }
-  }, [questions, questionnaire.questions, debouncedSave]);
-
-  // Save when settings change
-  useEffect(() => {
-    if (isActive !== questionnaire.isActive) {
-      debouncedSave({ isActive });
-    }
-  }, [isActive, questionnaire.isActive, debouncedSave]);
-
-  useEffect(() => {
-    if (allowMultipleResponses !== questionnaire.allowMultipleResponses) {
-      debouncedSave({ allowMultipleResponses });
-    }
-  }, [allowMultipleResponses, questionnaire.allowMultipleResponses, debouncedSave]);
-
-  useEffect(() => {
-    if (JSON.stringify(programIds) !== JSON.stringify(questionnaire.programIds || [])) {
-      debouncedSave({ programIds });
-    }
-  }, [programIds, questionnaire.programIds, debouncedSave]);
 
   // Add new question
   const handleAddQuestion = (type: QuestionnaireQuestionType) => {
@@ -291,17 +219,15 @@ export function QuestionnaireBuilder({
                 </button>
               )}
 
-              {/* Publish button */}
+              {/* Save button */}
               <button
                 onClick={handleManualSave}
-                disabled={saving || (!hasUnsavedChanges && isActive)}
+                disabled={saving || !hasUnsavedChanges}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium font-albert ml-1 ${
                   saving
                     ? 'bg-[#e1ddd8] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]'
-                    : isActive && !hasUnsavedChanges
+                    : !hasUnsavedChanges
                     ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                    : hasUnsavedChanges
-                    ? 'bg-brand-accent text-white hover:bg-brand-accent/90'
                     : 'bg-brand-accent text-white hover:bg-brand-accent/90'
                 }`}
               >
@@ -310,15 +236,15 @@ export function QuestionnaireBuilder({
                     <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                     Saving
                   </>
-                ) : isActive && !hasUnsavedChanges ? (
+                ) : !hasUnsavedChanges ? (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    Published
+                    Saved
                   </>
                 ) : (
                   <>
                     <Send className="w-3.5 h-3.5" />
-                    Publish
+                    Save
                   </>
                 )}
               </button>

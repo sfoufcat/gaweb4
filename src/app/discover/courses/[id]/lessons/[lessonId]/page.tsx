@@ -271,7 +271,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
         <div className="flex flex-col gap-3">
           {/* Navigation Row */}
           <div className="flex items-center justify-between">
-            <BackButton />
+            <BackButton href={`/discover/courses/${courseId}`} />
             <Link
               href={`/discover/courses/${courseId}`}
               className="text-sm text-earth-600 hover:text-earth-700 font-medium flex items-center gap-1"

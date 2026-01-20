@@ -19,6 +19,8 @@ interface RichTextEditorProps {
   mediaFolder?: 'events' | 'articles' | 'courses' | 'courses/lessons';
   /** Custom upload endpoint URL (defaults to /api/admin/upload-media) */
   uploadEndpoint?: string;
+  /** Variant style: 'default' has bordered container, 'inline' is Notion-like with no background */
+  variant?: 'default' | 'inline';
 }
 
 // Media Insert Dialog for inline content
@@ -223,6 +225,7 @@ function EditorToolbar({
   onLinkClick,
   isExpanded,
   onToggleExpand,
+  isInline = false,
 }: {
   editor: Editor | null;
   showMediaToolbar: boolean;
@@ -231,11 +234,16 @@ function EditorToolbar({
   onLinkClick: () => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  isInline?: boolean;
 }) {
   if (!editor) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 p-2 bg-[#faf8f6] dark:bg-[#11141b] rounded-t-lg border border-[#e1ddd8] dark:border-[#262b35] border-b-0">
+    <div className={`flex flex-wrap items-center gap-0.5 p-2 ${
+      isInline
+        ? 'bg-transparent border-b border-[#e1ddd8]/60 dark:border-[#262b35]/60'
+        : 'bg-[#faf8f6] dark:bg-[#11141b] rounded-t-lg border border-[#e1ddd8] dark:border-[#262b35] border-b-0'
+    }`}>
       {/* Text Formatting */}
       <ToolbarButton 
         onClick={() => editor.chain().focus().toggleBold().run()} 
@@ -395,7 +403,9 @@ export function RichTextEditor({
   showMediaToolbar = true,
   mediaFolder = 'articles',
   uploadEndpoint = '/api/admin/upload-media',
+  variant = 'default',
 }: RichTextEditorProps) {
+  const isInline = variant === 'inline';
   const [mediaInsertType, setMediaInsertType] = useState<'image' | 'video' | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showLinkDialog, setShowLinkDialog] = useState(false);
@@ -533,23 +543,26 @@ export function RichTextEditor({
         onLinkClick={handleLinkClick}
         isExpanded={isExpanded}
         onToggleExpand={() => setIsExpanded(!isExpanded)}
+        isInline={isInline}
       />
       
       {/* Editor Content Area */}
-      <div 
+      <div
         className={`
-          w-full px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-b-lg 
-          bg-white dark:bg-[#171b22] overflow-auto
-          focus-within:ring-2 focus-within:ring-brand-accent
+          w-full
+          ${isInline
+            ? 'py-4'
+            : 'px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-b-lg bg-white dark:bg-[#171b22] overflow-auto focus-within:ring-2 focus-within:ring-brand-accent'
+          }
           ${isExpanded ? 'flex-1' : ''}
         `}
-        style={{ minHeight: isExpanded ? undefined : `${minHeight}px` }}
+        style={{ minHeight: isInline ? undefined : (isExpanded ? undefined : `${minHeight}px`) }}
       >
-        <EditorContent editor={editor} className="min-h-full" />
+        <EditorContent editor={editor} className={isInline ? '' : 'min-h-full'} />
       </div>
-      
-      {/* Help text */}
-      {!isExpanded && (
+
+      {/* Help text - only for default variant */}
+      {!isExpanded && !isInline && (
         <p className="mt-1.5 text-xs text-[#5f5a55] dark:text-[#7d8190] font-albert">
           Supports Markdown formatting. Use the toolbar or keyboard shortcuts (Ctrl+B for bold, Ctrl+I for italic).
         </p>

@@ -37,6 +37,7 @@ export interface MeetingProviderSelectorProps {
 interface ProviderConfig {
   id: MeetingProviderType;
   label: string;
+  mobileLabel?: string; // Optional shorter label for mobile
   icon: typeof Video;
   requiresConnection?: boolean;
 }
@@ -45,7 +46,7 @@ const PROVIDERS: ProviderConfig[] = [
   { id: 'in_app', label: 'In-App', icon: Phone },
   { id: 'zoom', label: 'Zoom', icon: Video, requiresConnection: true },
   { id: 'google_meet', label: 'Meet', icon: Video, requiresConnection: true },
-  { id: 'manual', label: 'Manual Link', icon: Link2 },
+  { id: 'manual', label: 'Manual Link', mobileLabel: 'Link', icon: Link2 },
 ];
 
 export function MeetingProviderSelector({
@@ -135,7 +136,14 @@ export function MeetingProviderSelector({
         `}
       >
         <Icon className="w-4 h-4" />
-        {provider.label}
+        {provider.mobileLabel ? (
+          <>
+            <span className="sm:hidden">{provider.mobileLabel}</span>
+            <span className="hidden sm:inline">{provider.label}</span>
+          </>
+        ) : (
+          provider.label
+        )}
         {provider.requiresConnection && isConnected && (
           <Check className="w-3 h-3 text-green-500" />
         )}

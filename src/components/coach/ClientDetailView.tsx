@@ -1322,7 +1322,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             {/* Chat Button - Mobile Only */}
             <button
               onClick={() => setShowDMModal(true)}
-              className="sm:hidden inline-flex items-center justify-center w-10 h-10 bg-[#e5e5e5] dark:bg-[#3a3f4b] hover:bg-[#d5d5d5] dark:hover:bg-[#4a4f5b] rounded-full text-[#5f5a55] dark:text-[#b2b6c2] transition-colors"
+              className="sm:hidden inline-flex items-center justify-center w-10 h-10 bg-brand-accent hover:bg-brand-accent/90 rounded-full text-white transition-colors"
               title="Send message"
             >
               <MessageCircle className="w-5 h-5" />
@@ -1377,7 +1377,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           <div className="hidden sm:flex items-center gap-2 shrink-0">
             <button
               onClick={() => setShowDMModal(true)}
-              className="inline-flex items-center justify-center w-10 h-10 bg-[#e5e5e5] dark:bg-[#3a3f4b] hover:bg-[#d5d5d5] dark:hover:bg-[#4a4f5b] rounded-full text-[#5f5a55] dark:text-[#b2b6c2] transition-colors"
+              className="inline-flex items-center justify-center w-10 h-10 bg-brand-accent hover:bg-brand-accent/90 rounded-full text-white transition-colors"
               title="Send message"
             >
               <MessageCircle className="w-5 h-5" />

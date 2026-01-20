@@ -1,15 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import type { DiscoverArticle } from '@/types/discover';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { FileText, Star, TrendingUp, MoreHorizontal } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { CreateArticleModal } from './CreateArticleModal';
 import { ArticleEditor } from './ArticleEditor';
 
@@ -188,13 +188,13 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
           <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
           <div className="h-10 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-[#faf8f6] dark:bg-[#11141b] rounded-xl overflow-hidden">
-              <div className="h-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
-              <div className="p-4 space-y-2">
+            <div key={i} className="flex items-center gap-4 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+              <div className="w-24 h-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+              <div className="flex-1 space-y-2">
                 <div className="h-5 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                <div className="h-4 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                <div className="h-4 w-1/2 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
               </div>
             </div>
           ))}
@@ -276,82 +276,107 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="font-albert">Title</TableHead>
-                <TableHead className="font-albert">Author</TableHead>
-                <TableHead className="font-albert">Published</TableHead>
-                <TableHead className="font-albert">Category</TableHead>
-                <TableHead className="font-albert">Featured</TableHead>
-                <TableHead className="font-albert">Trending</TableHead>
-                <TableHead className="font-albert text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredArticles.map(article => (
-                <TableRow key={article.id}>
-                  <TableCell className="font-albert font-medium max-w-[200px] truncate text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    {article.title}
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {article.authorName}
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {formatDate(article.publishedAt)}
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {article.category || '—'}
-                  </TableCell>
-                  <TableCell>
-                    {article.featured ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 font-albert">
-                        Yes
-                      </span>
-                    ) : (
-                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] text-sm font-albert">No</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {article.trending ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 font-albert">
-                        Yes
-                      </span>
-                    ) : (
-                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] text-sm font-albert">No</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingArticle(article)}
-                        className="text-brand-accent hover:text-brand-accent/90 hover:bg-brand-accent/10 font-albert"
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setArticleToDelete(article)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 font-albert"
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {/* Articles List */}
+        <div className="divide-y divide-[#e1ddd8]/50 dark:divide-[#262b35]/50">
+          {filteredArticles.map(article => (
+            <div
+              key={article.id}
+              onClick={() => setEditingArticle(article)}
+              className="flex items-center gap-4 p-4 bg-white dark:bg-[#171b22] hover:bg-[#faf8f6] dark:hover:bg-[#1c2028] cursor-pointer transition-all group"
+            >
+              {/* Cover Image */}
+              <div className="relative w-24 h-16 sm:w-28 sm:h-[4.5rem] rounded-lg overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
+                {article.coverImageUrl ? (
+                  <Image
+                    src={article.coverImageUrl}
+                    alt={article.title}
+                    fill
+                    className="object-cover"
+                    sizes="112px"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <FileText className="w-6 h-6 text-[#a7a39e] dark:text-[#5f6470]" />
+                  </div>
+                )}
+              </div>
+
+              {/* Article Info */}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-brand-accent transition-colors">
+                  {article.title}
+                </h3>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  <span>{article.authorName}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="hidden sm:inline">{formatDate(article.publishedAt)}</span>
+                  {article.category && (
+                    <>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="hidden sm:inline">{article.category}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Badges */}
+              <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                {article.featured && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 font-albert">
+                    <Star className="w-3 h-3" />
+                    Featured
+                  </span>
+                )}
+                {article.trending && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 font-albert">
+                    <TrendingUp className="w-3 h-3" />
+                    Trending
+                  </span>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => setEditingArticle(article)}
+                      className="font-albert"
+                    >
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setArticleToDelete(article)}
+                      className="text-red-600 font-albert"
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          ))}
         </div>
 
         {filteredArticles.length === 0 && (
           <div className="p-12 text-center">
+            <FileText className="w-12 h-12 mx-auto text-[#d1ccc6] dark:text-[#3d4350] mb-3" />
             <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No articles found</p>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="mt-4 text-brand-accent hover:text-brand-accent/90 font-albert font-medium text-sm"
+            >
+              Create your first article
+            </button>
           </div>
         )}
       </div>

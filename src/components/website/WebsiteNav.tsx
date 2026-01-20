@@ -95,7 +95,7 @@ export function WebsiteNav({
                   alt={appTitle}
                   width={100}
                   height={28}
-                  className={`h-7 w-auto object-contain ${isDark ? 'brightness-0 invert' : ''}`}
+                  className="h-7 w-auto object-contain"
                 />
               </div>
             ) : (

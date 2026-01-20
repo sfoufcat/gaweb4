@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { MapPin, AlertCircle, CheckCircle } from 'lucide-react';
-import { BackButton, ShareButton, AttendeeAvatars, RichContent, AddToCalendarButton, ContentLandingPage, ContentPurchaseSheet } from '@/components/discover';
+import { BackButton, ShareButton, AttendeeAvatars, RichContent, AddToCalendarButton, ContentPurchaseSheet } from '@/components/discover';
 import { Button } from '@/components/ui/button';
 import type { DiscoverEvent, EventUpdate, EventAttendee } from '@/types/discover';
 
@@ -309,33 +309,7 @@ export default function EventDetailPage({ params }: EventPageProps) {
     />;
   }
 
-  // Show landing page for paid content
-  if (event.purchaseType === 'landing_page') {
-    return (
-      <ContentLandingPage
-        content={{
-          id: event.id,
-          type: 'event',
-          title: event.title,
-          description: event.shortDescription || event.longDescription,
-          coverImageUrl: event.coverImageUrl,
-          priceInCents: event.priceInCents || 0,
-          currency: event.currency,
-          coachName: event.coachName || event.hostName,
-          coachImageUrl: event.coachImageUrl || event.hostAvatarUrl,
-          keyOutcomes: event.keyOutcomes,
-          features: event.features,
-          testimonials: event.testimonials,
-          faqs: event.faqs,
-        }}
-        isOwned={isOwned}
-        includedInProgramName={includedInProgramName}
-        onAccessContent={() => window.location.reload()}
-      />
-    );
-  }
-
-  // Default: Show simple purchase view (popup style)
+  // Show simple purchase view (popup style)
   return (
     <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] pb-24 lg:pb-8">
       {/* Header */}

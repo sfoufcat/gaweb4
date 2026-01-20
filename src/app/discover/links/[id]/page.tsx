@@ -3,7 +3,6 @@
 import { use, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import { ContentLandingPage } from '@/components/discover';
 import { BackButton } from '@/components/discover';
 import { Button } from '@/components/ui/button';
 import { Link as LinkIcon, AlertCircle, ExternalLink, CheckCircle } from 'lucide-react';
@@ -155,33 +154,7 @@ export default function LinkDetailPage({ params }: LinkPageProps) {
     );
   }
 
-  // Show landing page for purchasable content
-  if (link.purchaseType === 'landing_page') {
-    return (
-      <ContentLandingPage
-        content={{
-          id: link.id,
-          type: 'link',
-          title: link.title,
-          description: link.description,
-          coverImageUrl: link.thumbnailUrl,
-          priceInCents: link.priceInCents || 0,
-          currency: link.currency,
-          coachName: link.coachName,
-          coachImageUrl: link.coachImageUrl,
-          keyOutcomes: link.keyOutcomes,
-          features: link.features,
-          testimonials: link.testimonials,
-          faqs: link.faqs,
-        }}
-        isOwned={isOwned}
-        includedInProgramName={includedInProgramName}
-        onAccessContent={() => window.location.reload()}
-      />
-    );
-  }
-
-  // Default: Show simple purchase view
+  // Show simple purchase view
   return (
     <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] pb-24 lg:pb-8">
       {/* Header */}

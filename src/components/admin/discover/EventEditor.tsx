@@ -145,7 +145,7 @@ function formatDateDisplay(dateStr: string): string {
   });
 }
 
-// Inline TipTap description editor with formatting toolbar
+// Inline TipTap description editor - truly inline like title, always-visible formatting
 function InlineDescriptionEditor({
   value,
   onChange,
@@ -155,26 +155,25 @@ function InlineDescriptionEditor({
   onChange: (value: string) => void;
   placeholder?: string;
 }) {
-  const [isFocused, setIsFocused] = useState(false);
-
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: false, // Keep it simple for event descriptions
+        heading: {
+          levels: [2, 3],
+        },
       }),
       Placeholder.configure({
         placeholder,
+        emptyEditorClass: 'is-editor-empty',
       }),
     ],
     content: value,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
-    onFocus: () => setIsFocused(true),
-    onBlur: () => setIsFocused(false),
     editorProps: {
       attributes: {
-        class: 'prose prose-sm dark:prose-invert max-w-none focus:outline-none font-albert text-[#1a1a1a] dark:text-[#f5f5f8] min-h-[80px]',
+        class: 'focus:outline-none font-albert text-[#1a1a1a] dark:text-[#f5f5f8] min-h-[60px] prose prose-sm dark:prose-invert max-w-none [&_.is-editor-empty:first-child::before]:text-[#a7a39e] [&_.is-editor-empty:first-child::before]:dark:text-[#5f6470] [&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.is-editor-empty:first-child::before]:float-left [&_.is-editor-empty:first-child::before]:h-0 [&_.is-editor-empty:first-child::before]:pointer-events-none',
       },
     },
   });
@@ -188,60 +187,124 @@ function InlineDescriptionEditor({
 
   if (!editor) return null;
 
+  const buttonClass = (isActive: boolean) =>
+    `p-1.5 rounded transition-colors ${
+      isActive
+        ? 'bg-brand-accent text-white'
+        : 'text-[#9a958f] dark:text-[#6b7280] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+    }`;
+
   return (
-    <div className={`relative transition-all ${isFocused ? 'ring-2 ring-brand-accent/20 rounded-lg' : ''}`}>
-      {/* Formatting toolbar - shows on focus */}
-      <div className={`flex items-center gap-1 mb-2 transition-all ${isFocused ? 'opacity-100 h-auto' : 'opacity-0 h-0 overflow-hidden'}`}>
+    <div>
+      {/* Always-visible formatting toolbar */}
+      <div className="flex flex-wrap items-center gap-0.5 mb-3">
+        {/* Text formatting */}
         <button
           type="button"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          className={`p-1.5 rounded transition-colors ${
-            editor.isActive('bold')
-              ? 'bg-brand-accent text-white'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10'
-          }`}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleBold().run();
+          }}
+          className={buttonClass(editor.isActive('bold'))}
           title="Bold (Ctrl+B)"
         >
           <Bold className="w-4 h-4" />
         </button>
         <button
           type="button"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={`p-1.5 rounded transition-colors ${
-            editor.isActive('italic')
-              ? 'bg-brand-accent text-white'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10'
-          }`}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleItalic().run();
+          }}
+          className={buttonClass(editor.isActive('italic'))}
           title="Italic (Ctrl+I)"
         >
           <Italic className="w-4 h-4" />
         </button>
-        <div className="w-px h-4 bg-[#e8e4df] dark:bg-[#262b35] mx-1" />
         <button
           type="button"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={`p-1.5 rounded transition-colors ${
-            editor.isActive('bulletList')
-              ? 'bg-brand-accent text-white'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10'
-          }`}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleStrike().run();
+          }}
+          className={buttonClass(editor.isActive('strike'))}
+          title="Strikethrough"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 12h18v2H3v-2zm6-7h6v3H9V5zm0 14h6v-3H9v3z" />
+          </svg>
+        </button>
+
+        <div className="w-px h-4 bg-[#e8e4df] dark:bg-[#3a3f4b] mx-1" />
+
+        {/* Headings */}
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleHeading({ level: 2 }).run();
+          }}
+          className={buttonClass(editor.isActive('heading', { level: 2 }))}
+          title="Heading 2"
+        >
+          <span className="font-bold text-xs font-albert">H2</span>
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleHeading({ level: 3 }).run();
+          }}
+          className={buttonClass(editor.isActive('heading', { level: 3 }))}
+          title="Heading 3"
+        >
+          <span className="font-bold text-xs font-albert">H3</span>
+        </button>
+
+        <div className="w-px h-4 bg-[#e8e4df] dark:bg-[#3a3f4b] mx-1" />
+
+        {/* Lists */}
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleBulletList().run();
+          }}
+          className={buttonClass(editor.isActive('bulletList'))}
           title="Bullet list"
         >
           <List className="w-4 h-4" />
         </button>
         <button
           type="button"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={`p-1.5 rounded transition-colors ${
-            editor.isActive('orderedList')
-              ? 'bg-brand-accent text-white'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10'
-          }`}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleOrderedList().run();
+          }}
+          className={buttonClass(editor.isActive('orderedList'))}
           title="Numbered list"
         >
           <ListOrdered className="w-4 h-4" />
         </button>
+
+        <div className="w-px h-4 bg-[#e8e4df] dark:bg-[#3a3f4b] mx-1" />
+
+        {/* Quote */}
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleBlockquote().run();
+          }}
+          className={buttonClass(editor.isActive('blockquote'))}
+          title="Blockquote"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
+        </button>
       </div>
+      {/* Editor content - truly inline, no box */}
       <EditorContent editor={editor} />
     </div>
   );
@@ -969,26 +1032,10 @@ export function EventEditor({
               </div>
 
               {/* Pricing Section */}
-              <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                    <DollarSign className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Pricing</h3>
-                  <span className={`ml-auto px-2.5 py-1 rounded-full text-xs font-medium ${
-                    isFree
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                      : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                  }`}>
-                    {isFree ? 'Free' : `$${((formData.pricing.priceInCents || 0) / 100).toFixed(2)}`}
-                  </span>
-                </div>
-
-                <ContentPricingFields
-                  value={formData.pricing}
-                  onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
-                />
-              </div>
+              <ContentPricingFields
+                value={formData.pricing}
+                onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
+              />
 
               {/* Key Takeaways Section */}
               <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] p-6">

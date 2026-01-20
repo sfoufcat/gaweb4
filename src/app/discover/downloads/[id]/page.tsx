@@ -3,7 +3,6 @@
 import { use, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import { ContentLandingPage } from '@/components/discover';
 import { BackButton } from '@/components/discover';
 import { Button } from '@/components/ui/button';
 import { Download, AlertCircle, ExternalLink, CheckCircle } from 'lucide-react';
@@ -160,33 +159,7 @@ export default function DownloadDetailPage({ params }: DownloadPageProps) {
     );
   }
 
-  // Show landing page for purchasable content
-  if (download.purchaseType === 'landing_page') {
-    return (
-      <ContentLandingPage
-        content={{
-          id: download.id,
-          type: 'download',
-          title: download.title,
-          description: download.description,
-          coverImageUrl: download.thumbnailUrl,
-          priceInCents: download.priceInCents || 0,
-          currency: download.currency,
-          coachName: download.coachName,
-          coachImageUrl: download.coachImageUrl,
-          keyOutcomes: download.keyOutcomes,
-          features: download.features,
-          testimonials: download.testimonials,
-          faqs: download.faqs,
-        }}
-        isOwned={isOwned}
-        includedInProgramName={includedInProgramName}
-        onAccessContent={() => window.location.reload()}
-      />
-    );
-  }
-
-  // Default: Show simple purchase view (popup would be triggered from card)
+  // Show simple purchase view (popup would be triggered from card)
   return (
     <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] pb-24 lg:pb-8">
       {/* Header */}
