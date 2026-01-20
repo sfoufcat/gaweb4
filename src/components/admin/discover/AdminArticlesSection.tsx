@@ -20,8 +20,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -30,376 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BrandedCheckbox } from '@/components/ui/checkbox';
-import { MediaUpload } from '@/components/admin/MediaUpload';
-import { RichTextEditor } from '@/components/admin/RichTextEditor';
-import { ProgramSelector } from '@/components/admin/ProgramSelector';
-import { AuthorSelector } from '@/components/admin/AuthorSelector';
-import { CategorySelector } from '@/components/admin/CategorySelector';
-import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
-
-// Article Form Dialog
-function ArticleFormDialog({
-  article,
-  isOpen,
-  onClose,
-  onSave,
-  uploadEndpoint,
-  apiEndpoint,
-}: {
-  article: DiscoverArticle | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: () => void;
-  uploadEndpoint: string;
-  apiEndpoint: string;
-}) {
-  const isEditing = !!article;
-  const [saving, setSaving] = useState(false);
-  const [showThumbnail, setShowThumbnail] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    coverImageUrl: '',
-    thumbnailUrl: '',
-    authorId: null as string | null,
-    authorName: '',
-    authorTitle: '',
-    publishedAt: '',
-    category: '',
-    programIds: [] as string[],
-    featured: false,
-    trending: false,
-    pricing: getDefaultPricingData() as ContentPricingData,
-  });
-
-  // Determine if we're in coach context based on API endpoint
-  const isCoachContext = apiEndpoint.includes('/coach/');
-  const programsApiEndpoint = isCoachContext ? '/api/coach/org-programs' : '/api/admin/programs';
-  const categoriesApiEndpoint = '/api/coach/org-article-categories';
-  const coachesApiEndpoint = '/api/coach/org-coaches';
-
-  useEffect(() => {
-    if (article) {
-      setFormData({
-        title: article.title || '',
-        content: article.content || '',
-        coverImageUrl: article.coverImageUrl || '',
-        thumbnailUrl: article.thumbnailUrl || '',
-        authorId: article.authorId || null,
-        authorName: article.authorName || '',
-        authorTitle: article.authorTitle || '',
-        publishedAt: article.publishedAt ? article.publishedAt.split('T')[0] : '',
-        category: article.category || '',
-        programIds: article.programIds || [],
-        featured: article.featured || false,
-        trending: article.trending || false,
-        pricing: {
-          priceInCents: article.priceInCents ?? null,
-          currency: article.currency || 'USD',
-          purchaseType: article.purchaseType || 'popup',
-          isPublic: article.isPublic !== false, // Default to true
-        },
-      });
-      // Show thumbnail section if article already has a thumbnail
-      setShowThumbnail(!!article.thumbnailUrl);
-    } else {
-      const today = new Date().toISOString().split('T')[0];
-      setFormData({
-        title: '',
-        content: '',
-        coverImageUrl: '',
-        thumbnailUrl: '',
-        authorId: null,
-        authorName: '',
-        authorTitle: '',
-        publishedAt: today,
-        category: '',
-        programIds: [],
-        featured: false,
-        trending: false,
-        pricing: getDefaultPricingData(),
-      });
-      setShowThumbnail(false);
-    }
-  }, [article, isOpen]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.content.trim()) {
-      alert('Content is required');
-      return;
-    }
-
-    if (!formData.coverImageUrl.trim()) {
-      alert('Cover image is required');
-      return;
-    }
-
-    setSaving(true);
-
-    try {
-      const payload = {
-        ...formData,
-        thumbnailUrl: formData.thumbnailUrl || null,
-        publishedAt: formData.publishedAt ? new Date(formData.publishedAt).toISOString() : new Date().toISOString(),
-        programIds: formData.programIds,
-        // Flatten pricing fields
-        priceInCents: formData.pricing.priceInCents,
-        currency: formData.pricing.currency,
-        purchaseType: formData.pricing.purchaseType,
-        isPublic: formData.pricing.isPublic,
-      };
-      // Remove the nested pricing object from payload
-      delete (payload as Record<string, unknown>).pricing;
-
-      const url = isEditing 
-        ? `${apiEndpoint}/${article.id}`
-        : apiEndpoint;
-      
-      const response = await fetch(url, {
-        method: isEditing ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save article');
-      }
-
-      onSave();
-      onClose();
-    } catch (err) {
-      console.error('Error saving article:', err);
-      alert(err instanceof Error ? err.message : 'Failed to save article');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const isDesktop = useMediaQuery('(min-width: 768px)');
-
-  const content = (
-    <form onSubmit={handleSubmit}>
-      <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
-        <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-          {isEditing ? 'Edit Article' : 'Create Article'}
-        </h2>
-      </div>
-
-      <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-        {/* Title */}
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Title *</label>
-          <input
-            type="text"
-            required
-            value={formData.title}
-            onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-          />
-        </div>
-
-        {/* Content - Moved right after Title */}
-        <RichTextEditor
-          value={formData.content}
-          onChange={(content) => setFormData(prev => ({ ...prev, content }))}
-          label="Content *"
-          required
-          rows={12}
-          placeholder="Write your article content here..."
-          showMediaToolbar={true}
-          mediaFolder="articles"
-          uploadEndpoint={uploadEndpoint}
-        />
-
-        {/* Cover Image */}
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-            Cover Image <span className="text-text-muted text-xs font-normal">(1600 x 800px)</span> *
-          </label>
-          <MediaUpload
-            value={formData.coverImageUrl}
-            onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
-            folder="articles"
-            type="image"
-            required
-            uploadEndpoint={uploadEndpoint}
-            hideLabel
-            previewSize="thumbnail"
-          />
-        </div>
-
-        {/* Thumbnail - Collapsible */}
-        {!showThumbnail ? (
-          <button
-            type="button"
-            onClick={() => setShowThumbnail(true)}
-            className="flex items-center gap-2 text-sm text-brand-accent hover:text-brand-accent/90 font-albert font-medium transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Thumbnail
-          </button>
-        ) : (
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                Thumbnail <span className="text-text-muted text-xs font-normal">(1200 x 675px)</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowThumbnail(false);
-                  setFormData(prev => ({ ...prev, thumbnailUrl: '' }));
-                }}
-                className="text-xs text-[#5f5a55] hover:text-red-500 font-albert transition-colors"
-              >
-                Remove
-              </button>
-            </div>
-            <MediaUpload
-              value={formData.thumbnailUrl}
-              onChange={(url) => setFormData(prev => ({ ...prev, thumbnailUrl: url }))}
-              folder="articles"
-              type="image"
-              uploadEndpoint={uploadEndpoint}
-              hideLabel
-              previewSize="thumbnail"
-            />
-          </div>
-        )}
-
-        {/* Author Selection */}
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Author *</label>
-          <AuthorSelector
-            value={formData.authorId}
-            onChange={({ authorId, authorName }) =>
-              setFormData(prev => ({ ...prev, authorId, authorName }))
-            }
-            placeholder="Select author..."
-            coachesApiEndpoint={coachesApiEndpoint}
-          />
-        </div>
-
-        {/* Author Title - Now Optional */}
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Author Title</label>
-          <input
-            type="text"
-            value={formData.authorTitle}
-            onChange={e => setFormData(prev => ({ ...prev, authorTitle: e.target.value }))}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-            placeholder="e.g., Life Coach, CEO (optional)"
-          />
-        </div>
-
-        {/* Published Date */}
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Published Date</label>
-          <input
-            type="date"
-            value={formData.publishedAt}
-            onChange={e => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-          />
-        </div>
-
-        {/* Category - New CategorySelector */}
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Category</label>
-          <CategorySelector
-            value={formData.category}
-            onChange={(category) => setFormData(prev => ({ ...prev, category }))}
-            placeholder="Select or create category..."
-            categoriesApiEndpoint={categoriesApiEndpoint}
-          />
-        </div>
-
-        {/* Program Association */}
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-            Programs
-          </label>
-          <ProgramSelector
-            value={formData.programIds}
-            onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
-            placeholder="Select programs for this article..."
-            programsApiEndpoint={programsApiEndpoint}
-          />
-        </div>
-
-        {/* Pricing & Access */}
-        <ContentPricingFields
-          value={formData.pricing}
-          onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
-        />
-
-        {/* Featured & Trending - Removed "Recommended" from Featured */}
-        <div className="flex gap-6">
-          <div className="flex items-center gap-2">
-            <BrandedCheckbox
-              checked={formData.featured}
-              onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
-            />
-            <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, featured: !prev.featured }))}>Featured</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <BrandedCheckbox
-              checked={formData.trending}
-              onChange={(checked) => setFormData(prev => ({ ...prev, trending: checked }))}
-            />
-            <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, trending: !prev.trending }))}>Trending</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6 border-t border-[#e1ddd8] dark:border-[#262b35] flex justify-end gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onClose}
-          disabled={saving}
-          className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 font-albert"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          disabled={saving || !formData.title.trim() || !formData.content.trim() || !formData.coverImageUrl.trim()}
-          className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
-        >
-          {saving ? 'Saving...' : isEditing ? 'Update Article' : 'Create Article'}
-        </Button>
-      </div>
-    </form>
-  );
-
-  // Desktop: Use Dialog (centered modal)
-  if (isDesktop) {
-    return (
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-2xl p-0" hideCloseButton>
-          {content}
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Mobile: Use Drawer (slide-up)
-  return (
-    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()} shouldScaleBackground={false}>
-      <DrawerContent className="max-h-[85dvh]">
-        {content}
-      </DrawerContent>
-    </Drawer>
-  );
-}
+import { CreateArticleModal } from './CreateArticleModal';
+import { ArticleEditor } from './ArticleEditor';
 
 interface AdminArticlesSectionProps {
   apiEndpoint?: string;
@@ -411,15 +41,21 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [articleToEdit, setArticleToEdit] = useState<DiscoverArticle | null>(null);
   const [articleToDelete, setArticleToDelete] = useState<DiscoverArticle | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Derive upload endpoint from API endpoint - use coach upload for coach routes
-  const uploadEndpoint = apiEndpoint.includes('/coach/') 
-    ? '/api/coach/org-upload-media' 
+  // Modal/Editor states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<DiscoverArticle | null>(null);
+
+  // Derive endpoints from API endpoint
+  const isCoachContext = apiEndpoint.includes('/coach/');
+  const uploadEndpoint = isCoachContext
+    ? '/api/coach/org-upload-media'
     : '/api/admin/upload-media';
+  const programsApiEndpoint = isCoachContext ? '/api/coach/org-programs' : '/api/admin/programs';
+  const coachesApiEndpoint = '/api/coach/org-coaches';
+  const categoriesApiEndpoint = '/api/coach/org-article-categories';
 
   const fetchArticles = async () => {
     try {
@@ -453,7 +89,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
 
   const filteredArticles = useMemo(() => {
     let filtered = articles;
-    
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(article =>
@@ -461,29 +97,28 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
         article.authorName.toLowerCase().includes(query)
       );
     }
-    
+
     if (categoryFilter) {
       filtered = filtered.filter(article => article.category === categoryFilter);
     }
-    
+
     return filtered;
   }, [articles, searchQuery, categoryFilter]);
 
   const handleDelete = async () => {
     if (!articleToDelete) return;
-    
+
     try {
       setDeleteLoading(true);
-      // Use dynamic apiEndpoint instead of hardcoded admin route
       const response = await fetch(`${apiEndpoint}/${articleToDelete.id}`, {
         method: 'DELETE',
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to delete article');
       }
-      
+
       await fetchArticles();
       setArticleToDelete(null);
     } catch (err) {
@@ -492,6 +127,30 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
     } finally {
       setDeleteLoading(false);
     }
+  };
+
+  const handleArticleCreated = async (articleId: string) => {
+    // Fetch the newly created article and open it in the editor
+    try {
+      const response = await fetch(`${apiEndpoint}/${articleId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setEditingArticle(data.article || data);
+      }
+    } catch (err) {
+      console.error('Error fetching created article:', err);
+      // Refresh list and don't open editor
+      await fetchArticles();
+    }
+  };
+
+  const handleEditorClose = () => {
+    setEditingArticle(null);
+    fetchArticles();
+  };
+
+  const handleEditorSave = () => {
+    // fetchArticles will be called when editor closes
   };
 
   const formatDate = (dateStr: string) => {
@@ -505,6 +164,22 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
       return dateStr;
     }
   };
+
+  // If editing an article, show full-page editor
+  if (editingArticle) {
+    return (
+      <ArticleEditor
+        article={editingArticle}
+        onClose={handleEditorClose}
+        onSave={handleEditorSave}
+        uploadEndpoint={uploadEndpoint}
+        programsApiEndpoint={programsApiEndpoint}
+        apiEndpoint={apiEndpoint}
+        coachesApiEndpoint={coachesApiEndpoint}
+        categoriesApiEndpoint={categoriesApiEndpoint}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -530,7 +205,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
 
   if (error) {
     return (
-      <div className="bg-white/60 dark:bg-[#171b22]/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50 rounded-2xl p-8">
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl p-8">
         <div className="text-center text-red-600 dark:text-red-400">
           <p className="font-albert font-semibold mb-2">Error</p>
           <p className="font-albert text-sm">{error}</p>
@@ -544,7 +219,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
 
   return (
     <>
-      <div className="bg-white/60 dark:bg-[#171b22]/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
         {/* Header */}
         <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
           <div className="flex items-center gap-4">
@@ -589,7 +264,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
               )}
 
               <button
-                onClick={() => { setArticleToEdit(null); setIsFormOpen(true); }}
+                onClick={() => setIsCreateModalOpen(true)}
                 className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200 whitespace-nowrap"
               >
                 <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -653,7 +328,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => { setArticleToEdit(article); setIsFormOpen(true); }}
+                        onClick={() => setEditingArticle(article)}
                         className="text-brand-accent hover:text-brand-accent/90 hover:bg-brand-accent/10 font-albert"
                       >
                         Edit
@@ -676,19 +351,21 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
 
         {filteredArticles.length === 0 && (
           <div className="p-12 text-center">
-            <p className="text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert">No articles found</p>
+            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No articles found</p>
           </div>
         )}
       </div>
 
-      {/* Article Form Dialog */}
-      <ArticleFormDialog
-        article={articleToEdit}
-        isOpen={isFormOpen}
-        onClose={() => { setIsFormOpen(false); setArticleToEdit(null); }}
-        onSave={fetchArticles}
-        uploadEndpoint={uploadEndpoint}
+      {/* Create Article Modal (Wizard) */}
+      <CreateArticleModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onArticleCreated={handleArticleCreated}
         apiEndpoint={apiEndpoint}
+        programsApiEndpoint={programsApiEndpoint}
+        uploadEndpoint={uploadEndpoint}
+        coachesApiEndpoint={coachesApiEndpoint}
+        categoriesApiEndpoint={categoriesApiEndpoint}
       />
 
       {/* Delete Confirmation */}
@@ -715,4 +392,3 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
     </>
   );
 }
-

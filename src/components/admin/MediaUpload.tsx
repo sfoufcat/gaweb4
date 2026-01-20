@@ -46,14 +46,18 @@ const getAcceptString = (type: MediaType) => {
       return 'image/jpeg,image/jpg,image/png,image/webp,image/gif';
     case 'video':
       return 'video/mp4,video/webm,video/quicktime';
+    case 'file':
+      return 'application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.pdf,.doc,.docx,.xls,.xlsx,.zip';
     case 'any':
-      return 'image/jpeg,image/jpg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime';
+      return 'image/jpeg,image/jpg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,application/pdf,application/zip,.pdf,.doc,.docx,.xls,.xlsx,.zip';
   }
 };
 
 const getMaxSize = (type: MediaType) => {
-  // Images: 10MB, Videos: 500MB
-  return type === 'video' ? 500 * 1024 * 1024 : 10 * 1024 * 1024;
+  // Images: 10MB, Videos: 500MB, Files: 50MB
+  if (type === 'video') return 500 * 1024 * 1024;
+  if (type === 'file') return 50 * 1024 * 1024;
+  return 10 * 1024 * 1024;
 };
 
 const formatFileSize = (bytes: number) => {
@@ -248,7 +252,8 @@ export function MediaUpload({
     if (!acceptedTypes.includes(file.type)) {
       const typeLabel = type === 'image' ? 'image (JPG, PNG, WebP, GIF)'
         : type === 'video' ? 'video (MP4, WebM, MOV)'
-        : 'image or video';
+        : type === 'file' ? 'document (PDF, Word, Excel, ZIP)'
+        : 'file';
       setError(`Please select a valid ${typeLabel} file`);
       return;
     }
@@ -324,6 +329,7 @@ export function MediaUpload({
     switch (type) {
       case 'image': return 'image';
       case 'video': return 'video';
+      case 'file': return 'file';
       case 'any': return 'file';
     }
   };
@@ -332,7 +338,8 @@ export function MediaUpload({
     switch (type) {
       case 'image': return `JPG, PNG, WebP, GIF (max ${formatFileSize(maxSize)})`;
       case 'video': return `MP4, WebM, MOV (max ${formatFileSize(maxSize)})`;
-      case 'any': return `Images or videos (max ${formatFileSize(maxSize)})`;
+      case 'file': return `PDF, Word, Excel, ZIP (max ${formatFileSize(maxSize)})`;
+      case 'any': return `Images, videos, or documents (max ${formatFileSize(maxSize)})`;
     }
   };
 

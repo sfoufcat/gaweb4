@@ -45,16 +45,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    if (!folder || !['events', 'articles', 'courses', 'courses/lessons', 'images', 'programs', 'squads', 'websites'].includes(folder)) {
+    if (!folder || !['events', 'articles', 'courses', 'courses/lessons', 'downloads', 'links', 'images', 'programs', 'squads', 'websites'].includes(folder)) {
       return NextResponse.json({ error: 'Invalid folder specified' }, { status: 400 });
     }
 
     // Step 3: Validate file type
     const isImage = file.type.startsWith('image/');
     const isVideo = file.type.startsWith('video/');
+    const isDocument = [
+      'application/pdf',
+      'application/zip',
+      'application/x-zip-compressed',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain',
+      'text/csv',
+    ].includes(file.type);
 
-    if (!isImage && !isVideo) {
-      return NextResponse.json({ error: 'File must be an image or video' }, { status: 400 });
+    if (!isImage && !isVideo && !isDocument) {
+      return NextResponse.json({ error: 'File must be an image, video, or document (PDF, Word, Excel, etc.)' }, { status: 400 });
     }
 
     // Step 4: Check for large video files - they should use direct upload
@@ -69,8 +82,8 @@ export async function POST(req: Request) {
       }, { status: 413 });
     }
 
-    // Step 5: Validate file size (10MB for images, 500MB for videos)
-    const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024;
+    // Step 5: Validate file size (10MB for images, 500MB for videos, 50MB for documents)
+    const maxSize = isVideo ? 500 * 1024 * 1024 : isDocument ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
     if (file.size > maxSize) {
       const maxSizeMB = maxSize / (1024 * 1024);
       return NextResponse.json({ error: `File size must be less than ${maxSizeMB}MB` }, { status: 400 });

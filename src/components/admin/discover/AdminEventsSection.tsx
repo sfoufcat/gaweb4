@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Calendar, Clock, MapPin, Repeat, ChevronDown, ChevronUp, Image as ImageIcon, AlertCircle, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { DiscoverEvent } from '@/types/discover';
 import type { RecurrenceFrequency } from '@/types';
+import { EventEditor } from './EventEditor';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -877,24 +878,35 @@ const ITEMS_PER_PAGE = 10;
 
 interface AdminEventsSectionProps {
   apiEndpoint?: string;
+  initialEventId?: string | null;
+  onEventSelect?: (eventId: string | null) => void;
+  onEditorModeChange?: (isEditing: boolean) => void;
 }
 
-export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' }: AdminEventsSectionProps) {
+export function AdminEventsSection({
+  apiEndpoint = '/api/admin/discover/events',
+  initialEventId,
+  onEventSelect,
+  onEditorModeChange,
+}: AdminEventsSectionProps) {
   const [events, setEvents] = useState<DiscoverEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [eventToEdit, setEventToEdit] = useState<DiscoverEvent | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'editor'>('list');
+  const [selectedEvent, setSelectedEvent] = useState<DiscoverEvent | null>(null);
   const [eventToDelete, setEventToDelete] = useState<DiscoverEvent | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Derive upload endpoint from API endpoint - use coach upload for coach routes
-  const uploadEndpoint = apiEndpoint.includes('/coach/') 
-    ? '/api/coach/org-upload-media' 
+  const uploadEndpoint = apiEndpoint.includes('/coach/')
+    ? '/api/coach/org-upload-media'
     : '/api/admin/upload-media';
+
+  const isCoachContext = apiEndpoint.includes('/coach/');
+  const programsApiEndpoint = isCoachContext ? '/api/coach/org-programs' : '/api/admin/programs';
 
   const fetchEvents = async () => {
     try {
@@ -919,6 +931,41 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
     fetchEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Handle initial event ID (from URL)
+  useEffect(() => {
+    if (initialEventId && events.length > 0) {
+      const event = events.find(e => e.id === initialEventId);
+      if (event) {
+        setSelectedEvent(event);
+        setViewMode('editor');
+      }
+    }
+  }, [initialEventId, events]);
+
+  // Notify parent when editor mode changes
+  useEffect(() => {
+    onEditorModeChange?.(viewMode === 'editor');
+  }, [viewMode, onEditorModeChange]);
+
+  // Handle opening an event in editor mode
+  const openEventEditor = (event: DiscoverEvent) => {
+    setSelectedEvent(event);
+    setViewMode('editor');
+    onEventSelect?.(event.id);
+  };
+
+  // Handle closing the editor
+  const closeEventEditor = () => {
+    setSelectedEvent(null);
+    setViewMode('list');
+    onEventSelect?.(null);
+  };
+
+  // Handle save from editor
+  const handleEditorSave = () => {
+    fetchEvents();
+  };
 
   const filteredEvents = useMemo(() => {
     let filtered = events;
@@ -1040,6 +1087,20 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
     );
   }
 
+  // Show EventEditor when in editor mode
+  if (viewMode === 'editor') {
+    return (
+      <EventEditor
+        event={selectedEvent}
+        onClose={closeEventEditor}
+        onSave={handleEditorSave}
+        uploadEndpoint={uploadEndpoint}
+        programsApiEndpoint={programsApiEndpoint}
+        apiEndpoint={apiEndpoint}
+      />
+    );
+  }
+
   return (
     <>
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
@@ -1082,12 +1143,12 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
         </div>
 
         {/* Event Cards */}
-        <div className="p-3 space-y-2">
+        <div className="divide-y divide-[#e8e4df] dark:divide-[#262b35]">
           {paginatedEvents.map(event => (
             <div
               key={event.id}
-              onClick={() => { setEventToEdit(event); setIsFormOpen(true); }}
-              className="flex items-center gap-4 p-3 rounded-xl bg-white dark:bg-[#171b22] border border-[#e8e4df] dark:border-[#262b35] hover:border-brand-accent/50 dark:hover:border-brand-accent/50 cursor-pointer transition-all group"
+              onClick={() => openEventEditor(event)}
+              className="flex items-center gap-4 p-3 bg-white dark:bg-[#171b22] hover:bg-[#faf8f6] dark:hover:bg-[#1c2028] cursor-pointer transition-all group first:rounded-t-xl last:rounded-b-xl"
             >
               {/* Cover Image */}
               <div className="relative w-20 h-14 sm:w-24 sm:h-16 rounded-lg overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
@@ -1148,8 +1209,7 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setEventToEdit(event);
-                    setIsFormOpen(true);
+                    openEventEditor(event);
                   }}
                   className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
                   title="Edit"
@@ -1207,16 +1267,6 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
           </div>
         )}
       </div>
-
-      {/* Event Form Dialog - for editing existing events */}
-      <EventFormDialog
-        event={eventToEdit}
-        isOpen={isFormOpen}
-        onClose={() => { setIsFormOpen(false); setEventToEdit(null); }}
-        onSave={fetchEvents}
-        uploadEndpoint={uploadEndpoint}
-        apiEndpoint={apiEndpoint}
-      />
 
       {/* Create Event Modal - 3-step wizard for creating new events */}
       <CreateEventModal

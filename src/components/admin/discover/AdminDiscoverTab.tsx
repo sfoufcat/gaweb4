@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Calendar, FileText, BookOpen, Download, Link, ClipboardList } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Calendar, FileText, BookOpen, Download, Link, ClipboardList, ChevronDown } from 'lucide-react';
 import { AdminEventsSection } from './AdminEventsSection';
 import { AdminArticlesSection } from './AdminArticlesSection';
 import { AdminCoursesSection } from './AdminCoursesSection';
@@ -33,6 +33,8 @@ export function AdminDiscoverTab({
 }: AdminDiscoverTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<DiscoverSubTab>('courses');
   const [isCourseEditorOpen, setIsCourseEditorOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Restore sub-tab selection from URL param on mount
   useEffect(() => {
@@ -46,6 +48,17 @@ export function AdminDiscoverTab({
     onSubTabChange?.(activeSubTab);
   }, [activeSubTab, onSubTabChange]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const tabs: { id: DiscoverSubTab; label: string; icon: React.ReactNode }[] = [
     { id: 'courses', label: 'Courses', icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: 'events', label: 'Events', icon: <Calendar className="w-3.5 h-3.5" /> },
@@ -57,25 +70,61 @@ export function AdminDiscoverTab({
 
   return (
     <div className="space-y-6">
-      {/* Section Header - hidden when course editor is open */}
+      {/* Section Header with Mobile Dropdown - hidden when course editor is open */}
       {!isCourseEditorOpen && (
-        <div>
-          <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Resources</h2>
-          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-            Manage content for programs
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Resources</h2>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+              Manage content for programs
+            </p>
+          </div>
+
+          {/* Mobile Dropdown */}
+          <div className="relative sm:hidden" ref={dropdownRef}>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center gap-2 px-3 py-2 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg text-sm font-medium font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+            >
+              {tabs.find(t => t.id === activeSubTab)?.icon}
+              {tabs.find(t => t.id === activeSubTab)?.label}
+              <ChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-[#262b35] rounded-xl shadow-lg border border-[#e5e2df] dark:border-[#3a3f4b] py-1 z-50">
+                {tabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveSubTab(tab.id);
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 text-left text-sm font-medium font-albert flex items-center gap-2 ${
+                      activeSubTab === tab.id
+                        ? 'bg-[#f3f1ef] dark:bg-[#1e222a] text-[#1a1a1a] dark:text-[#f5f5f8]'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+                    }`}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Pill Selector Tabs - Scrollable on mobile, hidden when course editor is open */}
+      {/* Pill Selector Tabs - Desktop only, hidden when course editor is open */}
       {!isCourseEditorOpen && (
-        <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
+        <div className="hidden sm:block">
           <div className="flex items-center gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveSubTab(tab.id)}
-                className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 whitespace-nowrap ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 whitespace-nowrap ${
                   activeSubTab === tab.id
                     ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
                     : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'

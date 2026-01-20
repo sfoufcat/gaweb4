@@ -201,20 +201,6 @@ function LinkFormDialog({
           value={formData.pricing}
           onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
         />
-
-        {/* Order */}
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Display Order</label>
-          <input
-            type="number"
-            value={formData.order}
-            onChange={e => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 0 }))}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-          />
-          <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            Lower numbers appear first.
-          </p>
-        </div>
       </div>
 
       <div className="p-6 border-t border-[#e1ddd8] dark:border-[#262b35] flex justify-end gap-3">
@@ -421,7 +407,6 @@ export function AdminLinksSection({ apiEndpoint = '/api/admin/discover/links' }:
               <TableRow>
                 <TableHead className="font-albert">Title</TableHead>
                 <TableHead className="font-albert">URL</TableHead>
-                <TableHead className="font-albert">Order</TableHead>
                 <TableHead className="font-albert text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -432,17 +417,14 @@ export function AdminLinksSection({ apiEndpoint = '/api/admin/discover/links' }:
                     {link.title}
                   </TableCell>
                   <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] max-w-[300px] truncate">
-                    <a 
-                      href={link.url} 
-                      target="_blank" 
+                    <a
+                      href={link.url}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="hover:text-brand-accent hover:underline"
                     >
                       {link.url}
                     </a>
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {link.order || 0}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

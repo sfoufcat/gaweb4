@@ -567,26 +567,29 @@ function QuestionItem({
       value={question}
       dragListener={false}
       dragControls={dragControls}
-      className="bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]/50 overflow-hidden"
+      className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40 shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
     >
-      <div className="flex items-start">
-        {/* Drag Handle */}
-        <div
-          onPointerDown={e => dragControls.start(e)}
-          className="p-4 cursor-grab active:cursor-grabbing hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-        >
-          <GripVertical className="w-5 h-5 text-[#b2b6c2] dark:text-[#5f5a55]" />
-        </div>
+      <div className="p-4">
+        {/* Header with drag handle */}
+        <div className="flex items-start gap-3">
+          {/* Drag Handle */}
+          <div
+            onPointerDown={e => dragControls.start(e)}
+            className="mt-1 cursor-grab active:cursor-grabbing opacity-40 group-hover:opacity-100 transition-opacity"
+          >
+            <GripVertical className="w-5 h-5 text-[#b2b6c2] dark:text-[#5f5a55]" />
+          </div>
 
-        {/* Question Editor */}
-        <div className="flex-1 min-w-0 py-4 pr-4">
-          <QuestionEditor
-            question={question}
-            onUpdate={onUpdate}
-            onDelete={onDelete}
-            onDuplicate={onDuplicate}
-            allQuestions={allQuestions}
-          />
+          {/* Question Editor */}
+          <div className="flex-1 min-w-0">
+            <QuestionEditor
+              question={question}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+              onDuplicate={onDuplicate}
+              allQuestions={allQuestions}
+            />
+          </div>
         </div>
       </div>
     </Reorder.Item>

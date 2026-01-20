@@ -217,21 +217,6 @@ function DownloadFormDialog({
           uploadEndpoint={uploadEndpoint}
         />
 
-        {/* File Type */}
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">File Type</label>
-          <input
-            type="text"
-            value={formData.fileType}
-            onChange={e => setFormData(prev => ({ ...prev, fileType: e.target.value }))}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-            placeholder="e.g., PDF, Excel, ZIP"
-          />
-          <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            Auto-detected from file extension. Override if needed.
-          </p>
-        </div>
-
         {/* Programs */}
         <div>
           <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
@@ -250,20 +235,6 @@ function DownloadFormDialog({
           value={formData.pricing}
           onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
         />
-
-        {/* Order */}
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Display Order</label>
-          <input
-            type="number"
-            value={formData.order}
-            onChange={e => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 0 }))}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-          />
-          <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            Lower numbers appear first.
-          </p>
-        </div>
       </div>
 
       <div className="p-6 border-t border-[#e1ddd8] dark:border-[#262b35] flex justify-end gap-3">
@@ -472,7 +443,6 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
                 <TableHead className="font-albert">Title</TableHead>
                 <TableHead className="font-albert">Description</TableHead>
                 <TableHead className="font-albert">Type</TableHead>
-                <TableHead className="font-albert">Order</TableHead>
                 <TableHead className="font-albert text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -493,9 +463,6 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
                     ) : (
                       <span className="text-[#5f5a55] dark:text-[#b2b6c2] text-sm font-albert">—</span>
                     )}
-                  </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {download.order || 0}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

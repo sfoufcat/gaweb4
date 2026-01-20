@@ -413,12 +413,12 @@ export function AdminCoursesSection({
         </div>
 
         {/* Course Cards */}
-        <div className="p-3 space-y-2">
+        <div className="divide-y divide-[#e8e4df] dark:divide-[#262b35]">
           {paginatedCourses.map(course => (
             <div
               key={course.id}
               onClick={() => handleEditCourse(course)}
-              className="flex items-center gap-4 p-3 rounded-xl bg-white dark:bg-[#171b22] border border-[#e8e4df] dark:border-[#262b35] hover:border-brand-accent/50 dark:hover:border-brand-accent/50 cursor-pointer transition-all group"
+              className="flex items-center gap-4 p-3 bg-white dark:bg-[#171b22] hover:bg-[#faf8f6] dark:hover:bg-[#1c2028] cursor-pointer transition-all group first:rounded-t-xl last:rounded-b-xl"
             >
               {/* Cover Image */}
               <div className="relative w-20 h-14 sm:w-24 sm:h-16 rounded-lg overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">

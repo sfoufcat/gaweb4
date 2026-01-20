@@ -2,9 +2,16 @@
 
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Copy, X, Loader2 } from 'lucide-react';
+import { Trash2, Copy, X, Loader2, MoreHorizontal, ChevronRight, ChevronDown } from 'lucide-react';
 import { QuestionOptionEditor } from './QuestionOptionEditor';
 import { SkipLogicEditor } from './SkipLogicEditor';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
@@ -37,6 +44,8 @@ export function QuestionEditor({
   const [showSkipLogic, setShowSkipLogic] = useState(
     (question.skipLogic?.length || 0) > 0
   );
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const hasSkipLogic = question.type === 'single_choice' || question.type === 'multi_choice';
 
   const typeInfo = getQuestionTypeInfo(question.type);
 
@@ -322,12 +331,58 @@ export function QuestionEditor({
     }
   };
 
-  return (
-    <div className="space-y-4">
-      {/* Question Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          {/* Question Title - Inline Editable */}
+  // Skip Logic Section (shared between desktop sidebar and mobile inline)
+  const SkipLogicSection = () => (
+    <div className="pt-2">
+      <button
+        onClick={() => setShowSkipLogic(!showSkipLogic)}
+        className="flex items-center gap-1.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors font-albert"
+      >
+        {showSkipLogic ? (
+          <ChevronDown className="w-4 h-4" />
+        ) : (
+          <ChevronRight className="w-4 h-4" />
+        )}
+        Skip logic
+        {(question.skipLogic?.length || 0) > 0 && (
+          <span className="text-xs bg-brand-accent/10 text-brand-accent px-1.5 py-0.5 rounded-full">
+            {question.skipLogic?.length}
+          </span>
+        )}
+      </button>
+
+      <AnimatePresence initial={false}>
+        {showSkipLogic && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{
+              height: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
+              opacity: { duration: 0.2, delay: showSkipLogic ? 0.1 : 0 }
+            }}
+            className="overflow-hidden"
+          >
+            <div className="mt-3">
+              <SkipLogicEditor
+                question={question}
+                allQuestions={allQuestions}
+                onUpdate={skipLogic => onUpdate({ skipLogic })}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
+  // Desktop Layout
+  if (isDesktop) {
+    return (
+      <div className="flex">
+        {/* Main Content */}
+        <div className="flex-1 min-w-0 space-y-3">
+          {/* Question Title */}
           <input
             type="text"
             value={question.title}
@@ -342,86 +397,127 @@ export function QuestionEditor({
             value={question.description || ''}
             onChange={e => onUpdate({ description: e.target.value })}
             placeholder="Add description (optional)"
-            className="w-full mt-1 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert bg-transparent border-none outline-none placeholder-[#b2b6c2]"
+            className="w-full text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert bg-transparent border-none outline-none placeholder-[#b2b6c2]/60"
+          />
+
+          {/* Type-specific configuration */}
+          <div className="pt-1">
+            {renderTypeConfig()}
+          </div>
+        </div>
+
+        {/* Desktop Sidebar */}
+        <div className="w-40 ml-4 pl-4 border-l border-[#e1ddd8]/40 dark:border-[#262b35]/30 space-y-4">
+          {/* Required Toggle */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Required</span>
+            <button
+              type="button"
+              onClick={() => onUpdate({ required: !question.required })}
+              className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${
+                question.required ? 'bg-brand-accent' : 'bg-[#d1cdc8] dark:bg-[#3a4150]'
+              }`}
+            >
+              <span
+                className={`absolute top-[2px] left-[2px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  question.required ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Skip Logic (desktop) */}
+          {hasSkipLogic && <SkipLogicSection />}
+
+          {/* Actions */}
+          <div className="flex items-center gap-1 pt-2 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/30">
+            <button
+              onClick={onDuplicate}
+              className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+              title="Duplicate"
+            >
+              <Copy className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+            </button>
+            <button
+              onClick={onDelete}
+              className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              title="Delete"
+            >
+              <Trash2 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-500" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Mobile Layout
+  return (
+    <div className="space-y-3">
+      {/* Header Row */}
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          {/* Question Title */}
+          <input
+            type="text"
+            value={question.title}
+            onChange={e => onUpdate({ title: e.target.value })}
+            placeholder={question.type === 'info' ? 'Add a title (optional)...' : question.type === 'page_break' ? 'Section title (optional)...' : 'Type your question here...'}
+            className="w-full text-base font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-none outline-none placeholder-[#b2b6c2]"
+          />
+
+          {/* Description */}
+          <input
+            type="text"
+            value={question.description || ''}
+            onChange={e => onUpdate({ description: e.target.value })}
+            placeholder="Add description (optional)"
+            className="w-full mt-1 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert bg-transparent border-none outline-none placeholder-[#b2b6c2]/60"
           />
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          {/* Required Toggle */}
+        {/* Required Toggle + Overflow Menu */}
+        <div className="flex items-center gap-1 flex-shrink-0">
           <button
             type="button"
             onClick={() => onUpdate({ required: !question.required })}
-            className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 ${
+            className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${
               question.required ? 'bg-brand-accent' : 'bg-[#d1cdc8] dark:bg-[#3a4150]'
             }`}
             title={question.required ? 'Required' : 'Optional'}
           >
             <span
-              className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                question.required ? 'translate-x-[18px]' : 'translate-x-0'
+              className={`absolute top-[2px] left-[2px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                question.required ? 'translate-x-4' : 'translate-x-0'
               }`}
             />
           </button>
-          {/* Duplicate */}
-          <button
-            onClick={onDuplicate}
-            className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-            title="Duplicate"
-          >
-            <Copy className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-          </button>
-          {/* Delete */}
-          <button
-            onClick={onDelete}
-            className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-500 dark:hover:text-red-400" />
-          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors">
+                <MoreHorizontal className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[140px]">
+              <DropdownMenuItem onClick={onDuplicate}>
+                <Copy className="w-4 h-4 mr-2" />
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDelete} className="text-red-500 focus:text-red-500">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="space-y-4 pt-3">
-          {/* Type-specific configuration */}
-          {renderTypeConfig()}
+      {/* Type-specific configuration */}
+      {renderTypeConfig()}
 
-          {/* Skip Logic Toggle */}
-          {(question.type === 'single_choice' || question.type === 'multi_choice') && (
-            <div className="pt-2">
-              <button
-                onClick={() => setShowSkipLogic(!showSkipLogic)}
-                className="text-sm text-brand-accent hover:underline font-albert"
-              >
-                {showSkipLogic ? 'Hide skip logic' : 'Add skip logic'}
-              </button>
-
-              <AnimatePresence initial={false}>
-                {showSkipLogic && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{
-                      height: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
-                      opacity: { duration: 0.2, delay: showSkipLogic ? 0.1 : 0 }
-                    }}
-                    className="overflow-hidden"
-                  >
-                    <div className="mt-4">
-                      <SkipLogicEditor
-                        question={question}
-                        allQuestions={allQuestions}
-                        onUpdate={skipLogic => onUpdate({ skipLogic })}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-      </div>
+      {/* Skip Logic (mobile - inline at bottom) */}
+      {hasSkipLogic && <SkipLogicSection />}
     </div>
   );
 }
