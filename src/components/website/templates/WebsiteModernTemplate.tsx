@@ -90,7 +90,7 @@ export function WebsiteModernTemplate({
   return (
     <div className="w-full overflow-x-hidden bg-black text-white">
       {/* ========== HERO SECTION ========== */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 pt-16 pb-24">
+      <section className="relative min-h-screen flex flex-col items-center justify-center pt-16 pb-24">
         {/* Animated Background */}
         <div className="absolute inset-0 overflow-hidden">
           {/* Main gradient orb */}
@@ -247,7 +247,7 @@ export function WebsiteModernTemplate({
 
       {/* ========== SERVICES SECTION - DARK GRADIENT CARDS ========== */}
       {services.length > 0 && (
-        <section id="services" className="py-32 px-4 sm:px-6 lg:px-8 relative">
+        <section id="services" className="py-32 relative">
           {/* Background accent */}
           <div
             className="absolute top-1/2 left-0 w-[600px] h-[600px] rounded-full opacity-15"
@@ -355,7 +355,7 @@ export function WebsiteModernTemplate({
 
       {/* ========== TRANSFORMATION STEPS SECTION ========== */}
       {transformationSteps && transformationSteps.length > 0 && (
-        <section className="py-32 px-4 sm:px-6 lg:px-8 relative">
+        <section className="py-32 relative">
           <div
             className="absolute top-1/2 right-0 w-[500px] h-[500px] rounded-full opacity-10"
             style={{
@@ -456,7 +456,7 @@ export function WebsiteModernTemplate({
 
       {/* ========== DARK FEATURE SECTION (BENTO STYLE) ========== */}
       {services.length >= 3 && (
-        <section className="py-32 px-4 sm:px-6 lg:px-8 bg-[#050506]">
+        <section className="py-32 bg-[#050506]">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -577,7 +577,7 @@ export function WebsiteModernTemplate({
 
       {/* ========== ABOUT/COACH SECTION ========== */}
       {(coachBio || credentials.length > 0) && (
-        <section id="about" className="py-32 px-4 sm:px-6 lg:px-8 relative">
+        <section id="about" className="py-32 relative">
           <div
             className="absolute top-1/2 right-0 w-[500px] h-[500px] rounded-full opacity-10"
             style={{
@@ -670,7 +670,7 @@ export function WebsiteModernTemplate({
 
       {/* ========== TESTIMONIALS SECTION ========== */}
       {testimonials.length > 0 && (
-        <section id="testimonials" className="py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <section id="testimonials" className="py-32 relative overflow-hidden">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial="hidden"
@@ -835,7 +835,7 @@ export function WebsiteModernTemplate({
       )}
 
       {/* ========== BOTTOM CTA ========== */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 relative">
+      <section className="py-32 relative">
         <div
           className="absolute inset-0"
           style={{
@@ -881,7 +881,7 @@ export function WebsiteModernTemplate({
       </section>
 
       {/* ========== FOOTER ========== */}
-      <footer className="py-16 px-4 sm:px-6 lg:px-8 border-t border-white/[0.06]">
+      <footer className="py-16 border-t border-white/[0.06]">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-3 gap-12 mb-12">
             {/* Brand Column */}
@@ -893,7 +893,7 @@ export function WebsiteModernTemplate({
                     alt={footerCompanyName || coachName}
                     width={140}
                     height={40}
-                    className="h-10 w-auto object-contain brightness-0 invert"
+                    className="h-10 w-auto object-contain"
                   />
                 ) : (
                   <span className="text-2xl font-bold text-white">
