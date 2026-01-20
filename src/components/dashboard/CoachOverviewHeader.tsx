@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
-import { DollarSign, Trophy, Users, AlertTriangle, ArrowRight, Sparkles } from 'lucide-react';
+import { DollarSign, Trophy, Users, AlertTriangle, ArrowRight, TrendingUp, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -13,10 +13,9 @@ interface MetricCardProps {
   value: string | number;
   subValue?: string;
   icon: React.ElementType;
-  iconColor: string;
-  iconBg: string;
+  gradient: string;
   href?: string;
-  isAlert?: boolean;
+  isHighlight?: boolean;
 }
 
 function MetricCard({
@@ -24,46 +23,56 @@ function MetricCard({
   value,
   subValue,
   icon: Icon,
-  iconColor,
-  iconBg,
+  gradient,
   href,
-  isAlert,
+  isHighlight,
 }: MetricCardProps) {
   const content = (
     <div
       className={cn(
-        'flex flex-col p-3 sm:p-4 rounded-2xl transition-all duration-200',
-        'bg-white/60 dark:bg-[#171b22]/60',
-        'border border-[#e1ddd8]/50 dark:border-[#262b35]/50',
-        'hover:bg-white/80 dark:hover:bg-[#171b22]/80',
-        'hover:shadow-md hover:scale-[1.02]',
+        'relative overflow-hidden rounded-2xl p-4 transition-all duration-300',
+        'hover:scale-[1.03] hover:shadow-xl',
         href && 'cursor-pointer',
-        isAlert && value !== '0' && value !== 0 && 'ring-2 ring-red-200 dark:ring-red-900/50'
+        gradient
       )}
     >
-      <div className="flex items-center gap-2 mb-2">
-        <div className={cn('p-1.5 sm:p-2 rounded-xl', iconBg)}>
-          <Icon className={cn('w-4 h-4 sm:w-5 sm:h-5', iconColor)} />
-        </div>
+      {/* Subtle pattern overlay */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-white/20" />
+        <div className="absolute -left-2 -bottom-2 w-16 h-16 rounded-full bg-white/10" />
       </div>
-      <div className="space-y-0.5">
-        <p className="text-xl sm:text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-tight">
-          {value}
-        </p>
-        <p className="text-xs sm:text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">
-          {label}
-        </p>
-        {subValue && (
-          <p className="text-[10px] sm:text-xs text-[#a7a39e] dark:text-[#5f6470] font-albert truncate">
-            {subValue}
+
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-3">
+          <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
+            <Icon className="w-4 h-4 text-white" />
+          </div>
+          {isHighlight && (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm">
+              <Sparkles className="w-3 h-3 text-white" />
+              <span className="text-[10px] font-medium text-white uppercase tracking-wide">Top</span>
+            </div>
+          )}
+        </div>
+        <div className="space-y-0.5">
+          <p className="text-2xl font-bold text-white font-albert tracking-tight drop-shadow-sm">
+            {value}
           </p>
-        )}
+          <p className="text-sm text-white/80 font-albert font-medium">
+            {label}
+          </p>
+          {subValue && (
+            <p className="text-xs text-white/60 font-albert">
+              {subValue}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
 
   if (href) {
-    return <Link href={href}>{content}</Link>;
+    return <Link href={href} className="block">{content}</Link>;
   }
 
   return content;
@@ -71,47 +80,23 @@ function MetricCard({
 
 function LoadingSkeleton() {
   return (
-    <div className="glass-card p-4 sm:p-5 mb-6 animate-pulse">
+    <div className="mb-8">
+      {/* Header skeleton */}
       <div className="flex items-center justify-between mb-4">
-        <div className="h-5 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg" />
-        <div className="h-8 w-36 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full" />
+        <div className="h-6 w-40 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
+        <div className="h-9 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full animate-pulse" />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Cards skeleton */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-24 bg-[#e1ddd8]/50 dark:bg-[#262b35]/50 rounded-2xl" />
+          <div
+            key={i}
+            className="h-32 rounded-2xl animate-pulse"
+            style={{
+              background: `linear-gradient(135deg, rgba(160, 120, 85, ${0.1 + i * 0.05}) 0%, rgba(140, 100, 70, ${0.1 + i * 0.05}) 100%)`
+            }}
+          />
         ))}
-      </div>
-    </div>
-  );
-}
-
-function AllClearState() {
-  return (
-    <div className="glass-card p-4 sm:p-5 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base sm:text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
-          Coach Overview
-        </h3>
-        <Link
-          href="/coach"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#a07855] hover:text-[#8a6847] transition-colors rounded-full bg-[#a07855]/10 hover:bg-[#a07855]/15"
-        >
-          Dashboard
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-      </div>
-      <div className="flex items-center justify-center py-6 gap-3">
-        <div className="p-3 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30">
-          <Sparkles className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <div>
-          <p className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            Everything looks great!
-          </p>
-          <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190]">
-            All clients are active and engaged
-          </p>
-        </div>
       </div>
     </div>
   );
@@ -128,7 +113,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
     fetcher,
     {
       revalidateOnFocus: false,
-      refreshInterval: 5 * 60 * 1000, // 5 min
+      refreshInterval: 5 * 60 * 1000,
     }
   );
 
@@ -157,11 +142,11 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
   const activeRate = clientData?.summary?.activeRate ?? 0;
   const totalClients = clientData?.summary?.totalClients ?? 0;
 
-  // Check if all metrics are positive (no at-risk, good engagement)
-  const allClear = atRiskCount === 0 && activeRate >= 70 && totalClients > 0;
-
   // Format currency
   const formatCurrency = (amount: number) => {
+    if (amount >= 1000) {
+      return `$${(amount / 1000).toFixed(1)}k`;
+    }
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -170,75 +155,68 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
     }).format(amount);
   };
 
-  if (allClear) {
-    return <AllClearState />;
-  }
-
   return (
-    <div className={cn('glass-card p-4 sm:p-5 mb-6', className)}>
+    <div className={cn('mb-8', className)}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base sm:text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
-          Coach Overview
-        </h3>
+        <div>
+          <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
+            Coach Overview
+          </h2>
+          <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190]">
+            {totalClients} clients · {Math.round(activeRate)}% engaged
+          </p>
+        </div>
         <Link
           href="/coach"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#a07855] hover:text-[#8a6847] transition-colors rounded-full bg-[#a07855]/10 hover:bg-[#a07855]/15"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-[#a07855] to-[#8a6847] hover:from-[#8a6847] hover:to-[#7a5837] transition-all duration-200 rounded-full shadow-md hover:shadow-lg hover:scale-[1.02]"
         >
           Dashboard
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
 
       {/* Metric Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard
           label="Revenue"
           value={formatCurrency(totalRevenue)}
-          subValue="All time"
+          subValue="All time earnings"
           icon={DollarSign}
-          iconColor="text-emerald-600 dark:text-emerald-400"
-          iconBg="bg-emerald-100 dark:bg-emerald-900/30"
+          gradient="bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20"
           href="/coach?tab=analytics"
         />
 
         <MetricCard
           label="Top Program"
-          value={topProgram?.name ? (topProgram.name.length > 12 ? topProgram.name.slice(0, 12) + '...' : topProgram.name) : 'None'}
+          value={topProgram?.name ? (topProgram.name.length > 10 ? topProgram.name.slice(0, 10) + '…' : topProgram.name) : '—'}
           subValue={topProgram ? `${topProgram.enrolledCount} enrolled` : 'Create your first'}
           icon={Trophy}
-          iconColor="text-amber-600 dark:text-amber-400"
-          iconBg="bg-amber-100 dark:bg-amber-900/30"
+          gradient="bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/20"
           href="/coach?tab=programs"
+          isHighlight={!!topProgram}
         />
 
         <MetricCard
           label="Active Clients"
           value={activeClients}
           subValue={`${Math.round(activeRate)}% engagement`}
-          icon={Users}
-          iconColor="text-blue-600 dark:text-blue-400"
-          iconBg="bg-blue-100 dark:bg-blue-900/30"
+          icon={TrendingUp}
+          gradient="bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20"
           href="/coach?tab=clients"
         />
 
         <MetricCard
-          label="At-Risk"
-          value={atRiskCount}
-          subValue={atRiskCount > 0 ? 'Need attention' : 'All good'}
-          icon={AlertTriangle}
-          iconColor={atRiskCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}
-          iconBg={atRiskCount > 0 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-gray-800'}
+          label={atRiskCount > 0 ? 'At-Risk' : 'Client Health'}
+          value={atRiskCount > 0 ? atRiskCount : '✓'}
+          subValue={atRiskCount > 0 ? 'Need your attention' : 'All clients thriving'}
+          icon={atRiskCount > 0 ? AlertTriangle : Users}
+          gradient={atRiskCount > 0
+            ? 'bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/20'
+            : 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/20'
+          }
           href="/coach?tab=clients"
-          isAlert
         />
-      </div>
-
-      {/* Footer stats */}
-      <div className="mt-3 pt-3 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] text-center">
-          {totalClients} total clients · {Math.round(activeRate)}% engagement rate
-        </p>
       </div>
     </div>
   );
