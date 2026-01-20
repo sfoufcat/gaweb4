@@ -114,6 +114,17 @@ export default async function RootLayout({
           {/* Critical CSS for layout - prevents layout shift by being in initial HTML */}
           <style dangerouslySetInnerHTML={{
             __html: `
+              /* Fullscreen pages - match landing page background to prevent flash */
+              html:has(body[data-layout="fullscreen"]),
+              body[data-layout="fullscreen"],
+              body[data-layout="fullscreen"].bg-app-bg {
+                background-color: #faf8f6 !important;
+              }
+              html.dark:has(body[data-layout="fullscreen"]),
+              html.dark body[data-layout="fullscreen"],
+              html.dark body[data-layout="fullscreen"].bg-app-bg {
+                background-color: #05070b !important;
+              }
               @media (min-width: 1024px) {
                 body[data-layout="with-sidebar"] main {
                   padding-left: 16rem !important;
@@ -153,21 +164,6 @@ export default async function RootLayout({
               `,
             }}
           />
-          {/* Inline script to prevent flash of wrong layout mode on marketing domain */}
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-                (function() {
-                  try {
-                    var h = window.location.hostname;
-                    if (h === 'coachful.co' || h === 'www.coachful.co') {
-                      document.body.setAttribute('data-layout', 'fullscreen');
-                    }
-                  } catch (e) {}
-                })();
-              `,
-            }}
-          />
           {/* Google Ads (gtag.js) - Platform-level conversion tracking for coach signups */}
           <script async src="https://www.googletagmanager.com/gtag/js?id=AW-16653181105" />
           <script
@@ -186,6 +182,12 @@ export default async function RootLayout({
           data-layout={layoutMode}
           suppressHydrationWarning
         >
+          {/* Inline script to ensure fullscreen layout on marketing domain - runs immediately */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){try{var h=location.hostname;if(h==='coachful.co'||h==='www.coachful.co'){document.body.setAttribute('data-layout','fullscreen');}}catch(e){}})();`,
+            }}
+          />
           <DemoModeProvider>
             <DemoSessionProvider>
               {/* Client-side sync for body data-layout attribute (safety net for hydration/navigation) */}
@@ -221,7 +223,7 @@ export default async function RootLayout({
                       
                       {/* Main Content Wrapper - Adjusted for narrower sidebar */}
                       <Suspense fallback={null}>
-                        <ConditionalMain>
+                        <ConditionalMain layoutMode={layoutMode}>
                           <PageTransition>
                             {children}
                           </PageTransition>
