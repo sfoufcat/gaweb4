@@ -151,10 +151,10 @@ export function ArticleEditor({
 
   return (
     <div className="flex flex-col h-full min-h-screen bg-[#faf8f6] dark:bg-[#0d0f14]">
-      {/* Header - transparent background */}
+      {/* Header */}
       <div className="border-b border-[#e1ddd8] dark:border-[#262b35]">
         <div className="flex items-center justify-between px-4 sm:px-6 py-3">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <button
               type="button"
               onClick={onClose}
@@ -162,27 +162,25 @@ export function ArticleEditor({
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <input
-                ref={titleInputRef}
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                onFocus={() => setIsTitleFocused(true)}
-                onBlur={() => setIsTitleFocused(false)}
-                placeholder="Article title..."
-                className="flex-1 text-base sm:text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-[#9ca3af] min-w-0"
-              />
-              {!isTitleFocused && (
-                <button
-                  type="button"
-                  onClick={handleTitleEditClick}
-                  className="p-1.5 text-[#9ca3af] hover:text-[#5f5a55] dark:hover:text-[#b2b6c2] transition-colors flex-shrink-0"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+            <input
+              ref={titleInputRef}
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              onFocus={() => setIsTitleFocused(true)}
+              onBlur={() => setIsTitleFocused(false)}
+              placeholder="Article title..."
+              className="flex-1 text-base sm:text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-[#9ca3af] min-w-0"
+            />
+            {!isTitleFocused && (
+              <button
+                type="button"
+                onClick={handleTitleEditClick}
+                className="p-1.5 text-[#9ca3af] hover:text-[#5f5a55] dark:hover:text-[#b2b6c2] transition-colors flex-shrink-0"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
@@ -217,98 +215,36 @@ export function ArticleEditor({
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-        <div className="h-full flex">
-          {/* Editor Area */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <div className={`mx-auto space-y-6 ${isDesktop ? 'max-w-3xl' : 'max-w-4xl'}`}>
-              {/* Cover Image Section - Mobile only */}
-              {!isDesktop && (
-                <div className="rounded-2xl border border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#171b22] overflow-hidden">
-                  {formData.coverImageUrl ? (
-                    <div className="relative group">
-                      <img
-                        src={formData.coverImageUrl}
-                        alt="Cover"
-                        className="w-full h-48 sm:h-64 object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, coverImageUrl: '' }))}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity px-4 py-2 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm"
-                        >
-                          Change Cover
-                        </button>
-                      </div>
+      {/* Content with Desktop Sidebar */}
+      <div className="flex-1 flex overflow-hidden gap-6 p-6">
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-y-auto bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
+          <div className="p-6 sm:p-8 max-w-4xl">
+            {/* Cover Image Section - Mobile only */}
+            {!isDesktop && (
+              <div className="mb-8">
+                {formData.coverImageUrl ? (
+                  <div className="relative group rounded-xl overflow-hidden">
+                    <img
+                      src={formData.coverImageUrl}
+                      alt="Cover"
+                      className="w-full h-48 sm:h-64 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, coverImageUrl: '' }))}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity px-4 py-2 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm"
+                      >
+                        Change Cover
+                      </button>
                     </div>
-                  ) : (
-                    <div className="p-6">
-                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                        Cover Image <span className="text-text-muted text-xs font-normal">(1600 x 800px)</span>
-                      </label>
-                      <MediaUpload
-                        value={formData.coverImageUrl}
-                        onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
-                        folder="articles"
-                        type="image"
-                        required
-                        uploadEndpoint={uploadEndpoint}
-                        hideLabel
-                        aspectRatio="16:9"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Content Editor Section */}
-              <div className="rounded-2xl border border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#171b22] overflow-hidden">
-                <div className="p-4 sm:p-6">
-                  <RichTextEditor
-                    value={formData.content}
-                    onChange={(content) => setFormData(prev => ({ ...prev, content }))}
-                    label="Content"
-                    required
-                    rows={20}
-                    placeholder="Write your article content here..."
-                    showMediaToolbar={true}
-                    mediaFolder="articles"
-                    uploadEndpoint={uploadEndpoint}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Sidebar - Desktop only */}
-          {isDesktop && (
-            <div className="w-80 flex-shrink-0 border-l border-[#e1ddd8] dark:border-[#262b35] overflow-y-auto">
-              <div className="p-5 space-y-6">
-                {/* Cover Image */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                    Cover Image
-                  </label>
-                  {formData.coverImageUrl ? (
-                    <div className="relative group rounded-xl overflow-hidden">
-                      <img
-                        src={formData.coverImageUrl}
-                        alt="Cover"
-                        className="w-full h-40 object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, coverImageUrl: '' }))}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] rounded-lg font-albert font-medium text-xs"
-                        >
-                          Change
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                      Cover Image <span className="text-text-muted text-xs font-normal">(1600 x 800px)</span>
+                    </label>
                     <MediaUpload
                       value={formData.coverImageUrl}
                       onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
@@ -319,133 +255,189 @@ export function ArticleEditor({
                       hideLabel
                       aspectRatio="16:9"
                     />
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
+            )}
 
-                <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
+            {/* Content Editor - Inline, no extra container */}
+            <RichTextEditor
+              value={formData.content}
+              onChange={(content) => setFormData(prev => ({ ...prev, content }))}
+              label="Content"
+              required
+              rows={24}
+              placeholder="Write your article content here..."
+              showMediaToolbar={true}
+              mediaFolder="articles"
+              uploadEndpoint={uploadEndpoint}
+            />
 
-                {/* Author */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                    Author
-                  </label>
-                  <AuthorSelector
-                    value={formData.authorId}
-                    onChange={({ authorId, authorName }) =>
-                      setFormData(prev => ({ ...prev, authorId, authorName }))
-                    }
-                    placeholder="Select author..."
-                    coachesApiEndpoint={coachesApiEndpoint}
-                  />
-                </div>
+            {/* Pricing & Access - Below content on desktop */}
+            {isDesktop && (
+              <div className="mt-8 pt-8 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert">
+                  Pricing & Access
+                </label>
+                <ContentPricingFields
+                  value={pricingData}
+                  onChange={handlePricingChange}
+                />
+              </div>
+            )}
+          </div>
+        </div>
 
-                {/* Author Title */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                    Author Title
-                    <span className="text-[#8c8a87] dark:text-[#8b8f9a] font-normal ml-1">(optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.authorTitle}
-                    onChange={e => setFormData(prev => ({ ...prev, authorTitle: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
-                    placeholder="e.g., Life Coach, CEO"
-                  />
-                </div>
-
-                <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
-
-                {/* Category */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                    Category
-                  </label>
-                  <CategorySelector
-                    value={formData.category}
-                    onChange={(category) => setFormData(prev => ({ ...prev, category }))}
-                    placeholder="Select or create..."
-                    categoriesApiEndpoint={categoriesApiEndpoint}
-                  />
-                </div>
-
-                {/* Programs */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                    Programs
-                  </label>
-                  <ProgramSelector
-                    value={formData.programIds}
-                    onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
-                    placeholder="Select programs..."
-                    programsApiEndpoint={programsApiEndpoint}
-                  />
-                </div>
-
-                {/* Published Date */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                    Published Date
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.publishedAt}
-                    onChange={e => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
-                  />
-                </div>
-
-                <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
-
-                {/* Pricing & Access */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                    Pricing & Access
-                  </label>
-                  <ContentPricingFields
-                    value={pricingData}
-                    onChange={handlePricingChange}
-                  />
-                </div>
-
-                <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
-
-                {/* Display Options */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert">
-                    Display Options
-                  </label>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <BrandedCheckbox
-                        checked={formData.featured}
-                        onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
-                      />
-                      <span
-                        className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer"
-                        onClick={() => setFormData(prev => ({ ...prev, featured: !prev.featured }))}
+        {/* Desktop Sidebar */}
+        {isDesktop && (
+          <div className="w-72 flex-shrink-0 overflow-y-auto bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
+            <div className="p-5 space-y-5">
+              {/* Cover Image */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                  Cover Image
+                </label>
+                {formData.coverImageUrl ? (
+                  <div className="relative group rounded-xl overflow-hidden">
+                    <img
+                      src={formData.coverImageUrl}
+                      alt="Cover"
+                      className="w-full h-36 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, coverImageUrl: '' }))}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] rounded-lg font-albert font-medium text-xs"
                       >
-                        Featured
-                      </span>
+                        Change
+                      </button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <BrandedCheckbox
-                        checked={formData.trending}
-                        onChange={(checked) => setFormData(prev => ({ ...prev, trending: checked }))}
-                      />
-                      <span
-                        className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer"
-                        onClick={() => setFormData(prev => ({ ...prev, trending: !prev.trending }))}
-                      >
-                        Trending
-                      </span>
-                    </div>
+                  </div>
+                ) : (
+                  <MediaUpload
+                    value={formData.coverImageUrl}
+                    onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
+                    folder="articles"
+                    type="image"
+                    required
+                    uploadEndpoint={uploadEndpoint}
+                    hideLabel
+                    aspectRatio="16:9"
+                  />
+                )}
+              </div>
+
+              <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
+
+              {/* Author */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                  Author
+                </label>
+                <AuthorSelector
+                  value={formData.authorId}
+                  onChange={({ authorId, authorName }) =>
+                    setFormData(prev => ({ ...prev, authorId, authorName }))
+                  }
+                  placeholder="Select author..."
+                  coachesApiEndpoint={coachesApiEndpoint}
+                />
+              </div>
+
+              {/* Author Title */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                  Author Title
+                  <span className="text-[#8c8a87] dark:text-[#8b8f9a] font-normal ml-1">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.authorTitle}
+                  onChange={e => setFormData(prev => ({ ...prev, authorTitle: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
+                  placeholder="e.g., Life Coach, CEO"
+                />
+              </div>
+
+              <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
+
+              {/* Category */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                  Category
+                </label>
+                <CategorySelector
+                  value={formData.category}
+                  onChange={(category) => setFormData(prev => ({ ...prev, category }))}
+                  placeholder="Select or create..."
+                  categoriesApiEndpoint={categoriesApiEndpoint}
+                />
+              </div>
+
+              {/* Programs */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                  Programs
+                </label>
+                <ProgramSelector
+                  value={formData.programIds}
+                  onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
+                  placeholder="Select programs..."
+                  programsApiEndpoint={programsApiEndpoint}
+                />
+              </div>
+
+              {/* Published Date */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                  Published Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.publishedAt}
+                  onChange={e => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
+                />
+              </div>
+
+              <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
+
+              {/* Display Options */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert">
+                  Display Options
+                </label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <BrandedCheckbox
+                      checked={formData.featured}
+                      onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
+                    />
+                    <span
+                      className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer"
+                      onClick={() => setFormData(prev => ({ ...prev, featured: !prev.featured }))}
+                    >
+                      Featured
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <BrandedCheckbox
+                      checked={formData.trending}
+                      onChange={(checked) => setFormData(prev => ({ ...prev, trending: checked }))}
+                    />
+                    <span
+                      className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer"
+                      onClick={() => setFormData(prev => ({ ...prev, trending: !prev.trending }))}
+                    >
+                      Trending
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Settings Modal - Mobile only */}

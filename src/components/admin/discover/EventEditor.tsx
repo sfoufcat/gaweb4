@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import type { DiscoverEvent } from '@/types/discover';
 import type { RecurrenceFrequency } from '@/types';
@@ -11,6 +11,9 @@ import { CategorySelector } from '@/components/admin/CategorySelector';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { MeetingProviderSelector, type MeetingProviderType } from '@/components/scheduling/MeetingProviderSelector';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
 import {
   Select,
   SelectContent,
@@ -142,7 +145,7 @@ function formatDateDisplay(dateStr: string): string {
   });
 }
 
-// Simple inline description editor with basic formatting
+// Inline TipTap description editor with formatting toolbar
 function InlineDescriptionEditor({
   value,
   onChange,
@@ -154,92 +157,92 @@ function InlineDescriptionEditor({
 }) {
   const [isFocused, setIsFocused] = useState(false);
 
-  // Simple text formatting helpers
-  const applyFormat = (format: 'bold' | 'italic' | 'ul' | 'ol') => {
-    const textarea = document.getElementById('description-editor') as HTMLTextAreaElement;
-    if (!textarea) return;
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: false, // Keep it simple for event descriptions
+      }),
+      Placeholder.configure({
+        placeholder,
+      }),
+    ],
+    content: value,
+    onUpdate: ({ editor }) => {
+      onChange(editor.getHTML());
+    },
+    onFocus: () => setIsFocused(true),
+    onBlur: () => setIsFocused(false),
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm dark:prose-invert max-w-none focus:outline-none font-albert text-[#1a1a1a] dark:text-[#f5f5f8] min-h-[80px]',
+      },
+    },
+  });
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = value.substring(start, end);
-
-    let newText = value;
-    let newCursorPos = end;
-
-    switch (format) {
-      case 'bold':
-        newText = value.substring(0, start) + `**${selectedText}**` + value.substring(end);
-        newCursorPos = end + 4;
-        break;
-      case 'italic':
-        newText = value.substring(0, start) + `*${selectedText}*` + value.substring(end);
-        newCursorPos = end + 2;
-        break;
-      case 'ul':
-        newText = value.substring(0, start) + `\n• ${selectedText}` + value.substring(end);
-        newCursorPos = end + 3;
-        break;
-      case 'ol':
-        newText = value.substring(0, start) + `\n1. ${selectedText}` + value.substring(end);
-        newCursorPos = end + 4;
-        break;
+  // Sync external value changes
+  useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      editor.commands.setContent(value);
     }
+  }, [value, editor]);
 
-    onChange(newText);
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  };
+  if (!editor) return null;
 
   return (
-    <div className={`relative rounded-xl transition-all ${isFocused ? 'ring-2 ring-brand-accent/30' : ''}`}>
+    <div className={`relative transition-all ${isFocused ? 'ring-2 ring-brand-accent/20 rounded-lg' : ''}`}>
       {/* Formatting toolbar - shows on focus */}
-      <div className={`flex items-center gap-1 px-2 py-1.5 border-b border-[#e8e4df] dark:border-[#262b35] transition-opacity ${isFocused ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`flex items-center gap-1 mb-2 transition-all ${isFocused ? 'opacity-100 h-auto' : 'opacity-0 h-0 overflow-hidden'}`}>
         <button
           type="button"
-          onClick={() => applyFormat('bold')}
-          className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10 rounded transition-colors"
-          title="Bold"
+          onClick={() => editor.chain().focus().toggleBold().run()}
+          className={`p-1.5 rounded transition-colors ${
+            editor.isActive('bold')
+              ? 'bg-brand-accent text-white'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10'
+          }`}
+          title="Bold (Ctrl+B)"
         >
           <Bold className="w-4 h-4" />
         </button>
         <button
           type="button"
-          onClick={() => applyFormat('italic')}
-          className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10 rounded transition-colors"
-          title="Italic"
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+          className={`p-1.5 rounded transition-colors ${
+            editor.isActive('italic')
+              ? 'bg-brand-accent text-white'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10'
+          }`}
+          title="Italic (Ctrl+I)"
         >
           <Italic className="w-4 h-4" />
         </button>
         <div className="w-px h-4 bg-[#e8e4df] dark:bg-[#262b35] mx-1" />
         <button
           type="button"
-          onClick={() => applyFormat('ul')}
-          className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10 rounded transition-colors"
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          className={`p-1.5 rounded transition-colors ${
+            editor.isActive('bulletList')
+              ? 'bg-brand-accent text-white'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10'
+          }`}
           title="Bullet list"
         >
           <List className="w-4 h-4" />
         </button>
         <button
           type="button"
-          onClick={() => applyFormat('ol')}
-          className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10 rounded transition-colors"
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          className={`p-1.5 rounded transition-colors ${
+            editor.isActive('orderedList')
+              ? 'bg-brand-accent text-white'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10'
+          }`}
           title="Numbered list"
         >
           <ListOrdered className="w-4 h-4" />
         </button>
       </div>
-      <textarea
-        id="description-editor"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        placeholder={placeholder}
-        rows={4}
-        className="w-full px-3 py-2 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-0 outline-none resize-none placeholder:text-[#a7a39e] dark:placeholder:text-[#5f6470]"
-      />
+      <EditorContent editor={editor} />
     </div>
   );
 }
@@ -742,7 +745,7 @@ export function EventEditor({
 
       {/* Main Content - Two Column Layout */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col lg:flex-row gap-6">
 
             {/* Left Column - Main Content */}
@@ -802,7 +805,7 @@ export function EventEditor({
                     placeholder="Event title..."
                     className="w-full text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-0 outline-none placeholder:text-[#a7a39e] dark:placeholder:text-[#5f6470] focus:ring-0"
                   />
-                  <div className="mt-4 border border-[#e8e4df] dark:border-[#262b35] rounded-xl overflow-hidden bg-[#faf8f6] dark:bg-[#11141b]">
+                  <div className="mt-4">
                     <InlineDescriptionEditor
                       value={formData.description}
                       onChange={(description) => setFormData(prev => ({ ...prev, description }))}
@@ -1068,7 +1071,7 @@ export function EventEditor({
             </div>
 
             {/* Right Sidebar */}
-            <div className="lg:w-80 space-y-6">
+            <div className="lg:w-[340px] xl:w-96 space-y-6 flex-shrink-0">
 
               {/* Host Section */}
               <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] p-5">
