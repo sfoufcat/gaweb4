@@ -66,6 +66,7 @@ import {
   Italic,
   List,
   ListOrdered,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 // Common timezones
@@ -746,9 +747,9 @@ export function EventEditor({
   const meetingLink = formData.manualMeetingLink || event?.meetingLink || event?.zoomLink;
 
   return (
-    <div className="flex flex-col h-full min-h-screen bg-[#faf8f6] dark:bg-[#0d0f14]">
-      {/* Header - transparent, no white background */}
-      <div className="sticky top-0 z-10 border-b border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6]/80 dark:bg-[#0d0f14]/80 backdrop-blur-xl">
+    <div className="flex flex-col h-full min-h-screen bg-white dark:bg-[#11141b]">
+      {/* Header */}
+      <div className="sticky top-0 z-10 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white/80 dark:bg-[#11141b]/80 backdrop-blur-xl">
         <div className="flex items-center justify-between px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -846,33 +847,75 @@ export function EventEditor({
               {/* Hero Section - Cover Image + Title + Description */}
               <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
                 {/* Cover Image */}
-                <div className="relative aspect-[16/7] bg-gradient-to-br from-[#f3f1ef] to-[#e8e4df] dark:from-[#1e222a] dark:to-[#262b35]">
+                <div className="relative aspect-[16/7] bg-gradient-to-br from-[#f3f1ef] to-[#e8e4df] dark:from-[#1e222a] dark:to-[#262b35] group">
                   {formData.coverImageUrl ? (
-                    <Image
-                      src={formData.coverImageUrl}
-                      alt={formData.title || 'Event cover'}
-                      fill
-                      className="object-cover"
-                    />
+                    <>
+                      <Image
+                        src={formData.coverImageUrl}
+                        alt={formData.title || 'Event cover'}
+                        fill
+                        className="object-cover"
+                      />
+                      {/* Subtle gradient overlay for better button visibility */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </>
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Calendar className="w-16 h-16 text-[#c1bdb8] dark:text-[#4a5060]" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-white/60 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                        <ImageIcon className="w-6 h-6 text-[#8a8580] dark:text-[#6b7280]" />
+                      </div>
+                      <span className="text-sm text-[#8a8580] dark:text-[#6b7280] font-medium">Add a cover image</span>
                     </div>
                   )}
-                  {/* Image Upload Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/40">
-                    <MediaUpload
-                      value={formData.coverImageUrl}
-                      onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
-                      folder="events"
-                      type="image"
-                      uploadEndpoint={uploadEndpoint}
-                      hideLabel
-                      previewSize="thumbnail"
-                    />
+
+                  {/* Top-right action buttons */}
+                  <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
+                          // Create form data and upload
+                          const uploadFormData = new FormData();
+                          uploadFormData.append('file', file);
+                          uploadFormData.append('folder', 'events');
+
+                          try {
+                            const response = await fetch(uploadEndpoint, {
+                              method: 'POST',
+                              body: uploadFormData,
+                            });
+                            const data = await response.json();
+                            if (data.url) {
+                              setFormData(prev => ({ ...prev, coverImageUrl: data.url }));
+                            }
+                          } catch (error) {
+                            console.error('Upload failed:', error);
+                          }
+                        }}
+                      />
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/90 dark:bg-[#1e222a]/90 text-[#1a1a1a] dark:text-[#f5f5f8] backdrop-blur-sm shadow-sm hover:bg-white dark:hover:bg-[#1e222a] transition-colors cursor-pointer">
+                        <ImageIcon className="w-3.5 h-3.5" />
+                        {formData.coverImageUrl ? 'Change' : 'Upload'}
+                      </span>
+                    </label>
+                    {formData.coverImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, coverImageUrl: '' }))}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/90 dark:bg-[#1e222a]/90 text-[#5f5a55] dark:text-[#b2b6c2] backdrop-blur-sm shadow-sm hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
-                  {/* Badges */}
-                  <div className="absolute top-3 left-3 flex items-center gap-2">
+
+                  {/* Badges - bottom left */}
+                  <div className="absolute bottom-3 left-3 flex items-center gap-2">
                     {formData.featured && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100/90 text-amber-700 backdrop-blur-sm">
                         <Star className="w-3 h-3 fill-current" />
