@@ -1595,6 +1595,9 @@ export function DashboardPage() {
         onSkip={() => setShowWelcomeTour(false)}
       />
 
+      {/* Coach Overview Header - only for coaches, above everything */}
+      {isCoachUser && <CoachOverviewHeader className="mb-6" />}
+
       {/* HEADER with Profile and Alignment Score */}
       <div className="space-y-3 mb-6">
         <div className="flex items-center justify-between">
@@ -1666,9 +1669,6 @@ export function DashboardPage() {
             <ThemeToggle horizontal />
           </div>
         </div>
-
-        {/* Coach Overview Header - between date and headline */}
-        {isCoachUser && <CoachOverviewHeader className="mt-4 mb-2" />}
 
         {/* Main Headline - Dynamic based on time + state */}
         <h1 className="font-albert text-[36px] text-text-primary leading-[1.2] tracking-[-2px]">
