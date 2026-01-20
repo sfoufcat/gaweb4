@@ -1,15 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Calendar, FileText, BookOpen, Download, Link, ClipboardList, ChevronDown } from 'lucide-react';
-import { AdminEventsSection } from './AdminEventsSection';
+import { FileText, BookOpen, Download, Link, ClipboardList, ChevronDown } from 'lucide-react';
 import { AdminArticlesSection } from './AdminArticlesSection';
 import { AdminCoursesSection } from './AdminCoursesSection';
 import { AdminDownloadsSection } from './AdminDownloadsSection';
 import { AdminLinksSection } from './AdminLinksSection';
 import { AdminQuestionnairesSection } from './AdminQuestionnairesSection';
 
-type DiscoverSubTab = 'events' | 'articles' | 'courses' | 'downloads' | 'links' | 'questionnaires';
+type DiscoverSubTab = 'articles' | 'courses' | 'downloads' | 'links' | 'questionnaires';
 
 interface AdminDiscoverTabProps {
   /** Base API path for multi-tenancy (e.g., '/api/coach/org-discover' for coaches) */
@@ -38,7 +37,7 @@ export function AdminDiscoverTab({
 
   // Restore sub-tab selection from URL param on mount
   useEffect(() => {
-    if (initialSubTab && ['courses', 'events', 'articles', 'questionnaires', 'downloads', 'links'].includes(initialSubTab)) {
+    if (initialSubTab && ['courses', 'articles', 'questionnaires', 'downloads', 'links'].includes(initialSubTab)) {
       setActiveSubTab(initialSubTab as DiscoverSubTab);
     }
   }, [initialSubTab]);
@@ -61,7 +60,6 @@ export function AdminDiscoverTab({
 
   const tabs: { id: DiscoverSubTab; label: string; icon: React.ReactNode }[] = [
     { id: 'courses', label: 'Courses', icon: <BookOpen className="w-3.5 h-3.5" /> },
-    { id: 'events', label: 'Events', icon: <Calendar className="w-3.5 h-3.5" /> },
     { id: 'articles', label: 'Articles', icon: <FileText className="w-3.5 h-3.5" /> },
     { id: 'questionnaires', label: 'Questionnaires', icon: <ClipboardList className="w-3.5 h-3.5" /> },
     { id: 'downloads', label: 'Downloads', icon: <Download className="w-3.5 h-3.5" /> },
@@ -140,7 +138,6 @@ export function AdminDiscoverTab({
 
       {/* Content */}
       <div key={activeSubTab} className={isCourseEditorOpen ? '' : 'animate-fadeIn'}>
-        {activeSubTab === 'events' && <AdminEventsSection apiEndpoint={`${apiBasePath}/events`} />}
         {activeSubTab === 'articles' && <AdminArticlesSection apiEndpoint={`${apiBasePath}/articles`} />}
         {activeSubTab === 'courses' && (
           <AdminCoursesSection

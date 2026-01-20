@@ -14,7 +14,7 @@ import { useBranding, useBrandingValues } from '@/contexts/BrandingContext';
 
 // Admin components for expanded coach dashboard
 import { AdminUsersTab, type ColumnKey } from '@/components/admin/AdminUsersTab';
-import { AdminDiscoverTab } from '@/components/admin/discover';
+import { AdminDiscoverTab, AdminEventsSection } from '@/components/admin/discover';
 import { AdminPremiumUpgradeFormsTab } from '@/components/admin/AdminPremiumUpgradeFormsTab';
 import { AdminCoachingIntakeFormsTab } from '@/components/admin/AdminCoachingIntakeFormsTab';
 import { CoachFunnelsTab } from '@/components/coach/funnels';
@@ -58,7 +58,7 @@ const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email
  * Contains Calendar View, Availability Settings, and Call Pricing with sub-navigation
  */
 function SchedulingTab() {
-  const [activeSubTab, setActiveSubTab] = useState<'calendar' | 'availability' | 'pricing'>('calendar');
+  const [activeSubTab, setActiveSubTab] = useState<'calendar' | 'events' | 'availability' | 'pricing'>('calendar');
 
   return (
     <div className="space-y-6">
@@ -73,6 +73,16 @@ function SchedulingTab() {
           }`}
         >
           Calendar
+        </button>
+        <button
+          onClick={() => setActiveSubTab('events')}
+          className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
+            activeSubTab === 'events'
+              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+          }`}
+        >
+          Events
         </button>
         <button
           onClick={() => setActiveSubTab('availability')}
@@ -100,6 +110,8 @@ function SchedulingTab() {
       <div key={activeSubTab} className="animate-fadeIn bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
         {activeSubTab === 'calendar' ? (
           <CalendarView mode="coach" />
+        ) : activeSubTab === 'events' ? (
+          <AdminEventsSection apiEndpoint="/api/coach/org-discover/events" />
         ) : activeSubTab === 'availability' ? (
           <AvailabilityEditor />
         ) : (

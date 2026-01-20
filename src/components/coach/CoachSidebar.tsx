@@ -21,10 +21,10 @@ const FULL_NAV_GROUPS: NavGroup[] = [
     name: 'Core',
     items: [
       { value: 'clients', label: 'Clients' },
+      { value: 'scheduling', label: 'Schedule' },
       { value: 'programs', label: 'Programs' },
       { value: 'squads', label: 'Squads' },
       { value: 'discover', label: 'Resources' },
-      { value: 'scheduling', label: 'Scheduling' },
     ],
   },
   {
