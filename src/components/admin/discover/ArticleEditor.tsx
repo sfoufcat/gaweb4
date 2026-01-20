@@ -154,7 +154,7 @@ export function ArticleEditor({
       {/* Header */}
       <div className="border-b border-[#e1ddd8] dark:border-[#262b35]">
         <div className="flex items-center justify-between px-4 sm:px-6 py-3">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               type="button"
               onClick={onClose}
@@ -162,25 +162,28 @@ export function ArticleEditor({
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <input
-              ref={titleInputRef}
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              onFocus={() => setIsTitleFocused(true)}
-              onBlur={() => setIsTitleFocused(false)}
-              placeholder="Article title..."
-              className="flex-1 text-base sm:text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-[#9ca3af] min-w-0"
-            />
-            {!isTitleFocused && (
-              <button
-                type="button"
-                onClick={handleTitleEditClick}
-                className="p-1.5 text-[#9ca3af] hover:text-[#5f5a55] dark:hover:text-[#b2b6c2] transition-colors flex-shrink-0"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-            )}
+            <div className="flex items-center gap-1 min-w-0">
+              <input
+                ref={titleInputRef}
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                onFocus={() => setIsTitleFocused(true)}
+                onBlur={() => setIsTitleFocused(false)}
+                placeholder="Article title..."
+                className="text-base sm:text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-[#9ca3af] min-w-0"
+                style={{ width: `${Math.max(formData.title.length, 10)}ch` }}
+              />
+              {!isTitleFocused && (
+                <button
+                  type="button"
+                  onClick={handleTitleEditClick}
+                  className="p-1.5 text-[#9ca3af] hover:text-[#5f5a55] dark:hover:text-[#b2b6c2] transition-colors flex-shrink-0"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 ml-4">
@@ -264,8 +267,6 @@ export function ArticleEditor({
             <RichTextEditor
               value={formData.content}
               onChange={(content) => setFormData(prev => ({ ...prev, content }))}
-              label="Article"
-              required
               rows={24}
               placeholder="Write your article content here..."
               showMediaToolbar={true}

@@ -53,7 +53,7 @@ export function CurrencySelector({
           aria-expanded={open}
           className="w-full justify-between h-auto py-2 font-normal text-left rounded-lg border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b]"
         >
-          <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm">
+          <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm whitespace-nowrap">
             {selectedCurrency.code} ({selectedCurrency.symbol})
           </span>
           <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />

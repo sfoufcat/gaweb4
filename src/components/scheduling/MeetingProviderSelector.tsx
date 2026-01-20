@@ -32,6 +32,8 @@ export interface MeetingProviderSelectorProps {
   className?: string;
   /** Label override */
   label?: string;
+  /** Already saved/generated meeting link - hides "will be auto-generated" text when set */
+  savedMeetingLink?: string;
 }
 
 interface ProviderConfig {
@@ -60,6 +62,7 @@ export function MeetingProviderSelector({
   disabled = false,
   className = '',
   label = 'Meeting Link',
+  savedMeetingLink,
 }: MeetingProviderSelectorProps) {
   const { zoom, googleMeet, isLoading } = useCoachIntegrations();
 
@@ -196,9 +199,11 @@ export function MeetingProviderSelector({
               <span className="text-xs opacity-75">({zoom.accountEmail})</span>
             )}
           </p>
-          <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1 ml-6">
-            Link will be auto-generated
-          </p>
+          {!savedMeetingLink && (
+            <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1 ml-6">
+              Link will be auto-generated
+            </p>
+          )}
         </div>
       );
     }
@@ -214,9 +219,11 @@ export function MeetingProviderSelector({
               <span className="text-xs opacity-75">({googleMeet.accountEmail})</span>
             )}
           </p>
-          <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1 ml-6">
-            Link will be auto-generated
-          </p>
+          {!savedMeetingLink && (
+            <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1 ml-6">
+              Link will be auto-generated
+            </p>
+          )}
         </div>
       );
     }

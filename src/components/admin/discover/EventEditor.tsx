@@ -1006,11 +1006,12 @@ export function EventEditor({
                   onChange={(provider) => setFormData(prev => ({ ...prev, meetingProvider: provider }))}
                   manualLink={formData.manualMeetingLink}
                   onManualLinkChange={(link) => setFormData(prev => ({ ...prev, manualMeetingLink: link }))}
+                  savedMeetingLink={meetingLink}
                 />
 
-                {/* Show meeting link if exists (from saved event or manual entry) */}
+                {/* Show meeting link on mobile only (desktop shows in sidebar) */}
                 {meetingLink && (
-                  <div className="mt-4 flex items-center gap-2 p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]">
+                  <div className="lg:hidden mt-4 flex items-center gap-2 p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]">
                     <LinkIcon className="w-4 h-4 text-brand-accent flex-shrink-0" />
                     <a
                       href={meetingLink}
@@ -1119,6 +1120,31 @@ export function EventEditor({
 
             {/* Right Sidebar */}
             <div className="lg:w-[340px] xl:w-96 space-y-6 flex-shrink-0">
+
+              {/* Event Link Section - Desktop only, shows when link exists */}
+              {meetingLink && (
+                <div className="hidden lg:block bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] p-5">
+                  <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">Event Link</h3>
+                  <div className="flex items-center gap-2 p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl">
+                    <LinkIcon className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                    <a
+                      href={meetingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-sm text-brand-accent font-albert truncate hover:underline"
+                    >
+                      {meetingLink}
+                    </a>
+                    <button
+                      onClick={copyMeetingLink}
+                      className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
+                      title="Copy link"
+                    >
+                      {copiedLink ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Host Section */}
               <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] p-5">

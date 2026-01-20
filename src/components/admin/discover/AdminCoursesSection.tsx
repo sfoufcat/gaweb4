@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { DiscoverCourse } from '@/types/discover';
@@ -87,6 +87,9 @@ export function AdminCoursesSection({
   const [isCreating, setIsCreating] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  // Track last processed course ID to prevent re-opening after close
+  const lastProcessedCourseId = useRef<string | null>(null);
+
   // Derive endpoints from API endpoint - use coach endpoints for coach routes
   const isCoachContext = apiEndpoint.includes('/coach/');
   const uploadEndpoint = isCoachContext 
@@ -127,7 +130,11 @@ export function AdminCoursesSection({
 
   // Handle initial course ID from URL
   useEffect(() => {
+    // Skip if we've already processed this courseId (prevents re-opening after close)
+    if (initialCourseId === lastProcessedCourseId.current) return;
+
     if (initialCourseId && courses.length > 0 && viewMode === 'list') {
+      lastProcessedCourseId.current = initialCourseId;
       if (initialCourseId === 'new') {
         // Creating new course - open the modal
         setShowCreateModal(true);
@@ -140,6 +147,9 @@ export function AdminCoursesSection({
           setViewMode('editor');
         }
       }
+    } else if (!initialCourseId) {
+      // Reset when courseId is cleared from URL
+      lastProcessedCourseId.current = null;
     }
   }, [initialCourseId, courses, viewMode]);
 

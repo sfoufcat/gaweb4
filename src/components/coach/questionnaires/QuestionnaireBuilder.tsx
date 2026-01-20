@@ -138,9 +138,9 @@ export function QuestionnaireBuilder({
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#f9f8f6] dark:bg-[#11141b]">
+    <div className="min-h-screen bg-[#f9f8f6] dark:bg-[#11141b]">
       {/* Header - Redesigned */}
-      <div className="flex-shrink-0 z-10 bg-[#f9f8f6]/95 dark:bg-[#11141b]/95 backdrop-blur-sm border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+      <div className="sticky top-0 z-10 bg-[#f9f8f6]/95 dark:bg-[#11141b]/95 backdrop-blur-sm border-b border-[#e1ddd8] dark:border-[#262b35]/50">
         <div className="px-6 py-4">
           {/* Row 1: Back, Title, Status, Actions */}
           <div className="flex items-center gap-3">
@@ -280,9 +280,9 @@ export function QuestionnaireBuilder({
       )}
 
       {/* Content with Desktop Sidebar */}
-      <div className="flex-1 flex overflow-hidden gap-6 p-6">
+      <div className="flex items-start gap-6 p-6">
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-w-0">
           <div className={`${isDesktop ? 'max-w-4xl' : 'max-w-3xl'} mx-auto`}>
             {/* Questions */}
             <div className="space-y-4">
@@ -341,7 +341,7 @@ export function QuestionnaireBuilder({
 
         {/* Desktop Sidebar */}
         {isDesktop && (
-          <div className="w-80 flex-shrink-0 overflow-y-auto bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
+          <div className="w-80 flex-shrink-0 sticky top-24 self-start bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
             <div className="p-5 space-y-5">
               {/* Active toggle */}
               <div className="flex items-center justify-between">

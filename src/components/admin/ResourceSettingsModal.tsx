@@ -325,30 +325,6 @@ function SettingsContent({
                       onChange={(currency) => onPricingChange({ ...pricing, currency })}
                     />
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onPricingChange({ ...pricing, purchaseType: 'popup' })}
-                      className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
-                        pricing.purchaseType === 'popup'
-                          ? 'bg-brand-accent text-white border-brand-accent'
-                          : 'bg-white dark:bg-[#0d0f14] border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent'
-                      }`}
-                    >
-                      Popup Checkout
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onPricingChange({ ...pricing, purchaseType: 'landing_page' })}
-                      className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
-                        pricing.purchaseType === 'landing_page'
-                          ? 'bg-brand-accent text-white border-brand-accent'
-                          : 'bg-white dark:bg-[#0d0f14] border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent'
-                      }`}
-                    >
-                      Landing Page
-                    </button>
-                  </div>
                 </div>
               )}
 
