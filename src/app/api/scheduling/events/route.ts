@@ -82,11 +82,15 @@ export async function GET(request: NextRequest) {
       return demoResponse({ events });
     }
 
-    const { userId } = await auth();
-    
+    const { userId, sessionClaims } = await auth();
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Get user role from session claims
+    const publicMetadata = sessionClaims?.publicMetadata as { role?: string; orgRole?: string } | undefined;
+    const userRole = publicMetadata?.orgRole || publicMetadata?.role || 'user';
 
     // Use tenant context for org filtering (consistent with /api/events)
     const orgId = await getEffectiveOrgId();
@@ -268,6 +272,67 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Query 5: Community/discover events for the user's organization (for coaches)
+    // These events may not have hostUserId set, so we query by organizationId
+    // We query all org events and filter for community events (with or without eventType set)
+    if (orgId) {
+      const orgEventsQuery = adminDb
+        .collection('events')
+        .where('organizationId', '==', orgId);
+
+      const orgEventsSnapshot = await orgEventsQuery.get();
+
+      for (const doc of orgEventsSnapshot.docs) {
+        // Skip if already in map
+        if (eventsMap.has(doc.id)) continue;
+
+        const data = doc.data();
+
+        // Identify discover/community events:
+        // 1. Has eventType: 'community_event', OR
+        // 2. Has 'date' and 'startTime' fields (legacy discover event format) without other event types
+        const hasDiscoverFormat = data.date && data.startTime;
+        const isDiscoverEventType = data.eventType === 'community_event';
+        const isOtherEventType = data.eventType && data.eventType !== 'community_event';
+
+        // Skip if it's a known non-discover event type (coaching_1on1, squad_call, etc.)
+        if (isOtherEventType) continue;
+
+        // Only include if it's a discover event
+        if (!isDiscoverEventType && !hasDiscoverFormat) continue;
+
+        const event = { id: doc.id, ...data } as UnifiedEvent;
+
+        // Set eventType if not already set (for legacy events)
+        if (!event.eventType && hasDiscoverFormat) {
+          event.eventType = 'community_event';
+        }
+
+        // Compute startDateTime if not present
+        let eventStartDateTime = event.startDateTime;
+        if (!eventStartDateTime) {
+          const computed = computeStartDateTime(event);
+          if (computed) {
+            eventStartDateTime = computed;
+            event.startDateTime = computed;
+
+            const computedEnd = computeEndDateTime(event);
+            if (computedEnd) {
+              event.endDateTime = computedEnd;
+            }
+          }
+        }
+
+        // Check if within date range
+        if (eventStartDateTime) {
+          const eventStart = new Date(eventStartDateTime);
+          if (eventStart >= rangeStart && eventStart <= rangeEnd) {
+            eventsMap.set(doc.id, event);
+          }
+        }
+      }
+    }
+
     // Convert map to array
     let events = Array.from(eventsMap.values());
 
@@ -276,22 +341,31 @@ export async function GET(request: NextRequest) {
       events = events.filter(e => e.organizationId === orgId);
     }
 
+    // Check if current user is a coach in this org
+    const isOrgCoach = coachedSquadIds.length > 0 || userRole === 'coach' || userRole === 'super_coach' || userRole === 'admin';
+
     // Filter by user participation based on role
     // Note: For squad events, user is considered a participant if they're in the squad
     // Note: For coaches, include events from their coached squads even if hostUserId is null
+    // Note: For org coaches, include community_event types in their organization
     events = events.filter(e => {
       const attendeeIds = e.attendeeIds || [];
       const isSquadMember = e.squadId && userSquadIds.includes(e.squadId);
       const isSquadCoach = e.squadId && coachedSquadIds.includes(e.squadId);
-      
+      // Include org community events for coaches (both new format with eventType and legacy format with date field)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const eventData = e as any;
+      const isCommunityEvent = e.eventType === 'community_event' || (eventData.date && eventData.startTime && !e.eventType);
+      const isOrgCommunityEvent = isOrgCoach && isCommunityEvent && e.organizationId === orgId;
+
       if (roleParam === 'host') {
-        // Include events where user is host OR where user is coach of the squad
-        return e.hostUserId === userId || isSquadCoach;
+        // Include events where user is host OR where user is coach of the squad OR org community events
+        return e.hostUserId === userId || isSquadCoach || isOrgCommunityEvent;
       } else if (roleParam === 'attendee') {
         return (attendeeIds.includes(userId) || isSquadMember) && e.hostUserId !== userId;
       } else {
-        // 'all' - user is either host, attendee, squad member, or squad coach
-        return e.hostUserId === userId || attendeeIds.includes(userId) || isSquadMember || isSquadCoach;
+        // 'all' - user is either host, attendee, squad member, squad coach, or org coach viewing community events
+        return e.hostUserId === userId || attendeeIds.includes(userId) || isSquadMember || isSquadCoach || isOrgCommunityEvent;
       }
     });
 

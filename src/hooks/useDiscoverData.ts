@@ -336,9 +336,13 @@ export function useDiscoverData() {
     const upcoming: DiscoverEvent[] = [];
     const past: DiscoverEvent[] = [];
 
+    console.log('[useDiscoverData] Splitting events, total:', events.length, 'now:', now.toISOString());
+
     events.forEach((event) => {
       const eventDate = new Date(event.date);
       eventDate.setHours(0, 0, 0, 0);
+
+      console.log('[useDiscoverData] Event:', event.title, 'date:', event.date, 'parsed:', eventDate.toISOString(), 'isPast:', eventDate < now);
 
       if (eventDate >= now) {
         upcoming.push(event);
@@ -346,6 +350,8 @@ export function useDiscoverData() {
         past.push(event);
       }
     });
+
+    console.log('[useDiscoverData] Split result - upcoming:', upcoming.length, 'past:', past.length);
 
     // Sort upcoming by date ascending (soonest first)
     upcoming.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());

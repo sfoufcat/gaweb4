@@ -87,6 +87,10 @@ export default function DiscoverPage() {
     return pastEvents.filter(e => !ownedContentIds.eventIds.has(e.id));
   }, [pastEvents, ownedContentIds.eventIds]);
 
+  // Debug: Log past events data
+  console.log('[Discover] pastEvents from hook:', pastEvents.length, pastEvents.map(e => ({ id: e.id, title: e.title, date: e.date })));
+  console.log('[Discover] availablePastEvents after filter:', availablePastEvents.length);
+
   // Get selected category name for filtering
   const selectedCategoryName = useMemo(() => {
     if (!selectedCategory) return null;

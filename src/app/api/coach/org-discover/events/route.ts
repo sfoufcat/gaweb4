@@ -91,6 +91,18 @@ export async function GET() {
   }
 }
 
+// Compute startDateTime from date + time + timezone
+function computeStartDateTime(date: string, time: string, timezone: string): string {
+  try {
+    // Create a date string in local time, then convert to ISO
+    const dateTimeStr = `${date}T${time}:00`;
+    // For simplicity, we'll create an ISO string - timezone handling would need luxon/date-fns-tz for accuracy
+    return new Date(dateTimeStr).toISOString();
+  } catch {
+    return new Date(`${date}T${time}:00`).toISOString();
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Demo mode: block write operations
@@ -98,8 +110,8 @@ export async function POST(request: NextRequest) {
     if (isDemo) {
       return demoNotAvailable('Creating events');
     }
-    
-    const { organizationId } = await requireCoachWithOrg();
+
+    const { organizationId, userId } = await requireCoachWithOrg();
     
     // Enforce content item limit based on plan
     try {
@@ -141,6 +153,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Compute calendar-compatible datetime fields
+    const startDateTime = computeStartDateTime(body.date, body.startTime, body.timezone);
+    const endDateTime = computeStartDateTime(body.date, body.endTime, body.timezone);
+
     const eventData = {
       title: body.title,
       coverImageUrl: body.coverImageUrl,
@@ -148,6 +164,11 @@ export async function POST(request: NextRequest) {
       startTime: body.startTime,
       endTime: body.endTime,
       timezone: body.timezone,
+      // Calendar-compatible fields for unified display
+      eventType: 'community_event' as const,
+      startDateTime,
+      endDateTime,
+      hostUserId: userId, // Link to creating coach for calendar queries
       locationType: body.locationType,
       locationLabel: body.locationLabel,
       shortDescription: body.shortDescription,

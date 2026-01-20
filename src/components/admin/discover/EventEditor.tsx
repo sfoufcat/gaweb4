@@ -747,7 +747,7 @@ export function EventEditor({
   const meetingLink = formData.manualMeetingLink || event?.meetingLink || event?.zoomLink;
 
   return (
-    <div className="flex flex-col h-full min-h-screen bg-white dark:bg-[#11141b]">
+    <div className="-m-6 flex flex-col h-[calc(100%+3rem)] min-h-screen bg-white dark:bg-[#11141b]">
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white/80 dark:bg-[#11141b]/80 backdrop-blur-xl">
         <div className="flex items-center justify-between px-4 sm:px-6 py-3">

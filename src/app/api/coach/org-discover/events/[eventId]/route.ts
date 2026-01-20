@@ -90,7 +90,7 @@ export async function PATCH(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const { organizationId } = await requireCoachWithOrg();
+    const { organizationId, userId } = await requireCoachWithOrg();
     const { eventId } = await params;
     const body = await request.json();
 
@@ -109,6 +109,16 @@ export async function PATCH(
     const updateData: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
     };
+
+    // Ensure eventType is set for calendar compatibility (backfill for existing events)
+    if (!existingData?.eventType) {
+      updateData.eventType = 'community_event';
+    }
+
+    // Ensure hostUserId is set for calendar queries (backfill for existing events)
+    if (!existingData?.hostUserId) {
+      updateData.hostUserId = userId;
+    }
 
     // Handle date/time updates - convert to UnifiedEvent format
     if (body.date || body.startTime || body.time) {
