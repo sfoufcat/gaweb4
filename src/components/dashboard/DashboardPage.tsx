@@ -1595,9 +1595,6 @@ export function DashboardPage() {
         onSkip={() => setShowWelcomeTour(false)}
       />
 
-      {/* Coach Overview Header - only for coaches, above everything */}
-      {isCoachUser && <CoachOverviewHeader className="mb-6" />}
-
       {/* HEADER with Profile and Alignment Score */}
       <div className="space-y-3 mb-6">
         <div className="flex items-center justify-between">
@@ -1683,6 +1680,9 @@ export function DashboardPage() {
           </p>
         )}
       </div>
+
+      {/* Coach Overview Header - only for coaches, below headline */}
+      {isCoachUser && <CoachOverviewHeader className="mb-6" />}
 
       {/* DYNAMIC WIDGET CAROUSEL (Mobile) / GRID (Desktop) */}
       <div data-tour="dynamic-section" className="relative mb-6">

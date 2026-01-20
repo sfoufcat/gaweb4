@@ -13,8 +13,7 @@ interface MetricCardProps {
   value: string | number;
   subValue?: string;
   icon: React.ElementType;
-  iconColor: string;
-  iconBg: string;
+  accentColor: string;
   href?: string;
   isAlert?: boolean;
 }
@@ -24,39 +23,61 @@ function MetricCard({
   value,
   subValue,
   icon: Icon,
-  iconColor,
-  iconBg,
+  accentColor,
   href,
   isAlert,
 }: MetricCardProps) {
   const content = (
     <div
       className={cn(
-        'flex flex-col p-4 rounded-2xl transition-all duration-200',
-        'bg-white dark:bg-[#171b22]',
-        'border border-[#e1ddd8] dark:border-[#262b35]',
-        'shadow-sm hover:shadow-md hover:scale-[1.02]',
+        'group relative overflow-hidden rounded-[20px] p-4 transition-all duration-300',
+        'bg-white/70 dark:bg-[#171b22]/70',
+        'backdrop-blur-xl',
+        'border border-white/50 dark:border-white/10',
+        'shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)]',
+        'hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.1)]',
+        'hover:bg-white/90 dark:hover:bg-[#171b22]/90',
+        'hover:scale-[1.02] hover:-translate-y-0.5',
         href && 'cursor-pointer',
-        isAlert && value !== '0' && value !== 0 && 'ring-2 ring-red-200 dark:ring-red-900/50'
+        isAlert && value !== '0' && value !== 0 && 'ring-2 ring-red-300/50 dark:ring-red-500/30'
       )}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <div className={cn('p-2 rounded-xl', iconBg)}>
-          <Icon className={cn('w-4 h-4', iconColor)} />
-        </div>
-      </div>
-      <div className="space-y-0.5">
-        <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-tight">
-          {value}
-        </p>
-        <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">
-          {label}
-        </p>
-        {subValue && (
-          <p className="text-xs text-[#a7a39e] dark:text-[#5f6470] font-albert">
-            {subValue}
-          </p>
+      {/* Subtle gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/50 via-transparent to-transparent dark:from-white/5 pointer-events-none" />
+
+      {/* Accent glow */}
+      <div
+        className={cn(
+          'absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-20 group-hover:opacity-30 transition-opacity',
+          accentColor
         )}
+      />
+
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-3">
+          <div className={cn(
+            'p-2 rounded-xl backdrop-blur-sm',
+            'bg-gradient-to-br from-white/80 to-white/40 dark:from-white/10 dark:to-white/5',
+            'border border-white/50 dark:border-white/10',
+            'shadow-sm'
+          )}>
+            <Icon className={cn('w-4 h-4', accentColor.replace('bg-', 'text-').replace('/20', ''))} />
+          </div>
+          <ArrowRight className="w-4 h-4 text-[#c4c0bb] dark:text-[#4a4f5a] group-hover:text-[#a07855] group-hover:translate-x-0.5 transition-all" />
+        </div>
+        <div className="space-y-0.5">
+          <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-tight">
+            {value}
+          </p>
+          <p className="text-sm font-medium text-[#6b6560] dark:text-[#9ca3af] font-albert">
+            {label}
+          </p>
+          {subValue && (
+            <p className="text-xs text-[#a7a39e] dark:text-[#5f6470] font-albert">
+              {subValue}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -72,14 +93,17 @@ function LoadingSkeleton() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <div className="h-6 w-40 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
-        <div className="h-9 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full animate-pulse" />
+        <div className="space-y-2">
+          <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#262b35]/50 rounded-lg animate-pulse" />
+          <div className="h-4 w-48 bg-[#e1ddd8]/30 dark:bg-[#262b35]/30 rounded-lg animate-pulse" />
+        </div>
+        <div className="h-10 w-28 bg-[#e1ddd8]/50 dark:bg-[#262b35]/50 rounded-full animate-pulse" />
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="h-28 bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] animate-pulse"
+            className="h-[120px] bg-white/50 dark:bg-[#171b22]/50 rounded-[20px] backdrop-blur-xl border border-white/30 dark:border-white/5 animate-pulse"
           />
         ))}
       </div>
@@ -150,7 +174,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
         </div>
         <Link
           href="/coach"
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#a07855] hover:text-[#8a6847] transition-colors rounded-full border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] hover:bg-[#f7f5f3] dark:hover:bg-[#1d222b]"
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] transition-all duration-200 rounded-full bg-white/70 dark:bg-[#171b22]/70 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-sm hover:shadow-md hover:bg-white dark:hover:bg-[#171b22] hover:scale-[1.02]"
         >
           Dashboard
           <ArrowRight className="w-4 h-4" />
@@ -164,8 +188,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
           value={formatCurrency(totalRevenue)}
           subValue="All time"
           icon={DollarSign}
-          iconColor="text-emerald-600 dark:text-emerald-400"
-          iconBg="bg-emerald-100 dark:bg-emerald-900/30"
+          accentColor="bg-emerald-500/20"
           href="/coach?tab=analytics"
         />
 
@@ -174,8 +197,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
           value={topProgram?.name ? (topProgram.name.length > 12 ? topProgram.name.slice(0, 12) + '…' : topProgram.name) : '—'}
           subValue={topProgram ? `${topProgram.enrolledCount} enrolled` : 'Create your first'}
           icon={Trophy}
-          iconColor="text-amber-600 dark:text-amber-400"
-          iconBg="bg-amber-100 dark:bg-amber-900/30"
+          accentColor="bg-amber-500/20"
           href="/coach?tab=programs"
         />
 
@@ -184,8 +206,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
           value={activeClients}
           subValue={`${Math.round(activeRate)}% engagement`}
           icon={TrendingUp}
-          iconColor="text-blue-600 dark:text-blue-400"
-          iconBg="bg-blue-100 dark:bg-blue-900/30"
+          accentColor="bg-blue-500/20"
           href="/coach?tab=clients"
         />
 
@@ -194,8 +215,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
           value={atRiskCount > 0 ? atRiskCount : '✓'}
           subValue={atRiskCount > 0 ? 'Need attention' : 'All thriving'}
           icon={atRiskCount > 0 ? AlertTriangle : Users}
-          iconColor={atRiskCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-violet-600 dark:text-violet-400'}
-          iconBg={atRiskCount > 0 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-violet-100 dark:bg-violet-900/30'}
+          accentColor={atRiskCount > 0 ? 'bg-red-500/20' : 'bg-violet-500/20'}
           href="/coach?tab=clients"
           isAlert={atRiskCount > 0}
         />
