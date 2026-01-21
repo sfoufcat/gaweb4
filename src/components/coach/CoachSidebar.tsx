@@ -3,20 +3,20 @@
 import { cn } from '@/lib/utils';
 
 // Tab types from coach page
-type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'website' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'integrations' | 'customize' | 'plan' | 'support';
+export type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'website' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'integrations' | 'customize' | 'plan' | 'support';
 
-interface NavItem {
+export interface NavItem {
   value: CoachTab;
   label: string;
 }
 
-interface NavGroup {
+export interface NavGroup {
   name: string;
   items: NavItem[];
 }
 
 // Full navigation groups
-const FULL_NAV_GROUPS: NavGroup[] = [
+export const FULL_NAV_GROUPS: NavGroup[] = [
   {
     name: 'Core',
     items: [
@@ -62,7 +62,7 @@ const FULL_NAV_GROUPS: NavGroup[] = [
 ];
 
 // Limited navigation groups (for org coaches with limited access)
-const LIMITED_NAV_GROUPS: NavGroup[] = [
+export const LIMITED_NAV_GROUPS: NavGroup[] = [
   {
     name: 'Core',
     items: [
