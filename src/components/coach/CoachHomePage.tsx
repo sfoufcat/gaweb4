@@ -43,7 +43,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 // TIME PERIOD SELECTOR
 // ============================================================================
 
-type TimePeriod = '7' | '30' | '90' | 'all';
+type TimePeriod = 'today' | '7' | '30' | '90' | 'all';
 
 interface TimePeriodSelectorProps {
   value: TimePeriod;
@@ -57,6 +57,7 @@ function TimePeriodSelector({ value, onChange }: TimePeriodSelectorProps) {
         <SelectValue />
       </SelectTrigger>
       <SelectContent className="rounded-xl">
+        <SelectItem value="today" className="font-albert">Today</SelectItem>
         <SelectItem value="7" className="font-albert">Last 7 days</SelectItem>
         <SelectItem value="30" className="font-albert">Last 30 days</SelectItem>
         <SelectItem value="90" className="font-albert">Last 90 days</SelectItem>
@@ -629,7 +630,7 @@ interface UserGoalData {
 
 export function CoachHomePage() {
   const { user } = useUser();
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>('7');
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('today');
   const [greeting, setGreeting] = useState('Good morning');
   const [mounted, setMounted] = useState(false);
 
@@ -646,7 +647,7 @@ export function CoachHomePage() {
   }, []);
 
   // Calculate days param for API
-  const days = timePeriod === 'all' ? '0' : timePeriod;
+  const days = timePeriod === 'all' ? '0' : timePeriod === 'today' ? '1' : timePeriod;
 
   // Fetch programs
   const { data: programsData, isLoading: programsLoading } = useSWR<ProgramsResponse>(
@@ -782,7 +783,7 @@ export function CoachHomePage() {
           <p className="font-sans text-[12px] text-text-secondary leading-[1.2]">
             {currentDate}
           </p>
-          <div className="flex items-center gap-2 lg:hidden">
+          <div className="flex items-center gap-1.5 lg:hidden">
             <NotificationIconButton />
             <CalendarIconButton />
             <ViewSwitcher horizontal />
@@ -812,7 +813,7 @@ export function CoachHomePage() {
             <StatCard
               label="Revenue"
               value={`$${totalRevenue.toLocaleString()}`}
-              subValue={timePeriod !== 'all' ? `Last ${timePeriod} days` : undefined}
+              subValue={timePeriod === 'today' ? 'Today' : timePeriod === 'all' ? 'All time' : `Last ${timePeriod} days`}
               icon={DollarSign}
               gradient="bg-gradient-to-br from-emerald-500 to-teal-500"
               href="/coach?tab=analytics"
@@ -828,7 +829,7 @@ export function CoachHomePage() {
             <StatCard
               label="Feed Posts"
               value={totalPosts}
-              subValue={timePeriod !== 'all' ? `Last ${timePeriod} days` : undefined}
+              subValue={timePeriod === 'today' ? 'Today' : timePeriod === 'all' ? 'All time' : `Last ${timePeriod} days`}
               icon={MessageSquare}
               gradient="bg-gradient-to-br from-purple-500 to-pink-500"
               href="/feed"
