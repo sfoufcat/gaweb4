@@ -2,22 +2,60 @@
 
 import { useViewMode } from '@/contexts/ViewModeContext';
 import { cn } from '@/lib/utils';
-import { User, Shield } from 'lucide-react';
+
+// User icon for client mode
+function UserIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+    </svg>
+  );
+}
+
+// Shield icon for coach mode
+function ShieldIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+    </svg>
+  );
+}
 
 interface ViewSwitcherProps {
-  /** Compact mode - icons only */
-  compact?: boolean;
-  /** Additional className */
   className?: string;
+  horizontal?: boolean;
 }
 
 /**
- * ViewSwitcher - Toggle between Coach and Client views
+ * ViewSwitcher Component
  *
+ * A pill-shaped toggle for switching between Client and Coach views.
+ * Matches the ThemeToggle design - vertical (default) or horizontal.
+ * User icon for client, shield icon for coach.
  * Only renders for users who have coach access.
- * Subtle segmented control design that matches the app's aesthetic.
  */
-export function ViewSwitcher({ compact = false, className }: ViewSwitcherProps) {
+export function ViewSwitcher({ className = '', horizontal = false }: ViewSwitcherProps) {
   const { viewMode, setViewMode, canAccessCoachView, isLoading } = useViewMode();
 
   // Don't render for non-coaches or while loading
@@ -27,109 +65,110 @@ export function ViewSwitcher({ compact = false, className }: ViewSwitcherProps) 
 
   const isCoachView = viewMode === 'coach';
 
-  if (compact) {
-    // Compact mode - single button that toggles
+  const handleToggle = () => {
+    setViewMode(isCoachView ? 'client' : 'coach');
+  };
+
+  if (horizontal) {
     return (
       <button
-        onClick={() => setViewMode(isCoachView ? 'client' : 'coach')}
-        title={isCoachView ? 'Switch to Client View' : 'Switch to Coach View'}
+        onClick={handleToggle}
         className={cn(
-          'flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200',
-          'bg-[#f5f3f0] dark:bg-[#1a1f2a] hover:bg-[#ebe8e4] dark:hover:bg-[#242a38]',
+          'relative flex flex-row items-center justify-between',
+          'h-[28px] w-[62px] rounded-full p-[3px]',
+          'bg-[#f3f1ef] dark:bg-[#181d28]',
+          'transition-colors duration-300 ease-out',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent',
           className
         )}
+        aria-label={isCoachView ? 'Switch to Client View' : 'Switch to Coach View'}
+        title={isCoachView ? 'Switch to Client View' : 'Switch to Coach View'}
       >
-        {isCoachView ? (
-          <Shield className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
-        ) : (
-          <User className="w-5 h-5 text-[#5f5a55] dark:text-[#b5b0ab]" />
-        )}
+        {/* Sliding indicator background - horizontal */}
+        <div
+          className={cn(
+            'absolute w-[28px] h-[22px] rounded-full',
+            'bg-white dark:bg-[#262b35]',
+            'shadow-sm',
+            'transition-all duration-300 ease-out',
+            isCoachView ? 'left-[31px]' : 'left-[3px]'
+          )}
+        />
+
+        {/* User icon - left position (client) */}
+        <div
+          className={cn(
+            'relative z-10 w-[28px] h-[22px] flex items-center justify-center',
+            'transition-all duration-300',
+            !isCoachView ? 'text-blue-500' : 'text-[#7d8190]'
+          )}
+        >
+          <UserIcon />
+        </div>
+
+        {/* Shield icon - right position (coach) */}
+        <div
+          className={cn(
+            'relative z-10 w-[28px] h-[22px] flex items-center justify-center',
+            'transition-all duration-300',
+            isCoachView ? 'text-amber-600 dark:text-amber-500' : 'text-[#a7a39e]'
+          )}
+        >
+          <ShieldIcon />
+        </div>
       </button>
     );
   }
 
-  // Full mode - segmented control
+  // Vertical orientation (default)
   return (
-    <div
+    <button
+      onClick={handleToggle}
       className={cn(
-        'flex items-center p-1 rounded-xl',
-        'bg-[#f5f3f0] dark:bg-[#1a1f2a]',
+        'relative flex flex-col items-center justify-between',
+        'w-[28px] h-[62px] rounded-full p-[3px]',
+        'bg-[#f3f1ef] dark:bg-[#181d28]',
+        'transition-colors duration-300 ease-out',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent',
         className
       )}
+      aria-label={isCoachView ? 'Switch to Client View' : 'Switch to Coach View'}
+      title={isCoachView ? 'Switch to Client View' : 'Switch to Coach View'}
     >
-      <button
-        onClick={() => setViewMode('client')}
+      {/* Sliding indicator background */}
+      <div
         className={cn(
-          'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
-          !isCoachView
-            ? 'bg-white dark:bg-[#272d38] text-[#1a1a1a] dark:text-[#faf8f6] shadow-sm'
-            : 'text-[#5f5a55] dark:text-[#b5b0ab] hover:text-[#1a1a1a] dark:hover:text-[#faf8f6]'
+          'absolute w-[22px] h-[28px] rounded-full',
+          'bg-white dark:bg-[#262b35]',
+          'shadow-sm',
+          'transition-all duration-300 ease-out',
+          isCoachView ? 'top-[31px]' : 'top-[3px]'
+        )}
+      />
+
+      {/* User icon - top position (client) */}
+      <div
+        className={cn(
+          'relative z-10 w-[22px] h-[28px] flex items-center justify-center',
+          'transition-all duration-300',
+          !isCoachView ? 'text-blue-500' : 'text-[#7d8190]'
         )}
       >
-        <User className="w-4 h-4" />
-        <span>Client</span>
-      </button>
-      <button
-        onClick={() => setViewMode('coach')}
+        <UserIcon />
+      </div>
+
+      {/* Shield icon - bottom position (coach) */}
+      <div
         className={cn(
-          'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
-          isCoachView
-            ? 'bg-white dark:bg-[#272d38] text-[#1a1a1a] dark:text-[#faf8f6] shadow-sm'
-            : 'text-[#5f5a55] dark:text-[#b5b0ab] hover:text-[#1a1a1a] dark:hover:text-[#faf8f6]'
+          'relative z-10 w-[22px] h-[28px] flex items-center justify-center',
+          'transition-all duration-300',
+          isCoachView ? 'text-amber-600 dark:text-amber-500' : 'text-[#a7a39e]'
         )}
       >
-        <Shield className="w-4 h-4" />
-        <span>Coach</span>
-      </button>
-    </div>
+        <ShieldIcon />
+      </div>
+    </button>
   );
 }
 
-/**
- * ViewSwitcherInline - Horizontal inline version for headers
- */
-export function ViewSwitcherInline({ className }: { className?: string }) {
-  const { viewMode, setViewMode, canAccessCoachView, isLoading } = useViewMode();
-
-  if (!canAccessCoachView || isLoading) {
-    return null;
-  }
-
-  const isCoachView = viewMode === 'coach';
-
-  return (
-    <div
-      className={cn(
-        'inline-flex items-center p-0.5 rounded-lg',
-        'bg-[#f5f3f0]/80 dark:bg-[#1a1f2a]/80 backdrop-blur-sm',
-        'border border-[#e1ddd8]/50 dark:border-[#272d38]/50',
-        className
-      )}
-    >
-      <button
-        onClick={() => setViewMode('client')}
-        className={cn(
-          'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200',
-          !isCoachView
-            ? 'bg-white dark:bg-[#272d38] text-[#1a1a1a] dark:text-[#faf8f6] shadow-sm'
-            : 'text-[#5f5a55] dark:text-[#b5b0ab] hover:text-[#1a1a1a] dark:hover:text-[#faf8f6]'
-        )}
-      >
-        <User className="w-3.5 h-3.5" />
-        <span>Client</span>
-      </button>
-      <button
-        onClick={() => setViewMode('coach')}
-        className={cn(
-          'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200',
-          isCoachView
-            ? 'bg-white dark:bg-[#272d38] text-[#1a1a1a] dark:text-[#faf8f6] shadow-sm'
-            : 'text-[#5f5a55] dark:text-[#b5b0ab] hover:text-[#1a1a1a] dark:hover:text-[#faf8f6]'
-        )}
-      >
-        <Shield className="w-3.5 h-3.5" />
-        <span>Coach</span>
-      </button>
-    </div>
-  );
-}
+export default ViewSwitcher;

@@ -18,7 +18,6 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ViewSwitcherInline } from '@/components/shared/ViewSwitcher';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -353,16 +352,13 @@ export function CoachHomePage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-text-primary font-albert tracking-tight">
-            {greeting}, {firstName}
-          </h1>
-          <p className="text-text-secondary font-albert mt-2 text-lg">
-            Here&apos;s an overview of your coaching business
-          </p>
-        </div>
-        <ViewSwitcherInline className="self-start" />
+      <div className="mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-text-primary font-albert tracking-tight">
+          {greeting}, {firstName}
+        </h1>
+        <p className="text-text-secondary font-albert mt-2 text-lg">
+          Here&apos;s an overview of your coaching business
+        </p>
       </div>
 
       {isEmpty ? (

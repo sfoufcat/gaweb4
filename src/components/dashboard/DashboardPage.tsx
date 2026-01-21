@@ -19,6 +19,7 @@ import { AlignmentGauge } from '@/components/alignment';
 import { NotificationBell, NotificationIconButton } from '@/components/notifications';
 import { ChatButton } from '@/components/chat/ChatButton';
 import { ThemeToggle } from '@/components/theme';
+import { ViewSwitcher } from '@/components/shared/ViewSwitcher';
 import { ProgramCheckInModal, type ProgramCheckInData, type UpsellProgramInfo } from '@/components/programs/ProgramCheckInModal';
 import type { ProgramCompletionConfig } from '@/types';
 import type { Habit, MorningCheckIn, EveningCheckIn, Task, GoalHistoryEntry } from '@/types';
@@ -1674,7 +1675,8 @@ export function DashboardPage() {
               size="sm"
             />
             </div>
-            {/* Desktop: vertical theme toggle */}
+            {/* Desktop: vertical view switcher + theme toggle */}
+            <ViewSwitcher className="hidden lg:flex" />
             <ThemeToggle className="hidden lg:flex" />
           </div>
         </div>
@@ -1684,10 +1686,11 @@ export function DashboardPage() {
           <p className="font-sans text-[12px] text-text-secondary leading-[1.2]">
             {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
           </p>
-          {/* Mobile: notification, calendar, and theme toggle icons */}
+          {/* Mobile: notification, calendar, view switcher, and theme toggle icons */}
           <div className="flex items-center gap-2 lg:hidden">
             <NotificationIconButton />
             <CalendarIconButton />
+            <ViewSwitcher horizontal />
             <ThemeToggle horizontal />
           </div>
         </div>
