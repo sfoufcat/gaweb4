@@ -3,8 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useDemoMode } from '@/contexts/DemoModeContext';
-import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
-import type { UserRole, OrgRole } from '@/types';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 type ViewMode = 'coach' | 'client';
 
@@ -15,7 +14,7 @@ interface ViewModeContextType {
   setViewMode: (mode: ViewMode) => void;
   /** Toggle between coach and client view */
   toggleViewMode: () => void;
-  /** Whether the user can access coach view (has coach role) */
+  /** Whether the user can access coach view (is coach/super_coach of CURRENT org) */
   canAccessCoachView: boolean;
   /** Convenience helpers */
   isCoachView: boolean;
@@ -33,32 +32,28 @@ interface ViewModeProviderProps {
 }
 
 export function ViewModeProvider({ children }: ViewModeProviderProps) {
-  const { sessionClaims, isLoaded: authLoaded } = useAuth();
+  const { isLoaded: authLoaded } = useAuth();
   const { isDemoSite } = useDemoMode();
+
+  // Use OrganizationContext to check role in CURRENT organization
+  const { isCoach, isSuperCoach, isLoading: orgLoading } = useOrganization();
 
   const [viewMode, setViewModeState] = useState<ViewMode>('client');
   const [mounted, setMounted] = useState(false);
 
-  // Get role from session claims
-  const publicMetadata = sessionClaims?.publicMetadata as {
-    role?: UserRole;
-    orgRole?: OrgRole;
-  } | undefined;
-
-  const role = publicMetadata?.role;
-  const orgRole = publicMetadata?.orgRole;
-
-  // Demo mode simulates a coach
+  // Check if user is coach/super_coach of the CURRENT organization
+  // This ensures the ViewSwitcher only shows for coaches of THIS specific org
   const canAccessCoachView = useMemo(() => {
     if (isDemoSite) return true;
-    return canAccessCoachDashboard(role, orgRole);
-  }, [isDemoSite, role, orgRole]);
+    // Use OrganizationContext which checks the current org's membership
+    return isCoach() || isSuperCoach();
+  }, [isDemoSite, isCoach, isSuperCoach]);
 
   // Initialize from localStorage, default to 'coach' if user has coach access
   useEffect(() => {
     setMounted(true);
 
-    if (!authLoaded) return;
+    if (!authLoaded || orgLoading) return;
 
     const stored = localStorage.getItem(STORAGE_KEY) as ViewMode | null;
 
@@ -76,7 +71,7 @@ export function ViewModeProvider({ children }: ViewModeProviderProps) {
         setViewModeState('coach');
       }
     }
-  }, [authLoaded, canAccessCoachView]);
+  }, [authLoaded, orgLoading, canAccessCoachView]);
 
   const setViewMode = useCallback((mode: ViewMode) => {
     // Don't allow coach view for non-coaches
@@ -94,7 +89,7 @@ export function ViewModeProvider({ children }: ViewModeProviderProps) {
 
   const isCoachView = viewMode === 'coach' && canAccessCoachView;
   const isClientView = !isCoachView;
-  const isLoading = !mounted || !authLoaded;
+  const isLoading = !mounted || !authLoaded || orgLoading;
 
   // Don't block rendering while loading - just use default values
   const value = useMemo(() => ({

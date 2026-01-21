@@ -1,15 +1,16 @@
 /**
  * Coach API: Product Analytics
- * 
+ *
  * GET /api/coach/analytics/products
- * 
+ *
  * Returns product-level analytics for the coach's organization:
  * - Programs with enrollment counts and revenue
  * - Squads with member counts
  * - Content sales (courses, articles, events, downloads, links) with purchaser counts and revenue
- * 
+ *
  * Query params:
  *   - type: 'all' | 'programs' | 'squads' | 'content'
+ *   - days: number of days to look back for revenue (default: all time, 0 = all time)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -58,6 +59,15 @@ export async function GET(request: NextRequest) {
     const { organizationId } = await requireCoachWithOrg();
     const { searchParams } = new URL(request.url);
     const typeFilter = searchParams.get('type') || 'all';
+    const daysParam = searchParams.get('days');
+    const days = daysParam ? parseInt(daysParam, 10) : 0; // 0 = all time
+
+    // Calculate date cutoff for filtering
+    let dateCutoff: Date | null = null;
+    if (days > 0) {
+      dateCutoff = new Date();
+      dateCutoff.setDate(dateCutoff.getDate() - days);
+    }
 
     const results: {
       programs?: ProgramAnalytics[];
@@ -113,7 +123,16 @@ export async function GET(request: NextRequest) {
           const enrollment = enrollDoc.data();
           if (enrollment.status === 'active') activeEnrollments++;
           if (enrollment.status === 'completed') completedEnrollments++;
-          programRevenue += enrollment.amountPaid || 0;
+
+          // Filter revenue by date if days param specified
+          if (dateCutoff) {
+            const enrollmentDate = enrollment.createdAt?.toDate?.() || (enrollment.createdAt ? new Date(enrollment.createdAt) : null);
+            if (enrollmentDate && enrollmentDate >= dateCutoff) {
+              programRevenue += enrollment.amountPaid || 0;
+            }
+          } else {
+            programRevenue += enrollment.amountPaid || 0;
+          }
         }
 
         programs.push({
@@ -232,7 +251,16 @@ export async function GET(request: NextRequest) {
 
             let revenue = 0;
             for (const purchaseDoc of purchasesSnapshot.docs) {
-              revenue += purchaseDoc.data().amountPaid || 0;
+              const purchase = purchaseDoc.data();
+              // Filter revenue by date if days param specified
+              if (dateCutoff) {
+                const purchaseDate = purchase.createdAt?.toDate?.() || (purchase.createdAt ? new Date(purchase.createdAt) : null);
+                if (purchaseDate && purchaseDate >= dateCutoff) {
+                  revenue += purchase.amountPaid || 0;
+                }
+              } else {
+                revenue += purchase.amountPaid || 0;
+              }
             }
 
             contentItems.push({

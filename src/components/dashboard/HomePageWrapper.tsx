@@ -2,6 +2,7 @@
 
 import { useViewMode } from '@/contexts/ViewModeContext';
 import { DashboardPage } from './DashboardPage';
+import { DashboardSkeleton } from './DashboardSkeleton';
 import { CoachHomePage } from '@/components/coach/CoachHomePage';
 
 /**
@@ -10,14 +11,15 @@ import { CoachHomePage } from '@/components/coach/CoachHomePage';
  * Based on the user's view mode:
  * - Coach view: Shows CoachHomePage (programs, squads, stats overview)
  * - Client view: Shows DashboardPage (daily focus, habits, alignment)
+ *
+ * Shows a neutral skeleton during loading to prevent flash of wrong content.
  */
 export function HomePageWrapper() {
   const { isCoachView, isLoading } = useViewMode();
 
-  // While loading, show the client dashboard (default)
-  // This prevents a flash of wrong content
+  // While loading, show neutral skeleton - prevents flash of wrong content
   if (isLoading) {
-    return <DashboardPage />;
+    return <DashboardSkeleton />;
   }
 
   // Coach view: Show coach-focused home

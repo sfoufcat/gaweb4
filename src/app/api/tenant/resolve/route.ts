@@ -103,6 +103,22 @@ async function getOrgBranding(organizationId: string): Promise<TenantBrandingDat
 }
 
 /**
+ * Fetch websiteEnabled setting for an organization from Firestore
+ */
+async function getOrgWebsiteEnabled(organizationId: string): Promise<boolean> {
+  try {
+    const websiteDoc = await adminDb.collection('org_website').doc(organizationId).get();
+    if (websiteDoc.exists) {
+      return websiteDoc.data()?.enabled ?? false;
+    }
+    return false;
+  } catch (error) {
+    console.error('[TENANT_RESOLVE] Error fetching websiteEnabled:', error);
+    return false;
+  }
+}
+
+/**
  * Fetch coaching promo data for an organization from Firestore
  * If no custom image is set, resolves to coach's profile picture
  */
@@ -210,7 +226,8 @@ export async function GET(request: Request) {
       // Fetch branding data for the middleware to build the cookie
       const branding = await getOrgBranding(data.organizationId);
       const coachingPromo = await getOrgCoachingPromo(data.organizationId);
-      
+      const websiteEnabled = await getOrgWebsiteEnabled(data.organizationId);
+
       return NextResponse.json({
         found: true,
         organizationId: data.organizationId,
@@ -219,6 +236,7 @@ export async function GET(request: Request) {
         verifiedCustomDomain,  // For subdomain -> custom domain redirect
         branding,
         coachingPromo,
+        websiteEnabled,
       });
     } else if (domain) {
       // Resolve by custom domain
@@ -249,7 +267,8 @@ export async function GET(request: Request) {
       // Fetch branding data for the middleware to build the cookie
       const branding = await getOrgBranding(customDomainData.organizationId);
       const coachingPromo = await getOrgCoachingPromo(customDomainData.organizationId);
-      
+      const websiteEnabled = await getOrgWebsiteEnabled(customDomainData.organizationId);
+
       return NextResponse.json({
         found: true,
         organizationId: customDomainData.organizationId,
@@ -258,6 +277,7 @@ export async function GET(request: Request) {
         verifiedCustomDomain: domain,
         branding,
         coachingPromo,
+        websiteEnabled,
       });
     }
     

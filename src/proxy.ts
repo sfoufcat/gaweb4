@@ -470,6 +470,7 @@ async function resolveTenantFromApi(
         branding: data.branding,
         coachingPromo: data.coachingPromo,
         verifiedCustomDomain: data.verifiedCustomDomain,
+        websiteEnabled: data.websiteEnabled ?? false,
         updatedAt: new Date().toISOString(),
       } : undefined;
       
