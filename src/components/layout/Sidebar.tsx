@@ -442,10 +442,20 @@ export function Sidebar() {
         {/* Nav - More rounded, glass-like with accent color */}
         {/* In collapsed mode, show only icons centered */}
         <nav className="flex-1 space-y-1">
-          {navItems.map((item) => (
+          {navItems.map((item) => {
+            // For coach view tabs, use onClick with router.push to ensure proper navigation
+            // when switching between tabs on the same /coach path
+            const isCoachTab = item.path.startsWith('/coach?tab=');
+            const handleClick = isCoachTab ? (e: React.MouseEvent) => {
+              e.preventDefault();
+              router.push(item.path);
+            } : undefined;
+
+            return (
             <Link
               key={item.path}
               href={item.path}
+              onClick={handleClick}
               onMouseEnter={() => router.prefetch(item.path)}
               data-tour={(item as { dataTour?: string }).dataTour}
               title={isCollapsed ? item.name : undefined}
@@ -510,7 +520,8 @@ export function Sidebar() {
                 </span>
               )}
             </Link>
-          ))}
+            );
+          })}
         </nav>
 
         {/* Account with Clerk UserButton - Rounded glass style */}
@@ -583,16 +594,25 @@ export function Sidebar() {
           
           {/* Tab Bar Content - Icons only */}
           <div className="relative flex items-center justify-center gap-1 px-3 py-2.5">
-            {mobileNavItems.map((item) => (
-              <Link 
-                key={item.path} 
+            {mobileNavItems.map((item) => {
+              // For coach view tabs, use onClick with router.push to ensure proper navigation
+              const isCoachTab = item.path.startsWith('/coach?tab=');
+              const handleClick = isCoachTab ? (e: React.MouseEvent) => {
+                e.preventDefault();
+                router.push(item.path);
+              } : undefined;
+
+              return (
+              <Link
+                key={item.path}
                 href={item.path}
+                onClick={handleClick}
                 onTouchStart={() => router.prefetch(item.path)}
                 data-tour={(item as { dataTour?: string }).dataTour}
                 className={`
                   relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-200
-                  ${isActive(item.path) 
-                    ? '' 
+                  ${isActive(item.path)
+                    ? ''
                     : 'text-[#8e8e93] dark:text-[#8e8e93] active:scale-90'
                   }
                 `}
@@ -631,7 +651,8 @@ export function Sidebar() {
                   )}
                 </span>
               </Link>
-            ))}
+              );
+            })}
           </div>
         </nav>
       </div>

@@ -1142,10 +1142,16 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   // When a tenant has their public website enabled, unauthenticated visitors
   // to the root path (/) are REDIRECTED to /website.
   //
-  // IMPORTANT: Must use `userId` (from second auth() call at line 1085), NOT `earlyUserId`.
-  // The earlyUserId can be null on custom domains even when user IS authenticated,
-  // causing authenticated coaches to be incorrectly redirected to /website.
-  if (isTenantMode && tenantOrgId && !userId) {
+  // IMPORTANT: Skip this redirect for custom/satellite domains!
+  // On satellite domains, server-side auth() often returns null even when
+  // the user IS authenticated (because the session lives on the primary domain
+  // and needs to be synced client-side). If we redirect here, authenticated
+  // users on custom domains get stuck in a redirect loop to /website.
+  //
+  // For custom domains, we let the request through to / and let:
+  // 1. Client-side ClerkProvider (with isSatellite: true) sync the session
+  // 2. The page component handle auth state after hydration
+  if (isTenantMode && tenantOrgId && !userId && !isCustomDomain) {
     if (pathname === '/' || pathname === '') {
       const websiteEnabled = tenantConfigData?.websiteEnabled;
       if (websiteEnabled) {

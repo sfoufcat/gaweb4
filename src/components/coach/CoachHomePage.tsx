@@ -725,14 +725,14 @@ export function CoachHomePage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <LoadingSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* HEADER with Profile Badge */}
       <div className="space-y-3 mb-6">
         <div className="flex items-center justify-between">
