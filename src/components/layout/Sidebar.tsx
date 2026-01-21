@@ -14,6 +14,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
+import { ViewSwitcher } from '@/components/shared/ViewSwitcher';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { useSquad } from '@/hooks/useSquad';
 import { MenuIcon } from '@/lib/menu-icons';
@@ -493,7 +494,12 @@ export function Sidebar() {
         </nav>
 
         {/* Account with Clerk UserButton - Rounded glass style */}
-        <div className="mt-auto pt-6 border-t border-[#e1ddd8]/50 dark:border-[#272d38]/50 space-y-1">
+        <div className="mt-auto pt-6 border-t border-[#e1ddd8]/50 dark:border-[#272d38]/50 space-y-2">
+          {/* View Mode Switcher - only shows for coaches */}
+          <div className={`${isCollapsed ? 'flex justify-center' : 'px-2'}`}>
+            <ViewSwitcher compact={isCollapsed} />
+          </div>
+
           {/* Organization Switcher - only shows when user has multiple orgs and not collapsed */}
           {!isCollapsed && (
             <div className="px-2">

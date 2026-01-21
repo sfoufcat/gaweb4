@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useSquad } from '@/hooks/useSquad';
 import { SquadHeader } from '@/components/squad/SquadHeader';
@@ -18,6 +18,7 @@ import { NextSquadCallCard, type CoachInfo } from '@/components/squad/NextSquadC
 import { SquadDiscovery } from '@/components/squad/SquadDiscovery';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useShouldRedirectToCoach } from '@/contexts/ViewModeContext';
 import { DEMO_USER } from '@/lib/demo-utils';
 import type { ReferralConfig } from '@/types';
 
@@ -45,8 +46,17 @@ type TabType = 'squad' | 'stats';
 export default function StandaloneSquadPage() {
   const { user: clerkUser, isLoaded: userLoaded } = useUser();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { squad: squadTitle, squadLower } = useMenuTitles();
   const { isDemoMode } = useDemoMode();
+  const { shouldRedirect: shouldRedirectToCoach } = useShouldRedirectToCoach();
+
+  // Redirect coaches to coach dashboard squads tab
+  useEffect(() => {
+    if (shouldRedirectToCoach) {
+      router.replace('/coach?tab=squads');
+    }
+  }, [shouldRedirectToCoach, router]);
 
   // In demo mode, use mock user data
   const user = useMemo(() => {

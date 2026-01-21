@@ -1,4 +1,5 @@
 export { AlignmentActivitiesSettings } from './AlignmentActivitiesSettings';
+export { CoachHomePage } from './CoachHomePage';
 export { CoachSidebar, FULL_NAV_GROUPS, LIMITED_NAV_GROUPS, type CoachTab, type NavGroup, type NavItem } from './CoachSidebar';
 export { MobileCoachMenu } from './MobileCoachMenu';
 export { CallSummaryCard } from './CallSummaryCard';

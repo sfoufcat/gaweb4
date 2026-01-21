@@ -9,6 +9,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useShouldRedirectToCoach } from '@/contexts/ViewModeContext';
 import { DEMO_USER } from '@/lib/demo-utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -41,6 +42,14 @@ export default function ProgramHubPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { isDemoMode } = useDemoMode();
+  const { shouldRedirect: shouldRedirectToCoach } = useShouldRedirectToCoach();
+
+  // Redirect coaches to coach dashboard programs tab
+  useEffect(() => {
+    if (shouldRedirectToCoach) {
+      router.replace('/coach?tab=programs');
+    }
+  }, [shouldRedirectToCoach, router]);
   
   // In demo mode, use mock user data
   const user = useMemo(() => {

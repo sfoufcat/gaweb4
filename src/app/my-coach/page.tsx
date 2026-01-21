@@ -304,7 +304,8 @@ export default function MyCoachPage() {
   // Calculate call time info - only show if call hasn't started yet
   const callTimeInfo = coachingData?.nextCall?.datetime
     ? (() => {
-        const callDate = new Date(coachingData.nextCall.datetime);
+        const nextCall = coachingData!.nextCall!;
+        const callDate = new Date(nextCall.datetime!);
         const now = new Date();
 
         // Don't show if call has already started
@@ -312,7 +313,7 @@ export default function MyCoachPage() {
           return null;
         }
 
-        const callTimezone = coachingData.nextCall.timezone || 'UTC';
+        const callTimezone = nextCall.timezone || 'UTC';
         const userTimezone = getUserTimezone();
         const sameTimezone = callTimezone === userTimezone;
 
@@ -389,10 +390,10 @@ export default function MyCoachPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-5">
                   {/* Coach Photo */}
                   <div className="shrink-0">
-                    {coach.imageUrl ? (
+                    {coach?.imageUrl ? (
                       <Image
-                        src={coach.imageUrl}
-                        alt={coach.name}
+                        src={coach!.imageUrl!}
+                        alt={coach?.name || 'Coach'}
                         width={80}
                         height={80}
                         className="w-20 h-20 rounded-2xl object-cover"
@@ -400,36 +401,36 @@ export default function MyCoachPage() {
                       />
                     ) : (
                       <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center text-white text-2xl font-albert font-bold">
-                        {coach.name?.charAt(0) || 'C'}
+                        {coach?.name?.charAt(0) || 'C'}
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Coach Info */}
                   <div className="flex-1">
                     <h2 className="font-albert text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
-                      {coach.name}
+                      {coach?.name}
                     </h2>
-                    {coach.title && (
+                    {coach?.title && (
                       <p className="font-albert text-[15px] text-brand-accent font-medium">
-                        {coach.title}
+                        {coach?.title}
                       </p>
                     )}
-                    {coach.email && (
+                    {coach?.email && (
                       <div className="flex items-center gap-2 mt-2 text-[#5f5a55] dark:text-[#b2b6c2]">
                         <Mail className="w-4 h-4" />
-                        <a href={`mailto:${coach.email}`} className="font-albert text-sm hover:text-brand-accent dark:hover:text-brand-accent transition-colors">
-                          {coach.email}
+                        <a href={`mailto:${coach?.email}`} className="font-albert text-sm hover:text-brand-accent dark:hover:text-brand-accent transition-colors">
+                          {coach?.email}
                         </a>
                       </div>
                     )}
-                    
+
                     {/* Social Links */}
-                    {(coach.linkedinUrl || coach.instagramHandle) && (
+                    {(coach?.linkedinUrl || coach?.instagramHandle) && (
                       <div className="flex items-center gap-3 mt-3">
-                        {coach.linkedinUrl && (
+                        {coach?.linkedinUrl && (
                           <a
-                            href={coach.linkedinUrl}
+                            href={coach?.linkedinUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 rounded-full bg-[#f3f1ef] dark:bg-[#222631] hover:bg-[#e9e5e0] dark:hover:bg-[#262b35] transition-colors"
@@ -437,9 +438,9 @@ export default function MyCoachPage() {
                             <Linkedin className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
                           </a>
                         )}
-                        {coach.instagramHandle && (
+                        {coach?.instagramHandle && (
                           <a
-                            href={`https://instagram.com/${coach.instagramHandle}`}
+                            href={`https://instagram.com/${coach?.instagramHandle}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 rounded-full bg-[#f3f1ef] dark:bg-[#222631] hover:bg-[#e9e5e0] dark:hover:bg-[#262b35] transition-colors"
@@ -497,12 +498,12 @@ export default function MyCoachPage() {
                   {/* Call Details */}
                   <div className="space-y-2">
                     <p className="font-albert text-[15px] text-[#1a1a1a]">
-                      <span className="font-medium">{callTimeInfo.coachTime.date}</span>
+                      <span className="font-medium">{callTimeInfo?.coachTime.date}</span>
                       {' · '}
-                      <span>{callTimeInfo.coachTime.time} {callTimeInfo.coachTime.tzAbbrev}</span>
-                      {!callTimeInfo.sameTimezone && (
+                      <span>{callTimeInfo?.coachTime.time} {callTimeInfo?.coachTime.tzAbbrev}</span>
+                      {!callTimeInfo?.sameTimezone && (
                         <span className="text-[#5f5a55]">
-                          {' '}({callTimeInfo.userTime.time} your time)
+                          {' '}({callTimeInfo?.userTime.time} your time)
                         </span>
                       )}
                     </p>
@@ -510,17 +511,17 @@ export default function MyCoachPage() {
                     {coachingData?.nextCall?.location && (
                       <p className="font-albert text-[14px] text-[#5f5a55]">
                         <span className="font-medium text-[#1a1a1a]">Location:</span>{' '}
-                        {coachingData.nextCall.location.startsWith('http') ? (
+                        {coachingData?.nextCall?.location?.startsWith('http') ? (
                           <a
-                            href={coachingData.nextCall.location}
+                            href={coachingData?.nextCall?.location}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-brand-accent hover:underline"
                           >
-                            {coachingData.nextCall.location}
+                            {coachingData?.nextCall?.location}
                           </a>
                         ) : (
-                          coachingData.nextCall.location
+                          coachingData?.nextCall?.location
                         )}
                       </p>
                     )}
@@ -528,10 +529,10 @@ export default function MyCoachPage() {
                     {coach && (
                       <div className="flex items-center gap-1.5 font-albert text-[14px] text-[#5f5a55]">
                         <span className="font-medium text-[#1a1a1a]">With:</span>
-                        <span>{coach.name}</span>
-                        {coach.imageUrl && (
+                        <span>{coach?.name}</span>
+                        {coach?.imageUrl && (
                           <Image
-                            src={coach.imageUrl}
+                            src={coach!.imageUrl!}
                             alt=""
                             width={20}
                             height={20}
@@ -588,9 +589,9 @@ export default function MyCoachPage() {
                 </h3>
               </div>
 
-              {coachingData?.focusAreas && coachingData.focusAreas.length > 0 ? (
+              {(coachingData?.focusAreas?.length ?? 0) > 0 ? (
                 <ul className="space-y-2">
-                  {coachingData.focusAreas.map((focus, index) => (
+                  {coachingData?.focusAreas?.map((focus, index) => (
                     <li key={index} className="flex items-start gap-2">
                       <span className="text-brand-accent mt-0.5">–</span>
                       <span className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">{focus}</span>
@@ -615,9 +616,9 @@ export default function MyCoachPage() {
                 </h3>
               </div>
 
-              {coachingData?.actionItems && coachingData.actionItems.length > 0 ? (
+              {(coachingData?.actionItems?.length ?? 0) > 0 ? (
                 <ul className="space-y-3">
-                  {coachingData.actionItems.map((item) => (
+                  {coachingData?.actionItems?.map((item) => (
                     <li key={item.id} className="flex items-start gap-3">
                       <button
                         onClick={() => handleToggleActionItem(item.id, item.completed)}
@@ -656,9 +657,9 @@ export default function MyCoachPage() {
                 </h3>
               </div>
 
-              {coachingData?.sessionHistory && coachingData.sessionHistory.length > 0 ? (
+              {(coachingData?.sessionHistory?.length ?? 0) > 0 ? (
                 <ul className="space-y-2">
-                  {coachingData.sessionHistory.slice().reverse().map((session) => (
+                  {coachingData?.sessionHistory?.slice().reverse().map((session) => (
                     <li key={session.id}>
                       <button
                         onClick={() => setSelectedSession(session)}
@@ -699,9 +700,9 @@ export default function MyCoachPage() {
                 </h3>
               </div>
 
-              {coachingData?.resources && coachingData.resources.length > 0 ? (
+              {(coachingData?.resources?.length ?? 0) > 0 ? (
                 <ul className="space-y-3">
-                  {coachingData.resources.map((resource) => (
+                  {coachingData?.resources?.map((resource) => (
                     <li key={resource.id}>
                       <a
                         href={resource.url}
@@ -782,7 +783,7 @@ export default function MyCoachPage() {
       {/* Session Detail Modal */}
       {selectedSession && (
         <SessionDetailModal
-          session={selectedSession}
+          session={selectedSession!}
           onClose={() => setSelectedSession(null)}
         />
       )}

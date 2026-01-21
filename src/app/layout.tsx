@@ -27,6 +27,7 @@ import { ChatSheetProvider } from "@/contexts/ChatSheetContext";
 import { ChatPreferencesProvider } from "@/contexts/ChatPreferencesContext";
 import { ChatChannelsProvider } from "@/contexts/ChatChannelsContext";
 import { AuthHintProvider } from "@/contexts/AuthHintContext";
+import { ViewModeProvider } from "@/contexts/ViewModeContext";
 import { getServerChatFilterData } from "@/lib/chat-server";
 
 const geistSans = Geist({
@@ -213,6 +214,7 @@ export default async function RootLayout({
               <SquadProvider>
               <CoachingProvider>
               <OrganizationProvider>
+              <ViewModeProvider>
                 <StreamChatProvider>
                   <ChatChannelsProvider
                     initialOrgChannelIds={ssrChatFilter.orgChannelIds}
@@ -250,6 +252,7 @@ export default async function RootLayout({
                   </StreamVideoProvider>
                   </ChatChannelsProvider>
                 </StreamChatProvider>
+              </ViewModeProvider>
               </OrganizationProvider>
               </CoachingProvider>
               </SquadProvider>

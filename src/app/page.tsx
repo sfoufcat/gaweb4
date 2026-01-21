@@ -1,12 +1,14 @@
 import { headers } from 'next/headers';
 import { CoachLandingPage } from '@/components/lp/CoachLandingPage';
-import { DashboardPage } from '@/components/dashboard/DashboardPage';
+import { HomePageWrapper } from '@/components/dashboard/HomePageWrapper';
 
 /**
  * Homepage - Dynamic based on domain
  *
  * - Marketing domain (coachful.co): Shows CoachLandingPage
- * - Tenant domains (*.coachful.co): Shows Dashboard
+ * - Tenant domains (*.coachful.co): Shows HomePageWrapper
+ *   - Coach view: CoachHomePage (programs, squads, stats)
+ *   - Client view: DashboardPage (daily focus, habits)
  *
  * Uses SSR domain detection to prevent hydration flicker.
  */
@@ -25,6 +27,6 @@ export default async function HomePage() {
     return <CoachLandingPage />;
   }
 
-  // Tenant domain: Show dashboard
-  return <DashboardPage />;
+  // Tenant domain: Show home page wrapper (switches between coach/client view)
+  return <HomePageWrapper />;
 }
