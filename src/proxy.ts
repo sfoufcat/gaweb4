@@ -1141,7 +1141,9 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   // When a tenant has their public website enabled, unauthenticated visitors
   // to the root path (/) see the website instead of being redirected to sign-in.
   // The website has Sign In and Join buttons for users to authenticate.
-  if (isTenantMode && tenantOrgId && !userId) {
+  // NOTE: Use earlyUserId (from first auth() call) to match the auth state used for layout headers.
+  // Using userId (from second auth() call) caused race conditions on first visit to custom domains.
+  if (isTenantMode && tenantOrgId && !earlyUserId) {
     if (pathname === '/' || pathname === '') {
       const websiteEnabled = tenantConfigData?.websiteEnabled;
       if (websiteEnabled) {

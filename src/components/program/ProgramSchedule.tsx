@@ -85,8 +85,7 @@ export function ProgramSchedule({
       {/* Horizontal scroll container */}
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide scroll-smooth"
-        style={{ scrollSnapType: 'x mandatory' }}
+        className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
       >
         {days.map((day, idx) => {
           const isExpanded = expandedDay === day.dayIndex;
@@ -106,24 +105,21 @@ export function ProgramSchedule({
             (day.linkedLinkIds?.length ?? 0);
 
           return (
-            <motion.div
+            <div
               key={day.dayIndex}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, delay: idx * 0.05 }}
               className={`
-                flex-shrink-0 w-[200px]
-                bg-white dark:bg-[#171b22]
-                rounded-[16px]
-                border transition-all duration-200
-                scroll-snap-align-start
+                flex-shrink-0 w-[180px]
+                bg-[rgba(255,255,255,0.7)] dark:bg-[#171b22]
+                rounded-[20px]
+                transition-shadow duration-200
+                animate-in fade-in duration-300
                 ${day.isToday
-                  ? 'border-brand-accent shadow-[0_2px_12px_rgba(160,120,85,0.15)] dark:shadow-[0_2px_12px_rgba(184,137,106,0.2)]'
-                  : 'border-transparent hover:border-[#e8e4df] dark:hover:border-[#2a303c]'
+                  ? 'ring-2 ring-brand-accent shadow-[0_2px_12px_rgba(160,120,85,0.15)] dark:shadow-[0_2px_12px_rgba(184,137,106,0.2)]'
+                  : 'hover:shadow-lg'
                 }
                 ${day.isPast && !day.isToday ? 'opacity-60' : ''}
               `}
-              style={{ scrollSnapAlign: 'start' }}
+              style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'backwards' }}
             >
               {/* Day Header */}
               <button
@@ -320,7 +316,7 @@ export function ProgramSchedule({
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
+            </div>
           );
         })}
       </div>
