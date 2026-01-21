@@ -1,19 +1,22 @@
 /**
  * Coach API: Organization-scoped Events Management
- * 
+ *
  * GET /api/coach/org-discover/events - List events in coach's organization
  * POST /api/coach/org-discover/events - Create new event in coach's organization
+ *
+ * Uses shared event-core logic for creation, which handles:
+ * - Firestore write
+ * - Notification scheduling
+ * - Recurring event generation
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { requirePlanLimit, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
-import { FieldValue } from 'firebase-admin/firestore';
 import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
 import { generateDemoEvents } from '@/lib/demo-data';
-import { scheduleEventJobs } from '@/lib/event-notifications';
-import type { UnifiedEvent } from '@/types';
+import { createEventCore } from '@/lib/event-core';
 
 export async function GET() {
   try {
@@ -93,12 +96,10 @@ export async function GET() {
   }
 }
 
-// Compute startDateTime from date + time + timezone
-function computeStartDateTime(date: string, time: string, timezone: string): string {
+// Compute startDateTime from date + time
+function computeStartDateTime(date: string, time: string): string {
   try {
-    // Create a date string in local time, then convert to ISO
     const dateTimeStr = `${date}T${time}:00`;
-    // For simplicity, we'll create an ISO string - timezone handling would need luxon/date-fns-tz for accuracy
     return new Date(dateTimeStr).toISOString();
   } catch {
     return new Date(`${date}T${time}:00`).toISOString();
@@ -114,14 +115,14 @@ export async function POST(request: NextRequest) {
     }
 
     const { organizationId, userId } = await requireCoachWithOrg();
-    
+
     // Enforce content item limit based on plan
     try {
       await requirePlanLimit(organizationId, 'maxContentItems');
     } catch (limitError) {
       if (isEntitlementError(limitError)) {
         return NextResponse.json(
-          { 
+          {
             error: 'Content item limit reached for your current plan',
             code: limitError.code,
             ...('currentCount' in limitError ? { currentCount: limitError.currentCount } : {}),
@@ -134,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    
+
     // Validate required fields
     const requiredFields = ['title', 'coverImageUrl', 'date', 'startTime', 'endTime', 'timezone', 'locationType', 'locationLabel', 'shortDescription', 'hostName'];
     for (const field of requiredFields) {
@@ -156,97 +157,94 @@ export async function POST(request: NextRequest) {
     }
 
     // Compute calendar-compatible datetime fields
-    const startDateTime = computeStartDateTime(body.date, body.startTime, body.timezone);
-    const endDateTime = computeStartDateTime(body.date, body.endTime, body.timezone);
+    const startDateTime = computeStartDateTime(body.date, body.startTime);
+    const endDateTime = computeStartDateTime(body.date, body.endTime);
 
-    const eventData = {
-      title: body.title,
-      coverImageUrl: body.coverImageUrl,
-      date: body.date,
-      startTime: body.startTime,
-      endTime: body.endTime,
-      timezone: body.timezone,
-      // Calendar-compatible fields for unified display
-      eventType: 'community_event' as const,
-      startDateTime,
-      endDateTime,
-      hostUserId: userId, // Link to creating coach for calendar queries
-      locationType: body.locationType,
-      locationLabel: body.locationLabel,
-      shortDescription: body.shortDescription,
-      longDescription: body.longDescription || '',
-      bulletPoints: body.bulletPoints || [],
-      additionalInfo: body.additionalInfo || {
-        type: 'Workshop',
-        language: 'English',
-        difficulty: 'All Levels',
-      },
-      zoomLink: body.zoomLink || null,
-      meetingLink: body.meetingLink || body.zoomLink || null,
-      meetingProvider: body.meetingProvider || null,
-      externalMeetingId: body.externalMeetingId || null,
-      recordingUrl: body.recordingUrl || null,
-      hostName: body.hostName,
-      hostAvatarUrl: body.hostAvatarUrl || null,
-      featured: body.featured || false,
-      category: body.category || null,
-      track: body.track || null,
-      programIds: body.programIds || [],
-      attendeeIds: [],
-      maxAttendees: body.maxAttendees || null,
-      organizationId, // Scope to coach's organization
-      // Pricing & Gating fields
-      priceInCents: body.priceInCents || 0,
-      currency: body.currency || 'usd',
-      purchaseType: body.purchaseType || 'popup', // 'popup' or 'landing_page'
-      isPublic: body.isPublic !== false, // Default true
-      keyOutcomes: body.keyOutcomes || [],
-      features: body.features || [],
-      testimonials: body.testimonials || [],
-      faqs: body.faqs || [],
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    };
+    // Use shared core function for event creation
+    // This handles: Firestore write, notification scheduling, recurring instance generation
+    const { eventId, event: createdEvent } = await createEventCore({
+      userId,
+      organizationId,
 
-    const docRef = await adminDb.collection('events').add(eventData);
-
-    console.log(`[COACH_ORG_EVENTS] Created event ${docRef.id} in organization ${organizationId}`);
-
-    // Schedule notification jobs for RSVP'd users
-    const unifiedEvent: Partial<UnifiedEvent> = {
-      id: docRef.id,
+      // Core fields
       title: body.title,
       startDateTime,
       endDateTime,
       timezone: body.timezone,
       eventType: 'community_event',
       scope: 'organization',
-      participantModel: 'rsvp',
-      organizationId,
-      hostUserId: userId,
-      attendeeIds: [],
-      status: 'confirmed',
-    };
 
-    await scheduleEventJobs(unifiedEvent as UnifiedEvent);
+      // Location
+      locationType: body.locationType,
+      locationLabel: body.locationLabel,
+      meetingLink: body.meetingLink || body.zoomLink,
+
+      // Participation (community events use RSVP)
+      participantModel: 'rsvp',
+      maxAttendees: body.maxAttendees,
+
+      // Recurrence support (now works!)
+      isRecurring: body.isRecurring,
+      recurrence: body.recurrence,
+
+      // Host info
+      hostUserId: userId,
+      hostName: body.hostName,
+      hostAvatarUrl: body.hostAvatarUrl,
+      isCoachLed: true,
+
+      // Content
+      shortDescription: body.shortDescription,
+      longDescription: body.longDescription,
+      coverImageUrl: body.coverImageUrl,
+      bulletPoints: body.bulletPoints,
+      additionalInfo: body.additionalInfo || {
+        type: 'Workshop',
+        language: 'English',
+        difficulty: 'All Levels',
+      },
+      category: body.category,
+      track: body.track,
+      featured: body.featured,
+
+      // Marketing/Discover fields
+      priceInCents: body.priceInCents,
+      currency: body.currency,
+      purchaseType: body.purchaseType,
+      isPublic: body.isPublic !== false,
+      keyOutcomes: body.keyOutcomes,
+      features: body.features,
+      testimonials: body.testimonials,
+      faqs: body.faqs,
+
+      // Meeting provider
+      meetingProvider: body.meetingProvider,
+      externalMeetingId: body.externalMeetingId,
+      recordingUrl: body.recordingUrl,
+
+      // Legacy date fields (still needed for some UI)
+      date: body.date,
+      startTime: body.startTime,
+      endTime: body.endTime,
+    });
+
+    console.log(`[COACH_ORG_EVENTS] Created event ${eventId} in organization ${organizationId}`);
 
     return NextResponse.json({
-      id: docRef.id,
-      ...eventData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      ...createdEvent,
+      id: eventId,
     }, { status: 201 });
   } catch (error) {
     console.error('[COACH_ORG_EVENTS_POST] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal Error';
-    
+
     if (message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     if (message.includes('Forbidden') || message.includes('Coach access')) {
       return NextResponse.json({ error: 'Forbidden: Coach access required' }, { status: 403 });
     }
-    
+
     return NextResponse.json({ error: 'Failed to create event' }, { status: 500 });
   }
 }

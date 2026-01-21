@@ -1,3 +1,6 @@
+// Import types needed before they're re-exported
+import type { ContentFeature, ContentTestimonial, ContentFaq } from './discover';
+
 // User Role Types
 export type UserRole = 'user' | 'editor' | 'coach' | 'admin' | 'super_admin';
 
@@ -5094,6 +5097,19 @@ export interface UnifiedEvent {
     language: string;
     difficulty: string;
   };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MARKETING/DISCOVER FIELDS (for community events with landing pages)
+  // ═══════════════════════════════════════════════════════════════════════════
+  currency?: string;                      // 'usd' default
+  purchaseType?: 'popup' | 'landing_page';
+  isPublic?: boolean;                     // Visible in public Discover (default true)
+  keyOutcomes?: string[];                 // "What you'll get" bullets
+  features?: ContentFeature[];            // Feature cards with icons
+  testimonials?: ContentTestimonial[];    // Social proof
+  faqs?: ContentFaq[];                    // FAQs
+  orderBumps?: OrderBumpConfig;           // Additional products offered during checkout
+  externalMeetingId?: string;             // External meeting ID (Zoom, etc.)
   
   // ═══════════════════════════════════════════════════════════════════════════
   // POST-EVENT & CALL RECORDING

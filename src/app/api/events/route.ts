@@ -18,14 +18,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import { scheduleEventJobs } from '@/lib/event-notifications';
-import { generateRecurringInstances } from '@/lib/event-recurrence';
 import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
 import { generateDemoEvents } from '@/lib/demo-data';
-import type { UnifiedEvent, EventType, EventScope, EventStatus, ProgramInstance } from '@/types';
+import { createEventCore } from '@/lib/event-core';
+import type { EventType, EventScope, EventStatus, ProgramInstance, UnifiedEvent } from '@/types';
 import Stripe from 'stripe';
 
 // ============================================================================
@@ -436,200 +434,93 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Auto-populate programIds from programId if not explicitly provided
-    // This ensures the program content API's array-contains query finds the events
-    let programIds: string[] = body.programIds || [];
-    if (body.programId && (!programIds.length || !programIds.includes(body.programId))) {
-      programIds = [body.programId, ...programIds];
-    }
+    // Use shared core function for event creation
+    const { eventId, event: createdEvent } = await createEventCore({
+      userId,
+      organizationId: organizationId || body.organizationId,
 
-    // Auto-derive legacy date fields from startDateTime for backward compatibility
-    // This ensures events show up in APIs that query by the legacy 'date' field
-    let legacyDate = body.date;
-    let legacyStartTime = body.startTime;
-    let legacyEndTime = body.endTime;
-
-    if (!legacyDate && body.startDateTime) {
-      const startDt = new Date(body.startDateTime);
-      legacyDate = startDt.toISOString().split('T')[0]; // YYYY-MM-DD
-      legacyStartTime = legacyStartTime || startDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-      
-      if (body.endDateTime) {
-        const endDt = new Date(body.endDateTime);
-        legacyEndTime = legacyEndTime || endDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-      } else if (body.durationMinutes) {
-        const endDt = new Date(startDt.getTime() + (body.durationMinutes || 60) * 60 * 1000);
-        legacyEndTime = legacyEndTime || endDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-      }
-    }
-
-    // Build event data
-    const eventData: Omit<UnifiedEvent, 'id'> = {
+      // Core fields
       title: body.title,
-      description: body.description || '',
       startDateTime: body.startDateTime,
-      endDateTime: body.endDateTime || undefined,
+      endDateTime: body.endDateTime,
       timezone: body.timezone,
-      durationMinutes: body.durationMinutes || 60,
-      
-      locationType: body.locationType || 'online',
-      locationLabel: body.locationLabel || 'Online',
-      meetingLink: body.meetingLink || undefined,
-      
+      durationMinutes: body.durationMinutes,
       eventType: body.eventType,
       scope: body.scope,
-      participantModel: body.participantModel || 'rsvp',
-      approvalType: body.approvalType || 'none',
-      status: body.approvalType === 'voting' ? 'pending_approval' : 'confirmed',
-      
-      visibility: body.visibility || 'squad_only',
-      
-      organizationId: organizationId || body.organizationId || undefined,
-      programId: body.programId || instanceData?.programId || undefined,
-      programIds,
-      squadId: body.squadId || undefined,
-      cohortId: body.cohortId || undefined,
 
-      // Program instance linking (for 1:1 calls linked to program days)
-      instanceId: instanceId || undefined,
-      weekIndex: weekIndex,
-      dayIndex: dayIndex,
+      // Location
+      locationType: body.locationType,
+      locationLabel: body.locationLabel,
+      meetingLink: body.meetingLink,
 
-      // Program call tracking (for allowance deduction)
-      isProgramCall: body.isProgramCall || false,
-      enrollmentId: body.enrollmentId || undefined,
-      isExtraCall: body.isExtraCall || false,
-      callUsageDeducted: false,
-      paymentIntentId: body.paymentIntentId || undefined, // For paid extra calls
+      // Participation
+      participantModel: body.participantModel,
+      approvalType: body.approvalType,
+      visibility: body.visibility,
+      attendeeIds,
+      maxAttendees: body.maxAttendees,
 
-      isRecurring: body.isRecurring || false,
-      recurrence: body.recurrence || undefined,
-      parentEventId: undefined,
-      instanceDate: undefined,
-      
-      createdByUserId: userId,
-      hostUserId: body.hostUserId || userId,
+      // Voting
+      requiredVotes: body.requiredVotes,
+      totalEligibleVoters: body.totalEligibleVoters,
+
+      // Scope references
+      programId: body.programId || instanceData?.programId,
+      programIds: body.programIds,
+      squadId: body.squadId,
+      cohortId: body.cohortId,
+
+      // Program call tracking
+      isProgramCall: body.isProgramCall,
+      enrollmentId: body.enrollmentId,
+      isExtraCall: body.isExtraCall,
+      paymentIntentId: body.paymentIntentId,
+
+      // Program instance linking
+      instanceId,
+      weekIndex,
+      dayIndex,
+
+      // Recurrence
+      isRecurring: body.isRecurring,
+      recurrence: body.recurrence,
+
+      // Host info
+      hostUserId: body.hostUserId,
       hostName: body.hostName || hostName,
       hostAvatarUrl: body.hostAvatarUrl || hostAvatarUrl,
       isCoachLed: body.isCoachLed ?? isCoachLed,
 
-      // Client info for 1:1 coaching calls
+      // Client info
       clientUserId: body.clientUserId || clientUserId,
       clientName: body.clientName || clientName,
       clientAvatarUrl: body.clientAvatarUrl || clientAvatarUrl,
 
-      attendeeIds: attendeeIds,
-      maxAttendees: body.maxAttendees || undefined,
-      
-      votingConfig: body.approvalType === 'voting' ? {
-        yesCount: 1, // Creator votes yes
-        noCount: 0,
-        requiredVotes: body.requiredVotes || 1,
-        totalEligibleVoters: body.totalEligibleVoters || 1,
-      } : undefined,
-      confirmedAt: body.approvalType === 'voting' ? undefined : now,
-      
-      coverImageUrl: body.coverImageUrl || undefined,
-      bulletPoints: body.bulletPoints || [],
-      additionalInfo: body.additionalInfo || undefined,
-      
-      recordingUrl: undefined,
-      
-      chatChannelId: body.chatChannelId || undefined,
-      sendChatReminders: body.sendChatReminders ?? true,
-      
-      // Legacy compatibility - auto-derived from startDateTime if not provided
-      date: legacyDate,
-      startTime: legacyStartTime,
-      endTime: legacyEndTime,
-      shortDescription: body.shortDescription || undefined,
-      longDescription: body.longDescription || undefined,
-      category: body.category || undefined,
-      track: body.track || undefined,
-      featured: body.featured || false,
-      
-      createdAt: now,
-      updatedAt: now,
-    };
+      // Content
+      description: body.description,
+      shortDescription: body.shortDescription,
+      longDescription: body.longDescription,
+      coverImageUrl: body.coverImageUrl,
+      bulletPoints: body.bulletPoints,
+      additionalInfo: body.additionalInfo,
+      category: body.category,
+      track: body.track,
+      featured: body.featured,
 
-    // Create the event document
-    const docRef = await adminDb.collection('events').add(eventData);
-    const eventId = docRef.id;
+      // Chat
+      chatChannelId: body.chatChannelId,
+      sendChatReminders: body.sendChatReminders,
 
-    const createdEvent: UnifiedEvent = { id: eventId, ...eventData };
-
-    // If voting is required and creator voted yes, create their vote
-    if (body.approvalType === 'voting') {
-      await adminDb.collection('eventVotes').doc(`${eventId}_${userId}`).set({
-        id: `${eventId}_${userId}`,
-        eventId,
-        userId,
-        vote: 'yes',
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
-    // Schedule notification jobs (only for confirmed events)
-    if (eventData.status === 'confirmed') {
-      await scheduleEventJobs(createdEvent);
-    }
-
-    // If recurring, generate initial instances
-    if (eventData.isRecurring && eventData.recurrence) {
-      await generateRecurringInstances(createdEvent);
-    }
-
-    // Link event to program instance week/day if applicable
-    if (instanceId && weekIndex !== undefined && dayIndex !== undefined && instanceData) {
-      try {
-        // Update the instance document to add event to week's linkedCallEventIds and day's linkedEventIds
-        const instanceRef = adminDb.collection('program_instances').doc(instanceId);
-        const instanceDoc = await instanceRef.get();
-
-        if (instanceDoc.exists) {
-          const currentData = instanceDoc.data() as ProgramInstance;
-          const weeks = [...(currentData.weeks || [])];
-
-          if (weeks[weekIndex]) {
-            // Add to week's linkedCallEventIds
-            const weekLinkedCallEventIds = weeks[weekIndex].linkedCallEventIds || [];
-            if (!weekLinkedCallEventIds.includes(eventId)) {
-              weeks[weekIndex].linkedCallEventIds = [...weekLinkedCallEventIds, eventId];
-            }
-
-            // Find the day within the week and add to linkedEventIds
-            const days = weeks[weekIndex].days || [];
-            // dayIndex is globalDayIndex (1-based), we need to find the day within this week
-            const weekStartDayIndex = weeks[weekIndex].startDayIndex || 1;
-            const dayIndexInWeek = dayIndex - weekStartDayIndex;
-
-            if (days[dayIndexInWeek]) {
-              const dayLinkedEventIds = days[dayIndexInWeek].linkedEventIds || [];
-              if (!dayLinkedEventIds.includes(eventId)) {
-                days[dayIndexInWeek].linkedEventIds = [...dayLinkedEventIds, eventId];
-              }
-              weeks[weekIndex].days = days;
-            }
-
-            await instanceRef.update({
-              weeks,
-              updatedAt: FieldValue.serverTimestamp(),
-            });
-
-            console.log(`[EVENTS_POST] Linked event ${eventId} to instance ${instanceId} week ${weekIndex} day ${dayIndex}`);
-          }
-        }
-      } catch (err) {
-        console.error('[EVENTS_POST] Error linking event to instance:', err);
-        // Don't fail the request, the event was created successfully
-      }
-    }
+      // Legacy date fields
+      date: body.date,
+      startTime: body.startTime,
+      endTime: body.endTime,
+    });
 
     console.log(`[EVENTS_POST] Created event ${eventId} (${body.eventType})`);
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       id: eventId,
       event: createdEvent,
     }, { status: 201 });
