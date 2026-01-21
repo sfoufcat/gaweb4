@@ -1,9 +1,10 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth, useOrganizationList } from '@clerk/nextjs';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { useBranding } from '@/contexts/BrandingContext';
 
 type ViewMode = 'coach' | 'client';
 
@@ -35,36 +36,67 @@ export function ViewModeProvider({ children }: ViewModeProviderProps) {
   const { isLoaded: authLoaded } = useAuth();
   const { isDemoSite } = useDemoMode();
 
-  // Use OrganizationContext to check role in CURRENT organization
+  // Use OrganizationContext to check role in CURRENT organization (Firestore-based)
   const { currentMembership, isLoading: orgLoading } = useOrganization();
+
+  // Get Clerk native organization memberships (direct from Clerk - source of truth)
+  const { userMemberships, isLoaded: clerkOrgsLoaded } = useOrganizationList({
+    userMemberships: { infinite: true },
+  });
+
+  // Get branding to determine current tenant org
+  const { effectiveBranding } = useBranding();
+  const isDefault = effectiveBranding?.organizationId === 'default';
+
+  // Get the current tenant org ID (on tenant domains)
+  const currentTenantOrgId = useMemo(() => {
+    if (isDefault || !effectiveBranding?.organizationId || effectiveBranding.organizationId === 'default') {
+      return null;
+    }
+    return effectiveBranding.organizationId;
+  }, [isDefault, effectiveBranding?.organizationId]);
+
+  // Find user's Clerk membership in the current tenant org
+  const clerkTenantMembership = useMemo(() => {
+    if (!currentTenantOrgId || !userMemberships?.data) {
+      return null;
+    }
+    return userMemberships.data.find(m => m.organization.id === currentTenantOrgId);
+  }, [currentTenantOrgId, userMemberships?.data]);
+
+  // Check if user is org:admin in Clerk for this tenant (= super_coach equivalent)
+  const isClerkAdmin = clerkTenantMembership?.role === 'org:admin';
 
   const [viewMode, setViewModeState] = useState<ViewMode>('client');
   const [mounted, setMounted] = useState(false);
 
   // Check if user is coach/super_coach of the CURRENT organization
-  // This ensures the ViewSwitcher only shows for coaches of THIS specific org
-  // Directly use currentMembership.orgRole to ensure reactive updates
+  // Checks BOTH Clerk native memberships (source of truth) AND Firestore memberships
   const orgRole = currentMembership?.orgRole;
   const canAccessCoachView = useMemo(() => {
-    const isCoachRole = orgRole === 'coach' || orgRole === 'super_coach';
-    const isSuperCoachRole = orgRole === 'super_coach';
+    const isFirestoreCoach = orgRole === 'coach' || orgRole === 'super_coach';
     console.log('[VIEW_MODE] canAccessCoachView check:', {
       isDemoSite,
-      orgRole,
-      isCoach: isCoachRole,
-      isSuperCoach: isSuperCoachRole,
-      result: isDemoSite || isCoachRole,
+      currentTenantOrgId,
+      isClerkAdmin,
+      clerkRole: clerkTenantMembership?.role,
+      firestoreOrgRole: orgRole,
+      isFirestoreCoach,
+      result: isDemoSite || isClerkAdmin || isFirestoreCoach,
     });
     if (isDemoSite) return true;
-    // Use direct orgRole check from currentMembership
-    return isCoachRole;
-  }, [isDemoSite, orgRole]);
+    // Check Clerk first (source of truth) - org:admin = super_coach
+    if (isClerkAdmin) return true;
+    // Fallback to Firestore membership
+    return isFirestoreCoach;
+  }, [isDemoSite, isClerkAdmin, clerkTenantMembership?.role, orgRole, currentTenantOrgId]);
 
   // Initialize from localStorage, default to 'coach' if user has coach access
   useEffect(() => {
     setMounted(true);
 
-    if (!authLoaded || orgLoading) return;
+    // Wait for both Clerk and Firestore to load
+    if (!authLoaded || orgLoading || !clerkOrgsLoaded) return;
 
     const stored = localStorage.getItem(STORAGE_KEY) as ViewMode | null;
 
@@ -82,7 +114,7 @@ export function ViewModeProvider({ children }: ViewModeProviderProps) {
         setViewModeState('coach');
       }
     }
-  }, [authLoaded, orgLoading, canAccessCoachView]);
+  }, [authLoaded, orgLoading, clerkOrgsLoaded, canAccessCoachView]);
 
   const setViewMode = useCallback((mode: ViewMode) => {
     // Don't allow coach view for non-coaches
@@ -100,7 +132,7 @@ export function ViewModeProvider({ children }: ViewModeProviderProps) {
 
   const isCoachView = viewMode === 'coach' && canAccessCoachView;
   const isClientView = !isCoachView;
-  const isLoading = !mounted || !authLoaded || orgLoading;
+  const isLoading = !mounted || !authLoaded || orgLoading || !clerkOrgsLoaded;
 
   // Don't block rendering while loading - just use default values
   const value = useMemo(() => ({

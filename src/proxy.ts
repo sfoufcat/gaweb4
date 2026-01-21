@@ -1140,7 +1140,10 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   // PUBLIC WEBSITE ROUTING
   // ==========================================================================
   // When a tenant has their public website enabled, unauthenticated visitors
-  // to the root path (/) see the website instead of being redirected to sign-in.
+  // to the root path (/) are REDIRECTED (not rewritten) to /website.
+  // This prevents caching issues where authenticated users might see the
+  // /website content when visiting /.
+  //
   // The website has Sign In and Join buttons for users to authenticate.
   // NOTE: Use earlyUserId (from first auth() call) to match the auth state used for layout headers.
   // Using userId (from second auth() call) caused race conditions on first visit to custom domains.
@@ -1148,8 +1151,10 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     if (pathname === '/' || pathname === '') {
       const websiteEnabled = tenantConfigData?.websiteEnabled;
       if (websiteEnabled) {
-        console.log(`[MIDDLEWARE] Rewriting / to /website for tenant ${tenantSubdomain} (website enabled)`);
-        return NextResponse.rewrite(new URL('/website', request.url));
+        console.log(`[MIDDLEWARE] Redirecting / to /website for tenant ${tenantSubdomain} (website enabled)`);
+        // Use redirect instead of rewrite to prevent caching confusion
+        // The 302 status code ensures browsers don't cache this redirect
+        return NextResponse.redirect(new URL('/website', request.url), 302);
       }
     }
   }

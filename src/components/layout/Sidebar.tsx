@@ -14,6 +14,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
+import { ViewSwitcher } from '@/components/shared/ViewSwitcher';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { useSquad } from '@/hooks/useSquad';
 import { MenuIcon } from '@/lib/menu-icons';
@@ -500,7 +501,14 @@ export function Sidebar() {
               <OrganizationSwitcher />
             </div>
           )}
-          
+
+          {/* View Switcher - coach/client toggle, only shows for coaches */}
+          {!isCollapsed && (
+            <div className="flex justify-center py-2">
+              <ViewSwitcher horizontal />
+            </div>
+          )}
+
           <div 
             onClick={(e) => {
               // Find the UserButton and trigger it

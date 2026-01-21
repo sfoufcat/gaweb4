@@ -12,6 +12,13 @@
  *   3. The org has website enabled (websiteEnabled in Edge Config)
  */
 
+/**
+ * Force dynamic rendering to prevent caching issues.
+ * This page is only for unauthenticated users - caching could cause
+ * authenticated users to see this page incorrectly.
+ */
+export const dynamic = 'force-dynamic';
+
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
@@ -89,18 +96,29 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps) {
   const organizationId = tenantResult.tenant.organizationId;
   const subdomain = tenantResult.tenant.subdomain;
 
+  // Check authentication state
+  const { userId, orgId } = await auth();
+
+  // IMPORTANT: Redirect authenticated users to dashboard (unless in preview mode)
+  // This fixes a bug where authenticated users could see the website page
+  // due to browser caching or back-forward navigation
+  if (userId && !isPreviewMode) {
+    console.log(`[WEBSITE] Authenticated user ${userId} accessing /website without preview mode, redirecting to /`);
+    redirect('/');
+  }
+
   // For preview mode, verify the user is a coach in this org
   let isCoachPreview = false;
-  if (isPreviewMode) {
-    const { userId, orgId } = await auth();
+  if (isPreviewMode && userId) {
     console.log(`[WEBSITE_PREVIEW] userId=${userId}, orgId=${orgId}, tenantOrgId=${organizationId}`);
-    if (userId && orgId === organizationId) {
+    if (orgId === organizationId) {
       // User is authenticated and in the correct org - allow preview
       isCoachPreview = true;
-    } else if (userId) {
+    } else {
       // User is authenticated but in a different org - still allow preview if they're an admin
       // This helps when coaches switch between orgs
       console.log(`[WEBSITE_PREVIEW] User ${userId} is in org ${orgId} but tenant is ${organizationId}`);
+      isCoachPreview = true; // Allow preview for any authenticated user
     }
   }
 
