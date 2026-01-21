@@ -1140,20 +1140,16 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   // PUBLIC WEBSITE ROUTING
   // ==========================================================================
   // When a tenant has their public website enabled, unauthenticated visitors
-  // to the root path (/) are REDIRECTED (not rewritten) to /website.
-  // This prevents caching issues where authenticated users might see the
-  // /website content when visiting /.
+  // to the root path (/) are REDIRECTED to /website.
   //
-  // The website has Sign In and Join buttons for users to authenticate.
-  // NOTE: Use earlyUserId (from first auth() call) to match the auth state used for layout headers.
-  // Using userId (from second auth() call) caused race conditions on first visit to custom domains.
-  if (isTenantMode && tenantOrgId && !earlyUserId) {
+  // IMPORTANT: Must use `userId` (from second auth() call at line 1085), NOT `earlyUserId`.
+  // The earlyUserId can be null on custom domains even when user IS authenticated,
+  // causing authenticated coaches to be incorrectly redirected to /website.
+  if (isTenantMode && tenantOrgId && !userId) {
     if (pathname === '/' || pathname === '') {
       const websiteEnabled = tenantConfigData?.websiteEnabled;
       if (websiteEnabled) {
-        console.log(`[MIDDLEWARE] Redirecting / to /website for tenant ${tenantSubdomain} (website enabled)`);
-        // Use redirect instead of rewrite to prevent caching confusion
-        // The 302 status code ensures browsers don't cache this redirect
+        console.log(`[MIDDLEWARE] Redirecting / to /website for tenant ${tenantSubdomain} (website enabled, user not authenticated)`);
         return NextResponse.redirect(new URL('/website', request.url), 302);
       }
     }

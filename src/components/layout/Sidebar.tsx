@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { UserButton, useAuth, useOrganizationList } from '@clerk/nextjs';
 import Image from 'next/image';
 import { isAdmin, canAccessEditorSection, isSuperAdmin, isOrgCoach } from '@/lib/admin-utils-shared';
@@ -13,6 +13,7 @@ import { useBranding, useBrandingValues, useFeedEnabled, useEmptyStateBehaviors 
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { useViewMode } from '@/contexts/ViewModeContext';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { ViewSwitcher } from '@/components/shared/ViewSwitcher';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
@@ -54,6 +55,7 @@ function useScrollDirection() {
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { sessionClaims: authClaims, isLoaded: authLoaded, isSignedIn: authSignedIn, userId: authUserId } = useAuth();
   const { isDemoSite } = useDemoMode();
 
@@ -95,6 +97,9 @@ export function Sidebar() {
   const { hasStandaloneSquad } = useSquad();
   const feedEnabled = useFeedEnabled(); // From Edge Config via SSR - instant, no flash
   const { programEmptyStateBehavior, squadEmptyStateBehavior } = useEmptyStateBehaviors();
+
+  // View mode for coach/client navigation
+  const { isCoachView } = useViewMode();
   
   // Navigation visibility logic:
   // - Program: Show if user has enrollments, OR coach config says show discover page, OR demo mode
@@ -104,7 +109,22 @@ export function Sidebar() {
   const showSquadNav = isDemoSite || hasStandaloneSquad || squadEmptyStateBehavior === 'discover';
   const showFeedNav = isDemoSite || feedEnabled;
   
-  const isActive = (path: string) => pathname === path;
+  // Check if nav item is active, handling both simple paths and paths with query params
+  const isActive = (path: string) => {
+    // If path includes query params (e.g., /coach?tab=programs)
+    if (path.includes('?')) {
+      const [basePath, queryString] = path.split('?');
+      if (pathname !== basePath) return false;
+      // Parse the expected query params from the path
+      const expectedParams = new URLSearchParams(queryString);
+      // Check if current URL has matching params
+      for (const [key, value] of expectedParams.entries()) {
+        if (searchParams.get(key) !== value) return false;
+      }
+      return true;
+    }
+    return pathname === path;
+  };
   
   // Determine if mobile nav should be in compact mode (scrolling down and not at top)
   const isCompact = scrollDirection === 'down' && !isAtTop;
@@ -243,16 +263,16 @@ export function Sidebar() {
       icon: <NavIcon iconKey={menuIcons.home} />,
       visible: true, // Always visible
     },
-    program: { 
-      name: menuTitles.program, 
-      path: '/program', 
+    program: {
+      name: menuTitles.program,
+      path: isCoachView ? '/coach?tab=programs' : '/program',
       dataTour: 'program-nav',
       icon: <NavIcon iconKey={menuIcons.program} />,
       visible: showProgramNav, // Visible if has enrollments OR no standard squad
     },
-    squad: { 
-      name: menuTitles.squad, 
-      path: '/squad', 
+    squad: {
+      name: menuTitles.squad,
+      path: isCoachView ? '/coach?tab=squads' : '/squad',
       icon: <NavIcon iconKey={menuIcons.squad} />,
       visible: showSquadNav, // Visible ONLY if user has a standard squad
     },
