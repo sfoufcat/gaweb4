@@ -14,6 +14,12 @@ import { ArticleCard } from '@/components/discover/ArticleCard';
 import { RequestCallModal } from '@/components/scheduling';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { calculateCalendarWeeks, getCalendarWeekForDay, type CalendarWeek } from '@/lib/calendar-weeks';
+import { useProgramWeeklyContent } from '@/hooks/useProgramWeeklyContent';
+import { WeeklySection } from './WeeklySection';
+import { ProgramSchedule } from './ProgramSchedule';
+import { WeeklyOutcomes } from './WeeklyOutcomes';
+import { CoachNotes } from './CoachNotes';
+import { WeeklyResources } from './WeeklyResources';
 
 /**
  * ProgramDetailView Component
@@ -155,6 +161,18 @@ export function ProgramDetailView({
     days,
     isLoading: contentLoading,
   } = useProgramContent(program.id);
+
+  // Weekly content for the new Schedule section
+  const {
+    week: weeklyWeek,
+    days: weeklyDays,
+    events: weeklyEvents,
+    courses: weeklyCourses,
+    articles: weeklyArticles,
+    downloads: weeklyDownloads,
+    links: weeklyLinks,
+    isLoading: weeklyContentLoading,
+  } = useProgramWeeklyContent(program.id);
 
   // 3-day focus accordion state - all collapsed by default
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
@@ -796,8 +814,58 @@ export function ProgramDetailView({
         </div>
       )}
 
-      {/* 3 Day Focus Section - Detached Cards */}
-      {hasAnyTasks && (
+      {/* Weekly Section - Theme, Description, Prompt */}
+      {weeklyWeek && (
+        <div className="mt-6">
+          <WeeklySection week={weeklyWeek} totalWeeks={calendarWeeks.length} />
+        </div>
+      )}
+
+      {/* Schedule Section - Replaces 3 Day Focus */}
+      {weeklyDays.length > 0 && (
+        <div className="mt-8">
+          <ProgramSchedule
+            days={weeklyDays}
+            events={weeklyEvents}
+            courses={weeklyCourses}
+            articles={weeklyArticles}
+            downloads={weeklyDownloads}
+            links={weeklyLinks}
+            enrollmentId={enrollment?.id}
+          />
+        </div>
+      )}
+
+      {/* Weekly Outcomes */}
+      {weeklyWeek && (
+        <div className="mt-6">
+          <WeeklyOutcomes week={weeklyWeek} />
+        </div>
+      )}
+
+      {/* Coach Notes */}
+      {weeklyWeek && (
+        <div className="mt-6">
+          <CoachNotes week={weeklyWeek} coachName={program.coachName} />
+        </div>
+      )}
+
+      {/* Weekly Resources */}
+      {weeklyWeek && (weeklyCourses.length > 0 || weeklyArticles.length > 0 || weeklyDownloads.length > 0 || weeklyLinks.length > 0 || weeklyEvents.length > 0) && (
+        <div className="mt-8">
+          <WeeklyResources
+            courses={weeklyCourses}
+            articles={weeklyArticles}
+            downloads={weeklyDownloads}
+            links={weeklyLinks}
+            events={weeklyEvents}
+            enrollmentId={enrollment?.id}
+          />
+        </div>
+      )}
+
+      {/* Legacy 3 Day Focus Section - Fallback when no weekly content */}
+      {hasAnyTasks && !weeklyWeek && (
         <div className="mt-8 mb-10 space-y-4">
           <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
             {isPreStart ? 'Program preview' : '3 day focus'}
