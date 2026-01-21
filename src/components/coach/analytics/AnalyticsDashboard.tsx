@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Users, Heart, Package, Funnel as FunnelIcon, FileText, MessageCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Users, Heart, Package, Funnel as FunnelIcon, FileText, MessageCircle, ChevronDown } from 'lucide-react';
 import { ClientActivityTab } from './ClientActivityTab';
 import { AnalyticsTab } from '../AnalyticsTab';
 import { ProductAnalyticsTab } from './ProductAnalyticsTab';
@@ -31,6 +31,21 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics', initi
     }
     return 'clients';
   });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+    if (mobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [mobileMenuOpen]);
 
   const tabs: { id: TabType; label: string; mobileLabel?: string; icon: React.ReactNode }[] = [
     { id: 'clients', label: 'Client Activity', mobileLabel: 'Client', icon: <Users className="w-4 h-4" /> },
@@ -46,10 +61,13 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics', initi
     onSubTabChange?.(activeTab);
   }, [activeTab, onSubTabChange]);
 
+  const activeTabData = tabs.find(t => t.id === activeTab) || tabs[0];
+
   return (
     <div>
       {/* Header with tabs and GA button */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      {/* Desktop layout */}
+      <div className="hidden md:flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl">
           {tabs.map((tab) => (
             <button
@@ -64,13 +82,49 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics', initi
               <span className="w-4 h-4">
                 {tab.icon}
               </span>
-              <span className="hidden sm:inline">{tab.label}</span>
-              <span className="sm:hidden">{tab.mobileLabel || tab.label}</span>
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
-
         <GAConnectButton apiBasePath={apiBasePath} />
+      </div>
+
+      {/* Mobile layout: GA left, dropdown right */}
+      <div className="flex md:hidden items-center justify-between gap-3 mb-6">
+        <GAConnectButton apiBasePath={apiBasePath} />
+
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl text-sm font-medium font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+          >
+            <span className="w-4 h-4">{activeTabData.icon}</span>
+            <span>{activeTabData.mobileLabel || activeTabData.label}</span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${mobileMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {mobileMenuOpen && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#1e222a] rounded-xl shadow-lg border border-[#e1ddd8] dark:border-[#262b35] py-1 z-50">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full px-4 py-2.5 text-left text-sm font-medium font-albert flex items-center gap-2 transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef]/50 dark:hover:bg-[#262b35]/50'
+                  }`}
+                >
+                  <span className="w-4 h-4">{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tab Content */}

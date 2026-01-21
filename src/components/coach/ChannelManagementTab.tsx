@@ -1131,7 +1131,7 @@ export function ChannelManagementTab() {
         </div>
 
         {/* Channel List */}
-        <div className="space-y-2">
+        <div className="space-y-2.5 sm:space-y-2">
           {channels.map((channel, index) => (
             <div
               key={channel.id}
@@ -1139,7 +1139,7 @@ export function ChannelManagementTab() {
               onDragStart={() => handleDragStart(index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
-              className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-move ${
+              className={`flex items-start sm:items-center gap-3 p-3 sm:p-4 rounded-xl border transition-all cursor-move ${
                 draggedIndex === index
                   ? 'border-brand-accent bg-brand-accent/5 shadow-lg'
                   : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] hover:border-brand-accent/50'
@@ -1155,8 +1155,8 @@ export function ChannelManagementTab() {
 
               {/* Content */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] break-words">
                     {channel.title}
                   </span>
                   {channel.isPinned && (
@@ -1169,7 +1169,7 @@ export function ChannelManagementTab() {
                   )}
                 </div>
                 {channel.subtitle && (
-                  <p className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                  <p className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2] line-clamp-2 sm:truncate">
                     {channel.subtitle}
                   </p>
                 )}

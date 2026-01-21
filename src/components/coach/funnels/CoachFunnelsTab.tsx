@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
@@ -22,7 +22,8 @@ import {
   BookOpen,
   Calendar,
   Download,
-  Link as LinkIcon
+  Link as LinkIcon,
+  ChevronDown
 } from 'lucide-react';
 import type { Funnel, Program, FunnelTargetType, FunnelContentType, CoachTier } from '@/types';
 import { FunnelEditorDialog } from './FunnelEditorDialog';
@@ -135,6 +136,21 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
   // Plan tier for limit checking
   const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
   const { checkLimit, showLimitModal, modalProps } = useLimitCheck(currentTier);
+
+  // Content type dropdown (mobile)
+  const [isContentTypeDropdownOpen, setIsContentTypeDropdownOpen] = useState(false);
+  const contentTypeDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close content type dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (contentTypeDropdownRef.current && !contentTypeDropdownRef.current.contains(event.target as Node)) {
+        setIsContentTypeDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchFunnels = useCallback(async () => {
     // Skip API call in demo mode
@@ -655,22 +671,67 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
         )}
         
         {activeTab === 'content' && (
-          <div className="flex gap-2">
-            {CONTENT_TYPE_OPTIONS.map(({ value, label, icon: Icon }) => (
+          <>
+            {/* Mobile Dropdown */}
+            <div className="relative sm:hidden" ref={contentTypeDropdownRef}>
               <button
-                key={value}
-                onClick={() => setSelectedContentType(value)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  selectedContentType === value
-                    ? 'bg-brand-accent/10 text-brand-accent dark:bg-brand-accent/10 dark:text-brand-accent border border-brand-accent/30'
-                    : 'bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] text-text-secondary dark:text-[#b2b6c2] hover:border-brand-accent/50'
-                }`}
+                onClick={() => setIsContentTypeDropdownOpen(!isContentTypeDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-2 bg-brand-accent/10 text-brand-accent border border-brand-accent/30 rounded-lg text-sm font-medium"
               >
-                <Icon className="w-4 h-4" />
-                {label}
+                {(() => {
+                  const current = CONTENT_TYPE_OPTIONS.find(o => o.value === selectedContentType);
+                  const Icon = current?.icon;
+                  return (
+                    <>
+                      {Icon && <Icon className="w-4 h-4" />}
+                      {current?.label}
+                    </>
+                  );
+                })()}
+                <ChevronDown className={`w-4 h-4 transition-transform ${isContentTypeDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-            ))}
-          </div>
+
+              {isContentTypeDropdownOpen && (
+                <div className="absolute left-0 mt-1 w-48 bg-white dark:bg-[#1a1f27] rounded-xl shadow-lg border border-[#e1ddd8] dark:border-[#262b35] py-1 z-50">
+                  {CONTENT_TYPE_OPTIONS.map(({ value, label, icon: Icon }) => (
+                    <button
+                      key={value}
+                      onClick={() => {
+                        setSelectedContentType(value);
+                        setIsContentTypeDropdownOpen(false);
+                      }}
+                      className={`w-full px-3 py-2 text-left text-sm font-medium flex items-center gap-2 ${
+                        selectedContentType === value
+                          ? 'bg-brand-accent/10 text-brand-accent'
+                          : 'text-text-secondary dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Horizontal Buttons */}
+            <div className="hidden sm:flex gap-2">
+              {CONTENT_TYPE_OPTIONS.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setSelectedContentType(value)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    selectedContentType === value
+                      ? 'bg-brand-accent/10 text-brand-accent dark:bg-brand-accent/10 dark:text-brand-accent border border-brand-accent/30'
+                      : 'bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] text-text-secondary dark:text-[#b2b6c2] hover:border-brand-accent/50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -773,10 +834,10 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
               animate={{ opacity: 1, y: 0 }}
               className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 hover:border-[#d4d0cb] dark:hover:border-[#363c49] transition-colors"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                <div className="flex items-start sm:items-center gap-3 sm:gap-4">
                   {/* Status indicator */}
-                  <div className={`w-2 h-2 rounded-full ${funnel.isActive ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                  <div className={`w-2 h-2 rounded-full mt-1.5 sm:mt-0 ${funnel.isActive ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
                   
                   <div>
                     <div className="flex items-center gap-2">
@@ -798,7 +859,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-end sm:self-auto">
                   {/* Quick actions */}
                   <button
                     onClick={() => handleEditSteps(funnel)}

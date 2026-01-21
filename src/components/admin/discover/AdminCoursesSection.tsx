@@ -2,17 +2,8 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
-import { Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, ChevronLeft, ChevronRight, Search, X, Plus } from 'lucide-react';
 import type { DiscoverCourse } from '@/types/discover';
-import type { UserTrack } from '@/types';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,25 +25,6 @@ import {
 import { CourseEditor } from './CourseEditor';
 import { CreateCourseModal } from './CreateCourseModal';
 
-// Track options for dropdown
-const TRACK_OPTIONS: { value: UserTrack | ''; label: string }[] = [
-  { value: '', label: 'All Tracks (No specific track)' },
-  { value: 'content_creator', label: 'Creator' },
-  { value: 'saas', label: 'SaaS' },
-  { value: 'coach_consultant', label: 'Coach/Consultant' },
-  { value: 'ecom', label: 'Ecom' },
-  { value: 'agency', label: 'Agency' },
-  { value: 'community_builder', label: 'Community Builder' },
-  { value: 'general', label: 'General' },
-];
-
-// Helper to get track display name
-const getTrackDisplayName = (track: UserTrack | null | undefined): string => {
-  if (!track) return '—';
-  const option = TRACK_OPTIONS.find(t => t.value === track);
-  return option?.label || track;
-};
-
 interface AdminCoursesSectionProps {
   apiEndpoint?: string;
   /** Initial course ID for URL persistence */
@@ -73,9 +45,9 @@ export function AdminCoursesSection({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
-  const [trackFilter, setTrackFilter] = useState('');
   const [courseToDelete, setCourseToDelete] = useState<DiscoverCourse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -210,37 +182,29 @@ export function AdminCoursesSection({
 
   const filteredCourses = useMemo(() => {
     let filtered = courses;
-    
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(course =>
         course.title.toLowerCase().includes(query)
       );
     }
-    
+
     if (categoryFilter) {
       filtered = filtered.filter(course => course.category === categoryFilter);
     }
-    
+
     if (levelFilter) {
       filtered = filtered.filter(course => course.level === levelFilter);
     }
-    
-    if (trackFilter) {
-      if (trackFilter === 'none') {
-        filtered = filtered.filter(course => !course.track);
-      } else {
-        filtered = filtered.filter(course => course.track === trackFilter);
-      }
-    }
-    
+
     return filtered;
-  }, [courses, searchQuery, categoryFilter, levelFilter, trackFilter]);
+  }, [courses, searchQuery, categoryFilter, levelFilter]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, categoryFilter, levelFilter, trackFilter]);
+  }, [searchQuery, categoryFilter, levelFilter]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredCourses.length / ITEMS_PER_PAGE);
@@ -332,92 +296,84 @@ export function AdminCoursesSection({
     <>
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
         {/* Header */}
-        <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
-          <div className="flex items-center gap-4">
-            <div className="flex-shrink-0">
-              <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Courses</h2>
-              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-                {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}
-              </p>
-            </div>
+        <div className="p-4 sm:p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+          <div className="flex items-center justify-between gap-3">
+            {/* Title with inline count - hide when search expanded */}
+            {!isSearchExpanded && (
+              <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Courses ({filteredCourses.length})
+              </h2>
+            )}
 
-            <div className="flex items-center gap-3 ml-auto">
-              {/* Search */}
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9ca3af]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Search courses..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-1.5 w-48 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
-                />
-              </div>
+            <div className={`flex items-center gap-2 ${isSearchExpanded ? 'flex-1' : 'ml-auto'}`}>
+              {isSearchExpanded ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Search courses..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="flex-1 px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
+                  />
+                  <button
+                    onClick={() => { setIsSearchExpanded(false); setSearchQuery(''); }}
+                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Filters - hidden when search expanded */}
+                  {categories.length > 0 && (
+                    <Select
+                      value={categoryFilter || 'all'}
+                      onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}
+                    >
+                      <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 ring-offset-0 font-albert text-sm gap-1.5 !justify-start">
+                        <SelectValue placeholder="All Categories" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        {categories.map(cat => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
 
-              {/* Category Filter */}
-              {categories.length > 0 && (
-                <Select
-                  value={categoryFilter || 'all'}
-                  onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}
-                >
-                  <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 ring-offset-0 font-albert text-sm gap-1.5 !justify-start">
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {levels.length > 0 && (
+                    <Select
+                      value={levelFilter || 'all'}
+                      onValueChange={(value) => setLevelFilter(value === 'all' ? '' : value)}
+                    >
+                      <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 ring-offset-0 font-albert text-sm gap-1.5 !justify-start">
+                        <SelectValue placeholder="All Levels" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Levels</SelectItem>
+                        {levels.map(level => (
+                          <SelectItem key={level} value={level}>{level}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  <button
+                    onClick={() => setIsSearchExpanded(true)}
+                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                  >
+                    <Search className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleCreateCourse}
+                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </>
               )}
-
-              {/* Level Filter */}
-              {levels.length > 0 && (
-                <Select
-                  value={levelFilter || 'all'}
-                  onValueChange={(value) => setLevelFilter(value === 'all' ? '' : value)}
-                >
-                  <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 ring-offset-0 font-albert text-sm gap-1.5 !justify-start">
-                    <SelectValue placeholder="All Levels" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Levels</SelectItem>
-                    {levels.map(level => (
-                      <SelectItem key={level} value={level}>{level}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              {/* Track Filter */}
-              <Select
-                value={trackFilter || 'all'}
-                onValueChange={(value) => setTrackFilter(value === 'all' ? '' : value)}
-              >
-                <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 ring-offset-0 font-albert text-sm gap-1.5 !justify-start">
-                  <SelectValue placeholder="All Tracks" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Tracks</SelectItem>
-                  <SelectItem value="none">No Track</SelectItem>
-                  {TRACK_OPTIONS.filter(t => t.value).map(option => (
-                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <button
-                onClick={handleCreateCourse}
-                className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200 whitespace-nowrap"
-              >
-                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Create Course
-              </button>
             </div>
           </div>
         </div>
@@ -475,11 +431,6 @@ export function AdminCoursesSection({
                 {course.trending && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-albert">
                     Trending
-                  </span>
-                )}
-                {course.track && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-albert">
-                    {getTrackDisplayName(course.track)}
                   </span>
                 )}
               </div>

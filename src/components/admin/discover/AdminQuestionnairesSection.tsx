@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Pencil, Trash2, BarChart3, Copy, Check, ClipboardList } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, BarChart3, Copy, Check, ClipboardList, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QuestionnaireBuilder } from '@/components/coach/questionnaires/QuestionnaireBuilder';
 import { ResponsesViewer } from '@/components/coach/questionnaires/ResponsesViewer';
@@ -38,6 +38,7 @@ export function AdminQuestionnairesSection({
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Questionnaire | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -224,51 +225,59 @@ export function AdminQuestionnairesSection({
   return (
     <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]/50 overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
-        <div>
-          <h3 className="text-lg font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            Questionnaires
-          </h3>
-          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-            Collect client feedback, assessments, or intake forms. Share via link or link to programs.
-          </p>
-        </div>
+      <div className="p-4 sm:p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+        <div className="flex items-center justify-between gap-3">
+          {/* Title with inline count - hide when search expanded */}
+          {!isSearchExpanded && (
+            <h3 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              Questionnaires ({filteredQuestionnaires.length})
+            </h3>
+          )}
 
-        <div className="flex items-center gap-3">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" />
-            <input
-              type="text"
-              placeholder="Search questionnaires..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-1.5 w-48 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
-            />
-          </div>
-
-          {/* Create Button */}
-          <button
-            onClick={handleCreate}
-            disabled={creating}
-            className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200 disabled:opacity-70"
-          >
-            {creating ? (
-              <>
-                <motion.span
-                  className="w-4 h-4 border-2 border-[#6b6560]/30 border-t-[#6b6560] dark:border-[#9ca3af]/30 dark:border-t-[#9ca3af] rounded-full"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          <div className={`flex items-center gap-2 ${isSearchExpanded ? 'flex-1' : 'ml-auto'}`}>
+            {isSearchExpanded ? (
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Search questionnaires..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="flex-1 px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
                 />
-                Creating...
-              </>
+                <button
+                  onClick={() => { setIsSearchExpanded(false); setSearchQuery(''); }}
+                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             ) : (
               <>
-                <Plus className="w-4 h-4" />
-                Create Questionnaire
+                <button
+                  onClick={() => setIsSearchExpanded(true)}
+                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleCreate}
+                  disabled={creating}
+                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors disabled:opacity-70"
+                >
+                  {creating ? (
+                    <motion.span
+                      className="w-4 h-4 border-2 border-[#6b6560]/30 border-t-[#6b6560] dark:border-[#9ca3af]/30 dark:border-t-[#9ca3af] rounded-full block"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                </button>
               </>
             )}
-          </button>
+          </div>
         </div>
       </div>
 

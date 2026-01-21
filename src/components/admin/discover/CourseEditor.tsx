@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import type { DiscoverCourse, CourseModule, CourseLesson } from '@/types/discover';
-import type { UserTrack } from '@/types';
 import { Button } from '@/components/ui/button';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { MediaUpload } from '@/components/admin/MediaUpload';
@@ -98,7 +97,6 @@ export function CourseEditor({
     shortDescription: '',
     category: '',
     level: '',
-    track: '' as UserTrack | '',
     programIds: [] as string[],
     featured: false,
     trending: false,
@@ -114,7 +112,6 @@ export function CourseEditor({
         shortDescription: course.shortDescription || '',
         category: course.category || '',
         level: course.level || '',
-        track: course.track || '',
         programIds: course.programIds || [],
         featured: course.featured || false,
         trending: course.trending || false,
@@ -137,7 +134,6 @@ export function CourseEditor({
         shortDescription: '',
         category: '',
         level: '',
-        track: '',
         programIds: [],
         featured: false,
         trending: false,
@@ -172,7 +168,6 @@ export function CourseEditor({
         ...formData,
         category: formData.category || null,
         level: formData.level || null,
-        track: formData.track || null,
         programIds: formData.programIds,
         priceInCents: formData.pricing.priceInCents,
         currency: formData.pricing.currency,
@@ -772,6 +767,7 @@ export function CourseEditor({
         onTrendingChange={(trending) => setFormData(prev => ({ ...prev, trending }))}
         uploadEndpoint={uploadEndpoint}
         programsApiEndpoint={programsApiEndpoint}
+        categoriesApiEndpoint="/api/coach/org-course-categories"
       />
 
       {/* Delete Module Confirmation Dialog */}

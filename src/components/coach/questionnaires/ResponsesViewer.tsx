@@ -255,17 +255,17 @@ export function ResponsesViewer({
     <div className="min-h-screen bg-[#f9f8f6] dark:bg-[#11141b]">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-[#f9f8f6]/80 dark:bg-[#11141b]/80 backdrop-blur-xl border-b border-[#e1ddd8] dark:border-[#262b35]/50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={onBack}
-              className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+              className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors flex-shrink-0"
             >
               <ArrowLeft className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
             </button>
-            <div>
-              <h1 className="text-lg font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                {questionnaireName} Responses
+            <div className="min-w-0 flex-1">
+              <h1 className="text-base sm:text-lg font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                {questionnaireName}
               </h1>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                 {data?.totalCount || 0} response{data?.totalCount !== 1 ? 's' : ''}
@@ -273,16 +273,16 @@ export function ResponsesViewer({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Search */}
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
               <input
                 type="text"
                 placeholder="Search by name or email..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 w-64 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="pl-9 pr-4 py-2 w-full sm:w-64 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
               />
             </div>
 
@@ -291,20 +291,21 @@ export function ResponsesViewer({
               onClick={handleExportCSV}
               disabled={!data?.responses.length}
               variant="outline"
-              className="font-albert"
+              className="font-albert flex-shrink-0"
+              size="sm"
             >
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
+              <Download className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Export CSV</span>
             </Button>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {!data?.responses.length ? (
-          <div className="rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]/50 p-12 text-center">
-            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+          <div className="rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]/50 p-8 sm:p-12 text-center">
+            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert max-w-sm mx-auto">
               No responses yet. Share your questionnaire link to start collecting responses.
             </p>
           </div>

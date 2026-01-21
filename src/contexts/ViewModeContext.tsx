@@ -36,18 +36,29 @@ export function ViewModeProvider({ children }: ViewModeProviderProps) {
   const { isDemoSite } = useDemoMode();
 
   // Use OrganizationContext to check role in CURRENT organization
-  const { isCoach, isSuperCoach, isLoading: orgLoading } = useOrganization();
+  const { currentMembership, isLoading: orgLoading } = useOrganization();
 
   const [viewMode, setViewModeState] = useState<ViewMode>('client');
   const [mounted, setMounted] = useState(false);
 
   // Check if user is coach/super_coach of the CURRENT organization
   // This ensures the ViewSwitcher only shows for coaches of THIS specific org
+  // Directly use currentMembership.orgRole to ensure reactive updates
+  const orgRole = currentMembership?.orgRole;
   const canAccessCoachView = useMemo(() => {
+    const isCoachRole = orgRole === 'coach' || orgRole === 'super_coach';
+    const isSuperCoachRole = orgRole === 'super_coach';
+    console.log('[VIEW_MODE] canAccessCoachView check:', {
+      isDemoSite,
+      orgRole,
+      isCoach: isCoachRole,
+      isSuperCoach: isSuperCoachRole,
+      result: isDemoSite || isCoachRole,
+    });
     if (isDemoSite) return true;
-    // Use OrganizationContext which checks the current org's membership
-    return isCoach() || isSuperCoach();
-  }, [isDemoSite, isCoach, isSuperCoach]);
+    // Use direct orgRole check from currentMembership
+    return isCoachRole;
+  }, [isDemoSite, orgRole]);
 
   // Initialize from localStorage, default to 'coach' if user has coach access
   useEffect(() => {

@@ -2803,6 +2803,7 @@ export interface OrgSettings {
   
   // Content categories (coach-defined)
   articleCategories?: string[];        // Coach-defined article categories for the org
+  courseCategories?: string[];         // Coach-defined course categories for the org
   
   // Daily Focus settings
   defaultDailyFocusSlots?: number;     // 1-6, default 3 - hard cap for all users in this org

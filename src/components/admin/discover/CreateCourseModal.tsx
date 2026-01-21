@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { MediaUpload } from '@/components/admin/MediaUpload';
+import { CategorySelector } from '@/components/admin/CategorySelector';
 
 // Wizard step types
 type WizardStep = 'info' | 'structure';
@@ -31,6 +32,7 @@ interface CourseWizardData {
   title: string;
   description: string;
   coverImage: string;
+  category: string;
   programIds: string[];
   // Step 2: Structure & Pricing
   numModules: number;
@@ -44,6 +46,7 @@ const DEFAULT_WIZARD_DATA: CourseWizardData = {
   title: '',
   description: '',
   coverImage: '',
+  category: '',
   programIds: [],
   numModules: 1,
   lessonsPerModule: 1,
@@ -184,7 +187,7 @@ export function CreateCourseModal({
         title: wizardData.title,
         shortDescription: wizardData.description,
         coverImageUrl: wizardData.coverImage,
-        category: 'General',
+        category: wizardData.category || null,
         level: 'Beginner',
         programIds: wizardData.programIds,
         modules,
@@ -477,6 +480,20 @@ function InfoStep({
           uploadEndpoint={uploadEndpoint}
           hideLabel
           aspectRatio="16:9"
+        />
+      </div>
+
+      {/* Category */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
+          Category
+          <span className="text-[#8c8a87] dark:text-[#8b8f9a] font-normal ml-1.5">(optional)</span>
+        </label>
+        <CategorySelector
+          value={data.category}
+          onChange={(category) => onChange({ category })}
+          placeholder="Select or create category..."
+          categoriesApiEndpoint="/api/coach/org-course-categories"
         />
       </div>
 

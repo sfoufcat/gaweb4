@@ -127,11 +127,19 @@ export function OrganizationProvider({
       // Find the current org:
       // 1. If initialOrganizationId is provided (from tenant cookie), use that org
       // 2. Otherwise, fall back to the primary org
+      console.log('[ORG_CONTEXT] Looking for org:', {
+        initialOrganizationId,
+        availableOrgIds: orgsData.organizations.map((o: { id: string; name: string }) => ({ id: o.id, name: o.name })),
+      });
+
       const targetOrg = initialOrganizationId
         ? orgsData.organizations.find((org: { id: string }) => org.id === initialOrganizationId)
         : orgsData.organizations.find((org: { isPrimary: boolean }) => org.isPrimary);
 
+      console.log('[ORG_CONTEXT] Found target org:', targetOrg ? { id: targetOrg.id, name: targetOrg.name, membership: targetOrg.membership } : null);
+
       if (targetOrg && targetOrg.membership) {
+        console.log('[ORG_CONTEXT] Setting membership with orgRole:', targetOrg.membership.orgRole);
         setOrganizationId(targetOrg.id);
         setCurrentMembership({
           id: targetOrg.membership.id,
@@ -144,6 +152,8 @@ export function OrganizationProvider({
           isActive: true,
           joinedAt: targetOrg.membership.joinedAt,
         });
+      } else {
+        console.log('[ORG_CONTEXT] No target org found or no membership - currentMembership will be null');
       }
     } catch (err) {
       console.error('[ORG_CONTEXT] Error fetching membership:', err);
@@ -185,15 +195,19 @@ export function OrganizationProvider({
     }
   }, [fetchMembership]);
   
+  // Pre-compute role booleans for stable references
+  const isSuperCoachValue = currentMembership?.orgRole === 'super_coach';
+  const isCoachValue = currentMembership?.orgRole === 'coach' || currentMembership?.orgRole === 'super_coach';
+
   // Helper: Check if user is super_coach
   const isSuperCoach = useCallback(() => {
-    return currentMembership?.orgRole === 'super_coach';
-  }, [currentMembership]);
-  
+    return isSuperCoachValue;
+  }, [isSuperCoachValue]);
+
   // Helper: Check if user is coach or super_coach
   const isCoach = useCallback(() => {
-    return currentMembership?.orgRole === 'coach' || currentMembership?.orgRole === 'super_coach';
-  }, [currentMembership]);
+    return isCoachValue;
+  }, [isCoachValue]);
   
   // Helper: Check if user has required tier access
   const hasAccess = useCallback((requiredTier?: UserTier): boolean => {

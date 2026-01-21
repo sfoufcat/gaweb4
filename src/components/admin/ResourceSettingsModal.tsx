@@ -66,6 +66,8 @@ export interface ResourceSettingsModalProps {
   // Config
   uploadEndpoint: string;
   programsApiEndpoint?: string;
+  /** API endpoint for categories. Defaults to /api/coach/org-article-categories */
+  categoriesApiEndpoint?: string;
   showMetadata?: boolean;
   showPricing?: boolean;
   showVisibility?: boolean;
@@ -132,6 +134,7 @@ function SettingsContent({
   onTrendingChange,
   uploadEndpoint,
   programsApiEndpoint,
+  categoriesApiEndpoint,
   showMetadata = true,
   showPricing = true,
   showVisibility = true,
@@ -236,6 +239,7 @@ function SettingsContent({
                     value={category || ''}
                     onChange={onCategoryChange}
                     placeholder="Select..."
+                    categoriesApiEndpoint={categoriesApiEndpoint}
                   />
                 </div>
               )}

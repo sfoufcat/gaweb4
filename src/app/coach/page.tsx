@@ -214,6 +214,15 @@ export default function CoachPage() {
     swipeThreshold: 60,
   });
 
+  // Sync mobileView with URL - when tab param is removed (e.g., clicking coach icon in bottom nav),
+  // reset to menu view so user can see MobileCoachMenu
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (!tabParam) {
+      setMobileView('menu');
+    }
+  }, [searchParams]);
+
   // Handler for tab changes - updates URL without navigation
   // Supports optional filters to set additional URL params (e.g., clientFilter, analyticsSubTab)
   const handleTabChange = useCallback((newTab: CoachTab, filters?: Record<string, string>) => {

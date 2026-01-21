@@ -120,15 +120,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate track if provided
-    const validTracks = ['content_creator', 'saas', 'coach_consultant', 'ecom', 'agency', 'community_builder', 'general'];
-    if (body.track && !validTracks.includes(body.track)) {
-      return NextResponse.json(
-        { error: `Invalid track. Must be one of: ${validTracks.join(', ')}` },
-        { status: 400 }
-      );
-    }
-
     // Normalize modules and compute totals
     const modules = normalizeOrders(body.modules || []);
     const { totalModules, totalLessons, totalDurationMinutes } = computeCourseTotals(modules);
