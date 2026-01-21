@@ -213,7 +213,7 @@ export default async function RootLayout({
               >
               <SquadProvider>
               <CoachingProvider>
-              <OrganizationProvider>
+              <OrganizationProvider initialOrganizationId={ssrBranding.organizationId}>
               <ViewModeProvider>
                 <StreamChatProvider>
                   <ChatChannelsProvider

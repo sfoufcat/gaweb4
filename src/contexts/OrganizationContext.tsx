@@ -124,20 +124,25 @@ export function OrganizationProvider({
         } : undefined,
       })));
       
-      // Find the current/primary org
-      const primaryOrg = orgsData.organizations.find((org: { isPrimary: boolean }) => org.isPrimary);
-      if (primaryOrg) {
-        setOrganizationId(primaryOrg.id);
+      // Find the current org:
+      // 1. If initialOrganizationId is provided (from tenant cookie), use that org
+      // 2. Otherwise, fall back to the primary org
+      const targetOrg = initialOrganizationId
+        ? orgsData.organizations.find((org: { id: string }) => org.id === initialOrganizationId)
+        : orgsData.organizations.find((org: { isPrimary: boolean }) => org.isPrimary);
+
+      if (targetOrg && targetOrg.membership) {
+        setOrganizationId(targetOrg.id);
         setCurrentMembership({
-          id: primaryOrg.membership.id,
-          organizationId: primaryOrg.id,
-          orgRole: primaryOrg.membership.orgRole as OrgRole,
-          tier: primaryOrg.membership.tier as UserTier,
-          track: primaryOrg.membership.track as UserTrack | null,
+          id: targetOrg.membership.id,
+          organizationId: targetOrg.id,
+          orgRole: targetOrg.membership.orgRole as OrgRole,
+          tier: targetOrg.membership.tier as UserTier,
+          track: targetOrg.membership.track as UserTrack | null,
           squadId: null, // Would need to fetch from full membership
           premiumSquadId: null,
           isActive: true,
-          joinedAt: primaryOrg.membership.joinedAt,
+          joinedAt: targetOrg.membership.joinedAt,
         });
       }
     } catch (err) {
@@ -146,7 +151,7 @@ export function OrganizationProvider({
     } finally {
       setIsLoading(false);
     }
-  }, [isLoaded, isSignedIn, userId]);
+  }, [isLoaded, isSignedIn, userId, initialOrganizationId]);
   
   // Initial fetch
   useEffect(() => {
