@@ -61,7 +61,7 @@ function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
   return (
     <div className="bg-[#f3f1ef] dark:bg-[#171b22] rounded-[20px] overflow-hidden p-2">
       {/* Cover Image */}
-      <div className="relative h-[220px] w-full rounded-[20px] overflow-hidden bg-white dark:bg-[#171b22]">
+      <div className="relative h-[220px] w-full rounded-[20px] overflow-hidden bg-gray-200 dark:bg-gray-800">
         {program.coverImageUrl ? (
           <Image
             src={program.coverImageUrl}

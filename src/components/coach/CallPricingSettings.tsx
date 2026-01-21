@@ -468,12 +468,12 @@ export function CallPricingSettings() {
 
       {/* Client Preview Modal */}
       {showPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-backdrop-fade-in"
             onClick={() => setShowPreview(false)}
           />
-          <div className="relative bg-white dark:bg-[#1a1f2a] rounded-2xl p-6 max-w-md w-full shadow-xl">
+          <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1a1f2a] rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl animate-modal-slide-up sm:animate-modal-zoom-in">
             <button
               type="button"
               onClick={() => setShowPreview(false)}

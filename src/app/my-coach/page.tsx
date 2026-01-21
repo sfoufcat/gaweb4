@@ -27,12 +27,16 @@ import { isSuperAdmin } from '@/lib/admin-utils-shared';
 import type { ClientCoachingData, Coach, UserRole, CoachingSessionHistory } from '@/types';
 
 /**
- * My Coach Page
- * 
+ * DEPRECATED: My Coach Page
+ *
+ * This page is no longer used for clients. All visitors are redirected to /program.
+ * Code is preserved for reference but the page is not accessible.
+ *
+ * Original purpose:
  * Client-facing coaching interface visible only to:
  * - Users with coaching === true in publicMetadata
  * - Super admins (for debugging/testing)
- * 
+ *
  * Sections:
  * A. Coach Header
  * B. Next Call Card
@@ -155,9 +159,27 @@ function SessionDetailModal({
 
 export default function MyCoachPage() {
   const router = useRouter();
+
+  // DEPRECATED: Redirect all users to /program
+  // This page is no longer used - keeping code for reference
+  useEffect(() => {
+    router.replace('/program');
+  }, [router]);
+
+  // Return loading state while redirecting
+  return (
+    <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center">
+      <div className="animate-pulse text-[#5f5a55] dark:text-[#b2b6c2]">Redirecting...</div>
+    </div>
+  );
+
+  // ============================================================
+  // DEPRECATED CODE BELOW - Preserved for reference
+  // ============================================================
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   const { sessionClaims, isLoaded } = useAuth();
   const [mounted, setMounted] = useState(false);
-  
+
   // Data states
   const [coachingData, setCoachingData] = useState<ClientCoachingData | null>(null);
   const [coach, setCoach] = useState<Coach | null>(null);

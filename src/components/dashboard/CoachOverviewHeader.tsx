@@ -5,6 +5,7 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import { DollarSign, Trophy, Users, AlertTriangle, ArrowRight, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -14,10 +15,11 @@ interface MetricItemProps {
   icon: React.ElementType;
   accentColor: string;
   isAlert?: boolean;
+  tooltip?: string;
 }
 
-function MetricItem({ label, value, icon: Icon, accentColor, isAlert }: MetricItemProps) {
-  return (
+function MetricItem({ label, value, icon: Icon, accentColor, isAlert, tooltip }: MetricItemProps) {
+  const content = (
     <div className={cn(
       'flex items-center gap-2.5 px-3 py-2 rounded-2xl transition-all duration-200',
       'bg-white/50 dark:bg-white/5',
@@ -41,6 +43,15 @@ function MetricItem({ label, value, icon: Icon, accentColor, isAlert }: MetricIt
         </span>
       </div>
     </div>
+  );
+
+  if (!tooltip) return content;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{content}</TooltipTrigger>
+      <TooltipContent side="bottom">{tooltip}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -138,6 +149,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
               value={formatCurrency(totalRevenue)}
               icon={DollarSign}
               accentColor="bg-emerald-500/20"
+              tooltip="Total from enrollments + content sales"
             />
 
             <div className="w-px h-6 sm:h-8 bg-[#e1ddd8]/50 dark:bg-white/10 flex-shrink-0 hidden sm:block" />
@@ -147,6 +159,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
               value={activeClients}
               icon={TrendingUp}
               accentColor="bg-blue-500/20"
+              tooltip="Clients with recent activity"
             />
 
             <div className="w-px h-6 sm:h-8 bg-[#e1ddd8]/50 dark:bg-white/10 flex-shrink-0 hidden sm:block" />
@@ -159,6 +172,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
                 icon={atRiskCount > 0 ? AlertTriangle : Users}
                 accentColor={atRiskCount > 0 ? 'bg-red-500/20' : 'bg-violet-500/20'}
                 isAlert={atRiskCount > 0}
+                tooltip="✓ = all good, number = clients needing attention"
               />
             </div>
 
@@ -171,6 +185,7 @@ export function CoachOverviewHeader({ className }: CoachOverviewHeaderProps) {
                 value={programNameDesktop}
                 icon={Trophy}
                 accentColor="bg-amber-500/20"
+                tooltip="Most enrolled program"
               />
             </div>
           </div>
