@@ -43,7 +43,6 @@ import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useAuthHint } from '@/contexts/AuthHintContext';
 import { DEMO_USER } from '@/lib/demo-utils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { CoachOverviewHeader } from '@/components/dashboard/CoachOverviewHeader';
 
 /**
  * Homepage / Dashboard
@@ -1708,9 +1707,6 @@ export function DashboardPage() {
           </p>
         )}
       </div>
-
-      {/* Coach Overview Header - only for coaches, below headline */}
-      {isCoachUser && <CoachOverviewHeader className="mb-6" />}
 
       {/* DYNAMIC WIDGET CAROUSEL (Mobile) / GRID (Desktop) */}
       <div data-tour="dynamic-section" className="relative mb-6">

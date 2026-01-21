@@ -33,6 +33,8 @@ import {
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { NotificationBell, NotificationIconButton } from '@/components/notifications';
 import { CalendarButton, CalendarIconButton } from '@/components/scheduling';
+import { ChatButton } from '@/components/chat/ChatButton';
+import { ChatIconButton } from '@/components/chat/ChatIconButton';
 import { ThemeToggle } from '@/components/theme';
 import { ViewSwitcher } from '@/components/shared/ViewSwitcher';
 import { useCurrentUserStoryAvailability } from '@/hooks/useUserStoryAvailability';
@@ -769,21 +771,24 @@ export function CoachHomePage() {
             </Link>
           </div>
 
-          {/* Icons */}
+          {/* Calendar + Notification Bell + Theme Toggle */}
           <div className="flex items-center gap-2">
             <CalendarButton className="hidden lg:block" />
+            <ChatButton className="lg:hidden" />
             <NotificationBell className="hidden lg:block" />
+            {/* Desktop: vertical view switcher + theme toggle */}
             <ViewSwitcher className="hidden lg:flex" />
             <ThemeToggle className="hidden lg:flex" />
           </div>
         </div>
 
-        {/* Date + Mobile icons */}
+        {/* Date + Icons (mobile only) */}
         <div className="flex items-center justify-between lg:justify-start">
           <p className="font-sans text-[12px] text-text-secondary leading-[1.2]">
             {currentDate}
           </p>
-          <div className="flex items-center gap-1.5 lg:hidden">
+          {/* Mobile: notification, calendar, view switcher, and theme toggle icons */}
+          <div className="flex items-center gap-2 lg:hidden">
             <NotificationIconButton />
             <CalendarIconButton />
             <ViewSwitcher horizontal />

@@ -1174,10 +1174,11 @@ export function AdminEventsSection({
         {/* Event Cards */}
         <div className="divide-y divide-[#e8e4df] dark:divide-[#262b35]">
           {paginatedEvents.map(event => (
-            <div
+            <button
+              type="button"
               key={event.id}
               onClick={() => openEventEditor(event)}
-              className="flex items-center gap-4 p-3 bg-white dark:bg-[#171b22] hover:bg-[#faf8f6] dark:hover:bg-[#1c2028] cursor-pointer transition-all group first:rounded-t-xl last:rounded-b-xl"
+              className="w-full flex items-center gap-4 p-3 bg-white dark:bg-[#171b22] hover:bg-[#faf8f6] dark:hover:bg-[#1c2028] cursor-pointer transition-all group first:rounded-t-xl last:rounded-b-xl text-left"
             >
               {/* Cover Image */}
               <div className="relative w-20 h-14 sm:w-24 sm:h-16 rounded-lg overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
@@ -1235,28 +1236,46 @@ export function AdminEventsSection({
 
               {/* Action Icons */}
               <div className="flex items-center gap-1 flex-shrink-0">
-                <button
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => {
                     e.stopPropagation();
                     openEventEditor(event);
                   }}
-                  className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      openEventEditor(event);
+                    }
+                  }}
+                  className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors cursor-pointer"
                   title="Edit"
                 >
                   <Pencil className="w-4 h-4" />
-                </button>
-                <button
+                </span>
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => {
                     e.stopPropagation();
                     setEventToDelete(event);
                   }}
-                  className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setEventToDelete(event);
+                    }
+                  }}
+                  className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer"
                   title="Delete"
                 >
                   <Trash2 className="w-4 h-4" />
-                </button>
+                </span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 
