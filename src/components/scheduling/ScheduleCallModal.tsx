@@ -6,7 +6,6 @@ import {
   X,
   Calendar,
   Loader2,
-  Plus,
   Trash2,
   Check,
   AlertCircle,
@@ -21,6 +20,7 @@ import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
 import { MeetingProviderSelector, type MeetingProviderType, isMeetingProviderReady } from './MeetingProviderSelector';
 import { DatePicker } from '@/components/ui/date-picker';
+import { BrandedRadio } from '@/components/ui/checkbox';
 import type { ProgramEnrollment, ProgramInstance } from '@/types';
 
 type CallTypeOption = 'program' | 'extra';
@@ -213,11 +213,23 @@ export function ScheduleCallModal({
 
   // Calculate program end date for "Ends at end of program" option
   const programEndDate = useMemo(() => {
-    if (!enrollmentData?.instance?.startDate || !enrollmentData?.program?.lengthDays) {
+    if (!enrollmentData?.program?.lengthDays) {
       return null;
     }
 
-    const startDate = new Date(enrollmentData.instance.startDate);
+    // Fallback chain for start date: instance.startDate → enrollment.startedAt → enrollment.createdAt
+    const startDateStr = enrollmentData?.instance?.startDate
+      || enrollmentData?.enrollment?.startedAt
+      || (enrollmentData?.enrollment?.createdAt && typeof enrollmentData.enrollment.createdAt === 'object' && 'toDate' in enrollmentData.enrollment.createdAt
+        ? (enrollmentData.enrollment.createdAt as { toDate: () => Date }).toDate().toISOString().split('T')[0]
+        : enrollmentData?.enrollment?.createdAt);
+
+    if (!startDateStr) {
+      console.warn('[ScheduleCallModal] No start date found for program end date calculation');
+      return null;
+    }
+
+    const startDate = new Date(startDateStr);
     const lengthDays = enrollmentData.program.lengthDays;
     const includeWeekends = enrollmentData.program.includeWeekends;
 
@@ -242,24 +254,6 @@ export function ScheduleCallModal({
       return endDate.toISOString().split('T')[0];
     }
   }, [enrollmentData]);
-
-  // Add a proposed time slot
-  const addProposedSlot = useCallback(() => {
-    if (!selectedDate || !selectedTime) return;
-
-    const startDateTime = new Date(`${selectedDate}T${selectedTime}`);
-    const endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
-
-    const newSlot: ProposedTimeSlot = {
-      id: `slot_${Date.now()}`,
-      date: selectedDate,
-      startTime: selectedTime,
-      endTime: endDateTime.toTimeString().slice(0, 5),
-    };
-
-    setProposedSlots(prev => [...prev, newSlot]);
-    setSelectedTime('');
-  }, [selectedDate, selectedTime, duration]);
 
   // Remove a proposed time slot
   const removeProposedSlot = useCallback((slotId: string) => {
@@ -672,12 +666,34 @@ export function ScheduleCallModal({
                       <div className="flex flex-wrap gap-2">
                         {slotsByDate[selectedDate].map((slot, index) => {
                           const time = new Date(slot.start).toTimeString().slice(0, 5);
+                          // Check if this time slot is already selected/proposed
+                          const isSelected = proposedSlots.some(s => s.date === selectedDate && s.startTime === time);
                           return (
                             <button
                               key={index}
-                              onClick={() => setSelectedTime(time)}
+                              onClick={() => {
+                                setSelectedTime(time);
+                                // Auto-add the time slot
+                                const startDateTime = new Date(`${selectedDate}T${time}`);
+                                const endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
+                                const newSlot: ProposedTimeSlot = {
+                                  id: `slot_${Date.now()}`,
+                                  date: selectedDate,
+                                  startTime: time,
+                                  endTime: endDateTime.toTimeString().slice(0, 5),
+                                };
+                                if (mode === 'confirm') {
+                                  // Replace - single slot only for confirm mode
+                                  setProposedSlots([newSlot]);
+                                } else {
+                                  // Append for propose mode (avoid duplicates)
+                                  if (!isSelected) {
+                                    setProposedSlots(prev => [...prev, newSlot]);
+                                  }
+                                }
+                              }}
                               className={`px-3 py-2 rounded-lg font-albert text-sm transition-colors ${
-                                selectedTime === time
+                                isSelected
                                   ? 'bg-brand-accent text-white'
                                   : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]'
                               }`}
@@ -688,17 +704,6 @@ export function ScheduleCallModal({
                         })}
                       </div>
                     </div>
-                  )}
-
-                  {/* Add Time Button */}
-                  {selectedDate && selectedTime && (
-                    <button
-                      onClick={addProposedSlot}
-                      className="flex items-center gap-2 px-4 py-2 bg-brand-accent/10 text-brand-accent rounded-lg font-albert font-medium hover:bg-brand-accent/20 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add this time
-                    </button>
                   )}
                 </>
               )}
@@ -867,14 +872,12 @@ export function ScheduleCallModal({
 
                   {/* End of Program option - only if client has active enrollment */}
                   {enrollmentData?.program && programEndDate && (
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="radio"
+                    <label className="flex items-start gap-3 cursor-pointer" onClick={() => setRecurrenceEnd('end_of_program')}>
+                      <BrandedRadio
                         name="recurrenceEnd"
-                        value="end_of_program"
                         checked={recurrenceEnd === 'end_of_program'}
                         onChange={() => setRecurrenceEnd('end_of_program')}
-                        className="mt-0.5 w-4 h-4 text-brand-accent focus:ring-brand-accent focus:ring-offset-0"
+                        className="mt-0.5"
                       />
                       <div>
                         <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
@@ -888,14 +891,12 @@ export function ScheduleCallModal({
                   )}
 
                   {/* Specific date option */}
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="radio"
+                  <label className="flex items-start gap-3 cursor-pointer" onClick={() => setRecurrenceEnd('specific_date')}>
+                    <BrandedRadio
                       name="recurrenceEnd"
-                      value="specific_date"
                       checked={recurrenceEnd === 'specific_date'}
                       onChange={() => setRecurrenceEnd('specific_date')}
-                      className="mt-0.5 w-4 h-4 text-brand-accent focus:ring-brand-accent focus:ring-offset-0"
+                      className="mt-0.5"
                     />
                     <div className="flex-1">
                       <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
@@ -916,14 +917,12 @@ export function ScheduleCallModal({
                   </label>
 
                   {/* Number of occurrences option */}
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="radio"
+                  <label className="flex items-start gap-3 cursor-pointer" onClick={() => setRecurrenceEnd('occurrences')}>
+                    <BrandedRadio
                       name="recurrenceEnd"
-                      value="occurrences"
                       checked={recurrenceEnd === 'occurrences'}
                       onChange={() => setRecurrenceEnd('occurrences')}
-                      className="mt-0.5 w-4 h-4 text-brand-accent focus:ring-brand-accent focus:ring-offset-0"
+                      className="mt-0.5"
                     />
                     <div className="flex-1">
                       <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">

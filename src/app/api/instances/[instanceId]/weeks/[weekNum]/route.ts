@@ -480,6 +480,7 @@ export async function PATCH(
     if (body.distribution !== undefined) updatedWeek.distribution = body.distribution;
     if (body.weeklyHabits !== undefined) updatedWeek.weeklyHabits = body.weeklyHabits;
     if (body.manualNotes !== undefined) updatedWeek.manualNotes = body.manualNotes?.trim() || undefined;
+    if (body.currentFocus !== undefined) updatedWeek.currentFocus = body.currentFocus || undefined;
 
     // Update weekly tasks
     if (body.weeklyTasks !== undefined) {

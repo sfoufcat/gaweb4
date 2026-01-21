@@ -134,6 +134,15 @@ export async function GET(
     let daysData: WeeklyContentResponse['days'] = [];
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+    // Track week-level resources (collected while processing weeks)
+    let weekLinkedCallEventIds: string[] = [];
+    let weekLinkedArticleIds: string[] = [];
+    let weekLinkedDownloadIds: string[] = [];
+    let weekLinkedLinkIds: string[] = [];
+    let weekLinkedCourseIds: string[] = [];
+    let weekLinkedSummaryIds: string[] = [];
+    let weekLinkedQuestionnaireIds: string[] = [];
+
     if (!instanceSnapshot.empty) {
       // Use instance data (new system)
       const instance = instanceSnapshot.docs[0].data();
@@ -169,6 +178,15 @@ export async function GET(
           calendarStartDate: targetWeek.calendarStartDate,
           calendarEndDate: targetWeek.calendarEndDate,
         };
+
+        // Collect week-level resources
+        weekLinkedCallEventIds = targetWeek.linkedCallEventIds || [];
+        weekLinkedArticleIds = targetWeek.linkedArticleIds || [];
+        weekLinkedDownloadIds = targetWeek.linkedDownloadIds || [];
+        weekLinkedLinkIds = targetWeek.linkedLinkIds || [];
+        weekLinkedCourseIds = targetWeek.linkedCourseIds || [];
+        weekLinkedSummaryIds = targetWeek.linkedSummaryIds || [];
+        weekLinkedQuestionnaireIds = targetWeek.linkedQuestionnaireIds || [];
 
         // Process days
         const instanceDays = targetWeek.days || [];
@@ -227,6 +245,15 @@ export async function GET(
           endDayIndex: targetWeek.endDayIndex,
         };
 
+        // Collect week-level resources
+        weekLinkedCallEventIds = targetWeek.linkedCallEventIds || [];
+        weekLinkedArticleIds = targetWeek.linkedArticleIds || [];
+        weekLinkedDownloadIds = targetWeek.linkedDownloadIds || [];
+        weekLinkedLinkIds = targetWeek.linkedLinkIds || [];
+        weekLinkedCourseIds = targetWeek.linkedCourseIds || [];
+        weekLinkedSummaryIds = targetWeek.linkedSummaryIds || [];
+        weekLinkedQuestionnaireIds = targetWeek.linkedQuestionnaireIds || [];
+
         // Generate days from week range
         const daysInWeek = targetWeek.endDayIndex - targetWeek.startDayIndex + 1;
         const weekStartDate = new Date(startDate);
@@ -273,14 +300,25 @@ export async function GET(
       }
     }
 
-    // Collect all linked resource IDs from the week
+    // Collect all linked resource IDs from week and days
     const allLinkedEventIds = new Set<string>();
     const allLinkedArticleIds = new Set<string>();
     const allLinkedDownloadIds = new Set<string>();
     const allLinkedLinkIds = new Set<string>();
     const allLinkedCourseIds = new Set<string>();
     const allLinkedSummaryIds = new Set<string>();
+    const allLinkedQuestionnaireIds = new Set<string>();
 
+    // First, collect week-level resources
+    weekLinkedCallEventIds.forEach(id => allLinkedEventIds.add(id));
+    weekLinkedArticleIds.forEach(id => allLinkedArticleIds.add(id));
+    weekLinkedDownloadIds.forEach(id => allLinkedDownloadIds.add(id));
+    weekLinkedLinkIds.forEach(id => allLinkedLinkIds.add(id));
+    weekLinkedCourseIds.forEach(id => allLinkedCourseIds.add(id));
+    weekLinkedSummaryIds.forEach(id => allLinkedSummaryIds.add(id));
+    weekLinkedQuestionnaireIds.forEach(id => allLinkedQuestionnaireIds.add(id));
+
+    // Then collect from days (day-level resources)
     for (const day of daysData) {
       day.linkedEventIds?.forEach(id => allLinkedEventIds.add(id));
       day.linkedArticleIds?.forEach(id => allLinkedArticleIds.add(id));
@@ -288,6 +326,7 @@ export async function GET(
       day.linkedLinkIds?.forEach(id => allLinkedLinkIds.add(id));
       day.linkedCourseIds?.forEach(id => allLinkedCourseIds.add(id));
       day.linkedSummaryIds?.forEach(id => allLinkedSummaryIds.add(id));
+      day.linkedQuestionnaireIds?.forEach(id => allLinkedQuestionnaireIds.add(id));
     }
 
     // Fetch linked resources

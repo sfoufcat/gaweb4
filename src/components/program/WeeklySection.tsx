@@ -25,6 +25,11 @@ export function WeeklySection({ week, totalWeeks }: WeeklySectionProps) {
   const hasContent = week.theme || week.description || week.weeklyPrompt;
   if (!hasContent && !week.name) return null;
 
+  // Handle special week labels: 0 = Onboarding, -1 = Closing, 1+ = regular weeks
+  const weekLabel = week.weekNumber === 0 ? 'Onboarding' :
+                    week.weekNumber === -1 ? 'Closing' :
+                    `Week ${week.weekNumber}`;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -42,7 +47,7 @@ export function WeeklySection({ week, totalWeeks }: WeeklySectionProps) {
             ·
           </span>
           <span className="font-sans text-[13px] text-text-secondary dark:text-[#b2b6c2]">
-            Week {week.weekNumber}{totalWeeks ? ` of ${totalWeeks}` : ''}
+            {weekLabel}{totalWeeks ? ` of ${totalWeeks}` : ''}
           </span>
         </div>
         <div className="flex-1 h-px bg-gradient-to-r from-border-subtle dark:from-[#262b35] to-transparent" />

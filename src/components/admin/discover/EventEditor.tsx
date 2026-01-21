@@ -332,26 +332,7 @@ export function EventEditor({
 }: EventEditorProps) {
   const isEditing = !!event;
 
-  // Check if this is a past event (event date + end time has passed)
-  const isPastEvent = useMemo(() => {
-    if (!event?.date) return false;
-    // Create date from event date and end time (or start time if no end time)
-    const eventTime = event.endTime || event.startTime || '23:59';
-    const eventDateTime = new Date(`${event.date}T${eventTime}`);
-    return eventDateTime < new Date();
-  }, [event?.date, event?.endTime, event?.startTime]);
-
-  // For past events being edited, render simplified PastEventEditor
-  if (isPastEvent && isEditing && event) {
-    return (
-      <PastEventEditor
-        event={event}
-        onClose={onClose}
-        onSave={onSave}
-        apiEndpoint={apiEndpoint}
-      />
-    );
-  }
+  // All hooks must be called before any conditional returns (Rules of Hooks)
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -394,6 +375,15 @@ export function EventEditor({
     pricing: getDefaultPricingData() as ContentPricingData,
     attendeeIds: [] as string[],
   });
+
+  // Check if this is a past event (event date + end time has passed)
+  const isPastEvent = useMemo(() => {
+    if (!event?.date) return false;
+    // Create date from event date and end time (or start time if no end time)
+    const eventTime = event.endTime || event.startTime || '23:59';
+    const eventDateTime = new Date(`${event.date}T${eventTime}`);
+    return eventDateTime < new Date();
+  }, [event?.date, event?.endTime, event?.startTime]);
 
   // Fetch coaches on mount
   useEffect(() => {
@@ -539,6 +529,19 @@ export function EventEditor({
       });
     }
   }, [event]);
+
+  // For past events being edited, render simplified PastEventEditor
+  // This must come after all hooks to comply with Rules of Hooks
+  if (isPastEvent && isEditing && event) {
+    return (
+      <PastEventEditor
+        event={event}
+        onClose={onClose}
+        onSave={onSave}
+        apiEndpoint={apiEndpoint}
+      />
+    );
+  }
 
   // Get location label from meeting provider
   const getLocationLabel = (): string => {

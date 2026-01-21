@@ -1265,17 +1265,31 @@ export function WeekEditor({
 
     // EARLY EXIT: Check if we've already processed this exact form data + week combination
     // This prevents infinite loops when week prop doesn't update after save
-    // IMPORTANT: Include ALL fields that can change (not just tasks) to ensure changes are detected
+    // IMPORTANT: Include ALL fields that can change to ensure changes are detected
     const stateFingerprint = JSON.stringify({
+      weekId: week.id,
+      // Basic info fields
+      formTheme: formData.theme,
+      weekTheme: week.theme,
+      formDescription: formData.description,
+      weekDescription: week.description,
+      formWeeklyPrompt: formData.weeklyPrompt,
+      weekWeeklyPrompt: week.weeklyPrompt,
+      // Tasks
       formTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
       weekTasks: week.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
-      weekId: week.id,
-      // Include linked content IDs to detect when summaries/events are added/removed
+      // Weekly outcomes
+      formCurrentFocus: formData.currentFocus,
+      weekCurrentFocus: week.currentFocus,
+      // Client notes
+      formManualNotes: formData.manualNotes,
+      weekManualNotes: week.manualNotes,
+      // Linked content IDs
       formLinkedSummaryIds: formData.linkedSummaryIds,
       weekLinkedSummaryIds: week.linkedSummaryIds,
       formLinkedCallEventIds: formData.linkedCallEventIds,
       weekLinkedCallEventIds: week.linkedCallEventIds,
-      // Include resource assignments to detect when resources are added/removed/modified
+      // Resource assignments
       formResourceAssignments: formData.resourceAssignments,
       weekResourceAssignments: week.resourceAssignments,
     });

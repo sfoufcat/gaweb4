@@ -379,9 +379,9 @@ export default function ProgramDetailPage() {
   return (
     <div className="min-h-[100dvh] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col">
       {/* Hero Section - Rounded Card Style */}
-      <div className="relative pt-4 px-4 sm:px-6 lg:px-10 overflow-hidden">
+      <div className="relative pt-0 sm:pt-4 px-0 sm:px-6 lg:px-10 overflow-hidden">
         <div
-          className="h-[200px] sm:h-[260px] w-full relative rounded-[40px] overflow-hidden"
+          className="h-[200px] sm:h-[260px] w-full relative rounded-none sm:rounded-[40px] overflow-hidden"
           style={{ background: `linear-gradient(135deg, ${hexToRgba(accentLight, 0.25)}, ${hexToRgba(accentLightHover, 0.08)}, ${hexToRgba(accentDark, 0.15)})` }}
         >
           {coverImage ? (
@@ -1121,8 +1121,8 @@ export default function ProgramDetailPage() {
 
       {/* Bottom Floating CTA - Glass Card */}
       {!enrollment && (
-        <div 
-          className="relative overflow-hidden bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] pt-12 pb-24 md:pb-12 rounded-[40px] mt-auto mx-4 sm:mx-6 lg:mx-10 mb-8 border border-white/[0.08] shadow-2xl"
+        <div
+          className="relative overflow-hidden bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] pt-12 pb-24 md:pb-12 rounded-none sm:rounded-[40px] mt-auto mx-0 sm:mx-6 lg:mx-10 mb-0 sm:mb-8 border border-white/[0.08] shadow-2xl"
         >
           {/* Glass highlight at top */}
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />

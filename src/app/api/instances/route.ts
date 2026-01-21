@@ -324,12 +324,25 @@ export async function GET(request: NextRequest) {
                   moduleId?: string;
                   name?: string;
                   theme?: string;
+                  description?: string;
                   startDayIndex?: number;
                   endDayIndex?: number;
                   weeklyTasks?: Array<{ id?: string; label: string }>;
                   weeklyHabits?: unknown[];
                   weeklyPrompt?: string;
                   distribution?: string;
+                  // Client-facing summary fields
+                  currentFocus?: string[];
+                  notes?: string[];
+                  manualNotes?: string;
+                  // Linked resources
+                  linkedCallEventIds?: string[];
+                  linkedCourseIds?: string[];
+                  linkedArticleIds?: string[];
+                  linkedDownloadIds?: string[];
+                  linkedLinkIds?: string[];
+                  linkedQuestionnaireIds?: string[];
+                  linkedSummaryIds?: string[];
                 };
 
                 let templateWeek: TemplateWeek | undefined;
@@ -384,6 +397,7 @@ export async function GET(request: NextRequest) {
                   moduleId: templateWeek?.moduleId,
                   name: templateWeek?.name,
                   theme: templateWeek?.theme,
+                  description: templateWeek?.description,
                   weeklyTasks,
                   weeklyHabits: templateWeek?.weeklyHabits || [],
                   weeklyPrompt: templateWeek?.weeklyPrompt,
@@ -394,6 +408,18 @@ export async function GET(request: NextRequest) {
                   calendarEndDate: calendarWeek.endDate,
                   actualStartDayOfWeek: calendarWeek.actualStartDayOfWeek,
                   days,
+                  // Client-facing summary fields
+                  currentFocus: templateWeek?.currentFocus,
+                  notes: templateWeek?.notes,
+                  manualNotes: templateWeek?.manualNotes,
+                  // Linked resources
+                  linkedCallEventIds: templateWeek?.linkedCallEventIds,
+                  linkedCourseIds: templateWeek?.linkedCourseIds,
+                  linkedArticleIds: templateWeek?.linkedArticleIds,
+                  linkedDownloadIds: templateWeek?.linkedDownloadIds,
+                  linkedLinkIds: templateWeek?.linkedLinkIds,
+                  linkedQuestionnaireIds: templateWeek?.linkedQuestionnaireIds,
+                  linkedSummaryIds: templateWeek?.linkedSummaryIds,
                 };
               });
             } else {
@@ -466,6 +492,7 @@ export async function GET(request: NextRequest) {
                   moduleId: weekData?.moduleId,
                   name: weekData?.name,
                   theme: weekData?.theme,
+                  description: weekData?.description,
                   weeklyTasks,
                   weeklyHabits: weekData?.weeklyHabits || [],
                   weeklyPrompt: weekData?.weeklyPrompt,
@@ -476,6 +503,18 @@ export async function GET(request: NextRequest) {
                   calendarEndDate: calendarWeek.endDate,
                   actualStartDayOfWeek: calendarWeek.actualStartDayOfWeek,
                   days,
+                  // Client-facing summary fields
+                  currentFocus: weekData?.currentFocus,
+                  notes: weekData?.notes,
+                  manualNotes: weekData?.manualNotes,
+                  // Linked resources
+                  linkedCallEventIds: weekData?.linkedCallEventIds,
+                  linkedCourseIds: weekData?.linkedCourseIds,
+                  linkedArticleIds: weekData?.linkedArticleIds,
+                  linkedDownloadIds: weekData?.linkedDownloadIds,
+                  linkedLinkIds: weekData?.linkedLinkIds,
+                  linkedQuestionnaireIds: weekData?.linkedQuestionnaireIds,
+                  linkedSummaryIds: weekData?.linkedSummaryIds,
                 };
               });
             }
@@ -586,12 +625,25 @@ export async function GET(request: NextRequest) {
                   moduleId?: string;
                   name?: string;
                   theme?: string;
+                  description?: string;
                   startDayIndex?: number;
                   endDayIndex?: number;
                   weeklyTasks?: Array<{ id?: string; label: string }>;
                   weeklyHabits?: unknown[];
                   weeklyPrompt?: string;
                   distribution?: string;
+                  // Client-facing summary fields
+                  currentFocus?: string[];
+                  notes?: string[];
+                  manualNotes?: string;
+                  // Linked resources
+                  linkedCallEventIds?: string[];
+                  linkedCourseIds?: string[];
+                  linkedArticleIds?: string[];
+                  linkedDownloadIds?: string[];
+                  linkedLinkIds?: string[];
+                  linkedQuestionnaireIds?: string[];
+                  linkedSummaryIds?: string[];
                 };
 
                 let templateWeek: TemplateWeek | undefined;
@@ -646,6 +698,7 @@ export async function GET(request: NextRequest) {
                   moduleId: templateWeek?.moduleId,
                   name: templateWeek?.name,
                   theme: templateWeek?.theme,
+                  description: templateWeek?.description,
                   weeklyTasks,
                   weeklyHabits: templateWeek?.weeklyHabits || [],
                   weeklyPrompt: templateWeek?.weeklyPrompt,
@@ -656,6 +709,18 @@ export async function GET(request: NextRequest) {
                   calendarEndDate: calendarWeek.endDate,
                   actualStartDayOfWeek: calendarWeek.actualStartDayOfWeek,
                   days,
+                  // Client-facing summary fields
+                  currentFocus: templateWeek?.currentFocus,
+                  notes: templateWeek?.notes,
+                  manualNotes: templateWeek?.manualNotes,
+                  // Linked resources
+                  linkedCallEventIds: templateWeek?.linkedCallEventIds,
+                  linkedCourseIds: templateWeek?.linkedCourseIds,
+                  linkedArticleIds: templateWeek?.linkedArticleIds,
+                  linkedDownloadIds: templateWeek?.linkedDownloadIds,
+                  linkedLinkIds: templateWeek?.linkedLinkIds,
+                  linkedQuestionnaireIds: templateWeek?.linkedQuestionnaireIds,
+                  linkedSummaryIds: templateWeek?.linkedSummaryIds,
                 };
               });
             } else {
@@ -728,6 +793,7 @@ export async function GET(request: NextRequest) {
                   moduleId: weekData?.moduleId,
                   name: weekData?.name,
                   theme: weekData?.theme,
+                  description: weekData?.description,
                   weeklyTasks,
                   weeklyHabits: weekData?.weeklyHabits || [],
                   weeklyPrompt: weekData?.weeklyPrompt,
@@ -738,6 +804,18 @@ export async function GET(request: NextRequest) {
                   calendarEndDate: calendarWeek.endDate,
                   actualStartDayOfWeek: calendarWeek.actualStartDayOfWeek,
                   days,
+                  // Client-facing summary fields
+                  currentFocus: weekData?.currentFocus,
+                  notes: weekData?.notes,
+                  manualNotes: weekData?.manualNotes,
+                  // Linked resources
+                  linkedCallEventIds: weekData?.linkedCallEventIds,
+                  linkedCourseIds: weekData?.linkedCourseIds,
+                  linkedArticleIds: weekData?.linkedArticleIds,
+                  linkedDownloadIds: weekData?.linkedDownloadIds,
+                  linkedLinkIds: weekData?.linkedLinkIds,
+                  linkedQuestionnaireIds: weekData?.linkedQuestionnaireIds,
+                  linkedSummaryIds: weekData?.linkedSummaryIds,
                 };
               });
             }

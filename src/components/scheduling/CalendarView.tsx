@@ -776,27 +776,58 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
           </button>
         </div>
 
-        {/* View Dropdown + Add Button */}
+        {/* View Mode + Schedule Button */}
         <div className="flex items-center gap-2">
-          <Select value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-            <SelectTrigger className="w-[90px] h-9 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {VIEW_MODES.map(({ value, label }) => (
-                <SelectItem key={value} value={value}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Desktop: Expanded view mode buttons */}
+          <div className="hidden md:flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-1">
+            {VIEW_MODES.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setViewMode(value)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  viewMode === value
+                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                    : 'text-[#666] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Mobile: Compact dropdown */}
+          <div className="md:hidden">
+            <Select value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+              <SelectTrigger className="w-[90px] h-9 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {VIEW_MODES.map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {mode === 'coach' && (
-            <button
-              onClick={() => setShowClientPicker(true)}
-              className="p-2 bg-brand-accent text-white rounded-lg hover:opacity-90 transition-opacity"
-              title="Schedule Call"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
+            <>
+              {/* Desktop: Full button */}
+              <button
+                onClick={() => setShowClientPicker(true)}
+                className="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg hover:opacity-90 transition-opacity font-medium text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Schedule Call
+              </button>
+              {/* Mobile: Icon only */}
+              <button
+                onClick={() => setShowClientPicker(true)}
+                className="md:hidden p-2 bg-brand-accent text-white rounded-lg hover:opacity-90 transition-opacity"
+                title="Schedule Call"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </>
           )}
         </div>
       </div>
