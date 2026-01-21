@@ -43,6 +43,8 @@ import {
   DrawerDescription,
 } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 // Client type for picker
 interface CoachingClient {
@@ -457,6 +459,8 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedAgendaDate, setSelectedAgendaDate] = useState<Date | null>(null);
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   // Check org credits for coaches (to show warnings on events)
   const isCoach = mode === 'coach';
@@ -690,7 +694,19 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
     return days;
   }, [currentDate, viewMode]);
 
-  // Header title based on view mode
+  // Week days for week view timeline
+  const weekDays = useMemo(() => {
+    if (viewMode !== 'week') return [];
+    const start = new Date(currentDate);
+    start.setDate(start.getDate() - start.getDay());
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  }, [currentDate, viewMode]);
+
+  // Header title based on view mode (mobile-friendly)
   const headerTitle = useMemo(() => {
     if (viewMode === 'month') {
       return `${MONTHS[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
@@ -699,16 +715,18 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
-      return `${MONTHS[weekStart.getMonth()]} ${weekStart.getDate()} - ${weekEnd.getDate()}, ${weekStart.getFullYear()}`;
+      // Shorter format for mobile
+      return isMobile
+        ? `${MONTHS[weekStart.getMonth()].slice(0,3)} ${weekStart.getDate()}-${weekEnd.getDate()}`
+        : `${MONTHS[weekStart.getMonth()]} ${weekStart.getDate()} - ${weekEnd.getDate()}, ${weekStart.getFullYear()}`;
     } else {
       return currentDate.toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
+        weekday: isMobile ? 'short' : 'long',
+        month: isMobile ? 'short' : 'long',
         day: 'numeric',
-        year: 'numeric',
       });
     }
-  }, [currentDate, viewMode]);
+  }, [currentDate, viewMode, isMobile]);
 
   const isToday = (date: Date) => {
     const today = new Date();
@@ -734,62 +752,52 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('prev')}
-              className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => navigate('today')}
-              className="px-3 py-1.5 text-sm font-albert font-medium rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-            >
-              Today
-            </button>
-            <button
-              onClick={() => navigate('next')}
-              className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-          <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+      {/* Header - Mobile-first single row */}
+      <div className="flex items-center justify-between gap-2">
+        {/* Navigation + Title */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => navigate('prev')}
+            className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => navigate('today')}
+            className="px-2 py-1 font-albert font-semibold text-lg text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+          >
             {headerTitle}
-          </h2>
+          </button>
+          <button
+            onClick={() => navigate('next')}
+            className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Schedule Call Button (coach mode only) */}
+        {/* View Dropdown + Add Button */}
+        <div className="flex items-center gap-2">
+          <Select value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+            <SelectTrigger className="w-[90px] h-9 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {VIEW_MODES.map(({ value, label }) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {mode === 'coach' && (
             <button
               onClick={() => setShowClientPicker(true)}
-              className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
+              className="p-2 bg-brand-accent text-white rounded-lg hover:opacity-90 transition-opacity"
+              title="Schedule Call"
             >
-              <Plus className="w-4 h-4" />
-              Schedule Call
+              <Plus className="w-5 h-5" />
             </button>
           )}
-
-          {/* View mode toggle */}
-          <div className="flex p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg">
-            {VIEW_MODES.map(({ value, label }) => (
-              <button
-                key={value}
-                onClick={() => setViewMode(value)}
-                className={`px-3 py-1.5 rounded-md font-albert text-sm font-medium transition-colors ${
-                  viewMode === value
-                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                    : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -804,74 +812,237 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
           <p>{error}</p>
         </div>
       ) : viewMode === 'month' ? (
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
-          {/* Day headers */}
-          <div className="grid grid-cols-7 border-b border-[#e1ddd8] dark:border-[#262b35]">
-            {DAYS_OF_WEEK.map(day => (
-              <div
-                key={day}
-                className="px-3 py-2 text-center text-sm font-albert font-medium text-[#5f5a55] dark:text-[#b2b6c2]"
-              >
-                {day}
-              </div>
-            ))}
-          </div>
+        <>
+          {/* Mobile: Compact Grid + Agenda */}
+          {isMobile ? (
+            <div className="flex flex-col gap-4">
+              {/* Compact Month Grid */}
+              <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-3">
+                {/* Single-letter day headers */}
+                <div className="grid grid-cols-7 mb-2">
+                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                    <div key={i} className="text-center text-xs font-medium text-[#a7a39e] dark:text-[#7d8190]">
+                      {d}
+                    </div>
+                  ))}
+                </div>
 
-          {/* Calendar cells */}
-          <div className="grid grid-cols-7">
-            {calendarDays.map(({ date, isCurrentMonth }, index) => {
-              // Use local date components to match how events are grouped
-              const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                {/* Compact date grid */}
+                <div className="grid grid-cols-7 gap-1">
+                  {calendarDays.map(({ date, isCurrentMonth }, idx) => {
+                    const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                    const dayEvents = eventsByDate[dateKey] || [];
+                    const isSelected = selectedAgendaDate?.toDateString() === date.toDateString();
+                    const isCurrentDay = isToday(date);
+                    const hasPending = dayEvents.some(e => e.schedulingStatus === 'proposed' || e.schedulingStatus === 'counter_proposed');
+
+                    // Get event dot colors based on event types
+                    const eventDots = dayEvents.slice(0, 3).map(e => {
+                      if (e.schedulingStatus === 'proposed' || e.schedulingStatus === 'counter_proposed') {
+                        return 'bg-yellow-500';
+                      }
+                      switch (e.eventType) {
+                        case 'coaching_1on1': return 'bg-brand-accent';
+                        case 'squad_call': return 'bg-blue-500';
+                        case 'community_event': return 'bg-green-500';
+                        default: return 'bg-brand-accent';
+                      }
+                    });
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedAgendaDate(date)}
+                        className={cn(
+                          "aspect-square flex flex-col items-center justify-center rounded-lg text-sm transition-colors",
+                          !isCurrentMonth && "text-[#d1cdc8] dark:text-[#4a5162]",
+                          isCurrentMonth && !isSelected && "text-[#1a1a1a] dark:text-[#f5f5f8]",
+                          isCurrentDay && !isSelected && "bg-brand-accent/10 text-brand-accent font-semibold",
+                          isSelected && "bg-brand-accent text-white font-semibold",
+                        )}
+                      >
+                        {date.getDate()}
+                        {/* Event dots */}
+                        {dayEvents.length > 0 && (
+                          <div className="flex gap-0.5 mt-0.5">
+                            {eventDots.map((dotColor, i) => (
+                              <div
+                                key={i}
+                                className={cn(
+                                  "w-1 h-1 rounded-full",
+                                  isSelected ? "bg-white" : dotColor
+                                )}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Agenda for Selected Date */}
+              <div>
+                {selectedAgendaDate ? (
+                  <>
+                    <h3 className="font-albert font-semibold text-lg text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
+                      {selectedAgendaDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    </h3>
+                    {(() => {
+                      const dateKey = `${selectedAgendaDate.getFullYear()}-${String(selectedAgendaDate.getMonth() + 1).padStart(2, '0')}-${String(selectedAgendaDate.getDate()).padStart(2, '0')}`;
+                      const agendaEvents = eventsByDate[dateKey] || [];
+                      return agendaEvents.length === 0 ? (
+                        <p className="text-center text-[#a7a39e] dark:text-[#7d8190] py-8">
+                          No events scheduled
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {agendaEvents.map(event => (
+                            <EventCard
+                              key={event.id}
+                              event={event}
+                              onClick={(e) => handleEventClick(event, e)}
+                              onRespond={handleRespond}
+                              onCounterPropose={handleCounterPropose}
+                              hasOrgCredits={orgHasCredits}
+                              isCoach={isCoach}
+                            />
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </>
+                ) : (
+                  <p className="text-center text-[#a7a39e] dark:text-[#7d8190] py-4">
+                    Tap a date to see events
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Desktop: Original Grid View */
+            <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+              {/* Day headers */}
+              <div className="grid grid-cols-7 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                {DAYS_OF_WEEK.map(day => (
+                  <div
+                    key={day}
+                    className="px-3 py-2 text-center text-sm font-albert font-medium text-[#5f5a55] dark:text-[#b2b6c2]"
+                  >
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar cells */}
+              <div className="grid grid-cols-7">
+                {calendarDays.map(({ date, isCurrentMonth }, index) => {
+                  const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                  const dayEvents = eventsByDate[dateKey] || [];
+                  const isCurrentDay = isToday(date);
+
+                  return (
+                    <div
+                      key={index}
+                      className={`min-h-[120px] p-2 border-b border-r border-[#e1ddd8] dark:border-[#262b35] last:border-r-0 [&:nth-child(7n)]:border-r-0 ${
+                        !isCurrentMonth ? 'bg-[#f9f8f7] dark:bg-[#11141b]' : ''
+                      }`}
+                    >
+                      <div
+                        className={`w-7 h-7 flex items-center justify-center rounded-full font-albert text-sm mb-1 ${
+                          isCurrentDay
+                            ? 'bg-brand-accent text-white'
+                            : isCurrentMonth
+                            ? 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                            : 'text-[#a7a39e] dark:text-[#7d8190]'
+                        }`}
+                      >
+                        {date.getDate()}
+                      </div>
+                      <div className="space-y-1">
+                        {dayEvents.slice(0, 3).map(event => (
+                          <EventCard
+                            key={event.id}
+                            event={event}
+                            compact
+                            onClick={(e) => handleEventClick(event, e)}
+                            hasOrgCredits={orgHasCredits}
+                            isCoach={isCoach}
+                          />
+                        ))}
+                        {dayEvents.length > 3 && (
+                          <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                            +{dayEvents.length - 3} more
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      ) : viewMode === 'week' ? (
+        /* Week view - timeline with day separators */
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+          <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
+            {weekDays.map((day) => {
+              const dateKey = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
               const dayEvents = eventsByDate[dateKey] || [];
-              const isCurrentDay = isToday(date);
+              const isDayToday = isToday(day);
+              const formattedDate = day.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric',
+              });
 
               return (
-                <div
-                  key={index}
-                  className={`min-h-[120px] p-2 border-b border-r border-[#e1ddd8] dark:border-[#262b35] last:border-r-0 [&:nth-child(7n)]:border-r-0 ${
-                    !isCurrentMonth ? 'bg-[#f9f8f7] dark:bg-[#11141b]' : ''
-                  }`}
-                >
-                  <div
-                    className={`w-7 h-7 flex items-center justify-center rounded-full font-albert text-sm mb-1 ${
-                      isCurrentDay
-                        ? 'bg-brand-accent text-white'
-                        : isCurrentMonth
-                        ? 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-                        : 'text-[#a7a39e] dark:text-[#7d8190]'
-                    }`}
-                  >
-                    {date.getDate()}
+                <div key={dateKey} className="py-2">
+                  {/* Day separator */}
+                  <div className="flex items-center gap-3 py-3 px-4">
+                    <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-[#262b35]" />
+                    <span className={cn(
+                      "text-sm font-medium whitespace-nowrap",
+                      isDayToday ? "text-brand-accent font-semibold" : "text-[#5f5a55] dark:text-[#b2b6c2]"
+                    )}>
+                      {isDayToday ? 'Today' : formattedDate}
+                    </span>
+                    <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-[#262b35]" />
                   </div>
-                  <div className="space-y-1">
-                    {dayEvents.slice(0, 3).map(event => (
-                      <EventCard
-                        key={event.id}
-                        event={event}
-                        compact
-                        onClick={(e) => handleEventClick(event, e)}
-                        hasOrgCredits={orgHasCredits}
-                        isCoach={isCoach}
-                      />
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
-                        +{dayEvents.length - 3} more
-                      </p>
-                    )}
-                  </div>
+
+                  {dayEvents.length === 0 ? (
+                    <p className="text-center text-sm text-[#a7a39e] dark:text-[#7d8190] py-4">
+                      No events
+                    </p>
+                  ) : (
+                    <div className="space-y-2 px-4 pb-2">
+                      {dayEvents.map(event => (
+                        <EventCard
+                          key={event.id}
+                          event={event}
+                          onClick={(e) => handleEventClick(event, e)}
+                          onRespond={handleRespond}
+                          onCounterPropose={handleCounterPropose}
+                          hasOrgCredits={orgHasCredits}
+                          isCoach={isCoach}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
       ) : (
-        /* Week/Day view - show events in time slots */
+        /* Day view - show events for single day */
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
           <div className="space-y-4">
             {events.length === 0 ? (
               <p className="text-center text-[#a7a39e] dark:text-[#7d8190] py-8">
-                No events scheduled for this {viewMode}.
+                No events scheduled for this day.
               </p>
             ) : (
               events.map(event => (
@@ -889,25 +1060,27 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
         </div>
       )}
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-brand-accent/20 border border-brand-accent/40" />
-          <span className="text-[#5f5a55] dark:text-[#b2b6c2]">1-on-1 Calls</span>
+      {/* Legend - hidden on mobile */}
+      {!isMobile && (
+        <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-brand-accent/20 border border-brand-accent/40" />
+            <span className="text-[#5f5a55] dark:text-[#b2b6c2]">1-on-1 Calls</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700" />
+            <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Squad Calls</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700" />
+            <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Workshops</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700" />
+            <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Events</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700" />
-          <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Squad Calls</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700" />
-          <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Workshops</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700" />
-          <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Events</span>
-        </div>
-      </div>
+      )}
 
       {/* Client Picker Modal */}
       <ClientPickerModal

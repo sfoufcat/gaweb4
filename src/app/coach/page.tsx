@@ -67,6 +67,7 @@ function SchedulingTab() {
   if (activeSubTab === 'events' && isEventEditorOpen) {
     return (
       <AdminEventsSection
+        key="events-section"
         apiEndpoint="/api/coach/org-discover/events"
         onEditorModeChange={setIsEventEditorOpen}
       />
@@ -123,6 +124,7 @@ function SchedulingTab() {
       {activeSubTab === 'events' ? (
         <div key="events" className="animate-fadeIn">
           <AdminEventsSection
+            key="events-section"
             apiEndpoint="/api/coach/org-discover/events"
             onEditorModeChange={setIsEventEditorOpen}
           />
