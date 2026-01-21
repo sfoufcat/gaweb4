@@ -268,10 +268,20 @@ interface Program {
   totalEnrollments: number;
 }
 
+interface ProgramsResponse {
+  programs: Program[];
+  totalCount?: number;
+}
+
 interface Squad {
   id: string;
   name: string;
   memberCount: number;
+}
+
+interface SquadsResponse {
+  squads: Squad[];
+  totalCount?: number;
 }
 
 interface ClientsData {
@@ -287,14 +297,14 @@ export function CoachHomePage() {
   const { isDemoMode } = useDemoMode();
 
   // Fetch programs
-  const { data: programsData, isLoading: programsLoading } = useSWR<Program[]>(
+  const { data: programsData, isLoading: programsLoading } = useSWR<ProgramsResponse>(
     '/api/coach/org-programs',
     fetcher,
     { revalidateOnFocus: false }
   );
 
   // Fetch squads
-  const { data: squadsData, isLoading: squadsLoading } = useSWR<Squad[]>(
+  const { data: squadsData, isLoading: squadsLoading } = useSWR<SquadsResponse>(
     '/api/coach/org-squads',
     fetcher,
     { revalidateOnFocus: false }
@@ -317,9 +327,9 @@ export function CoachHomePage() {
     );
   }
 
-  // Extract data
-  const programs = programsData || [];
-  const squads = squadsData || [];
+  // Extract data from response objects
+  const programs = programsData?.programs || [];
+  const squads = squadsData?.squads || [];
   const totalClients = clientsData?.summary?.totalClients ?? 0;
   const activeClients = clientsData?.summary?.activeCount ?? 0;
   const atRiskCount = clientsData?.summary?.atRiskCount ?? 0;
