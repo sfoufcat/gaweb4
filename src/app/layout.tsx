@@ -26,6 +26,7 @@ import { DemoSessionProvider } from "@/contexts/DemoSessionContext";
 import { ChatSheetProvider } from "@/contexts/ChatSheetContext";
 import { ChatPreferencesProvider } from "@/contexts/ChatPreferencesContext";
 import { ChatChannelsProvider } from "@/contexts/ChatChannelsContext";
+import { AuthHintProvider } from "@/contexts/AuthHintContext";
 import { getServerChatFilterData } from "@/lib/chat-server";
 
 const geistSans = Geist({
@@ -92,7 +93,10 @@ export default async function RootLayout({
   
   // Get layout mode from middleware (prevents layout shift by knowing during SSR)
   const layoutMode = headersList.get('x-layout-mode') || 'with-sidebar';
-  
+
+  // Get auth hint from middleware (prevents flash of unauthenticated content during Clerk hydration)
+  const isUserAuthenticated = headersList.get('x-user-authenticated') === 'true';
+
   // Get SSR branding and chat filter data in parallel - single fetch, no redundant calls
   const [ssrBranding, ssrChatFilter] = await Promise.all([
     getServerBranding(),
@@ -190,6 +194,7 @@ export default async function RootLayout({
           />
           <DemoModeProvider>
             <DemoSessionProvider>
+            <AuthHintProvider isAuthenticated={isUserAuthenticated}>
               {/* Client-side sync for body data-layout attribute (safety net for hydration/navigation) */}
               <Suspense fallback={null}>
                 <LayoutModeSync />
@@ -251,6 +256,7 @@ export default async function RootLayout({
               </BrandingProvider>
               </SWRProvider>
               </ThemeProvider>
+            </AuthHintProvider>
             </DemoSessionProvider>
           </DemoModeProvider>
         </body>

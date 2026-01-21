@@ -274,6 +274,7 @@ export function CreateEventModal({
 
   // Navigate steps
   const goToNextStep = () => {
+    console.log('[goToNextStep]', { step, eventType, selectedCohortId, selectedProgramId, selectedSquadId });
     if (!validateStep(step)) return;
 
     if (step === 'info') setStep('meeting');
@@ -650,7 +651,7 @@ export function CreateEventModal({
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                  className="space-y-3 overflow-hidden">
+                  className="space-y-3">
                   {/* Program Selector */}
                   <div>
                     <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">

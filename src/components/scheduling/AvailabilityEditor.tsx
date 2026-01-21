@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { 
-  Clock, 
-  Calendar, 
-  Save, 
-  Plus, 
-  Trash2, 
+import { useState, useCallback, useMemo } from 'react';
+import {
+  Clock,
+  Calendar,
+  Save,
+  Plus,
+  Trash2,
   AlertCircle,
   CheckCircle2,
   Loader2,
@@ -16,6 +16,8 @@ import {
 import { useAvailability } from '@/hooks/useAvailability';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { CalendarSyncSection } from './CalendarSyncSection';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
 import type { WeeklySchedule, TimeSlot, BlockedSlot, CoachAvailability } from '@/types';
 
 // Demo mock availability data
@@ -271,10 +273,29 @@ export function AvailabilityEditor() {
 
   // New blocked slot form
   const [showBlockedForm, setShowBlockedForm] = useState(false);
-  const [newBlockedStart, setNewBlockedStart] = useState('');
-  const [newBlockedEnd, setNewBlockedEnd] = useState('');
+  const [newBlockedStartDate, setNewBlockedStartDate] = useState('');
+  const [newBlockedStartTime, setNewBlockedStartTime] = useState('09:00');
+  const [newBlockedEndDate, setNewBlockedEndDate] = useState('');
+  const [newBlockedEndTime, setNewBlockedEndTime] = useState('17:00');
   const [newBlockedReason, setNewBlockedReason] = useState('');
   const [addingBlocked, setAddingBlocked] = useState(false);
+
+  // Generate time options for blocked time selector (30-min increments)
+  const TIME_OPTIONS = useMemo(() => {
+    const options: { value: string; label: string }[] = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const h = hour.toString().padStart(2, '0');
+        const m = minute.toString().padStart(2, '0');
+        const value = `${h}:${m}`;
+        const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+        const ampm = hour < 12 ? 'AM' : 'PM';
+        const label = `${hour12}:${m.padStart(2, '0')} ${ampm}`;
+        options.push({ value, label });
+      }
+    }
+    return options;
+  }, []);
 
   // Initialize local state when availability loads
   useState(() => {
@@ -340,19 +361,25 @@ export function AvailabilityEditor() {
       openSignupModal();
       return;
     }
-    
-    if (!newBlockedStart || !newBlockedEnd) return;
+
+    if (!newBlockedStartDate || !newBlockedEndDate) return;
+
+    // Combine date and time into ISO strings
+    const startDateTime = `${newBlockedStartDate}T${newBlockedStartTime}:00`;
+    const endDateTime = `${newBlockedEndDate}T${newBlockedEndTime}:00`;
 
     try {
       setAddingBlocked(true);
       await addBlockedSlot({
-        start: newBlockedStart,
-        end: newBlockedEnd,
+        start: startDateTime,
+        end: endDateTime,
         reason: newBlockedReason || undefined,
       });
       setShowBlockedForm(false);
-      setNewBlockedStart('');
-      setNewBlockedEnd('');
+      setNewBlockedStartDate('');
+      setNewBlockedStartTime('09:00');
+      setNewBlockedEndDate('');
+      setNewBlockedEndTime('17:00');
       setNewBlockedReason('');
     } catch (err) {
       // Error is handled by the hook
@@ -469,15 +496,21 @@ export function AvailabilityEditor() {
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                   Your Timezone
                 </label>
-                <select
+                <Select
                   value={localSettings.timezone}
-                  onChange={(e) => setLocalSettings({ ...localSettings, timezone: e.target.value })}
-                  className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                  onValueChange={(val) => setLocalSettings({ ...localSettings, timezone: val })}
                 >
-                  {COMMON_TIMEZONES.map(tz => (
-                    <option key={tz.value} value={tz.value}>{tz.label}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg max-h-60">
+                    {COMMON_TIMEZONES.map(tz => (
+                      <SelectItem key={tz.value} value={tz.value} className="cursor-pointer font-albert">
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Default Duration */}
@@ -485,15 +518,21 @@ export function AvailabilityEditor() {
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                   Default Call Duration
                 </label>
-                <select
-                  value={localSettings.defaultDuration}
-                  onChange={(e) => setLocalSettings({ ...localSettings, defaultDuration: parseInt(e.target.value) })}
-                  className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                <Select
+                  value={String(localSettings.defaultDuration)}
+                  onValueChange={(val) => setLocalSettings({ ...localSettings, defaultDuration: parseInt(val) })}
                 >
-                  {DURATION_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
+                    {DURATION_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={String(opt.value)} className="cursor-pointer font-albert">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Buffer */}
@@ -501,15 +540,21 @@ export function AvailabilityEditor() {
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                   Buffer Between Calls
                 </label>
-                <select
-                  value={localSettings.bufferBetweenCalls}
-                  onChange={(e) => setLocalSettings({ ...localSettings, bufferBetweenCalls: parseInt(e.target.value) })}
-                  className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                <Select
+                  value={String(localSettings.bufferBetweenCalls)}
+                  onValueChange={(val) => setLocalSettings({ ...localSettings, bufferBetweenCalls: parseInt(val) })}
                 >
-                  {BUFFER_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
+                    {BUFFER_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={String(opt.value)} className="cursor-pointer font-albert">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Advance Booking */}
@@ -577,30 +622,69 @@ export function AvailabilityEditor() {
           {/* Add blocked slot form */}
           {showBlockedForm && (
             <div className="mb-6 p-4 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                    Start
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={newBlockedStart}
-                    onChange={(e) => setNewBlockedStart(e.target.value)}
-                    className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
+              {/* Start Date & Time */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                  Start
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <DatePicker
+                    value={newBlockedStartDate}
+                    onChange={(date) => {
+                      setNewBlockedStartDate(date);
+                      // Auto-set end date if not set or if end date is before start
+                      if (!newBlockedEndDate || newBlockedEndDate < date) {
+                        setNewBlockedEndDate(date);
+                      }
+                    }}
+                    placeholder="Select date"
+                    minDate={new Date()}
+                    className="w-full"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                    End
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={newBlockedEnd}
-                    onChange={(e) => setNewBlockedEnd(e.target.value)}
-                    className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
-                  />
+                  <Select value={newBlockedStartTime} onValueChange={setNewBlockedStartTime}>
+                    <SelectTrigger className="h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg max-h-60">
+                      {TIME_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value} className="cursor-pointer font-albert">
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
+
+              {/* End Date & Time */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                  End
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <DatePicker
+                    value={newBlockedEndDate}
+                    onChange={setNewBlockedEndDate}
+                    placeholder="Select date"
+                    minDate={newBlockedStartDate ? new Date(newBlockedStartDate) : new Date()}
+                    className="w-full"
+                  />
+                  <Select value={newBlockedEndTime} onValueChange={setNewBlockedEndTime}>
+                    <SelectTrigger className="h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg max-h-60">
+                      {TIME_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value} className="cursor-pointer font-albert">
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Reason */}
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                   Reason (optional)
@@ -613,6 +697,8 @@ export function AvailabilityEditor() {
                   className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-brand-accent"
                 />
               </div>
+
+              {/* Actions */}
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setShowBlockedForm(false)}
@@ -622,7 +708,7 @@ export function AvailabilityEditor() {
                 </button>
                 <button
                   onClick={handleAddBlockedSlot}
-                  disabled={!newBlockedStart || !newBlockedEnd || addingBlocked}
+                  disabled={!newBlockedStartDate || !newBlockedEndDate || addingBlocked}
                   className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-xl font-albert font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {addingBlocked && <Loader2 className="w-4 h-4 animate-spin" />}

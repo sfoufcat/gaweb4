@@ -12,6 +12,8 @@ import { requirePlanLimit, isEntitlementError, getEntitlementErrorStatus } from 
 import { FieldValue } from 'firebase-admin/firestore';
 import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
 import { generateDemoEvents } from '@/lib/demo-data';
+import { scheduleEventJobs } from '@/lib/event-notifications';
+import type { UnifiedEvent } from '@/types';
 
 export async function GET() {
   try {
@@ -209,6 +211,24 @@ export async function POST(request: NextRequest) {
     const docRef = await adminDb.collection('events').add(eventData);
 
     console.log(`[COACH_ORG_EVENTS] Created event ${docRef.id} in organization ${organizationId}`);
+
+    // Schedule notification jobs for RSVP'd users
+    const unifiedEvent: Partial<UnifiedEvent> = {
+      id: docRef.id,
+      title: body.title,
+      startDateTime,
+      endDateTime,
+      timezone: body.timezone,
+      eventType: 'community_event',
+      scope: 'organization',
+      participantModel: 'rsvp',
+      organizationId,
+      hostUserId: userId,
+      attendeeIds: [],
+      status: 'confirmed',
+    };
+
+    await scheduleEventJobs(unifiedEvent as UnifiedEvent);
 
     return NextResponse.json({
       id: docRef.id,

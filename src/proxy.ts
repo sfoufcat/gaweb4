@@ -965,7 +965,12 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     isProfileEditOnboarding;
   
   requestHeaders.set('x-layout-mode', isFullscreenPage ? 'fullscreen' : 'with-sidebar');
-  
+
+  // Get auth state early to set auth hint header (prevents flash of unauthenticated content)
+  // Note: auth() is called again later for more detailed checks, but we need userId here for the header
+  const { userId: earlyUserId } = await auth();
+  requestHeaders.set('x-user-authenticated', earlyUserId ? 'true' : 'false');
+
   // Create response with modified request headers
   const response = NextResponse.next({
     request: {

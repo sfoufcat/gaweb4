@@ -39,6 +39,7 @@ import { SquadCarousel } from '@/components/home/SquadCarousel';
 import { WelcomeTour } from '@/components/coach/onboarding';
 import { RequestCallCard, CalendarButton, CalendarIconButton } from '@/components/scheduling';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useAuthHint } from '@/contexts/AuthHintContext';
 import { DEMO_USER } from '@/lib/demo-utils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { CoachOverviewHeader } from '@/components/dashboard/CoachOverviewHeader';
@@ -59,6 +60,7 @@ export function DashboardPage() {
   const searchParams = useSearchParams();
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
   const { isDemoMode, openSignupModal } = useDemoMode();
+  const { isAuthenticatedHint } = useAuthHint();
   const [mounted, setMounted] = useState(false);
   
   // Large screen detection for goal card circle progress
@@ -866,10 +868,33 @@ export function DashboardPage() {
     return ['goal', 'track', 'discover'];
   }, [isDemoMode, hasProgramCheckIn, isFirstDay, isMorningWindow, isMorningCheckInCompleted, isMorningWindowClosed, hasActivePrompt, isMorningEnabled]);
 
-  if (!isLoaded || !mounted) {
+  // Show nothing while component is mounting
+  if (!mounted) {
     return null;
   }
 
+  // While Clerk is still loading:
+  // - If we have auth hint from SSR (user is authenticated), show a loading skeleton
+  //   This prevents flash of sign-in screen while Clerk hydrates
+  // - If no auth hint (user is NOT authenticated), show nothing and wait for Clerk
+  if (!isLoaded) {
+    if (isAuthenticatedHint) {
+      // User is authenticated per middleware - show dashboard loading state
+      return (
+        <div className="min-h-screen bg-app-bg">
+          <div className="animate-pulse p-4 sm:p-6 space-y-4">
+            <div className="h-12 bg-[#e8e5e0] dark:bg-[#1e2430] rounded-full w-48" />
+            <div className="h-32 bg-[#e8e5e0] dark:bg-[#1e2430] rounded-3xl" />
+            <div className="h-24 bg-[#e8e5e0] dark:bg-[#1e2430] rounded-2xl" />
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  // Clerk has loaded - now check if user is authenticated
+  // If not, show the sign-in/sign-up screen
   if (!user) {
     return (
       <div className="fixed inset-0 bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex flex-col items-center justify-center text-center space-y-8 px-4">
