@@ -8,13 +8,13 @@
  */
 
 import { headers } from 'next/headers';
-import { notFound } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
 import { checkExistingSquadMembership, getProductRedirectUrl } from '@/lib/enrollment-check';
 import SquadFunnelClient from './SquadFunnelClient';
+import JoinNotAvailable from '@/components/funnel/JoinNotAvailable';
 import type { Funnel, FunnelStep, OrgSettings } from '@/types';
 import { mergeTrackingConfig } from '@/lib/tracking-utils';
 
@@ -61,15 +61,15 @@ export default async function SquadFunnelPage({ params, searchParams }: SquadFun
   const squadsSnapshot = await squadQuery.limit(1).get();
 
   if (squadsSnapshot.empty) {
-    notFound();
+    return <JoinNotAvailable coachName={branding.appTitle} type="squad" />;
   }
 
   const squadDoc = squadsSnapshot.docs[0];
   const squadData = squadDoc.data();
-  
+
   // Check if squad is active
   if (squadData.isActive === false) {
-    notFound();
+    return <JoinNotAvailable coachName={branding.appTitle} type="squad" />;
   }
 
   const squad: Squad = {
@@ -111,7 +111,7 @@ export default async function SquadFunnelPage({ params, searchParams }: SquadFun
     .get();
 
   if (funnelsSnapshot.empty) {
-    notFound();
+    return <JoinNotAvailable coachName={branding.appTitle} type="funnel" />;
   }
 
   const funnelDoc = funnelsSnapshot.docs[0];

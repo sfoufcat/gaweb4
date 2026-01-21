@@ -100,25 +100,30 @@ export function TaskSheetDefine({
           />
 
           {/* Privacy Checkbox */}
-          <button
-            onClick={() => setIsPrivate(!isPrivate)}
-            className="flex items-center gap-2 pt-6"
-          >
-            <div
-              className={`w-5 h-5 rounded-md border ${
-                isPrivate
-                  ? 'border-brand-accent'
-                  : 'border-[#e1ddd8] dark:border-[#262b35]'
-              } flex items-center justify-center bg-white dark:bg-[#181d26] transition-all duration-300`}
+          <div>
+            <button
+              onClick={() => setIsPrivate(!isPrivate)}
+              className="flex items-center gap-2 pt-6"
             >
-              {isPrivate && (
-                <div className="w-3 h-3 bg-brand-accent rounded-sm" />
-              )}
-            </div>
-            <span className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2]">
-              Keep this task private
-            </span>
-          </button>
+              <div
+                className={`w-5 h-5 rounded-md border ${
+                  isPrivate
+                    ? 'border-brand-accent'
+                    : 'border-[#e1ddd8] dark:border-[#262b35]'
+                } flex items-center justify-center bg-white dark:bg-[#181d26] transition-all duration-300`}
+              >
+                {isPrivate && (
+                  <div className="w-3 h-3 bg-brand-accent rounded-sm" />
+                )}
+              </div>
+              <span className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2]">
+                Keep this task private
+              </span>
+            </button>
+            <p className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[1.3] pl-7 pt-1">
+              Others will see "Private task" instead of the title
+            </p>
+          </div>
         </div>
       </div>
 

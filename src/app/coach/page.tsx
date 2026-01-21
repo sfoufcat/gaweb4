@@ -215,7 +215,8 @@ export default function CoachPage() {
   });
 
   // Handler for tab changes - updates URL without navigation
-  const handleTabChange = useCallback((newTab: CoachTab) => {
+  // Supports optional filters to set additional URL params (e.g., clientFilter, analyticsSubTab)
+  const handleTabChange = useCallback((newTab: CoachTab, filters?: Record<string, string>) => {
     setActiveTab(newTab);
     // On mobile, switch to content view when selecting a tab
     setMobileView('content');
@@ -232,13 +233,26 @@ export default function CoachPage() {
     if (newTab !== 'squads') url.searchParams.delete('squadId');
     if (newTab !== 'funnels') url.searchParams.delete('funnelId');
     if (newTab !== 'checkins') url.searchParams.delete('flowId');
-    if (newTab !== 'clients') url.searchParams.delete('clientId');
-    // Always clear sub-tab params on any tab change
+    if (newTab !== 'clients') {
+      url.searchParams.delete('clientId');
+      url.searchParams.delete('clientFilter');
+    }
+    // Always clear sub-tab params on any tab change (unless provided in filters)
     url.searchParams.delete('discoverSubTab');
     url.searchParams.delete('courseId');
     url.searchParams.delete('customizeSubtab');
-    url.searchParams.delete('analyticsSubTab');
+    if (!filters?.analyticsSubTab) url.searchParams.delete('analyticsSubTab');
     url.searchParams.delete('analyticsSquadId');
+
+    // Apply any filters passed from dashboard cards
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) {
+          url.searchParams.set(key, value);
+        }
+      });
+    }
+
     router.replace(url.pathname + url.search, { scroll: false });
   }, [router]);
 
@@ -891,7 +905,7 @@ export default function CoachPage() {
           {/* Clients Tab - Consolidated Users + Coaching Clients */}
           <TabsContent value="clients" className="animate-fadeIn">
             {/* Overview Stats - only shown on Clients tab */}
-            {!selectedClientId && <CoachDashboardOverview onTabChange={(tab) => handleTabChange(tab as CoachTab)} />}
+            {!selectedClientId && <CoachDashboardOverview onTabChange={(tab, filters) => handleTabChange(tab as CoachTab, filters)} />}
 
             {selectedClientId ? (
               <>

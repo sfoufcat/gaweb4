@@ -90,7 +90,19 @@ const DEFAULT_WIZARD_DATA: ProgramWizardData = {
   recurring: false,
   recurringCadence: 'monthly',
   status: 'draft',
-};;
+};
+
+// localStorage key for draft persistence
+const DRAFT_STORAGE_KEY = 'program-wizard-draft';
+const DRAFT_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Draft interface for localStorage
+interface ProgramDraft {
+  step: WizardStep;
+  wizardData: ProgramWizardData;
+  cohortData: CohortFormData;
+  savedAt: number;
+}
 
 interface NewProgramModalProps {
   isOpen: boolean;
@@ -157,26 +169,82 @@ export function NewProgramModal({
     },
   };
 
-  // Reset state when modal opens (not on close, to preserve state during exit animation)
+  // Helper to get default cohort data
+  const getDefaultCohortData = (): CohortFormData => ({
+    name: '',
+    startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    maxEnrollment: '',
+    afterProgramEnds: 'close',
+  });
+
+  // Helper to clear draft from localStorage
+  const clearDraft = useCallback(() => {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  // Restore or reset state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setStep('type');
-      setWizardData(DEFAULT_WIZARD_DATA);
+      // Try to restore draft from localStorage
+      let restored = false;
+      try {
+        const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+        if (saved) {
+          const draft: ProgramDraft = JSON.parse(saved);
+          const age = Date.now() - draft.savedAt;
+          // Only restore if draft is less than 24 hours old and not on cohort step
+          if (age < DRAFT_EXPIRY_MS && draft.step !== 'cohort') {
+            setStep(draft.step);
+            setWizardData(draft.wizardData);
+            setCohortData(draft.cohortData);
+            restored = true;
+          } else {
+            // Draft expired or on cohort step, clear it
+            localStorage.removeItem(DRAFT_STORAGE_KEY);
+          }
+        }
+      } catch {
+        // Ignore localStorage errors
+      }
+
+      // If no draft restored, reset to defaults
+      if (!restored) {
+        setStep('type');
+        setWizardData(DEFAULT_WIZARD_DATA);
+        setCohortData(getDefaultCohortData());
+      }
+
+      // Always reset these states
       setIsCreating(false);
       setUploadError(null);
       setShowCloseWarning(false);
-      // Reset cohort state
       setCreatedProgramId(null);
-      setCohortData({
-        name: '',
-        startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-        maxEnrollment: '',
-        afterProgramEnds: 'close',
-      });
       setIsCreatingCohort(false);
       setCohortError(null);
     }
   }, [isOpen]);
+
+  // Autosave draft to localStorage when form data changes
+  useEffect(() => {
+    // Don't save if modal closed, on step 1 (no meaningful data yet), or on cohort step (program already created)
+    if (!isOpen || step === 'type' || step === 'cohort') return;
+
+    try {
+      const draft: ProgramDraft = {
+        step,
+        wizardData,
+        cohortData,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    } catch {
+      // Ignore localStorage errors (quota exceeded, etc.)
+    }
+  }, [isOpen, step, wizardData, cohortData]);
 
   const handleCloseAttempt = () => {
     // On cohort step or past step 1, show warning
@@ -256,6 +324,9 @@ export function NewProgramModal({
 
       const data = await response.json();
       const programId = data.program?.id || data.id;
+
+      // Clear draft since program was created successfully
+      clearDraft();
 
       // Only show cohort step for group programs
       if (wizardData.type === 'group') {
@@ -453,15 +524,24 @@ export function NewProgramModal({
               ) : (
                 <>
                   <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Discard progress?
+                    Save draft and exit?
                   </p>
                   <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
-                    Your progress will be lost if you close now.
+                    Your progress will be saved. You can continue later.
                   </p>
                   <div className="flex gap-2 mt-3">
                     <button
                       onClick={handleClose}
-                      className="px-3 py-1.5 text-sm font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+                      className="px-3 py-1.5 text-sm font-medium rounded-lg bg-brand-accent text-white hover:bg-brand-accent/90 transition-colors"
+                    >
+                      Save & Exit
+                    </button>
+                    <button
+                      onClick={() => {
+                        clearDraft();
+                        handleClose();
+                      }}
+                      className="px-3 py-1.5 text-sm font-medium rounded-lg border border-red-300 dark:border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                     >
                       Discard
                     </button>
@@ -469,7 +549,7 @@ export function NewProgramModal({
                       onClick={() => setShowCloseWarning(false)}
                       className="px-3 py-1.5 text-sm font-medium rounded-lg border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
                     >
-                      Continue Editing
+                      Continue
                     </button>
                   </div>
                 </>

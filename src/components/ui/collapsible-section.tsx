@@ -12,6 +12,10 @@ interface CollapsibleSectionProps {
   defaultOpen?: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Badge indicating section importance */
+  badge?: 'essential' | 'recommended' | 'optional';
+  /** Shows green dot when collapsed indicating section has content */
+  hasContent?: boolean;
 }
 
 const contentVariants = {
@@ -37,6 +41,8 @@ export function CollapsibleSection({
   defaultOpen = true,
   children,
   className,
+  badge,
+  hasContent,
 }: CollapsibleSectionProps) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
@@ -68,14 +74,26 @@ export function CollapsibleSection({
             </div>
           )}
           <div className="flex flex-col items-start">
-            <span className={cn(
-              'text-sm font-semibold font-albert transition-colors duration-200',
-              isOpen
-                ? 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-                : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-            )}>
-              {title}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                'text-sm font-semibold font-albert transition-colors duration-200',
+                isOpen
+                  ? 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+              )}>
+                {title}
+              </span>
+              {badge && (
+                <span className={cn(
+                  'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                  badge === 'essential' && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                  badge === 'recommended' && 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+                  badge === 'optional' && 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+                )}>
+                  {badge.charAt(0).toUpperCase() + badge.slice(1)}
+                </span>
+              )}
+            </div>
             {description && (
               <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
                 {description}
@@ -83,18 +101,23 @@ export function CollapsibleSection({
             )}
           </div>
         </div>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-          className={cn(
-            'flex items-center justify-center w-6 h-6 rounded-md transition-colors duration-200 flex-shrink-0',
-            isOpen
-              ? 'bg-[#f3f1ef] dark:bg-[#262b35]'
-              : 'bg-transparent'
+        <div className="flex items-center gap-2">
+          {hasContent && !isOpen && (
+            <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
           )}
-        >
-          <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-        </motion.div>
+          <motion.div
+            animate={{ rotate: isOpen ? 180 : 0 }}
+            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+            className={cn(
+              'flex items-center justify-center w-6 h-6 rounded-md transition-colors duration-200 flex-shrink-0',
+              isOpen
+                ? 'bg-[#f3f1ef] dark:bg-[#262b35]'
+                : 'bg-transparent'
+            )}
+          >
+            <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+          </motion.div>
+        </div>
       </button>
       <AnimatePresence initial={false}>
         {isOpen && (

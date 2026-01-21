@@ -8,7 +8,6 @@
  */
 
 import { headers } from 'next/headers';
-import { notFound } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
@@ -16,6 +15,7 @@ import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
 import { checkExistingEnrollment, getProductRedirectUrl } from '@/lib/enrollment-check';
 import FunnelClient from './FunnelClient';
 import FunnelDeactivated from '@/components/FunnelDeactivated';
+import JoinNotAvailable from '@/components/funnel/JoinNotAvailable';
 import type { Program, Funnel, FunnelStep, OrgSettings, CoachSubscriptionStatus, NewProgramEnrollmentStatus } from '@/types';
 import { mergeTrackingConfig } from '@/lib/tracking-utils';
 
@@ -77,7 +77,7 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
   const programsSnapshot = await programQuery.where('isActive', '==', true).limit(1).get();
 
   if (programsSnapshot.empty) {
-    notFound();
+    return <JoinNotAvailable coachName={branding.appTitle} type="program" />;
   }
 
   const programDoc = programsSnapshot.docs[0];
@@ -115,7 +115,7 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
     .get();
 
   if (funnelsSnapshot.empty) {
-    notFound();
+    return <JoinNotAvailable coachName={branding.appTitle} type="funnel" />;
   }
 
   const funnelDoc = funnelsSnapshot.docs[0];

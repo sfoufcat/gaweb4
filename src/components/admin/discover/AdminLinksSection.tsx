@@ -154,7 +154,7 @@ function LinkFormDialog({
             value={formData.title}
             onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
             className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-            placeholder="e.g., Program Community"
+            placeholder="e.g., Private Slack Community"
           />
         </div>
 
@@ -368,7 +368,7 @@ export function AdminLinksSection({ apiEndpoint = '/api/admin/discover/links' }:
             <div>
               <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Links</h2>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-                {filteredLinks.length} link{filteredLinks.length !== 1 ? 's' : ''}
+                External URLs: tools, communities, booking pages. Link to programs to control when clients see them.
               </p>
             </div>
             
@@ -454,7 +454,9 @@ export function AdminLinksSection({ apiEndpoint = '/api/admin/discover/links' }:
 
         {filteredLinks.length === 0 && (
           <div className="p-12 text-center">
-            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No links found</p>
+            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              {searchQuery ? 'No links found' : 'No links yet. Add external URLs for clients, then link them to programs or weeks.'}
+            </p>
           </div>
         )}
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { Video, Phone, Link2, Check } from 'lucide-react';
+import { Video, Phone, Link2, Check, Settings } from 'lucide-react';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import {
   Tooltip,
@@ -244,6 +244,48 @@ export function MeetingProviderSelector({
     return null;
   };
 
+  // Show inline help when Google Meet is disabled but user might want it
+  const renderSetupHelper = () => {
+    // Only show if Google Meet is not connected (either not connected to Google or Meet not enabled)
+    if (googleMeet.connected) return null;
+
+    // Check if Zoom is also not connected - if both are disconnected, show a more general message
+    const showZoomToo = !zoom.connected;
+
+    return (
+      <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl">
+        <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
+          <Settings className="w-4 h-4 flex-shrink-0" />
+          <span>
+            {showZoomToo ? (
+              <>
+                Connect Zoom or enable Google Meet in{' '}
+                <a
+                  href="/coach/settings?tab=integrations"
+                  className="underline font-medium hover:text-amber-800 dark:hover:text-amber-300"
+                >
+                  Settings → Integrations
+                </a>
+                {' '}for video calls
+              </>
+            ) : (
+              <>
+                Enable Google Meet in{' '}
+                <a
+                  href="/coach/settings?tab=integrations"
+                  className="underline font-medium hover:text-amber-800 dark:hover:text-amber-300"
+                >
+                  Settings → Integrations
+                </a>
+                {' '}for video calls
+              </>
+            )}
+          </span>
+        </p>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className={className}>
@@ -271,6 +313,9 @@ export function MeetingProviderSelector({
       <div className="flex p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl mb-3">
         {availableProviders.map(renderProviderTab)}
       </div>
+
+      {/* Setup Helper - shows when video providers need configuration */}
+      {renderSetupHelper()}
 
       {/* Status Area */}
       {renderStatusArea()}

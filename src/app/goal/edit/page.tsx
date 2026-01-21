@@ -7,6 +7,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { DatePicker } from '@/components/ui/date-picker';
+import { invalidateAlignmentCache } from '@/hooks/useAlignment';
 
 export default function EditGoalPage() {
   const router = useRouter();
@@ -264,7 +265,10 @@ export default function EditGoalPage() {
 
       if (response.ok) {
         const data = await response.json();
-        
+
+        // Invalidate alignment cache so dashboard shows updated goal status
+        await invalidateAlignmentCache();
+
         // If goal was completed, redirect to accomplished goals
         if (data.completed) {
           router.push('/goal/accomplished');

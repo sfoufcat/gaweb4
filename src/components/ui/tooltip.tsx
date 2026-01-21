@@ -4,7 +4,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Simple tooltip implementation using CSS hover states
+ * Simple tooltip implementation using CSS hover states + touch support
  * Based on shadcn/ui patterns but without the Radix dependency
  */
 
@@ -25,8 +25,29 @@ interface TooltipProps {
   delayDuration?: number
 }
 
-const Tooltip: React.FC<TooltipProps> = ({ children }) => {
-  return <div className="relative inline-flex group">{children}</div>
+const TooltipContext = React.createContext<{
+  isOpen: boolean
+  setIsOpen: (open: boolean) => void
+}>({ isOpen: false, setIsOpen: () => {} })
+
+const Tooltip: React.FC<TooltipProps> = ({ children, open, onOpenChange }) => {
+  const [isOpen, setIsOpenState] = React.useState(open ?? false)
+
+  const setIsOpen = React.useCallback((newOpen: boolean) => {
+    setIsOpenState(newOpen)
+    onOpenChange?.(newOpen)
+  }, [onOpenChange])
+
+  // Sync with controlled state
+  React.useEffect(() => {
+    if (open !== undefined) setIsOpenState(open)
+  }, [open])
+
+  return (
+    <TooltipContext.Provider value={{ isOpen, setIsOpen }}>
+      <div className="relative inline-flex group">{children}</div>
+    </TooltipContext.Provider>
+  )
 }
 
 interface TooltipTriggerProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -35,16 +56,32 @@ interface TooltipTriggerProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const TooltipTrigger = React.forwardRef<HTMLDivElement, TooltipTriggerProps>(
   ({ className, asChild, children, ...props }, ref) => {
-    if (asChild && React.isValidElement<{ className?: string }>(children)) {
+    const { setIsOpen } = React.useContext(TooltipContext)
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+      // Prevent default to avoid triggering click
+      e.stopPropagation()
+      setIsOpen(true)
+      // Auto-close after 2 seconds on mobile
+      setTimeout(() => setIsOpen(false), 2000)
+    }
+
+    if (asChild && React.isValidElement<{ className?: string; onTouchStart?: React.TouchEventHandler }>(children)) {
       return React.cloneElement(children, {
         ref,
         className: cn(children.props.className, "cursor-default"),
+        onTouchStart: handleTouchStart,
         ...props,
       } as React.HTMLAttributes<HTMLElement>)
     }
 
     return (
-      <div ref={ref} className={cn("cursor-default", className)} {...props}>
+      <div
+        ref={ref}
+        className={cn("cursor-default", className)}
+        onTouchStart={handleTouchStart}
+        {...props}
+      >
         {children}
       </div>
     )
@@ -60,6 +97,8 @@ interface TooltipContentProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const TooltipContent = React.forwardRef<HTMLDivElement, TooltipContentProps>(
   ({ className, side = "top", sideOffset = 4, children, ...props }, ref) => {
+    const { isOpen } = React.useContext(TooltipContext)
+
     const positionClasses = {
       top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
       bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
@@ -71,7 +110,9 @@ const TooltipContent = React.forwardRef<HTMLDivElement, TooltipContentProps>(
       <div
         ref={ref}
         className={cn(
-          "absolute z-[10001] hidden group-hover:block",
+          "absolute z-[10001]",
+          // Show on hover (desktop) or when isOpen (mobile tap)
+          isOpen ? "block" : "hidden group-hover:block",
           "px-3 py-1.5 text-sm",
           "rounded-md border",
           "bg-[#1a1a1a] dark:bg-[#f5f5f8]",

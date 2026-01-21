@@ -11,10 +11,12 @@
  * 3. Redirects to the funnel flow
  */
 
-import { redirect, notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { adminDb } from '@/lib/firebase-admin';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
+import { getBrandingForDomain } from '@/lib/server/branding';
+import JoinNotAvailable from '@/components/funnel/JoinNotAvailable';
 import type { Program, Funnel } from '@/types';
 
 interface JoinPageProps {
@@ -34,6 +36,9 @@ export default async function JoinProgramPage({ params, searchParams }: JoinPage
   const tenantResult = await resolveTenant(hostname, null, null);
   const organizationId = tenantResult.type === 'tenant' ? tenantResult.tenant.organizationId : null;
 
+  // Get branding for error messages
+  const branding = await getBrandingForDomain(hostname);
+
   // Find program by slug
   let programQuery = adminDb.collection('programs').where('slug', '==', programSlug);
   
@@ -44,7 +49,7 @@ export default async function JoinProgramPage({ params, searchParams }: JoinPage
   const programsSnapshot = await programQuery.where('isActive', '==', true).limit(1).get();
 
   if (programsSnapshot.empty) {
-    notFound();
+    return <JoinNotAvailable coachName={branding.appTitle} type="program" />;
   }
 
   const programDoc = programsSnapshot.docs[0];
@@ -77,8 +82,8 @@ export default async function JoinProgramPage({ params, searchParams }: JoinPage
   }
 
   if (funnelsSnapshot.empty) {
-    // No funnel found - show error or create default
-    notFound();
+    // No funnel found - show friendly error
+    return <JoinNotAvailable coachName={branding.appTitle} type="funnel" />;
   }
 
   const funnelDoc = funnelsSnapshot.docs[0];

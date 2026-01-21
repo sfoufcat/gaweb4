@@ -26,6 +26,8 @@ interface OrgMembershipData {
   squadId?: string | null;
   premiumSquadId?: string | null;
   orgRole?: OrgRole;
+  atRisk?: boolean;
+  activityStatus?: 'thriving' | 'active' | 'inactive';
 }
 
 interface ClerkUserMetadata {
@@ -167,6 +169,8 @@ export async function GET() {
             squadId: data.squadId as string | null | undefined,
             premiumSquadId: data.premiumSquadId as string | null | undefined,
             orgRole: data.orgRole as OrgRole | undefined,
+            atRisk: data.atRisk as boolean | undefined,
+            activityStatus: data.activityStatus as 'thriving' | 'active' | 'inactive' | undefined,
           });
         });
       }
@@ -328,6 +332,9 @@ export async function GET() {
         invitedAt: fbData?.invitedAt || null,
         createdAt: new Date(user.createdAt).toISOString(),
         updatedAt: new Date(user.updatedAt).toISOString(),
+        // Activity status for filtering
+        atRisk: membershipData?.atRisk || false,
+        activityStatus: membershipData?.activityStatus || null,
       };
     });
 

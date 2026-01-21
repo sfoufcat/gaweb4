@@ -78,6 +78,20 @@ function formatTime12Hour(time: string): string {
   return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
 }
 
+function getTimezoneAbbreviation(timezone: string | undefined): string {
+  if (!timezone) return '';
+  try {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'short'
+    }).formatToParts(now);
+    return parts.find(p => p.type === 'timeZoneName')?.value || timezone;
+  } catch {
+    return timezone;
+  }
+}
+
 // Helper to get day of week from date string
 function getDayOfWeekFromDate(dateStr: string): number {
   if (!dateStr) return 1;
@@ -1179,7 +1193,7 @@ export function AdminEventsSection({
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                   <span>{formatDate(event.date)}</span>
                   <span className="hidden sm:inline">•</span>
-                  <span className="hidden sm:inline">{event.startTime}–{event.endTime}</span>
+                  <span className="hidden sm:inline">{formatTime12Hour(event.startTime)}–{formatTime12Hour(event.endTime)} {getTimezoneAbbreviation(event.timezone)}</span>
                   <span className="hidden sm:inline">•</span>
                   <span className="hidden sm:inline-flex items-center gap-1">
                     <MapPin className="w-3 h-3" />

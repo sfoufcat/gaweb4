@@ -184,7 +184,7 @@ function DownloadFormDialog({
             value={formData.title}
             onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
             className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-            placeholder="e.g., Habit Tracker Template"
+            placeholder="e.g., Weekly Reflection Worksheet"
           />
         </div>
 
@@ -403,7 +403,7 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
             <div>
               <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Downloads</h2>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-                {filteredDownloads.length} download{filteredDownloads.length !== 1 ? 's' : ''}
+                Downloadable files: worksheets, templates, PDFs, audio. Link to programs to control when clients see them.
               </p>
             </div>
             
@@ -492,7 +492,9 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
 
         {filteredDownloads.length === 0 && (
           <div className="p-12 text-center">
-            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No downloads found</p>
+            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              {searchQuery ? 'No downloads found' : 'No downloads yet. Upload files clients can download, then link them to programs or weeks.'}
+            </p>
           </div>
         )}
       </div>

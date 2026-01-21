@@ -230,7 +230,7 @@ export function AdminQuestionnairesSection({
             Questionnaires
           </h3>
           <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-            {questionnaires.length} questionnaire{questionnaires.length !== 1 ? 's' : ''}
+            Collect client feedback, assessments, or intake forms. Share via link or link to programs.
           </p>
         </div>
 

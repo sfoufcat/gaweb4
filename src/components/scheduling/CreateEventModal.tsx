@@ -19,6 +19,7 @@ import {
   Users,
   UserCheck,
   ChevronRight,
+  Eye,
 } from 'lucide-react';
 import {
   Drawer,
@@ -67,9 +68,9 @@ const RECURRENCE_OPTIONS: { value: RecurrenceFrequency | 'none'; label: string }
 ];
 
 const EVENT_TYPES = [
-  { value: 'community_event', label: 'Community', description: 'Open to all members', icon: Globe },
-  { value: 'cohort_call', label: 'Cohort Call', description: 'For cohort members', icon: Users },
-  { value: 'squad_call', label: 'Squad Call', description: 'For squad members', icon: UserCheck },
+  { value: 'community_event', label: 'All Members', description: 'Anyone in your organization can join', visibility: 'Discover · Calendar', icon: Globe },
+  { value: 'cohort_call', label: 'Program Group', description: 'Only members in a specific program group', visibility: 'Program Page · Calendar', icon: Users },
+  { value: 'squad_call', label: 'Squad', description: 'Only members of a specific squad', visibility: 'Squad Page · Calendar', icon: UserCheck },
 ];
 
 const COMMON_TIMEZONES = [
@@ -629,6 +630,11 @@ export function CreateEventModal({
                         <p className="text-[10px] text-[#5f5a55] dark:text-[#b2b6c2] leading-tight">
                           {type.description}
                         </p>
+                        {/* Visibility hint */}
+                        <div className="mt-1.5 flex items-center gap-1 text-[9px] text-[#8a857f] dark:text-[#7a7f8c]">
+                          <Eye className="w-2.5 h-2.5" />
+                          <span>{type.visibility}</span>
+                        </div>
                         {/* Selection indicator */}
                         {isSelected && (
                           <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center">

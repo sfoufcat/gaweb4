@@ -57,6 +57,14 @@ export default function ProfilePage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [emailPreferences, setEmailPreferences] = useState<EmailPreferences | undefined>(undefined);
 
+  // Check if user has payment record for this org's Stripe Connect account
+  // NOTE: Must be declared before any early returns to comply with React's Rules of Hooks
+  const hasPaymentRecord = useMemo(() => {
+    const accountId = orgSettings?.stripeConnectAccountId;
+    const customerIds = userData?.user?.stripeConnectedCustomerIds;
+    return !!(accountId && customerIds?.[accountId]);
+  }, [orgSettings?.stripeConnectAccountId, userData?.user?.stripeConnectedCustomerIds]);
+
   // Check if we're in edit mode, viewing another user, or from onboarding
   useEffect(() => {
     // In demo mode, don't allow edit mode - redirect to profile view and show modal
@@ -382,13 +390,6 @@ export default function ProfilePage() {
 
   // Show profile view
   const isOwnProfile = userData?.isOwnProfile !== false;
-
-  // Check if user has payment record for this org's Stripe Connect account
-  const hasPaymentRecord = useMemo(() => {
-    const accountId = orgSettings?.stripeConnectAccountId;
-    const customerIds = userData?.user?.stripeConnectedCustomerIds;
-    return !!(accountId && customerIds?.[accountId]);
-  }, [orgSettings?.stripeConnectAccountId, userData?.user?.stripeConnectedCustomerIds]);
 
   // Handle message button click for other profiles
   const handleMessageClick = async () => {

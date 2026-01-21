@@ -226,7 +226,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
             <div className="flex-shrink-0">
               <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Articles</h2>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-                {filteredArticles.length} article{filteredArticles.length !== 1 ? 's' : ''}
+                Educational content: blog posts, guides, how-tos. Link to programs to control when clients see them.
               </p>
             </div>
 

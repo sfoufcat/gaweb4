@@ -74,7 +74,7 @@ export function AdminDiscoverTab({
           <div>
             <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Resources</h2>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-              Manage content for programs
+              Create content and link it to programs. Clients see linked resources during their program.
             </p>
           </div>
 

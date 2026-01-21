@@ -1,12 +1,20 @@
 'use client';
 
-import useSWR from 'swr';
+import useSWR, { mutate as globalMutate } from 'swr';
 import { useCallback, useMemo } from 'react';
 import type { UserAlignment, UserAlignmentSummary, AlignmentState, AlignmentActivityConfig } from '@/types';
 import { DEFAULT_ALIGNMENT_CONFIG } from '@/types';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 
-const ALIGNMENT_CACHE_KEY = '/api/alignment';
+export const ALIGNMENT_CACHE_KEY = '/api/alignment';
+
+/**
+ * Invalidate the alignment cache to force a refetch.
+ * Call this after actions that affect alignment state (e.g., saving a goal).
+ */
+export async function invalidateAlignmentCache(): Promise<void> {
+  await globalMutate(ALIGNMENT_CACHE_KEY);
+}
 
 interface AlignmentResponse {
   alignment: UserAlignment;

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { UserPlus, RefreshCw, Eye, MessageCircle, Send, Trash2, Download } from 'lucide-react';
+import { UserPlus, RefreshCw, Eye, MessageCircle, Send, Trash2, Download, Filter } from 'lucide-react';
 import { SquadManagerPopover } from './SquadManagerPopover';
 import { ProgramManagerPopover } from './ProgramManagerPopover';
 import { ComplimentaryAccessConfirmation } from './ComplimentaryAccessConfirmation';
@@ -97,7 +98,13 @@ interface ClerkAdminUser {
   invitedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  // Activity/engagement status
+  atRisk?: boolean;
+  activityStatus?: 'thriving' | 'active' | 'inactive' | null;
 }
+
+// Filter options for client status
+type ClientFilter = 'all' | 'at-risk' | 'active' | 'inactive';
 
 // Available column keys for visibility control
 export type ColumnKey = 'select' | 'avatar' | 'name' | 'email' | 'role' | 'orgRole' | 'tier' | 'squad' | 'coach' | 'coaching' | 'programs' | 'invitedBy' | 'invitedAt' | 'created' | 'actions';
@@ -161,7 +168,34 @@ export function AdminUsersTab({
   const columns = visibleColumns || (readOnly ? LIMITED_COLUMNS : ALL_COLUMNS);
   const showColumn = (col: ColumnKey) => columns.includes(col);
   const [users, setUsers] = useState<ClerkAdminUser[]>([]);
-  
+
+  // URL params for filtering
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Client status filter (from URL param or default to 'all')
+  const urlFilter = searchParams.get('clientFilter') as ClientFilter | null;
+  const [clientFilter, setClientFilter] = useState<ClientFilter>(urlFilter || 'all');
+
+  // Sync filter state with URL param
+  useEffect(() => {
+    if (urlFilter && urlFilter !== clientFilter) {
+      setClientFilter(urlFilter);
+    }
+  }, [urlFilter, clientFilter]);
+
+  // Update URL when filter changes
+  const handleFilterChange = useCallback((newFilter: ClientFilter) => {
+    setClientFilter(newFilter);
+    const url = new URL(window.location.href);
+    if (newFilter === 'all') {
+      url.searchParams.delete('clientFilter');
+    } else {
+      url.searchParams.set('clientFilter', newFilter);
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
   // Invite dialog state
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -381,19 +415,38 @@ export function AdminUsersTab({
     }
   }, [showInviteButton]);
 
-  // Filter users based on search query
+  // Filter users based on search query and status filter
   const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return displayUsers;
-    
-    const query = searchQuery.toLowerCase();
-    return displayUsers.filter(
-      (user) =>
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        user.firstName.toLowerCase().includes(query) ||
-        user.lastName.toLowerCase().includes(query)
-    );
-  }, [displayUsers, searchQuery]);
+    let result = displayUsers;
+
+    // Apply status filter
+    if (clientFilter !== 'all') {
+      result = result.filter((user) => {
+        if (clientFilter === 'at-risk') {
+          return user.atRisk === true;
+        } else if (clientFilter === 'active') {
+          return user.activityStatus === 'active' || user.activityStatus === 'thriving';
+        } else if (clientFilter === 'inactive') {
+          return user.activityStatus === 'inactive';
+        }
+        return true;
+      });
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (user) =>
+          user.name.toLowerCase().includes(query) ||
+          user.email.toLowerCase().includes(query) ||
+          user.firstName.toLowerCase().includes(query) ||
+          user.lastName.toLowerCase().includes(query)
+      );
+    }
+
+    return result;
+  }, [displayUsers, searchQuery, clientFilter]);
 
   const handleRoleChange = async (userId: string, currentRole: UserRole, newRole: UserRole) => {
     if (!canModifyUserRole(currentUserRole, currentRole, newRole)) {
@@ -1019,7 +1072,7 @@ export function AdminUsersTab({
               <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">{headerTitle}</h2>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert mt-1">
                 {filteredUsers.length} of {displayUsers.length} {headerTitle.toLowerCase()}{displayUsers.length !== 1 ? '' : ''}
-                {searchQuery && ' matching search'}
+                {(searchQuery || clientFilter !== 'all') && ' matching filters'}
               </p>
             </div>
             
@@ -1057,6 +1110,38 @@ export function AdminUsersTab({
                   </button>
                 )}
               </div>
+
+              {/* Status Filter Dropdown */}
+              <Select
+                value={clientFilter}
+                onValueChange={(value) => handleFilterChange(value as ClientFilter)}
+              >
+                <SelectTrigger className="w-[140px] bg-[#f3f1ef] dark:bg-[#1e222a] border-transparent text-sm font-albert">
+                  <Filter className="w-4 h-4 mr-2 text-[#5f5a55] dark:text-[#7d8190]" />
+                  <SelectValue placeholder="All Clients" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Clients</SelectItem>
+                  <SelectItem value="at-risk">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-red-500" />
+                      At-Risk
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="active">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      Active
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="inactive">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-gray-400" />
+                      Inactive
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
 
               {/* Refresh Icon + Export + Add Button row */}
               <div className="flex items-center gap-2">

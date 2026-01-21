@@ -12,6 +12,7 @@ import Image from 'next/image';
 import type { GoalValidationResult } from '@/types';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { DatePicker } from '@/components/ui/date-picker';
+import { invalidateAlignmentCache } from '@/hooks/useAlignment';
 
 const EXAMPLE_GOALS = [
   "lose 10 kg",
@@ -150,6 +151,9 @@ export default function GoalPage() {
         throw new Error('Failed to save goal');
       }
 
+      // Invalidate alignment cache so dashboard shows updated goal status
+      await invalidateAlignmentCache();
+
       router.push('/onboarding/support-needs');
     } catch (err) {
       setError('Failed to save your goal. Please try again.');
@@ -212,21 +216,32 @@ export default function GoalPage() {
   return (
     <div className="min-h-dvh bg-app-bg">
       <div className="min-h-dvh flex flex-col">
-        {/* Logo Header - centered */}
-        <motion.div 
-          className="pt-6 pb-4 px-6 flex justify-center"
+        {/* Header with back button and logo */}
+        <motion.div
+          className="pt-6 pb-4 px-6 flex items-center justify-between"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Image 
-            src={logoUrl} 
-            alt={appTitle} 
-            width={48} 
-            height={48} 
+          <button
+            onClick={() => router.back()}
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            aria-label="Go back"
+          >
+            <svg className="w-5 h-5 text-text-primary" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+          </button>
+          <Image
+            src={logoUrl}
+            alt={appTitle}
+            width={48}
+            height={48}
             className="rounded-lg"
             unoptimized
           />
+          {/* Spacer for centering logo */}
+          <div className="w-10 h-10" />
         </motion.div>
 
         {/* Content */}
@@ -461,7 +476,7 @@ export default function GoalPage() {
               <button
                 onClick={handleValidate}
                 disabled={!isButtonEnabled || isValidating}
-                className="w-full bg-[#2c2520] text-white font-sans font-bold text-[16px] tracking-[-0.5px] leading-[1.4] py-4 px-6 rounded-[32px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:bg-[#e1ddd8] disabled:text-text-muted disabled:shadow-none"
+                className="w-full bg-[#2c2520] text-white font-sans font-bold text-[16px] tracking-[-0.5px] leading-[1.4] py-4 px-6 rounded-[32px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:bg-[#e1ddd8] disabled:text-text-secondary disabled:shadow-none"
               >
                 {isValidating ? (
                   <span className="flex items-center justify-center gap-2">

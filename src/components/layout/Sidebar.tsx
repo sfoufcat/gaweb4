@@ -216,6 +216,7 @@ export function Sidebar() {
 
   // Prefetch pages on mount to reduce loading time
   useEffect(() => {
+    router.prefetch('/');  // Home page
     router.prefetch('/chat');
     if (showFeedNav) {
       router.prefetch('/feed');
@@ -372,7 +373,7 @@ export function Sidebar() {
       {/* Desktop Sidebar - Apple Liquid Glass Style */}
       {/* Uses CSS variables for branding colors when preview mode or custom branding is active */}
       {/* Collapses to icons only when on /chat (Instagram DM style) */}
-      <aside className={`hidden lg:flex flex-col fixed left-0 top-0 bottom-0 z-[60] sidebar-branded backdrop-blur-xl border-r border-[#e1ddd8]/50 dark:border-[#272d38]/50 transition-all duration-300 ease-in-out py-6 ${isCollapsed ? 'w-[72px] px-3' : 'w-64 px-6'}`}>
+      <aside className={`hidden lg:flex flex-col fixed left-0 top-0 bottom-0 z-[10001] sidebar-branded backdrop-blur-xl border-r border-[#e1ddd8]/50 dark:border-[#272d38]/50 transition-all duration-300 ease-in-out py-6 pointer-events-auto ${isCollapsed ? 'w-[72px] px-3' : 'w-64 px-6'}`}>
         {/* Logo - Shows horizontal logo if available, otherwise square logo + title */}
         {/* In collapsed mode, only show square logo centered with smooth transition */}
         <Link href="/">
@@ -537,7 +538,7 @@ export function Sidebar() {
       {/* Mobile Bottom Navigation - Apple Glass + Instagram Simplicity */}
       <div
         className={`
-          lg:hidden fixed bottom-0 left-0 right-0 z-[60] flex justify-center px-5
+          lg:hidden fixed bottom-0 left-0 right-0 z-[10001] flex justify-center px-5
           transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom
           pointer-events-none
           ${isCompact ? 'translate-y-[10px] scale-[0.94] opacity-95' : 'translate-y-0 scale-100 opacity-100'}

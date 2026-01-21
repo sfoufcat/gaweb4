@@ -105,14 +105,8 @@
 /*
  * iOS Safari full-viewport content extension
  * With viewport-fit: cover, Safari extends the viewport into the safe areas.
- * On mobile, html/body are transparent so content flows naturally into safe areas.
- * On desktop (lg+), body gets the app background color.
+ * Safe area handling uses padding/margin pattern in .main-content-safe.
  */
-@media (max-width: 1023px) {
-  html, body {
-    background-color: transparent !important;
-  }
-}
 
 
 @layer utilities {
@@ -782,6 +776,7 @@
 html {
   overflow-x: hidden;
   scrollbar-gutter: stable;
+  background-color: hsl(var(--app-bg));
 }
 
 /* Fullscreen pages should not reserve scrollbar space */
@@ -792,6 +787,7 @@ html:has(body[data-layout="fullscreen"]) {
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;
+  background-color: hsl(var(--app-bg));
 }
 
 /* Fullscreen pages (website, etc.) - transparent body/html to let template control background */

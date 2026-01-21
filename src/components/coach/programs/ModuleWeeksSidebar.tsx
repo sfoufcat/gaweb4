@@ -738,6 +738,19 @@ export function ModuleWeeksSidebar({
     }
   }, [viewStatus]);
 
+  // Expand module when parent selects a week inside it
+  // This ensures the selected week is visible when CoachProgramsTab sets sidebarSelection
+  React.useEffect(() => {
+    if (selection?.type === 'week' && selection.moduleId) {
+      setExpandedModules(prev => {
+        if (prev.has(selection.moduleId!)) return prev;
+        const next = new Set(prev);
+        next.add(selection.moduleId!);
+        return next;
+      });
+    }
+  }, [selection]);
+
   // Helper: find module for a week with fallback to first module containing weeks
   const findModuleForWeek = React.useCallback((week: CalculatedWeek | undefined): string | undefined => {
     // If week has moduleId, use it
@@ -757,10 +770,14 @@ export function ModuleWeeksSidebar({
     if (displayWeeks.length === 0) return;
 
     if (!currentDayIndex) {
-      // Template mode: keep everything collapsed (user can manually expand)
+      // Template mode: expand first module so weeks are visible
       if (viewStatus === 'template') {
         hasInitializedExpansion.current = true;
-        // Don't auto-expand anything in template mode
+        // Expand first module in template mode so coach can see and edit weeks
+        if (modules.length > 0) {
+          const firstModule = [...modules].sort((a, b) => a.order - b.order)[0];
+          setExpandedModules(new Set([firstModule.id]));
+        }
         return;
       }
 

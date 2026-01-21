@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Phone, DollarSign, CreditCard, Bell, Clock, Minus, Plus } from 'lucide-react';
+import { Phone, DollarSign, CreditCard, Bell, Clock, Minus, Plus, Eye, X } from 'lucide-react';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import type { CallPricingModel, CoachCallSettings } from '@/types';
 
@@ -25,6 +25,38 @@ const DEFAULT_SETTINGS: CoachCallSettings = {
 };
 
 /**
+ * Preview of what clients see on their dashboard
+ */
+function ClientCallPreview({ settings }: { settings: CoachCallSettings }) {
+  const isPaid = settings.pricingModel === 'per_call' || settings.pricingModel === 'both';
+  return (
+    <div className="p-4 bg-gradient-to-br from-brand-accent/5 to-brand-accent/10 border border-brand-accent/20 rounded-2xl">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-full bg-brand-accent/20 flex items-center justify-center flex-shrink-0">
+          <Phone className="w-5 h-5 text-brand-accent" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold text-[#1a1a1a] dark:text-white">
+            {settings.callRequestButtonLabel || 'Schedule a Call'}
+          </h4>
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+            {settings.callRequestDescription || 'Book a 1-on-1 call with your coach'}
+          </p>
+          {isPaid && (settings.pricePerCallCents || 0) > 0 && (
+            <p className="text-xs font-medium text-brand-accent mt-1">
+              ${((settings.pricePerCallCents || 0) / 100).toFixed(0)} per call
+            </p>
+          )}
+        </div>
+        <span className="flex-shrink-0 px-3 py-1.5 bg-brand-accent text-white text-sm rounded-xl font-medium">
+          Request
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
  * CallPricingSettings - Configure call pricing and request settings
  */
 export function CallPricingSettings() {
@@ -36,6 +68,7 @@ export function CallPricingSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Fetch current settings
   useEffect(() => {
@@ -128,6 +161,21 @@ export function CallPricingSettings() {
         </div>
       )}
 
+      {/* Info Banner - Where clients see this */}
+      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-xl">
+        <p className="text-[13px] text-blue-700 dark:text-blue-300">
+          <span className="font-medium">Where clients see this:</span> On their dashboard homepage as a &quot;Request Call&quot; card, and in the booking flow when requesting a call.{' '}
+          <button
+            type="button"
+            onClick={() => setShowPreview(true)}
+            className="inline-flex items-center gap-1 underline hover:no-underline"
+          >
+            <Eye className="w-3 h-3" />
+            Preview card
+          </button>
+        </p>
+      </div>
+
       {/* Allow Client Requests Toggle */}
       <div className="p-4 rounded-xl bg-white dark:bg-[#13171f] border border-[#e8e4df] dark:border-[#262b35]">
         <div className="flex items-center justify-between">
@@ -218,7 +266,7 @@ export function CallPricingSettings() {
                 />
               </div>
               <p className="text-[12px] text-[#8a857f] mt-1">
-                Amount clients pay for each call (in USD)
+                Shown as &quot;$X per call&quot; badge on dashboard card
               </p>
             </label>
           </div>
@@ -288,7 +336,7 @@ export function CallPricingSettings() {
               maxLength={50}
             />
             <p className="text-[12px] text-[#8a857f] mt-1">
-              Custom label for the request button (leave blank for default)
+              Card title on client dashboard (leave blank for &quot;Schedule a Call&quot;)
             </p>
           </label>
 
@@ -307,7 +355,7 @@ export function CallPricingSettings() {
               maxLength={200}
             />
             <p className="text-[12px] text-[#8a857f] mt-1">
-              Description shown to clients when requesting a call
+              Subtitle below title on dashboard card
             </p>
           </label>
         </div>
@@ -417,6 +465,32 @@ export function CallPricingSettings() {
           )}
         </div>
       </div>
+
+      {/* Client Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowPreview(false)}
+          />
+          <div className="relative bg-white dark:bg-[#1a1f2a] rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <button
+              type="button"
+              onClick={() => setShowPreview(false)}
+              className="absolute top-4 right-4 p-1 rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+            >
+              <X className="w-5 h-5 text-[#8a857f]" />
+            </button>
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-1">
+              Client Dashboard Preview
+            </h3>
+            <p className="text-sm text-[#8a857f] mb-4">
+              This card appears on your clients&apos; dashboard homepage
+            </p>
+            <ClientCallPreview settings={settings} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

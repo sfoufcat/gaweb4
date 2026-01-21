@@ -712,6 +712,12 @@ export function WeekEditor({
   const [newTask, setNewTask] = useState('');
   const [newFocus, setNewFocus] = useState('');
   const [newNote, setNewNote] = useState('');
+  
+  // Inline editing state for outcomes and notes
+  const [editingFocusIndex, setEditingFocusIndex] = useState<number | null>(null);
+  const [editingFocusText, setEditingFocusText] = useState('');
+  const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState('');
 
   // Save animation and sync state
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -1269,6 +1275,8 @@ export function WeekEditor({
     const stateFingerprint = JSON.stringify({
       weekId: week.id,
       // Basic info fields
+      formName: formData.name,
+      weekName: week.name,
       formTheme: formData.theme,
       weekTheme: week.theme,
       formDescription: formData.description,
@@ -1281,7 +1289,10 @@ export function WeekEditor({
       // Weekly outcomes
       formCurrentFocus: formData.currentFocus,
       weekCurrentFocus: week.currentFocus,
-      // Client notes
+      // Client notes (visible to client)
+      formNotes: formData.notes,
+      weekNotes: week.notes,
+      // Private notes (coach only)
       formManualNotes: formData.manualNotes,
       weekManualNotes: week.manualNotes,
       // Linked content IDs
@@ -1769,6 +1780,33 @@ export function WeekEditor({
     });
   };
 
+  const startEditingFocus = (index: number) => {
+    setEditingFocusIndex(index);
+    setEditingFocusText(formData.currentFocus[index]);
+  };
+
+  const saveEditingFocus = () => {
+    if (editingFocusIndex === null) return;
+    const trimmed = editingFocusText.trim();
+    if (!trimmed) {
+      // If empty, cancel edit (don't delete - user can use X button for that)
+      setEditingFocusIndex(null);
+      setEditingFocusText('');
+      return;
+    }
+    setFormData({
+      ...formData,
+      currentFocus: formData.currentFocus.map((f, i) => i === editingFocusIndex ? trimmed : f),
+    });
+    setEditingFocusIndex(null);
+    setEditingFocusText('');
+  };
+
+  const cancelEditingFocus = () => {
+    setEditingFocusIndex(null);
+    setEditingFocusText('');
+  };
+
   // Notes management (max 3)
   const addNote = () => {
     if (!newNote.trim() || formData.notes.length >= 3) return;
@@ -1781,6 +1819,32 @@ export function WeekEditor({
       ...formData,
       notes: formData.notes.filter((_, i) => i !== index),
     });
+  };
+
+  const startEditingNote = (index: number) => {
+    setEditingNoteIndex(index);
+    setEditingNoteText(formData.notes[index]);
+  };
+
+  const saveEditingNote = () => {
+    if (editingNoteIndex === null) return;
+    const trimmed = editingNoteText.trim();
+    if (!trimmed) {
+      setEditingNoteIndex(null);
+      setEditingNoteText('');
+      return;
+    }
+    setFormData({
+      ...formData,
+      notes: formData.notes.map((n, i) => i === editingNoteIndex ? trimmed : n),
+    });
+    setEditingNoteIndex(null);
+    setEditingNoteText('');
+  };
+
+  const cancelEditingNote = () => {
+    setEditingNoteIndex(null);
+    setEditingNoteText('');
   };
 
   // Handle recording file selection
@@ -2127,60 +2191,13 @@ export function WeekEditor({
         </div>
       )}
 
-      {/* Basic Info Section - collapsed by default */}
-      <CollapsibleSection
-        title="Basic Info"
-        icon={Info}
-        defaultOpen={false}
-      >
-        {/* Week Theme */}
-        <div>
-          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-            Theme
-          </label>
-          <input
-            type="text"
-            value={formData.theme}
-            onChange={(e) => { setFormData({ ...formData, theme: e.target.value }); }}
-            placeholder="e.g., Building Foundations"
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-          />
-        </div>
-
-        {/* Week Description */}
-        <div>
-          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-            Description
-          </label>
-          <textarea
-            value={formData.description}
-            onChange={(e) => { setFormData({ ...formData, description: e.target.value }); }}
-            placeholder="What clients will accomplish this week..."
-            rows={2}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-          />
-        </div>
-
-        {/* Weekly Prompt */}
-        <div>
-          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-            Weekly Prompt
-          </label>
-          <textarea
-            value={formData.weeklyPrompt}
-            onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); }}
-            placeholder="Motivational message or guidance for this week..."
-            rows={2}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-          />
-        </div>
-      </CollapsibleSection>
-
       {/* Tasks & Focus Section */}
       <CollapsibleSection
           title="Tasks & Focus"
           icon={ListTodo}
           defaultOpen={true}
+          badge="essential"
+          hasContent={formData.weeklyTasks.length > 0 || formData.currentFocus.length > 0}
         >
           {/* Weekly Tasks */}
           <div>
@@ -2378,13 +2395,32 @@ export function WeekEditor({
                   key={index}
                   className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
                 >
-                  <span className="w-2 h-2 rounded-full bg-brand-accent" />
-                  <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                    {focus}
-                  </span>
+                  <span className="w-2 h-2 rounded-full bg-brand-accent flex-shrink-0" />
+                  {editingFocusIndex === index ? (
+                    <input
+                      type="text"
+                      value={editingFocusText}
+                      onChange={(e) => setEditingFocusText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveEditingFocus();
+                        if (e.key === 'Escape') cancelEditingFocus();
+                      }}
+                      onBlur={saveEditingFocus}
+                      autoFocus
+                      className="flex-1 px-2 py-1 text-sm bg-white dark:bg-[#11141b] border border-brand-accent rounded font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                    />
+                  ) : (
+                    <span
+                      onClick={() => startEditingFocus(index)}
+                      className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer hover:text-brand-accent transition-colors"
+                      title="Click to edit"
+                    >
+                      {focus}
+                    </span>
+                  )}
                   <button
                     onClick={() => removeFocus(index)}
-                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -2409,6 +2445,80 @@ export function WeekEditor({
           </div>
         </CollapsibleSection>
 
+      {/* Basic Info Section - collapsed by default */}
+      <CollapsibleSection
+        title="Basic Info"
+        icon={Info}
+        defaultOpen={false}
+        badge="recommended"
+        hasContent={!!formData.theme || !!formData.description}
+      >
+        {/* Week Theme */}
+        <div>
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Theme
+          </label>
+          <input
+            type="text"
+            value={formData.theme}
+            onChange={(e) => { setFormData({ ...formData, theme: e.target.value }); }}
+            placeholder="e.g., Building Foundations"
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+          />
+        </div>
+
+        {/* Week Description */}
+        <div>
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => { setFormData({ ...formData, description: e.target.value }); }}
+            placeholder="What clients will accomplish this week..."
+            rows={2}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+          />
+        </div>
+
+        {/* Weekly Prompt */}
+        <div>
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Weekly Prompt
+          </label>
+          <textarea
+            value={formData.weeklyPrompt}
+            onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); }}
+            placeholder="Motivational message or guidance for this week..."
+            rows={2}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* Resources Section - Tabbed UI for Courses, Articles, Downloads, Links, Questionnaires */}
+      <CollapsibleSection
+        title="Resources"
+        icon={BookOpen}
+        description="Content to share with clients during this week"
+        defaultOpen={false}
+        badge="recommended"
+        hasContent={formData.resourceAssignments?.length > 0}
+      >
+        <UnifiedResourcesTabs
+          resourceAssignments={formData.resourceAssignments}
+          onResourceAssignmentsChange={handleResourceAssignmentsChange}
+          availableCourses={availableCourses}
+          availableArticles={availableArticles}
+          availableDownloads={availableDownloads}
+          availableLinks={availableLinks}
+          availableQuestionnaires={availableQuestionnaires}
+          programId={programId}
+          includeWeekends={includeWeekends}
+          contentCompletion={contentCompletion}
+        />
+      </CollapsibleSection>
+
       {/* Sessions Section - Calls, Summaries, Recordings */}
       {/* Always visible - shows info message in template mode, full UI in cohort/client mode */}
       <CollapsibleSection
@@ -2416,6 +2526,8 @@ export function WeekEditor({
         icon={Video}
         description="Calls, recordings, and summaries"
         defaultOpen={false}
+        badge="optional"
+        hasContent={formData.linkedCallEventIds?.length > 0 || formData.linkedSummaryIds?.length > 0}
       >
         {/* Template mode message */}
         {!isClientView && !isCohortMode ? (
@@ -3014,32 +3126,13 @@ export function WeekEditor({
         )}
       </CollapsibleSection>
 
-      {/* Resources Section - Tabbed UI for Courses, Articles, Downloads, Links, Questionnaires */}
-      <CollapsibleSection
-        title="Resources"
-        icon={BookOpen}
-        description="Content to share with clients during this week"
-        defaultOpen={false}
-      >
-        <UnifiedResourcesTabs
-          resourceAssignments={formData.resourceAssignments}
-          onResourceAssignmentsChange={handleResourceAssignmentsChange}
-          availableCourses={availableCourses}
-          availableArticles={availableArticles}
-          availableDownloads={availableDownloads}
-          availableLinks={availableLinks}
-          availableQuestionnaires={availableQuestionnaires}
-          programId={programId}
-          includeWeekends={includeWeekends}
-          contentCompletion={contentCompletion}
-        />
-      </CollapsibleSection>
-
       {/* Notes Section - collapsed by default */}
       <CollapsibleSection
         title="Notes"
         icon={ClipboardList}
         defaultOpen={false}
+        badge="optional"
+        hasContent={formData.notes?.length > 0 || !!formData.manualNotes}
       >
         {/* Client Notes (max 3) */}
         <div className="mb-6">
@@ -3056,13 +3149,32 @@ export function WeekEditor({
                 key={index}
                 className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
               >
-                <span className="w-2 h-2 rounded-full bg-[#a7a39e]" />
-                <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  {note}
-                </span>
+                <span className="w-2 h-2 rounded-full bg-[#a7a39e] flex-shrink-0" />
+                {editingNoteIndex === index ? (
+                  <input
+                    type="text"
+                    value={editingNoteText}
+                    onChange={(e) => setEditingNoteText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveEditingNote();
+                      if (e.key === 'Escape') cancelEditingNote();
+                    }}
+                    onBlur={saveEditingNote}
+                    autoFocus
+                    className="flex-1 px-2 py-1 text-sm bg-white dark:bg-[#11141b] border border-brand-accent rounded font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  />
+                ) : (
+                  <span
+                    onClick={() => startEditingNote(index)}
+                    className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer hover:text-brand-accent transition-colors"
+                    title="Click to edit"
+                  >
+                    {note}
+                  </span>
+                )}
                 <button
                   onClick={() => removeNote(index)}
-                  className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                 >
                   <X className="w-4 h-4" />
                 </button>

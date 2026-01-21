@@ -114,8 +114,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    // Validate required fields (authorTitle is now optional)
-    const requiredFields = ['title', 'coverImageUrl', 'content', 'authorName'];
+    // Validate required fields (content is optional - edited in full-page editor after creation)
+    const requiredFields = ['title', 'coverImageUrl', 'authorName'];
     for (const field of requiredFields) {
       if (!body[field]) {
         return NextResponse.json(
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate reading time (rough estimate: 200 words per minute)
-    const wordCount = body.content.split(/\s+/).length;
+    const wordCount = body.content ? body.content.split(/\s+/).length : 0;
     const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
 
     // Validate programIds if provided

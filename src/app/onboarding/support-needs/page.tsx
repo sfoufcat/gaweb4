@@ -106,7 +106,7 @@ export default function SupportNeedsPage() {
 
   // Navigate to home after celebration
   const navigateToHome = useCallback(() => {
-    router.push('/feed');
+    router.push('/home');
   }, [router]);
 
   // Auto-redirect after showing celebration

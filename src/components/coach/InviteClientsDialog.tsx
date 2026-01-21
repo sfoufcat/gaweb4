@@ -2,14 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  X, 
-  UserPlus, 
-  ChevronDown,
+import {
+  X,
+  UserPlus,
   ChevronLeft,
   Plus,
   Loader2,
-  Layers,
   Upload,
   Mail,
   Send,
@@ -22,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { Funnel, Program, ProgramInvite } from '@/types';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
@@ -163,7 +162,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
             name: 'Default Program',
             slug: 'default',
             description: 'Default program for client enrollment',
-            type: 'evergreen',
+            type: 'individual',
             lengthDays: 90,
             priceInCents: 0,
             currency: 'USD',
@@ -488,18 +487,28 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
           </div>
         )}
 
-        {/* No funnels - offer to create one */}
+        {/* No funnels - friendly empty state */}
         {!isLoading && !error && funnels.length === 0 && (
           <div className="text-center py-8">
             <div className="w-16 h-16 rounded-2xl bg-[#faf8f6] dark:bg-[#11141b] flex items-center justify-center mx-auto mb-4">
-              <Layers className="w-8 h-8 text-brand-accent" />
+              <UserPlus className="w-8 h-8 text-brand-accent" />
             </div>
             <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-              No Funnels Yet
+              Ready to invite your first clients?
             </h3>
-            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-6 max-w-sm mx-auto">
-              Create a signup funnel to start inviting clients. We&apos;ll set up a simple signup flow for you.
+            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2 max-w-sm mx-auto">
+              We&apos;ll set up everything you need:
             </p>
+            <ul className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-6 max-w-sm mx-auto text-left inline-block">
+              <li className="flex items-center gap-2 mb-1">
+                <Check className="w-4 h-4 text-brand-accent shrink-0" />
+                <span>A simple signup flow for new clients</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-brand-accent shrink-0" />
+                <span>Personalized invite links</span>
+              </li>
+            </ul>
             <button
               onClick={autoCreateFunnel}
               disabled={isAutoCreating}
@@ -508,15 +517,15 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
               {isAutoCreating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating...
+                  Setting up...
                 </>
               ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  Create Signup Funnel
-                </>
+                'Get Started'
               )}
             </button>
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-3">
+              This only takes a second
+            </p>
           </div>
         )}
 
@@ -575,29 +584,29 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                   )}
                 </AnimatePresence>
 
-                {/* Funnel Selector */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                    Select Funnel
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={selectedFunnelId || ''}
-                      onChange={(e) => setSelectedFunnelId(e.target.value)}
-                      className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent appearance-none cursor-pointer"
-                    >
-                      {funnels.map(funnel => (
-                        <option key={funnel.id} value={funnel.id}>
-                          {funnel.name} ({getProgramName(funnel.programId)})
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] pointer-events-none" />
+                {/* Funnel Selector - only show if multiple funnels */}
+                {funnels.length > 1 && (
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                      Signup Flow
+                    </label>
+                    <Select value={selectedFunnelId || ''} onValueChange={setSelectedFunnelId}>
+                      <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:border-brand-accent dark:focus:border-brand-accent">
+                        <SelectValue placeholder="Select signup flow..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {funnels.map(funnel => (
+                          <SelectItem key={funnel.id} value={funnel.id}>
+                            {funnel.name} ({getProgramName(funnel.programId)})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1.5">
+                      Choose which signup flow to use for these invites
+                    </p>
                   </div>
-                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1.5">
-                    Invites will direct users through this funnel
-                  </p>
-                </div>
+                )}
 
                 {/* Invite Codes Header */}
                 <div className="flex items-center justify-between">
@@ -736,7 +745,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                     type="email"
                     value={createForm.email}
                     onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                    className="w-full h-12 px-4 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-xl focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                     placeholder="user@example.com"
                   />
                   <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
@@ -752,27 +761,31 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                     type="text"
                     value={createForm.name}
                     onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                    className="w-full h-12 px-4 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-xl focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                     placeholder="John Doe"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                    Payment Status
+                    Payment
                   </label>
-                  <select
+                  <Select
                     value={createForm.paymentStatus}
-                    onChange={(e) => setCreateForm(prev => ({ 
-                      ...prev, 
-                      paymentStatus: e.target.value as 'required' | 'pre_paid' | 'free' 
+                    onValueChange={(value) => setCreateForm(prev => ({
+                      ...prev,
+                      paymentStatus: value as 'required' | 'pre_paid' | 'free'
                     }))}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                   >
-                    <option value="required">Payment Required</option>
-                    <option value="pre_paid">Pre-paid (skip payment)</option>
-                    <option value="free">Free Access</option>
-                  </select>
+                    <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:border-brand-accent dark:focus:border-brand-accent">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="required">Payment Required</SelectItem>
+                      <SelectItem value="pre_paid">Pre-paid (skip payment)</SelectItem>
+                      <SelectItem value="free">Free Access</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {createForm.paymentStatus === 'pre_paid' && (
@@ -784,7 +797,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                       type="text"
                       value={createForm.prePaidNote}
                       onChange={(e) => setCreateForm(prev => ({ ...prev, prePaidNote: e.target.value }))}
-                      className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                      className="w-full h-12 px-4 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-xl focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                       placeholder="e.g., Invoice #123"
                     />
                   </div>
@@ -837,12 +850,12 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                   <>
                     <div>
                       <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                        CSV Data
+                        Client List
                       </label>
                       <textarea
                         value={bulkCsv}
                         onChange={(e) => setBulkCsv(e.target.value)}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] resize-none font-mono text-sm"
+                        className="w-full px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-xl focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] resize-none font-mono text-sm"
                         rows={8}
                         placeholder={`email@example.com, John Doe\nanother@example.com, Jane Doe\n...`}
                       />
@@ -853,17 +866,21 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
 
                     <div>
                       <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                        Payment Status (for all)
+                        Payment (for all)
                       </label>
-                      <select
+                      <Select
                         value={bulkPaymentStatus}
-                        onChange={(e) => setBulkPaymentStatus(e.target.value as 'required' | 'pre_paid' | 'free')}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                        onValueChange={(value) => setBulkPaymentStatus(value as 'required' | 'pre_paid' | 'free')}
                       >
-                        <option value="required">Payment Required</option>
-                        <option value="pre_paid">Pre-paid (skip payment)</option>
-                        <option value="free">Free Access</option>
-                      </select>
+                        <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:border-brand-accent dark:focus:border-brand-accent">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="required">Payment Required</SelectItem>
+                          <SelectItem value="pre_paid">Pre-paid (skip payment)</SelectItem>
+                          <SelectItem value="free">Free Access</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     {/* Send Emails Toggle */}
