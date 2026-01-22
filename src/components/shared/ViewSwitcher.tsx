@@ -56,11 +56,11 @@ interface ViewSwitcherProps {
  * Only renders for users who have coach access.
  */
 export function ViewSwitcher({ className = '', horizontal = false }: ViewSwitcherProps) {
-  const { viewMode, setViewMode, canAccessCoachView } = useViewMode();
+  const { viewMode, setViewMode, canAccessCoachView, isLoading } = useViewMode();
 
-  // Don't render for non-coaches
-  // Note: We don't hide during loading because canAccessCoachView will be false during loading anyway
-  if (!canAccessCoachView) {
+  // During loading, don't render anything (prevents flash)
+  // Once loaded, only show for coaches
+  if (isLoading || !canAccessCoachView) {
     return null;
   }
 
