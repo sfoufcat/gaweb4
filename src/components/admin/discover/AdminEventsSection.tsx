@@ -73,6 +73,7 @@ const DAY_NAMES_PLURAL = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thurs
 
 // Helper to format time in 12-hour format
 function formatTime12Hour(time: string): string {
+  if (!time) return '';
   const [hours, minutes] = time.split(':').map(Number);
   const period = hours >= 12 ? 'PM' : 'AM';
   const hour12 = hours % 12 || 12;

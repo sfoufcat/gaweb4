@@ -137,6 +137,12 @@ export function DayEditor({
   const [taskMemberData, setTaskMemberData] = useState<Map<string, TaskMemberInfo[]>>(new Map());
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
 
+  // Refs for stable access in effects (prevents infinite loops)
+  const taskMemberDataRef = useRef(taskMemberData);
+  const loadingTasksRef = useRef(loadingTasks);
+  taskMemberDataRef.current = taskMemberData;
+  loadingTasksRef.current = loadingTasks;
+
   // Toggle task expansion
   const toggleTaskExpanded = (taskKey: string) => {
     setExpandedTasks(prev => {
@@ -173,8 +179,11 @@ export function DayEditor({
   const isInstanceContext = !!(cohortIdValue || clientEnrollmentId);
 
   // Fetch member breakdown for a task (lazy load)
+  // Uses refs for taskMemberData/loadingTasks to avoid infinite loops
   const fetchTaskMembers = useCallback(async (taskId: string, taskLabel: string) => {
+    // Check via refs to avoid dependency on state that changes during fetch
     if (!isCohortMode || !cohortIdValue) return;
+    if (taskMemberDataRef.current.has(taskLabel) || loadingTasksRef.current.has(taskLabel)) return;
 
     setLoadingTasks(prev => new Set(prev).add(taskLabel));
 
@@ -269,14 +278,17 @@ export function DayEditor({
   const [hasChanges, setHasChanges] = useState(!!pendingData);
 
   // Fetch members when task is expanded
+  // Uses refs for taskMemberData/loadingTasks checks to avoid infinite loops
   useEffect(() => {
     expandedTasks.forEach(taskLabel => {
       const task = formData.tasks.find(t => t.label === taskLabel);
-      if (task && !taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
+      if (task) {
         fetchTaskMembers(task.id || taskLabel, taskLabel);
       }
     });
-  }, [expandedTasks, formData.tasks, taskMemberData, loadingTasks, fetchTaskMembers]);
+    // Note: fetchTaskMembers uses refs internally to check if already loaded/loading
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedTasks, formData.tasks, fetchTaskMembers]);
 
   // Track previous view context to detect changes
   const lastViewContext = useRef(viewContext);

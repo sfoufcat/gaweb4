@@ -921,6 +921,12 @@ export function WeekEditor({
   const [taskMemberData, setTaskMemberData] = useState<Map<string, TaskMemberInfo[]>>(new Map());
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
 
+  // Refs for stable access in effects (prevents infinite loops)
+  const taskMemberDataRef = useRef(taskMemberData);
+  const loadingTasksRef = useRef(loadingTasks);
+  taskMemberDataRef.current = taskMemberData;
+  loadingTasksRef.current = loadingTasks;
+
   // Toggle task expansion
   const toggleTaskExpanded = useCallback((taskKey: string) => {
     setExpandedTasks(prev => {
@@ -935,8 +941,10 @@ export function WeekEditor({
   }, []);
 
   // Fetch member breakdown for a task (lazy load)
+  // Uses refs for taskMemberData/loadingTasks to avoid infinite loops
   const fetchTaskMembers = useCallback(async (taskId: string, taskLabel: string) => {
-    if (taskMemberData.has(taskLabel) || !cohortId) return;
+    // Check via refs to avoid dependency on state that changes during fetch
+    if (taskMemberDataRef.current.has(taskLabel) || loadingTasksRef.current.has(taskLabel) || !cohortId) return;
 
     setLoadingTasks(prev => new Set(prev).add(taskLabel));
 
@@ -957,7 +965,7 @@ export function WeekEditor({
         return next;
       });
     }
-  }, [cohortId, taskMemberData]);
+  }, [cohortId]);
 
 
   // DnD sensors for weekly tasks
@@ -1724,25 +1732,28 @@ export function WeekEditor({
     : (includeWeekends ? 7 : 5);
 
   // Fetch members when task is expanded
+  // Uses refs for taskMemberData/loadingTasks checks to avoid infinite loops
   useEffect(() => {
     expandedTasks.forEach(taskLabel => {
       const task = formData.weeklyTasks.find(t => t.label === taskLabel);
-      if (task && !taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
+      if (task) {
         fetchTaskMembers(task.id || taskLabel, taskLabel);
       }
     });
-  }, [expandedTasks, formData.weeklyTasks, taskMemberData, loadingTasks, fetchTaskMembers]);
+    // Note: fetchTaskMembers uses refs internally to check if already loaded/loading
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedTasks, formData.weeklyTasks, fetchTaskMembers]);
 
   // Pre-fetch member data for all tasks in cohort mode
+  // Uses refs for taskMemberData/loadingTasks checks to avoid infinite loops
   useEffect(() => {
     if (!cohortId || formData.weeklyTasks.length === 0) return;
     formData.weeklyTasks.forEach(task => {
-      const taskLabel = task.label;
-      if (!taskMemberData.has(taskLabel) && !loadingTasks.has(taskLabel)) {
-        fetchTaskMembers(task.id || taskLabel, taskLabel);
-      }
+      fetchTaskMembers(task.id || task.label, task.label);
     });
-  }, [cohortId, formData.weeklyTasks, taskMemberData, loadingTasks, fetchTaskMembers]);
+    // Note: fetchTaskMembers uses refs internally to check if already loaded/loading
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cohortId, formData.weeklyTasks, fetchTaskMembers]);
 
   // Toggle primary/backlog for a task
   const toggleTaskPrimary = (index: number) => {
