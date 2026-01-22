@@ -1167,7 +1167,7 @@ export function CoachHomePage() {
 
   // Show getting started if not all items complete and not dismissed
   const allChecklistComplete = checklistItems.every(item => item.isComplete);
-  const showGettingStarted = !isChecklistDismissed && (!allChecklistComplete || totalRevenue === 0);
+  const showGettingStarted = !isChecklistDismissed && !allChecklistComplete;
 
   if (!mounted) {
     return null;
@@ -1340,7 +1340,7 @@ export function CoachHomePage() {
             </h2>
             <div className="flex flex-wrap gap-2">
               <QuickActionButton
-                label="New Offer"
+                label="New Program"
                 icon={Plus}
                 href="/coach?tab=programs"
                 variant="primary"
