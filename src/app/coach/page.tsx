@@ -33,7 +33,6 @@ import { FeatureTour } from '@/components/coach/onboarding';
 import { AvailabilityEditor, CalendarView } from '@/components/scheduling';
 import { CallPricingSettings } from '@/components/coach/CallPricingSettings';
 import { IntegrationsTab } from '@/components/coach/settings';
-import { CoachDashboardOverview } from '@/components/coach/CoachDashboardOverview';
 
 /**
  * Coach Dashboard Page
@@ -966,9 +965,6 @@ export default function CoachPage() {
         <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as CoachTab)} className="w-full">
           {/* Clients Tab - Consolidated Users + Coaching Clients */}
           <TabsContent value="clients" className="animate-fadeIn">
-            {/* Overview Stats - only shown on Clients tab */}
-            {!selectedClientId && <CoachDashboardOverview onTabChange={(tab, filters) => handleTabChange(tab as CoachTab, filters)} />}
-
             {selectedClientId ? (
               <>
                 {/* Back Button */}

@@ -588,11 +588,11 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                 {funnels.length > 1 && (
                   <div>
                     <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                      Signup Flow
+                      Sign up Funnel
                     </label>
                     <Select value={selectedFunnelId || ''} onValueChange={setSelectedFunnelId}>
                       <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:border-brand-accent dark:focus:border-brand-accent">
-                        <SelectValue placeholder="Select signup flow..." />
+                        <SelectValue placeholder="Select sign up funnel..." />
                       </SelectTrigger>
                       <SelectContent>
                         {funnels.map(funnel => (
@@ -603,7 +603,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1.5">
-                      Choose which signup flow to use for these invites
+                      Choose which sign up funnel to use for these invites
                     </p>
                   </div>
                 )}

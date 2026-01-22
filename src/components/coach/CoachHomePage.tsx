@@ -51,6 +51,12 @@ import { ViewSwitcher } from '@/components/shared/ViewSwitcher';
 import { useCurrentUserStoryAvailability } from '@/hooks/useUserStoryAvailability';
 import { Progress } from '@/components/ui/progress';
 import { CoachGoalModal, CoachGoalData } from './CoachGoalModal';
+import { NewProgramModal } from './programs/NewProgramModal';
+import { CreateSquadModal } from '@/components/admin/CreateSquadModal';
+import { InviteClientsDialog } from './InviteClientsDialog';
+import { FunnelEditorDialog } from './funnels/FunnelEditorDialog';
+import type { Program as FullProgram } from '@/types';
+import { useRouter } from 'next/navigation';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -630,25 +636,31 @@ function WhatToDoNext({ suggestions, isLoading }: WhatToDoNextProps) {
 interface QuickActionButtonProps {
   label: string;
   icon: React.ElementType;
-  href: string;
+  href?: string;
+  onClick?: () => void;
   variant?: 'primary' | 'secondary';
 }
 
-function QuickActionButton({ label, icon: Icon, href, variant = 'secondary' }: QuickActionButtonProps) {
-  return (
-    <Link href={href}>
-      <Button
-        variant={variant === 'primary' ? 'default' : 'outline'}
-        className={cn(
-          'h-10 px-4 rounded-xl gap-2 font-albert text-sm',
-          variant === 'secondary' && 'bg-white/50 dark:bg-white/5 border-white/20 dark:border-white/10 hover:bg-white/70 dark:hover:bg-white/10'
-        )}
-      >
-        <Icon className="w-4 h-4" />
-        {label}
-      </Button>
-    </Link>
+function QuickActionButton({ label, icon: Icon, href, onClick, variant = 'secondary' }: QuickActionButtonProps) {
+  const buttonContent = (
+    <Button
+      variant={variant === 'primary' ? 'default' : 'outline'}
+      onClick={onClick}
+      className={cn(
+        'h-10 px-4 rounded-xl gap-2 font-albert text-sm',
+        variant === 'secondary' && 'bg-white/50 dark:bg-white/5 border-white/20 dark:border-white/10 hover:bg-white/70 dark:hover:bg-white/10'
+      )}
+    >
+      <Icon className="w-4 h-4" />
+      {label}
+    </Button>
   );
+
+  if (href && !onClick) {
+    return <Link href={href}>{buttonContent}</Link>;
+  }
+
+  return buttonContent;
 }
 
 // ============================================================================
@@ -967,11 +979,18 @@ interface RevenueGoalData {
 
 export function CoachHomePage() {
   const { user } = useUser();
+  const router = useRouter();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('30');
   const [greeting, setGreeting] = useState('Good morning');
   const [mounted, setMounted] = useState(false);
   const [checklistDismissed, setChecklistDismissed] = useState(false);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
+
+  // Quick Action modals
+  const [programModalOpen, setProgramModalOpen] = useState(false);
+  const [squadModalOpen, setSquadModalOpen] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [funnelModalOpen, setFunnelModalOpen] = useState(false);
 
   // Story availability for avatar
   const storyAvailability = useCurrentUserStoryAvailability();
@@ -1176,14 +1195,14 @@ export function CoachHomePage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
         <LoadingSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
       {/* HEADER with Profile Badge */}
       <div className="space-y-3 mb-6">
         <div className="flex items-center justify-between">
@@ -1222,6 +1241,8 @@ export function CoachHomePage() {
           {/* Calendar + Notification Bell + View Switcher + Theme Toggle */}
           <div className="flex items-center gap-2">
             <CalendarButton className="hidden lg:block" />
+            {/* Mobile: Calendar and Chat buttons side by side */}
+            <CalendarIconButton size="xl" className="lg:hidden" />
             <ChatButton className="lg:hidden" />
             <NotificationBell className="hidden lg:block" />
             {/* Desktop: vertical view switcher + theme toggle */}
@@ -1235,10 +1256,9 @@ export function CoachHomePage() {
           <p className="font-sans text-[12px] text-text-secondary leading-[1.2]">
             {currentDate}
           </p>
-          {/* Mobile: notification, calendar, view switcher, and theme toggle icons */}
+          {/* Mobile: notification, view switcher, and theme toggle icons */}
           <div className="flex items-center gap-2 lg:hidden">
             <NotificationIconButton />
-            <CalendarIconButton />
             <ViewSwitcher horizontal />
             <ThemeToggle horizontal />
           </div>
@@ -1346,23 +1366,23 @@ export function CoachHomePage() {
               <QuickActionButton
                 label="New Program"
                 icon={Plus}
-                href="/coach?tab=programs"
+                onClick={() => setProgramModalOpen(true)}
                 variant="primary"
               />
               <QuickActionButton
                 label="New Squad"
                 icon={UsersRound}
-                href="/coach?tab=squads"
+                onClick={() => setSquadModalOpen(true)}
               />
               <QuickActionButton
                 label="Invite Client"
                 icon={UserPlus}
-                href="/coach?tab=clients"
+                onClick={() => setInviteModalOpen(true)}
               />
               <QuickActionButton
                 label="Create Funnel"
                 icon={Zap}
-                href="/coach?tab=funnels"
+                onClick={() => setFunnelModalOpen(true)}
               />
             </div>
           </div>
@@ -1486,6 +1506,53 @@ export function CoachHomePage() {
         currentMRR={monthlyRevenue}
         activeClients={activeClients}
       />
+
+      {/* New Program Modal */}
+      <NewProgramModal
+        isOpen={programModalOpen}
+        onClose={() => setProgramModalOpen(false)}
+        onCreateFromScratch={() => {
+          setProgramModalOpen(false);
+          router.push('/coach?tab=programs');
+        }}
+        onProgramCreated={(programId) => {
+          setProgramModalOpen(false);
+          router.push(`/coach?tab=programs&programId=${programId}`);
+        }}
+      />
+
+      {/* Create Squad Modal */}
+      <CreateSquadModal
+        isOpen={squadModalOpen}
+        onClose={() => setSquadModalOpen(false)}
+        onSquadCreated={() => {
+          setSquadModalOpen(false);
+          router.push('/coach?tab=squads');
+        }}
+        apiBasePath="/api/coach/org-squads"
+        coachesApiEndpoint="/api/coach/coaches"
+        uploadEndpoint="/api/coach/upload-media"
+      />
+
+      {/* Invite Clients Dialog */}
+      <InviteClientsDialog
+        isOpen={inviteModalOpen}
+        onClose={() => setInviteModalOpen(false)}
+      />
+
+      {/* Create Funnel Dialog */}
+      {funnelModalOpen && (
+        <FunnelEditorDialog
+          mode="create"
+          programs={programs as unknown as FullProgram[]}
+          squads={squads}
+          onClose={() => setFunnelModalOpen(false)}
+          onSaved={() => {
+            setFunnelModalOpen(false);
+            router.push('/coach?tab=funnels');
+          }}
+        />
+      )}
     </div>
   );
 }
