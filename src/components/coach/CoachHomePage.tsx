@@ -45,6 +45,7 @@ import {
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { NotificationBell, NotificationIconButton } from '@/components/notifications';
 import { CalendarButton, CalendarIconButton } from '@/components/scheduling';
+import { ChatButton } from '@/components/chat/ChatButton';
 import { ThemeToggle } from '@/components/theme';
 import { ViewSwitcher } from '@/components/shared/ViewSwitcher';
 import { useCurrentUserStoryAvailability } from '@/hooks/useUserStoryAvailability';
@@ -1221,6 +1222,7 @@ export function CoachHomePage() {
           {/* Calendar + Notification Bell + View Switcher + Theme Toggle */}
           <div className="flex items-center gap-2">
             <CalendarButton className="hidden lg:block" />
+            <ChatButton className="lg:hidden" />
             <NotificationBell className="hidden lg:block" />
             {/* Desktop: vertical view switcher + theme toggle */}
             <ViewSwitcher className="hidden lg:flex" />
@@ -1233,11 +1235,10 @@ export function CoachHomePage() {
           <p className="font-sans text-[12px] text-text-secondary leading-[1.2]">
             {currentDate}
           </p>
-          {/* Mobile: large notification/calendar icons, then smaller switchers */}
+          {/* Mobile: notification, calendar, view switcher, and theme toggle icons */}
           <div className="flex items-center gap-2 lg:hidden">
-            <NotificationIconButton size="lg" />
-            <CalendarIconButton size="lg" />
-            <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] mx-1" />
+            <NotificationIconButton />
+            <CalendarIconButton />
             <ViewSwitcher horizontal />
             <ThemeToggle horizontal />
           </div>
