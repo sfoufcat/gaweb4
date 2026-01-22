@@ -43,9 +43,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
-import { NotificationBell } from '@/components/notifications';
+import { NotificationBell, NotificationIconButton } from '@/components/notifications';
 import { CalendarButton, CalendarIconButton } from '@/components/scheduling';
-import { ChatButton } from '@/components/chat/ChatButton';
 import { ThemeToggle } from '@/components/theme';
 import { ViewSwitcher } from '@/components/shared/ViewSwitcher';
 import { useCurrentUserStoryAvailability } from '@/hooks/useUserStoryAvailability';
@@ -950,6 +949,11 @@ interface SuggestionsResponse {
   suggestions: Suggestion[];
 }
 
+interface FunnelsData {
+  funnels: Array<{ id: string }>;
+  totalCount?: number;
+}
+
 interface RevenueGoalData {
   monthlyRevenueGoal: number | null;
   targetClients: number | null;
@@ -993,6 +997,13 @@ export function CoachHomePage() {
   // Fetch squads
   const { data: squadsData, isLoading: squadsLoading } = useSWR<SquadsResponse>(
     '/api/coach/org-squads',
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+
+  // Fetch funnels (for checklist)
+  const { data: funnelsData } = useSWR<FunnelsData>(
+    '/api/coach/org-funnels',
     fetcher,
     { revalidateOnFocus: false }
   );
@@ -1068,7 +1079,7 @@ export function CoachHomePage() {
   const checklistItems: ChecklistItem[] = useMemo(() => {
     const hasStripe = orgSettings?.stripeConnectStatus === 'connected';
     const hasProgram = programs.length > 0;
-    const hasFunnel = !!orgSettings?.defaultFunnelId;
+    const hasFunnel = (funnelsData?.funnels?.length ?? 0) > 0;
     const hasClient = totalClients > 0;
     const hasSquad = squads.length > 0;
 
@@ -1109,7 +1120,7 @@ export function CoachHomePage() {
         isComplete: hasSquad,
       },
     ];
-  }, [programs.length, squads.length, totalClients, orgSettings]);
+  }, [programs.length, squads.length, totalClients, orgSettings, funnelsData?.funnels?.length]);
 
   // Build program revenue map
   const programRevenueMap = useMemo(() => {
@@ -1164,60 +1175,65 @@ export function CoachHomePage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <LoadingSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-8">
-        {/* Profile section */}
-        <div className="flex items-center gap-3">
-          <StoryAvatar
-            user={{
-              firstName: user?.firstName || '',
-              lastName: user?.lastName || '',
-              imageUrl: user?.imageUrl || '',
-            }}
-            userId={currentUserId}
-            hasStory={storyAvailability.hasStory}
-            showRing={storyAvailability.showRing}
-            showCheck={storyAvailability.showCheck}
-            userPostedStories={storyAvailability.data.userPostedStories}
-            goal={storyAvailability.data.goal}
-            tasks={storyAvailability.data.tasks}
-            hasDayClosed={storyAvailability.data.hasDayClosed}
-            completedTasks={storyAvailability.data.completedTasks}
-            eveningCheckIn={storyAvailability.data.eveningCheckIn}
-            hasWeekClosed={storyAvailability.data.hasWeekClosed}
-            weeklyReflection={storyAvailability.data.weeklyReflection}
-            size="md"
-          />
-          <div>
-            <Link href="/profile" className="hover:opacity-80 transition-opacity">
-              <h1 className="font-albert text-lg font-semibold text-text-primary">
-                {greeting}, {firstName}
-              </h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* HEADER with Profile Badge */}
+      <div className="space-y-3 mb-6">
+        <div className="flex items-center justify-between">
+          {/* Profile badge - pill shape */}
+          <div className="bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-1 flex items-center gap-2 sm:gap-3 pr-3 sm:pr-4 max-w-[72%] sm:max-w-none">
+            <StoryAvatar
+              user={{
+                firstName: user?.firstName || '',
+                lastName: user?.lastName || '',
+                imageUrl: user?.imageUrl || '',
+              }}
+              userId={currentUserId}
+              hasStory={storyAvailability.hasStory}
+              showRing={storyAvailability.showRing}
+              showCheck={storyAvailability.showCheck}
+              userPostedStories={storyAvailability.data.userPostedStories}
+              goal={storyAvailability.data.goal}
+              tasks={storyAvailability.data.tasks}
+              hasDayClosed={storyAvailability.data.hasDayClosed}
+              completedTasks={storyAvailability.data.completedTasks}
+              eveningCheckIn={storyAvailability.data.eveningCheckIn}
+              hasWeekClosed={storyAvailability.data.hasWeekClosed}
+              weeklyReflection={storyAvailability.data.weeklyReflection}
+              size="md"
+            />
+            <Link href="/profile" className="text-left hover:opacity-80 transition-opacity min-w-0">
+              <p className="font-albert text-[16px] sm:text-[18px] font-semibold text-text-primary leading-[1.3] tracking-[-1px] truncate">
+                Hi {firstName},
+              </p>
+              <p className="font-albert text-[16px] sm:text-[18px] font-normal text-text-primary leading-[1.3] tracking-[-1px] truncate">
+                {greeting}!
+              </p>
             </Link>
-            <p className="font-albert text-sm text-text-secondary">
-              {currentDate}
-            </p>
+          </div>
+
+          {/* Icons */}
+          <div className="flex items-center gap-2">
+            <CalendarButton className="hidden lg:block" />
+            <NotificationBell className="hidden lg:block" />
+            <ViewSwitcher className="hidden lg:flex" />
+            <ThemeToggle className="hidden lg:flex" />
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          <CalendarButton className="hidden lg:block" />
-          <NotificationBell className="lg:hidden" />
-          <ChatButton className="lg:hidden" />
-          <NotificationBell className="hidden lg:block" />
-          <ViewSwitcher className="hidden lg:flex" />
-          <ThemeToggle className="hidden lg:flex" />
-          {/* Mobile icons */}
-          <div className="flex items-center gap-2 lg:hidden">
+        {/* Date + Mobile icons */}
+        <div className="flex items-center justify-between lg:justify-start">
+          <p className="font-sans text-[12px] text-text-secondary leading-[1.2]">
+            {currentDate}
+          </p>
+          <div className="flex items-center gap-1.5 lg:hidden">
+            <NotificationIconButton />
             <CalendarIconButton />
             <ViewSwitcher horizontal />
             <ThemeToggle horizontal />

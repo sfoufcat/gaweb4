@@ -2,21 +2,25 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
-import { 
-  Users, 
-  Gift, 
-  TrendingUp, 
-  Clock, 
-  CheckCircle2, 
+import {
+  Users,
+  Gift,
+  TrendingUp,
+  Clock,
+  CheckCircle2,
   AlertCircle,
   Filter,
   ChevronDown,
   Loader2,
   Search,
   Eye,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { ReferralWithDetails, ReferralStatus, ReferralRewardType } from '@/types';
+import { HowReferralsWork } from './HowReferralsWork';
+import { ReferralSetupWizard } from './ReferralSetupWizard';
+import { ReferralProgramCard } from './ReferralProgramCard';
+import type { ReferralWithDetails, ReferralStatus, ReferralRewardType, Program } from '@/types';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { generateDemoReferrals } from '@/lib/demo-data';
 
@@ -38,21 +42,29 @@ interface ReferralStats {
  */
 export function CoachReferralsTab() {
   const { isDemoMode } = useDemoMode();
-  
+
   const [referrals, setReferrals] = useState<ReferralWithDetails[]>([]);
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
+  // Programs with referral configs
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [loadingPrograms, setLoadingPrograms] = useState(true);
+
+  // Wizard state
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardProgramId, setWizardProgramId] = useState<string | undefined>(undefined);
+
   // Filters
   const [statusFilter, setStatusFilter] = useState<ReferralStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Pagination
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const limit = 20;
-  
+
   // Demo data (memoized)
   const demoData = useMemo(() => generateDemoReferrals(), []);
 
@@ -106,7 +118,49 @@ export function CoachReferralsTab() {
   useEffect(() => {
     fetchReferrals(true);
   }, [statusFilter, isDemoMode]);
-  
+
+  // Fetch programs
+  const fetchPrograms = useCallback(async () => {
+    if (isDemoMode) {
+      setLoadingPrograms(false);
+      return;
+    }
+
+    setLoadingPrograms(true);
+    try {
+      const response = await fetch('/api/coach/org-programs');
+      if (response.ok) {
+        const data = await response.json();
+        setPrograms(data.programs || []);
+      }
+    } catch (err) {
+      console.error('Error fetching programs:', err);
+    } finally {
+      setLoadingPrograms(false);
+    }
+  }, [isDemoMode]);
+
+  useEffect(() => {
+    fetchPrograms();
+  }, [fetchPrograms]);
+
+  // Check if any program has referrals enabled
+  const hasAnyReferralsEnabled = useMemo(() => {
+    return programs.some((p) => p.referralConfig?.enabled);
+  }, [programs]);
+
+  // Wizard handlers
+  const handleEnableReferrals = (programId?: string) => {
+    setWizardProgramId(programId);
+    setWizardOpen(true);
+  };
+
+  const handleWizardSuccess = () => {
+    // Refresh programs and referrals
+    fetchPrograms();
+    fetchReferrals(true);
+  };
+
   // Use demo data when in demo mode
   const displayReferrals: ReferralWithDetails[] = useMemo(() => {
     if (isDemoMode) {
@@ -262,7 +316,46 @@ export function CoachReferralsTab() {
             Track referrals and rewards across your programs
           </p>
         </div>
+        {!isDemoMode && (
+          <Button
+            onClick={() => handleEnableReferrals()}
+            className="bg-brand-accent hover:bg-brand-accent/90 text-white"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Enable Referrals
+          </Button>
+        )}
       </div>
+
+      {/* How Referrals Work */}
+      <HowReferralsWork defaultOpen={!hasAnyReferralsEnabled && !isDemoMode} />
+
+      {/* Programs Grid */}
+      {!isDemoMode && programs.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            Your Programs
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {programs.map((program) => (
+              <ReferralProgramCard
+                key={program.id}
+                program={program}
+                onEnableClick={handleEnableReferrals}
+                onEditClick={handleEnableReferrals}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Wizard Dialog */}
+      <ReferralSetupWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        initialProgramId={wizardProgramId}
+        onSuccess={handleWizardSuccess}
+      />
 
       {/* Stats Cards */}
       {displayStats && (
@@ -388,11 +481,20 @@ export function CoachReferralsTab() {
           <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
             No referrals yet
           </h3>
-          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            {statusFilter !== 'all' 
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
+            {statusFilter !== 'all'
               ? `No ${statusFilter} referrals found`
-              : 'Enable referrals on a program to start tracking'}
+              : 'Enable referrals on a program and share the link with your members'}
           </p>
+          {statusFilter === 'all' && !isDemoMode && (
+            <Button
+              onClick={() => handleEnableReferrals()}
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Enable Referrals
+            </Button>
+          )}
         </div>
       ) : (
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">

@@ -192,7 +192,7 @@ export function CallSummarySettingsCard({ onSettingsChange }: CallSummarySetting
         {/* Credits Usage */}
         {credits && (
           <div className="mb-6 p-4 bg-[#faf8f6] dark:bg-[#1e222a] rounded-xl">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-text-secondary" />
                 <span className="text-sm font-medium text-text-primary dark:text-[#f5f5f8]">
@@ -203,6 +203,10 @@ export function CallSummarySettingsCard({ onSettingsChange }: CallSummarySetting
                 {credits.totalRemaining} remaining
               </span>
             </div>
+            <p className="text-xs text-text-secondary dark:text-[#b2b6c2] mb-3">
+              Each video call uses 1 credit to generate an AI summary with transcription,
+              key insights, and suggested follow-up tasks.
+            </p>
 
             {/* Plan credits progress */}
             <div className="space-y-2">

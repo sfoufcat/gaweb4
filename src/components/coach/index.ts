@@ -15,6 +15,7 @@ export { InviteClientsDialog } from './InviteClientsDialog';
 export { CoachPlanTab } from './CoachPlanTab';
 export { LockedFeature, LockedFeatureBadge, LockedIndicator } from './LockedFeature';
 export { LimitReachedModal, useLimitCheck } from './LimitReachedModal';
+export { IntegrationConnectedModal } from './IntegrationConnectedModal';
 export { MarketplaceSettings } from './MarketplaceSettings';
 export { PaymentFailedBanner } from './PaymentFailedBanner';
 export { CoachReferralCard } from './CoachReferralCard';

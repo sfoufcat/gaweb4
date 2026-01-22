@@ -116,22 +116,37 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
 
   useEffect(() => {
     fetchIntegrations();
-    
+
     // Check for connection result in URL params
     const params = new URLSearchParams(window.location.search);
     const connected = params.get('connected');
+    const integrationConnected = params.get('integration_connected');
     const errorParam = params.get('error');
-    
-    if (connected) {
-      // Show success toast or notification
-      console.log(`Successfully connected ${connected}`);
-      // Clean up URL
-      window.history.replaceState({}, '', window.location.pathname);
+
+    // Handle both 'connected' and 'integration_connected' params (Zoom uses latter)
+    const connectedProvider = connected || integrationConnected;
+    if (connectedProvider) {
+      // Refresh integrations to show newly connected provider
+      fetchIntegrations();
+      // Clean up URL (but preserve tab param)
+      const newParams = new URLSearchParams(window.location.search);
+      newParams.delete('connected');
+      newParams.delete('integration_connected');
+      const newUrl = newParams.toString()
+        ? `${window.location.pathname}?${newParams.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
     }
-    
+
     if (errorParam) {
       setError(`Connection failed: ${errorParam}`);
-      window.history.replaceState({}, '', window.location.pathname);
+      // Clean up error param but preserve tab
+      const newParams = new URLSearchParams(window.location.search);
+      newParams.delete('error');
+      const newUrl = newParams.toString()
+        ? `${window.location.pathname}?${newParams.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
     }
   }, [fetchIntegrations]);
 

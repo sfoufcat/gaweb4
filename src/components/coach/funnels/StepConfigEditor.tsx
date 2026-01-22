@@ -391,9 +391,21 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
         <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Question Text *</label>
         <textarea
           value={config.question as string || ''}
-          onChange={(e) => onChange({ ...config, question: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] resize-none font-albert"
-          rows={2}
+          onChange={(e) => {
+            onChange({ ...config, question: e.target.value });
+            // Auto-resize textarea
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+          }}
+          onFocus={(e) => {
+            // Set initial height on focus if content exists
+            if (e.target.value) {
+              e.target.style.height = 'auto';
+              e.target.style.height = e.target.scrollHeight + 'px';
+            }
+          }}
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] resize-none overflow-hidden font-albert min-h-[100px]"
+          rows={4}
           placeholder="Enter your question..."
           required
         />

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useOrganization as useClerkOrganization, useOrganizationList } from '@clerk/nextjs';
 import { isOrgCoach } from '@/lib/admin-utils-shared';
-import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner, CoachSidebar, MobileCoachMenu } from '@/components/coach';
+import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner, CoachSidebar, MobileCoachMenu, IntegrationConnectedModal } from '@/components/coach';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, AlertCircle, Users } from 'lucide-react';
@@ -184,6 +184,13 @@ export default function CoachPage() {
   
   // Payment failed banner state
   const [subscription, setSubscription] = useState<CoachSubscription | null>(null);
+
+  // Integration connected modal state
+  const [integrationConnectedModal, setIntegrationConnectedModal] = useState<{
+    isOpen: boolean;
+    provider: 'zoom' | 'google_calendar' | 'outlook_calendar' | null;
+    accountEmail?: string;
+  }>({ isOpen: false, provider: null });
 
   // Auto-detect initial tab from URL params - if selection param exists, switch to that tab
   const getInitialTab = (): CoachTab => {
@@ -671,6 +678,52 @@ export default function CoachPage() {
     }
   }, [searchParams, mounted]);
 
+  // Handle integration_connected param - show success modal
+  useEffect(() => {
+    const integrationConnected = searchParams.get('integration_connected');
+    if (integrationConnected && mounted) {
+      const validProviders = ['zoom', 'google_calendar', 'outlook_calendar'] as const;
+      if (validProviders.includes(integrationConnected as typeof validProviders[number])) {
+        // Fetch the connected integration's email to display in modal
+        const fetchIntegrationEmail = async () => {
+          try {
+            const response = await fetch('/api/coach/integrations');
+            if (response.ok) {
+              const data = await response.json();
+              const connected = data.integrations?.find(
+                (i: { provider: string; status: string; accountEmail?: string }) =>
+                  i.provider === integrationConnected && i.status === 'connected'
+              );
+              setIntegrationConnectedModal({
+                isOpen: true,
+                provider: integrationConnected as 'zoom' | 'google_calendar' | 'outlook_calendar',
+                accountEmail: connected?.accountEmail,
+              });
+            } else {
+              // Still show modal even if we can't fetch email
+              setIntegrationConnectedModal({
+                isOpen: true,
+                provider: integrationConnected as 'zoom' | 'google_calendar' | 'outlook_calendar',
+              });
+            }
+          } catch {
+            // Still show modal even if we can't fetch email
+            setIntegrationConnectedModal({
+              isOpen: true,
+              provider: integrationConnected as 'zoom' | 'google_calendar' | 'outlook_calendar',
+            });
+          }
+        };
+        fetchIntegrationEmail();
+
+        // Clean up URL param (preserve tab)
+        const url = new URL(window.location.href);
+        url.searchParams.delete('integration_connected');
+        window.history.replaceState({}, '', url.pathname + url.search);
+      }
+    }
+  }, [searchParams, mounted]);
+
   // Fetch ending cohorts for banner
   const fetchEndingCohorts = useCallback(async () => {
     try {
@@ -1079,6 +1132,16 @@ export default function CoachPage() {
         </Tabs>
       </div>
     </div>
+
+    {/* Integration Connected Modal */}
+    {integrationConnectedModal.provider && (
+      <IntegrationConnectedModal
+        isOpen={integrationConnectedModal.isOpen}
+        onClose={() => setIntegrationConnectedModal({ isOpen: false, provider: null })}
+        provider={integrationConnectedModal.provider}
+        accountEmail={integrationConnectedModal.accountEmail}
+      />
+    )}
   </>
   );
 }
