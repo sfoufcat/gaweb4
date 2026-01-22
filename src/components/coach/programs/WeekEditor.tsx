@@ -111,6 +111,10 @@ interface TaskMemberInfo {
 // Day tag type for task assignment
 type DayTagValue = 'auto' | 'spread' | 'daily' | number; // number = specific day 1-7
 
+// Stable default values to prevent infinite loops from new object references on each render
+const EMPTY_ARRAY: never[] = [];
+const EMPTY_MAP = new Map<string, CohortWeeklyTaskCompletionData>();
+
 interface SortableWeeklyTaskProps {
   task: ProgramTaskTemplate;
   index: number;
@@ -486,13 +490,13 @@ export function WeekEditor({
   onDaySelect,
   onFillWithAI,
   isSaving = false,
-  availableCallSummaries = [],
-  availableEvents = [],
-  availableArticles = [],
-  availableDownloads = [],
-  availableLinks = [],
-  availableQuestionnaires = [],
-  availableCourses = [],
+  availableCallSummaries = EMPTY_ARRAY,
+  availableEvents = EMPTY_ARRAY,
+  availableArticles = EMPTY_ARRAY,
+  availableDownloads = EMPTY_ARRAY,
+  availableLinks = EMPTY_ARRAY,
+  availableQuestionnaires = EMPTY_ARRAY,
+  availableCourses = EMPTY_ARRAY,
   isClientView = false,
   clientName,
   clientUserId,
@@ -501,12 +505,12 @@ export function WeekEditor({
   cohortName,
   programId,
   programType,
-  enrollments = [],
-  cohorts = [],
+  enrollments = EMPTY_ARRAY,
+  cohorts = EMPTY_ARRAY,
   onSummaryGenerated,
   onSummaryUpdated,
   onSummaryDeleted,
-  cohortWeeklyTaskCompletion = new Map(),
+  cohortWeeklyTaskCompletion = EMPTY_MAP,
   completionThreshold = 50,
   instanceId,
   includeWeekends = true,
