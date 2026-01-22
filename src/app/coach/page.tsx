@@ -62,72 +62,63 @@ function SchedulingTab() {
   const [activeSubTab, setActiveSubTab] = useState<'calendar' | 'events' | 'availability' | 'pricing'>('calendar');
   const [isEventEditorOpen, setIsEventEditorOpen] = useState(false);
 
-  // When event editor is open, render without wrapper (editor handles its own full-page layout)
-  if (activeSubTab === 'events' && isEventEditorOpen) {
-    return (
-      <AdminEventsSection
-        key="events-section"
-        apiEndpoint="/api/coach/org-discover/events"
-        onEditorModeChange={setIsEventEditorOpen}
-      />
-    );
-  }
+  // When event editor is open, hide the sub-nav and show only the editor
+  const showSubNav = !(activeSubTab === 'events' && isEventEditorOpen);
 
   return (
     <div className="space-y-6">
-      {/* Sub-navigation */}
-      <div className="flex gap-2 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
-        <button
-          onClick={() => setActiveSubTab('calendar')}
-          className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
-            activeSubTab === 'calendar'
-              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-          }`}
-        >
-          Calendar
-        </button>
-        <button
-          onClick={() => setActiveSubTab('events')}
-          className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
-            activeSubTab === 'events'
-              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-          }`}
-        >
-          Events
-        </button>
-        <button
-          onClick={() => setActiveSubTab('availability')}
-          className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
-            activeSubTab === 'availability'
-              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-          }`}
-        >
-          Availability
-        </button>
-        <button
-          onClick={() => setActiveSubTab('pricing')}
-          className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
-            activeSubTab === 'pricing'
-              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-          }`}
-        >
-          Call Pricing
-        </button>
-      </div>
-
-      {/* Content - Events has its own wrapper, other tabs need the card wrapper */}
-      {activeSubTab === 'events' ? (
-        <div key="events" className="animate-fadeIn">
-          <AdminEventsSection
-            key="events-section"
-            apiEndpoint="/api/coach/org-discover/events"
-            onEditorModeChange={setIsEventEditorOpen}
-          />
+      {/* Sub-navigation - hidden when event editor is open */}
+      {showSubNav && (
+        <div className="flex gap-2 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
+          <button
+            onClick={() => setActiveSubTab('calendar')}
+            className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
+              activeSubTab === 'calendar'
+                ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+            }`}
+          >
+            Calendar
+          </button>
+          <button
+            onClick={() => setActiveSubTab('events')}
+            className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
+              activeSubTab === 'events'
+                ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+            }`}
+          >
+            Events
+          </button>
+          <button
+            onClick={() => setActiveSubTab('availability')}
+            className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
+              activeSubTab === 'availability'
+                ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+            }`}
+          >
+            Availability
+          </button>
+          <button
+            onClick={() => setActiveSubTab('pricing')}
+            className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
+              activeSubTab === 'pricing'
+                ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+            }`}
+          >
+            Call Pricing
+          </button>
         </div>
+      )}
+
+      {/* Content */}
+      {activeSubTab === 'events' ? (
+        <AdminEventsSection
+          apiEndpoint="/api/coach/org-discover/events"
+          onEditorModeChange={setIsEventEditorOpen}
+        />
       ) : (
         <div key={activeSubTab} className="animate-fadeIn bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
           {activeSubTab === 'calendar' ? (

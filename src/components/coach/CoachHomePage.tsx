@@ -254,12 +254,16 @@ interface RevenueCommandCenterProps {
   totalRevenue: number;
   trend?: number;
   timePeriod: TimePeriod;
+  activeClients?: number;
+  totalClients?: number;
 }
 
 function RevenueCommandCenter({
   totalRevenue,
   trend,
   timePeriod,
+  activeClients,
+  totalClients,
 }: RevenueCommandCenterProps) {
   const isPositiveTrend = trend !== undefined && trend >= 0;
 
@@ -287,8 +291,20 @@ function RevenueCommandCenter({
             </div>
           )}
         </div>
-        <div className="p-3 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20">
-          <DollarSign className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+        <div className="flex items-center gap-4">
+          {/* Active Clients mini-stat */}
+          {activeClients !== undefined && (
+            <div className="text-right border-r border-black/10 dark:border-white/10 pr-4">
+              <p className="text-2xl font-bold font-albert text-text-primary">{activeClients}</p>
+              <p className="text-xs font-albert text-text-secondary">Active Clients</p>
+              {totalClients !== undefined && (
+                <p className="text-xs font-albert text-text-tertiary">{totalClients} total</p>
+              )}
+            </div>
+          )}
+          <div className="p-3 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20">
+            <DollarSign className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          </div>
         </div>
       </div>
     </div>
@@ -323,10 +339,10 @@ function SecondaryStat({
 
   const content = (
     <div className={cn(
-      'group p-4 rounded-xl transition-all duration-200',
+      'group p-4 rounded-2xl transition-all duration-200',
       isAlert
         ? 'bg-amber-50/80 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-700/30'
-        : 'bg-white/50 dark:bg-white/5 hover:bg-white/70 dark:hover:bg-white/10',
+        : 'bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] shadow-sm hover:shadow-md',
       href && 'cursor-pointer'
     )}>
       <div className="flex items-center justify-between mb-2">
@@ -1445,17 +1461,12 @@ export function CoachHomePage() {
           <RevenueCommandCenter
             totalRevenue={totalRevenue}
             timePeriod={timePeriod}
+            activeClients={activeClients}
+            totalClients={totalClients}
           />
 
           {/* Secondary Stats Row (Growth Levers) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            <SecondaryStat
-              label="Active Clients"
-              value={activeClients}
-              subValue={`${totalClients} total`}
-              icon={Users}
-              href="/coach?tab=clients"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <SecondaryStat
               label="Programs"
               value={programs.length}
@@ -1492,7 +1503,7 @@ export function CoachHomePage() {
           {/* Two Column Layout: Revenue Plan + What To Do Next */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <RevenuePlanCard
-              currentRevenue={goalRevenue}
+              currentRevenue={goalRevenue > 0 ? goalRevenue : totalRevenue}
               revenueGoal={revenueGoal || undefined}
               revenueGoalDeadline={revenueGoalDeadline || undefined}
               revenueGoalStartDate={revenueGoalData?.revenueGoalStartDate || undefined}

@@ -20,6 +20,7 @@ import {
 
 // Helper functions
 function formatTime12Hour(time: string): string {
+  if (!time) return '';
   const [hours, minutes] = time.split(':').map(Number);
   const period = hours >= 12 ? 'PM' : 'AM';
   const hour12 = hours % 12 || 12;
@@ -464,7 +465,7 @@ export function PastEventEditor({
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-brand-accent/10 flex items-center justify-center">
                         <span className="text-sm font-medium text-brand-accent">
-                          {event.hostName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          {(event.hostName || '').split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2) || 'H'}
                         </span>
                       </div>
                     )}

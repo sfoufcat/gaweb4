@@ -117,6 +117,7 @@ interface AttendeeProfile {
 
 // Helper functions
 function formatTime12Hour(time: string): string {
+  if (!time) return '';
   const [hours, minutes] = time.split(':').map(Number);
   const period = hours >= 12 ? 'PM' : 'AM';
   const hour12 = hours % 12 || 12;
@@ -130,6 +131,7 @@ function getDayOfWeekFromDate(dateStr: string): number {
 }
 
 function calculateEndTime(startTime: string, durationMinutes: number): string {
+  if (!startTime) return '';
   const [hours, minutes] = startTime.split(':').map(Number);
   const totalMinutes = hours * 60 + minutes + durationMinutes;
   const endHours = Math.floor(totalMinutes / 60) % 24;
@@ -1232,7 +1234,7 @@ export function EventEditor({
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-brand-accent/10 flex items-center justify-center">
                         <span className="text-sm font-medium text-brand-accent">
-                          {formData.hostName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          {(formData.hostName || '').split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2) || 'H'}
                         </span>
                       </div>
                     )}
