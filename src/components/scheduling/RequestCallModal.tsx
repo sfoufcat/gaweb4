@@ -22,8 +22,10 @@ import { useAvailableSlots } from '@/hooks/useAvailability';
 import { useSchedulingActions } from '@/hooks/useScheduling';
 import { useCallUsage, formatCallUsageStatus, formatWeeklyLimitStatus, formatExtraCallPrice } from '@/hooks/useCallUsage';
 
-// Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+// Initialize Stripe (only if key is available)
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 interface RequestCallModalProps {
   isOpen: boolean;

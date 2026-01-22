@@ -7,16 +7,17 @@ import { CalendarSheet } from './CalendarSheet';
 
 interface CalendarIconButtonProps {
   className?: string;
+  /** Icon size variant */
+  size?: 'sm' | 'lg';
 }
 
 /**
  * CalendarIconButton Component
- * 
+ *
  * A compact calendar icon for mobile date row.
- * 28px height to match the horizontal ThemeToggle.
  * Shows pending badge and opens CalendarSheet on tap.
  */
-export function CalendarIconButton({ className = '' }: CalendarIconButtonProps) {
+export function CalendarIconButton({ className = '', size = 'sm' }: CalendarIconButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { proposals } = usePendingProposals();
   
@@ -55,12 +56,15 @@ export function CalendarIconButton({ className = '' }: CalendarIconButtonProps) 
   // Format badge count (cap at 9+)
   const badgeText = pendingCount > 9 ? '9+' : pendingCount.toString();
 
+  const sizeClasses = size === 'lg' ? 'h-10 w-10' : 'h-[28px] w-[28px]';
+  const iconClasses = size === 'lg' ? 'w-5 h-5' : 'w-3.5 h-3.5';
+
   return (
     <>
       <button
         onClick={handleOpen}
         className={`
-          relative h-[28px] w-[28px] rounded-full
+          relative ${sizeClasses} rounded-full
           bg-[#f3f1ef] dark:bg-[#181d28]
           flex items-center justify-center
           hover:bg-[#e9e5e0] dark:hover:bg-[#272d38]
@@ -69,8 +73,8 @@ export function CalendarIconButton({ className = '' }: CalendarIconButtonProps) 
         `}
         aria-label={`Calendar${pendingCount > 0 ? ` (${pendingCount} pending)` : ''}`}
       >
-        <Calendar 
-          className="w-3.5 h-3.5 text-text-primary" 
+        <Calendar
+          className={`${iconClasses} text-text-primary`}
           strokeWidth={2}
         />
         

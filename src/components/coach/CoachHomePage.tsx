@@ -1218,23 +1218,26 @@ export function CoachHomePage() {
             </Link>
           </div>
 
-          {/* Icons */}
+          {/* Calendar + Notification Bell + View Switcher + Theme Toggle */}
           <div className="flex items-center gap-2">
             <CalendarButton className="hidden lg:block" />
             <NotificationBell className="hidden lg:block" />
+            {/* Desktop: vertical view switcher + theme toggle */}
             <ViewSwitcher className="hidden lg:flex" />
             <ThemeToggle className="hidden lg:flex" />
           </div>
         </div>
 
-        {/* Date + Mobile icons */}
+        {/* Date + Icons (mobile only) */}
         <div className="flex items-center justify-between lg:justify-start">
           <p className="font-sans text-[12px] text-text-secondary leading-[1.2]">
             {currentDate}
           </p>
-          <div className="flex items-center gap-1.5 lg:hidden">
-            <NotificationIconButton />
-            <CalendarIconButton />
+          {/* Mobile: large notification/calendar icons, then smaller switchers */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <NotificationIconButton size="lg" />
+            <CalendarIconButton size="lg" />
+            <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] mx-1" />
             <ViewSwitcher horizontal />
             <ThemeToggle horizontal />
           </div>

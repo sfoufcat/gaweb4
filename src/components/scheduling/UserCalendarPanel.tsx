@@ -40,6 +40,11 @@ const MONTHS = [
 function groupEventsByDate(events: UnifiedEvent[]): Map<string, UnifiedEvent[]> {
   const grouped = new Map<string, UnifiedEvent[]>();
   for (const event of events) {
+    // Safety check: skip events without valid startDateTime
+    if (!event || !event.startDateTime) {
+      console.error('[groupEventsByDate] Skipping event with missing startDateTime:', event?.id);
+      continue;
+    }
     const dateKey = new Date(event.startDateTime).toISOString().split('T')[0];
     if (!grouped.has(dateKey)) {
       grouped.set(dateKey, []);
@@ -92,6 +97,12 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
   const [cancelReason, setCancelReason] = useState('');
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Safety check: return null if event or startDateTime is missing
+  if (!event || !event.startDateTime) {
+    console.error('[EventItem] Invalid event data:', event);
+    return null;
+  }
 
   const typeInfo = EVENT_TYPE_INFO[event.eventType] || EVENT_TYPE_INFO.coaching_1on1;
   const Icon = typeInfo.icon;
@@ -723,14 +734,16 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
       return acc;
     }, [] as UnifiedEvent[]);
     return uniqueEvents
-      .filter(e => new Date(e.startDateTime) >= now)
+      // Filter out events with missing startDateTime
+      .filter(e => e && e.startDateTime && new Date(e.startDateTime) >= now)
       .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime());
   }, [events, myRequests]);
 
   const pastEvents = useMemo(() => {
     const now = new Date();
     return events
-      .filter(e => new Date(e.startDateTime) < now)
+      // Filter out events with missing startDateTime
+      .filter(e => e && e.startDateTime && new Date(e.startDateTime) < now)
       .sort((a, b) => new Date(b.startDateTime).getTime() - new Date(a.startDateTime).getTime());
   }, [events]);
 

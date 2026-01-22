@@ -388,6 +388,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Filter out events without valid startDateTime (safety check)
+    events = events.filter(e => e && e.startDateTime);
+
     // Sort by start time
     events.sort((a, b) => {
       const aTime = a.startDateTime ? new Date(a.startDateTime).getTime() : 0;

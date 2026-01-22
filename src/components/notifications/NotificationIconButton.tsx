@@ -7,16 +7,17 @@ import { NotificationSheet } from './NotificationSheet';
 
 interface NotificationIconButtonProps {
   className?: string;
+  /** Icon size variant */
+  size?: 'sm' | 'lg';
 }
 
 /**
  * NotificationIconButton Component
- * 
+ *
  * A compact notification bell icon for mobile date row.
- * 28px height to match the horizontal ThemeToggle.
  * Opens NotificationSheet on tap.
  */
-export function NotificationIconButton({ className = '' }: NotificationIconButtonProps) {
+export function NotificationIconButton({ className = '', size = 'sm' }: NotificationIconButtonProps) {
   const { notifications, unreadCount, isLoading, markAllAsRead, markAsRead, deleteNotification } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -37,13 +38,16 @@ export function NotificationIconButton({ className = '' }: NotificationIconButto
   // Format badge count (cap at 9+)
   const badgeText = unreadCount > 9 ? '9+' : unreadCount.toString();
 
+  const sizeClasses = size === 'lg' ? 'h-10 w-10' : 'h-[28px] w-[28px]';
+  const iconClasses = size === 'lg' ? 'w-5 h-5' : 'w-3.5 h-3.5';
+
   return (
     <>
       <button
         onClick={handleOpen}
         disabled={isLoading}
         className={`
-          relative h-[28px] w-[28px] rounded-full
+          relative ${sizeClasses} rounded-full
           bg-[#f3f1ef] dark:bg-[#181d28]
           flex items-center justify-center
           hover:bg-[#e9e5e0] dark:hover:bg-[#272d38]
@@ -53,8 +57,8 @@ export function NotificationIconButton({ className = '' }: NotificationIconButto
         `}
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
       >
-        <Bell 
-          className="w-3.5 h-3.5 text-text-primary" 
+        <Bell
+          className={`${iconClasses} text-text-primary`}
           strokeWidth={2}
         />
         
