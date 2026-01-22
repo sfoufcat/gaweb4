@@ -48,7 +48,6 @@ import { NotificationBell, NotificationIconButton } from '@/components/notificat
 import { CalendarButton, CalendarIconButton } from '@/components/scheduling';
 import { ChatButton } from '@/components/chat/ChatButton';
 import { ThemeToggle } from '@/components/theme';
-import { ViewSwitcher } from '@/components/shared/ViewSwitcher';
 import { useCurrentUserStoryAvailability } from '@/hooks/useUserStoryAvailability';
 import { Progress } from '@/components/ui/progress';
 import { CoachGoalModal, CoachGoalData } from './CoachGoalModal';
@@ -1396,8 +1395,7 @@ export function CoachHomePage() {
             <CalendarIconButton size="xl" className="lg:hidden" />
             <ChatButton className="lg:hidden" />
             <NotificationBell className="hidden lg:block" />
-            {/* Desktop: vertical view switcher + theme toggle */}
-            <ViewSwitcher className="hidden lg:flex" />
+            {/* Desktop: theme toggle */}
             <ThemeToggle className="hidden lg:flex" />
           </div>
         </div>
@@ -1407,10 +1405,9 @@ export function CoachHomePage() {
           <p className="font-sans text-[12px] text-text-secondary leading-[1.2]">
             {currentDate}
           </p>
-          {/* Mobile: notification, view switcher, and theme toggle icons */}
+          {/* Mobile: notification and theme toggle icons */}
           <div className="flex items-center gap-2 lg:hidden">
             <NotificationIconButton />
-            <ViewSwitcher horizontal />
             <ThemeToggle horizontal />
           </div>
         </div>
