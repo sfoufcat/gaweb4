@@ -2813,7 +2813,10 @@ export interface OrgSettings {
   
   // Public signup settings
   publicSignupEnabled?: boolean;       // default: true - whether public signup is allowed (if false, shows "contact coach" page)
-  
+
+  // Coach dashboard settings
+  coachDashboardChecklistDismissed?: boolean; // Whether the getting started checklist has been dismissed
+
   // Global tracking pixels (applied to all funnels in this org)
   globalTracking?: FunnelTrackingConfig; // Organization-wide tracking pixels
   
