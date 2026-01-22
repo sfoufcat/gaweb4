@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import type { Squad, SquadMember, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier } from '@/types';
 import { ProgramLandingPageEditor } from '../programs/ProgramLandingPageEditor';
@@ -25,8 +25,10 @@ import {
   X,
   Sparkles,
   Eye,
-  Search
+  Search,
+  SlidersHorizontal
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   Popover,
   PopoverContent,
@@ -101,7 +103,11 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
   
   // Search query for filtering squads by name
   const [searchQuery, setSearchQuery] = useState('');
-  
+
+  // Expandable search state
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // View mode: 'list' | 'members' | 'squad-view' | 'landing' | 'referrals'
   const [viewMode, setViewMode] = useState<'list' | 'members' | 'squad-view' | 'landing' | 'referrals'>('list');
   
@@ -394,6 +400,17 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
     setViewMode('list');
     setSquadMembers([]);
   };
+
+  // Search expand/collapse handlers
+  const handleSearchExpand = useCallback(() => {
+    setIsSearchExpanded(true);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  }, []);
+
+  const handleSearchCollapse = useCallback(() => {
+    setIsSearchExpanded(false);
+    setSearchQuery('');
+  }, []);
 
   const handleEditSquad = (e: React.MouseEvent, squad: Squad) => {
     e.stopPropagation();
@@ -745,20 +762,86 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
         )}
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              Squads
-            </h2>
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-              Manage your squads and communities
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* Search Input */}
-            <div className="relative flex-1 sm:flex-initial">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9ca3af]" />
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            Squads
+          </h2>
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+            Manage your squads and communities
+          </p>
+
+          {/* Icon toolbar row */}
+          <div className="flex items-center gap-1 mt-4">
+            {/* Filter dropdown */}
+            {displaySquads.length > 0 && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    className={cn(
+                      "p-2 rounded-lg transition-colors",
+                      squadFilter !== 'all'
+                        ? "text-brand-accent bg-brand-accent/10"
+                        : "text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35]"
+                    )}
+                    title="Filter squads"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-48 p-2">
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => setSquadFilter('standalone')}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all text-left",
+                        squadFilter === 'standalone'
+                          ? "bg-brand-accent/10 text-brand-accent"
+                          : "text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]"
+                      )}
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      Standalone ({standaloneCount})
+                    </button>
+                    {programCount > 0 && (
+                      <button
+                        onClick={() => setSquadFilter('program-all')}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all text-left",
+                          squadFilter === 'program-all' || squadFilter === 'program-group' || squadFilter === 'program-individual'
+                            ? "bg-brand-accent/10 text-brand-accent"
+                            : "text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]"
+                        )}
+                      >
+                        <Target className="w-3.5 h-3.5" />
+                        Program ({programCount})
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setSquadFilter('all')}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all text-left",
+                        squadFilter === 'all'
+                          ? "bg-brand-accent/10 text-brand-accent"
+                          : "text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]"
+                      )}
+                    >
+                      All ({displaySquads.length})
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+
+            {/* Animated search input - expands when search icon clicked */}
+            <div
+              className={cn(
+                "flex items-center overflow-hidden transition-all duration-300 ease-out",
+                isSearchExpanded ? "opacity-100" : "w-0 opacity-0"
+              )}
+              style={{ width: isSearchExpanded ? '200px' : 0 }}
+            >
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder="Search squads..."
                 value={searchQuery}
@@ -768,22 +851,22 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
                     setSquadFilter('all');
                   }
                 }}
-                className="pl-9 pr-8 py-1.5 w-full sm:w-48 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
+                className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
               />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#6b6560] dark:hover:text-[#f5f5f8]"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
             </div>
 
+            {/* Search toggle button */}
+            <button
+              onClick={isSearchExpanded ? handleSearchCollapse : handleSearchExpand}
+              className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+              title={isSearchExpanded ? "Close search" : "Search squads"}
+            >
+              {isSearchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+            </button>
+
+            {/* Plus button */}
             {!isDemoMode && (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
                 onClick={() => {
                   // Check squad limit before opening modal
                   if (checkLimit('max_squads', displaySquads.length)) {
@@ -792,59 +875,14 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
                   }
                   setIsCreateSquadModalOpen(true);
                 }}
-                className="text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-medium font-albert transition-colors duration-200 text-[15px] !px-2.5 flex-shrink-0"
+                className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                title="New Squad"
               >
-                <Plus className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">New Squad</span>
-              </Button>
+                <Plus className="w-4 h-4" />
+              </button>
             )}
           </div>
         </div>
-
-        {/* Filter Tabs - Redesigned for clarity */}
-        {displaySquads.length > 0 && (
-          <div className="flex flex-col gap-3 mb-6">
-            {/* Primary Filter: Segmented Control - Standalone first, All at end */}
-            <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
-              <div className="flex items-center gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
-                <button
-                  onClick={() => setSquadFilter('standalone')}
-                  className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 whitespace-nowrap ${
-                    squadFilter === 'standalone'
-                      ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Standalone</span> ({standaloneCount})
-                </button>
-                {programCount > 0 && (
-                  <button
-                    onClick={() => setSquadFilter('program-all')}
-                    className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 whitespace-nowrap ${
-                      squadFilter === 'program-all' || squadFilter === 'program-group' || squadFilter === 'program-individual'
-                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                    }`}
-                  >
-                    <Target className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Program</span> ({programCount})
-                  </button>
-                )}
-                <button
-                  onClick={() => setSquadFilter('all')}
-                  className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all whitespace-nowrap ${
-                    squadFilter === 'all'
-                      ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                  }`}
-                >
-                  All ({displaySquads.length})
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Squads Grid */}
         {filteredSquads.length === 0 ? (

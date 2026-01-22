@@ -229,6 +229,18 @@ export default function CoachPage() {
     }
   }, [searchParams]);
 
+  // Sync activeTab with URL tab param - needed when sidebar nav triggers router.push/replace
+  // This ensures the coach dashboard tab updates when clicking program/squad in the main sidebar
+  // Use searchParams.toString() to create a stable dependency that changes when URL params change
+  const searchParamsString = searchParams.toString();
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as CoachTab | null;
+    if (tabParam && VALID_TABS.includes(tabParam) && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+      setMobileView('content');
+    }
+  }, [searchParamsString]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Handler for tab changes - updates URL without navigation
   // Supports optional filters to set additional URL params (e.g., clientFilter, analyticsSubTab)
   const handleTabChange = useCallback((newTab: CoachTab, filters?: Record<string, string>) => {

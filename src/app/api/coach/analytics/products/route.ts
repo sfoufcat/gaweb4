@@ -11,6 +11,8 @@
  * Query params:
  *   - type: 'all' | 'programs' | 'squads' | 'content'
  *   - days: number of days to look back for revenue (default: all time, 0 = all time)
+ *   - sinceDate: ISO date string (YYYY-MM-DD) to filter revenue from that date onwards
+ *                (takes precedence over days param)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -60,11 +62,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const typeFilter = searchParams.get('type') || 'all';
     const daysParam = searchParams.get('days');
+    const sinceDateParam = searchParams.get('sinceDate'); // ISO date string YYYY-MM-DD
     const days = daysParam ? parseInt(daysParam, 10) : 0; // 0 = all time
 
     // Calculate date cutoff for filtering
+    // sinceDate takes precedence over days
     let dateCutoff: Date | null = null;
-    if (days > 0) {
+    if (sinceDateParam) {
+      dateCutoff = new Date(sinceDateParam);
+      dateCutoff.setHours(0, 0, 0, 0); // Start of day
+    } else if (days > 0) {
       dateCutoff = new Date();
       dateCutoff.setDate(dateCutoff.getDate() - days);
     }

@@ -15,7 +15,6 @@ import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useViewMode } from '@/contexts/ViewModeContext';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
-import { ViewSwitcher } from '@/components/shared/ViewSwitcher';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { useSquad } from '@/hooks/useSquad';
 import { MenuIcon } from '@/lib/menu-icons';
@@ -443,12 +442,15 @@ export function Sidebar() {
         {/* In collapsed mode, show only icons centered */}
         <nav className="flex-1 space-y-1">
           {navItems.map((item) => {
-            // For coach view tabs, use onClick with router.push to ensure proper navigation
+            // For coach view tabs, use onClick with router.replace to ensure proper navigation
             // when switching between tabs on the same /coach path
+            // Using replace instead of push to properly trigger searchParams update
             const isCoachTab = item.path.startsWith('/coach?tab=');
             const handleClick = isCoachTab ? (e: React.MouseEvent) => {
               e.preventDefault();
-              router.push(item.path);
+              // Use replace with scroll: false to update URL without full navigation
+              // This ensures the searchParams hook in the coach page updates
+              router.replace(item.path, { scroll: false });
             } : undefined;
 
             return (
@@ -533,13 +535,6 @@ export function Sidebar() {
             </div>
           )}
 
-          {/* View Switcher - coach/client toggle, only shows for coaches */}
-          {!isCollapsed && (
-            <div className="flex justify-center py-2">
-              <ViewSwitcher horizontal />
-            </div>
-          )}
-
           <div 
             onClick={(e) => {
               // Find the UserButton and trigger it
@@ -595,11 +590,12 @@ export function Sidebar() {
           {/* Tab Bar Content - Icons only */}
           <div className="relative flex items-center justify-center gap-1 px-3 py-2.5">
             {mobileNavItems.map((item) => {
-              // For coach view tabs, use onClick with router.push to ensure proper navigation
+              // For coach view tabs, use onClick with router.replace to ensure proper navigation
+              // when switching between tabs on the same /coach path
               const isCoachTab = item.path.startsWith('/coach?tab=');
               const handleClick = isCoachTab ? (e: React.MouseEvent) => {
                 e.preventDefault();
-                router.push(item.path);
+                router.replace(item.path, { scroll: false });
               } : undefined;
 
               return (

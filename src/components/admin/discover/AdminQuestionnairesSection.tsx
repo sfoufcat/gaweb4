@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { cn } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -39,6 +40,7 @@ export function AdminQuestionnairesSection({
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Questionnaire | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -86,6 +88,16 @@ export function AdminQuestionnairesSection({
     q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     q.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleSearchExpand = useCallback(() => {
+    setIsSearchExpanded(true);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  }, []);
+
+  const handleSearchCollapse = useCallback(() => {
+    setIsSearchExpanded(false);
+    setSearchQuery('');
+  }, []);
 
   // Handle delete
   const handleDelete = async () => {
@@ -227,56 +239,53 @@ export function AdminQuestionnairesSection({
       {/* Header */}
       <div className="p-4 sm:p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
         <div className="flex items-center justify-between gap-3">
-          {/* Title with inline count - hide when search expanded */}
-          {!isSearchExpanded && (
-            <h3 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              Questionnaires ({filteredQuestionnaires.length})
-            </h3>
-          )}
+          {/* Title with inline count */}
+          <h3 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            Questionnaires ({filteredQuestionnaires.length})
+          </h3>
 
-          <div className={`flex items-center gap-2 ${isSearchExpanded ? 'flex-1' : 'ml-auto'}`}>
-            {isSearchExpanded ? (
-              <div className="flex items-center gap-2 flex-1">
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Search questionnaires..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="flex-1 px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
+          <div className="flex items-center gap-2 ml-auto relative">
+            {/* Animated search input */}
+            <div
+              className={cn(
+                "flex items-center overflow-hidden transition-all duration-300 ease-out",
+                isSearchExpanded ? "w-48 opacity-100" : "w-0 opacity-0"
+              )}
+            >
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search questionnaires..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
+              />
+            </div>
+
+            {/* Search toggle button */}
+            <button
+              onClick={isSearchExpanded ? handleSearchCollapse : handleSearchExpand}
+              className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+            >
+              {isSearchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+            </button>
+
+            {/* Plus button - always visible */}
+            <button
+              onClick={handleCreate}
+              disabled={creating}
+              className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors disabled:opacity-70"
+            >
+              {creating ? (
+                <motion.span
+                  className="w-4 h-4 border-2 border-[#6b6560]/30 border-t-[#6b6560] dark:border-[#9ca3af]/30 dark:border-t-[#9ca3af] rounded-full block"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                 />
-                <button
-                  onClick={() => { setIsSearchExpanded(false); setSearchQuery(''); }}
-                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={() => setIsSearchExpanded(true)}
-                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                >
-                  <Search className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleCreate}
-                  disabled={creating}
-                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors disabled:opacity-70"
-                >
-                  {creating ? (
-                    <motion.span
-                      className="w-4 h-4 border-2 border-[#6b6560]/30 border-t-[#6b6560] dark:border-[#9ca3af]/30 dark:border-t-[#9ca3af] rounded-full block"
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    />
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
-                </button>
-              </>
-            )}
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+            </button>
           </div>
         </div>
       </div>

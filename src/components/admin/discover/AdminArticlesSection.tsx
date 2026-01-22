@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import type { DiscoverArticle } from '@/types/discover';
 import {
@@ -41,6 +42,9 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [filtersWidth, setFiltersWidth] = useState(200);
+  const filtersRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [articleToDelete, setArticleToDelete] = useState<DiscoverArticle | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -87,6 +91,23 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
     const cats = new Set(articles.map(a => a.category).filter((c): c is string => Boolean(c)));
     return Array.from(cats).sort();
   }, [articles]);
+
+  // Measure filters width for animated search expansion
+  useEffect(() => {
+    if (filtersRef.current && !isSearchExpanded) {
+      setFiltersWidth(filtersRef.current.offsetWidth);
+    }
+  }, [categories, isSearchExpanded]);
+
+  const handleSearchExpand = useCallback(() => {
+    setIsSearchExpanded(true);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  }, []);
+
+  const handleSearchCollapse = useCallback(() => {
+    setIsSearchExpanded(false);
+    setSearchQuery('');
+  }, []);
 
   const filteredArticles = useMemo(() => {
     let filtered = articles;
@@ -224,64 +245,71 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
         {/* Header */}
         <div className="p-4 sm:p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
           <div className="flex items-center justify-between gap-3">
-            {/* Title with inline count - hide when search expanded */}
-            {!isSearchExpanded && (
-              <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                Articles ({filteredArticles.length})
-              </h2>
-            )}
+            {/* Title with inline count */}
+            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              Articles ({filteredArticles.length})
+            </h2>
 
-            <div className={`flex items-center gap-2 ${isSearchExpanded ? 'flex-1' : 'ml-auto'}`}>
-              {isSearchExpanded ? (
-                <div className="flex items-center gap-2 flex-1">
-                  <input
-                    autoFocus
-                    type="text"
-                    placeholder="Search articles..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="flex-1 px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
-                  />
-                  <button
-                    onClick={() => { setIsSearchExpanded(false); setSearchQuery(''); }}
-                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+            <div className="flex items-center gap-2 ml-auto relative">
+              {/* Animated search input - expands over filters */}
+              <div
+                className={cn(
+                  "flex items-center overflow-hidden transition-all duration-300 ease-out",
+                  isSearchExpanded ? "opacity-100" : "w-0 opacity-0"
+                )}
+                style={{ width: isSearchExpanded ? `${filtersWidth}px` : 0 }}
+              >
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search articles..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
+                />
+              </div>
+
+              {/* Filters container - hidden when search expanded */}
+              <div
+                ref={filtersRef}
+                className={cn(
+                  "flex items-center gap-2 transition-all duration-300 ease-out",
+                  isSearchExpanded && "opacity-0 pointer-events-none absolute right-16 w-0 overflow-hidden"
+                )}
+              >
+                {categories.length > 0 && (
+                  <Select
+                    value={categoryFilter || 'all'}
+                    onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}
                   >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {/* Category Filter - hidden when search expanded */}
-                  {categories.length > 0 && (
-                    <Select
-                      value={categoryFilter || 'all'}
-                      onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}
-                    >
-                      <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 ring-offset-0 font-albert text-sm gap-1.5 !justify-start">
-                        <SelectValue placeholder="All Categories" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        {categories.map(cat => (
-                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <button
-                    onClick={() => setIsSearchExpanded(true)}
-                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                  >
-                    <Search className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </>
-              )}
+                    <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 ring-offset-0 font-albert text-sm gap-1.5 !justify-start">
+                      <SelectValue placeholder="All Categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categories.map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Search toggle button */}
+              <button
+                onClick={isSearchExpanded ? handleSearchCollapse : handleSearchExpand}
+                className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+              >
+                {isSearchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+              </button>
+
+              {/* Plus button - always visible */}
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>

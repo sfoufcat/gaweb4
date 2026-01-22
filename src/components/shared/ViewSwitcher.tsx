@@ -92,22 +92,11 @@ export function ViewSwitcher({ className = '', horizontal = false }: ViewSwitche
             'bg-white dark:bg-[#262b35]',
             'shadow-sm',
             'transition-all duration-300 ease-out',
-            isCoachView ? 'left-[31px]' : 'left-[3px]'
+            isCoachView ? 'left-[3px]' : 'left-[31px]'
           )}
         />
 
-        {/* User icon - left position (client) */}
-        <div
-          className={cn(
-            'relative z-10 w-[28px] h-[22px] flex items-center justify-center',
-            'transition-all duration-300',
-            !isCoachView ? 'text-blue-500' : 'text-[#7d8190]'
-          )}
-        >
-          <UserIcon />
-        </div>
-
-        {/* Shield icon - right position (coach) */}
+        {/* Shield icon - left position (coach) */}
         <div
           className={cn(
             'relative z-10 w-[28px] h-[22px] flex items-center justify-center',
@@ -116,6 +105,17 @@ export function ViewSwitcher({ className = '', horizontal = false }: ViewSwitche
           )}
         >
           <ShieldIcon />
+        </div>
+
+        {/* User icon - right position (client) */}
+        <div
+          className={cn(
+            'relative z-10 w-[28px] h-[22px] flex items-center justify-center',
+            'transition-all duration-300',
+            !isCoachView ? 'text-blue-500' : 'text-[#7d8190]'
+          )}
+        >
+          <UserIcon />
         </div>
       </button>
     );
@@ -143,22 +143,11 @@ export function ViewSwitcher({ className = '', horizontal = false }: ViewSwitche
           'bg-white dark:bg-[#262b35]',
           'shadow-sm',
           'transition-all duration-300 ease-out',
-          isCoachView ? 'top-[31px]' : 'top-[3px]'
+          isCoachView ? 'top-[3px]' : 'top-[31px]'
         )}
       />
 
-      {/* User icon - top position (client) */}
-      <div
-        className={cn(
-          'relative z-10 w-[22px] h-[28px] flex items-center justify-center',
-          'transition-all duration-300',
-          !isCoachView ? 'text-blue-500' : 'text-[#7d8190]'
-        )}
-      >
-        <UserIcon />
-      </div>
-
-      {/* Shield icon - bottom position (coach) */}
+      {/* Shield icon - top position (coach) */}
       <div
         className={cn(
           'relative z-10 w-[22px] h-[28px] flex items-center justify-center',
@@ -167,6 +156,17 @@ export function ViewSwitcher({ className = '', horizontal = false }: ViewSwitche
         )}
       >
         <ShieldIcon />
+      </div>
+
+      {/* User icon - bottom position (client) */}
+      <div
+        className={cn(
+          'relative z-10 w-[22px] h-[28px] flex items-center justify-center',
+          'transition-all duration-300',
+          !isCoachView ? 'text-blue-500' : 'text-[#7d8190]'
+        )}
+      >
+        <UserIcon />
       </div>
     </button>
   );

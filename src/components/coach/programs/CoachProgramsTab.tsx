@@ -19,7 +19,8 @@ import type { Questionnaire } from '@/types/questionnaire';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar as CalendarIcon, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine, RefreshCw, UserPlus } from 'lucide-react';
+import { Plus, Users, User, Calendar as CalendarIcon, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine, RefreshCw, UserPlus, Search, SlidersHorizontal } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   Popover,
   PopoverContent,
@@ -249,6 +250,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
   // Program type filter: 'all' | 'individual' | 'group'
   const [programTypeFilter, setProgramTypeFilter] = useState<'all' | 'individual' | 'group'>('all');
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Enrollments state
   const [programEnrollments, setProgramEnrollments] = useState<EnrollmentWithUser[]>([]);
@@ -1326,6 +1332,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   // Refresh loading state - handler defined after fetch functions
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Search expand/collapse handlers
+  const handleSearchExpand = useCallback(() => {
+    setIsSearchExpanded(true);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  }, []);
+
+  const handleSearchCollapse = useCallback(() => {
+    setIsSearchExpanded(false);
+    setSearchQuery('');
+  }, []);
+
   const fetchPrograms = useCallback(async () => {
     // Skip API call in demo mode
     if (isDemoMode) {
@@ -1394,9 +1411,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
   // Filter programs by type
   const displayPrograms = useMemo(() => {
-    if (programTypeFilter === 'all') return allPrograms;
-    return allPrograms.filter(p => p.type === programTypeFilter);
-  }, [allPrograms, programTypeFilter]);
+    let filtered = allPrograms;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.name?.toLowerCase().includes(query) ||
+        p.description?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply type filter
+    if (programTypeFilter !== 'all') {
+      filtered = filtered.filter(p => p.type === programTypeFilter);
+    }
+
+    return filtered;
+  }, [allPrograms, programTypeFilter, searchQuery]);
 
   // Count programs by type for filter badges
   const individualCount = useMemo(() => allPrograms.filter(p => p.type === 'individual').length, [allPrograms]);
@@ -3199,22 +3231,117 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         )}
         
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6">
           {viewMode === 'list' ? (
             <>
-              <div>
-                <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  Programs
-                </h2>
-                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-                  Create and manage your coaching programs
-                </p>
-              </div>
-              {!isDemoMode && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
+              <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Programs
+              </h2>
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+                Create and manage your coaching programs
+              </p>
+
+              {/* Icon toolbar row */}
+              <div className="flex items-center gap-1 mt-4">
+                {/* Filter dropdown */}
+                {allPrograms.length > 0 && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        className={cn(
+                          "p-2 rounded-lg transition-colors",
+                          programTypeFilter !== 'all'
+                            ? "text-brand-accent bg-brand-accent/10"
+                            : "text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35]"
+                        )}
+                        title="Filter programs"
+                      >
+                        <SlidersHorizontal className="w-4 h-4" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-44 p-2">
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => setProgramTypeFilter('all')}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all text-left",
+                            programTypeFilter === 'all'
+                              ? "bg-brand-accent/10 text-brand-accent"
+                              : "text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]"
+                          )}
+                        >
+                          All ({allPrograms.length})
+                        </button>
+                        <button
+                          onClick={() => setProgramTypeFilter('individual')}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all text-left",
+                            programTypeFilter === 'individual'
+                              ? "bg-brand-accent/10 text-brand-accent"
+                              : "text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]"
+                          )}
+                        >
+                          <User className="w-3.5 h-3.5" />
+                          1:1 ({individualCount})
+                        </button>
+                        <button
+                          onClick={() => setProgramTypeFilter('group')}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all text-left",
+                            programTypeFilter === 'group'
+                              ? "bg-brand-accent/10 text-brand-accent"
+                              : "text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]"
+                          )}
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                          Group ({groupCount})
+                        </button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+
+                {/* Animated search input */}
+                <div
+                  className={cn(
+                    "flex items-center overflow-hidden transition-all duration-300 ease-out",
+                    isSearchExpanded ? "opacity-100" : "w-0 opacity-0"
+                  )}
+                  style={{ width: isSearchExpanded ? '200px' : 0 }}
+                >
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search programs..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
+                  />
+                </div>
+
+                {/* Search toggle button */}
+                <button
+                  onClick={isSearchExpanded ? handleSearchCollapse : handleSearchExpand}
+                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                  title={isSearchExpanded ? "Close search" : "Search programs"}
+                >
+                  {isSearchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+                </button>
+
+                {/* Settings button */}
+                {!isDemoMode && (
+                  <button
+                    onClick={() => setIsEnrollmentSettingsOpen(true)}
+                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                    title="Program enrollment settings"
+                  >
+                    <Settings2 className="w-4 h-4" />
+                  </button>
+                )}
+
+                {/* Plus button */}
+                {!isDemoMode && (
+                  <button
                     onClick={() => {
                       // Check program limit before opening modal
                       if (checkLimit('max_programs', displayPrograms.length)) {
@@ -3223,20 +3350,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       }
                       setIsNewProgramModalOpen(true);
                     }}
-                    className="text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-medium flex items-center transition-colors duration-200 text-[15px] !px-2.5"
+                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                    title="New Program"
                   >
-                    <Plus className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">New Program</span>
-                  </Button>
-                  <button
-                    onClick={() => setIsEnrollmentSettingsOpen(true)}
-                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-transparent hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] text-[#9c9791] dark:text-[#6b6f7b] hover:text-[#5f5a55] dark:hover:text-[#b2b6c2] transition-colors"
-                    title="Program enrollment settings"
-                  >
-                    <Settings2 className="w-4 h-4" />
+                    <Plus className="w-4 h-4" />
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </>
           ) : (
             <div className="flex items-center gap-3 w-full overflow-x-auto scrollbar-hide">
@@ -3654,44 +3774,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 Your organization domain is not yet configured. Please contact support.
               </p>
             )}
-          </div>
-        )}
-
-        {/* Program Type Filter - shown in list view */}
-        {viewMode === 'list' && !tenantRequired && allPrograms.length > 0 && (
-          <div className="flex items-center gap-1 mb-6 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
-            <button
-              onClick={() => setProgramTypeFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all ${
-                programTypeFilter === 'all'
-                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-              }`}
-            >
-              All ({allPrograms.length})
-            </button>
-            <button
-              onClick={() => setProgramTypeFilter('individual')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 ${
-                programTypeFilter === 'individual'
-                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-              }`}
-            >
-              <User className="w-3.5 h-3.5" />
-              1:1 ({individualCount})
-            </button>
-            <button
-              onClick={() => setProgramTypeFilter('group')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium font-albert transition-all flex items-center gap-2 ${
-                programTypeFilter === 'group'
-                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              Group ({groupCount})
-            </button>
           </div>
         )}
 

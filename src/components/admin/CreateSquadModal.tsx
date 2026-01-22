@@ -500,7 +500,7 @@ export function CreateSquadModal({
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-[100]" onClose={handleCloseAttempt}>
+      <Dialog as="div" className="relative z-[10002]" onClose={handleCloseAttempt}>
         {/* Backdrop */}
         <Transition.Child
           as={Fragment}
@@ -511,10 +511,10 @@ export function CreateSquadModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 z-[99] bg-black/40 backdrop-blur-sm" />
+          <div className="fixed inset-0 z-[10001] bg-black/40 backdrop-blur-sm" />
         </Transition.Child>
 
-        <div className="fixed inset-0 z-[100] overflow-y-auto">
+        <div className="fixed inset-0 z-[10002] overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
             <Transition.Child
               as={Fragment}
@@ -623,7 +623,7 @@ function DetailsStep({ data, onChange, coaches }: DetailsStepProps) {
           <SelectTrigger className="w-full h-12 px-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             <SelectValue placeholder="Select timezone" />
           </SelectTrigger>
-          <SelectContent className="z-[200]">
+          <SelectContent className="z-[10003]">
             {POPULAR_TIMEZONES.map((tz) => (
               <SelectItem key={tz.value} value={tz.value} className="font-albert cursor-pointer">
                 {tz.label}
@@ -645,7 +645,7 @@ function DetailsStep({ data, onChange, coaches }: DetailsStepProps) {
           <SelectTrigger className="w-full h-12 px-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             <SelectValue placeholder="Select a coach" />
           </SelectTrigger>
-          <SelectContent className="z-[200]">
+          <SelectContent className="z-[10003]">
             <SelectItem value="none" className="font-albert cursor-pointer">No coach assigned</SelectItem>
             {coaches.map((coach) => (
               <SelectItem key={coach.id} value={coach.id} className="font-albert cursor-pointer">
@@ -809,7 +809,7 @@ function PricingStep({ data, onChange, stripeConnected, stripeLoading, error }: 
                       <SelectTrigger className="w-full font-albert text-sm">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="z-[200]">
+                      <SelectContent className="z-[10003]">
                         <SelectItem value="monthly" className="font-albert cursor-pointer">Monthly (${(data.priceInCents / 100).toFixed(2)}/month)</SelectItem>
                         <SelectItem value="quarterly" className="font-albert cursor-pointer">Quarterly (${(data.priceInCents / 100).toFixed(2)}/3 months)</SelectItem>
                         <SelectItem value="yearly" className="font-albert cursor-pointer">Yearly (${(data.priceInCents / 100).toFixed(2)}/year)</SelectItem>

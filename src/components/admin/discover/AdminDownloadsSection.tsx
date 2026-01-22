@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -290,6 +291,7 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [downloadToEdit, setDownloadToEdit] = useState<ProgramDownload | null>(null);
   const [downloadToDelete, setDownloadToDelete] = useState<ProgramDownload | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -330,13 +332,23 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
 
   const filteredDownloads = useMemo(() => {
     if (!searchQuery.trim()) return downloads;
-    
+
     const query = searchQuery.toLowerCase();
     return downloads.filter(download =>
       download.title.toLowerCase().includes(query) ||
       download.description?.toLowerCase().includes(query)
     );
   }, [downloads, searchQuery]);
+
+  const handleSearchExpand = useCallback(() => {
+    setIsSearchExpanded(true);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  }, []);
+
+  const handleSearchCollapse = useCallback(() => {
+    setIsSearchExpanded(false);
+    setSearchQuery('');
+  }, []);
 
   const handleDelete = async () => {
     if (!downloadToDelete) return;
@@ -402,47 +414,44 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
         {/* Header */}
         <div className="p-4 sm:p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
           <div className="flex items-center justify-between gap-3">
-            {/* Title with inline count - hide when search expanded */}
-            {!isSearchExpanded && (
-              <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                Downloads ({filteredDownloads.length})
-              </h2>
-            )}
+            {/* Title with inline count */}
+            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              Downloads ({filteredDownloads.length})
+            </h2>
 
-            <div className={`flex items-center gap-2 ${isSearchExpanded ? 'flex-1' : 'ml-auto'}`}>
-              {isSearchExpanded ? (
-                <div className="flex items-center gap-2 flex-1">
-                  <input
-                    autoFocus
-                    type="text"
-                    placeholder="Search downloads..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="flex-1 px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
-                  />
-                  <button
-                    onClick={() => { setIsSearchExpanded(false); setSearchQuery(''); }}
-                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setIsSearchExpanded(true)}
-                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                  >
-                    <Search className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => { setDownloadToEdit(null); setIsFormOpen(true); }}
-                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </>
-              )}
+            <div className="flex items-center gap-2 ml-auto relative">
+              {/* Animated search input */}
+              <div
+                className={cn(
+                  "flex items-center overflow-hidden transition-all duration-300 ease-out",
+                  isSearchExpanded ? "w-48 opacity-100" : "w-0 opacity-0"
+                )}
+              >
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search downloads..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
+                />
+              </div>
+
+              {/* Search toggle button */}
+              <button
+                onClick={isSearchExpanded ? handleSearchCollapse : handleSearchExpand}
+                className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+              >
+                {isSearchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+              </button>
+
+              {/* Plus button - always visible */}
+              <button
+                onClick={() => { setDownloadToEdit(null); setIsFormOpen(true); }}
+                className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>

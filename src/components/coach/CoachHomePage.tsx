@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
+import confetti from 'canvas-confetti';
 import {
   Users,
   BookOpen,
@@ -251,25 +252,20 @@ function GettingStartedCard({ items, onDismiss, totalRevenue }: GettingStartedCa
 
 interface RevenueCommandCenterProps {
   totalRevenue: number;
-  monthlyRevenue: number;
-  monthlyGoal?: number;
   trend?: number;
   timePeriod: TimePeriod;
 }
 
 function RevenueCommandCenter({
   totalRevenue,
-  monthlyRevenue,
-  monthlyGoal = 0,
   trend,
   timePeriod,
 }: RevenueCommandCenterProps) {
-  const progressToGoal = monthlyGoal > 0 ? Math.min((monthlyRevenue / monthlyGoal) * 100, 100) : 0;
   const isPositiveTrend = trend !== undefined && trend >= 0;
 
   return (
     <div className={cn('rounded-2xl p-6', glassCard)}>
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-albert text-text-secondary mb-1">
             {timePeriod === 'today' ? "Today's Revenue" : timePeriod === 'all' ? 'Total Revenue' : `Revenue (${timePeriod}d)`}
@@ -295,18 +291,6 @@ function RevenueCommandCenter({
           <DollarSign className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
         </div>
       </div>
-
-      {monthlyGoal > 0 && (
-        <div className="mt-4 pt-4 border-t border-black/5 dark:border-white/5">
-          <div className="flex items-center justify-between text-sm font-albert mb-2">
-            <span className="text-text-secondary">Monthly Goal</span>
-            <span className="text-text-primary font-medium">
-              ${monthlyRevenue.toLocaleString()} / ${monthlyGoal.toLocaleString()}
-            </span>
-          </div>
-          <Progress value={progressToGoal} className="h-2 bg-black/5 dark:bg-white/10" />
-        </div>
-      )}
     </div>
   );
 }
@@ -401,25 +385,42 @@ function SecondaryStat({
 }
 
 // ============================================================================
-// REVENUE PLAN CARD (Coach Goal)
+// REVENUE PLAN CARD (Coach Goal with Deadline)
 // ============================================================================
 
 interface RevenuePlanCardProps {
-  currentMRR: number;
-  monthlyGoal?: number;
-  avgRevenuePerClient?: number;
-  activeClients: number;
+  currentRevenue: number; // Revenue earned since goal start date
+  revenueGoal?: number;
+  revenueGoalDeadline?: string; // ISO date YYYY-MM-DD
+  revenueGoalStartDate?: string; // ISO date YYYY-MM-DD
   isLoading?: boolean;
+  isGoalAchieved?: boolean;
+  isGoalExpired?: boolean;
   onSetGoal?: () => void;
   onEditGoal?: () => void;
 }
 
+function formatGoalDate(dateStr: string): string {
+  const date = new Date(dateStr + 'T00:00:00');
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function getDaysRemaining(dateStr: string): number {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + 'T00:00:00');
+  const diff = target.getTime() - now.getTime();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
 function RevenuePlanCard({
-  currentMRR,
-  monthlyGoal = 0,
-  avgRevenuePerClient = 0,
-  activeClients,
+  currentRevenue,
+  revenueGoal = 0,
+  revenueGoalDeadline,
+  revenueGoalStartDate,
   isLoading,
+  isGoalAchieved,
+  isGoalExpired,
   onSetGoal,
   onEditGoal,
 }: RevenuePlanCardProps) {
@@ -438,7 +439,7 @@ function RevenuePlanCard({
   }
 
   // No goal set
-  if (!monthlyGoal || monthlyGoal <= 0) {
+  if (!revenueGoal || revenueGoal <= 0) {
     return (
       <Card className={cn('rounded-2xl', glassCard)}>
         <CardContent className="p-5">
@@ -447,11 +448,11 @@ function RevenuePlanCard({
               <Target className="w-4 h-4 text-brand-accent" />
             </div>
             <h3 className="font-semibold text-text-primary font-albert text-sm">
-              Revenue Plan
+              Revenue Goal
             </h3>
           </div>
           <p className="text-text-secondary font-albert text-sm mb-4">
-            Set a monthly revenue goal to track your path to growth.
+            Set a revenue goal with a deadline to track your progress.
           </p>
           <Button
             variant="outline"
@@ -467,9 +468,77 @@ function RevenuePlanCard({
     );
   }
 
-  const progress = Math.min((currentMRR / monthlyGoal) * 100, 100);
-  const gap = Math.max(monthlyGoal - currentMRR, 0);
-  const clientsNeeded = avgRevenuePerClient > 0 ? Math.ceil(gap / avgRevenuePerClient) : 0;
+  const progress = Math.min((currentRevenue / revenueGoal) * 100, 100);
+  const gap = Math.max(revenueGoal - currentRevenue, 0);
+  const daysLeft = revenueGoalDeadline ? getDaysRemaining(revenueGoalDeadline) : 0;
+
+  // Goal expired (deadline passed)
+  if (isGoalExpired) {
+    return (
+      <Card className={cn('rounded-2xl', glassCard)}>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                'p-2 rounded-lg',
+                isGoalAchieved
+                  ? 'bg-emerald-500/10 dark:bg-emerald-500/20'
+                  : 'bg-amber-500/10 dark:bg-amber-500/20'
+              )}>
+                {isGoalAchieved ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <Target className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                )}
+              </div>
+              <div>
+                <h3 className="font-semibold text-text-primary font-albert text-sm">
+                  Goal {isGoalAchieved ? 'Achieved!' : 'Ended'}
+                </h3>
+                <p className="text-xs text-text-tertiary font-albert">
+                  {revenueGoalDeadline && formatGoalDate(revenueGoalDeadline)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-end justify-between">
+              <div>
+                <p className={cn(
+                  'text-2xl font-bold font-albert',
+                  isGoalAchieved ? 'text-emerald-600 dark:text-emerald-400' : 'text-text-primary'
+                )}>
+                  ${currentRevenue.toLocaleString()}
+                </p>
+                <p className="text-xs text-text-secondary font-albert">
+                  of ${revenueGoal.toLocaleString()} goal
+                </p>
+              </div>
+              <p className={cn(
+                'text-lg font-semibold font-albert',
+                isGoalAchieved ? 'text-emerald-600 dark:text-emerald-400' : 'text-text-tertiary'
+              )}>
+                {Math.round(progress)}%
+              </p>
+            </div>
+
+            <Progress value={progress} className="h-2 bg-black/5 dark:bg-white/10" />
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full rounded-xl font-albert text-sm h-9 mt-2"
+              onClick={onSetGoal}
+            >
+              <Target className="w-4 h-4 mr-1.5" />
+              Set New Goal
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className={cn('rounded-2xl', glassCard)}>
@@ -479,9 +548,17 @@ function RevenuePlanCard({
             <div className="p-2 rounded-lg bg-brand-accent/10 dark:bg-brand-accent/20">
               <Target className="w-4 h-4 text-brand-accent" />
             </div>
-            <h3 className="font-semibold text-text-primary font-albert text-sm">
-              Path to ${monthlyGoal.toLocaleString()}/mo
-            </h3>
+            <div>
+              <h3 className="font-semibold text-text-primary font-albert text-sm">
+                Goal: ${revenueGoal.toLocaleString()}
+              </h3>
+              {revenueGoalDeadline && (
+                <p className="text-xs text-text-tertiary font-albert flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  by {formatGoalDate(revenueGoalDeadline)}
+                </p>
+              )}
+            </div>
           </div>
           <button
             onClick={onEditGoal}
@@ -496,9 +573,9 @@ function RevenuePlanCard({
           <div className="flex items-end justify-between">
             <div>
               <p className="text-2xl font-bold font-albert text-text-primary">
-                ${currentMRR.toLocaleString()}
+                ${currentRevenue.toLocaleString()}
               </p>
-              <p className="text-xs text-text-secondary font-albert">Current MRR</p>
+              <p className="text-xs text-text-secondary font-albert">earned so far</p>
             </div>
             <p className="text-lg font-semibold font-albert text-text-tertiary">
               {Math.round(progress)}%
@@ -507,18 +584,24 @@ function RevenuePlanCard({
 
           <Progress value={progress} className="h-2 bg-black/5 dark:bg-white/10" />
 
-          {gap > 0 && (
-            <div className="pt-3 border-t border-black/5 dark:border-white/5">
-              <p className="text-sm font-albert text-text-secondary">
-                <span className="text-text-primary font-medium">${gap.toLocaleString()}</span> to go
-                {clientsNeeded > 0 && avgRevenuePerClient > 0 && (
-                  <span className="text-text-tertiary">
-                    {' '}· ~{clientsNeeded} more {clientsNeeded === 1 ? 'client' : 'clients'} at ${avgRevenuePerClient.toLocaleString()}/avg
-                  </span>
-                )}
-              </p>
-            </div>
-          )}
+          <div className="pt-3 border-t border-black/5 dark:border-white/5">
+            <p className="text-sm font-albert text-text-secondary">
+              {gap > 0 ? (
+                <>
+                  <span className="text-text-primary font-medium">${gap.toLocaleString()}</span> to go
+                  {daysLeft > 0 && (
+                    <span className="text-text-tertiary">
+                      {' '}· {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                  Goal achieved! 🎉
+                </span>
+              )}
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -968,9 +1051,14 @@ interface FunnelsData {
 }
 
 interface RevenueGoalData {
+  revenueGoal: number | null;
+  revenueGoalDeadline: string | null;
+  revenueGoalStartDate: string | null;
+  goalSetAt: string | null;
+  goalAchievedCelebrated: boolean;
+  // Legacy fields for backwards compatibility
   monthlyRevenueGoal: number | null;
   targetClients: number | null;
-  goalSetAt: string | null;
 }
 
 // ============================================================================
@@ -1077,6 +1165,14 @@ export function CoachHomePage() {
     { revalidateOnFocus: false }
   );
 
+  // Fetch revenue since goal start date (for goal progress)
+  const goalStartDate = revenueGoalData?.revenueGoalStartDate;
+  const { data: goalPeriodRevenueData } = useSWR<ProductsData>(
+    goalStartDate ? `/api/coach/analytics/products?sinceDate=${goalStartDate}` : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+
   const isLoading = programsLoading || squadsLoading || clientsLoading;
 
   // Extract data
@@ -1086,11 +1182,66 @@ export function CoachHomePage() {
   const activeClients = clientsData?.summary?.activeCount ?? 0;
   const atRiskCount = clientsData?.summary?.atRiskCount ?? 0;
   const totalRevenue = productsData?.summary?.totalRevenue ?? 0;
-  const monthlyRevenue = productsData?.summary?.monthlyRevenue ?? 0;
   const avgRevenuePerClient = productsData?.summary?.avgRevenuePerClient ?? 0;
   const totalPosts = feedData?.summary?.totalPosts ?? 0;
   const totalLikes = feedData?.summary?.totalLikes ?? 0;
   const totalComments = feedData?.summary?.totalComments ?? 0;
+
+  // Goal progress data
+  const goalRevenue = goalPeriodRevenueData?.summary?.totalRevenue ?? 0;
+  const revenueGoal = revenueGoalData?.revenueGoal ?? 0;
+  const revenueGoalDeadline = revenueGoalData?.revenueGoalDeadline;
+  const isGoalAchieved = revenueGoal > 0 && goalRevenue >= revenueGoal;
+  const isGoalExpired = revenueGoalDeadline ? new Date(revenueGoalDeadline + 'T23:59:59') < new Date() : false;
+
+  // Confetti celebration for goal achievement
+  const triggerConfetti = useCallback(() => {
+    const duration = 3000;
+    const animationEnd = Date.now() + duration;
+
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    const interval = setInterval(() => {
+      const timeLeft = animationEnd - Date.now();
+      if (timeLeft <= 0) {
+        clearInterval(interval);
+        return;
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+      confetti({
+        particleCount,
+        startVelocity: 30,
+        spread: 360,
+        origin: {
+          x: randomInRange(0.1, 0.9),
+          y: Math.random() - 0.2,
+        },
+        colors: ['#10B981', '#34D399', '#6EE7B7', '#A7F3D0', '#D1FAE5'],
+      });
+    }, 250);
+  }, []);
+
+  // Check if we should show celebration
+  useEffect(() => {
+    if (
+      isGoalAchieved &&
+      !revenueGoalData?.goalAchievedCelebrated &&
+      revenueGoalData?.revenueGoal
+    ) {
+      // Trigger confetti
+      triggerConfetti();
+
+      // Mark celebration as shown
+      fetch('/api/coach/revenue-goal', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goalAchievedCelebrated: true }),
+      }).then(() => {
+        mutateRevenueGoal();
+      });
+    }
+  }, [isGoalAchieved, revenueGoalData?.goalAchievedCelebrated, revenueGoalData?.revenueGoal, triggerConfetti, mutateRevenueGoal]);
 
   // Check if dismissed from local state or org settings
   const isChecklistDismissed = checklistDismissed || orgSettings?.coachDashboardChecklistDismissed;
@@ -1293,8 +1444,6 @@ export function CoachHomePage() {
           {/* Revenue Command Center (Primary) */}
           <RevenueCommandCenter
             totalRevenue={totalRevenue}
-            monthlyRevenue={monthlyRevenue}
-            monthlyGoal={revenueGoalData?.monthlyRevenueGoal || undefined}
             timePeriod={timePeriod}
           />
 
@@ -1308,7 +1457,7 @@ export function CoachHomePage() {
               href="/coach?tab=clients"
             />
             <SecondaryStat
-              label="Offers"
+              label="Programs"
               value={programs.length}
               subValue={`${programs.filter((p) => p.activeEnrollments > 0).length} with enrollments`}
               icon={BookOpen}
@@ -1343,11 +1492,13 @@ export function CoachHomePage() {
           {/* Two Column Layout: Revenue Plan + What To Do Next */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <RevenuePlanCard
-              currentMRR={monthlyRevenue}
-              monthlyGoal={revenueGoalData?.monthlyRevenueGoal || undefined}
-              avgRevenuePerClient={avgRevenuePerClient}
-              activeClients={activeClients}
+              currentRevenue={goalRevenue}
+              revenueGoal={revenueGoal || undefined}
+              revenueGoalDeadline={revenueGoalDeadline || undefined}
+              revenueGoalStartDate={revenueGoalData?.revenueGoalStartDate || undefined}
               isLoading={revenueGoalLoading}
+              isGoalAchieved={isGoalAchieved}
+              isGoalExpired={isGoalExpired}
               onSetGoal={() => setGoalModalOpen(true)}
               onEditGoal={() => setGoalModalOpen(true)}
             />
@@ -1394,7 +1545,7 @@ export function CoachHomePage() {
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-sm font-medium text-text-secondary font-albert">
-                    Your Offers
+                    Your Programs
                   </h2>
                   <Link
                     href="/coach?tab=programs"
@@ -1499,12 +1650,11 @@ export function CoachHomePage() {
         isOpen={goalModalOpen}
         onClose={() => setGoalModalOpen(false)}
         onSave={handleSaveRevenueGoal}
-        initialData={revenueGoalData?.monthlyRevenueGoal ? {
-          monthlyRevenueGoal: revenueGoalData.monthlyRevenueGoal,
-          targetClients: revenueGoalData.targetClients || undefined,
+        initialData={revenueGoalData?.revenueGoal ? {
+          revenueGoal: revenueGoalData.revenueGoal,
+          revenueGoalDeadline: revenueGoalData.revenueGoalDeadline || '',
         } : undefined}
-        currentMRR={monthlyRevenue}
-        activeClients={activeClients}
+        currentRevenue={goalRevenue}
       />
 
       {/* New Program Modal */}

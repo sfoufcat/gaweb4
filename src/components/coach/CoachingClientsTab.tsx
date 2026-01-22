@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
-import { Calendar, ChevronRight, UserPlus, RefreshCw, Heart, Activity, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Calendar, ChevronRight, UserPlus, RefreshCw, Heart, Activity, AlertCircle, AlertTriangle, Search, X, Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { ClientCoachingData, FirebaseUser, CoachingPlanType } from '@/types';
 import { InviteClientsDialog } from './InviteClientsDialog';
 import { useDemoMode } from '@/contexts/DemoModeContext';
@@ -59,7 +60,34 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
-  
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Search expand/collapse handlers
+  const handleSearchExpand = useCallback(() => {
+    setIsSearchExpanded(true);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  }, []);
+
+  const handleSearchCollapse = useCallback(() => {
+    setIsSearchExpanded(false);
+    setSearchQuery('');
+  }, []);
+
+  // Filter clients by search query
+  const filteredClients = useMemo(() => {
+    if (!searchQuery.trim()) return clients;
+    const query = searchQuery.toLowerCase();
+    return clients.filter(client => {
+      const firstName = client.user?.firstName?.toLowerCase() || '';
+      const lastName = client.user?.lastName?.toLowerCase() || '';
+      const email = client.user?.email?.toLowerCase() || '';
+      return firstName.includes(query) || lastName.includes(query) || email.includes(query);
+    });
+  }, [clients, searchQuery]);
 
   const handleAddNewClients = () => {
     if (isDemoMode) {
@@ -221,30 +249,59 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
-            Coaching Clients
-          </h2>
-          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">
-            {clients.length} client{clients.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
+          Coaching Clients
+        </h2>
+        <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">
+          {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''}
+        </p>
+
+        {/* Icon toolbar row */}
+        <div className="flex items-center gap-1 mt-4">
+          {/* Animated search input */}
+          <div
+            className={cn(
+              "flex items-center overflow-hidden transition-all duration-300 ease-out",
+              isSearchExpanded ? "opacity-100" : "w-0 opacity-0"
+            )}
+            style={{ width: isSearchExpanded ? '200px' : 0 }}
+          >
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search clients..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
+            />
+          </div>
+
+          {/* Search toggle button */}
+          <button
+            onClick={isSearchExpanded ? handleSearchCollapse : handleSearchExpand}
+            className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+            title={isSearchExpanded ? "Close search" : "Search clients"}
+          >
+            {isSearchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+          </button>
+
+          {/* Refresh button */}
           <button
             onClick={fetchClients}
-            className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-lg transition-colors"
+            className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
             title="Refresh"
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className="w-4 h-4" />
           </button>
+
+          {/* Plus button */}
           <button
             onClick={handleAddNewClients}
-            className="p-2 sm:px-2.5 sm:py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white text-[15px] rounded-lg font-albert font-medium transition-colors duration-200 flex items-center gap-0 sm:gap-2"
+            className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
             title="Add New Clients"
           >
-            <UserPlus className="w-4 h-4" />
-            <span className="hidden sm:inline">Add New Clients</span>
+            <Plus className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -257,12 +314,12 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
 
       {/* Clients List */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
-        {clients.map((client, index) => (
+        {filteredClients.map((client, index) => (
           <button
             key={client.id}
             onClick={() => onSelectClient(client.id)}
             className={`w-full flex items-center gap-4 p-4 hover:bg-[#faf8f6] dark:hover:bg-[#11141b] transition-colors text-left ${
-              index !== clients.length - 1 ? 'border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50' : ''
+              index !== filteredClients.length - 1 ? 'border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50' : ''
             }`}
           >
             {/* Avatar */}
