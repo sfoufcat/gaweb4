@@ -49,13 +49,13 @@ export async function GET(req: NextRequest) {
     if (error) {
       console.error('[GOOGLE_CALENDAR_CALLBACK] OAuth error:', error);
       return NextResponse.redirect(
-        new URL(`/coach/settings?tab=integrations&error=${encodeURIComponent(error)}`, redirectBase)
+        new URL(`/coach/settings?tab=integrations&error=${encodeURIComponent(error)}&provider=google_calendar`, redirectBase)
       );
     }
 
     if (!code || !state || !stateData) {
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=missing_params', redirectBase)
+        new URL('/coach/settings?tab=integrations&error=missing_params&provider=google_calendar', redirectBase)
       );
     }
 
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
     if (stateUserId !== userId) {
       console.error('[GOOGLE_CALENDAR_CALLBACK] User mismatch:', { stateUserId, userId });
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=user_mismatch', redirectBase)
+        new URL('/coach/settings?tab=integrations&error=user_mismatch&provider=google_calendar', redirectBase)
       );
     }
 
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
     if (!isMember) {
       console.error('[GOOGLE_CALENDAR_CALLBACK] User not member of org:', { userId, stateOrgId });
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=not_org_member', redirectBase)
+        new URL('/coach/settings?tab=integrations&error=not_org_member&provider=google_calendar', redirectBase)
       );
     }
 
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
     if (!clientId || !clientSecret) {
       console.error('[GOOGLE_CALENDAR_CALLBACK] Missing OAuth credentials');
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=server_config', redirectBase)
+        new URL('/coach/settings?tab=integrations&error=server_config&provider=google_calendar', redirectBase)
       );
     }
 
@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
       const errorData = await tokenResponse.json();
       console.error('[GOOGLE_CALENDAR_CALLBACK] Token exchange failed:', errorData);
       return NextResponse.redirect(
-        new URL('/coach/settings?tab=integrations&error=token_exchange', redirectBase)
+        new URL('/coach/settings?tab=integrations&error=token_exchange&provider=google_calendar', redirectBase)
       );
     }
 
@@ -212,7 +212,7 @@ export async function GET(req: NextRequest) {
     console.error('[GOOGLE_CALENDAR_CALLBACK] Error:', error);
     // Use redirectBase (derived from state) for error redirect too
     return NextResponse.redirect(
-      new URL('/coach/settings?tab=integrations&error=unknown', redirectBase)
+      new URL('/coach/settings?tab=integrations&error=unknown&provider=google_calendar', redirectBase)
     );
   }
 }

@@ -24,6 +24,7 @@ import type { UnifiedEvent, ProposedTime, SchedulingStatus, ProgramInstance } fr
  * - isRecurring?: boolean - Whether this is a recurring call
  * - recurrence?: RecurrencePattern - Recurrence settings if recurring
  * - instanceId?: string - Program instance ID to link the call to
+ * - confirmDirectly?: boolean - If true, creates a confirmed event immediately (no proposal needed)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
       isRecurring = false,
       recurrence,
       instanceId: bodyInstanceId,
+      confirmDirectly = false,
     } = body;
 
     // Validate required fields
@@ -178,13 +180,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Create proposed time objects
+    // If confirmDirectly is true, mark the first time as accepted immediately
     const formattedProposedTimes: ProposedTime[] = proposedTimes.map((time: { startDateTime: string; endDateTime: string }, index: number) => ({
       id: `proposed_${Date.now()}_${index}`,
       startDateTime: new Date(time.startDateTime).toISOString(),
       endDateTime: new Date(time.endDateTime).toISOString(),
       proposedBy: userId,
       proposedAt: now,
-      status: 'pending' as const,
+      status: (confirmDirectly && index === 0) ? 'accepted' as const : 'pending' as const,
     }));
 
     // Use the first proposed time as the initial event time
@@ -195,7 +198,7 @@ export async function POST(request: NextRequest) {
     const eventData: UnifiedEvent = {
       id: eventRef.id,
       title: title || `Call with ${clientName}`,
-      description: description || `1-on-1 coaching call proposed by ${coachName}`,
+      description: description || `1-on-1 coaching call ${confirmDirectly ? 'scheduled' : 'proposed'} by ${coachName}`,
       startDateTime: firstProposed.startDateTime,
       endDateTime: firstProposed.endDateTime,
       timezone,
@@ -207,7 +210,8 @@ export async function POST(request: NextRequest) {
       scope: 'private',
       participantModel: 'invite_only',
       approvalType: 'none',
-      status: 'pending_approval', // Needs client acceptance
+      // If confirmDirectly, event is already confirmed; otherwise needs client acceptance
+      status: confirmDirectly ? 'confirmed' : 'pending_approval',
       organizationId,
       programId: programId || undefined,
       // Program instance linking (for 1:1 calls linked to program days)
@@ -227,7 +231,8 @@ export async function POST(request: NextRequest) {
       attendeeIds: [userId, clientId],
       sendChatReminders: true,
       // Scheduling-specific fields
-      schedulingStatus: 'proposed',
+      // If confirmDirectly, set schedulingStatus to 'confirmed' so it shows as confirmed in UI
+      schedulingStatus: confirmDirectly ? 'confirmed' : 'proposed',
       proposedBy: userId,
       proposedTimes: formattedProposedTimes,
       schedulingNotes,
@@ -283,7 +288,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Send notification to client about proposed call
+    // Send notification to client about the call
+    // For directly confirmed calls, we could use a different notification (TODO: notifyCallConfirmed)
+    // For now, use the same notification which tells the client about the scheduled call
     try {
       await notifyCallProposed(eventData, clientId);
     } catch (notifyErr) {
@@ -294,7 +301,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       event: eventData,
       success: true,
-      message: 'Call proposal sent to client',
+      message: confirmDirectly ? 'Call confirmed and scheduled' : 'Call proposal sent to client',
     });
   } catch (error) {
     console.error('[SCHEDULING_PROPOSE] Error:', error);

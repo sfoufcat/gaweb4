@@ -182,40 +182,50 @@ export async function POST(req: NextRequest) {
 
       let authUrl: string;
 
-      switch (provider) {
-        case 'google_calendar':
-          authUrl = getGoogleOAuthUrl(state, providerMeta.scopes || [], 'google_calendar');
-          break;
-        case 'google_sheets':
-          authUrl = getGoogleOAuthUrl(state, providerMeta.scopes || [], 'google_sheets');
-          break;
-        case 'outlook_calendar':
-          authUrl = getMicrosoftOAuthUrl(state, providerMeta.scopes || []);
-          break;
-        case 'notion':
-          authUrl = getNotionOAuthUrl(state);
-          break;
-        case 'airtable':
-          authUrl = getAirtableOAuthUrl(state, providerMeta.scopes || []);
-          break;
-        case 'todoist':
-          authUrl = getTodoistOAuthUrl(state, providerMeta.scopes || []);
-          break;
-        case 'asana':
-          authUrl = getAsanaOAuthUrl(state);
-          break;
-        case 'slack':
-          authUrl = getSlackOAuthUrl(state, providerMeta.scopes || []);
-          break;
-        case 'zoom':
-          authUrl = getZoomOAuthUrl(state);
-          break;
-        // Note: google_meet is now part of google_calendar (enableMeetLinks toggle)
-        default:
-          return NextResponse.json(
-            { error: 'OAuth not supported for this provider' },
-            { status: 400 }
-          );
+      try {
+        switch (provider) {
+          case 'google_calendar':
+            authUrl = getGoogleOAuthUrl(state, providerMeta.scopes || [], 'google_calendar');
+            break;
+          case 'google_sheets':
+            authUrl = getGoogleOAuthUrl(state, providerMeta.scopes || [], 'google_sheets');
+            break;
+          case 'outlook_calendar':
+            authUrl = getMicrosoftOAuthUrl(state, providerMeta.scopes || []);
+            break;
+          case 'notion':
+            authUrl = getNotionOAuthUrl(state);
+            break;
+          case 'airtable':
+            authUrl = getAirtableOAuthUrl(state, providerMeta.scopes || []);
+            break;
+          case 'todoist':
+            authUrl = getTodoistOAuthUrl(state, providerMeta.scopes || []);
+            break;
+          case 'asana':
+            authUrl = getAsanaOAuthUrl(state);
+            break;
+          case 'slack':
+            authUrl = getSlackOAuthUrl(state, providerMeta.scopes || []);
+            break;
+          case 'zoom':
+            authUrl = getZoomOAuthUrl(state);
+            break;
+          // Note: google_meet is now part of google_calendar (enableMeetLinks toggle)
+          default:
+            return NextResponse.json(
+              { error: 'OAuth not supported for this provider' },
+              { status: 400 }
+            );
+        }
+      } catch (oauthError) {
+        // Return user-friendly error code for OAuth config issues
+        const errorCode = oauthError instanceof Error ? oauthError.message : 'oauth_not_configured';
+        console.error(`[COACH_INTEGRATIONS_POST] OAuth config error for ${provider}:`, errorCode);
+        return NextResponse.json(
+          { error: errorCode },
+          { status: 400 }
+        );
       }
 
       return NextResponse.json({
@@ -404,13 +414,27 @@ export async function DELETE(req: NextRequest) {
 
 function getGoogleOAuthUrl(state: string, scopes: string[], provider: 'google_calendar' | 'google_sheets'): string {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
   const callbackPath = provider;
   // Use calendar subdomain for OAuth callbacks to avoid auth issues on subdomains
   const baseUrl = process.env.GOOGLE_OAUTH_REDIRECT_BASE_URL || 'https://calendar.coachful.co';
   const redirectUri = `${baseUrl}/api/coach/integrations/${callbackPath}/callback`;
 
+  // Pre-flight validation - catch config errors before redirecting to Google
   if (!clientId) {
-    throw new Error('GOOGLE_OAUTH_CLIENT_ID not configured');
+    throw new Error('oauth_not_configured');
+  }
+  if (!clientSecret) {
+    throw new Error('oauth_not_configured');
+  }
+  // Validate redirect URL format
+  try {
+    const url = new URL(baseUrl);
+    if (url.protocol !== 'https:') {
+      throw new Error('redirect_uri_misconfigured');
+    }
+  } catch {
+    throw new Error('redirect_uri_misconfigured');
   }
 
   const params = new URLSearchParams({
@@ -432,7 +456,10 @@ function getMicrosoftOAuthUrl(state: string, scopes: string[]): string {
     || process.env.MS_OAUTH_CLIENT_ID
     || process.env.AZURE_AD_CLIENT_ID
     || process.env.MICROSOFT_CLIENT_ID;
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/coach/integrations/outlook_calendar/callback`;
+  // Use fixed redirect domain for OAuth (Microsoft requires exact URI match)
+  // Multi-tenant subdomains/custom domains would cause mismatch errors
+  const baseUrl = process.env.MICROSOFT_OAUTH_REDIRECT_BASE_URL || 'https://calendar.coachful.co';
+  const redirectUri = `${baseUrl}/api/coach/integrations/outlook_calendar/callback`;
 
   if (!clientId) {
     throw new Error('Microsoft OAuth not configured. Set one of: MICROSOFT_OAUTH_CLIENT_ID, MS_OAUTH_CLIENT_ID, AZURE_AD_CLIENT_ID, or MICROSOFT_CLIENT_ID');

@@ -156,6 +156,12 @@ interface ProposeCallOptions {
   };
   // Program instance linking (Phase 3)
   instanceId?: string;
+  // Program call tracking
+  isProgramCall?: boolean;
+  isExtraCall?: boolean;
+  enrollmentId?: string;
+  // Direct confirmation mode - if true, creates a confirmed event immediately
+  confirmDirectly?: boolean;
 }
 
 interface RequestCallOptions {

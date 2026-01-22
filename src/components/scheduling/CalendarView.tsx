@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import Image from 'next/image';
+import { useUser } from '@clerk/nextjs';
 import {
   ChevronLeft,
   ChevronRight,
@@ -127,6 +128,12 @@ interface EventCardProps {
 }
 
 function EventCard({ event, compact = false, onClick, onRespond, onCounterPropose, hasOrgCredits = true, isCoach = false }: EventCardProps) {
+  // Safety check for required event properties
+  if (!event || !event.startDateTime) {
+    console.error('[EventCard] Invalid event data:', event);
+    return null;
+  }
+
   // Check if this is a pending proposal
   const isPending = event.schedulingStatus === 'proposed' || event.schedulingStatus === 'counter_proposed';
   const isConfirmed = event.schedulingStatus === 'confirmed';
@@ -456,6 +463,9 @@ function ClientPickerModal({
  * Supports month, week, and day views.
  */
 export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewProps) {
+  const { user } = useUser();
+  const currentUserId = user?.id;
+
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -934,8 +944,8 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
                               key={event.id}
                               event={event}
                               onClick={(e) => handleEventClick(event, e)}
-                              onRespond={handleRespond}
-                              onCounterPropose={handleCounterPropose}
+                              onRespond={event.proposedBy !== currentUserId ? handleRespond : undefined}
+                              onCounterPropose={event.proposedBy !== currentUserId ? handleCounterPropose : undefined}
                               hasOrgCredits={orgHasCredits}
                               isCoach={isCoach}
                             />
@@ -1054,8 +1064,8 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
                           key={event.id}
                           event={event}
                           onClick={(e) => handleEventClick(event, e)}
-                          onRespond={handleRespond}
-                          onCounterPropose={handleCounterPropose}
+                          onRespond={event.proposedBy !== currentUserId ? handleRespond : undefined}
+                          onCounterPropose={event.proposedBy !== currentUserId ? handleCounterPropose : undefined}
                           hasOrgCredits={orgHasCredits}
                           isCoach={isCoach}
                         />
@@ -1080,8 +1090,8 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
                 <EventCard
                   key={event.id}
                   event={event}
-                  onRespond={handleRespond}
-                  onCounterPropose={handleCounterPropose}
+                  onRespond={event.proposedBy !== currentUserId ? handleRespond : undefined}
+                  onCounterPropose={event.proposedBy !== currentUserId ? handleCounterPropose : undefined}
                   hasOrgCredits={orgHasCredits}
                   isCoach={isCoach}
                 />
@@ -1137,8 +1147,9 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
           event={selectedEvent}
           isOpen={!!selectedEvent}
           onClose={() => setSelectedEvent(null)}
-          onRespond={handleRespond}
-          onCounterPropose={handleCounterPropose}
+          // Only show respond buttons if user is NOT the proposer of this event
+          onRespond={selectedEvent.proposedBy !== currentUserId ? handleRespond : undefined}
+          onCounterPropose={selectedEvent.proposedBy !== currentUserId ? handleCounterPropose : undefined}
           isLoading={isRespondLoading}
           position={popupPosition || undefined}
           isHost={isCoach}

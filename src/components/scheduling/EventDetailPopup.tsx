@@ -221,6 +221,12 @@ export function EventDetailPopup({
   // Use portal to render outside any backdrop-blur containers that break fixed positioning
   if (typeof document === 'undefined') return null;
 
+  // Safety check for required event properties
+  if (!event || !event.startDateTime) {
+    console.error('[EventDetailPopup] Invalid event data:', event);
+    return null;
+  }
+
   return createPortal(
     <>
       {/* Backdrop - only visible on mobile */}

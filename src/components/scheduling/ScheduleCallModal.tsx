@@ -435,6 +435,8 @@ export function ScheduleCallModal({
           isExtraCall: callType === 'extra',
           enrollmentId: enrollmentData?.enrollment?.id,
         }),
+        // Direct confirmation mode - creates confirmed event immediately
+        confirmDirectly: mode === 'confirm',
       });
 
       onSuccess?.();

@@ -35,6 +35,7 @@ import {
   type WEBHOOK_EVENTS,
   type GoogleCalendarSettings,
 } from '@/lib/integrations/types';
+import { IntegrationErrorModal } from '@/components/coach/IntegrationErrorModal';
 
 interface IntegrationsTabProps {
   coachTier?: 'starter' | 'pro' | 'scale';
@@ -68,6 +69,71 @@ const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
   knowledge: 'Knowledge Base',
 };
 
+// OAuth error messages - maps error codes to user-friendly messages
+const OAUTH_ERROR_MESSAGES: Record<string, { title: string; message: string; action?: string }> = {
+  invalid_request: {
+    title: 'Configuration Error',
+    message: 'The OAuth redirect URL is not properly configured.',
+    action: 'Please contact support to resolve this issue.',
+  },
+  access_denied: {
+    title: 'Access Denied',
+    message: 'You declined the permission request or cancelled the authorization.',
+    action: 'Try again and approve the requested permissions.',
+  },
+  server_error: {
+    title: 'Service Unavailable',
+    message: 'The external service is experiencing issues.',
+    action: 'Please try again in a few minutes.',
+  },
+  temporarily_unavailable: {
+    title: 'Temporarily Unavailable',
+    message: 'The service is temporarily overloaded.',
+    action: 'Please wait and try again.',
+  },
+  token_exchange: {
+    title: 'Connection Failed',
+    message: 'Failed to complete the authorization. The authorization code may have expired.',
+    action: 'Please try connecting again.',
+  },
+  server_config: {
+    title: 'Server Configuration Error',
+    message: 'OAuth credentials are not properly configured on the server.',
+    action: 'Please contact support to resolve this issue.',
+  },
+  user_mismatch: {
+    title: 'User Mismatch',
+    message: 'The account completing authorization differs from the one who started it.',
+    action: 'Please sign in with the same account and try again.',
+  },
+  not_org_member: {
+    title: 'Organization Access Required',
+    message: 'You are not a member of the organization this integration is being connected to.',
+    action: 'Please ensure you have access to this organization.',
+  },
+  missing_params: {
+    title: 'Authorization Incomplete',
+    message: 'Required authorization parameters were missing.',
+    action: 'Please try connecting again.',
+  },
+  invalid_state: {
+    title: 'Session Expired',
+    message: 'Your authorization session has expired or was invalid.',
+    action: 'Please try connecting again.',
+  },
+  unknown: {
+    title: 'Unexpected Error',
+    message: 'An unexpected error occurred during connection.',
+    action: 'Please try again. If the issue persists, contact support.',
+  },
+};
+
+// Helper to format OAuth error messages
+function formatOAuthError(errorCode: string): string {
+  const errorInfo = OAUTH_ERROR_MESSAGES[errorCode] || OAUTH_ERROR_MESSAGES.unknown;
+  return `${errorInfo.title}: ${errorInfo.message}${errorInfo.action ? ` ${errorInfo.action}` : ''}`;
+}
+
 export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps) {
   const [integrations, setIntegrations] = useState<CoachIntegration[]>([]);
   const [available, setAvailable] = useState<IntegrationProviderMeta[]>([]);
@@ -82,6 +148,11 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
   const [disconnectingIntegration, setDisconnectingIntegration] = useState<CoachIntegration | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [editingIntegration, setEditingIntegration] = useState<CoachIntegration | null>(null);
+
+  // Error modal states
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [errorProvider, setErrorProvider] = useState<IntegrationProvider | null>(null);
   
   // Form states
   const [webhookUrl, setWebhookUrl] = useState('');
@@ -139,10 +210,15 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
     }
 
     if (errorParam) {
-      setError(`Connection failed: ${errorParam}`);
-      // Clean up error param but preserve tab
+      // Show error modal instead of inline error
+      const providerParam = params.get('provider') as IntegrationProvider | null;
+      setErrorCode(errorParam);
+      setErrorProvider(providerParam);
+      setIsErrorModalOpen(true);
+      // Clean up error/provider params but preserve tab
       const newParams = new URLSearchParams(window.location.search);
       newParams.delete('error');
+      newParams.delete('provider');
       const newUrl = newParams.toString()
         ? `${window.location.pathname}?${newParams.toString()}`
         : window.location.pathname;
@@ -203,7 +279,13 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to connect integration');
+        // Show error modal for OAuth config errors
+        setIsConnectModalOpen(false);
+        setErrorCode(data.error || 'unknown');
+        setErrorProvider(selectedProvider.id);
+        setIsErrorModalOpen(true);
+        resetForm();
+        return;
       }
 
       // Handle OAuth flow
@@ -220,7 +302,12 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
       }
     } catch (err) {
       console.error('Error connecting integration:', err);
-      setError(err instanceof Error ? err.message : 'Failed to connect integration');
+      // Show error modal for connection failures
+      setIsConnectModalOpen(false);
+      setErrorCode('unknown');
+      setErrorProvider(selectedProvider?.id || null);
+      setIsErrorModalOpen(true);
+      resetForm();
     } finally {
       setConnecting(false);
     }
@@ -291,6 +378,45 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
     setApiKey('');
     setSelectedEvents([]);
     setError(null);
+  };
+
+  // Retry connection after error (auto-initiates OAuth for the failed provider)
+  const handleRetryConnection = async () => {
+    if (!errorProvider) return;
+
+    const providerMeta = INTEGRATION_PROVIDERS[errorProvider];
+    if (!providerMeta) return;
+
+    // Only auto-retry for OAuth providers
+    if (providerMeta.authType !== 'oauth2') return;
+
+    try {
+      setConnecting(true);
+      const response = await fetch('/api/coach/integrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: errorProvider }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Show error in modal if retry fails
+        setErrorCode(data.error || 'unknown');
+        setIsErrorModalOpen(true);
+        return;
+      }
+
+      if (data.type === 'oauth' && data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    } catch (err) {
+      console.error('Error retrying connection:', err);
+      setErrorCode('unknown');
+      setIsErrorModalOpen(true);
+    } finally {
+      setConnecting(false);
+    }
   };
 
   // Update Google Calendar feature toggles
@@ -366,7 +492,7 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
         </p>
       </div>
 
-      {/* Error Alert */}
+      {/* Inline Error Alert (for non-OAuth errors like validation) */}
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -939,6 +1065,19 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
           </div>
         </Dialog>
       </Transition>
+
+      {/* Integration Error Modal */}
+      <IntegrationErrorModal
+        isOpen={isErrorModalOpen}
+        onClose={() => {
+          setIsErrorModalOpen(false);
+          setErrorCode(null);
+          setErrorProvider(null);
+        }}
+        onRetry={handleRetryConnection}
+        provider={errorProvider}
+        errorCode={errorCode}
+      />
     </div>
   );
 }
