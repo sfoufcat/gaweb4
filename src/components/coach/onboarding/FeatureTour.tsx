@@ -26,14 +26,15 @@ const TOUR_STEPS = [
     description: 'Build transformation programs with structured content, cohorts, and automated enrollment. Perfect for group coaching.',
     icon: Rocket,
   },
-  {
-    id: 'squads',
-    tabValue: 'squads',
-    tabText: 'Squads',
-    title: 'Accountability Squads',
-    description: 'Group your clients into small accountability squads. Members support each other and stay engaged.',
-    icon: Users,
-  },
+  // HIDDEN: Standalone squads disabled - squads now managed via Program > Community
+  // {
+  //   id: 'squads',
+  //   tabValue: 'squads',
+  //   tabText: 'Squads',
+  //   title: 'Accountability Squads',
+  //   description: 'Group your clients into small accountability squads. Members support each other and stay engaged.',
+  //   icon: Users,
+  // },
   {
     id: 'funnels',
     tabValue: 'funnels',

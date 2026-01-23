@@ -27,6 +27,7 @@ export function RichTextPreview({
   className = '',
 }: RichTextPreviewProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: {

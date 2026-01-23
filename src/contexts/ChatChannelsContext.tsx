@@ -33,6 +33,8 @@ export interface ChannelPreview {
   id: string;
   name: string;
   image?: string;
+  /** Icon identifier from org channel config (e.g., "megaphone", "chat", "sparkles") */
+  icon?: string;
   lastMessage?: string;
   lastMessageTime?: Date;
   unread: number;
@@ -104,6 +106,10 @@ export function ChatChannelsProvider({
   const [isPlatformMode, setIsPlatformMode] = useState(
     initialIsPlatformMode ?? false
   );
+  // Map of streamChannelId -> icon identifier for org channels
+  const [orgChannelIcons, setOrgChannelIcons] = useState<Map<string, string>>(
+    () => new Map()
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -171,6 +177,7 @@ export function ChatChannelsProvider({
         id: c.id,
         name: c.name,
         image: c.image,
+        icon: c.icon,
         lastMessage: c.lastMessage,
         lastMessageTime: c.lastMessageTime ? new Date(c.lastMessageTime) : undefined,
         unread: c.unread,
@@ -192,7 +199,8 @@ export function ChatChannelsProvider({
       squadIds: Set<string>,
       platformMode: boolean,
       squadDataLoaded: boolean,
-      clientUserId: string
+      clientUserId: string,
+      iconMap?: Map<string, string>
     ): ChannelPreview | null => {
       const channelData = channel.data as Record<string, unknown>;
       const channelId = channel.id || '';
@@ -294,6 +302,7 @@ export function ChatChannelsProvider({
         id: channelId,
         name,
         image,
+        icon: iconMap?.get(channelId),
         lastMessage: lastMsg?.text,
         lastMessageTime: lastMsg?.created_at ? new Date(lastMsg.created_at) : undefined,
         unread: channel.countUnread(),
@@ -305,32 +314,38 @@ export function ChatChannelsProvider({
   );
 
   /**
-   * Fetch org channel IDs for multi-tenancy filtering
+   * Fetch org channel IDs and icons for multi-tenancy filtering
    */
   const fetchOrgChannels = useCallback(async (): Promise<{
     channelIds: Set<string>;
+    iconMap: Map<string, string>;
     platformMode: boolean;
   }> => {
     try {
       const res = await fetch('/api/user/org-channels');
       if (!res.ok) {
-        return { channelIds: new Set(), platformMode: false };
+        return { channelIds: new Set(), iconMap: new Map(), platformMode: false };
       }
       const data = await res.json();
       const channelIds = new Set<string>();
+      const iconMap = new Map<string, string>();
       if (data.channels) {
         for (const ch of data.channels) {
           if (ch.streamChannelId) {
             channelIds.add(ch.streamChannelId);
+            if (ch.icon) {
+              iconMap.set(ch.streamChannelId, ch.icon);
+            }
           }
         }
       }
       return {
         channelIds,
+        iconMap,
         platformMode: data.isPlatformMode || false,
       };
     } catch {
-      return { channelIds: new Set(), platformMode: false };
+      return { channelIds: new Set(), iconMap: new Map(), platformMode: false };
     }
   }, []);
 
@@ -358,13 +373,11 @@ export function ChatChannelsProvider({
     setError(null);
 
     try {
-      // Use SSR data if available, otherwise fetch org channels
-      // This skips the client-side fetch when we have SSR data
-      const orgDataPromise = hasSSRFilterData
-        ? Promise.resolve({ channelIds: orgChannelIds, platformMode: isPlatformMode })
-        : fetchOrgChannels();
+      // Always fetch org channels for icon data (even if we have SSR filter data)
+      // The SSR data doesn't include icons, so we need a fresh fetch
+      const orgDataPromise = fetchOrgChannels();
 
-      // Fetch org channels (or use SSR) and Stream channels in parallel
+      // Fetch org channels and Stream channels in parallel
       // OPTIMIZATION: Reduced limit from 50 to 20, added state: false for faster query
       const [orgData, channelResponse] = await Promise.all([
         orgDataPromise,
@@ -375,15 +388,15 @@ export function ChatChannelsProvider({
         ),
       ]);
 
-      // Store org channel data (updates state if fetched fresh)
-      if (!hasSSRFilterData) {
-        setOrgChannelIds(orgData.channelIds);
-        setIsPlatformMode(orgData.platformMode);
-      }
+      // Store org channel data (IDs, icons, platform mode)
+      setOrgChannelIds(orgData.channelIds);
+      setOrgChannelIcons(orgData.iconMap);
+      setIsPlatformMode(orgData.platformMode);
 
-      // Process channels using current filter data (SSR or fetched)
-      const filterOrgIds = hasSSRFilterData ? orgChannelIds : orgData.channelIds;
-      const filterPlatformMode = hasSSRFilterData ? isPlatformMode : orgData.platformMode;
+      // Process channels using fetched filter data
+      const filterOrgIds = orgData.channelIds;
+      const filterPlatformMode = orgData.platformMode;
+      const iconMap = orgData.iconMap;
 
       const previews: ChannelPreview[] = [];
       for (const channel of channelResponse) {
@@ -393,7 +406,8 @@ export function ChatChannelsProvider({
           userSquadChannelIds,
           filterPlatformMode,
           true, // With SSR data, we always have squad filter data ready
-          client.userID!
+          client.userID!,
+          iconMap
         );
         if (preview) {
           previews.push(preview);
@@ -483,7 +497,8 @@ export function ChatChannelsProvider({
               userSquadChannelIds,
               isPlatformMode,
               true, // With SSR data, we always have filter data ready
-              client.userID!
+              client.userID!,
+              orgChannelIcons
             );
             if (preview) {
               return [preview, ...prev];
@@ -529,6 +544,7 @@ export function ChatChannelsProvider({
     [
       client,
       orgChannelIds,
+      orgChannelIcons,
       userSquadChannelIds,
       isPlatformMode,
       processChannel,

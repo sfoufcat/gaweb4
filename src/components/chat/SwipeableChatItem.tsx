@@ -132,10 +132,13 @@ export function SwipeableChatItem({
 
   return (
     <div className="relative overflow-hidden">
-      {/* Action buttons revealed on swipe */}
+      {/* Action buttons revealed on swipe - hidden when closed to prevent visual bleed-through */}
       <div
         className="absolute inset-y-0 right-0 flex items-stretch"
-        style={{ width: maxSwipe }}
+        style={{
+          width: maxSwipe,
+          visibility: translateX === 0 ? 'hidden' : 'visible',
+        }}
       >
         {actions.map((action, i) => {
           const isLast = i === actions.length - 1;

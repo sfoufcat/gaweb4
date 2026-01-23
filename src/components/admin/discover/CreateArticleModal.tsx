@@ -22,6 +22,9 @@ import { MediaUpload } from '@/components/admin/MediaUpload';
 import { AuthorSelector } from '@/components/admin/AuthorSelector';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { CategorySelector } from '@/components/admin/CategorySelector';
+import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
+import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
+import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 
 // Wizard step types
 type WizardStep = 'info' | 'details';
@@ -80,6 +83,11 @@ export function CreateArticleModal({
   const [createError, setCreateError] = useState<string | null>(null);
 
   const isMobile = useMediaQuery('(max-width: 768px)');
+
+  // Stripe Connect status for paid pricing
+  const { isConnected: stripeConnected, isLoading: stripeLoading, refetch: refetchStripe } = useStripeConnectStatus();
+  const [showStripeModal, setShowStripeModal] = useState(false);
+  const canAcceptPayments = stripeConnected || stripeLoading;
 
   // Track if this is the initial mount to skip animation on first open
   const isInitialMount = useRef(true);
@@ -270,6 +278,10 @@ export function CreateArticleModal({
                 error={createError}
                 programsApiEndpoint={programsApiEndpoint}
                 categoriesApiEndpoint={categoriesApiEndpoint}
+                stripeConnected={stripeConnected}
+                stripeLoading={stripeLoading}
+                canAcceptPayments={canAcceptPayments}
+                onOpenStripeModal={() => setShowStripeModal(true)}
               />
             </motion.div>
           )}
@@ -321,49 +333,63 @@ export function CreateArticleModal({
   // Render mobile drawer or desktop dialog
   if (isMobile) {
     return (
-      <Drawer open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-        <DrawerContent className="max-h-[90vh]">
-          {wizardContent}
-        </DrawerContent>
-      </Drawer>
+      <>
+        <Drawer open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+          <DrawerContent className="max-h-[90vh]">
+            {wizardContent}
+          </DrawerContent>
+        </Drawer>
+        <StripeConnectModal
+          isOpen={showStripeModal}
+          onClose={() => setShowStripeModal(false)}
+          onConnected={() => refetchStripe()}
+        />
+      </>
     );
   }
 
   return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-[100]" onClose={handleClose}>
-        {/* Backdrop */}
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 z-[99] bg-black/40 backdrop-blur-sm" />
-        </Transition.Child>
+    <>
+      <Transition appear show={isOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-[100]" onClose={handleClose}>
+          {/* Backdrop */}
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 z-[10000] bg-black/40 backdrop-blur-sm" />
+          </Transition.Child>
 
-        <div className="fixed inset-0 z-[100] overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
-                {wizardContent}
-              </Dialog.Panel>
-            </Transition.Child>
+          <div className="fixed inset-0 z-[10001] overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
+                  {wizardContent}
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
           </div>
-        </div>
-      </Dialog>
-    </Transition>
+        </Dialog>
+      </Transition>
+      <StripeConnectModal
+        isOpen={showStripeModal}
+        onClose={() => setShowStripeModal(false)}
+        onConnected={() => refetchStripe()}
+      />
+    </>
   );
 }
 
@@ -412,6 +438,7 @@ function InfoStep({
           uploadEndpoint={uploadEndpoint}
           hideLabel
           aspectRatio="16:9"
+          collapsiblePreview
         />
       </div>
 
@@ -442,9 +469,13 @@ interface DetailsStepProps {
   error: string | null;
   programsApiEndpoint: string;
   categoriesApiEndpoint: string;
+  stripeConnected: boolean;
+  stripeLoading: boolean;
+  canAcceptPayments: boolean;
+  onOpenStripeModal: () => void;
 }
 
-function DetailsStep({ data, onChange, error, programsApiEndpoint, categoriesApiEndpoint }: DetailsStepProps) {
+function DetailsStep({ data, onChange, error, programsApiEndpoint, categoriesApiEndpoint, stripeConnected, stripeLoading, canAcceptPayments, onOpenStripeModal }: DetailsStepProps) {
   return (
     <div className="space-y-5">
       {/* Category */}
@@ -494,33 +525,69 @@ function DetailsStep({ data, onChange, error, programsApiEndpoint, categoriesApi
             </span>
           </button>
           <button
-            onClick={() => onChange({ pricing: 'paid' })}
+            onClick={() => canAcceptPayments && onChange({ pricing: 'paid' })}
             className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
-              data.pricing === 'paid'
-                ? 'border-brand-accent bg-brand-accent/5'
-                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+              !canAcceptPayments
+                ? 'opacity-50 cursor-not-allowed border-[#e1ddd8] dark:border-[#262b35]'
+                : data.pricing === 'paid'
+                  ? 'border-brand-accent bg-brand-accent/5'
+                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
             }`}
           >
-            <DollarSign className={`w-4 h-4 ${data.pricing === 'paid' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
-            <span className={`font-semibold text-sm ${data.pricing === 'paid' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`}>
+            <DollarSign className={`w-4 h-4 ${data.pricing === 'paid' && canAcceptPayments ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+            <span className={`font-semibold text-sm ${data.pricing === 'paid' && canAcceptPayments ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`}>
               Paid
             </span>
           </button>
         </div>
 
-        {/* Price Input */}
-        {data.pricing === 'paid' && (
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">$</span>
-            <input
-              type="number"
-              value={data.price || ''}
-              onChange={(e) => onChange({ price: Math.max(0, parseInt(e.target.value) || 0) })}
-              placeholder="0"
-              className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
-            />
-          </div>
-        )}
+        {/* Stripe Warning & Price Input */}
+        <AnimatePresence mode="wait">
+          {data.pricing === 'paid' && (
+            <motion.div
+              key="paid-options"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-2 overflow-hidden"
+            >
+              {/* Stripe Warning */}
+              {!stripeLoading && !stripeConnected && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: 0.1 }}
+                >
+                  <StripeConnectWarning
+                    variant="inline"
+                    showCta={true}
+                    message="Connect Stripe to accept payments"
+                    subMessage="Set your price now — enable platform payments later."
+                    onConnectClick={onOpenStripeModal}
+                  />
+                </motion.div>
+              )}
+
+              {/* Price Input */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: stripeConnected ? 0 : 0.15 }}
+                className="relative"
+              >
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm font-medium">$</span>
+                <input
+                  type="number"
+                  value={data.price || ''}
+                  onChange={(e) => onChange({ price: Math.max(0, parseInt(e.target.value) || 0) })}
+                  placeholder="9"
+                  className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Visibility */}

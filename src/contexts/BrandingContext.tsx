@@ -60,6 +60,8 @@ interface BrandingContextType {
   coachingPromo: TenantCoachingPromoData;
   // Whether social feed is enabled for this org (from Edge Config for instant SSR)
   feedEnabled: boolean;
+  // Update feed enabled state (for instant UI feedback after toggle)
+  setFeedEnabled: (enabled: boolean) => void;
   // Menu empty state behaviors (from Edge Config for instant SSR)
   programEmptyStateBehavior: EmptyStateBehavior;
   squadEmptyStateBehavior: EmptyStateBehavior;
@@ -194,7 +196,7 @@ export function BrandingProvider({
     initialCoachingPromo || DEFAULT_TENANT_COACHING_PROMO
   );
   // Initialize feed enabled from SSR for instant nav rendering
-  const [feedEnabled] = useState<boolean>(initialFeedEnabled);
+  const [feedEnabled, setFeedEnabled] = useState<boolean>(initialFeedEnabled);
   // Initialize empty state behaviors from SSR for instant nav rendering
   const [programEmptyStateBehavior] = useState<EmptyStateBehavior>(initialProgramEmptyStateBehavior);
   const [squadEmptyStateBehavior] = useState<EmptyStateBehavior>(initialSquadEmptyStateBehavior);
@@ -340,6 +342,7 @@ export function BrandingProvider({
         branding,
         coachingPromo,
         feedEnabled,
+        setFeedEnabled,
         programEmptyStateBehavior,
         squadEmptyStateBehavior,
         isLoading,
@@ -550,11 +553,52 @@ export function useCoachingPromo() {
 
 /**
  * Hook to check if social feed is enabled for the current org
- * Uses Edge Config value from SSR for instant rendering (no flash)
+ * Uses Edge Config value from SSR for instant rendering.
+ * On localhost (dev), syncs with API since Edge Config doesn't work locally.
  */
 export function useFeedEnabled() {
-  const { feedEnabled } = useBranding();
+  const { feedEnabled, setFeedEnabled, isDefault } = useBranding();
+  const [hasSynced, setHasSynced] = useState(false);
+
+  // On localhost dev, fetch the actual feedEnabled value from API
+  // Edge Config doesn't work locally, so SSR value may be stale
+  useEffect(() => {
+    const isLocalhost = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    // Only sync on localhost, only once, and only on tenant domains
+    if (hasSynced || isDefault || !isLocalhost) return;
+
+    const syncFeedEnabled = async () => {
+      try {
+        const response = await fetch('/api/coach/feed-settings');
+        if (response.ok) {
+          const data = await response.json();
+          const apiFeedEnabled = data.feedEnabled === true;
+          if (apiFeedEnabled !== feedEnabled) {
+            setFeedEnabled(apiFeedEnabled);
+          }
+        }
+      } catch {
+        // Ignore errors - keep SSR value
+      } finally {
+        setHasSynced(true);
+      }
+    };
+
+    syncFeedEnabled();
+  }, [hasSynced, isDefault, feedEnabled, setFeedEnabled]);
+
   return feedEnabled;
+}
+
+/**
+ * Hook to get feed enabled state and setter
+ * Use this in components that need to update the feed enabled state (e.g., FeedSettingsToggle)
+ */
+export function useFeedEnabledState() {
+  const { feedEnabled, setFeedEnabled } = useBranding();
+  return { feedEnabled, setFeedEnabled };
 }
 
 /**

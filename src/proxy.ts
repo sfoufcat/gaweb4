@@ -191,23 +191,69 @@ function getDevTenantOverride(request: NextRequest): string | null {
   if (process.env.NODE_ENV !== 'development') {
     return null;
   }
-  
+
+  const pathname = request.nextUrl.pathname;
+
+  // 1. Check URL param (highest priority - allows switching tenants)
   const tenantParam = request.nextUrl.searchParams.get('tenant');
   if (tenantParam) {
+    // Only log page requests to reduce noise
+    if (!pathname.startsWith('/api/') && !pathname.startsWith('/_next/')) {
+      console.log(`[DEV_TENANT] Using tenant param: ${tenantParam}`);
+    }
     return tenantParam.toLowerCase();
   }
-  
+
+  // 2. Check header
   const tenantHeader = request.headers.get('x-dev-tenant');
   if (tenantHeader) {
     return tenantHeader.toLowerCase();
   }
-  
+
+  // 3. Check cookie (persists across navigation)
+  const tenantCookie = request.cookies.get('dev-tenant')?.value;
+  if (tenantCookie) {
+    return tenantCookie.toLowerCase();
+  }
+
   return null;
 }
 
 // =============================================================================
 // HELPERS
 // =============================================================================
+
+/**
+ * Create a redirect response that preserves the dev-tenant cookie in development.
+ * This ensures the tenant context survives redirects within the middleware.
+ */
+function createRedirectWithDevTenant(
+  url: string | URL,
+  request: NextRequest,
+  status: 301 | 302 = 302
+): NextResponse {
+  const response = NextResponse.redirect(url, status);
+
+  // In development, preserve the dev-tenant cookie on redirects
+  if (process.env.NODE_ENV === 'development') {
+    const tenantParam = request.nextUrl.searchParams.get('tenant');
+    const tenantCookie = request.cookies.get('dev-tenant')?.value;
+    const tenant = tenantParam || tenantCookie;
+
+    if (tenant) {
+      console.log(`[DEV_TENANT] Preserving dev-tenant cookie on redirect: ${tenant}`);
+      response.cookies.set('dev-tenant', tenant.toLowerCase(), {
+        httpOnly: false,
+        secure: false,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24, // 24 hours
+      });
+    }
+  }
+
+  return response;
+}
 
 // Helper to check if user has active billing
 function hasActiveBilling(status?: BillingStatus, periodEnd?: string): boolean {
@@ -490,21 +536,52 @@ async function resolveTenantFromApi(
 }
 
 /**
+ * In-memory cache for dev mode tenant resolution
+ * Prevents repeated slow API calls when Edge Config is unavailable
+ */
+const devTenantCache = new Map<string, { result: ResolvedTenant | null; timestamp: number }>();
+const DEV_CACHE_TTL = 5 * 60 * 1000; // 5 minutes in dev
+
+/**
  * Resolve tenant - tries Edge Config first, falls back to API
+ * In development, caches results to avoid repeated slow API calls
  */
 async function resolveTenant(
   subdomain?: string,
   customDomain?: string
 ): Promise<ResolvedTenant | null> {
+  const cacheKey = subdomain || customDomain || '';
+
+  // In development, check in-memory cache first (skip the slow API fallback)
+  if (process.env.NODE_ENV === 'development' && cacheKey) {
+    const cached = devTenantCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < DEV_CACHE_TTL) {
+      return cached.result;
+    }
+  }
+
   // Try Edge Config first (ultra-fast, ~0ms)
   const edgeResult = await resolveTenantFromEdgeConfig(subdomain, customDomain);
   if (edgeResult) {
+    // Cache successful Edge Config result in dev
+    if (process.env.NODE_ENV === 'development' && cacheKey) {
+      devTenantCache.set(cacheKey, { result: edgeResult, timestamp: Date.now() });
+    }
     return edgeResult;
   }
-  
+
   // Fallback to API (slower but ensures new tenants work)
   console.log(`[MIDDLEWARE] Edge Config miss for ${subdomain || customDomain}, falling back to API`);
-  return resolveTenantFromApi(subdomain, customDomain);
+  const apiResult = await resolveTenantFromApi(subdomain, customDomain);
+  console.log(`[MIDDLEWARE] API fallback result: ${apiResult ? `orgId=${apiResult.orgId}` : 'not found'}`);
+
+  // Cache API result in dev - but only cache successful results
+  // Don't cache null results to allow retries (e.g., if server is still starting up)
+  if (process.env.NODE_ENV === 'development' && cacheKey && apiResult) {
+    devTenantCache.set(cacheKey, { result: apiResult, timestamp: Date.now() });
+  }
+
+  return apiResult;
 }
 
 // =============================================================================
@@ -514,7 +591,7 @@ async function resolveTenant(
 export const proxy = clerkMiddleware(async (auth, request) => {
   const hostname = request.headers.get('host') || 'localhost:3000';
   const pathname = request.nextUrl.pathname;
-  
+
   // ==========================================================================
   // STATIC FILE BYPASS (Safety check - should already be excluded by matcher)
   // ==========================================================================
@@ -680,18 +757,28 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   let tenantConfigData: TenantConfigData | null = null;  // Store branding data for cookie
   
   // Check for dev override first
+  // Skip tenant resolution on error pages to prevent infinite redirect loops
+  const isErrorPage = pathname === '/tenant-not-found' || pathname === '/access-denied';
   const devOverride = getDevTenantOverride(request);
-  if (devOverride) {
+  if (devOverride && !isErrorPage) {
     const resolved = await resolveTenant(devOverride);
     if (resolved) {
       tenantOrgId = resolved.orgId;
       tenantSubdomain = resolved.subdomain;
       tenantConfigData = resolved.configData || null;
       isTenantMode = true;
+    } else if (process.env.NODE_ENV === 'development') {
+      // In development, if tenant resolution fails (e.g., server just restarted, API not ready),
+      // allow the request to proceed without tenant context rather than redirecting to error page.
+      // The cookie is preserved so resolution can succeed on subsequent requests once API is ready.
+      console.warn(`[MIDDLEWARE] Dev tenant override "${devOverride}" not found yet (server starting?), proceeding without tenant context`);
+      // Continue without tenant mode - pages will fall back to platform behavior
     } else {
-      // Dev override specified but not found - redirect to not found
-      console.warn(`[MIDDLEWARE] Dev tenant override "${devOverride}" not found`);
-      return NextResponse.redirect(new URL('/tenant-not-found', request.url));
+      // In production, dev overrides should never be used, but if somehow set, clear and redirect
+      console.warn(`[MIDDLEWARE] Dev tenant override "${devOverride}" not found, clearing cookie`);
+      const response = NextResponse.redirect(new URL('/tenant-not-found', request.url));
+      response.cookies.delete('dev-tenant');
+      return response;
     }
   }
   // Mobile app support: Accept x-org-id header for tenant context
@@ -887,7 +974,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       // The onboarding page will check their state and redirect to subdomain if needed
       if (userId) {
         console.log(`[PROXY] Marketing domain: authenticated user ${userId} accessing ${pathname}, redirecting to onboarding`);
-        return NextResponse.redirect(new URL('/coach/onboarding/profile', request.url), 302);
+        return createRedirectWithDevTenant(new URL('/coach/onboarding/profile', request.url), request, 302);
       }
       
       // Not authenticated - send to sign-in with return URL
@@ -899,7 +986,8 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   
   // Platform admin domain: Restrict to super_admins only
   // Regular users and coaches should use their tenant subdomains, not app.coachful.co
-  if (isPlatformAdminDomain(hostname)) {
+  // Skip this check if we're in tenant mode (e.g., dev override with ?tenant= param)
+  if (isPlatformAdminDomain(hostname) && !isTenantMode) {
     // Allow public routes (auth, api, static assets, access-denied page)
     const isPlatformPublicRoute = 
       pathname.startsWith('/sign-in') ||
@@ -978,7 +1066,30 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       headers: requestHeaders,
     },
   });
-  
+
+  // ==========================================================================
+  // DEV TENANT COOKIE (persists ?tenant= param across navigation)
+  // ==========================================================================
+
+  if (process.env.NODE_ENV === 'development') {
+    // If tenant param is in URL, set cookie to persist it
+    const tenantParam = request.nextUrl.searchParams.get('tenant');
+    if (tenantParam) {
+      console.log(`[DEV_TENANT] Setting dev-tenant cookie: ${tenantParam.toLowerCase()}`);
+      response.cookies.set('dev-tenant', tenantParam.toLowerCase(), {
+        httpOnly: false, // Allow JS access for debugging
+        secure: false,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24, // 24 hours
+      });
+    }
+    // If ?tenant=clear is passed, clear the cookie
+    if (tenantParam === 'clear') {
+      response.cookies.delete('dev-tenant');
+    }
+  }
+
   // ==========================================================================
   // TENANT COOKIE MANAGEMENT (with proper isolation)
   // ==========================================================================
@@ -1249,7 +1360,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
         
         if (!hasActiveBilling(billingStatus, billingPeriodEnd)) {
           console.log(`[MIDDLEWARE] Coach ${userId} blocked: no billing, redirecting to coach onboarding`);
-          return NextResponse.redirect(new URL('/coach/onboarding/plans', request.url));
+          return createRedirectWithDevTenant(new URL('/coach/onboarding/plans', request.url), request);
         }
       }
       
@@ -1259,7 +1370,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       
       if (!hasActiveBilling(billingStatus, billingPeriodEnd)) {
         console.log(`[MIDDLEWARE] User ${userId} blocked: billingStatus=${billingStatus}, redirecting to /onboarding/plan`);
-        return NextResponse.redirect(new URL('/onboarding/plan', request.url));
+        return createRedirectWithDevTenant(new URL('/onboarding/plan', request.url), request);
       }
     }
   }
@@ -1319,8 +1430,16 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     const orgGraceEndsAt = orgMetadata?.graceEndsAt || edgeConfigSubscription?.graceEndsAt;
     
     // Check subscription is active (includes grace period for payment failures)
-    const isSubscriptionActive = hasActiveOrgSubscription(orgStatus, orgPeriodEnd, orgCancelAtPeriodEnd, orgGraceEndsAt);
-    
+    let isSubscriptionActive = hasActiveOrgSubscription(orgStatus, orgPeriodEnd, orgCancelAtPeriodEnd, orgGraceEndsAt);
+
+    // DEV BYPASS: Skip subscription check when using dev tenant override
+    if (process.env.NODE_ENV === 'development' && isTenantMode) {
+      const devTenant = request.cookies.get('dev-tenant')?.value || request.nextUrl.searchParams.get('tenant');
+      if (devTenant) {
+        isSubscriptionActive = true;
+      }
+    }
+
     if (!isSubscriptionActive) {
       // COACH: Allow access to plan/reactivate pages, block everything else
       if (isStaffRole(role)) {
@@ -1335,7 +1454,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
               { status: 503 }
             );
           }
-          return NextResponse.redirect(new URL('/coach/reactivate', request.url));
+          return createRedirectWithDevTenant(new URL('/coach/reactivate', request.url), request);
         }
       }
       
@@ -1353,7 +1472,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
               { status: 503 }
             );
           }
-          return NextResponse.redirect(new URL('/platform-deactivated', request.url));
+          return createRedirectWithDevTenant(new URL('/platform-deactivated', request.url), request);
         }
       }
     }
@@ -1372,7 +1491,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
             { status: 403 }
           );
         }
-        return NextResponse.redirect(new URL('/coach/plan?upgrade=pro', request.url));
+        return createRedirectWithDevTenant(new URL('/coach/plan?upgrade=pro', request.url), request);
       }
       
       // Check Scale routes
@@ -1384,7 +1503,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
             { status: 403 }
           );
         }
-        return NextResponse.redirect(new URL('/coach/plan?upgrade=scale', request.url));
+        return createRedirectWithDevTenant(new URL('/coach/plan?upgrade=scale', request.url), request);
       }
     }
   }

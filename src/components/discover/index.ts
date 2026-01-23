@@ -23,3 +23,4 @@ export { ContentPurchaseSheet } from './ContentPurchaseSheet';
 export { ContentLandingPage } from './ContentLandingPage';
 export { AddToContentButton } from './AddToContentButton';
 export { CopyLinkButton } from './CopyLinkButton';
+export { DiscoverEmptyState } from './DiscoverEmptyState';

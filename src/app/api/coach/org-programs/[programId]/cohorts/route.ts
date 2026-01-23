@@ -222,6 +222,9 @@ export async function POST(
       }
     }
 
+    // Default keepChatOpen to true for new cohorts (chat stays active when squad closes)
+    const keepChatOpen = body.keepChatOpen !== false;
+
     const cohortData: Omit<ProgramCohort, 'id' | 'createdAt' | 'updatedAt'> & { createdAt: FieldValue; updatedAt: FieldValue } = {
       programId,
       organizationId,
@@ -235,6 +238,7 @@ export async function POST(
       gracePeriodEndDate: gracePeriodEndDate.toISOString().split('T')[0],
       closingNotificationSent: false,
       convertSquadsToCommunity: convertSquadsToCommunity === true,
+      keepChatOpen, // If true, chat stays active when squad closes (default: true for new cohorts)
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };

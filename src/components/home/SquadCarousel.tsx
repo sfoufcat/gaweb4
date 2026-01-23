@@ -7,7 +7,13 @@ import Image from 'next/image';
 import { Users, ChevronRight, MessageCircle, Plus } from 'lucide-react';
 import type { Squad, SquadMember } from '@/types';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { ChatSheet } from '@/components/chat/ChatSheet';
+import dynamic from 'next/dynamic';
+
+// Lazy load ChatSheet - heavy component only needed when chat is opened
+const ChatSheet = dynamic(
+  () => import('@/components/chat/ChatSheet').then(mod => ({ default: mod.ChatSheet })),
+  { ssr: false }
+);
 
 interface SquadData {
   squad: Squad | null;
@@ -65,10 +71,12 @@ export function SquadCarousel({
   }, [isMobile, router]);
   
   // Build list of squads that exist
-  // Type is determined by whether the squad has a programId (program squad) or not (standalone squad)
+  // HIDDEN: Standalone squads disabled - squads now managed via Program > Community
+  // Only show program squads now
   const squads = [
     resolvedProgramSquad.squad && { ...resolvedProgramSquad, type: 'program' as const },
-    resolvedStandaloneSquad.squad && { ...resolvedStandaloneSquad, type: 'standalone' as const },
+    // Standalone squads hidden from carousel
+    // resolvedStandaloneSquad.squad && { ...resolvedStandaloneSquad, type: 'standalone' as const },
   ].filter(Boolean) as (SquadData & { type: 'program' | 'standalone' })[];
   
   const handleScroll = useCallback(() => {
@@ -107,58 +115,10 @@ export function SquadCarousel({
     );
   }
   
+  // HIDDEN: Standalone squads disabled - squads now managed via Program > Community
+  // When user has no program squads, return null instead of showing create/find CTA
   if (squads.length === 0) {
-    // Coach empty state - show create mastermind CTA
-    if (isCoach) {
-      return (
-        <Link 
-          href="/coach?tab=squads"
-          className="block bg-gradient-to-br from-[#F0F7FF] to-[#E4F0FF] dark:from-[#141a25] dark:to-[#101520] border border-[#C8DFFF] dark:border-[#2d3d55] rounded-[20px] p-5 hover:shadow-lg hover:border-[#5B9BF5]/60 dark:hover:border-[#5B9BF5]/40 transition-all duration-300 group"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-[#C8DFFF] dark:bg-[#2d3d55] flex items-center justify-center flex-shrink-0">
-              <Plus className="w-7 h-7 text-[#3B7DD8] dark:text-[#7EB3F5]" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
-                Create your {squadTermLower}
-              </h3>
-              <p className="font-albert text-[14px] text-text-secondary leading-[1.4]">
-                Build a {squadTermLower} group for your clients to stay accountable together.
-              </p>
-            </div>
-            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#5B9BF5] dark:bg-[#3B7DD8] flex items-center justify-center group-hover:opacity-90 group-hover:scale-105 transition-all">
-              <ChevronRight className="w-5 h-5 text-white" />
-            </div>
-          </div>
-        </Link>
-      );
-    }
-    
-    // Member empty state - show find mastermind CTA
-    return (
-      <Link 
-        href="/squad"
-        className="block bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] p-5 hover:shadow-lg hover:border-brand-accent dark:border-brand-accent/40 dark:hover:border-brand-accent/40 transition-all duration-300 group"
-      >
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-brand-accent bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] dark:bg-none flex items-center justify-center flex-shrink-0">
-            <Users className="w-7 h-7 text-[#4A5D54] dark:text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
-              Find a {squadTermLower}
-            </h3>
-            <p className="font-albert text-[14px] text-text-secondary leading-[1.4]">
-              Join a {squadTermLower} of growth-minded people and stay accountable together.
-            </p>
-          </div>
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-brand-accent flex items-center justify-center group-hover:opacity-90 group-hover:scale-105 transition-all">
-            <ChevronRight className="w-5 h-5 text-white" />
-          </div>
-        </div>
-      </Link>
-    );
+    return null;
   }
   
   // Single squad - show glass card design

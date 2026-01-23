@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Layers, UsersRound, ChevronDown, ChevronUp, Code, FileText, BookOpen, Calendar, Download, Link as LinkIcon } from 'lucide-react';
+import { X, Layers, UsersRound, ChevronDown, ChevronUp, Code, FileText, BookOpen, Calendar, Download, Link as LinkIcon, Plus } from 'lucide-react';
+import { NewProgramModal } from '../programs/NewProgramModal';
 import type { Funnel, Program, FunnelTargetType, FunnelContentType, FunnelTrackingConfig } from '@/types';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import {
@@ -57,6 +58,8 @@ interface FunnelEditorDialogProps {
   demoMode?: boolean;
   /** Called in demo mode instead of making API calls */
   onDemoSave?: (data: FunnelFormData, isEdit: boolean) => void;
+  /** Called to refresh programs list after creating a new program */
+  onRefreshPrograms?: () => Promise<void>;
 }
 
 const CONTENT_TYPES: { value: FunnelContentType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -67,20 +70,22 @@ const CONTENT_TYPES: { value: FunnelContentType; label: string; icon: React.Comp
   { value: 'link', label: 'Link', icon: LinkIcon },
 ];
 
-export function FunnelEditorDialog({ 
-  mode, 
-  funnel, 
+export function FunnelEditorDialog({
+  mode,
+  funnel,
   programs,
   squads = [],
   initialContentType,
-  onClose, 
+  onClose,
   onSaved,
   demoMode = false,
   onDemoSave,
+  onRefreshPrograms,
 }: FunnelEditorDialogProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showProgramWizard, setShowProgramWizard] = useState(false);
 
   // Content items state
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
@@ -318,18 +323,7 @@ export function FunnelEditorDialog({
                     <Layers className="w-4 h-4" />
                     Program
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, targetType: 'squad', programId: '', contentId: '' }))}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-albert font-medium transition-all ${
-                      formData.targetType === 'squad'
-                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                    }`}
-                  >
-                    <UsersRound className="w-4 h-4" />
-                    Squad
-                  </button>
+                  {/* HIDDEN: Standalone squads disabled - squads now managed via Program > Community */}
                   <button
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, targetType: 'content', programId: '', squadId: '' }))}
@@ -354,48 +348,45 @@ export function FunnelEditorDialog({
                   <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                     Program *
                   </label>
-                  <select
-                    value={formData.programId}
-                    onChange={(e) => setFormData(prev => ({ ...prev, programId: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                    required={formData.targetType === 'program'}
-                  >
-                    <option value="">Select a program</option>
-                    {programs.map(program => (
-                      <option key={program.id} value={program.id}>
-                        {program.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Squad Selector (when targetType is squad) */}
-              {formData.targetType === 'squad' && (
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                    Squad *
-                  </label>
-                  <select
-                    value={formData.squadId}
-                    onChange={(e) => setFormData(prev => ({ ...prev, squadId: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                    required={formData.targetType === 'squad'}
-                  >
-                    <option value="">Select a squad</option>
-                    {squads.map(squad => (
-                      <option key={squad.id} value={squad.id}>
-                        {squad.name}
-                      </option>
-                    ))}
-                  </select>
-                  {squads.length === 0 && (
-                    <p className="text-xs text-amber-600 font-albert mt-1">
-                      No squads available. Create a squad first.
-                    </p>
+                  {programs.length === 0 ? (
+                    <div className="p-6 rounded-xl border border-dashed border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#13171f] text-center">
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-brand-accent/10 flex items-center justify-center">
+                        <Layers className="w-6 h-6 text-brand-accent" />
+                      </div>
+                      <h4 className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1">
+                        No programs yet
+                      </h4>
+                      <p className="text-sm text-[#8c8c8c] dark:text-[#7f8694] font-albert mb-4">
+                        Create a program first to set up a funnel for it
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowProgramWizard(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-accent text-white text-sm font-medium hover:bg-brand-accent/90 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Create Program
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.programId}
+                      onChange={(e) => setFormData(prev => ({ ...prev, programId: e.target.value }))}
+                      className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                      required={formData.targetType === 'program'}
+                    >
+                      <option value="">Select a program</option>
+                      {programs.map(program => (
+                        <option key={program.id} value={program.id}>
+                          {program.name}
+                        </option>
+                      ))}
+                    </select>
                   )}
                 </div>
               )}
+
+              {/* HIDDEN: Standalone squads disabled - squads now managed via Program > Community */}
 
               {/* Content Type and Item Selector (when targetType is content) */}
               {formData.targetType === 'content' && (
@@ -747,55 +738,82 @@ export function FunnelEditorDialog({
     </form>
   );
 
+  // Program creation wizard modal
+  const programWizardModal = (
+    <NewProgramModal
+      isOpen={showProgramWizard}
+      onClose={() => setShowProgramWizard(false)}
+      onCreateFromScratch={() => {
+        setShowProgramWizard(false);
+        onClose(); // Close funnel dialog so user can edit the program
+      }}
+      onProgramCreated={async (programId) => {
+        setShowProgramWizard(false);
+        // Refresh programs list and auto-select the new program
+        if (onRefreshPrograms) {
+          await onRefreshPrograms();
+        }
+        setFormData(prev => ({ ...prev, programId }));
+      }}
+      demoMode={demoMode}
+    />
+  );
+
   // Desktop: Dialog
   if (isDesktop) {
     return (
-      <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-2xl p-0 gap-0 rounded-2xl max-h-[85vh] flex flex-col overflow-hidden">
-          <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
-            <DialogTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              {mode === 'create' ? 'Create New Funnel' : 'Edit Funnel'}
-            </DialogTitle>
-            <DialogDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-              {mode === 'create'
-                ? 'Create a custom entry point for your program, squad, or content'
-                : 'Update your funnel settings'}
-            </DialogDescription>
-          </DialogHeader>
-          {formContent}
-        </DialogContent>
-      </Dialog>
+      <>
+        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+          <DialogContent className="max-w-2xl p-0 gap-0 rounded-2xl max-h-[85vh] flex flex-col overflow-hidden">
+            <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
+              <DialogTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                {mode === 'create' ? 'Create New Funnel' : 'Edit Funnel'}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+                {mode === 'create'
+                  ? 'Create a custom entry point for your program, squad, or content'
+                  : 'Update your funnel settings'}
+              </DialogDescription>
+            </DialogHeader>
+            {formContent}
+          </DialogContent>
+        </Dialog>
+        {programWizardModal}
+      </>
     );
   }
 
   // Mobile: Drawer (slide up bottom sheet)
   return (
-    <Drawer open={true} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="max-h-[90vh] flex flex-col">
-        <DrawerHeader className="px-4 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                {mode === 'create' ? 'Create New Funnel' : 'Edit Funnel'}
-              </DrawerTitle>
-              <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-                {mode === 'create'
-                  ? 'Create a custom entry point'
-                  : 'Update your funnel settings'}
-              </DrawerDescription>
+    <>
+      <Drawer open={true} onOpenChange={(open) => !open && onClose()}>
+        <DrawerContent className="max-h-[90vh] flex flex-col">
+          <DrawerHeader className="px-4 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  {mode === 'create' ? 'Create New Funnel' : 'Edit Funnel'}
+                </DrawerTitle>
+                <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                  {mode === 'create'
+                    ? 'Create a custom entry point'
+                    : 'Update your funnel settings'}
+                </DrawerDescription>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+              >
+                <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-            >
-              <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-            </button>
-          </div>
-        </DrawerHeader>
-        {formContent}
-        {/* Safe area padding for mobile */}
-        <div className="h-6 flex-shrink-0" />
-      </DrawerContent>
-    </Drawer>
+          </DrawerHeader>
+          {formContent}
+          {/* Safe area padding for mobile */}
+          <div className="h-6 flex-shrink-0" />
+        </DrawerContent>
+      </Drawer>
+      {programWizardModal}
+    </>
   );
 }

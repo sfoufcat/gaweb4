@@ -98,8 +98,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Squad filter - default to standalone
-  const [squadFilter, setSquadFilter] = useState<SquadFilterType>('standalone');
+  // Squad filter - default to all program squads (standalone squads hidden)
+  const [squadFilter, setSquadFilter] = useState<SquadFilterType>('program-all');
   
   // Search query for filtering squads by name
   const [searchQuery, setSearchQuery] = useState('');
@@ -790,32 +790,19 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-48 p-2">
                   <div className="flex flex-col gap-1">
+                    {/* Standalone filter hidden - squads now managed via Program > Community */}
                     <button
-                      onClick={() => setSquadFilter('standalone')}
+                      onClick={() => setSquadFilter('program-all')}
                       className={cn(
                         "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all text-left",
-                        squadFilter === 'standalone'
+                        squadFilter === 'program-all' || squadFilter === 'program-group' || squadFilter === 'program-individual'
                           ? "bg-brand-accent/10 text-brand-accent"
                           : "text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]"
                       )}
                     >
-                      <Users className="w-3.5 h-3.5" />
-                      Standalone ({standaloneCount})
+                      <Target className="w-3.5 h-3.5" />
+                      Program Squads ({programCount})
                     </button>
-                    {programCount > 0 && (
-                      <button
-                        onClick={() => setSquadFilter('program-all')}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium font-albert transition-all text-left",
-                          squadFilter === 'program-all' || squadFilter === 'program-group' || squadFilter === 'program-individual'
-                            ? "bg-brand-accent/10 text-brand-accent"
-                            : "text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]"
-                        )}
-                      >
-                        <Target className="w-3.5 h-3.5" />
-                        Program ({programCount})
-                      </button>
-                    )}
                     <button
                       onClick={() => setSquadFilter('all')}
                       className={cn(
@@ -864,8 +851,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
               {isSearchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
             </button>
 
-            {/* Plus button */}
-            {!isDemoMode && (
+            {/* Plus button - HIDDEN: Standalone squad creation disabled, squads now created via Program enrollment */}
+            {/* {!isDemoMode && (
               <button
                 onClick={() => {
                   // Check squad limit before opening modal
@@ -880,7 +867,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
               >
                 <Plus className="w-4 h-4" />
               </button>
-            )}
+            )} */}
           </div>
         </div>
 
@@ -889,23 +876,15 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads', initialS
           <div className="text-center py-12 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
             <Users className="w-12 h-12 text-[#d1ccc5] dark:text-[#7d8190] mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              {displaySquads.length === 0 ? 'No squads yet' : 'No squads match this filter'}
+              {displaySquads.length === 0 ? 'No program squads yet' : 'No squads match this filter'}
             </h3>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1 mb-4">
-              {displaySquads.length === 0 
-                ? 'Create your first squad'
-                : 'Try selecting a different filter or create a new squad'
+              {displaySquads.length === 0
+                ? 'Squads are automatically created when clients enroll in your programs'
+                : 'Try selecting a different filter'
               }
             </p>
-            {displaySquads.length === 0 && !isDemoMode && (
-              <Button
-                onClick={() => setIsCreateSquadModalOpen(true)}
-                className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Squad
-              </Button>
-            )}
+            {/* Create Squad button hidden - squads now auto-created via Program enrollment */}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

@@ -1,8 +1,14 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { Phone, DollarSign, CreditCard, Bell, Clock, Minus, Plus, Eye, X } from 'lucide-react';
+import { useState, useCallback, useEffect, Fragment } from 'react';
+import { Phone, DollarSign, CreditCard, Bell, Clock, Minus, Plus, Eye, X, Lock } from 'lucide-react';
+import { Dialog, Transition } from '@headlessui/react';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useBrandingValues } from '@/contexts/BrandingContext';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
+import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
+import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 import type { CallPricingModel, CoachCallSettings } from '@/types';
 
 const PRICING_MODEL_OPTIONS: { value: CallPricingModel; label: string; description: string }[] = [
@@ -69,6 +75,12 @@ export function CallPricingSettings() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  // Stripe Connect status for paid pricing models
+  const { isConnected: stripeConnected, isLoading: stripeLoading, refetch: refetchStripe } = useStripeConnectStatus();
+  const [showStripeModal, setShowStripeModal] = useState(false);
+  const canAcceptPayments = stripeConnected || stripeLoading;
 
   // Fetch current settings
   useEffect(() => {
@@ -215,35 +227,62 @@ export function CallPricingSettings() {
         </div>
 
         <div className="space-y-2">
-          {PRICING_MODEL_OPTIONS.map((option) => (
-            <label
-              key={option.value}
-              className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                settings.pricingModel === option.value
-                  ? 'border-brand-accent bg-brand-accent/5'
-                  : 'border-[#e8e4df] dark:border-[#262b35] hover:bg-[#f5f3f0] dark:hover:bg-[#1a1f2a]'
-              }`}
-              style={settings.pricingModel === option.value ? { borderColor: accentColor } : undefined}
-            >
-              <input
-                type="radio"
-                name="pricingModel"
-                value={option.value}
-                checked={settings.pricingModel === option.value}
-                onChange={() => saveSettings({ pricingModel: option.value })}
-                disabled={isSaving}
-                className="mt-0.5"
-                style={{ accentColor }}
-              />
-              <div>
-                <p className="font-medium text-[14px] text-[#1a1a1a] dark:text-[#faf8f6]">
-                  {option.label}
-                </p>
-                <p className="text-[12px] text-[#8a857f]">{option.description}</p>
-              </div>
-            </label>
-          ))}
+          {PRICING_MODEL_OPTIONS.map((option) => {
+            const isPaidModel = option.value !== 'free';
+            const isDisabled = isPaidModel && !canAcceptPayments;
+
+            return (
+              <label
+                key={option.value}
+                className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                  isDisabled
+                    ? 'opacity-50 cursor-not-allowed border-[#e8e4df] dark:border-[#262b35]'
+                    : settings.pricingModel === option.value
+                      ? 'border-brand-accent bg-brand-accent/5 cursor-pointer'
+                      : 'border-[#e8e4df] dark:border-[#262b35] hover:bg-[#f5f3f0] dark:hover:bg-[#1a1f2a] cursor-pointer'
+                }`}
+                style={settings.pricingModel === option.value && !isDisabled ? { borderColor: accentColor } : undefined}
+              >
+                <input
+                  type="radio"
+                  name="pricingModel"
+                  value={option.value}
+                  checked={settings.pricingModel === option.value}
+                  onChange={() => !isDisabled && saveSettings({ pricingModel: option.value })}
+                  disabled={isSaving || isDisabled}
+                  className="mt-0.5"
+                  style={{ accentColor }}
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-[14px] text-[#1a1a1a] dark:text-[#faf8f6]">
+                      {option.label}
+                    </p>
+                    {isDisabled && (
+                      <Lock className="w-3 h-3 text-[#8a857f]" />
+                    )}
+                  </div>
+                  <p className="text-[12px] text-[#8a857f]">
+                    {isDisabled ? 'Stripe required' : option.description}
+                  </p>
+                </div>
+              </label>
+            );
+          })}
         </div>
+
+        {/* Stripe Warning when trying to use paid models without Stripe */}
+        {!canAcceptPayments && settings.pricingModel === 'free' && (
+          <div className="mt-4">
+            <StripeConnectWarning
+              variant="inline"
+              showCta={true}
+              message="Connect Stripe to enable paid call pricing"
+              subMessage="Charge clients per call or offer monthly call credits."
+              onConnectClick={() => setShowStripeModal(true)}
+            />
+          </div>
+        )}
 
         {/* Conditional Price Input */}
         {showPriceInput && (
@@ -467,20 +506,9 @@ export function CallPricingSettings() {
       </div>
 
       {/* Client Preview Modal */}
-      {showPreview && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-backdrop-fade-in"
-            onClick={() => setShowPreview(false)}
-          />
-          <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1a1f2a] rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl animate-modal-slide-up sm:animate-modal-zoom-in">
-            <button
-              type="button"
-              onClick={() => setShowPreview(false)}
-              className="absolute top-4 right-4 p-1 rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
-            >
-              <X className="w-5 h-5 text-[#8a857f]" />
-            </button>
+      {isMobile ? (
+        <Drawer open={showPreview} onOpenChange={setShowPreview}>
+          <DrawerContent className="h-auto max-h-[80vh] px-6 pb-8">
             <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-1">
               Client Dashboard Preview
             </h3>
@@ -488,9 +516,63 @@ export function CallPricingSettings() {
               This card appears on your clients&apos; dashboard homepage
             </p>
             <ClientCallPreview settings={settings} />
-          </div>
-        </div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Transition appear show={showPreview} as={Fragment}>
+          <Dialog as="div" className="relative z-[10000]" onClose={() => setShowPreview(false)}>
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+            </Transition.Child>
+
+            <div className="fixed inset-0 overflow-y-auto">
+              <div className="flex min-h-full items-center justify-center p-4">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-out duration-300"
+                  enterFrom="opacity-0 scale-95"
+                  enterTo="opacity-100 scale-100"
+                  leave="ease-in duration-200"
+                  leaveFrom="opacity-100 scale-100"
+                  leaveTo="opacity-0 scale-95"
+                >
+                  <Dialog.Panel className="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-[#171b22] p-6 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
+                    <button
+                      type="button"
+                      onClick={() => setShowPreview(false)}
+                      className="absolute top-4 right-4 p-1 rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+                    >
+                      <X className="w-5 h-5 text-[#8a857f]" />
+                    </button>
+                    <Dialog.Title className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-1">
+                      Client Dashboard Preview
+                    </Dialog.Title>
+                    <p className="text-sm text-[#8a857f] mb-4">
+                      This card appears on your clients&apos; dashboard homepage
+                    </p>
+                    <ClientCallPreview settings={settings} />
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
+            </div>
+          </Dialog>
+        </Transition>
       )}
+
+      {/* Stripe Connect Modal */}
+      <StripeConnectModal
+        isOpen={showStripeModal}
+        onClose={() => setShowStripeModal(false)}
+        onConnected={() => refetchStripe()}
+      />
     </div>
   );
 }

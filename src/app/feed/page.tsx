@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useUser, useAuth } from '@clerk/nextjs';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useFeed, type FeedPost, usePost } from '@/hooks/useFeed';
-import { useBrandingValues, useMenuTitles, useFeedEnabled } from '@/contexts/BrandingContext';
+import { useBrandingValues, useMenuTitles, useFeedEnabled, useFeedEnabledState } from '@/contexts/BrandingContext';
 import { useSquad } from '@/hooks/useSquad';
 import { useFeedStories, useCurrentUserHasStory } from '@/hooks/useFeedStories';
 import { FeedList } from '@/components/feed/FeedList';
@@ -51,7 +51,38 @@ export default function FeedPage() {
 
   const { colors, isDefault } = useBrandingValues();
   const { feed: feedTitle } = useMenuTitles();
-  const feedEnabled = useFeedEnabled(); // From Edge Config via SSR - instant, no flash
+  const { feedEnabled: contextFeedEnabled, setFeedEnabled } = useFeedEnabledState();
+  const [isCheckingFeed, setIsCheckingFeed] = useState(!contextFeedEnabled);
+  const [feedEnabled, setLocalFeedEnabled] = useState(contextFeedEnabled);
+
+  // If SSR/context says feed is disabled, verify with API (handles post-toggle navigation)
+  useEffect(() => {
+    if (contextFeedEnabled) {
+      setLocalFeedEnabled(true);
+      setIsCheckingFeed(false);
+      return;
+    }
+
+    // SSR said disabled - check API to verify (in case toggle just happened)
+    const checkFeedEnabled = async () => {
+      try {
+        const response = await fetch('/api/coach/feed-settings');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.feedEnabled) {
+            setLocalFeedEnabled(true);
+            setFeedEnabled(true); // Update context for sidebar
+          }
+        }
+      } catch {
+        // Ignore errors - keep SSR value
+      } finally {
+        setIsCheckingFeed(false);
+      }
+    };
+
+    checkFeedEnabled();
+  }, [contextFeedEnabled, setFeedEnabled]);
 
   // Check if user is a coach/admin (can access post settings)
   const publicMetadata = sessionClaims?.publicMetadata as {
@@ -217,7 +248,25 @@ export default function FeedPage() {
     router.push('/feed');
   }, [router]);
 
-  // Feed not enabled for this org (instant check from SSR Edge Config)
+  // Still checking if feed is enabled (only when SSR said no)
+  if (isCheckingFeed) {
+    return (
+      <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">
+        <section className="px-4 pt-5 pb-4">
+          <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">
+            {feedTitle}
+          </h1>
+        </section>
+        <section className="px-4 py-8">
+          <div className="flex items-center justify-center py-16">
+            <div className="w-8 h-8 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // Feed not enabled for this org
   if (!feedEnabled) {
     return (
       <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">

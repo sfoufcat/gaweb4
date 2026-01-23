@@ -2,7 +2,8 @@
 
 import { useState, useEffect, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { X, Target, DollarSign, TrendingUp, Calendar } from 'lucide-react';
+import { X, Target, DollarSign, TrendingUp, Calendar as CalendarIcon } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -189,8 +190,8 @@ export function CoachGoalModal({
                 onClick={() => handlePresetSelect(preset.value)}
                 className={`p-3 rounded-xl border transition-all duration-200 text-center ${
                   revenueGoal === preset.value && !showCustomInput
-                    ? 'bg-brand-accent/10 dark:bg-brand-accent/20 border-brand-accent/50 dark:border-brand-accent/30'
-                    : 'bg-[#faf8f6] dark:bg-[#1d222b] border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                    ? 'bg-[#f3f1ef] dark:bg-[#262b35] border-brand-accent/50 dark:border-brand-accent/30 shadow-sm'
+                    : 'bg-white dark:bg-[#171b22] border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
                 }`}
               >
                 <p className="font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] text-lg">
@@ -220,8 +221,7 @@ export function CoachGoalModal({
               </div>
               <Button
                 onClick={handleCustomGoalSubmit}
-                size="sm"
-                className="px-4 rounded-xl"
+                className="px-5 py-2.5 h-auto rounded-xl"
               >
                 Set
               </Button>
@@ -250,8 +250,8 @@ export function CoachGoalModal({
                 onClick={() => handleDeadlinePresetSelect(preset.days)}
                 className={`p-3 rounded-xl border transition-all duration-200 text-center ${
                   selectedDeadlinePreset === preset.days && !showCustomDate
-                    ? 'bg-brand-accent/10 dark:bg-brand-accent/20 border-brand-accent/50 dark:border-brand-accent/30'
-                    : 'bg-[#faf8f6] dark:bg-[#1d222b] border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                    ? 'bg-[#f3f1ef] dark:bg-[#262b35] border-brand-accent/50 dark:border-brand-accent/30 shadow-sm'
+                    : 'bg-white dark:bg-[#171b22] border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
                 }`}
               >
                 <p className="font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
@@ -266,21 +266,16 @@ export function CoachGoalModal({
 
           {/* Custom date picker */}
           {showCustomDate ? (
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8c8a87] dark:text-[#8b8f9a]" />
-                <input
-                  type="date"
-                  value={deadline}
-                  onChange={(e) => {
-                    setDeadline(e.target.value);
-                    setSelectedDeadlinePreset(null);
-                  }}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white dark:bg-[#1d222b] border border-[#e1ddd8] dark:border-[#262b35] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
-                />
-              </div>
-            </div>
+            <DatePicker
+              value={deadline}
+              onChange={(date) => {
+                setDeadline(date);
+                setSelectedDeadlinePreset(null);
+              }}
+              minDate={new Date()}
+              displayFormat="MMM d, yyyy"
+              placeholder="Select deadline"
+            />
           ) : (
             <button
               onClick={() => {
@@ -306,7 +301,7 @@ export function CoachGoalModal({
           </div>
 
           <div className="flex items-center gap-2 text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-            <Calendar className="w-4 h-4" />
+            <CalendarIcon className="w-4 h-4" />
             <span>by {formatDate(deadline)}</span>
             <span className="text-[#8c8a87] dark:text-[#8b8f9a]">
               ({daysLeft} {daysLeft === 1 ? 'day' : 'days'} from now)

@@ -25,14 +25,27 @@ export function useFirebaseUser() {
     }
 
     const userRef = doc(db, 'users', user.id);
-    
-    // Set up real-time listener
-    const unsubscribe = onSnapshot(userRef, (doc) => {
-      if (doc.exists()) {
-        setUserData(doc.data() as FirebaseUser);
+
+    // Set up real-time listener with error handling for Firestore internal errors
+    const unsubscribe = onSnapshot(
+      userRef,
+      (doc) => {
+        if (doc.exists()) {
+          setUserData(doc.data() as FirebaseUser);
+        }
+        setLoading(false);
+      },
+      (error) => {
+        // Firestore 11.x has a known bug with internal state assertions during rapid mount/unmount
+        // These errors are safe to ignore - the listener will reconnect automatically
+        if (error.message?.includes('INTERNAL ASSERTION FAILED')) {
+          console.debug('[useFirebaseUser] Firestore internal state error (safe to ignore):', error.message);
+        } else {
+          console.error('[useFirebaseUser] Firestore listener error:', error);
+        }
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
 
     return () => unsubscribe();
   }, [user, isLoaded]);

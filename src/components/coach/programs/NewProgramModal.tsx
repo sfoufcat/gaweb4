@@ -18,14 +18,15 @@ import {
   DollarSign,
   FileEdit,
   Rocket,
-  Upload,
   Loader2,
   RefreshCw,
   Clock,
   UserPlus,
   Sparkles,
   Archive,
-  MessageCircle
+  MessageCircle,
+  ChevronDown,
+  Settings2
 } from 'lucide-react';
 import {
   Drawer,
@@ -41,6 +42,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { MediaUpload } from '@/components/admin/MediaUpload';
+import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
+import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
+import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 
 // Wizard step types
 type WizardStep = 'type' | 'structure' | 'details' | 'settings' | 'cohort';
@@ -51,6 +56,7 @@ interface CohortFormData {
   startDate: string;
   maxEnrollment: string;
   afterProgramEnds: 'close' | 'community';
+  keepChatOpen: boolean; // If true, chat stays active when squad closes (default: true)
 }
 
 // Wizard data collected across steps
@@ -124,9 +130,11 @@ export function NewProgramModal({
   const [step, setStep] = useState<WizardStep>('type');
   const [wizardData, setWizardData] = useState<ProgramWizardData>(DEFAULT_WIZARD_DATA);
   const [isCreating, setIsCreating] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [showCloseWarning, setShowCloseWarning] = useState(false);
+  
+  // Stripe Connect status for payment features
+  const { isConnected: stripeConnected, isLoading: stripeLoading, refetch: refetchStripe } = useStripeConnectStatus();
+  const [showStripeModal, setShowStripeModal] = useState(false);
 
   // Cohort step state
   const [createdProgramId, setCreatedProgramId] = useState<string | null>(null);
@@ -135,6 +143,7 @@ export function NewProgramModal({
     startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
     maxEnrollment: '',
     afterProgramEnds: 'close',
+    keepChatOpen: true, // Default: keep chat active after program ends
   });
   const [isCreatingCohort, setIsCreatingCohort] = useState(false);
   const [cohortError, setCohortError] = useState<string | null>(null);
@@ -175,6 +184,7 @@ export function NewProgramModal({
     startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
     maxEnrollment: '',
     afterProgramEnds: 'close',
+    keepChatOpen: true, // Default: keep chat active after program ends
   });
 
   // Helper to clear draft from localStorage
@@ -220,7 +230,6 @@ export function NewProgramModal({
 
       // Always reset these states
       setIsCreating(false);
-      setUploadError(null);
       setShowCloseWarning(false);
       setCreatedProgramId(null);
       setIsCreatingCohort(false);
@@ -364,6 +373,7 @@ export function NewProgramModal({
           startDate: cohortData.startDate,
           maxEnrollment: cohortData.maxEnrollment ? parseInt(cohortData.maxEnrollment) : undefined,
           convertSquadsToCommunity: cohortData.afterProgramEnds === 'community',
+          keepChatOpen: cohortData.keepChatOpen,
         }),
       });
 
@@ -379,38 +389,6 @@ export function NewProgramModal({
       setCohortError(error instanceof Error ? error.message : 'Failed to create cohort. Please try again.');
     } finally {
       setIsCreatingCohort(false);
-    }
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingImage(true);
-    setUploadError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', 'program-cover');
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Upload failed');
-      }
-
-      const data = await response.json();
-      updateWizardData({ coverImage: data.url });
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      setUploadError(error instanceof Error ? error.message : 'Failed to upload image. Please try again.');
-    } finally {
-      setUploadingImage(false);
     }
   };
 
@@ -609,9 +587,6 @@ export function NewProgramModal({
               <DetailsStep
                 data={wizardData}
                 onChange={updateWizardData}
-                onImageUpload={handleImageUpload}
-                uploadingImage={uploadingImage}
-                uploadError={uploadError}
               />
             </motion.div>
           )}
@@ -628,6 +603,9 @@ export function NewProgramModal({
               <SettingsStep
                 data={wizardData}
                 onChange={updateWizardData}
+                stripeConnected={stripeConnected}
+                stripeLoading={stripeLoading}
+                onOpenStripeModal={() => setShowStripeModal(true)}
               />
             </motion.div>
           )}
@@ -724,16 +702,24 @@ export function NewProgramModal({
   // Render mobile drawer or desktop dialog
   if (isMobile) {
     return (
-      <Drawer open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-        <DrawerContent className="h-[90vh] max-h-[90vh]">
-          {wizardContent}
-        </DrawerContent>
-      </Drawer>
+      <>
+        <Drawer open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+          <DrawerContent className="h-[90vh] max-h-[90vh]">
+            {wizardContent}
+          </DrawerContent>
+        </Drawer>
+        <StripeConnectModal
+          isOpen={showStripeModal}
+          onClose={() => setShowStripeModal(false)}
+          onConnected={() => refetchStripe()}
+        />
+      </>
     );
   }
 
   return (
-    <Transition appear show={isOpen} as={Fragment}>
+    <>
+      <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-[10002]" onClose={handleClose}>
         {/* Backdrop */}
         <Transition.Child
@@ -767,6 +753,12 @@ export function NewProgramModal({
         </div>
       </Dialog>
     </Transition>
+    <StripeConnectModal
+      isOpen={showStripeModal}
+      onClose={() => setShowStripeModal(false)}
+      onConnected={() => refetchStripe()}
+    />
+    </>
   );
 }
 
@@ -885,7 +877,7 @@ function StructureStep({ data, onChange }: StructureStepProps) {
       <div className="text-center">
         <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-[#f3f1ef] dark:bg-[#1d222b] border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
           <button
-            onClick={() => onChange({ durationType: 'fixed' })}
+            onClick={() => onChange({ durationType: 'fixed', recurring: false })}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
               data.durationType === 'fixed'
                 ? 'bg-white dark:bg-[#262b35] text-brand-accent shadow-sm'
@@ -1001,12 +993,9 @@ function StructureStep({ data, onChange }: StructureStepProps) {
 interface DetailsStepProps {
   data: ProgramWizardData;
   onChange: (updates: Partial<ProgramWizardData>) => void;
-  onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  uploadingImage: boolean;
-  uploadError: string | null;
 }
 
-function DetailsStep({ data, onChange, onImageUpload, uploadingImage, uploadError }: DetailsStepProps) {
+function DetailsStep({ data, onChange }: DetailsStepProps) {
   return (
     <div className="space-y-5">
       {/* Program Name */}
@@ -1042,49 +1031,16 @@ function DetailsStep({ data, onChange, onImageUpload, uploadingImage, uploadErro
         <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
           Cover Image <span className="text-red-500">*</span>
         </label>
-
-        {data.coverImage ? (
-          <div className="relative rounded-xl overflow-hidden border border-[#e1ddd8] dark:border-[#262b35]">
-            <img
-              src={data.coverImage}
-              alt="Cover preview"
-              className="w-full h-40 object-cover"
-            />
-            <button
-              onClick={() => onChange({ coverImage: undefined })}
-              className="absolute top-2 right-2 p-2 rounded-lg bg-black/50 text-white hover:bg-black/70 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ) : (
-          <label className="flex flex-col items-center justify-center w-full h-40 rounded-xl border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#1d222b] cursor-pointer hover:border-brand-accent/50 transition-colors">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={onImageUpload}
-              className="hidden"
-            />
-            {uploadingImage ? (
-              <Loader2 className="w-8 h-8 text-brand-accent animate-spin" />
-            ) : (
-              <>
-                <div className="w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center mb-3">
-                  <Upload className="w-6 h-6 text-brand-accent" />
-                </div>
-                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  Drop image here or click to upload
-                </p>
-              </>
-            )}
-          </label>
-        )}
-
-        {uploadError && (
-          <p className="text-sm text-red-500 dark:text-red-400 mt-2 font-albert">
-            {uploadError}
-          </p>
-        )}
+        <MediaUpload
+          value={data.coverImage || ''}
+          onChange={(url) => onChange({ coverImage: url || undefined })}
+          folder="programs"
+          type="image"
+          uploadEndpoint="/api/coach/org-upload-media"
+          hideLabel
+          aspectRatio="16:9"
+          collapsiblePreview
+        />
       </div>
     </div>
   );
@@ -1096,10 +1052,14 @@ function DetailsStep({ data, onChange, onImageUpload, uploadingImage, uploadErro
 interface SettingsStepProps {
   data: ProgramWizardData;
   onChange: (updates: Partial<ProgramWizardData>) => void;
+  stripeConnected: boolean;
+  stripeLoading: boolean;
+  onOpenStripeModal: () => void;
 }
 
-function SettingsStep({ data, onChange }: SettingsStepProps) {
+function SettingsStep({ data, onChange, stripeConnected, stripeLoading, onOpenStripeModal }: SettingsStepProps) {
   const isEvergreen = data.durationType === 'evergreen';
+  const canAcceptPayments = stripeConnected || stripeLoading;
   
   return (
     <div className="space-y-6">
@@ -1163,74 +1123,105 @@ function SettingsStep({ data, onChange }: SettingsStepProps) {
           </button>
         </div>
 
-        {/* Price Input */}
-        {data.pricing === 'paid' && (
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5f5a55] dark:text-[#b2b6c2] font-albert">$</span>
-            <input
-              type="number"
-              value={data.price}
-              onChange={(e) => onChange({ price: Math.max(0, parseInt(e.target.value) || 0) })}
-              className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
-            />
-          </div>
-        )}
-      </div>
+        {/* Stripe Warning & Price Input with Animation */}
+        <AnimatePresence mode="wait">
+          {data.pricing === 'paid' && (
+            <motion.div
+              key="paid-options"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-3 overflow-hidden"
+            >
+              {/* Stripe Warning when Paid is selected but Stripe not connected */}
+              {!canAcceptPayments && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: 0.1 }}
+                >
+                  <StripeConnectWarning
+                    variant="inline"
+                    showCta={true}
+                    message="Connect Stripe to accept payments"
+                    subMessage="For now, you can add prepaid clients manually who paid outside the platform."
+                    onConnectClick={onOpenStripeModal}
+                  />
+                </motion.div>
+              )}
 
-      {/* Recurring */}
-      <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
-          Recurring Billing
-        </label>
-        <div className={`p-4 rounded-xl border ${
-          !isEvergreen
-            ? 'bg-[#f5f3f0] dark:bg-[#1d222b]/50 border-[#e1ddd8] dark:border-[#262b35] opacity-60'
-            : 'bg-[#faf8f6] dark:bg-[#1d222b]/50 border-[#e1ddd8] dark:border-[#262b35]'
-        }`}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <RefreshCw className={`w-5 h-5 ${data.recurring && isEvergreen ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
-              <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                Auto-renew subscription
-              </span>
-            </div>
-            <Switch
-              checked={data.recurring}
-              onCheckedChange={(checked) => onChange({ recurring: checked })}
-              disabled={!isEvergreen}
-            />
-          </div>
-
-          {!isEvergreen && (
-            <p className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
-              Recurring billing is only available for evergreen programs
-            </p>
-          )}
-
-          {isEvergreen && data.recurring && (
-            <div className="mt-3 pt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
-              <label className="block text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-                Billing Cadence
-              </label>
-              <Select
-                value={data.recurringCadence}
-                onValueChange={(value) => onChange({ recurringCadence: value as ProgramWizardData['recurringCadence'] })}
+              {/* Price Input */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: canAcceptPayments ? 0 : 0.15 }}
+                className="relative"
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="biweekly">Bi-weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                <span className="absolute left-4 top-3.5 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-medium">$</span>
+                <input
+                  type="number"
+                  value={data.price}
+                  onChange={(e) => onChange({ price: Math.max(0, parseInt(e.target.value) || 0) })}
+                  placeholder="297"
+                  className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
+                />
+                {!canAcceptPayments && (
+                  <p className="mt-1.5 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                    Set your price now — you can enable platform payments later.
+                  </p>
+                )}
+              </motion.div>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
+
+      {/* Recurring - only for evergreen programs */}
+      {isEvergreen && (
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+            Recurring Billing
+          </label>
+          <div className="p-4 rounded-xl border bg-[#faf8f6] dark:bg-[#1d222b]/50 border-[#e1ddd8] dark:border-[#262b35]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <RefreshCw className={`w-5 h-5 ${data.recurring ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  Auto-renew subscription
+                </span>
+              </div>
+              <Switch
+                checked={data.recurring}
+                onCheckedChange={(checked) => onChange({ recurring: checked })}
+              />
+            </div>
+
+            {data.recurring && (
+              <div className="mt-3 pt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                <label className="block text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                  Billing Cadence
+                </label>
+                <Select
+                  value={data.recurringCadence}
+                  onValueChange={(value) => onChange({ recurringCadence: value as ProgramWizardData['recurringCadence'] })}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Status */}
       <div>
@@ -1328,6 +1319,7 @@ function CohortStep({ data, onChange, programData, endDateDisplay, error }: Coho
           onChange={(date) => onChange({ startDate: date })}
           minDate={new Date()}
           placeholder="Select start date"
+          zIndex="z-[10003]"
         />
         {/* End Date Display */}
         <div className="mt-2 flex items-center gap-2">
@@ -1370,65 +1362,64 @@ function CohortStep({ data, onChange, programData, endDateDisplay, error }: Coho
         </p>
       </div>
 
-      {/* After Program Ends - Only for fixed duration */}
+      {/* Advanced Settings - Collapsible */}
       {isFixed && (
-        <div>
-          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
-            After Program Ends
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => onChange({ afterProgramEnds: 'close' })}
-              className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
-                data.afterProgramEnds === 'close'
-                  ? 'border-brand-accent bg-brand-accent/5'
-                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
-              }`}
-            >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                data.afterProgramEnds === 'close'
-                  ? 'bg-brand-accent/20'
-                  : 'bg-[#f3f1ef] dark:bg-[#262b35]'
-              }`}>
-                <Archive className={`w-5 h-5 ${data.afterProgramEnds === 'close' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+        <details className="group">
+          <summary className="flex items-center gap-2 cursor-pointer list-none text-sm font-medium text-[#8c8a87] dark:text-[#8b8f9a] font-albert hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors">
+            <Settings2 className="w-4 h-4" />
+            <span>Advanced Settings</span>
+            <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+          </summary>
+
+          <div className="mt-4 space-y-4 pl-6 border-l-2 border-[#e1ddd8] dark:border-[#262b35]">
+            {/* Chat after program ends */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+                Chat after program ends
+              </label>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => onChange({ keepChatOpen: true })}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                    data.keepChatOpen
+                      ? 'border-brand-accent bg-brand-accent/5'
+                      : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                  }`}
+                >
+                  <MessageCircle className={`w-5 h-5 ${data.keepChatOpen ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                  <div>
+                    <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] block">
+                      Keep chat
+                    </span>
+                    <span className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
+                      Members can continue chatting
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange({ keepChatOpen: false })}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                    !data.keepChatOpen
+                      ? 'border-brand-accent bg-brand-accent/5'
+                      : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                  }`}
+                >
+                  <Archive className={`w-5 h-5 ${!data.keepChatOpen ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                  <div>
+                    <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] block">
+                      Archive chat
+                    </span>
+                    <span className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
+                      Chat becomes read-only
+                    </span>
+                  </div>
+                </button>
               </div>
-              <div>
-                <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] block">
-                  Close Squad
-                </span>
-                <span className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
-                  Squad is archived when program ends
-                </span>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange({ afterProgramEnds: 'community' })}
-              className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
-                data.afterProgramEnds === 'community'
-                  ? 'border-brand-accent bg-brand-accent/5'
-                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
-              }`}
-            >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                data.afterProgramEnds === 'community'
-                  ? 'bg-brand-accent/20'
-                  : 'bg-[#f3f1ef] dark:bg-[#262b35]'
-              }`}>
-                <MessageCircle className={`w-5 h-5 ${data.afterProgramEnds === 'community' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
-              </div>
-              <div>
-                <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] block">
-                  Convert to Community
-                </span>
-                <span className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
-                  Squad becomes standalone community
-                </span>
-              </div>
-            </button>
+            </div>
           </div>
-        </div>
+        </details>
       )}
 
       {/* Error Message */}

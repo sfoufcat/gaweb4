@@ -160,6 +160,33 @@ export function getDebugTimeString(timezone: string): string {
   }
 }
 
+// ============================================================================
+// Date utilities for alignment (moved here to avoid circular imports)
+// ============================================================================
+
+/**
+ * Get today's date in YYYY-MM-DD format
+ * Uses timezone-aware calculation when timezone is provided
+ * @param timezone Optional IANA timezone string (e.g., "Europe/Amsterdam")
+ */
+export function getTodayDate(timezone?: string): string {
+  if (timezone) {
+    return getTodayInTimezone(timezone);
+  }
+  return new Date().toISOString().split('T')[0];
+}
+
+/**
+ * Get yesterday's date in YYYY-MM-DD format
+ * @param timezone Optional IANA timezone string
+ */
+export function getYesterdayDate(timezone?: string): string {
+  const today = getTodayDate(timezone);
+  const date = new Date(today + 'T12:00:00'); // Use noon to avoid DST issues
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().split('T')[0];
+}
+
 
 
 

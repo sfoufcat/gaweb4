@@ -41,6 +41,9 @@ export async function GET(req: Request) {
       invites = invites.filter(inv => inv.funnelId === funnelId);
     }
 
+    // Filter out cancelled invites (hidden from list)
+    invites = invites.filter(inv => inv.status !== 'cancelled');
+
     // Sort by createdAt descending and limit
     invites = invites
       .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
@@ -56,10 +59,11 @@ export async function GET(req: Request) {
 /**
  * POST /api/coach/org-invites
  * Create a new invite code
- * 
+ *
  * Body:
  * - funnelId: string (required)
- * - email?: string (for email invite)
+ * - email?: string (single email - legacy)
+ * - emails?: string[] (multiple emails - batch invite)
  * - name?: string (invitee name)
  * - paymentStatus?: 'required' | 'pre_paid' | 'free'
  * - prePaidNote?: string
@@ -67,18 +71,20 @@ export async function GET(req: Request) {
  * - targetCohortId?: string
  * - maxUses?: number
  * - expiresAt?: string (ISO date)
- * - sendEmail?: boolean (send invite email if email is provided)
+ * - sendEmail?: boolean (send invite email to all emails)
  */
 export async function POST(req: Request) {
   try {
     const { userId, organizationId } = await requireCoachWithOrg();
 
     const body = await req.json();
-    const { 
-      funnelId, 
-      email, 
+    const {
+      funnelId,
+      email,
+      emails: rawEmails,
       name,
       paymentStatus = 'required',
+      prePaidAmount,  // Amount in cents
       prePaidNote,
       targetSquadId,
       targetCohortId,
@@ -86,6 +92,14 @@ export async function POST(req: Request) {
       expiresAt,
       sendEmail = false,
     } = body;
+
+    // Normalize emails: support both single email and array
+    let emails: string[] = [];
+    if (rawEmails && Array.isArray(rawEmails)) {
+      emails = rawEmails.map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+    } else if (email) {
+      emails = [email.trim().toLowerCase()];
+    }
 
     if (!funnelId) {
       return NextResponse.json({ error: 'Funnel ID is required' }, { status: 400 });
@@ -128,10 +142,15 @@ export async function POST(req: Request) {
       programId: funnel.programId,
       organizationId,
       createdBy: userId,
-      email: email?.trim().toLowerCase() || undefined,
+      // Store emails - use single email for backwards compatibility, array for batch
+      email: emails.length === 1 ? emails[0] : undefined,
+      emails: emails.length > 1 ? emails : undefined,
       name: name?.trim() || undefined,
+      emailRequired: emails.length > 0 ? true : undefined, // Lock signup to these emails if provided
       paymentStatus,
+      prePaidAmount: prePaidAmount ? Number(prePaidAmount) : undefined,
       prePaidNote: prePaidNote?.trim() || undefined,
+      prePaidAt: paymentStatus === 'pre_paid' && prePaidAmount ? now : undefined,
       targetSquadId: targetSquadId || undefined,
       targetCohortId: targetCohortId || undefined,
       maxUses: maxUses || undefined,
@@ -145,38 +164,45 @@ export async function POST(req: Request) {
 
     console.log(`[COACH_ORG_INVITES] Created invite ${inviteCode} for funnel ${funnelId}`);
 
-    // Send invite email if requested and email is provided
-    let emailSent = false;
-    if (sendEmail && inviteData.email && (program || squad)) {
-      try {
-        const emailResult = await sendInviteEmail({
-          email: inviteData.email,
-          name: inviteData.name,
-          inviteCode,
-          funnelSlug: funnel.slug,
-          organizationId,
-          // Program funnel params
-          programSlug: program?.slug,
-          programName: program?.name,
-          // Squad funnel params
-          squadSlug: squad?.slug,
-          squadName: squad?.name,
-        });
-        emailSent = emailResult.success;
-        if (emailResult.success) {
-          console.log(`[COACH_ORG_INVITES] Sent invite email to ${inviteData.email}`);
-        } else {
-          console.error(`[COACH_ORG_INVITES] Failed to send invite email: ${emailResult.error}`);
+    // Send invite emails if requested and emails are provided
+    let emailsSent: string[] = [];
+    let emailsFailed: string[] = [];
+    if (sendEmail && emails.length > 0 && (program || squad)) {
+      for (const recipientEmail of emails) {
+        try {
+          const emailResult = await sendInviteEmail({
+            email: recipientEmail,
+            name: inviteData.name,
+            inviteCode,
+            funnelSlug: funnel.slug,
+            organizationId,
+            // Program funnel params
+            programSlug: program?.slug,
+            programName: program?.name,
+            // Squad funnel params
+            squadSlug: squad?.slug,
+            squadName: squad?.name,
+          });
+          if (emailResult.success) {
+            emailsSent.push(recipientEmail);
+            console.log(`[COACH_ORG_INVITES] Sent invite email to ${recipientEmail}`);
+          } else {
+            emailsFailed.push(recipientEmail);
+            console.error(`[COACH_ORG_INVITES] Failed to send invite email to ${recipientEmail}: ${emailResult.error}`);
+          }
+        } catch (emailError) {
+          emailsFailed.push(recipientEmail);
+          console.error('[COACH_ORG_INVITES] Error sending invite email:', emailError);
         }
-      } catch (emailError) {
-        console.error('[COACH_ORG_INVITES] Error sending invite email:', emailError);
       }
     }
 
     return NextResponse.json({
       success: true,
       invite: inviteData,
-      emailSent,
+      emailSent: emailsSent.length > 0,
+      emailsSent,
+      emailsFailed,
     });
   } catch (error) {
     console.error('[COACH_ORG_INVITES_POST]', error);
@@ -297,4 +323,49 @@ We can't wait to have you on board!
     text: textBody,
     organizationId,
   });
+}
+
+/**
+ * PATCH /api/coach/org-invites
+ * Cancel an invite (soft delete)
+ *
+ * Body:
+ * - inviteId: string (required)
+ */
+export async function PATCH(req: Request) {
+  try {
+    const { organizationId } = await requireCoachWithOrg();
+
+    const body = await req.json();
+    const { inviteId } = body;
+
+    if (!inviteId) {
+      return NextResponse.json({ error: 'Invite ID is required' }, { status: 400 });
+    }
+
+    // Get the invite
+    const inviteDoc = await adminDb.collection('program_invites').doc(inviteId).get();
+    if (!inviteDoc.exists) {
+      return NextResponse.json({ error: 'Invite not found' }, { status: 404 });
+    }
+
+    const invite = inviteDoc.data();
+
+    // Verify invite belongs to org
+    if (invite?.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Invite not found' }, { status: 404 });
+    }
+
+    // Set status to cancelled (soft delete)
+    await adminDb.collection('program_invites').doc(inviteId).update({
+      status: 'cancelled',
+    });
+
+    console.log(`[COACH_ORG_INVITES] Cancelled invite ${inviteId}`);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('[COACH_ORG_INVITES_PATCH]', error);
+    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+  }
 }

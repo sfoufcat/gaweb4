@@ -1,7 +1,28 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { MessageCircle, ChevronRight, ChevronLeft, Users, Megaphone, PartyPopper, Trophy, X, Pin, Calendar } from 'lucide-react';
+import {
+  MessageCircle,
+  ChevronRight,
+  ChevronLeft,
+  Users,
+  Megaphone,
+  PartyPopper,
+  Trophy,
+  X,
+  Pin,
+  Calendar,
+  Hash,
+  MessageSquare,
+  Sparkles,
+  Bell,
+  Star,
+  Heart,
+  Bookmark,
+  Globe,
+  Zap,
+  Coffee,
+} from 'lucide-react';
 import { useStreamChatClient } from '@/contexts/StreamChatContext';
 import { useChatChannels, type ChannelPreview } from '@/contexts/ChatChannelsContext';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
@@ -25,7 +46,8 @@ import { useSquad } from '@/hooks/useSquad';
 import { useCoachSquads } from '@/hooks/useCoachSquads';
 import { useCoachingContext } from '@/contexts/CoachingContext';
 import { generateAvatarUrl } from '@/lib/demo-data';
-import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { SwipeableChatItem, type SwipeAction } from '@/components/chat/SwipeableChatItem';
 import { ArchivedChatsLink } from '@/components/chat/ArchivedChatsLink';
 import { useChatPreferences } from '@/hooks/useChatPreferences';
@@ -62,6 +84,22 @@ function toChatChannelType(type: 'dm' | 'squad' | 'global' | 'coaching'): ChatCh
 // Import Stream Chat CSS
 import 'stream-chat-react/dist/css/v2/index.css';
 import '@/app/chat/chat-styles.css';
+
+// Icon map for org channel icons (matches ChannelManagementTab.tsx)
+const CHANNEL_ICONS: Record<string, React.ReactNode> = {
+  hash: <Hash className="w-5 h-5" />,
+  megaphone: <Megaphone className="w-5 h-5" />,
+  chat: <MessageSquare className="w-5 h-5" />,
+  sparkles: <Sparkles className="w-5 h-5" />,
+  bell: <Bell className="w-5 h-5" />,
+  star: <Star className="w-5 h-5" />,
+  heart: <Heart className="w-5 h-5" />,
+  bookmark: <Bookmark className="w-5 h-5" />,
+  calendar: <Calendar className="w-5 h-5" />,
+  globe: <Globe className="w-5 h-5" />,
+  zap: <Zap className="w-5 h-5" />,
+  coffee: <Coffee className="w-5 h-5" />,
+};
 
 interface ChatSheetProps {
   isOpen: boolean;
@@ -251,7 +289,12 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   }, [isOpen]);
 
   // Get icon for channel type
-  const getChannelIcon = (type: ChannelPreview['type'], channelId: string) => {
+  const getChannelIcon = (type: ChannelPreview['type'], channelId: string, icon?: string) => {
+    // Use custom icon from org channel config if available
+    if (icon && CHANNEL_ICONS[icon]) {
+      return <span className="text-brand-accent">{CHANNEL_ICONS[icon]}</span>;
+    }
+    // Fallback to hardcoded icons for legacy global channels
     if (channelId === ANNOUNCEMENTS_CHANNEL_ID) {
       return <Megaphone className="w-5 h-5 text-amber-500" />;
     }
@@ -472,6 +515,10 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       shouldScaleBackground={false}
     >
       <DrawerContent className="h-[85dvh] max-h-[85dvh] max-w-[500px] mx-auto flex flex-col overflow-hidden">
+        {/* Accessibility: Hidden title for screen readers */}
+        <VisuallyHidden>
+          <DrawerTitle>Messages</DrawerTitle>
+        </VisuallyHidden>
         {isDemoMode ? (
           // Demo mode: show mock chat interface
           <DemoChatSheetContent onClose={onClose} />
@@ -619,7 +666,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                                       className="object-cover"
                                     />
                                   ) : (
-                                    getChannelIcon(channelPreview.type, channelPreview.id)
+                                    getChannelIcon(channelPreview.type, channelPreview.id, channelPreview.icon)
                                   )}
                                 </div>
 
@@ -777,7 +824,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                                   className="object-cover"
                                 />
                               ) : (
-                                getChannelIcon(channelPreview.type, channelPreview.id)
+                                getChannelIcon(channelPreview.type, channelPreview.id, channelPreview.icon)
                               )}
                             </div>
 

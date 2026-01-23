@@ -274,7 +274,7 @@ export function AdminQuestionnairesSection({
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors disabled:opacity-70"
+              className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors disabled:opacity-70"
             >
               {creating ? (
                 <motion.span
@@ -285,6 +285,7 @@ export function AdminQuestionnairesSection({
               ) : (
                 <Plus className="w-4 h-4" />
               )}
+              <span className="hidden sm:inline text-[15px] font-medium">New Form</span>
             </button>
           </div>
         </div>

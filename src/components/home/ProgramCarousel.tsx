@@ -64,40 +64,9 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
   }
   
   if (enrollments.length === 0) {
-    // Coach empty state - show create program CTA
-    if (isCoach) {
-      return (
-        <Link 
-          href="/coach?tab=programs"
-          className="block bg-gradient-to-br from-[#F5F0FF] to-[#EDE4FF] dark:from-[#1a1625] dark:to-[#151220] border border-[#D8C8F8] dark:border-[#3d3055] rounded-[20px] p-5 hover:shadow-lg hover:border-[#9B7ED9]/60 dark:hover:border-[#9B7ED9]/40 transition-all duration-300 group"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-[#D8C8F8] dark:bg-[#3d3055] flex items-center justify-center flex-shrink-0">
-              <Plus className="w-7 h-7 text-[#7C5CBF] dark:text-[#B89EE8]" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
-                Create a program
-              </h3>
-              <p className="font-albert text-[14px] text-text-secondary leading-[1.4]">
-                Build structured coaching programs for your clients.
-              </p>
-            </div>
-            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#9B7ED9] dark:bg-[#7C5CBF] flex items-center justify-center group-hover:opacity-90 group-hover:scale-105 transition-all">
-              <ChevronRight className="w-5 h-5 text-white" />
-            </div>
-          </div>
-        </Link>
-      );
-    }
-    
-    // Member empty state - show discover CTA only if there are available programs
-    if (!hasAvailablePrograms) {
-      return null;
-    }
-    
+    // Show "Explore programs" CTA for all users - same experience for coaches and clients
     return (
-      <Link 
+      <Link
         href="/discover"
         className="block bg-[#ECFFF2] dark:bg-[#1a2e1f] border border-[#D3F0D8] dark:border-[#2E5435] rounded-[20px] p-5 hover:shadow-lg hover:border-[#4CAF51]/40 dark:hover:border-[#4CAF50]/40 transition-all duration-300 group"
       >

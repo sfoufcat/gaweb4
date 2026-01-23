@@ -30,6 +30,10 @@ interface SignupStepProps {
   organizationName?: string;
   // Subdomain for custom domain auth iframe (resolved from tenant)
   tenantSubdomain?: string | null;
+  // Locked email for invite-only funnels (user must sign up with this email)
+  lockedEmail?: string;
+  // Multiple allowed emails (batch invites) - user must sign up with one of these
+  lockedEmails?: string[];
 }
 
 // User state types for the 3 cases
@@ -101,6 +105,8 @@ export function SignupStep({
   organizationId,
   organizationName,
   tenantSubdomain,
+  lockedEmail,
+  lockedEmails,
 }: SignupStepProps) {
   const { isSignedIn, isLoaded, userId } = useAuth();
   const { user } = useUser();
@@ -620,8 +626,32 @@ export function SignupStep({
             className="w-full max-w-lg mx-auto"
           >
             <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
-              {/* OAuth Button */}
-              {config.showSocialLogin !== false && (
+              {/* Locked email notice for invite-only funnels - single email */}
+              {lockedEmail && (
+                <div className="mb-6 p-4 bg-brand-accent/5 border border-brand-accent/20 rounded-xl">
+                  <p className="text-sm text-brand-accent font-medium">
+                    This invite is for {lockedEmail}
+                  </p>
+                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                    Please sign up with this email address to continue.
+                  </p>
+                </div>
+              )}
+
+              {/* Batch invite notice - multiple allowed emails */}
+              {!lockedEmail && lockedEmails && lockedEmails.length > 0 && (
+                <div className="mb-6 p-4 bg-brand-accent/5 border border-brand-accent/20 rounded-xl">
+                  <p className="text-sm text-brand-accent font-medium">
+                    Private Invite
+                  </p>
+                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                    This invite is for specific email addresses. Please sign up with your invited email.
+                  </p>
+                </div>
+              )}
+
+              {/* OAuth Button - hide when email is locked to single address (OAuth could use different email) */}
+              {config.showSocialLogin !== false && !lockedEmail && (
                 <>
                   <div className="space-y-3">
                     <OAuthButton
@@ -660,6 +690,8 @@ export function SignupStep({
                   redirectUrl={`/join/callback?flowSessionId=${flowSessionId}`}
                   hideOAuth={true}
                   signInUrl={`/sign-in?redirect_url=${encodeURIComponent(`/join/callback?flowSessionId=${flowSessionId}`)}`}
+                  lockedEmail={lockedEmail}
+                  lockedEmails={lockedEmails}
                 />
               )}
             </div>

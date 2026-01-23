@@ -124,6 +124,8 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
   const [editingFunnelId, setEditingFunnelId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedProgramId, setSelectedProgramId] = useState<string>(programId || '');
+  // Track whether user explicitly navigated back (to prevent re-selection from URL)
+  const hasNavigatedBackRef = useRef(false);
   
   // Copy link feedback state
   const [copiedFunnelId, setCopiedFunnelId] = useState<string | null>(null);
@@ -319,6 +321,10 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
 
   // Restore funnel selection from URL param on mount
   useEffect(() => {
+    // Skip if user explicitly navigated back
+    if (hasNavigatedBackRef.current) {
+      return;
+    }
     if (initialFunnelId && displayFunnels.length > 0 && !editingFunnelId) {
       const funnel = displayFunnels.find(f => f.id === initialFunnelId);
       if (funnel) {
@@ -421,6 +427,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
   };
 
   const handleBackToList = () => {
+    hasNavigatedBackRef.current = true;
     setEditingFunnelId(null);
     setViewMode('list');
     fetchFunnels();
@@ -623,17 +630,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
           <Layers className="w-4 h-4" />
           Programs
         </button>
-        <button
-          onClick={() => setActiveTab('squad')}
-          className={`flex items-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-            activeTab === 'squad'
-              ? 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] shadow-sm'
-              : 'text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8]'
-          }`}
-        >
-          <UsersRound className="w-4 h-4" />
-          Squads
-        </button>
+        {/* HIDDEN: Standalone squads disabled - squads now managed via Program > Community */}
         <button
           onClick={() => setActiveTab('content')}
           className={`flex items-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-all ${
@@ -805,7 +802,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
           </h3>
           <p className="text-text-secondary dark:text-[#b2b6c2] mb-6">
             {activeTab === 'program' && 'Create your first funnel to start acquiring users for your programs.'}
-            {activeTab === 'squad' && 'Create a funnel to let users join squads directly.'}
+            {/* HIDDEN: Standalone squads disabled */}
             {activeTab === 'content' && `Create a funnel to sell or gate access to your ${selectedContentType}s.`}
           </p>
           <button
@@ -951,6 +948,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
             if (!isDemoMode) fetchFunnels();
           }}
           demoMode={isDemoMode}
+          onRefreshPrograms={fetchPrograms}
           onDemoSave={(formData) => {
             // Get target name based on type
             let targetName = '';
@@ -994,6 +992,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
             if (!isDemoMode) fetchFunnels();
           }}
           demoMode={isDemoMode}
+          onRefreshPrograms={fetchPrograms}
           onDemoSave={(formData) => {
             let targetName = '';
             if (formData.targetType === 'program') {

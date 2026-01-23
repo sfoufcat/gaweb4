@@ -1,9 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { MessageCircle } from 'lucide-react';
 import { useChatUnreadCounts } from '@/hooks/useChatUnreadCounts';
-import { ChatSheet } from './ChatSheet';
+
+// Lazy load ChatSheet - heavy component only needed when chat is opened
+const ChatSheet = dynamic(
+  () => import('./ChatSheet').then(mod => ({ default: mod.ChatSheet })),
+  { ssr: false }
+);
 
 interface ChatIconButtonProps {
   className?: string;

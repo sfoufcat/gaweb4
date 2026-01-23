@@ -419,6 +419,12 @@ export function AdminUsersTab({
   const filteredUsers = useMemo(() => {
     let result = displayUsers;
 
+    // Hide super_coach users from clients list (coaches don't need to see org owners)
+    result = result.filter((user) => {
+      const userOrgRole = user.orgRoleForOrg || user.orgRole || 'member';
+      return userOrgRole !== 'super_coach';
+    });
+
     // Apply status filter
     if (clientFilter !== 'all') {
       result = result.filter((user) => {

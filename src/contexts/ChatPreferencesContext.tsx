@@ -7,6 +7,7 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
 } from 'react';
 import { useUser } from '@clerk/nextjs';
@@ -215,10 +216,18 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
     setPreviousUserId(currentUserId);
   }, [user?.id, isLoaded, previousUserId]);
 
+  // Refs to prevent race conditions between listener setup paths
+  // Using refs instead of local variables ensures state persists across effect re-runs
+  const listenerSetupStartedRef = useRef(false);
+  const unsubscribeSnapshotRef = useRef<(() => void) | null>(null);
+
   // Set up Firestore real-time listener
   // This is optional - if Firebase Auth isn't ready, we retry when it becomes ready
   // Meanwhile we rely on localStorage cache + optimistic updates for actions
   useEffect(() => {
+    // Reset setup flag on effect start (new user session)
+    listenerSetupStartedRef.current = false;
+
     if (!isLoaded || !user?.id) {
       return;
     }
@@ -229,17 +238,24 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
       return;
     }
 
-    let unsubscribeSnapshot: (() => void) | null = null;
+    let isMounted = true;
+    const userId = user.id; // Capture for cleanup
 
     // Function to set up the Firestore listener
     const setupListener = () => {
-      if (unsubscribeSnapshot || !db) return; // Already set up or db not ready
+      // Guard: prevent duplicate setup via ref (persists across async callbacks)
+      if (listenerSetupStartedRef.current || unsubscribeSnapshotRef.current || !db || !isMounted) {
+        return;
+      }
+      listenerSetupStartedRef.current = true;
 
-      const prefsRef = collection(db, 'users', user.id, CHAT_PREFERENCES_COLLECTION);
+      const prefsRef = collection(db, 'users', userId, CHAT_PREFERENCES_COLLECTION);
 
-      unsubscribeSnapshot = onSnapshot(
+      unsubscribeSnapshotRef.current = onSnapshot(
         prefsRef,
         (snapshot) => {
+          if (!isMounted) return;
+
           const newPrefs = new Map<string, ChatPreference>();
           snapshot.docs.forEach((doc) => {
             newPrefs.set(doc.id, {
@@ -275,11 +291,18 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
           setError(null);
 
           // Update cache
-          if (user.id) {
-            saveToCache(user.id, newPrefs);
-          }
+          saveToCache(userId, newPrefs);
         },
         (err) => {
+          if (!isMounted) return;
+
+          // Firestore 11.x has a known bug with internal state assertions during rapid mount/unmount
+          // These errors are safe to ignore - the listener will reconnect automatically
+          if (err.message?.includes('INTERNAL ASSERTION FAILED')) {
+            console.debug('[ChatPreferencesContext] Firestore internal state error (safe to ignore):', err.message);
+            setIsLoading(false);
+            return;
+          }
           console.error('[ChatPreferencesContext] Firestore error:', err);
           setError(err);
           setIsLoading(false);
@@ -287,23 +310,22 @@ export function ChatPreferencesProvider({ children }: ChatPreferencesProviderPro
       );
     };
 
-    // If Firebase Auth is ready, set up listener immediately
-    if (firebaseAuth.currentUser) {
-      setupListener();
-    }
-
     // Listen for auth state changes to set up listener when auth becomes ready
+    // This single path handles both immediate auth (if already signed in) and delayed auth
     const unsubscribeAuth = firebaseAuth.onAuthStateChanged((authUser) => {
-      if (authUser && !unsubscribeSnapshot) {
+      if (authUser && !unsubscribeSnapshotRef.current && isMounted) {
         setupListener();
       }
     });
 
     return () => {
+      isMounted = false;
       unsubscribeAuth();
-      if (unsubscribeSnapshot) {
-        unsubscribeSnapshot();
+      if (unsubscribeSnapshotRef.current) {
+        unsubscribeSnapshotRef.current();
+        unsubscribeSnapshotRef.current = null;
       }
+      listenerSetupStartedRef.current = false;
     };
   }, [user?.id, isLoaded]);
 

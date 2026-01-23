@@ -5,6 +5,7 @@ import { useAuth, useOrganizationList } from '@clerk/nextjs';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useBranding } from '@/contexts/BrandingContext';
+import { safeGetItem, safeSetItem, safeRemoveItem } from '@/lib/safe-storage';
 
 type ViewMode = 'coach' | 'client';
 
@@ -98,13 +99,13 @@ export function ViewModeProvider({ children }: ViewModeProviderProps) {
     // Wait for both Clerk and Firestore to load
     if (!authLoaded || orgLoading || !clerkOrgsLoaded) return;
 
-    const stored = localStorage.getItem(STORAGE_KEY) as ViewMode | null;
+    const stored = safeGetItem(STORAGE_KEY) as ViewMode | null;
 
     if (stored === 'coach' || stored === 'client') {
       // If stored preference is coach but user doesn't have access, switch to client
       if (stored === 'coach' && !canAccessCoachView) {
         setViewModeState('client');
-        localStorage.removeItem(STORAGE_KEY);
+        safeRemoveItem(STORAGE_KEY);
       } else {
         setViewModeState(stored);
       }
@@ -122,7 +123,7 @@ export function ViewModeProvider({ children }: ViewModeProviderProps) {
       return;
     }
     setViewModeState(mode);
-    localStorage.setItem(STORAGE_KEY, mode);
+    safeSetItem(STORAGE_KEY, mode);
   }, [canAccessCoachView]);
 
   const toggleViewMode = useCallback(() => {

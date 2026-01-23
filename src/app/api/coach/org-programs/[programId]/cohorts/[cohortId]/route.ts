@@ -210,6 +210,11 @@ export async function PUT(
       updateData.convertSquadsToCommunity = body.convertSquadsToCommunity === true;
     }
 
+    // Keep chat open setting (only applies when not converting to community)
+    if (body.keepChatOpen !== undefined) {
+      updateData.keepChatOpen = body.keepChatOpen === true;
+    }
+
     // Status update (manual override)
     if (body.status !== undefined) {
       if (!['upcoming', 'active', 'completed', 'archived'].includes(body.status)) {

@@ -21,6 +21,17 @@ async function check() {
 
   console.log('Found by subdomain clearskin123:', bySubdomain.size);
 
+  if (!bySubdomain.empty) {
+    const data = bySubdomain.docs[0].data();
+    console.log('Org ID:', data.organizationId);
+
+    // Check coach_onboarding for user
+    const onboarding = await db.collection('coach_onboarding').doc(data.organizationId).get();
+    if (onboarding.exists) {
+      console.log('Coach User ID:', onboarding.data()?.userId);
+    }
+  }
+
   // List recent org_domains
   const recent = await db.collection('org_domains')
     .orderBy('createdAt', 'desc')

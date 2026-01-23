@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import Image from 'next/image';
 import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier, ProgramCompletionConfig, ProgramModule, ProgramWeek, TaskDistribution, DayCourseAssignment, CallSummary, UnifiedEvent, ClientViewContext, CohortViewContext, CohortWeekContent, ClientProgramWeek, ClientProgramDay, CohortProgramDay } from '@/types';
 import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
+import { ProgramCommunityTab } from './ProgramCommunityTab';
 import { ModuleWeeksSidebar, type SidebarSelection } from './ModuleWeeksSidebar';
 import { ModuleEditor } from './ModuleEditor';
 import { WeekEditor } from './WeekEditor';
@@ -237,7 +238,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   } | null>(null);
   
   // View mode: 'list' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'
-  const [viewMode, setViewMode] = useState<'list' | 'overview' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'overview' | 'community' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'>('list');
   const [viewModeDirection, setViewModeDirection] = useState<1 | -1>(1); // Animation direction for program tabs
   const prevViewModeRef = useRef(viewMode);
   
@@ -628,6 +629,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     enrollmentOpen: boolean;
     maxEnrollment: number | null;
     convertSquadsToCommunity: boolean;
+    keepChatOpen: boolean;
   }>({
     name: '',
     startDate: '',
@@ -635,6 +637,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     enrollmentOpen: true,
     maxEnrollment: null,
     convertSquadsToCommunity: false,
+    keepChatOpen: true, // Default: keep chat open after program ends
   });
   
   // Day editor state
@@ -2436,6 +2439,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         enrollmentOpen: cohort.enrollmentOpen,
         maxEnrollment: cohort.maxEnrollment || null,
         convertSquadsToCommunity: cohort.convertSquadsToCommunity || false,
+        keepChatOpen: cohort.keepChatOpen !== false, // Default to true for existing cohorts without the field
       });
     } else {
       setEditingCohort(null);
@@ -2445,7 +2449,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       nextMonth.setDate(1);
       const endDate = new Date(nextMonth);
       endDate.setDate(endDate.getDate() + (selectedProgram?.lengthDays || 30) - 1);
-      
+
       setCohortFormData({
         name: nextMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
         startDate: nextMonth.toISOString().split('T')[0],
@@ -2453,6 +2457,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         enrollmentOpen: true,
         maxEnrollment: null,
         convertSquadsToCommunity: false,
+        keepChatOpen: true, // Default: keep chat open after program ends
       });
     }
     setSaveError(null);
@@ -3234,15 +3239,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         <div className="mb-6">
           {viewMode === 'list' ? (
             <>
-              <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                Programs
-              </h2>
-              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-                Create and manage your coaching programs
-              </p>
+              {/* Header row with title and toolbar */}
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    Programs
+                  </h2>
+                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+                    Manage your coaching programs
+                  </p>
+                </div>
 
-              {/* Icon toolbar row */}
-              <div className="flex items-center gap-1 mt-4">
+                {/* Icon toolbar - aligned right */}
+                <div className="flex items-center gap-1 flex-shrink-0">
                 {/* Filter dropdown */}
                 {allPrograms.length > 0 && (
                   <Popover>
@@ -3350,16 +3359,21 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       }
                       setIsNewProgramModalOpen(true);
                     }}
-                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
                     title="New Program"
                   >
                     <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline text-[15px] font-medium">New Program</span>
                   </button>
                 )}
               </div>
+              {/* Closing toolbar and header */}
+              </div>
             </>
           ) : (
-            <div className="flex items-center gap-3 w-full overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-3 w-full">
+              {/* Left section - scrollable */}
+              <div className="flex items-center gap-3 min-w-0 overflow-x-auto scrollbar-hide flex-1">
               {/* Back button */}
               <button
                 onClick={() => safeNavigate(() => handleViewModeChange('list'))}
@@ -3454,9 +3468,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   </button>
                 </div>
               )}
+              </div>
 
-              {/* Right side controls */}
-              <div className="flex-shrink-0 ml-auto flex items-center gap-2">
+              {/* Right side controls - outside scrollable area */}
+              <div className="flex-shrink-0 flex items-center gap-2">
                 {/* Today / Enrollment Status - only for individual programs with client selected */}
                 {viewMode === 'days' && selectedProgram?.type === 'individual' && clientViewContext.mode === 'client' && currentEnrollment && (
                   currentEnrollment.status === 'active' && currentEnrollment.currentDayIndex && currentEnrollment.currentDayIndex > 0 ? (
@@ -3558,6 +3573,18 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     <LayoutTemplate className="w-4 h-4" />
                     Content
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => handleViewModeChange('community')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
+                      viewMode === 'community'
+                        ? 'bg-[#ebe8e4] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                        : 'text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    Community
+                  </button>
                   {selectedProgram?.type === 'group' && (
                     <button
                       type="button"
@@ -3619,6 +3646,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] rounded-lg transition-colors"
                       >
                         {viewMode === 'overview' && <><Settings2 className="w-4 h-4" />Overview</>}
+                        {viewMode === 'community' && <><Users className="w-4 h-4" />Community</>}
                         {viewMode === 'days' && <><LayoutTemplate className="w-4 h-4" />Content</>}
                         {viewMode === 'cohorts' && <><Users className="w-4 h-4" />Cohorts</>}
                         {viewMode === 'enrollments' && <><Users className="w-4 h-4" />Enrollments</>}
@@ -3640,6 +3668,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         <Settings2 className="w-4 h-4" />
                         Overview
                         {viewMode === 'overview' && <Check className="w-4 h-4 ml-auto" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { handleViewModeChange('community'); setIsPageDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                          viewMode === 'community'
+                            ? 'bg-brand-accent/10 text-brand-accent'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                        }`}
+                      >
+                        <Users className="w-4 h-4" />
+                        Community
+                        {viewMode === 'community' && <Check className="w-4 h-4 ml-auto" />}
                       </button>
                       <button
                         type="button"
@@ -4129,6 +4170,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 console.error('Error updating program:', error);
                 throw error;
               }
+            }}
+          />
+        ) : viewMode === 'community' ? (
+          // Community View - Program squads
+          <ProgramCommunityTab
+            programId={selectedProgram!.id}
+            programType={selectedProgram!.type}
+            clientCommunityEnabled={selectedProgram!.clientCommunityEnabled}
+            onCommunityEnabled={() => {
+              // Update local state to reflect community is now enabled
+              setSelectedProgram(prev => prev ? { ...prev, clientCommunityEnabled: true } : null);
+              // Refresh programs list to get updated data
+              fetchPrograms();
             }}
           />
         ) : viewMode === 'days' ? (
@@ -6363,33 +6417,47 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       Enrollment open
                     </label>
 
-                    {/* After Program Ends Setting */}
-                    <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert">
-                        After program ends
-                      </label>
-                      <div className="space-y-3">
-                        <label className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer select-none">
-                          <BrandedRadio
-                            name="afterProgramEnds"
-                            checked={!cohortFormData.convertSquadsToCommunity}
-                            onChange={() => setCohortFormData({ ...cohortFormData, convertSquadsToCommunity: false })}
-                          />
-                          Close squad after grace period
-                        </label>
-                        <label className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer select-none">
-                          <BrandedRadio
-                            name="afterProgramEnds"
-                            checked={cohortFormData.convertSquadsToCommunity}
-                            onChange={() => setCohortFormData({ ...cohortFormData, convertSquadsToCommunity: true })}
-                          />
-                          Convert to squad
-                        </label>
+                    {/* Advanced Settings - Collapsible */}
+                    <details className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                      <summary className="flex items-center gap-2 cursor-pointer list-none text-sm font-medium text-[#8a8580] dark:text-[#6b7280] font-albert hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors">
+                        <span>Advanced settings</span>
+                        <svg className="w-4 h-4 transition-transform [details[open]>&]:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </summary>
+
+                      <div className="mt-4 space-y-4">
+                        {/* Chat after program ends */}
+                        <div>
+                          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert">
+                            Chat after program ends
+                          </label>
+                          <div className="space-y-3">
+                            <label className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer select-none">
+                              <BrandedRadio
+                                name="chatAfterProgram"
+                                checked={cohortFormData.keepChatOpen}
+                                onChange={() => setCohortFormData({ ...cohortFormData, keepChatOpen: true })}
+                              />
+                              Keep chat
+                            </label>
+                            <label className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer select-none">
+                              <BrandedRadio
+                                name="chatAfterProgram"
+                                checked={!cohortFormData.keepChatOpen}
+                                onChange={() => setCohortFormData({ ...cohortFormData, keepChatOpen: false })}
+                              />
+                              Archive chat
+                            </label>
+                          </div>
+                          <p className="text-xs text-[#8a8580] dark:text-[#6b7280] mt-2 font-albert">
+                            {cohortFormData.keepChatOpen
+                              ? 'Members can continue chatting after program ends'
+                              : 'Chat is archived and read-only after program ends'}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-xs text-[#8a8580] dark:text-[#6b7280] mt-2 font-albert">
-                        Squads remain active for alumni to stay connected
-                      </p>
-                    </div>
+                    </details>
 
                     {saveError && (
                       <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -6424,7 +6492,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
       {/* Delete Program Confirmation Modal */}
       <Transition appear show={deleteConfirmProgram !== null} as={Fragment}>
-        <Dialog as="div" className="relative z-[60]" onClose={() => setDeleteConfirmProgram(null)}>
+        <Dialog as="div" className="relative z-[10100]" onClose={() => setDeleteConfirmProgram(null)}>
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"

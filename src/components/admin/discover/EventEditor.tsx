@@ -161,6 +161,7 @@ function InlineDescriptionEditor({
   placeholder?: string;
 }) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: {

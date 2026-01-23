@@ -147,18 +147,34 @@ async function handleCronRequest(request: NextRequest) {
           continue;
         }
 
-        // Send final closing message
-        await sendSquadClosingMessage(squad.chatChannelId ?? undefined);
+        // Check if the cohort has keepChatOpen enabled
+        let keepChatOpen = true; // Default to true for safety
+        if (squad.cohortId) {
+          const cohortDoc = await adminDb.collection('program_cohorts').doc(squad.cohortId).get();
+          if (cohortDoc.exists) {
+            const cohortData = cohortDoc.data() as ProgramCohort;
+            // keepChatOpen defaults to true for new cohorts, false for legacy cohorts without the field
+            keepChatOpen = cohortData.keepChatOpen !== false;
+          }
+        }
+
+        // Send final closing message (with different wording if chat stays open)
+        if (keepChatOpen) {
+          await sendSquadClosingMessageChatOpen(squad.chatChannelId ?? undefined);
+        } else {
+          await sendSquadClosingMessage(squad.chatChannelId ?? undefined);
+        }
 
         // Close the squad
         await squadDoc.ref.update({
           isClosed: true,
           closedAt: new Date().toISOString(),
+          chatOnlyMode: keepChatOpen, // Mark if chat stays active
           updatedAt: new Date().toISOString(),
         });
 
-        // Archive the Stream chat channel
-        if (squad.chatChannelId) {
+        // Archive the Stream chat channel (only if keepChatOpen is false)
+        if (squad.chatChannelId && !keepChatOpen) {
           try {
             const streamClient = await getStreamServerClient();
             const channel = streamClient.channel('messaging', squad.chatChannelId);
@@ -174,7 +190,7 @@ async function handleCronRequest(request: NextRequest) {
         }
 
         stats.squadsClosed++;
-        console.log(`[PROGRAM_LIFECYCLE] Closed squad ${squadDoc.id}`);
+        console.log(`[PROGRAM_LIFECYCLE] Closed squad ${squadDoc.id} (chatOnlyMode: ${keepChatOpen})`);
       } catch (error) {
         console.error(`[PROGRAM_LIFECYCLE] Error closing squad ${squadDoc.id}:`, error);
         stats.errors++;
@@ -380,7 +396,7 @@ async function sendSquadClosingMessage(chatChannelId: string | undefined): Promi
   try {
     const streamClient = await getStreamServerClient();
     await ensureSystemBotUser(streamClient);
-    
+
     const channel = streamClient.channel('messaging', chatChannelId);
 
     await channel.sendMessage({
@@ -395,6 +411,34 @@ async function sendSquadClosingMessage(chatChannelId: string | undefined): Promi
     console.log(`[PROGRAM_LIFECYCLE] Sent closing message to channel ${chatChannelId}`);
   } catch (error) {
     console.error(`[PROGRAM_LIFECYCLE] Error sending closing message:`, error);
+    // Don't throw - we still want to close the squad
+  }
+}
+
+/**
+ * Send message when squad closes but chat stays open
+ */
+async function sendSquadClosingMessageChatOpen(chatChannelId: string | undefined): Promise<void> {
+  if (!chatChannelId) return;
+
+  try {
+    const streamClient = await getStreamServerClient();
+    await ensureSystemBotUser(streamClient);
+
+    const channel = streamClient.channel('messaging', chatChannelId);
+
+    await channel.sendMessage({
+      text: `🎉 **Congratulations on completing the program!**\n\n` +
+        `The program has officially ended, but your chat stays open! ` +
+        `Feel free to continue connecting with your squadmates here. 🙏`,
+      user_id: SYSTEM_BOT_USER_ID,
+      program_notification: true,
+      notification_type: 'squad_closed_chat_open',
+    } as Parameters<typeof channel.sendMessage>[0]);
+
+    console.log(`[PROGRAM_LIFECYCLE] Sent chat-open closing message to channel ${chatChannelId}`);
+  } catch (error) {
+    console.error(`[PROGRAM_LIFECYCLE] Error sending chat-open closing message:`, error);
     // Don't throw - we still want to close the squad
   }
 }

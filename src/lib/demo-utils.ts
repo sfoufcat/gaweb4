@@ -1,9 +1,11 @@
 /**
  * Demo Site Utilities
- * 
+ *
  * Provides utilities for detecting demo subdomain and managing demo sessions.
  * Used by demo.coachful.co for showcasing the coach dashboard without authentication.
  */
+
+import { safeGetItem, safeSetItem } from '@/lib/safe-storage';
 
 // Demo subdomains that should trigger demo mode
 const DEMO_SUBDOMAINS = ['demo.coachful.co', 'demo.localhost'];
@@ -39,18 +41,19 @@ export function generateDemoSessionId(): string {
 /**
  * Get or create a demo session ID from sessionStorage
  * This ensures each browser tab has its own isolated demo session
+ * Safe for incognito mode - generates new ID each time if storage unavailable
  */
 export function getDemoSessionId(): string {
   if (typeof window === 'undefined') return '';
-  
+
   const STORAGE_KEY = 'demo-session-id';
-  let sessionId = sessionStorage.getItem(STORAGE_KEY);
-  
+  let sessionId = safeGetItem(STORAGE_KEY, 'session');
+
   if (!sessionId) {
     sessionId = generateDemoSessionId();
-    sessionStorage.setItem(STORAGE_KEY, sessionId);
+    safeSetItem(STORAGE_KEY, sessionId, 'session');
   }
-  
+
   return sessionId;
 }
 

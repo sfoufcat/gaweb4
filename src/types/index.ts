@@ -1,6 +1,22 @@
 // Import types needed before they're re-exported
 import type { ContentFeature, ContentTestimonial, ContentFaq } from './discover';
 
+// Import and re-export base types (avoids circular import with discover.ts)
+import type {
+  UserTrack as UserTrackBase,
+  OrderBump as OrderBumpBase,
+  OrderBumpConfig as OrderBumpConfigBase,
+  OrderBumpProductType as OrderBumpProductTypeBase,
+  OrderBumpContentType as OrderBumpContentTypeBase,
+} from './base';
+
+// Export base types for external consumers
+export type UserTrack = UserTrackBase;
+export type OrderBump = OrderBumpBase;
+export type OrderBumpConfig = OrderBumpConfigBase;
+export type OrderBumpProductType = OrderBumpProductTypeBase;
+export type OrderBumpContentType = OrderBumpContentTypeBase;
+
 // User Role Types
 export type UserRole = 'user' | 'editor' | 'coach' | 'admin' | 'super_admin';
 
@@ -9,21 +25,6 @@ export type UserRole = 'user' | 'editor' | 'coach' | 'admin' | 'super_admin';
 // coach: Can coach squads within the organization
 // member: Regular organization member (client)
 export type OrgRole = 'super_coach' | 'coach' | 'member';
-
-/**
- * Track Types - Business type the user is building
- * @deprecated FULLY DEPRECATED - Tracks have been replaced by coach-defined Programs.
- * This type is kept ONLY for backward compatibility with legacy code.
- * Do NOT use in new code - use Program entities instead.
- */
-export type UserTrack = 
-  | 'content_creator' 
-  | 'saas' 
-  | 'coach_consultant' 
-  | 'ecom' 
-  | 'agency' 
-  | 'community_builder'
-  | 'general'; // Legacy fallback
 
 /**
  * @deprecated UserTier is deprecated. Access is now controlled by:
@@ -939,7 +940,8 @@ export interface ProgramCohort {
   
   // Community Mode settings
   convertSquadsToCommunity?: boolean; // If true, squads become standalone when cohort ends
-  
+  keepChatOpen?: boolean; // If true, chat stays active when squad closes (default: true for new cohorts)
+
   // Metadata
   createdAt: string;
   updatedAt: string;
@@ -1547,44 +1549,6 @@ export interface CohortWithSquads extends ProgramCohort {
 }
 
 // ============================================================================
-// ORDER BUMPS - Pre-purchase add-ons for landing pages
-// ============================================================================
-
-/** Product type for order bumps */
-export type OrderBumpProductType = 'program' | 'squad' | 'content';
-
-/** Content subtype for order bump content products */
-export type OrderBumpContentType = 'event' | 'article' | 'course' | 'download' | 'link';
-
-/**
- * Order Bump - A product offered as an add-on during checkout
- */
-export interface OrderBump {
-  id: string;
-  productType: OrderBumpProductType;
-  productId: string;
-  contentType?: OrderBumpContentType; // Required when productType = 'content'
-  // Cached display data (denormalized for performance)
-  productName: string;
-  productImageUrl?: string;
-  priceInCents: number;
-  currency: string;
-  // Optional override copy
-  headline?: string;        // e.g., "Add this to your order"
-  description?: string;     // Short value proposition
-  discountPercent?: number; // Optional discount (e.g., 20 = 20% off)
-}
-
-/**
- * Order Bump Configuration for a product
- * Stored on Program, Squad, and Content documents
- */
-export interface OrderBumpConfig {
-  enabled: boolean;
-  bumps: OrderBump[];  // Max based on tier: Starter=1, Pro+=2
-}
-
-// ============================================================================
 // TRACK CMS TYPES (Admin-managed) - DEPRECATED: Use Program types above
 // ============================================================================
 
@@ -1726,6 +1690,7 @@ export interface Squad {
   gracePeriodStartDate?: string; // Date when grace period started (YYYY-MM-DD)
   isClosed?: boolean; // True if squad is archived/closed
   closedAt?: string; // ISO timestamp when squad was closed
+  chatOnlyMode?: boolean; // True if squad is closed but chat stays active
   // Referral program settings (for standalone squads)
   referralConfig?: ReferralConfig;
   
@@ -4054,12 +4019,16 @@ export interface ProgramInvite {
   createdBy: string;             // Coach userId who created it
   
   // Target (optional)
-  email?: string;                // For email invites
+  email?: string;                // Single email (legacy, for backwards compatibility)
+  emails?: string[];             // Multiple allowed emails (batch invites)
   name?: string;                 // Invitee name (for personalization)
+  emailRequired?: boolean;       // If true, signup email must match invite email(s)
   
   // Payment handling
   paymentStatus: InvitePaymentStatus;
-  prePaidNote?: string;          // e.g., "Paid via invoice #123"
+  prePaidAmount?: number;        // Amount in cents (for revenue tracking)
+  prePaidNote?: string;          // Reference note (e.g., "Invoice #123")
+  prePaidAt?: string;            // When prepaid (ISO timestamp for date filtering)
   
   // Squad assignment (optional)
   targetSquadId?: string;        // Specific squad to join
@@ -4075,7 +4044,10 @@ export interface ProgramInvite {
   
   // Expiration
   expiresAt?: string;            // null = never expires
-  
+
+  // Status
+  status?: 'active' | 'cancelled';  // Default: 'active', cancelled invites are rejected
+
   createdAt: string;
 }
 

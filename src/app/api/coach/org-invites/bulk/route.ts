@@ -30,6 +30,7 @@ export async function POST(req: Request) {
       funnelId, 
       entries,
       paymentStatus = 'required',
+      prePaidAmount,  // Amount in cents
       prePaidNote,
       sendEmails = false,
     } = body;
@@ -138,7 +139,9 @@ export async function POST(req: Request) {
         email: entry.email,
         name: entry.name,
         paymentStatus,
+        prePaidAmount: prePaidAmount ? Number(prePaidAmount) : undefined,
         prePaidNote: prePaidNote?.trim() || undefined,
+        prePaidAt: paymentStatus === 'pre_paid' && prePaidAmount ? now : undefined,
         useCount: 0,
         createdAt: now,
       };

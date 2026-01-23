@@ -122,23 +122,23 @@ export function useChatUnreadCounts() {
       if (!isPlatformMode && channelId) {
         // Filter squad channels - only count ones in user's current org
         if (channelId.startsWith('squad-')) {
-          if (userSquadChannelIds.size > 0 && !userSquadChannelIds.has(channelId)) {
+          if (!userSquadChannelIds.has(channelId)) {
             continue; // Skip squad channels from other orgs
           }
         }
-        
+
         // Filter org channels - only count current org
         if (channelId.startsWith('org-')) {
-          if (orgChannelIds.size > 0 && !orgChannelIds.has(channelId)) {
+          if (!orgChannelIds.has(channelId)) {
             continue; // Skip org channels from other orgs
           }
         }
-        
+
         // Legacy global channel IDs
-        if (channelId === ANNOUNCEMENTS_CHANNEL_ID || 
-            channelId === SOCIAL_CORNER_CHANNEL_ID || 
+        if (channelId === ANNOUNCEMENTS_CHANNEL_ID ||
+            channelId === SOCIAL_CORNER_CHANNEL_ID ||
             channelId === SHARE_WINS_CHANNEL_ID) {
-          if (orgChannelIds.size > 0 && !orgChannelIds.has(channelId)) {
+          if (!orgChannelIds.has(channelId)) {
             continue;
           }
         }

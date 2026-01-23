@@ -23,16 +23,17 @@ export const FULL_NAV_GROUPS: NavGroup[] = [
       { value: 'clients', label: 'Clients' },
       { value: 'scheduling', label: 'Schedule' },
       { value: 'programs', label: 'Programs' },
-      { value: 'squads', label: 'Squads' },
+      // HIDDEN: Standalone squads disabled - squads now managed via Program > Community
+      // { value: 'squads', label: 'Squads' },
       { value: 'discover', label: 'Resources' },
     ],
   },
   {
     name: 'Marketing',
     items: [
-      { value: 'analytics', label: 'Analytics' },
-      { value: 'funnels', label: 'Funnels' },
       { value: 'website', label: 'Website' },
+      { value: 'funnels', label: 'Funnels' },
+      { value: 'analytics', label: 'Analytics' },
     ],
   },
   {
@@ -67,7 +68,8 @@ export const LIMITED_NAV_GROUPS: NavGroup[] = [
     name: 'Core',
     items: [
       { value: 'clients', label: 'Clients' },
-      { value: 'squads', label: 'Squads' },
+      // HIDDEN: Standalone squads disabled - squads now managed via Program > Community
+      // { value: 'squads', label: 'Squads' },
       { value: 'discover', label: 'Resources' },
     ],
   },

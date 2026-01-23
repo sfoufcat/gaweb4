@@ -1,6 +1,6 @@
 'use client';
 
-import { Video, Phone, Link2, Check, Settings } from 'lucide-react';
+import { Video, Phone, Link2, Check, Lightbulb, Unplug } from 'lucide-react';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import {
   Tooltip,
@@ -133,7 +133,7 @@ export function MeetingProviderSelector({
             : 'text-[#5f5a55] dark:text-[#b2b6c2]'
           }
           ${isDisabled
-            ? 'opacity-50 cursor-not-allowed'
+            ? 'cursor-not-allowed'
             : 'hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
           }
         `}
@@ -150,19 +150,22 @@ export function MeetingProviderSelector({
         {provider.requiresConnection && isConnected && (
           <Check className="w-3 h-3 text-green-500" />
         )}
+        {provider.requiresConnection && !isConnected && (
+          <Unplug className="w-3 h-3 text-[#a7a39e] dark:text-[#6b7280]" />
+        )}
       </button>
     );
 
     // Always use flex-1 wrapper for even distribution, put tooltip inside
     return (
-      <div key={provider.id} className="flex-1">
+      <div key={provider.id} className="flex-1 flex overflow-visible">
         {isDisabled && provider.requiresConnection ? (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="block">{tabButton}</span>
+                <span className="flex-1">{tabButton}</span>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="top">
                 <p>{getDisabledTooltip(provider.id)}</p>
               </TooltipContent>
             </Tooltip>
@@ -244,42 +247,23 @@ export function MeetingProviderSelector({
     return null;
   };
 
-  // Show inline help when Google Meet is disabled but user might want it
-  const renderSetupHelper = () => {
-    // Only show if Google Meet is not connected (either not connected to Google or Meet not enabled)
-    if (googleMeet.connected) return null;
-
-    // Check if Zoom is also not connected - if both are disconnected, show a more general message
-    const showZoomToo = !zoom.connected;
+  // Show inline tip when video providers need configuration
+  const renderSetupTip = () => {
+    // Only show if both Zoom and Google Meet are not connected
+    if (zoom.connected || googleMeet.connected) return null;
 
     return (
-      <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl">
-        <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
-          <Settings className="w-4 h-4 flex-shrink-0" />
+      <div className="mt-3 p-3 bg-[#f9f7f5] dark:bg-[#1c2028] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] flex items-start gap-2">
+          <Lightbulb className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#a7a39e] dark:text-[#6b7280]" />
           <span>
-            {showZoomToo ? (
-              <>
-                Connect Zoom or enable Google Meet in{' '}
-                <a
-                  href="/coach/settings?tab=integrations"
-                  className="underline font-medium hover:text-amber-800 dark:hover:text-amber-300"
-                >
-                  Settings → Integrations
-                </a>
-                {' '}for video calls
-              </>
-            ) : (
-              <>
-                Enable Google Meet in{' '}
-                <a
-                  href="/coach/settings?tab=integrations"
-                  className="underline font-medium hover:text-amber-800 dark:hover:text-amber-300"
-                >
-                  Settings → Integrations
-                </a>
-                {' '}for video calls
-              </>
-            )}
+            Tip: Connect Zoom or enable Google Meet from{' '}
+            <a
+              href="/coach?tab=scheduling&schedulingSubTab=availability"
+              className="text-brand-accent underline font-medium hover:text-brand-accent/80"
+            >
+              Availability
+            </a>
           </span>
         </p>
       </div>
@@ -310,15 +294,15 @@ export function MeetingProviderSelector({
       </label>
 
       {/* Provider Tabs */}
-      <div className="flex p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl mb-3">
+      <div className="flex p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl mb-3 overflow-visible">
         {availableProviders.map(renderProviderTab)}
       </div>
 
-      {/* Setup Helper - shows when video providers need configuration */}
-      {renderSetupHelper()}
-
       {/* Status Area */}
       {renderStatusArea()}
+
+      {/* Setup Tip - shows below input when video providers need configuration */}
+      {renderSetupTip()}
     </div>
   );
 }

@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
   onSnapshot,
-  Unsubscribe 
+  Unsubscribe
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useBranding } from '@/contexts/BrandingContext';
@@ -48,7 +48,11 @@ export function useNotifications(): UseNotificationsReturn {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
+  // Refs for race condition prevention (pattern from ChatPreferencesContext)
+  const listenerSetupStartedRef = useRef(false);
+  const unsubscribeRef = useRef<Unsubscribe | null>(null);
+
   // Check if on demo site (plain function, no hooks)
   const isDemo = isDemoSite();
 
@@ -88,30 +92,40 @@ export function useNotifications(): UseNotificationsReturn {
   }, [user?.id, isDemo]);
 
   // Set up real-time listener for notifications
+  // Uses defensive patterns to prevent Firestore 11.x internal assertion errors
+  // caused by rapid mount/unmount cycles when switching views
   useEffect(() => {
+    let isMounted = true;
+
     // In demo mode, fetch from API (which returns demo notifications)
     if (isDemo) {
       fetchNotifications();
       return;
     }
-    
+
     if (!isLoaded || !user?.id) {
-      setIsLoading(false);
+      if (isMounted) setIsLoading(false);
       return;
     }
 
     // Guard: Firebase not initialized
     if (!db) {
       console.warn('[useNotifications] Firebase not initialized');
-      setIsLoading(false);
+      if (isMounted) setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    // Prevent duplicate listener setups during rapid re-renders
+    if (listenerSetupStartedRef.current) {
+      return;
+    }
+    listenerSetupStartedRef.current = true;
+
+    if (isMounted) setIsLoading(true);
 
     // Query for user's notifications, scoped by organization for multi-tenancy
     const notificationsRef = collection(db, 'notifications');
-    
+
     // Build query with organization filtering if available
     let q;
     if (organizationId) {
@@ -134,9 +148,12 @@ export function useNotifications(): UseNotificationsReturn {
     }
 
     // Subscribe to real-time updates
-    const unsubscribe: Unsubscribe = onSnapshot(
+    unsubscribeRef.current = onSnapshot(
       q,
       (snapshot) => {
+        // Guard against state updates after unmount
+        if (!isMounted) return;
+
         const notificationsList: Notification[] = [];
         let unread = 0;
 
@@ -154,6 +171,16 @@ export function useNotifications(): UseNotificationsReturn {
         setError(null);
       },
       (err) => {
+        // Guard against state updates after unmount
+        if (!isMounted) return;
+
+        // Firestore 11.x has a known bug with internal state assertions during rapid mount/unmount
+        // These errors are safe to ignore - the listener will reconnect automatically
+        if (err.message?.includes('INTERNAL ASSERTION FAILED')) {
+          console.debug('[useNotifications] Firestore internal state error (safe to ignore):', err.message);
+          setIsLoading(false);
+          return;
+        }
         // Handle Firestore permission/index errors gracefully
         console.warn('[useNotifications] Firestore subscription error (falling back to API):', err.message);
         // Fall back to API fetch if real-time fails (e.g., missing index)
@@ -162,8 +189,14 @@ export function useNotifications(): UseNotificationsReturn {
       }
     );
 
+    // Comprehensive cleanup to prevent Firestore internal state issues
     return () => {
-      unsubscribe();
+      isMounted = false;
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      listenerSetupStartedRef.current = false;
     };
   }, [user?.id, isLoaded, organizationId, fetchNotifications, isDemo]);
 

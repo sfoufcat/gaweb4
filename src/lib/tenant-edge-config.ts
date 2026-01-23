@@ -123,11 +123,17 @@ function getCustomDomainKey(domain: string): string {
 
 /**
  * Get tenant data from Edge Config by subdomain
- * 
+ *
  * @param subdomain - The subdomain to look up (e.g., "coach-abc123")
  * @returns TenantConfigData or null if not found
  */
 export async function getTenantBySubdomain(subdomain: string): Promise<TenantConfigData | null> {
+  // Skip Edge Config in development - it's not configured locally
+  // The middleware will use the in-memory cache + API fallback instead
+  if (process.env.NODE_ENV === 'development') {
+    return null;
+  }
+
   try {
     const key = getSubdomainKey(subdomain);
     const data = await get<TenantConfigData>(key);
@@ -140,11 +146,17 @@ export async function getTenantBySubdomain(subdomain: string): Promise<TenantCon
 
 /**
  * Get tenant data from Edge Config by custom domain
- * 
+ *
  * @param domain - The custom domain to look up (e.g., "coaching.example.com")
  * @returns TenantConfigData or null if not found
  */
 export async function getTenantByCustomDomain(domain: string): Promise<TenantConfigData | null> {
+  // Skip Edge Config in development - it's not configured locally
+  // The middleware will use the in-memory cache + API fallback instead
+  if (process.env.NODE_ENV === 'development') {
+    return null;
+  }
+
   try {
     const key = getCustomDomainKey(domain);
     const data = await get<TenantConfigData>(key);

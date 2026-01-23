@@ -10,6 +10,7 @@ export interface CachedChannelPreview {
   id: string;
   name: string;
   image?: string;
+  icon?: string;
   lastMessage?: string;
   lastMessageTime?: string; // ISO string instead of Date
   unread: number;
@@ -69,6 +70,7 @@ export function setCachedChannels(
     id: string;
     name: string;
     image?: string;
+    icon?: string;
     lastMessage?: string;
     lastMessageTime?: Date;
     unread: number;
@@ -82,6 +84,7 @@ export function setCachedChannels(
       id: ch.id,
       name: ch.name,
       image: ch.image,
+      icon: ch.icon,
       lastMessage: ch.lastMessage,
       lastMessageTime: ch.lastMessageTime?.toISOString(),
       unread: ch.unread,

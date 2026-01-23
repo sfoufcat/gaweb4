@@ -18,6 +18,7 @@ import {
   SectionHeader,
   ArticleCard,
   SquadCard,
+  DiscoverEmptyState,
 } from '@/components/discover';
 import type { ProgramType, DiscoverViewMode, MyContentFilter } from '@/components/discover';
 import { FileText, BookOpen, Calendar, Download, Link as LinkIcon, Users, Layers } from 'lucide-react';
@@ -115,6 +116,31 @@ export default function DiscoverPage() {
   const articlesDisplay = useMemo(() => {
     return filteredArticles.slice(0, 10);
   }, [filteredArticles]);
+
+  // Check if there is any content to show in browse mode (unfiltered)
+  const hasAnyContent = useMemo(() => {
+    return (
+      availableGroupPrograms.length > 0 || 
+      availableIndividualPrograms.length > 0 || 
+      categories.length > 0 || 
+      availableUpcomingEvents.length > 0 || 
+      availablePastEvents.length > 0 || 
+      availableCourses.length > 0 || 
+      trending.length > 0 || 
+      recommended.length > 0 || 
+      availableArticles.length > 0
+    );
+  }, [
+    availableGroupPrograms.length, 
+    availableIndividualPrograms.length, 
+    categories.length,
+    availableUpcomingEvents.length,
+    availablePastEvents.length,
+    availableCourses.length,
+    trending.length,
+    recommended.length,
+    availableArticles.length
+  ]);
 
   // Paginated My Content
   const filteredMyContent = useMemo(() => {
@@ -409,266 +435,260 @@ export default function DiscoverPage() {
       {/* BROWSE VIEW */}
       {viewMode === 'browse' && (
         <>
+          {/* Empty State when no content at all */}
+          {!selectedCategory && !hasAnyContent && (
+             <DiscoverEmptyState />
+          )}
+
           {/* 1. Programs Section with Pill Tabs - Only show when no category is selected */}
-      {!selectedCategory && (availableGroupPrograms.length > 0 || availableIndividualPrograms.length > 0) && (
-        <section className="px-4 py-5 overflow-hidden">
-          <div className="flex flex-col gap-4">
-            {/* Section Header */}
-            <div className="flex items-center justify-between">
-              <SectionHeader title={`${programTitle}s`} />
-            </div>
+          {!selectedCategory && (availableGroupPrograms.length > 0 || availableIndividualPrograms.length > 0) && (
+            <section className="px-4 py-5 overflow-hidden">
+              <div className="flex flex-col gap-4">
+                {/* Section Header */}
+                <div className="flex items-center justify-between">
+                  <SectionHeader title={`${programTitle}s`} />
+                </div>
 
-            {/* Pill Tabs */}
-            <ProgramTypePills
-              selectedType={selectedProgramType}
-              onSelect={setSelectedProgramType}
-              groupCount={availableGroupPrograms.length}
-              individualCount={availableIndividualPrograms.length}
-            />
-            
-            {/* Horizontal scrollable list based on selected type */}
-            <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
-              {selectedProgramType === 'all' ? (
-                (availableGroupPrograms.length > 0 || availableIndividualPrograms.length > 0) ? (
-                  [...availableGroupPrograms, ...availableIndividualPrograms].map((program) => (
-                    <ProgramCard key={program.id} program={program} fullWidth={false} />
-                  ))
-                ) : (
-                  <p className="text-text-muted text-sm font-sans py-4">
-                    No {programTitle.toLowerCase()}s available at this time.
-                  </p>
-                )
-              ) : selectedProgramType === 'group' ? (
-                availableGroupPrograms.length > 0 ? (
-                  availableGroupPrograms.map((program) => (
-                    <ProgramCard key={program.id} program={program} fullWidth={false} />
-                  ))
-                ) : (
-                  <p className="text-text-muted text-sm font-sans py-4">
-                    No group {programTitle.toLowerCase()}s available at this time.
-                  </p>
-                )
-              ) : (
-                availableIndividualPrograms.length > 0 ? (
-                  availableIndividualPrograms.map((program) => (
-                    <ProgramCard key={program.id} program={program} fullWidth={false} />
-                  ))
-                ) : (
-                  <p className="text-text-muted text-sm font-sans py-4">
-                    No 1:1 coaching {programTitle.toLowerCase()}s available at this time.
-                  </p>
-                )
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 2. Public Squads Section - Only show when no category is selected */}
-      {!selectedCategory && publicSquads.length > 0 && (
-        <section className="px-4 py-5 overflow-hidden">
-          <div className="flex flex-col gap-4">
-            <SectionHeader title={`Public ${squadTitle}s`} />
-            
-            {/* Horizontal scrollable list */}
-            <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
-              {publicSquads.map((squad) => (
-                <SquadCard key={squad.id} squad={squad} fullWidth={false} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 3. Content (Browse by Category) */}
-      <section className="px-4 py-5">
-        <div className="flex flex-col gap-4">
-          <SectionHeader title="Content" />
-          <CategoryPills 
-            categories={categories} 
-            selectedCategory={selectedCategory}
-            onSelect={setSelectedCategory}
-          />
-        </div>
-      </section>
-
-      {/* 4. Events Section - Only show when no category is selected */}
-      {!selectedCategory && (
-        <section className="px-4 py-5 overflow-hidden">
-          <div className="flex flex-col gap-4">
-            {/* Header with toggle */}
-            <div className="flex items-center gap-2">
-              <SectionHeader title={showPastEvents ? "Past events" : "Upcoming events"} />
-              {availablePastEvents.length > 0 && (
-                <button
-                  onClick={() => setShowPastEvents(!showPastEvents)}
-                  className="text-xs text-earth-500 hover:text-earth-600 font-normal font-sans transition-colors whitespace-nowrap"
-                >
-                  {showPastEvents ? "view upcoming" : "view past"}
-                </button>
-              )}
-            </div>
-            
-            {/* Horizontal scrollable list */}
-            <div className="flex gap-2 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
-              {filteredEvents.length > 0 ? (
-                filteredEvents.map((event) => (
-                  <EventCard key={event.id} event={event} isPast={showPastEvents} />
-                ))
-              ) : (
-                <p className="text-text-muted text-sm font-sans">
-                  No events available
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 5. Courses */}
-      {filteredCourses.length > 0 && (
-        <section className="px-4 py-5 overflow-hidden">
-          <div className="flex flex-col gap-4">
-            <SectionHeader title="Courses" />
-            
-            {/* Grid when category selected, horizontal scroll otherwise */}
-            {selectedCategory ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {filteredCourses.map((course) => (
-                  <CourseCard key={course.id} course={course} />
-                ))}
+                {/* Pill Tabs */}
+                <ProgramTypePills
+                  selectedType={selectedProgramType}
+                  onSelect={setSelectedProgramType}
+                  groupCount={availableGroupPrograms.length}
+                  individualCount={availableIndividualPrograms.length}
+                />
+                
+                {/* Horizontal scrollable list based on selected type */}
+                <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
+                  {selectedProgramType === 'all' ? (
+                    (availableGroupPrograms.length > 0 || availableIndividualPrograms.length > 0) ? (
+                      [...availableGroupPrograms, ...availableIndividualPrograms].map((program) => (
+                        <ProgramCard key={program.id} program={program} fullWidth={false} />
+                      ))
+                    ) : (
+                      <p className="text-text-muted text-sm font-sans py-4">
+                        No {programTitle.toLowerCase()}s available at this time.
+                      </p>
+                    )
+                  ) : selectedProgramType === 'group' ? (
+                    availableGroupPrograms.length > 0 ? (
+                      availableGroupPrograms.map((program) => (
+                        <ProgramCard key={program.id} program={program} fullWidth={false} />
+                      ))
+                    ) : (
+                      <p className="text-text-muted text-sm font-sans py-4">
+                        No group {programTitle.toLowerCase()}s available at this time.
+                      </p>
+                    )
+                  ) : (
+                    availableIndividualPrograms.length > 0 ? (
+                      availableIndividualPrograms.map((program) => (
+                        <ProgramCard key={program.id} program={program} fullWidth={false} />
+                      ))
+                    ) : (
+                      <p className="text-text-muted text-sm font-sans py-4">
+                        No 1:1 coaching {programTitle.toLowerCase()}s available at this time.
+                      </p>
+                    )
+                  )}
+                </div>
               </div>
-            ) : (
-              <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
-                {filteredCourses.map((course) => (
-                  <CourseCard key={course.id} course={course} />
-                ))}
+            </section>
+          )}
+
+          {/* 2. Public Squads Section - HIDDEN */}
+          {/* ... */}
+
+          {/* 3. Content (Browse by Category) - Only show if categories exist */}
+          {categories.length > 0 && (
+            <section className="px-4 py-5">
+              <div className="flex flex-col gap-4">
+                <SectionHeader title="Content" />
+                <CategoryPills 
+                  categories={categories} 
+                  selectedCategory={selectedCategory}
+                  onSelect={setSelectedCategory}
+                />
               </div>
-            )}
-          </div>
-        </section>
-      )}
+            </section>
+          )}
 
-      {/* Articles - Only show when category is selected (filtered list view) */}
-      {selectedCategory && filteredArticles.length > 0 && (
-        <section className="px-4 py-5">
-          <div className="flex flex-col gap-4">
-            <SectionHeader title="Articles" />
-            
-            <div className="flex flex-col gap-3">
-              {filteredArticles.map((article) => (
-                <Link 
-                  key={article.id}
-                  href={`/discover/articles/${article.id}`}
-                  className="block"
-                >
-                  <div className="bg-white/70 rounded-[20px] p-4 hover:shadow-md transition-shadow">
-                    <div className="flex gap-4">
-                      {/* Cover Image */}
-                      {article.coverImageUrl && (
-                        <div className="w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-earth-100">
-                          <Image 
-                            src={article.coverImageUrl} 
-                            alt={article.title}
-                            width={80}
-                            height={80}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                      
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-albert font-semibold text-lg text-text-primary tracking-[-0.5px] leading-[1.3] line-clamp-2 mb-1">
-                          {article.title}
-                        </h3>
-                        <p className="font-sans text-sm text-text-muted">
-                          {article.authorName}
-                          {article.readingTimeMinutes && ` · ${article.readingTimeMinutes} min read`}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Empty state when category selected but no content */}
-      {selectedCategory && filteredCourses.length === 0 && filteredArticles.length === 0 && (
-        <section className="px-4 py-12">
-          <div className="text-center">
-            <p className="text-text-muted font-sans">
-              No content available in this category yet.
-            </p>
-          </div>
-        </section>
-      )}
-
-      {/* ARTICLES SECTION - Only when no category selected */}
-      {!selectedCategory && (trending.length > 0 || recommended.length > 0 || availableArticles.length > 0) && (
-        <section className="px-4 py-5">
-          <div className="flex flex-col gap-6">
-            {/* Articles Header with View More */}
-            <div className="flex items-center justify-between">
-              <h2 className="font-albert font-medium text-2xl text-text-primary tracking-[-1.5px] leading-[1.3]">
-                Articles
-              </h2>
-              {articlesDisplay.length > 0 && (
-                <Link 
-                  href="/articles"
-                  className="font-sans text-sm text-earth-600 hover:text-earth-700 font-medium transition-colors"
-                >
-                  View More →
-                </Link>
-              )}
-            </div>
-
-            {/* Articles List */}
-            {articlesDisplay.length > 0 && (
-              <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
-                {articlesDisplay.map((article) => (
-                  <ArticleCard key={article.id} article={article} variant="horizontal" />
-                ))}
-              </div>
-            )}
-
-            {/* Trending Subheading */}
-            {trending.length > 0 && (
-              <div className="flex flex-col gap-3 overflow-hidden">
-                <h3 className="font-albert font-medium text-lg text-text-primary tracking-[-0.5px] leading-[1.3]">
-                  Trending
-                </h3>
+          {/* 4. Events Section - Only show when no category is selected AND events exist (upcoming or past) */}
+          {!selectedCategory && (availableUpcomingEvents.length > 0 || availablePastEvents.length > 0) && (
+            <section className="px-4 py-5 overflow-hidden">
+              <div className="flex flex-col gap-4">
+                {/* Header with toggle */}
+                <div className="flex items-center gap-2">
+                  <SectionHeader title={showPastEvents ? "Past events" : "Upcoming events"} />
+                  {availablePastEvents.length > 0 && (
+                    <button
+                      onClick={() => setShowPastEvents(!showPastEvents)}
+                      className="text-xs text-earth-500 hover:text-earth-600 font-normal font-sans transition-colors whitespace-nowrap"
+                    >
+                      {showPastEvents ? "view upcoming" : "view past"}
+                    </button>
+                  )}
+                </div>
                 
                 {/* Horizontal scrollable list */}
-                <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
-                  {trending.map((item, index) => (
-                    <TrendingItem key={item.id} item={item} index={index} />
-                  ))}
+                <div className="flex gap-2 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
+                  {filteredEvents.length > 0 ? (
+                    filteredEvents.map((event) => (
+                      <EventCard key={event.id} event={event} isPast={showPastEvents} />
+                    ))
+                  ) : (
+                    <p className="text-text-muted text-sm font-sans">
+                      No events available
+                    </p>
+                  )}
                 </div>
               </div>
-            )}
+            </section>
+          )}
 
-            {/* Recommended Subheading */}
-            {recommended.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <h3 className="font-albert font-medium text-lg text-text-primary tracking-[-0.5px] leading-[1.3]">
-                  Recommended
-                </h3>
+          {/* 5. Courses */}
+          {filteredCourses.length > 0 && (
+            <section className="px-4 py-5 overflow-hidden">
+              <div className="flex flex-col gap-4">
+                <SectionHeader title="Courses" />
                 
-                {/* Vertical list of recommended cards */}
+                {/* Grid when category selected, horizontal scroll otherwise */}
+                {selectedCategory ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {filteredCourses.map((course) => (
+                      <CourseCard key={course.id} course={course} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
+                    {filteredCourses.map((course) => (
+                      <CourseCard key={course.id} course={course} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Articles - Only show when category is selected (filtered list view) */}
+          {selectedCategory && filteredArticles.length > 0 && (
+            <section className="px-4 py-5">
+              <div className="flex flex-col gap-4">
+                <SectionHeader title="Articles" />
+                
                 <div className="flex flex-col gap-3">
-                  {recommended.map((item) => (
-                    <RecommendedCard key={item.id} item={item} />
+                  {filteredArticles.map((article) => (
+                    <Link 
+                      key={article.id}
+                      href={`/discover/articles/${article.id}`}
+                      className="block"
+                    >
+                      <div className="bg-white/70 rounded-[20px] p-4 hover:shadow-md transition-shadow">
+                        <div className="flex gap-4">
+                          {/* Cover Image */}
+                          {article.coverImageUrl && (
+                            <div className="w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-earth-100">
+                              <Image 
+                                src={article.coverImageUrl} 
+                                alt={article.title}
+                                width={80}
+                                height={80}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-albert font-semibold text-lg text-text-primary tracking-[-0.5px] leading-[1.3] line-clamp-2 mb-1">
+                              {article.title}
+                            </h3>
+                            <p className="font-sans text-sm text-text-muted">
+                              {article.authorName}
+                              {article.readingTimeMinutes && ` · ${article.readingTimeMinutes} min read`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
                   ))}
                 </div>
               </div>
-            )}
-          </div>
-        </section>
-      )}
+            </section>
+          )}
+
+          {/* Empty state when category selected but no content */}
+          {selectedCategory && filteredCourses.length === 0 && filteredArticles.length === 0 && (
+            <section className="px-4 py-12">
+              <div className="text-center">
+                <p className="text-text-muted font-sans">
+                  No content available in this category yet.
+                </p>
+              </div>
+            </section>
+          )}
+
+          {/* ARTICLES SECTION - Only when no category selected */}
+          {!selectedCategory && (trending.length > 0 || recommended.length > 0 || availableArticles.length > 0) && (
+            <section className="px-4 py-5">
+              <div className="flex flex-col gap-6">
+                {/* Articles Header with View More */}
+                <div className="flex items-center justify-between">
+                  <h2 className="font-albert font-medium text-2xl text-text-primary tracking-[-1.5px] leading-[1.3]">
+                    Articles
+                  </h2>
+                  {articlesDisplay.length > 0 && (
+                    <Link 
+                      href="/articles"
+                      className="font-sans text-sm text-earth-600 hover:text-earth-700 font-medium transition-colors"
+                    >
+                      View More →
+                    </Link>
+                  )}
+                </div>
+
+                {/* Articles List */}
+                {articlesDisplay.length > 0 && (
+                  <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
+                    {articlesDisplay.map((article) => (
+                      <ArticleCard key={article.id} article={article} variant="horizontal" />
+                    ))}
+                  </div>
+                )}
+
+                {/* Trending Subheading */}
+                {trending.length > 0 && (
+                  <div className="flex flex-col gap-3 overflow-hidden">
+                    <h3 className="font-albert font-medium text-lg text-text-primary tracking-[-0.5px] leading-[1.3]">
+                      Trending
+                    </h3>
+                    
+                    {/* Horizontal scrollable list */}
+                    <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
+                      {trending.map((item, index) => (
+                        <TrendingItem key={item.id} item={item} index={index} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recommended Subheading */}
+                {recommended.length > 0 && (
+                  <div className="flex flex-col gap-3">
+                    <h3 className="font-albert font-medium text-lg text-text-primary tracking-[-0.5px] leading-[1.3]">
+                      Recommended
+                    </h3>
+                    
+                    {/* Vertical list of recommended cards */}
+                    <div className="flex flex-col gap-3">
+                      {recommended.map((item) => (
+                        <RecommendedCard key={item.id} item={item} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>

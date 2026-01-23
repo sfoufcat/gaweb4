@@ -273,7 +273,7 @@ export function Sidebar() {
       name: menuTitles.squad,
       path: isCoachView ? '/coach?tab=squads' : '/squad',
       icon: <NavIcon iconKey={menuIcons.squad} />,
-      visible: showSquadNav, // Visible ONLY if user has a standard squad
+      visible: false, // HIDDEN: Standalone squads disabled - squads now managed via Program > Community
     },
     feed: { 
       name: menuTitles.feed, 
@@ -281,11 +281,11 @@ export function Sidebar() {
       icon: <NavIcon iconKey={menuIcons.feed} />,
       visible: showFeedNav, // Visible if feed is enabled for the org
     },
-    learn: { 
-      name: menuTitles.learn, 
-      path: '/discover', 
+    learn: {
+      name: menuTitles.learn,
+      path: '/discover',
       icon: <NavIcon iconKey={menuIcons.learn} />,
-      visible: true, // Always visible
+      visible: true, // Always visible - squads section hidden within the page itself
     },
     chat: { 
       name: menuTitles.chat, 
@@ -393,7 +393,7 @@ export function Sidebar() {
       {/* Desktop Sidebar - Apple Liquid Glass Style */}
       {/* Uses CSS variables for branding colors when preview mode or custom branding is active */}
       {/* Collapses to icons only when on /chat (Instagram DM style) */}
-      <aside className={`hidden lg:flex flex-col fixed left-0 top-0 bottom-0 z-[9999] sidebar-branded backdrop-blur-xl border-r border-[#e1ddd8]/50 dark:border-[#272d38]/50 transition-all duration-300 ease-in-out py-6 pointer-events-auto ${isCollapsed ? 'w-[72px] px-3' : 'w-64 px-6'}`}>
+      <aside className={`hidden lg:flex flex-col fixed left-0 top-0 bottom-0 z-50 sidebar-branded backdrop-blur-xl border-r border-[#e1ddd8]/50 dark:border-[#272d38]/50 transition-all duration-300 ease-in-out py-6 pointer-events-auto ${isCollapsed ? 'w-[72px] px-3' : 'w-64 px-6'}`}>
         {/* Logo - Shows horizontal logo if available, otherwise square logo + title */}
         {/* In collapsed mode, only show square logo centered with smooth transition */}
         <Link href="/">
@@ -572,7 +572,7 @@ export function Sidebar() {
       {/* Mobile Bottom Navigation - Apple Glass + Instagram Simplicity */}
       <div
         className={`
-          lg:hidden fixed bottom-0 left-0 right-0 z-[9999] flex justify-center px-5
+          lg:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-center px-5
           transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom
           pointer-events-none
           ${isCompact ? 'translate-y-[10px] scale-[0.94] opacity-95' : 'translate-y-0 scale-100 opacity-100'}

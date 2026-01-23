@@ -14,9 +14,11 @@ interface SignUpFormProps {
   origin?: string;     // Parent window origin for postMessage
   hideOAuth?: boolean; // Hide OAuth buttons (used when OAuth is handled by parent)
   signInUrl?: string;  // Custom sign-in URL (e.g., with flowSessionId preserved for funnel flow)
+  lockedEmail?: string; // If set, email is pre-filled and readonly (for invite-only funnels)
+  lockedEmails?: string[]; // Multiple allowed emails (batch invites) - validated after signup
 }
 
-export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = false, origin = '', hideOAuth = false, signInUrl }: SignUpFormProps) {
+export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = false, origin = '', hideOAuth = false, signInUrl, lockedEmail, lockedEmails }: SignUpFormProps) {
   const { signUp, isLoaded, setActive } = useSignUp();
   const router = useRouter();
   
@@ -55,7 +57,7 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(lockedEmail || '');
   const [password, setPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [pendingVerification, setPendingVerification] = useState(false);
@@ -121,6 +123,14 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
     if (!lastName.trim()) errors.lastName = 'Last name is required';
     if (!email) errors.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Please enter a valid email';
+    // Validate email against locked emails list (batch invites)
+    else if (lockedEmails && lockedEmails.length > 0) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedLocked = lockedEmails.map(e => e.toLowerCase());
+      if (!normalizedLocked.includes(normalizedEmail)) {
+        errors.email = 'This email is not on the invite list. Please use the email your invite was sent to.';
+      }
+    }
     if (!password) errors.password = 'Password is required';
     else if (password.length < 8) errors.password = 'Password must be at least 8 characters';
 
@@ -450,15 +460,26 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
           </div>
 
           <AuthInput
-            label="Email address"
+            label={lockedEmail ? "Email address (invite-only)" : (lockedEmails?.length ? "Email address (private invite)" : "Email address")}
             type="email"
             autoComplete="email"
             placeholder="Enter your email address"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => !lockedEmail && setEmail(e.target.value)}
             error={fieldErrors.email}
-            disabled={loading}
+            disabled={loading || !!lockedEmail}
+            readOnly={!!lockedEmail}
           />
+          {lockedEmail && (
+            <p className="text-xs text-[#8a857f] dark:text-[#7d8190] -mt-2 mb-2">
+              This invite is for {lockedEmail}. You must sign up with this email.
+            </p>
+          )}
+          {!lockedEmail && lockedEmails && lockedEmails.length > 0 && (
+            <p className="text-xs text-[#8a857f] dark:text-[#7d8190] -mt-2 mb-2">
+              Please sign up with the email your invite was sent to.
+            </p>
+          )}
 
           <AuthInput
             label="Password"

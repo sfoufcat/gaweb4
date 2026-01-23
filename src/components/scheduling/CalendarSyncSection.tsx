@@ -261,7 +261,7 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
                 <button
                   onClick={handleConnectGoogle}
                   disabled={isConnecting !== null}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] dark:bg-brand-accent text-white rounded-lg font-albert font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg font-albert font-medium text-sm hover:bg-brand-accent/90 transition-colors disabled:opacity-50"
                 >
                   {isConnecting === 'google' ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -316,7 +316,7 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
                 <button
                   onClick={handleConnectMicrosoft}
                   disabled={isConnecting !== null}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] dark:bg-brand-accent text-white rounded-lg font-albert font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg font-albert font-medium text-sm hover:bg-brand-accent/90 transition-colors disabled:opacity-50"
                 >
                   {isConnecting === 'microsoft' ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

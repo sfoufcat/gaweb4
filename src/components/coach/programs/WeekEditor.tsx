@@ -1460,7 +1460,7 @@ export function WeekEditor({
     }
   // Note: Removed getDefaultFormData from deps as it's not used in this effect
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData, week.id, week.weekNumber, week.name, week.theme, week.description, week.weeklyPrompt, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.weeklyTasks, week.currentFocus, week.notes, week.linkedSummaryIds, week.linkedCallEventIds, week.linkedArticleIds, week.linkedDownloadIds, week.linkedLinkIds, week.linkedQuestionnaireIds, week.courseAssignments, editorContext, programId, viewContext, clientContextId, getApiEndpoint, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
+  }, [formData, week.id, week.weekNumber, week.name, week.theme, week.description, week.weeklyPrompt, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.weeklyTasks, week.currentFocus, week.notes, week.linkedSummaryIds, week.linkedCallEventIds, week.linkedArticleIds, week.linkedDownloadIds, week.linkedLinkIds, week.linkedQuestionnaireIds, week.courseAssignments, week.resourceAssignments, editorContext, programId, viewContext, clientContextId, getApiEndpoint, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
 
   // handleSave is only used by the SyncTemplateDialog now
   const handleSave = async () => {

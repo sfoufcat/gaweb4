@@ -9,7 +9,7 @@ interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
-  ({ label, error, type, className, ...props }, ref) => {
+  ({ label, error, type, className, readOnly, ...props }, ref) => {
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === 'password';
 
@@ -22,12 +22,14 @@ export const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
           <input
             ref={ref}
             type={isPassword && showPassword ? 'text' : type}
+            readOnly={readOnly}
             className={`
               w-full bg-white dark:bg-surface-elevated border border-[#e1ddd8] dark:border-border-subtle rounded-2xl py-4 px-5
               font-sans text-base text-text-primary placeholder:text-[#a7a39e] dark:placeholder:text-text-secondary
               focus:outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20
               transition-all duration-200
               disabled:opacity-50 disabled:cursor-not-allowed
+              ${readOnly ? 'bg-[#f5f3f0] dark:bg-[#1a1e26] cursor-not-allowed' : ''}
               ${error ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : ''}
               ${isPassword ? 'pr-12' : ''}
               ${className || ''}

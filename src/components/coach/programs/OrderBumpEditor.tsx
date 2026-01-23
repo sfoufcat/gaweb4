@@ -154,8 +154,9 @@ function ProductSelector({
           </div>
           
           {/* Type filter */}
+          {/* HIDDEN: 'squad' removed - standalone squads disabled, now managed via Program > Community */}
           <div className="flex gap-2 mt-3">
-            {(['all', 'program', 'squad', 'content'] as const).map((type) => (
+            {(['all', 'program', 'content'] as const).map((type) => (
               <button
                 key={type}
                 onClick={() => setSelectedType(type)}

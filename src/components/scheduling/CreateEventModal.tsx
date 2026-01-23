@@ -69,8 +69,9 @@ const RECURRENCE_OPTIONS: { value: RecurrenceFrequency | 'none'; label: string }
 
 const EVENT_TYPES = [
   { value: 'community_event', label: 'All Members', description: 'Anyone in your organization can join', visibility: 'Discover · Calendar', icon: Globe },
-  { value: 'cohort_call', label: 'Program Group', description: 'Only members in a specific program group', visibility: 'Program Page · Calendar', icon: Users },
-  { value: 'squad_call', label: 'Squad', description: 'Only members of a specific squad', visibility: 'Squad Page · Calendar', icon: UserCheck },
+  { value: 'cohort_call', label: 'Program Group', description: 'Only members in a specific program', visibility: 'Program Page · Calendar', icon: Users },
+  // HIDDEN: Standalone squads disabled - squads now managed via Program > Community
+  // { value: 'squad_call', label: 'Squad', description: 'Only members of a specific squad', visibility: 'Squad Page · Calendar', icon: UserCheck },
 ];
 
 const COMMON_TIMEZONES = [
@@ -570,6 +571,7 @@ export function CreateEventModal({
                   uploadEndpoint="/api/coach/org-upload-media"
                   hideLabel
                   aspectRatio="16:9"
+                  collapsiblePreview
                 />
               </div>
             </motion.div>
@@ -591,7 +593,7 @@ export function CreateEventModal({
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
                   Event Type
                 </label>
-                <div className="grid grid-cols-3 gap-3 -mx-0.5 px-0.5">
+                <div className="grid grid-cols-2 gap-3">
                   {EVENT_TYPES.map((type) => {
                     const Icon = type.icon;
                     const isSelected = eventType === type.value;
@@ -624,15 +626,15 @@ export function CreateEventModal({
                         }`}>
                           <Icon className={`w-5 h-5 ${isSelected ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
                         </div>
-                        <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-0.5">
+                        <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
                           {type.label}
                         </h3>
-                        <p className="text-[10px] text-[#5f5a55] dark:text-[#b2b6c2] leading-tight">
+                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] leading-snug">
                           {type.description}
                         </p>
                         {/* Visibility hint */}
-                        <div className="mt-1.5 flex items-center gap-1 text-[9px] text-[#8a857f] dark:text-[#7a7f8c]">
-                          <Eye className="w-2.5 h-2.5" />
+                        <div className="mt-2 flex items-center gap-1 text-[11px] text-[#8a857f] dark:text-[#7a7f8c]">
+                          <Eye className="w-3 h-3" />
                           <span>{type.visibility}</span>
                         </div>
                         {/* Selection indicator */}
@@ -747,43 +749,7 @@ export function CreateEventModal({
                 </motion.div>
               )}
 
-              {/* Squad Selector (when squad_call is selected) */}
-              {eventType === 'squad_call' && (
-                <motion.div
-                  key="squad-selector"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                  className="overflow-hidden"
-                >
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                    Select Squad <span className="text-red-500">*</span>
-                  </label>
-                  {squads.length === 0 ? (
-                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl">
-                      No squads found in your organization
-                    </p>
-                  ) : (
-                    <Select value={selectedSquadId} onValueChange={setSelectedSquadId}>
-                      <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
-                        <SelectValue placeholder="Select a squad..." />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
-                        {squads.map((squad) => (
-                          <SelectItem
-                            key={squad.id}
-                            value={squad.id}
-                            className="cursor-pointer font-albert"
-                          >
-                            {squad.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </motion.div>
-              )}
+              {/* HIDDEN: Standalone squads disabled - squads now managed via Program > Community */}
               </AnimatePresence>
 
               {/* Meeting Provider */}
@@ -1050,7 +1016,7 @@ export function CreateEventModal({
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-[100]" onClose={onClose}>
+      <Dialog as="div" className="relative z-[10000]" onClose={onClose}>
         {/* Backdrop */}
         <Transition.Child
           as={Fragment}
@@ -1061,10 +1027,10 @@ export function CreateEventModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 z-[99] bg-black/40 backdrop-blur-sm" />
+          <div className="fixed inset-0 z-[10000] bg-black/40 backdrop-blur-sm" />
         </Transition.Child>
 
-        <div className="fixed inset-0 z-[100] overflow-y-auto">
+        <div className="fixed inset-0 z-[10001] overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
             <Transition.Child
               as={Fragment}

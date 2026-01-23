@@ -26,6 +26,8 @@ interface DiscountCodesTabProps {
 interface SelectableItem {
   id: string;
   name: string;
+  // HIDDEN: 'squad' type is kept for backwards compatibility but hidden from UI
+  // Standalone squads disabled - squads now managed via Program > Community
   type: 'program' | 'squad' | 'content';
   contentType?: DiscountContentType;
 }
@@ -365,11 +367,13 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
     return `$${(code.value / 100).toFixed(2)}`;
   };
 
-  // Get all selectable items (programs + squads + content) for the multi-select
+  // Get all selectable items (programs + content) for the multi-select
+  // HIDDEN: Standalone squads disabled - squads now managed via Program > Community
   const getSelectableItems = (): SelectableItem[] => {
     const items: SelectableItem[] = [];
     availablePrograms.forEach(p => items.push({ id: p.id, name: p.name, type: 'program' }));
-    availableSquads.forEach(s => items.push({ id: s.id, name: s.name, type: 'squad' }));
+    // Squads hidden from selection UI (kept for backwards compatibility with existing codes)
+    // availableSquads.forEach(s => items.push({ id: s.id, name: s.name, type: 'squad' }));
     availableContent.forEach(c => items.push({
       id: c.id,
       name: c.title,

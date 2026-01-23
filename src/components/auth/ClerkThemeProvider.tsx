@@ -3,6 +3,7 @@
 import { ClerkProvider } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
 import { useEffect, useState, useMemo } from 'react';
+import { safeGetItem } from '@/lib/safe-storage';
 
 const STORAGE_KEY = 'ga-theme';
 const PLATFORM_DOMAIN = 'https://coachful.co';
@@ -146,9 +147,9 @@ export function ClerkThemeProvider({
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initial theme check from localStorage
+    // Initial theme check from localStorage (safe for incognito mode)
     const checkTheme = () => {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = safeGetItem(STORAGE_KEY);
       setIsDark(stored === 'dark');
     };
 

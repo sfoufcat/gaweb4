@@ -207,7 +207,8 @@ export default function GoalPage() {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(0, 0, 0, 0);
-    const selected = new Date(targetDate);
+    // Parse date string as local time (not UTC) by appending T00:00:00
+    const selected = new Date(targetDate + 'T00:00:00');
     return !isNaN(selected.getTime()) && selected >= tomorrow;
   };
 
@@ -224,7 +225,7 @@ export default function GoalPage() {
           transition={{ duration: 0.5 }}
         >
           <button
-            onClick={() => router.back()}
+            onClick={() => router.replace('/profile')}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
             aria-label="Go back"
           >
@@ -310,6 +311,12 @@ export default function GoalPage() {
                     )}
                   </AnimatePresence>
                 </div>
+                {/* Goal length warning */}
+                {goal.length > 0 && goal.trim().length < 5 && !showValidatedGoal && !showSuggestion && (
+                  <p className="mt-2 text-[14px] text-text-muted">
+                    Goal must be at least 5 characters
+                  </p>
+                )}
               </div>
 
               {/* "By" date input */}
@@ -328,7 +335,7 @@ export default function GoalPage() {
                     minDate={new Date(minDate)}
                     disabled={isValidating || isSaving}
                     placeholder="Select target date"
-                    className="w-full bg-transparent border-0 border-b-2 border-[#e1ddd8] focus:border-brand-accent rounded-none pb-4 text-text-muted"
+                    className="w-full bg-transparent border-0 border-b-2 border-[#e1ddd8] focus:border-brand-accent rounded-none pb-4 px-0 text-[24px] lg:text-[28px] [&>span]:text-[24px] [&>span]:lg:text-[28px] [&>span]:font-sans"
                   />
                 ) : (
                   <motion.p

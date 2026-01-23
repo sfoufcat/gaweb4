@@ -16,7 +16,7 @@ export async function GET() {
     const demoData = await withDemoMode('feed-settings');
     if (demoData) return demoData;
     
-    const { organizationId } = await requireCoachWithOrg();
+    const { organizationId } = await requireCoachWithOrg({ allowPlatformMode: true });
 
     const settingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
     
@@ -47,7 +47,7 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { organizationId } = await requireCoachWithOrg();
+    const { organizationId } = await requireCoachWithOrg({ allowPlatformMode: true });
 
     const body = await request.json();
     const { feedEnabled } = body;

@@ -20,6 +20,8 @@ interface MediaUploadProps {
   aspectRatio?: '2:1' | '16:9' | '1:1' | '4:3';
   /** Preview size: 'full' (default) shows full-width preview, 'thumbnail' shows compact square */
   previewSize?: 'full' | 'thumbnail';
+  /** When true, preview is shown in a collapsible drawer to save space in modals */
+  collapsiblePreview?: boolean;
 }
 
 const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -188,12 +190,14 @@ export function MediaUpload({
   hideLabel = false,
   aspectRatio,
   previewSize = 'full',
+  collapsiblePreview = false,
 }: MediaUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   const dragCounterRef = useRef(0);
@@ -491,8 +495,128 @@ export function MediaUpload({
       ) : (
         // File upload
         <div className="space-y-2">
-          {/* Preview or Upload area */}
-          {value ? (
+          {/* Collapsible mode - wraps both empty and filled states */}
+          {collapsiblePreview ? (
+            <div className="rounded-xl border border-[#e1ddd8] dark:border-[#262b35] overflow-hidden bg-white dark:bg-[#1d222b]">
+              {/* Collapsed header - always visible */}
+              <button
+                type="button"
+                onClick={() => setIsPreviewExpanded(!isPreviewExpanded)}
+                className="w-full flex items-center gap-3 p-3 hover:bg-[#f9f7f5] dark:hover:bg-[#262b35]/50 transition-colors"
+              >
+                {/* Small thumbnail or placeholder icon */}
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-[#f5f2ed] dark:bg-[#1a1f2a] flex-shrink-0 flex items-center justify-center">
+                  {value && isImage ? (
+                    <Image
+                      src={value}
+                      alt="Cover preview"
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                    />
+                  ) : (
+                    <svg className="w-6 h-6 text-[#a7a39e] dark:text-[#5f6670]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </div>
+                {/* Label */}
+                <span className="flex-1 text-left text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  {value ? 'Cover Image' : 'Add Cover Image'}
+                </span>
+                {/* Chevron */}
+                <svg
+                  className={`w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2] transition-transform duration-200 ${isPreviewExpanded ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Expandable content area */}
+              <div
+                className={`overflow-hidden transition-all duration-200 ease-out ${
+                  isPreviewExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <div className="px-3 pb-3">
+                  {value && isImage ? (
+                    // Show preview with remove button
+                    <div className={`relative rounded-lg overflow-hidden bg-[#f5f2ed] dark:bg-[#1a1f2a] w-full ${getAspectRatioClass(aspectRatio)}`}>
+                      <Image
+                        src={value}
+                        alt="Preview"
+                        fill
+                        className="object-cover"
+                        sizes="400px"
+                      />
+                      {/* Remove button on image */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleClear();
+                        }}
+                        className="absolute top-2 right-2 p-1.5 bg-white/90 dark:bg-[#1a1f2a]/90 backdrop-blur-sm rounded-full hover:bg-white dark:hover:bg-[#1a1f2a] transition-colors shadow-sm"
+                        title={`Remove ${getTypeLabel()}`}
+                      >
+                        <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ) : (
+                    // Show dropzone for upload
+                    <div
+                      onClick={() => !uploading && fileInputRef.current?.click()}
+                      onDragEnter={handleDragEnter}
+                      onDragLeave={handleDragLeave}
+                      onDragOver={handleDragOver}
+                      onDrop={handleDrop}
+                      className={`
+                        relative rounded-lg border-2 border-dashed transition-all cursor-pointer
+                        w-full ${getAspectRatioClass(aspectRatio)}
+                        ${uploading
+                          ? 'border-brand-accent bg-brand-accent/5 cursor-wait'
+                          : isDragging
+                            ? 'border-brand-accent bg-brand-accent/10 ring-2 ring-brand-accent/20'
+                            : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent hover:bg-[#faf8f6] dark:hover:bg-white/5'
+                        }
+                      `}
+                    >
+                      {uploading ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <div className="w-12 h-12 relative">
+                            <svg className="w-12 h-12 transform -rotate-90" viewBox="0 0 36 36">
+                              <circle cx="18" cy="18" r="16" fill="none" stroke="#e1ddd8" strokeWidth="2" />
+                              <circle cx="18" cy="18" r="16" fill="none" stroke="var(--brand-accent-light)" strokeWidth="2" strokeDasharray={`${progress} 100`} strokeLinecap="round" />
+                            </svg>
+                            <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-brand-accent font-albert">
+                              {progress}%
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Uploading...</p>
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <svg className="w-8 h-8 text-brand-accent mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                            {isDragging ? `Drop ${getTypeLabel()} here` : `Drag & drop or click to upload`}
+                          </p>
+                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]/70 font-albert mt-1">{getFormatHint()}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : value ? (
+            // Non-collapsible mode with preview
             <div className={`relative ${previewSize === 'thumbnail' ? 'inline-block' : ''}`}>
               <div className={`relative rounded-lg overflow-hidden bg-[#f5f2ed] dark:bg-[#1a1f2a] border border-[#e1ddd8] dark:border-[#262b35] ${
                 previewSize === 'thumbnail' ? 'w-20 h-20' : 'w-full'

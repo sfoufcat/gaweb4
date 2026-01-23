@@ -415,6 +415,7 @@ export function RichTextEditor({
   const minHeight = rows * 24; // ~24px per row
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: {

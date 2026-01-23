@@ -235,7 +235,12 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
   }
 
   // Validate invite code if funnel is invite-only
-  let validatedInvite: { paymentStatus: string; targetSquadId?: string } | null = null;
+  let validatedInvite: {
+    paymentStatus: string;
+    targetSquadId?: string;
+    lockedEmail?: string;    // Single locked email (legacy, for backwards compat)
+    lockedEmails?: string[]; // Multiple allowed emails (batch invites)
+  } | null = null;
   
   if (funnel.accessType === 'invite_only' && !inviteCode) {
     // Redirect to error or show invite required message
@@ -256,15 +261,29 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
       const invite = inviteDoc.data();
       
       // Validate invite
-      const isValid = 
+      const isValid =
         (invite?.funnelId === funnel.id || invite?.programId === program.id) &&
+        invite?.status !== 'cancelled' &&  // Reject cancelled invites
         (!invite?.expiresAt || new Date(invite.expiresAt) >= new Date()) &&
         (!invite?.maxUses || (invite?.useCount || 0) < invite.maxUses);
 
       if (isValid) {
+        // Determine locked emails: support both single email and batch emails array
+        let lockedEmails: string[] | undefined;
+        if (invite?.emailRequired) {
+          if (invite?.emails && Array.isArray(invite.emails) && invite.emails.length > 0) {
+            lockedEmails = invite.emails;
+          } else if (invite?.email) {
+            lockedEmails = [invite.email];
+          }
+        }
+
         validatedInvite = {
           paymentStatus: invite?.paymentStatus || 'required',
           targetSquadId: invite?.targetSquadId,
+          // If invite has email(s) and emailRequired, lock signup to those emails
+          lockedEmail: lockedEmails?.length === 1 ? lockedEmails[0] : undefined,
+          lockedEmails: lockedEmails?.length ? lockedEmails : undefined,
         };
       }
     }

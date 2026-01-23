@@ -1,5 +1,7 @@
 'use client';
 
+// HIDDEN: 'squad' kept for backwards compatibility but hidden from UI
+// Standalone squads disabled - squads now managed via Program > Community
 export type MyContentFilter = 'all' | 'article' | 'course' | 'event' | 'program' | 'squad';
 
 interface MyContentTypePillsProps {
@@ -28,13 +30,14 @@ export function MyContentTypePills({
   totalCount,
 }: MyContentTypePillsProps) {
   // Define filter options - only show types that have content
+  // HIDDEN: 'squad' removed - standalone squads disabled, now managed via Program > Community
   const allFilters: { key: MyContentFilter; label: string; count: number }[] = [
     { key: 'all', label: 'All', count: totalCount },
     { key: 'article', label: 'Articles', count: counts.articles },
     { key: 'course', label: 'Courses', count: counts.courses },
     { key: 'event', label: 'Events', count: counts.events },
     { key: 'program', label: 'Programs', count: counts.programs },
-    { key: 'squad', label: 'Squads', count: counts.squads },
+    // { key: 'squad', label: 'Squads', count: counts.squads },
   ];
   
   // Always show All, only show others if they have items

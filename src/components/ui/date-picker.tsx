@@ -29,6 +29,8 @@ export interface DatePickerProps {
   className?: string
   /** Format string for displaying the date */
   displayFormat?: string
+  /** z-index class for the dialog (use when inside other modals) */
+  zIndex?: string
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -46,6 +48,7 @@ export function DatePicker({
   disabled = false,
   className,
   displayFormat = "MMMM d, yyyy",
+  zIndex,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
   const [currentMonth, setCurrentMonth] = React.useState(() => {
@@ -147,6 +150,7 @@ export function DatePicker({
         <DialogContent
           className="max-w-[340px] p-0 gap-0 rounded-2xl overflow-hidden border-[#e1ddd8] dark:border-[#262b35]"
           hideCloseButton
+          zIndex={zIndex}
         >
           <VisuallyHidden.Root>
             <DialogTitle>Select a date</DialogTitle>

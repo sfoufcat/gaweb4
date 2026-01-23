@@ -12,7 +12,7 @@
  */
 
 import { adminDb } from './firebase-admin';
-import { getTodayDate, getYesterdayDate } from './alignment';
+import { getTodayDate, getYesterdayDate } from './timezone';
 import type { 
   UserAlignment, 
   UserAlignmentSummary, 

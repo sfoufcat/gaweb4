@@ -1351,9 +1351,9 @@ export function DashboardPage() {
     
     // No goal set
     return (
-      <Link key="goal" href="/onboarding/goal" className={`${baseClasses} bg-gradient-to-br from-gray-700 to-gray-900 p-5 flex flex-col justify-center cursor-pointer`}>
+      <Link key="goal" href="/onboarding/goal" className={`${baseClasses} bg-gradient-to-br from-gray-700 to-gray-900 p-5 flex flex-col justify-center items-center cursor-pointer`}>
         <div className="absolute inset-0 bg-black/55" />
-        <div className="relative z-10">
+        <div className="relative z-10 text-center">
           <p className="font-sans text-[11px] text-white/80 leading-[1.2] mb-1 uppercase tracking-wider">
             My goal
           </p>
@@ -2060,13 +2060,13 @@ export function DashboardPage() {
           <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px]">
             My Program
           </h2>
-          {hasAvailablePrograms && (
+          {hasAvailablePrograms && (programEnrollments.active.length > 0 || programEnrollments.upcoming.length > 0) && (
             <Link href="/discover" className="font-sans text-[12px] text-brand-accent leading-[1.2]">
               Discover more
             </Link>
           )}
         </div>
-        <ProgramCarousel 
+        <ProgramCarousel
           enrollments={[...programEnrollments.active, ...programEnrollments.upcoming]}
           isLoading={enrollmentsLoading}
           hasAvailablePrograms={hasAvailablePrograms}
@@ -2074,23 +2074,26 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* My Cohort Section - Horizontal Carousel */}
-      <div data-tour="my-squad" className="mt-8">
-        <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px] mb-3">
-          {mySquadTitle}
-        </h2>
-        <SquadCarousel
-          programSquad={dashboardSquads?.program || { squad: null, members: [] }}
-          standaloneSquad={dashboardSquads?.standalone || { squad: null, members: [] }}
-          isLoading={squadLoading}
-          squadTitle={mySquadTitle}
-          squadTerm={squadTerm}
-          isCoach={isCoachUser}
-        />
-      </div>
+      {/* My Cohort Section - Only show if user has a program squad */}
+      {/* HIDDEN: Standalone squads disabled - only show program squads now */}
+      {dashboardSquads?.program?.squad && (
+        <div data-tour="my-squad" className="mt-8">
+          <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px] mb-3">
+            {mySquadTitle}
+          </h2>
+          <SquadCarousel
+            programSquad={dashboardSquads?.program || { squad: null, members: [] }}
+            standaloneSquad={{ squad: null, members: [] }}
+            isLoading={squadLoading}
+            squadTitle={mySquadTitle}
+            squadTerm={squadTerm}
+            isCoach={isCoachUser}
+          />
+        </div>
+      )}
 
-      {/* Request Call with Coach - Only show if user has a squad with a coach */}
-      {!isCoachUser && (dashboardSquads?.program?.squad?.coachId || dashboardSquads?.standalone?.squad?.coachId) && (
+      {/* Request Call with Coach - Only show if user has a program squad with a coach */}
+      {!isCoachUser && dashboardSquads?.program?.squad?.coachId && (
         <div className="mt-6">
           <RequestCallCard 
             coachName={coachTitle || 'Coach'}

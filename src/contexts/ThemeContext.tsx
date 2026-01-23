@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { OrgDefaultTheme } from '@/types';
+import { safeGetItem, safeSetItem } from '@/lib/safe-storage';
 
 type Theme = 'light' | 'dark';
 
@@ -31,9 +32,9 @@ export function ThemeProvider({ children, initialOrgDefaultTheme = 'light' }: Th
   // Initialize theme from localStorage, falling back to org default, then system preference
   useEffect(() => {
     setMounted(true);
-    
-    // Check localStorage for user's saved preference
-    const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
+
+    // Check localStorage for user's saved preference (safe for incognito mode)
+    const stored = safeGetItem(STORAGE_KEY) as Theme | null;
     if (stored === 'light' || stored === 'dark') {
       setThemeState(stored);
       document.documentElement.classList.toggle('dark', stored === 'dark');
@@ -56,7 +57,7 @@ export function ThemeProvider({ children, initialOrgDefaultTheme = 'light' }: Th
 
   // Listen for system theme changes when org default is 'system' and no user preference
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = safeGetItem(STORAGE_KEY);
     if (stored || orgDefaultTheme !== 'system') {
       return; // User has explicit preference or org doesn't use system
     }
@@ -76,9 +77,9 @@ export function ThemeProvider({ children, initialOrgDefaultTheme = 'light' }: Th
   // Update org default theme when it changes (e.g., from branding context)
   const setOrgDefaultTheme = useCallback((newOrgDefault: OrgDefaultTheme) => {
     setOrgDefaultThemeState(newOrgDefault);
-    
+
     // Only apply if user hasn't set their own preference
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = safeGetItem(STORAGE_KEY);
     if (!stored) {
       if (newOrgDefault === 'system') {
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -94,7 +95,7 @@ export function ThemeProvider({ children, initialOrgDefaultTheme = 'light' }: Th
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem(STORAGE_KEY, newTheme);
+    safeSetItem(STORAGE_KEY, newTheme);
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
   }, []);
 

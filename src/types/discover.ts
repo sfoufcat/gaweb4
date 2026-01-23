@@ -1,5 +1,5 @@
 // Discover Types
-import type { UserTrack, OrderBumpConfig } from './index';
+import type { UserTrack, OrderBumpConfig } from './base';
 
 // =============================================================================
 // CONTENT PRICING & GATING

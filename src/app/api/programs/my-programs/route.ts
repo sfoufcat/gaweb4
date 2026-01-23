@@ -382,6 +382,7 @@ export async function GET() {
 
     // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
     const organizationId = await getEffectiveOrgId();
+    console.log(`[MY_PROGRAMS] organizationId from getEffectiveOrgId: ${organizationId}`);
 
     // Get active enrollments for the user
     let query = adminDb

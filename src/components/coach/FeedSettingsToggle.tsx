@@ -1,18 +1,19 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useBrandingValues } from '@/contexts/BrandingContext';
+import { useBrandingValues, useFeedEnabledState } from '@/contexts/BrandingContext';
 
 /**
  * FeedSettingsToggle - Allow coach to enable/disable the social feed feature
- * 
+ *
  * This component can be added to the coach settings/branding tab
  */
 export function FeedSettingsToggle() {
-  const { colors, isDefault } = useBrandingValues();
+  const { colors } = useBrandingValues();
+  const { feedEnabled: contextFeedEnabled, setFeedEnabled: setContextFeedEnabled } = useFeedEnabledState();
   const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
-  const [feedEnabled, setFeedEnabled] = useState(false);
+  const [feedEnabled, setFeedEnabled] = useState(contextFeedEnabled);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +25,10 @@ export function FeedSettingsToggle() {
         const response = await fetch('/api/coach/feed-settings');
         if (response.ok) {
           const data = await response.json();
-          setFeedEnabled(data.feedEnabled || false);
+          const enabled = data.feedEnabled || false;
+          setFeedEnabled(enabled);
+          // Sync with context
+          setContextFeedEnabled(enabled);
         }
       } catch {
         console.error('Failed to fetch feed setting');
@@ -34,13 +38,13 @@ export function FeedSettingsToggle() {
     };
 
     fetchSetting();
-  }, []);
+  }, [setContextFeedEnabled]);
 
   // Handle toggle
   const handleToggle = useCallback(async () => {
     const newValue = !feedEnabled;
-    
-    // Optimistic update
+
+    // Optimistic update (local state)
     setFeedEnabled(newValue);
     setIsSaving(true);
     setError(null);
@@ -56,6 +60,9 @@ export function FeedSettingsToggle() {
         const data = await response.json();
         throw new Error(data.error || 'Failed to save');
       }
+
+      // Success - update the global context so sidebar updates immediately
+      setContextFeedEnabled(newValue);
     } catch (err) {
       // Revert on error
       setFeedEnabled(!newValue);
@@ -63,7 +70,7 @@ export function FeedSettingsToggle() {
     } finally {
       setIsSaving(false);
     }
-  }, [feedEnabled]);
+  }, [feedEnabled, setContextFeedEnabled]);
 
   if (isLoading) {
     return (
@@ -141,4 +148,3 @@ export function FeedSettingsToggle() {
     </div>
   );
 }
-

@@ -253,6 +253,21 @@ export default function GoalPage() {
     return text.charAt(0).toUpperCase() + text.slice(1);
   };
 
+  // Handle redirects in useEffect to avoid setState during render
+  useEffect(() => {
+    if (!isLoaded || loading) return;
+
+    if (!user && !isDemoMode) {
+      router.push('/sign-in');
+      return;
+    }
+
+    if (!goal && !isDemoMode) {
+      router.push('/onboarding/goal');
+    }
+  }, [isLoaded, loading, user, isDemoMode, goal, router]);
+
+  // Show loading state
   if (!isLoaded || loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -261,16 +276,17 @@ export default function GoalPage() {
     );
   }
 
-  if (!user && !isDemoMode) {
-    router.push('/sign-in');
-    return null;
+  // Show loading while redirecting
+  if ((!user && !isDemoMode) || (!goal && !isDemoMode)) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
+      </div>
+    );
   }
 
+  // Safety check - should not reach here without goal in non-demo mode
   if (!goal) {
-    if (!isDemoMode) {
-      // Redirect to goal setting page when there's no goal
-      router.push('/onboarding/goal');
-    }
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />

@@ -6,7 +6,8 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getIntegration, updateTokens, type GoogleCalendarSettings } from './';
+import { getIntegration, updateTokens } from './token-manager';
+import type { GoogleCalendarSettings } from './types';
 
 interface GoogleMeetMeetingDetails {
   summary: string;

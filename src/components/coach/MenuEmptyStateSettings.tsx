@@ -147,49 +147,12 @@ export function MenuEmptyStateSettings() {
           </div>
         </div>
 
-        {/* Squad Empty State */}
-        <div className="p-3 rounded-lg bg-[#f5f3f0] dark:bg-[#1a1f2a]">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[14px] font-medium text-[#1a1a1a] dark:text-[#faf8f6]">
-              {squadTitle} menu
-            </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#e8e4df] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b5b0ab]">
-              When user has no {squadLower}
-            </span>
-          </div>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleToggle('squad', 'discover')}
-              disabled={isSaving === 'squad'}
-              className={`flex-1 py-2 px-3 rounded-lg text-[13px] font-medium transition-colors ${
-                squadBehavior === 'discover'
-                  ? 'text-white'
-                  : 'bg-white dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f0eeeb] dark:hover:bg-[#2f3542]'
-              } ${isSaving === 'squad' ? 'opacity-50 cursor-not-allowed' : ''}`}
-              style={squadBehavior === 'discover' ? { backgroundColor: accentColor } : undefined}
-            >
-              Show &quot;Find {squadTitle}&quot;
-            </button>
-            <button
-              onClick={() => handleToggle('squad', 'hide')}
-              disabled={isSaving === 'squad'}
-              className={`flex-1 py-2 px-3 rounded-lg text-[13px] font-medium transition-colors ${
-                squadBehavior === 'hide'
-                  ? 'text-white'
-                  : 'bg-white dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f0eeeb] dark:hover:bg-[#2f3542]'
-              } ${isSaving === 'squad' ? 'opacity-50 cursor-not-allowed' : ''}`}
-              style={squadBehavior === 'hide' ? { backgroundColor: accentColor } : undefined}
-            >
-              Hide menu item
-            </button>
-          </div>
-        </div>
+        {/* HIDDEN: Standalone squads disabled - squads now managed via Program > Community */}
       </div>
 
       {/* Help text */}
       <p className="mt-4 text-[12px] text-[#8a857f]">
-        &quot;Show Find&quot; displays a discover page to help users join a {programLower} or {squadLower}. 
+        &quot;Show Find&quot; displays a discover page to help users join a {programLower}. 
         &quot;Hide&quot; removes the menu item entirely until they have content.
       </p>
 

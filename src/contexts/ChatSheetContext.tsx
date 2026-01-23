@@ -1,7 +1,13 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { ChatSheet } from '@/components/chat/ChatSheet';
+import dynamic from 'next/dynamic';
+
+// Lazy load ChatSheet - it's heavy (imports stream-chat-react) and only needed when opened
+const ChatSheet = dynamic(
+  () => import('@/components/chat/ChatSheet').then(mod => ({ default: mod.ChatSheet })),
+  { ssr: false }
+);
 
 interface ChatSheetContextValue {
   /** Whether the chat sheet is currently open */

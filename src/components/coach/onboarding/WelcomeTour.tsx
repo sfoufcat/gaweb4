@@ -27,7 +27,7 @@ const WELCOME_CARDS = [
     description: 'You now have a complete platform to create programs, build community, and grow your coaching practice. Let\'s take a quick tour of what you can do.',
     features: [
       'Create transformation programs',
-      'Build accountability squads',
+      'Build program communities',
       'Capture leads with funnels',
       'Track progress & revenue',
     ],
@@ -46,20 +46,21 @@ const WELCOME_CARDS = [
       'Cohort-based or evergreen',
     ],
   },
-  {
-    id: 'squads',
-    icon: Users,
-    iconBg: 'from-emerald-500 to-teal-600',
-    title: 'Squads & Community',
-    subtitle: 'Build accountability groups',
-    description: 'Group your clients into small squads where they support each other. Community drives engagement and keeps clients coming back.',
-    features: [
-      'Small group accountability',
-      'Squad chat & discussions',
-      'Shared progress visibility',
-      'Community feed & wins',
-    ],
-  },
+  // HIDDEN: Standalone squads disabled - squads now managed via Program > Community
+  // {
+  //   id: 'squads',
+  //   icon: Users,
+  //   iconBg: 'from-emerald-500 to-teal-600',
+  //   title: 'Squads & Community',
+  //   subtitle: 'Build accountability groups',
+  //   description: 'Group your clients into small squads where they support each other. Community drives engagement and keeps clients coming back.',
+  //   features: [
+  //     'Small group accountability',
+  //     'Squad chat & discussions',
+  //     'Shared progress visibility',
+  //     'Community feed & wins',
+  //   ],
+  // },
   {
     id: 'funnels',
     icon: Target,

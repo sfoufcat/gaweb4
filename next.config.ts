@@ -103,7 +103,25 @@ const nextConfig: NextConfig = {
   
   // Optimize bundle splitting for faster initial load
   experimental: {
-    optimizePackageImports: ['stream-chat', 'stream-chat-react', 'lucide-react', '@clerk/nextjs', 'framer-motion'],
+    optimizePackageImports: [
+      'stream-chat',
+      'stream-chat-react',
+      '@stream-io/video-react-sdk',
+      'lucide-react',
+      '@clerk/nextjs',
+      'framer-motion',
+      'firebase',
+      'firebase/firestore',
+      'firebase/auth',
+      'firebase/storage',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-popover',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-tooltip',
+      'date-fns',
+      'recharts',
+    ],
   },
   
   // Enable compression for faster loading

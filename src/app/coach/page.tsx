@@ -58,8 +58,10 @@ const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email
  * Scheduling Tab Component
  * Contains Calendar View, Availability Settings, and Call Pricing with sub-navigation
  */
-function SchedulingTab() {
-  const [activeSubTab, setActiveSubTab] = useState<'calendar' | 'events' | 'availability' | 'pricing'>('calendar');
+function SchedulingTab({ initialSubTab }: { initialSubTab?: string | null }) {
+  const [activeSubTab, setActiveSubTab] = useState<'calendar' | 'events' | 'availability' | 'pricing'>(
+    (initialSubTab as 'calendar' | 'events' | 'availability' | 'pricing') || 'calendar'
+  );
   const [isEventEditorOpen, setIsEventEditorOpen] = useState(false);
 
   // When event editor is open, hide the sub-nav and show only the editor
@@ -157,6 +159,7 @@ export default function CoachPage() {
   const initialCustomizeSubtab = searchParams.get('customizeSubtab');
   const initialAnalyticsSubTab = searchParams.get('analyticsSubTab');
   const initialAnalyticsSquadId = searchParams.get('analyticsSquadId');
+  const initialSchedulingSubTab = searchParams.get('schedulingSubTab');
   
   // Clients tab state - selected client ID for viewing details (initialized from URL)
   const [selectedClientId, setSelectedClientId] = useState<string | null>(initialClientId);
@@ -204,6 +207,10 @@ export default function CoachPage() {
     return 'menu';
   });
 
+  // Track intentional tab changes to prevent useEffect from resetting mobileView
+  // when navigating to 'clients' (which removes ?tab param)
+  const intentionalTabChange = useRef(false);
+
   // Swipe navigation for mobile - swipe right from left edge returns to menu
   const swipeHandlers = useSwipeNavigation({
     onSwipeRight: () => setMobileView('menu'),
@@ -213,11 +220,13 @@ export default function CoachPage() {
 
   // Sync mobileView with URL - when tab param is removed (e.g., clicking coach icon in bottom nav),
   // reset to menu view so user can see MobileCoachMenu
+  // Skip if this was an intentional tab change (e.g., clicking 'Clients' in menu)
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (!tabParam) {
+    if (!tabParam && !intentionalTabChange.current) {
       setMobileView('menu');
     }
+    intentionalTabChange.current = false;
   }, [searchParams]);
 
   // Sync activeTab with URL tab param - needed when sidebar nav triggers router.push/replace
@@ -237,6 +246,8 @@ export default function CoachPage() {
   const handleTabChange = useCallback((newTab: CoachTab, filters?: Record<string, string>) => {
     setActiveTab(newTab);
     // On mobile, switch to content view when selecting a tab
+    // Mark as intentional so the useEffect doesn't reset to menu when ?tab is removed
+    intentionalTabChange.current = true;
     setMobileView('content');
 
     // Build URL preserving existing query params (like tour=true)
@@ -261,6 +272,7 @@ export default function CoachPage() {
     url.searchParams.delete('customizeSubtab');
     if (!filters?.analyticsSubTab) url.searchParams.delete('analyticsSubTab');
     url.searchParams.delete('analyticsSquadId');
+    if (newTab !== 'scheduling') url.searchParams.delete('schedulingSubTab');
 
     // Apply any filters passed from dashboard cards
     if (filters) {
@@ -1024,14 +1036,14 @@ export default function CoachPage() {
 
           {/* Upgrade Forms Tab - Uses org-scoped API for coaches */}
           <TabsContent value="upgrade-forms" className="animate-fadeIn">
-            <AdminPremiumUpgradeFormsTab 
+            <AdminPremiumUpgradeFormsTab
               apiEndpoint={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-forms/premium-upgrade' : '/api/admin/premium-upgrade-forms'}
             />
           </TabsContent>
 
           {/* Coaching Intake Forms Tab - Uses org-scoped API for coaches */}
           <TabsContent value="coaching-forms" className="animate-fadeIn">
-            <AdminCoachingIntakeFormsTab 
+            <AdminCoachingIntakeFormsTab
               apiEndpoint={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-forms/coaching-intake' : '/api/admin/coaching-intake-forms'}
             />
           </TabsContent>
@@ -1081,7 +1093,7 @@ export default function CoachPage() {
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="animate-fadeIn">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
-              <AnalyticsDashboard 
+              <AnalyticsDashboard
                 initialSubTab={initialAnalyticsSubTab}
                 onSubTabChange={handleAnalyticsSubTabChange}
                 initialSquadId={initialAnalyticsSquadId}
@@ -1104,7 +1116,7 @@ export default function CoachPage() {
 
           {/* Scheduling Tab */}
           <TabsContent value="scheduling" className="animate-fadeIn">
-            <SchedulingTab />
+            <SchedulingTab initialSubTab={initialSchedulingSubTab} />
           </TabsContent>
 
           {/* Integrations Tab */}

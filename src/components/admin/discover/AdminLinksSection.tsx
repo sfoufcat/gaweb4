@@ -413,9 +413,10 @@ export function AdminLinksSection({ apiEndpoint = '/api/admin/discover/links' }:
               {/* Plus button - always visible */}
               <button
                 onClick={() => { setLinkToEdit(null); setIsFormOpen(true); }}
-                className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline text-[15px] font-medium">New Link</span>
               </button>
             </div>
           </div>

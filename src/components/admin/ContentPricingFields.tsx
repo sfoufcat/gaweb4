@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
-import { DollarSign, AlertTriangle, ChevronDown, Check } from 'lucide-react';
+import { DollarSign, ChevronDown, Check } from 'lucide-react';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
+import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
+import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -99,10 +101,11 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
   const [isPricingEnabled, setIsPricingEnabled] = useState(
     value.priceInCents !== null && value.priceInCents > 0
   );
-  
+
   // Check Stripe connection status - pricing requires connected Stripe account
-  const { isConnected: stripeConnected, isLoading: stripeLoading } = useStripeConnectStatus();
+  const { isConnected: stripeConnected, isLoading: stripeLoading, refetch: refetchStripe } = useStripeConnectStatus();
   const canEnablePricing = stripeConnected || stripeLoading;
+  const [showStripeModal, setShowStripeModal] = useState(false);
 
   // Sync isPricingEnabled when value.priceInCents changes (e.g., when editing existing content)
   useEffect(() => {
@@ -157,19 +160,13 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
 
       {/* Stripe Connect Warning */}
       {!stripeLoading && !stripeConnected && (
-        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-medium text-amber-800 dark:text-amber-200 font-albert">
-                Stripe account required
-              </p>
-              <p className="text-xs text-amber-700 dark:text-amber-300 font-albert mt-0.5">
-                Connect your Stripe account in Settings to accept payments.
-              </p>
-            </div>
-          </div>
-        </div>
+        <StripeConnectWarning
+          variant="inline"
+          showCta={true}
+          message="Connect Stripe to enable paid content"
+          subMessage="Accept payments for articles, courses, downloads, and more."
+          onConnectClick={() => setShowStripeModal(true)}
+        />
       )}
 
       {/* Enable Pricing Toggle */}
@@ -236,20 +233,27 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
           checked={value.isPublic}
           onChange={(checked) => onChange({ ...value, isPublic: checked })}
         />
-        <div 
-          className="flex-1 cursor-pointer" 
+        <div
+          className="flex-1 cursor-pointer"
           onClick={() => onChange({ ...value, isPublic: !value.isPublic })}
         >
           <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             Public in Discover
           </span>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            {value.isPublic 
-              ? 'Visible to everyone browsing Discover' 
+            {value.isPublic
+              ? 'Visible to everyone browsing Discover'
               : 'Only accessible via direct link or program'}
           </p>
         </div>
       </div>
+
+      {/* Stripe Connect Modal */}
+      <StripeConnectModal
+        isOpen={showStripeModal}
+        onClose={() => setShowStripeModal(false)}
+        onConnected={() => refetchStripe()}
+      />
     </div>
   );
 }

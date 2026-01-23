@@ -101,6 +101,8 @@ interface FunnelClientProps {
   validatedInvite?: {
     paymentStatus: string;
     targetSquadId?: string;
+    lockedEmail?: string;    // Single locked email (legacy)
+    lockedEmails?: string[]; // Multiple allowed emails (batch invites)
   } | null;
   hostname: string;
   tenantSubdomain?: string | null;
@@ -555,6 +557,8 @@ export default function FunnelClient({
             organizationId={organization.id}
             organizationName={organization.name}
             tenantSubdomain={tenantSubdomain}
+            lockedEmail={validatedInvite?.lockedEmail}
+            lockedEmails={validatedInvite?.lockedEmails}
           />
         );
       

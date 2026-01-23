@@ -159,6 +159,40 @@ export async function POST(req: Request) {
       );
     }
 
+    // ==========================================================================
+    // VALIDATE INVITE EMAIL (For invite-only funnels with emailRequired)
+    // ==========================================================================
+    // If the session has an inviteId, check if it has a locked email.
+    // If so, verify the user's email matches the invite email.
+    const inviteId = session.inviteId;
+
+    if (inviteId) {
+      const inviteDoc = await adminDb.collection('program_invites').doc(inviteId).get();
+
+      if (inviteDoc.exists) {
+        const invite = inviteDoc.data();
+
+        // If invite has email and emailRequired, validate
+        if (invite?.email && invite?.emailRequired) {
+          // Get user's email from Clerk
+          const client = await clerkClient();
+          const clerkUser = await client.users.getUser(userId);
+          const userEmail = clerkUser.emailAddresses[0]?.emailAddress?.toLowerCase();
+          const inviteEmail = invite.email.toLowerCase();
+
+          if (userEmail !== inviteEmail) {
+            console.log(`[FUNNEL_LINK_SESSION] Email mismatch: invite for ${inviteEmail}, user has ${userEmail}`);
+            return NextResponse.json(
+              { error: `This invite is for ${invite.email}. Please sign up with that email address.` },
+              { status: 403 }
+            );
+          }
+
+          console.log(`[FUNNEL_LINK_SESSION] Email validated: ${userEmail} matches invite`);
+        }
+      }
+    }
+
     // Check if already linked to this user (idempotent)
     const alreadyLinked = session.userId === userId;
     
