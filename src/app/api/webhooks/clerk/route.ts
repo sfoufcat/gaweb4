@@ -18,9 +18,10 @@ import { WebhookEvent, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { resend, isResendConfigured } from '@/lib/resend';
-import type { OrgMembership, OrgSettings, DEFAULT_ORG_SETTINGS, EmailPreferences } from '@/types';
+import type { OrgMembership, OrgSettings } from '@/types';
 import { parseHost } from '@/lib/tenant/parseHost';
 import { DEFAULT_EMAIL_DEFAULTS } from '@/types';
+import { createOrganizationForCoach } from '@/lib/clerk-organizations';
 
 // Email senders for verification emails
 const PLATFORM_DEFAULT_SENDER = 'Coachful <notifications@coachful.co>';
@@ -393,9 +394,10 @@ export async function POST(req: Request) {
 
   // ==========================================================================
   // USER UPDATED - Sync user data to Firebase and Stream
+  // Also handles role changes (e.g., user becomes coach)
   // ==========================================================================
   if (eventType === 'user.updated') {
-    const { id, email_addresses, first_name, last_name, image_url } = evt.data;
+    const { id, email_addresses, first_name, last_name, image_url, public_metadata } = evt.data;
 
     const userData = {
       email: email_addresses[0]?.email_address || '',
@@ -407,6 +409,37 @@ export async function POST(req: Request) {
 
     await adminDb.collection('users').doc(id).update(userData);
     console.log(`[CLERK_WEBHOOK] Updated Firebase user document for ${id}`);
+
+    // Check if user became a coach and needs an organization
+    const metadata = public_metadata as { role?: string; organizationId?: string; primaryOrganizationId?: string } | undefined;
+    const role = metadata?.role;
+    const hasOrg = metadata?.organizationId || metadata?.primaryOrganizationId;
+
+    if (role === 'coach' && !hasOrg) {
+      console.log(`[CLERK_WEBHOOK] User ${id} is a coach without an organization, creating one...`);
+      try {
+        const coachName = first_name
+          ? `${first_name}${last_name ? ' ' + last_name : ''}`
+          : email_addresses[0]?.email_address?.split('@')[0] || 'Coach';
+
+        const organizationId = await createOrganizationForCoach(id, coachName);
+        console.log(`[CLERK_WEBHOOK] Created organization ${organizationId} for coach ${id}`);
+
+        // Initialize onboarding state
+        const now = new Date().toISOString();
+        await adminDb.collection('coach_onboarding').doc(organizationId).set({
+          organizationId,
+          userId: id,
+          status: 'needs_profile',
+          createdAt: now,
+          updatedAt: now,
+        });
+        console.log(`[CLERK_WEBHOOK] Initialized onboarding for org ${organizationId}`);
+      } catch (orgError) {
+        console.error(`[CLERK_WEBHOOK] Failed to create organization for coach ${id}:`, orgError);
+        // Don't fail the webhook - org can be created later via /coach/complete-signup
+      }
+    }
 
     // Sync user to Stream Chat to update profile in comments/chat
     try {

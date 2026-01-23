@@ -507,13 +507,13 @@ export function SyncTemplateDialog({
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              {error}
+              {typeof error === 'string' ? error : 'An error occurred'}
             </div>
           )}
           {success && (
             <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-sm">
               <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-              {success}
+              {typeof success === 'string' ? success : 'Operation completed'}
             </div>
           )}
         </div>

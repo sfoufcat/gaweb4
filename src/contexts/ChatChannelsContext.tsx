@@ -409,7 +409,11 @@ export function ChatChannelsProvider({
       }
     } catch (err) {
       console.error('[ChatChannelsContext] Failed to fetch channels:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch channels');
+      // Ensure error is always a string (handles AxiosError and other object errors)
+      const errorMessage = err instanceof Error ? err.message :
+        (typeof err === 'object' && err !== null && 'message' in err) ? String((err as { message: unknown }).message) :
+        'Failed to fetch channels';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
       fetchingRef.current = false;
