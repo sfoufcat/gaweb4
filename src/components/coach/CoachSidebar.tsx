@@ -49,7 +49,8 @@ export const FULL_NAV_GROUPS: NavGroup[] = [
     items: [
       { value: 'referrals', label: 'Referrals' },
       { value: 'discounts', label: 'Discounts' },
-      { value: 'integrations', label: 'Integrations' },
+      // HIDDEN: Integrations disabled - integrations now available in Scheduling
+      // { value: 'integrations', label: 'Integrations' },
     ],
   },
   {
