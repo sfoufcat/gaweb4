@@ -193,7 +193,21 @@ export const demoHandlers = {
     const funnel = funnels.find(f => f.id === funnelId) || funnels[0];
     return demoResponse({ steps: funnel.steps });
   },
-  
+
+  // ============================================================================
+  // INTAKE CONFIGS
+  // ============================================================================
+
+  'intake-configs': () => {
+    // Return empty array for demo mode - intake configs are org-specific
+    return demoResponse({ configs: [] });
+  },
+
+  'intake-config-detail': () => {
+    // Not found in demo mode
+    return demoResponse({ error: 'Not found' }, 404);
+  },
+
   // ============================================================================
   // CHECK-INS
   // ============================================================================

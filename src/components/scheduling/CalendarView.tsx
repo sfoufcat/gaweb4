@@ -3,10 +3,13 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
+  CalendarDays,
+  List,
   Clock,
   Users,
   Video,
@@ -22,13 +25,21 @@ import {
   Search,
   X,
   CalendarClock,
+  PhoneIncoming,
+  Check,
+  ArrowRight,
 } from 'lucide-react';
 import { useSchedulingEvents, usePendingProposals, useSchedulingActions } from '@/hooks/useScheduling';
 import { useOrgCredits } from '@/hooks/useOrgCredits';
 import { ScheduleCallModal } from './ScheduleCallModal';
 import { EventDetailPopup } from './EventDetailPopup';
 import { CounterProposeModal } from './CounterProposeModal';
-import type { UnifiedEvent, ClientCoachingData, FirebaseUser } from '@/types';
+import { RescheduleCallModal } from './RescheduleCallModal';
+import { EventsListView, EVENT_TYPE_FILTER_OPTIONS, type EventTypeFilter } from './EventsListView';
+import { CreateEventModal } from './CreateEventModal';
+import { IntakeConfigEditor, IntakeConfigList, ScheduleIntakeModal } from '@/components/coach/intake';
+import { CallSummaryViewModal } from '@/components/coach/programs/CallSummaryViewModal';
+import type { UnifiedEvent, ClientCoachingData, FirebaseUser, IntakeCallConfig, CallSummary } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +47,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Drawer,
   DrawerContent,
@@ -61,12 +82,16 @@ interface CoachingClient {
 }
 
 type ViewMode = 'month' | 'week' | 'day';
+type DisplayMode = 'calendar' | 'list';
+type ScheduleType = '1on1' | 'group' | 'intake';
 
 interface CalendarViewProps {
   /** Whether this is the coach view (shows all events) or user view (shows user's events) */
   mode?: 'coach' | 'user';
   /** Callback when a time slot is clicked to schedule */
   onScheduleClick?: (date: Date) => void;
+  /** Initial display mode - calendar or list view */
+  initialDisplayMode?: DisplayMode;
 }
 
 const VIEW_MODES = [
@@ -121,6 +146,13 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; icon: typeof Che
   declined: { bg: 'bg-red-100', text: 'text-red-700', icon: XCircle },
   cancelled: { bg: 'bg-gray-100', text: 'text-gray-500', icon: XCircle },
 };
+
+// Schedule type options (matching FunnelWizardModal card design)
+const SCHEDULE_TYPES = [
+  { value: '1on1' as ScheduleType, label: '1:1 Call', sublabel: 'Schedule a call with a specific client', icon: User, color: 'bg-orange-100 dark:bg-orange-900/30', iconColor: 'text-orange-600 dark:text-orange-400' },
+  { value: 'group' as ScheduleType, label: 'Group Call', sublabel: 'Schedule a call for a program or community', icon: Users, color: 'bg-blue-100 dark:bg-blue-900/30', iconColor: 'text-blue-600 dark:text-blue-400' },
+  { value: 'intake' as ScheduleType, label: 'Intake Call', sublabel: 'Create a booking link for prospects', icon: PhoneIncoming, color: 'bg-teal-100 dark:bg-teal-900/30', iconColor: 'text-teal-600 dark:text-teal-400' },
+];
 
 interface EventCardProps {
   event: UnifiedEvent;
@@ -467,9 +499,15 @@ function ClientPickerModal({
  * A full calendar view for coaches and users to see their scheduled events.
  * Supports month, week, and day views.
  */
-export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewProps) {
+export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMode = 'calendar' }: CalendarViewProps) {
   const { user } = useUser();
   const currentUserId = user?.id;
+
+  // Display mode: calendar vs list view
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(initialDisplayMode);
+
+  // Event type filter (for list view)
+  const [eventTypeFilter, setEventTypeFilter] = useState<EventTypeFilter>('all');
 
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -491,12 +529,31 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
   const [isCounterProposing, setIsCounterProposing] = useState(false);
   const [counterProposeError, setCounterProposeError] = useState<string | null>(null);
 
+  // Reschedule modal states
+  const [rescheduleEvent, setRescheduleEvent] = useState<UnifiedEvent | null>(null);
+
+  // Cancel confirmation states
+  const [cancelEventId, setCancelEventId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // Call summary modal states
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [summaryData, setSummaryData] = useState<CallSummary | null>(null);
+  const [isFetchingSummary, setIsFetchingSummary] = useState(false);
+
   // Client picker and schedule modal states
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<CoachingClient | null>(null);
 
-  const { respondToProposal } = useSchedulingActions();
+  // Schedule type selector state (for choosing 1:1, group, or intake)
+  const [showScheduleTypePicker, setShowScheduleTypePicker] = useState(false);
+  const [selectedScheduleType, setSelectedScheduleType] = useState<ScheduleType | null>(null);
+  const [showGroupEventModal, setShowGroupEventModal] = useState(false);
+  const [showScheduleIntakeModal, setShowScheduleIntakeModal] = useState(false);
+
+  const { respondToProposal, cancelEvent } = useSchedulingActions();
 
   // Handle client selection from picker
   const handleClientSelect = useCallback((client: CoachingClient) => {
@@ -679,6 +736,71 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
     }
   }, [counterProposeEvent, respondToProposal, refetch, refetchProposals]);
 
+  // Handle reschedule button click
+  const handleReschedule = useCallback(() => {
+    if (selectedEvent) {
+      setRescheduleEvent(selectedEvent);
+      setSelectedEvent(null); // Close the popup when opening reschedule modal
+    }
+  }, [selectedEvent]);
+
+  // Handle reschedule success
+  const handleRescheduleSuccess = useCallback(() => {
+    setRescheduleEvent(null);
+    setSelectedEvent(null);
+    refetch();
+    refetchProposals();
+  }, [refetch, refetchProposals]);
+
+  // Handle cancel button click
+  const handleCancelClick = useCallback(() => {
+    if (selectedEvent) {
+      setCancelEventId(selectedEvent.id);
+      setCancelReason('');
+    }
+  }, [selectedEvent]);
+
+  // Handle cancel confirmation
+  const handleCancelConfirm = useCallback(async () => {
+    if (!cancelEventId) return;
+
+    setIsCancelling(true);
+    try {
+      await cancelEvent(cancelEventId, cancelReason.trim() || undefined);
+      setCancelEventId(null);
+      setCancelReason('');
+      setSelectedEvent(null);
+      refetch();
+      refetchProposals();
+    } catch (err) {
+      console.error('Failed to cancel event:', err);
+    } finally {
+      setIsCancelling(false);
+    }
+  }, [cancelEventId, cancelReason, cancelEvent, refetch, refetchProposals]);
+
+  // Handle view summary click
+  const handleViewSummary = useCallback(async (summaryId: string) => {
+    setIsFetchingSummary(true);
+    try {
+      const res = await fetch(`/api/coach/call-summaries/${summaryId}`);
+      if (!res.ok) throw new Error('Failed to fetch summary');
+      const data = await res.json();
+      setSummaryData(data);
+      setSummaryModalOpen(true);
+    } catch (err) {
+      console.error('Failed to fetch summary:', err);
+    } finally {
+      setIsFetchingSummary(false);
+    }
+  }, []);
+
+  // Handle summary modal close
+  const handleSummaryModalClose = useCallback(() => {
+    setSummaryModalOpen(false);
+    setSummaryData(null);
+  }, []);
+
   // Generate calendar grid for month view
   const calendarDays = useMemo(() => {
     if (viewMode !== 'month') return [];
@@ -729,7 +851,10 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
   // Header title based on view mode (mobile-friendly)
   const headerTitle = useMemo(() => {
     if (viewMode === 'month') {
-      return `${MONTHS[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+      // Shorter on mobile: "Jan 2026" vs "January 2026"
+      return isMobile
+        ? `${MONTHS[currentDate.getMonth()].slice(0, 3)} ${currentDate.getFullYear()}`
+        : `${MONTHS[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
     } else if (viewMode === 'week') {
       const weekStart = new Date(currentDate);
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
@@ -772,53 +897,64 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
         </div>
       )}
 
-      {/* Header - Mobile-first single row */}
+      {/* Header - Single row: Date left, controls right */}
       <div className="flex items-center justify-between gap-2">
-        {/* Navigation + Title */}
-        <div className="flex items-center gap-1">
+        {/* Left side: Date navigation */}
+        <div className="flex items-center gap-0.5">
           <button
             onClick={() => navigate('prev')}
-            className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={() => navigate('today')}
-            className="px-2 py-1 font-albert font-semibold text-lg text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+            className="px-2 py-1 font-albert font-semibold text-base md:text-lg text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors whitespace-nowrap"
           >
             {headerTitle}
           </button>
           <button
             onClick={() => navigate('next')}
-            className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
 
-        {/* View Mode + Schedule Button */}
-        <div className="flex items-center gap-2">
-          {/* Desktop: Expanded view mode buttons */}
-          <div className="hidden md:flex items-center bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-1">
-            {VIEW_MODES.map(({ value, label }) => (
-              <button
-                key={value}
-                onClick={() => setViewMode(value)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  viewMode === value
-                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                    : 'text-[#666] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+        {/* Right side: Toggle + Dropdown + Schedule */}
+        <div className="flex items-center gap-1.5">
+          {/* Display mode toggle (calendar/list) */}
+          <div className="flex items-center gap-0.5 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg p-0.5">
+            <button
+              onClick={() => setDisplayMode('calendar')}
+              className={cn(
+                'p-1.5 rounded-md transition-colors',
+                displayMode === 'calendar'
+                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+              )}
+              title="Calendar view"
+            >
+              <CalendarDays className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setDisplayMode('list')}
+              className={cn(
+                'p-1.5 rounded-md transition-colors',
+                displayMode === 'list'
+                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+              )}
+              title="List view"
+            >
+              <List className="w-4 h-4" />
+            </button>
           </div>
 
-          {/* Mobile: Compact dropdown */}
-          <div className="md:hidden">
+          {/* Calendar mode: Month/Week/Day selector */}
+          {displayMode === 'calendar' && (
             <Select value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-              <SelectTrigger className="w-[90px] h-9 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border-0">
+              <SelectTrigger className="w-[80px] h-8 text-sm bg-transparent border-0 shadow-none focus:ring-0 px-2">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -827,37 +963,75 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          )}
+
+          {/* List mode: Event type filter dropdown */}
+          {displayMode === 'list' && (
+            <Select value={eventTypeFilter} onValueChange={(v) => setEventTypeFilter(v as EventTypeFilter)}>
+              <SelectTrigger className="w-[100px] h-8 text-sm bg-transparent border-0 shadow-none focus:ring-0 px-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EVENT_TYPE_FILTER_OPTIONS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {mode === 'coach' && (
             <>
-              {/* Desktop: Full button */}
+              {/* Desktop: Full button with text */}
               <button
-                onClick={() => setShowClientPicker(true)}
-                className="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg hover:opacity-90 transition-opacity font-medium text-sm"
+                onClick={() => setShowScheduleTypePicker(true)}
+                className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-brand-accent text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
-                Schedule Call
+                Schedule
               </button>
               {/* Mobile: Icon only */}
               <button
-                onClick={() => setShowClientPicker(true)}
+                onClick={() => setShowScheduleTypePicker(true)}
                 className="md:hidden p-2 bg-brand-accent text-white rounded-lg hover:opacity-90 transition-opacity"
-                title="Schedule Call"
+                title="Schedule"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Calendar Grid */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-brand-accent animate-spin" />
-        </div>
-      ) : error ? (
+      {/* Content: List View or Calendar Grid */}
+      <AnimatePresence mode="wait">
+        {displayMode === 'list' ? (
+          <motion.div
+            key="list"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            <EventsListView
+              mode={mode}
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              typeFilter={eventTypeFilter}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="calendar"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 text-brand-accent animate-spin" />
+              </div>
+            ) : error ? (
         <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl text-red-600 dark:text-red-400">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <p>{error}</p>
@@ -1109,7 +1283,10 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
             )}
           </div>
         </div>
-      )}
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Legend - hidden on mobile */}
       {!isMobile && (
@@ -1125,6 +1302,10 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700" />
             <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Program Calls</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-teal-100 dark:bg-teal-900/30 border border-teal-300 dark:border-teal-700" />
+            <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Intake Calls</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700" />
@@ -1160,10 +1341,14 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
           // Only show respond buttons if user is NOT the proposer of this event
           onRespond={selectedEvent.proposedBy !== currentUserId ? handleRespond : undefined}
           onCounterPropose={selectedEvent.proposedBy !== currentUserId ? handleCounterPropose : undefined}
-          isLoading={isRespondLoading}
+          isLoading={isRespondLoading || isFetchingSummary}
           position={popupPosition || undefined}
           isHost={isCoach}
           onEventUpdated={refetch}
+          onReschedule={handleReschedule}
+          onCancel={handleCancelClick}
+          onViewSummary={handleViewSummary}
+          isCancelling={isCancelling}
         />
       )}
 
@@ -1178,6 +1363,245 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
           error={counterProposeError}
         />
       )}
+
+      {/* Reschedule Modal */}
+      {rescheduleEvent && (
+        <RescheduleCallModal
+          isOpen={!!rescheduleEvent}
+          onClose={() => setRescheduleEvent(null)}
+          event={rescheduleEvent}
+          onSuccess={handleRescheduleSuccess}
+        />
+      )}
+
+      {/* Cancel Confirmation Dialog */}
+      <AlertDialog
+        open={!!cancelEventId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelEventId(null);
+            setCancelReason('');
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Event?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel the event and notify all participants. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-2">
+              Reason (optional)
+            </label>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Let participants know why the event was cancelled..."
+              className="w-full px-3 py-2 text-sm bg-[#f9f8f7] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent resize-none"
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCancelling}>Keep Event</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelConfirm}
+              disabled={isCancelling}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isCancelling ? 'Cancelling...' : 'Cancel Event'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Call Summary Modal */}
+      <CallSummaryViewModal
+        isOpen={summaryModalOpen}
+        onClose={handleSummaryModalClose}
+        summary={summaryData}
+      />
+
+      {/* Schedule Type Picker - Dialog on desktop, Drawer on mobile (FunnelWizardModal design) */}
+      {isMobile ? (
+        <Drawer open={showScheduleTypePicker} onOpenChange={(open) => {
+          if (!open) {
+            setShowScheduleTypePicker(false);
+            setSelectedScheduleType(null);
+          }
+        }}>
+          <DrawerContent className="flex flex-col">
+            <DrawerHeader className="border-b border-[#e1ddd8] dark:border-[#262b35] pb-3">
+              <DrawerTitle className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                What would you like to schedule?
+              </DrawerTitle>
+              <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                Choose the type of event to create
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="space-y-3 p-4">
+              {SCHEDULE_TYPES.map((type) => {
+                const Icon = type.icon;
+                const isSelected = selectedScheduleType === type.value;
+                return (
+                  <button
+                    key={type.value}
+                    onClick={() => setSelectedScheduleType(type.value)}
+                    className={`group relative w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
+                      isSelected
+                        ? 'border-brand-accent bg-brand-accent/5'
+                        : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${type.color}`}>
+                      <Icon className={`w-6 h-6 ${type.iconColor}`} />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{type.label}</h3>
+                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">{type.sublabel}</p>
+                    </div>
+                    {isSelected && (
+                      <div className="w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0">
+                        <Check className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Footer */}
+            <div className="px-4 py-4 pb-8 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${selectedScheduleType ? 'bg-brand-accent' : 'bg-[#e1ddd8] dark:bg-[#262b35]'}`} />
+                  <div className="w-2 h-2 rounded-full bg-[#e1ddd8] dark:bg-[#262b35]" />
+                  <div className="w-2 h-2 rounded-full bg-[#e1ddd8] dark:bg-[#262b35]" />
+                </div>
+                <button
+                  onClick={() => {
+                    if (!selectedScheduleType) return;
+                    setShowScheduleTypePicker(false);
+                    if (selectedScheduleType === '1on1') {
+                      setShowClientPicker(true);
+                    } else if (selectedScheduleType === 'group') {
+                      setShowGroupEventModal(true);
+                    } else if (selectedScheduleType === 'intake') {
+                      setShowScheduleIntakeModal(true);
+                    }
+                    setSelectedScheduleType(null);
+                  }}
+                  disabled={!selectedScheduleType}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Continue
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={showScheduleTypePicker} onOpenChange={(open) => {
+          if (!open) {
+            setShowScheduleTypePicker(false);
+            setSelectedScheduleType(null);
+          }
+        }}>
+          <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <DialogHeader>
+                <DialogTitle className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  What would you like to schedule?
+                </DialogTitle>
+                <DialogDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                  Choose the type of event to create
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+            {/* Content */}
+            <div className="space-y-3 p-6">
+              {SCHEDULE_TYPES.map((type) => {
+                const Icon = type.icon;
+                const isSelected = selectedScheduleType === type.value;
+                return (
+                  <button
+                    key={type.value}
+                    onClick={() => setSelectedScheduleType(type.value)}
+                    className={`group relative w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
+                      isSelected
+                        ? 'border-brand-accent bg-brand-accent/5'
+                        : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${type.color}`}>
+                      <Icon className={`w-6 h-6 ${type.iconColor}`} />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{type.label}</h3>
+                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">{type.sublabel}</p>
+                    </div>
+                    {isSelected && (
+                      <div className="w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0">
+                        <Check className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${selectedScheduleType ? 'bg-brand-accent' : 'bg-[#e1ddd8] dark:bg-[#262b35]'}`} />
+                  <div className="w-2 h-2 rounded-full bg-[#e1ddd8] dark:bg-[#262b35]" />
+                  <div className="w-2 h-2 rounded-full bg-[#e1ddd8] dark:bg-[#262b35]" />
+                </div>
+                <button
+                  onClick={() => {
+                    if (!selectedScheduleType) return;
+                    setShowScheduleTypePicker(false);
+                    if (selectedScheduleType === '1on1') {
+                      setShowClientPicker(true);
+                    } else if (selectedScheduleType === 'group') {
+                      setShowGroupEventModal(true);
+                    } else if (selectedScheduleType === 'intake') {
+                      setShowScheduleIntakeModal(true);
+                    }
+                    setSelectedScheduleType(null);
+                  }}
+                  disabled={!selectedScheduleType}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Continue
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Group Event Modal */}
+      <CreateEventModal
+        isOpen={showGroupEventModal}
+        onClose={() => setShowGroupEventModal(false)}
+        onSuccess={() => {
+          setShowGroupEventModal(false);
+          refetch();
+        }}
+      />
+
+      {/* Schedule Intake Call Modal */}
+      <ScheduleIntakeModal
+        isOpen={showScheduleIntakeModal}
+        onClose={() => setShowScheduleIntakeModal(false)}
+        onSuccess={() => {
+          refetch();
+        }}
+      />
     </div>
   );
 }

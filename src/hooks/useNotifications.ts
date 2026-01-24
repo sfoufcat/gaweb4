@@ -201,6 +201,7 @@ export function useNotifications(): UseNotificationsReturn {
   }, [user?.id, isLoaded, organizationId, fetchNotifications, isDemo]);
 
   // Mark all notifications as read
+  // Note: No optimistic updates - let Firestore listener sync state across all devices
   const markAllAsRead = useCallback(async () => {
     if (!user?.id || unreadCount === 0) return;
 
@@ -214,20 +215,14 @@ export function useNotifications(): UseNotificationsReturn {
       if (!response.ok) {
         throw new Error('Failed to mark notifications as read');
       }
-
-      // Optimistically update local state
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read: true }))
-      );
-      setUnreadCount(0);
+      // Firestore onSnapshot listener will update state when server changes propagate
     } catch (err) {
       console.error('Error marking all as read:', err);
-      // Refetch to sync state
-      await fetchNotifications();
     }
-  }, [user?.id, unreadCount, fetchNotifications]);
+  }, [user?.id, unreadCount]);
 
   // Mark a single notification as read
+  // Note: No optimistic updates - let Firestore listener sync state across all devices
   const markAsRead = useCallback(async (notificationId: string) => {
     if (!user?.id) return;
 
@@ -244,14 +239,7 @@ export function useNotifications(): UseNotificationsReturn {
       if (!response.ok) {
         throw new Error('Failed to mark notification as read');
       }
-
-      // Optimistically update local state
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notificationId ? { ...n, read: true } : n
-        )
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      // Firestore onSnapshot listener will update state when server changes propagate
     } catch (err) {
       console.error('Error marking notification as read:', err);
     }

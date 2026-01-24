@@ -104,24 +104,35 @@ export function useStoryViewTracking() {
 
   /**
    * Mark a story as viewed by the current user
+   * Saves to localStorage (fast, local) and syncs to server (cross-device)
    * @param storyUserId - The ID of the user whose story was viewed
    * @param contentData - The content data representing current story state
    */
   const markStoryAsViewed = useCallback((storyUserId: string, contentData: StoryContentData) => {
     if (!viewerId || !storyUserId) return;
-    
+
+    // 1. Save to localStorage (fast, immediate feedback)
     const views = getStoredViews();
     const key = `${viewerId}:${storyUserId}`;
     views[key] = contentData;
     saveViews(views);
-    
-    // Dispatch custom event for cross-component reactivity
+
+    // 2. Dispatch custom event for cross-component reactivity (same page)
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(STORY_VIEWED_EVENT, {
         detail: { storyUserId, contentData }
       }));
     }
-  }, [viewerId, getStoredViews, saveViews]);
+
+    // 3. Sync to server (fire-and-forget for UX, enables cross-device sync)
+    if (!isDemoMode) {
+      fetch('/api/story-views', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storyOwnerId: storyUserId, contentData }),
+      }).catch(err => console.error('Failed to sync story view to server:', err));
+    }
+  }, [viewerId, isDemoMode, getStoredViews, saveViews]);
 
   /**
    * Check if the current user has viewed a story
@@ -365,46 +376,72 @@ export function generateStoryContentData(
 
 /**
  * useStoryViewStatus Hook
- * 
+ *
  * Reactive hook that returns whether a story has been viewed.
  * A story is considered "viewed" (gray ring) unless NEW content was added.
  * Content decreasing (story expiry) keeps the viewed status.
- * 
+ *
+ * NOTE: For better performance with multiple stories, use StoryViewsContext instead.
+ * This hook only reads from localStorage - server sync should be done via
+ * StoryViewsProvider.fetchServerViews() at the parent level (e.g., StoriesRow).
+ *
  * Automatically updates when:
  * - The story is marked as viewed (via custom event)
  * - localStorage changes (cross-tab sync via storage event)
- * 
+ *
  * @param storyUserId - The ID of the user whose story to track
  * @param currentData - The current content data of the story (or just contentHash for backwards compat)
  * @returns hasViewed - Whether the story has been viewed (no new content added)
  */
 export function useStoryViewStatus(
-  storyUserId?: string, 
+  storyUserId?: string,
   currentData?: StoryContentData | string // Accept either full data or just hash for backwards compat
 ): boolean {
   const { user } = useUser();
   const { isDemoMode } = useDemoMode();
-  
+
   // In demo mode, use demo user ID for tracking
   const viewerId = useMemo(() => {
     if (isDemoMode) return DEMO_USER.id;
     return user?.id;
   }, [isDemoMode, user?.id]);
-  
+
   const [hasViewed, setHasViewed] = useState(false);
-  
+
   // Normalize currentData - if it's a string (old hash format), we can't do smart comparison
-  const normalizedData: StoryContentData | null = typeof currentData === 'string' 
+  const normalizedData: StoryContentData | null = typeof currentData === 'string'
     ? null // Can't do smart comparison with just a hash
     : currentData || null;
-  
+
   // Check localStorage for initial state and on dependency changes
   useEffect(() => {
     if (!viewerId || !storyUserId || !currentData) {
       setHasViewed(false);
       return;
     }
-    
+
+    // Helper to check if story is viewed based on stored data
+    const checkIfViewed = (storedData: StoryContentData | null): boolean => {
+      if (!storedData) return false;
+
+      // If we have full data, do smart comparison
+      if (normalizedData) {
+        // Check if content has INCREASED (new content added = unseen)
+        const hasNewContent =
+          normalizedData.taskCount > storedData.taskCount ||
+          normalizedData.userPostCount > storedData.userPostCount ||
+          (normalizedData.hasDayClosed && !storedData.hasDayClosed) ||
+          (normalizedData.hasWeekClosed && !storedData.hasWeekClosed) ||
+          (normalizedData.hasTasksToday && !storedData.hasTasksToday);
+
+        return !hasNewContent;
+      } else {
+        // Fallback: just compare hashes (old behavior)
+        const currentHash = typeof currentData === 'string' ? currentData : currentData.hash;
+        return storedData.hash === currentHash;
+      }
+    };
+
     const checkViewStatus = () => {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
@@ -412,40 +449,20 @@ export function useStoryViewStatus(
           setHasViewed(false);
           return;
         }
-        
+
         const views: StoryViewRecord = JSON.parse(stored);
         const key = `${viewerId}:${storyUserId}`;
         const storedData = views[key];
-        
-        if (!storedData) {
-          setHasViewed(false);
-          return;
-        }
-        
-        // If we have full data, do smart comparison
-        if (normalizedData) {
-          // Check if content has INCREASED (new content added = unseen)
-          const hasNewContent = 
-            normalizedData.taskCount > storedData.taskCount ||
-            normalizedData.userPostCount > storedData.userPostCount ||
-            (normalizedData.hasDayClosed && !storedData.hasDayClosed) ||
-            (normalizedData.hasWeekClosed && !storedData.hasWeekClosed) ||
-            (normalizedData.hasTasksToday && !storedData.hasTasksToday);
-          
-          setHasViewed(!hasNewContent);
-        } else {
-          // Fallback: just compare hashes (old behavior)
-          const currentHash = typeof currentData === 'string' ? currentData : currentData.hash;
-          setHasViewed(storedData.hash === currentHash);
-        }
+
+        setHasViewed(checkIfViewed(storedData));
       } catch {
         setHasViewed(false);
       }
     };
-    
-    // Check initial state
+
+    // Check initial state from localStorage
     checkViewStatus();
-    
+
     // Listen for custom event (same-page sync)
     const handleStoryViewed = (event: Event) => {
       const customEvent = event as CustomEvent<{ storyUserId: string; contentData: StoryContentData }>;
@@ -454,23 +471,23 @@ export function useStoryViewStatus(
         setHasViewed(true);
       }
     };
-    
+
     // Listen for storage event (cross-tab sync)
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === STORAGE_KEY) {
         checkViewStatus();
       }
     };
-    
+
     window.addEventListener(STORY_VIEWED_EVENT, handleStoryViewed);
     window.addEventListener('storage', handleStorageChange);
-    
+
     return () => {
       window.removeEventListener(STORY_VIEWED_EVENT, handleStoryViewed);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [viewerId, storyUserId, currentData, normalizedData]);
-  
+
   return hasViewed;
 }
 

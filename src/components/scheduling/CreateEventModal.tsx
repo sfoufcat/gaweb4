@@ -12,14 +12,12 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  Video,
   Image as ImageIcon,
   Repeat,
   Globe,
   Users,
-  UserCheck,
-  ChevronRight,
   Eye,
+  Plus,
 } from 'lucide-react';
 import {
   Drawer,
@@ -33,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
@@ -75,6 +74,7 @@ const EVENT_TYPES = [
 ];
 
 const COMMON_TIMEZONES = [
+  { value: 'local', label: 'My timezone' },
   { value: 'America/New_York', label: 'Eastern Time (ET)' },
   { value: 'America/Chicago', label: 'Central Time (CT)' },
   { value: 'America/Denver', label: 'Mountain Time (MT)' },
@@ -95,6 +95,7 @@ interface ProgramWithCohorts {
   id: string;
   name: string;
   type: 'group' | 'individual';
+  lengthDays?: number;
   cohorts?: ProgramCohort[];
 }
 
@@ -168,22 +169,37 @@ export function CreateEventModal({
   const [date, setDate] = useState('');
   const [time, setTime] = useState('10:00');
   const [duration, setDuration] = useState(60);
-  const [timezone, setTimezone] = useState('America/New_York');
+  const [timezone, setTimezone] = useState('local');
   const [recurrence, setRecurrence] = useState<RecurrenceFrequency | 'none'>('none');
   const [recurrenceEndType, setRecurrenceEndType] = useState<RecurrenceEndType>('occurrences');
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [recurrenceOccurrences, setRecurrenceOccurrences] = useState(4);
 
   // Fetch cohorts when a program is selected
-  const { data: cohortsData } = useSWR<{ cohorts: ProgramCohort[] }>(
+  const { data: cohortsData, mutate: mutateCohorts } = useSWR<{ cohorts: ProgramCohort[] }>(
     isOpen && selectedProgramId ? `/api/coach/org-programs/${selectedProgramId}/cohorts?status=upcoming,active` : null,
     fetcher
   );
+
+  // Inline cohort creation state
+  const [showInlineCohortForm, setShowInlineCohortForm] = useState(false);
+  const [newCohortData, setNewCohortData] = useState({
+    name: '',
+    startDate: '',
+    endDate: '',
+    maxEnrollment: null as number | null,
+    enrollmentOpen: true,
+  });
+  const [creatingCohort, setCreatingCohort] = useState(false);
+  const [cohortCreateError, setCohortCreateError] = useState<string | null>(null);
 
   // Get group programs (only group programs have cohorts)
   const groupPrograms = programsData?.programs?.filter(p => p.type === 'group') || [];
   const cohorts = cohortsData?.cohorts || [];
   const squads = squadsData?.squads || [];
+
+  // Get selected program for cohort creation
+  const selectedProgram = groupPrograms.find(p => p.id === selectedProgramId);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -200,6 +216,10 @@ export function CreateEventModal({
       setMeetingProvider('manual');
       setManualMeetingLink('');
       setUseManualOverride(false);
+      // Reset inline cohort form
+      setShowInlineCohortForm(false);
+      setNewCohortData({ name: '', startDate: '', endDate: '', maxEnrollment: null, enrollmentOpen: true });
+      setCohortCreateError(null);
 
       // Set default date to tomorrow
       const tomorrow = new Date();
@@ -207,7 +227,7 @@ export function CreateEventModal({
       setDate(tomorrow.toISOString().split('T')[0]);
       setTime('10:00');
       setDuration(60);
-      setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York');
+      setTimezone('local');
       setRecurrence('none');
       setRecurrenceEndType('occurrences');
       setRecurrenceEndDate('');
@@ -220,6 +240,36 @@ export function CreateEventModal({
     initial: { opacity: 0, scale: 0.98 },
     animate: { opacity: 1, scale: 1 },
     exit: { opacity: 0, scale: 0.98 },
+  };
+
+  // Handle inline cohort creation
+  const handleCreateCohort = async () => {
+    if (!selectedProgramId || !newCohortData.name || !newCohortData.startDate) return;
+    setCreatingCohort(true);
+    setCohortCreateError(null);
+    try {
+      const res = await fetch(`/api/coach/org-programs/${selectedProgramId}/cohorts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCohortData),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to create cohort');
+      }
+      const { cohort } = await res.json();
+      // Refresh cohorts list
+      await mutateCohorts();
+      // Auto-select new cohort
+      setSelectedCohortId(cohort.id);
+      // Close form and reset
+      setShowInlineCohortForm(false);
+      setNewCohortData({ name: '', startDate: '', endDate: '', maxEnrollment: null, enrollmentOpen: true });
+    } catch (err: unknown) {
+      setCohortCreateError(err instanceof Error ? err.message : 'Failed to create cohort');
+    } finally {
+      setCreatingCohort(false);
+    }
   };
 
   // Step validation
@@ -304,13 +354,18 @@ export function CreateEventModal({
     setIsSubmitting(true);
 
     try {
+      // Resolve 'local' to actual browser timezone
+      const resolvedTimezone = timezone === 'local'
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : timezone;
+
       // Build datetime
       const [year, month, day] = date.split('-').map(Number);
       const [hours, minutes] = time.split(':').map(Number);
       const localDate = new Date(year, month - 1, day, hours, minutes);
 
       // Convert to UTC
-      const dateInTz = new Date(localDate.toLocaleString('en-US', { timeZone: timezone }));
+      const dateInTz = new Date(localDate.toLocaleString('en-US', { timeZone: resolvedTimezone }));
       const utcDate = new Date(localDate.getTime() - (dateInTz.getTime() - localDate.getTime()));
 
       // Determine meeting URL
@@ -332,7 +387,7 @@ export function CreateEventModal({
                 topic: meetingTitle,
                 startTime: utcDate.toISOString(),
                 duration,
-                timezone,
+                timezone: resolvedTimezone,
               }),
             });
 
@@ -354,7 +409,7 @@ export function CreateEventModal({
                 summary: meetingTitle,
                 startTime: utcDate.toISOString(),
                 endTime: endDate.toISOString(),
-                timezone,
+                timezone: resolvedTimezone,
                 description: description.trim() || undefined,
               }),
             });
@@ -383,7 +438,7 @@ export function CreateEventModal({
         dayOfWeek: new Date(date + 'T12:00:00').getDay(),
         dayOfMonth: recurrence === 'monthly' ? day : undefined,
         time,
-        timezone,
+        timezone: resolvedTimezone,
         startDate: date,
         endDate: recurrenceEndType === 'specific_date' ? recurrenceEndDate : undefined,
         occurrences: recurrenceEndType === 'occurrences' ? recurrenceOccurrences : undefined,
@@ -414,7 +469,7 @@ export function CreateEventModal({
         title: title.trim(),
         description: description.trim() || undefined,
         startDateTime: utcDate.toISOString(),
-        timezone,
+        timezone: resolvedTimezone,
         durationMinutes: duration,
 
         locationType: finalMeetingUrl ? 'online' : 'chat',
@@ -474,7 +529,7 @@ export function CreateEventModal({
 
   // Wizard content (shared between Dialog and Drawer)
   const wizardContent = (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full max-h-[85vh]">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <div className="flex items-center gap-3">
@@ -510,7 +565,7 @@ export function CreateEventModal({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-6">
+      <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-6 py-6">
         {error && (
           <div className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
             <p className="text-red-600 dark:text-red-400 text-sm font-albert">{error}</p>
@@ -651,7 +706,7 @@ export function CreateEventModal({
 
               {/* Animated container for conditional selectors */}
               <AnimatePresence mode="wait">
-              {/* Cohort Selector (when cohort_call is selected) */}
+              {/* Program & Cohort Selector (when cohort_call is selected) */}
               {eventType === 'cohort_call' && (
                 <motion.div
                   key="cohort-selector"
@@ -659,7 +714,7 @@ export function CreateEventModal({
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                  className="space-y-3">
+                  className="grid grid-cols-2 gap-4">
                   {/* Program Selector */}
                   <div>
                     <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
@@ -667,7 +722,7 @@ export function CreateEventModal({
                     </label>
                     {groupPrograms.length === 0 ? (
                       <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl">
-                        No group programs with cohorts found
+                        No group programs found
                       </p>
                     ) : (
                       <Select
@@ -675,9 +730,10 @@ export function CreateEventModal({
                         onValueChange={(value) => {
                           setSelectedProgramId(value);
                           setSelectedCohortId(''); // Reset cohort when program changes
+                          setShowInlineCohortForm(false); // Close inline form
                         }}
                       >
-                        <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                        <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent [&>span]:truncate">
                           <SelectValue placeholder="Select a program..." />
                         </SelectTrigger>
                         <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
@@ -685,7 +741,7 @@ export function CreateEventModal({
                             <SelectItem
                               key={program.id}
                               value={program.id}
-                              className="cursor-pointer font-albert"
+                              className="cursor-pointer font-albert pl-3"
                             >
                               {program.name}
                             </SelectItem>
@@ -696,56 +752,158 @@ export function CreateEventModal({
                   </div>
 
                   {/* Cohort Selector */}
-                  {selectedProgramId && (
-                    <div>
-                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                        Select Cohort <span className="text-red-500">*</span>
-                      </label>
-                      {cohorts.length === 0 ? (
-                        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl">
-                          No active or upcoming cohorts found for this program
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                      Select Cohort <span className="text-red-500">*</span>
+                    </label>
+                    {!selectedProgramId ? (
+                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl h-12 flex items-center">
+                        Select a program first
+                      </p>
+                    ) : showInlineCohortForm ? (
+                      <div className="h-12 px-4 bg-brand-accent/10 border border-brand-accent/30 rounded-xl flex items-center gap-2">
+                        <div className="w-2 h-2 bg-brand-accent rounded-full animate-pulse" />
+                        <span className="text-sm text-brand-accent font-medium">New cohort</span>
+                      </div>
+                    ) : cohorts.length === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextMonth = new Date();
+                          nextMonth.setMonth(nextMonth.getMonth() + 1);
+                          nextMonth.setDate(1);
+                          const endDate = new Date(nextMonth);
+                          endDate.setDate(endDate.getDate() + (selectedProgram?.lengthDays || 30) - 1);
+                          setNewCohortData({
+                            name: nextMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+                            startDate: nextMonth.toISOString().split('T')[0],
+                            endDate: endDate.toISOString().split('T')[0],
+                            maxEnrollment: null,
+                            enrollmentOpen: true,
+                          });
+                          setShowInlineCohortForm(true);
+                        }}
+                        className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-brand-accent font-albert text-sm hover:border-brand-accent hover:bg-brand-accent/5 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Create Cohort
+                      </button>
+                    ) : (
+                      <Select
+                        value={selectedCohortId}
+                        onValueChange={setSelectedCohortId}
+                      >
+                        <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent [&>span]:truncate">
+                          <SelectValue placeholder="Select a cohort..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
                           {cohorts.map((cohort) => (
-                            <button
+                            <SelectItem
                               key={cohort.id}
-                              type="button"
-                              onClick={() => setSelectedCohortId(cohort.id)}
-                              className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-colors ${
-                                selectedCohortId === cohort.id
-                                  ? 'border-brand-accent bg-brand-accent/5'
-                                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
-                              }`}
+                              value={cohort.id}
+                              className="cursor-pointer font-albert pl-3 [&>span:first-child]:hidden"
                             >
-                              <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                  selectedCohortId === cohort.id
-                                    ? 'bg-brand-accent/20'
-                                    : 'bg-[#f3f1ef] dark:bg-[#262b35]'
-                                }`}>
-                                  <Users className={`w-4 h-4 ${selectedCohortId === cohort.id ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
-                                </div>
-                                <div className="text-left">
-                                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{cohort.name}</p>
-                                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                                    {cohort.status === 'active' ? 'Active' : 'Upcoming'} • {cohort.currentEnrollment || 0} members
-                                  </p>
-                                </div>
-                              </div>
-                              {selectedCohortId === cohort.id ? (
-                                <div className="w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center">
-                                  <Check className="w-3 h-3 text-white" />
-                                </div>
-                              ) : (
-                                <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                              )}
-                            </button>
+                              {cohort.name}
+                            </SelectItem>
                           ))}
-                        </div>
-                      )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Inline Cohort Creation Form */}
+              {eventType === 'cohort_call' && showInlineCohortForm && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden"
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-[#f9f7f5] dark:bg-[#1c2028] border-b border-[#e1ddd8] dark:border-[#262b35]">
+                    <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">Create New Cohort</h4>
+                    <button
+                      type="button"
+                      onClick={() => setShowInlineCohortForm(false)}
+                      className="text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] p-1 rounded-lg hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Form Content */}
+                  <div className="p-4 bg-white dark:bg-[#11141b] space-y-3">
+                    {/* Name + Start Date side by side */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5">
+                          Name
+                        </label>
+                        <input
+                          type="text"
+                          value={newCohortData.name}
+                          onChange={(e) => setNewCohortData({ ...newCohortData, name: e.target.value })}
+                          placeholder="e.g., March 2025"
+                          className="w-full h-10 px-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5">
+                          Start Date
+                        </label>
+                        <DatePicker
+                          value={newCohortData.startDate}
+                          onChange={(d) => {
+                            if (d) {
+                              const endDate = new Date(d + 'T00:00:00');
+                              endDate.setDate(endDate.getDate() + (selectedProgram?.lengthDays || 30) - 1);
+                              setNewCohortData({
+                                ...newCohortData,
+                                startDate: d,
+                                endDate: endDate.toISOString().split('T')[0],
+                              });
+                            }
+                          }}
+                          placeholder="Select date"
+                          minDate={new Date()}
+                        />
+                      </div>
                     </div>
-                  )}
+
+                    {/* Error */}
+                    {cohortCreateError && (
+                      <p className="text-sm text-red-500">{cohortCreateError}</p>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowInlineCohortForm(false)}
+                        className="flex-1 h-9 px-3 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] bg-[#f9f7f5] dark:bg-[#1c2028] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCreateCohort}
+                        disabled={creatingCohort || !newCohortData.name || !newCohortData.startDate}
+                        className="flex-1 h-9 px-3 text-sm font-medium text-white bg-brand-accent rounded-lg hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {creatingCohort ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          'Create Cohort'
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </motion.div>
               )}
 
@@ -800,7 +958,7 @@ export function CreateEventModal({
                     type="time"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                    className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent"
                   />
                 </div>
               </div>
@@ -838,7 +996,11 @@ export function CreateEventModal({
                 </label>
                 <Select value={timezone} onValueChange={setTimezone}>
                   <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
-                    <SelectValue />
+                    <SelectValue>
+                      {timezone === 'local'
+                        ? `My timezone (${Intl.DateTimeFormat().resolvedOptions().timeZone})`
+                        : COMMON_TIMEZONES.find(tz => tz.value === timezone)?.label || timezone}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg max-h-60">
                     {COMMON_TIMEZONES.map((tz) => (
@@ -847,7 +1009,9 @@ export function CreateEventModal({
                         value={tz.value}
                         className="cursor-pointer font-albert"
                       >
-                        {tz.label}
+                        {tz.value === 'local'
+                          ? `My timezone (${Intl.DateTimeFormat().resolvedOptions().timeZone})`
+                          : tz.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1007,7 +1171,7 @@ export function CreateEventModal({
   if (isMobile) {
     return (
       <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DrawerContent className="h-[90vh] max-h-[90vh]">
+        <DrawerContent className="h-[90vh] max-h-[90vh] flex flex-col">
           {wizardContent}
         </DrawerContent>
       </Drawer>
@@ -1030,8 +1194,8 @@ export function CreateEventModal({
           <div className="fixed inset-0 z-[10000] bg-black/40 backdrop-blur-sm" />
         </Transition.Child>
 
-        <div className="fixed inset-0 z-[10001] overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
+        <div className="fixed inset-0 z-[10001] overflow-hidden">
+          <div className="flex h-full items-center justify-center p-4">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -1041,7 +1205,7 @@ export function CreateEventModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
+              <Dialog.Panel className="w-full max-w-lg max-h-[85vh] transform rounded-2xl bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all flex flex-col overflow-hidden">
                 {wizardContent}
               </Dialog.Panel>
             </Transition.Child>

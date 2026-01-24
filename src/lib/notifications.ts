@@ -84,6 +84,10 @@ const NOTIFICATION_TYPE_TO_SYSTEM_KEY: Record<NotificationType, keyof OrgSystemN
   story_reaction: null,
   // Coach AI fill prompts - always sent
   call_summary_fill_week: null,
+  // Intake call notifications - always sent
+  intake_call_booked: null,
+  intake_call_rescheduled: null,
+  intake_call_cancelled: null,
 };
 
 /**

@@ -22,6 +22,7 @@ import type {
   FunnelStepConfigSuccess,
   FunnelStepConfigUpsell,
   FunnelStepConfigDownsell,
+  FunnelStepConfigScheduling,
 } from '@/types';
 
 // Step components (to be created)
@@ -64,6 +65,7 @@ import { UpsellStep } from '@/components/funnel/steps/UpsellStep';
 import { DownsellStep } from '@/components/funnel/steps/DownsellStep';
 import { InfoStep } from '@/components/funnel/steps/InfoStep';
 import { SuccessStep } from '@/components/funnel/steps/SuccessStep';
+import { SchedulingStep } from '@/components/funnel/steps/SchedulingStep';
 import { InfluencePromptCard } from '@/components/funnel/InfluencePromptCard';
 import { FunnelPixelTracker } from '@/components/funnel/FunnelPixelTracker';
 import { AlreadyEnrolledModal } from '@/components/AlreadyEnrolledModal';
@@ -684,6 +686,16 @@ export default function FunnelClient({
       
       case 'success':
         return <SuccessStep {...commonProps} config={stepConfig.config as FunnelStepConfigSuccess} />;
+      
+      case 'scheduling':
+        return (
+          <SchedulingStep
+            {...commonProps}
+            config={stepConfig.config as FunnelStepConfigScheduling}
+            organizationId={organization.id}
+            flowSessionId={sessionId || ''}
+          />
+        );
       
       default:
         return (

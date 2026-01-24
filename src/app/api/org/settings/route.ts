@@ -177,6 +177,11 @@ export async function PATCH(request: NextRequest) {
       };
     }
 
+    // White-label settings
+    if (body.hidePoweredByCoachful !== undefined) {
+      updateData.hidePoweredByCoachful = body.hidePoweredByCoachful === true;
+    }
+
     // Global tracking pixels settings
     if (body.globalTracking !== undefined) {
       // Allow null to clear global tracking

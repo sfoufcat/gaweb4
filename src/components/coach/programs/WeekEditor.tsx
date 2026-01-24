@@ -595,23 +595,26 @@ export function WeekEditor({
   const weekTheme = week.theme || '';
   const weekDescription = week.description || '';
   const weekWeeklyPrompt = week.weeklyPrompt || '';
-  const weekWeeklyTasks = week.weeklyTasks || [];
-  const weekCurrentFocus = week.currentFocus || [];
-  const weekNotes = week.notes || [];
+  // Memoize arrays to prevent new references on each render when week properties are undefined
+  const weekWeeklyTasks = useMemo(() => week.weeklyTasks || [], [week.weeklyTasks]);
+  const weekCurrentFocus = useMemo(() => week.currentFocus || [], [week.currentFocus]);
+  const weekNotes = useMemo(() => week.notes || [], [week.notes]);
   const weekManualNotes = week.manualNotes || '';
   const weekDistribution = (week.distribution || 'spread') as TaskDistribution;
   // Calendar date for weekday display (may be on extended week type)
   const weekCalendarStartDate = (week as { calendarStartDate?: string }).calendarStartDate;
   const weekCoachRecordingUrl = week.coachRecordingUrl || '';
   const weekCoachRecordingNotes = week.coachRecordingNotes || '';
-  const weekLinkedSummaryIds = week.linkedSummaryIds || [];
-  const weekLinkedCallEventIds = week.linkedCallEventIds || [];
-  const weekLinkedArticleIds = week.linkedArticleIds || [];
-  const weekLinkedDownloadIds = week.linkedDownloadIds || [];
-  const weekLinkedLinkIds = week.linkedLinkIds || [];
-  const weekLinkedQuestionnaireIds = week.linkedQuestionnaireIds || [];
-  const weekCourseAssignments: DayCourseAssignment[] = week.courseAssignments || [];
-  const weekResourceAssignments: WeekResourceAssignment[] = week.resourceAssignments || [];
+  // Memoize array fallbacks to prevent new references on each render
+  // This prevents infinite re-render loops in change detection effects
+  const weekLinkedSummaryIds = useMemo(() => week.linkedSummaryIds || [], [week.linkedSummaryIds]);
+  const weekLinkedCallEventIds = useMemo(() => week.linkedCallEventIds || [], [week.linkedCallEventIds]);
+  const weekLinkedArticleIds = useMemo(() => week.linkedArticleIds || [], [week.linkedArticleIds]);
+  const weekLinkedDownloadIds = useMemo(() => week.linkedDownloadIds || [], [week.linkedDownloadIds]);
+  const weekLinkedLinkIds = useMemo(() => week.linkedLinkIds || [], [week.linkedLinkIds]);
+  const weekLinkedQuestionnaireIds = useMemo(() => week.linkedQuestionnaireIds || [], [week.linkedQuestionnaireIds]);
+  const weekCourseAssignments = useMemo<DayCourseAssignment[]>(() => week.courseAssignments || [], [week.courseAssignments]);
+  const weekResourceAssignments = useMemo<WeekResourceAssignment[]>(() => week.resourceAssignments || [], [week.resourceAssignments]);
 
   const getDefaultFormData = useCallback((): WeekFormData => ({
     name: weekName,
@@ -2206,12 +2209,61 @@ export function WeekEditor({
         </div>
       )}
 
+      {/* Basic Info Section - collapsed by default */}
+      <CollapsibleSection
+        title="Basic Info"
+        icon={Info}
+        defaultOpen={false}
+        hasContent={!!formData.theme || !!formData.description}
+      >
+        {/* Week Theme */}
+        <div>
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Theme
+          </label>
+          <input
+            type="text"
+            value={formData.theme}
+            onChange={(e) => { setFormData({ ...formData, theme: e.target.value }); }}
+            placeholder="e.g., Building Foundations"
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+          />
+        </div>
+
+        {/* Week Description */}
+        <div>
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => { setFormData({ ...formData, description: e.target.value }); }}
+            placeholder="What clients will accomplish this week..."
+            rows={2}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+          />
+        </div>
+
+        {/* Weekly Prompt */}
+        <div>
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Weekly Prompt
+          </label>
+          <textarea
+            value={formData.weeklyPrompt}
+            onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); }}
+            placeholder="Motivational message or guidance for this week..."
+            rows={2}
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+          />
+        </div>
+      </CollapsibleSection>
+
       {/* Tasks & Focus Section */}
       <CollapsibleSection
           title="Tasks & Focus"
           icon={ListTodo}
           defaultOpen={true}
-          badge="essential"
           hasContent={formData.weeklyTasks.length > 0 || formData.currentFocus.length > 0}
         >
           {/* Weekly Tasks */}
@@ -2460,80 +2512,6 @@ export function WeekEditor({
           </div>
         </CollapsibleSection>
 
-      {/* Basic Info Section - collapsed by default */}
-      <CollapsibleSection
-        title="Basic Info"
-        icon={Info}
-        defaultOpen={false}
-        badge="recommended"
-        hasContent={!!formData.theme || !!formData.description}
-      >
-        {/* Week Theme */}
-        <div>
-          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-            Theme
-          </label>
-          <input
-            type="text"
-            value={formData.theme}
-            onChange={(e) => { setFormData({ ...formData, theme: e.target.value }); }}
-            placeholder="e.g., Building Foundations"
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-          />
-        </div>
-
-        {/* Week Description */}
-        <div>
-          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-            Description
-          </label>
-          <textarea
-            value={formData.description}
-            onChange={(e) => { setFormData({ ...formData, description: e.target.value }); }}
-            placeholder="What clients will accomplish this week..."
-            rows={2}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-          />
-        </div>
-
-        {/* Weekly Prompt */}
-        <div>
-          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-            Weekly Prompt
-          </label>
-          <textarea
-            value={formData.weeklyPrompt}
-            onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); }}
-            placeholder="Motivational message or guidance for this week..."
-            rows={2}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-          />
-        </div>
-      </CollapsibleSection>
-
-      {/* Resources Section - Tabbed UI for Courses, Articles, Downloads, Links, Questionnaires */}
-      <CollapsibleSection
-        title="Resources"
-        icon={BookOpen}
-        description="Content to share with clients during this week"
-        defaultOpen={false}
-        badge="recommended"
-        hasContent={formData.resourceAssignments?.length > 0}
-      >
-        <UnifiedResourcesTabs
-          resourceAssignments={formData.resourceAssignments}
-          onResourceAssignmentsChange={handleResourceAssignmentsChange}
-          availableCourses={availableCourses}
-          availableArticles={availableArticles}
-          availableDownloads={availableDownloads}
-          availableLinks={availableLinks}
-          availableQuestionnaires={availableQuestionnaires}
-          programId={programId}
-          includeWeekends={includeWeekends}
-          contentCompletion={contentCompletion}
-        />
-      </CollapsibleSection>
-
       {/* Sessions Section - Calls, Summaries, Recordings */}
       {/* Always visible - shows info message in template mode, full UI in cohort/client mode */}
       <CollapsibleSection
@@ -2541,7 +2519,6 @@ export function WeekEditor({
         icon={Video}
         description="Calls, recordings, and summaries"
         defaultOpen={false}
-        badge="optional"
         hasContent={formData.linkedCallEventIds?.length > 0 || formData.linkedSummaryIds?.length > 0}
       >
         {/* Template mode message */}
@@ -3141,12 +3118,33 @@ export function WeekEditor({
         )}
       </CollapsibleSection>
 
+      {/* Resources Section - Tabbed UI for Courses, Articles, Downloads, Links, Questionnaires */}
+      <CollapsibleSection
+        title="Resources"
+        icon={BookOpen}
+        description="Content to share with clients during this week"
+        defaultOpen={false}
+        hasContent={formData.resourceAssignments?.length > 0}
+      >
+        <UnifiedResourcesTabs
+          resourceAssignments={formData.resourceAssignments}
+          onResourceAssignmentsChange={handleResourceAssignmentsChange}
+          availableCourses={availableCourses}
+          availableArticles={availableArticles}
+          availableDownloads={availableDownloads}
+          availableLinks={availableLinks}
+          availableQuestionnaires={availableQuestionnaires}
+          programId={programId}
+          includeWeekends={includeWeekends}
+          contentCompletion={contentCompletion}
+        />
+      </CollapsibleSection>
+
       {/* Notes Section - collapsed by default */}
       <CollapsibleSection
         title="Notes"
         icon={ClipboardList}
         defaultOpen={false}
-        badge="optional"
         hasContent={formData.notes?.length > 0 || !!formData.manualNotes}
       >
         {/* Client Notes (max 3) */}

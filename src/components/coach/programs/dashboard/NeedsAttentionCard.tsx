@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { AlertTriangle, Clock, TrendingDown, Send, User, Check } from 'lucide-react';
+import { AlertTriangle, Clock, TrendingDown, TrendingUp, Send, User, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -97,7 +97,7 @@ export function NeedsAttentionCard({
         </div>
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3">
-            <TrendingDown className="w-6 h-6 text-green-600 dark:text-green-400 rotate-180" />
+            <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
           </div>
           <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
             Everyone is on track!

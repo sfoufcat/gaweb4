@@ -1,18 +1,20 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, Fragment } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
 import {
   X,
-  Calendar,
-  Clock,
   Loader2,
-  Plus,
   Trash2,
   Check,
   AlertCircle,
   Globe,
   CalendarClock,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useAvailableSlots } from '@/hooks/useAvailability';
 import { useSchedulingActions } from '@/hooks/useScheduling';
 import type { UnifiedEvent } from '@/types';
@@ -31,11 +33,14 @@ interface ProposedTimeSlot {
   endTime: string;
 }
 
+type RescheduleMode = 'propose' | 'confirm';
+
 /**
  * RescheduleCallModal
  *
- * Modal for rescheduling a confirmed call by proposing new times.
- * The other party will need to accept the new proposed time.
+ * Modal for rescheduling a confirmed call.
+ * - For 1:1 coaching calls: Can propose times OR confirm directly
+ * - For intake/cohort/squad/community calls: Always confirms directly (no proposal)
  */
 export function RescheduleCallModal({
   isOpen,
@@ -44,14 +49,28 @@ export function RescheduleCallModal({
   onSuccess,
 }: RescheduleCallModalProps) {
   const { rescheduleEvent, isLoading, error } = useSchedulingActions();
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  // Check if this is a 1:1 coaching call (only type that supports proposals)
+  const is1on1Call = event.eventType === 'coaching_1on1';
 
   // Form state
+  const [mode, setMode] = useState<RescheduleMode>(is1on1Call ? 'propose' : 'confirm');
   const [reason, setReason] = useState('');
   const [proposedSlots, setProposedSlots] = useState<ProposedTimeSlot[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string>('');
 
   const duration = event.durationMinutes || 60;
+
+  // Helper to format date as YYYY-MM-DD in local timezone
+  const formatDateLocal = useCallback((date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
 
   // Date range for available slots (next 30 days)
   const dateRange = useMemo(() => {
@@ -59,23 +78,28 @@ export function RescheduleCallModal({
     const end = new Date();
     end.setDate(end.getDate() + 30);
     return {
-      startDate: start.toISOString().split('T')[0],
-      endDate: end.toISOString().split('T')[0],
+      startDate: formatDateLocal(start),
+      endDate: formatDateLocal(end),
     };
-  }, []);
+  }, [formatDateLocal]);
 
   // Fetch available slots
-  const { slots, isLoading: slotsLoading, timezone } = useAvailableSlots(
+  const { slots, isLoading: slotsLoading } = useAvailableSlots(
     dateRange.startDate,
     dateRange.endDate,
     duration
   );
 
-  // Group slots by date
+  // Use user's local timezone
+  const userTimezone = useMemo(() => {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  }, []);
+
+  // Group slots by date (using local time)
   const slotsByDate = useMemo(() => {
     const grouped: Record<string, typeof slots> = {};
     for (const slot of slots) {
-      const date = new Date(slot.start).toISOString().split('T')[0];
+      const date = formatDateLocal(new Date(slot.start));
       if (!grouped[date]) {
         grouped[date] = [];
       }
@@ -84,26 +108,67 @@ export function RescheduleCallModal({
     return grouped;
   }, [slots]);
 
-  // Available dates
-  const availableDates = useMemo(() => Object.keys(slotsByDate).sort(), [slotsByDate]);
+  // Available dates set for quick lookup
+  const availableDatesSet = useMemo(() => new Set(Object.keys(slotsByDate)), [slotsByDate]);
+
+  // Calendar helpers
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDayOfWeek = firstDay.getDay();
+
+    const days: Array<Date | null> = [];
+
+    // Add empty cells for days before the first of the month
+    for (let i = 0; i < startDayOfWeek; i++) {
+      days.push(null);
+    }
+
+    // Add the days of the month
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(new Date(year, month, i));
+    }
+
+    return days;
+  };
+
+  const isDateDisabled = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (date < today) return true;
+
+    // Also disable if no slots available for this date
+    const dateStr = formatDateLocal(date);
+    return !availableDatesSet.has(dateStr);
+  };
 
   // Add a proposed time slot
   const addProposedSlot = useCallback(() => {
     if (!selectedDate || !selectedTime) return;
 
-    const startDateTime = new Date(`${selectedDate}T${selectedTime}`);
+    const dateStr = formatDateLocal(selectedDate);
+    const startDateTime = new Date(`${dateStr}T${selectedTime}`);
     const endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
+    const endTimeStr = `${String(endDateTime.getHours()).padStart(2, '0')}:${String(endDateTime.getMinutes()).padStart(2, '0')}`;
 
     const newSlot: ProposedTimeSlot = {
       id: `slot_${Date.now()}`,
-      date: selectedDate,
+      date: dateStr,
       startTime: selectedTime,
-      endTime: endDateTime.toTimeString().slice(0, 5),
+      endTime: endTimeStr,
     };
 
-    setProposedSlots(prev => [...prev, newSlot]);
+    // In confirm mode, replace the slot. In propose mode, append.
+    if (mode === 'confirm') {
+      setProposedSlots([newSlot]);
+    } else {
+      setProposedSlots(prev => [...prev, newSlot]);
+    }
     setSelectedTime('');
-  }, [selectedDate, selectedTime, duration]);
+  }, [selectedDate, selectedTime, duration, mode, formatDateLocal]);
 
   // Remove a proposed time slot
   const removeProposedSlot = useCallback((slotId: string) => {
@@ -125,10 +190,15 @@ export function RescheduleCallModal({
         };
       });
 
+      // For non-1on1 calls, always confirm directly
+      // For 1on1 calls, use the selected mode
+      const confirmDirectly = !is1on1Call || mode === 'confirm';
+
       await rescheduleEvent({
         eventId: event.id,
         proposedTimes,
         reason: reason || undefined,
+        confirmDirectly,
       });
 
       onSuccess?.();
@@ -179,38 +249,29 @@ export function RescheduleCallModal({
     });
   }, [event.startDateTime, event.timezone]);
 
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-backdrop-fade-in"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-[#171b22] rounded-t-2xl sm:rounded-2xl shadow-2xl animate-modal-slide-up sm:animate-modal-zoom-in">
-        {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
-          <div>
-            <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-              Reschedule Call
-            </h2>
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-              {event.title}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+  // Modal content - shared between mobile and desktop
+  const modalContent = (
+    <>
+      {/* Header */}
+      <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+        <div>
+          <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+            Reschedule Call
+          </h2>
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+            {event.title}
+          </p>
         </div>
+        <button
+          onClick={onClose}
+          className="p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Current Schedule Info */}
           <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl">
             <div className="flex items-start gap-3">
@@ -226,112 +287,223 @@ export function RescheduleCallModal({
             </div>
           </div>
 
+          {/* Mode Toggle - Only show for 1:1 coaching calls */}
+          {is1on1Call && (
+            <div className="flex p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl">
+              <button
+                onClick={() => {
+                  setMode('propose');
+                  setProposedSlots([]);
+                }}
+                className={`flex-1 py-2 px-4 rounded-lg font-albert font-medium text-sm transition-colors ${
+                  mode === 'propose'
+                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                }`}
+              >
+                Propose Times
+              </button>
+              <button
+                onClick={() => {
+                  setMode('confirm');
+                  setProposedSlots([]);
+                }}
+                className={`flex-1 py-2 px-4 rounded-lg font-albert font-medium text-sm transition-colors ${
+                  mode === 'confirm'
+                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                    : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                }`}
+              >
+                Confirm Directly
+              </button>
+            </div>
+          )}
+
           <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-            Propose new time(s) for this call. The other participant will need to accept the new time.
+            {is1on1Call
+              ? mode === 'propose'
+                ? 'Propose new time(s) for the client to choose from.'
+                : 'Reschedule to a specific time immediately.'
+              : 'Select a new time for this call.'}
           </p>
 
           {/* Date & Time Selection */}
-          <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
-            <div className="px-4 py-3 bg-[#f3f1ef] dark:bg-[#1e222a] border-b border-[#e1ddd8] dark:border-[#262b35]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                  <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Select New Date & Time
-                  </span>
-                </div>
-                {timezone && (
-                  <div className="flex items-center gap-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                    <Globe className="w-3 h-3" />
-                    <span>{formatTimezone(timezone)}</span>
-                  </div>
-                )}
+          <div className="space-y-5">
+            {slotsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 text-brand-accent animate-spin" />
               </div>
-            </div>
+            ) : availableDatesSet.size === 0 ? (
+              <p className="text-center text-[#a7a39e] dark:text-[#7d8190] py-8">
+                No available time slots in the next 30 days.
+              </p>
+            ) : (
+              <>
+                {/* Calendar */}
+                <div className="bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl p-4">
+                  {/* Month navigation */}
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
+                      className="p-1 rounded-lg hover:bg-[#e8e4df] dark:hover:bg-[#262b35] transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                    </button>
+                    <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                      {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </h3>
+                    <button
+                      onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
+                      className="p-1 rounded-lg hover:bg-[#e8e4df] dark:hover:bg-[#262b35] transition-colors"
+                    >
+                      <ChevronRight className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                    </button>
+                  </div>
 
-            <div className="p-4 space-y-4">
-              {slotsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 text-brand-accent animate-spin" />
-                </div>
-              ) : availableDates.length === 0 ? (
-                <p className="text-center text-[#a7a39e] dark:text-[#7d8190] py-8">
-                  No available time slots in the next 30 days.
-                </p>
-              ) : (
-                <>
-                  {/* Date Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                      Date
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {availableDates.slice(0, 14).map(date => (
+                  {/* Day labels */}
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+                      <div key={day} className="text-center text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] py-1">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Calendar grid */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {getDaysInMonth(currentMonth).map((date, i) => {
+                      if (!date) {
+                        return <div key={`empty-${i}`} className="h-10" />;
+                      }
+
+                      const isDisabled = isDateDisabled(date);
+                      const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+                      const isToday = date.toDateString() === new Date().toDateString();
+                      const hasSlots = availableDatesSet.has(formatDateLocal(date));
+
+                      return (
                         <button
-                          key={date}
+                          key={date.toISOString()}
                           onClick={() => {
-                            setSelectedDate(date);
-                            setSelectedTime('');
+                            if (!isDisabled) {
+                              setSelectedDate(date);
+                              setSelectedTime('');
+                            }
                           }}
-                          className={`px-3 py-2 rounded-lg font-albert text-sm transition-colors ${
-                            selectedDate === date
+                          disabled={isDisabled}
+                          className={`h-10 rounded-lg text-sm font-albert font-medium transition-colors ${
+                            isDisabled
+                              ? 'text-[#ccc8c3] dark:text-[#4a4f5b] cursor-not-allowed'
+                              : isSelected
                               ? 'bg-brand-accent text-white'
-                              : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]'
+                              : isToday && hasSlots
+                              ? 'bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20'
+                              : hasSlots
+                              ? 'text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#262b35]'
+                              : 'text-[#ccc8c3] dark:text-[#4a4f5b] cursor-not-allowed'
                           }`}
                         >
-                          {formatDate(date)}
+                          {date.getDate()}
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
 
-                  {/* Time Selection */}
-                  {selectedDate && slotsByDate[selectedDate] && (
-                    <div>
-                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                        Time
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {slotsByDate[selectedDate].map((slot, index) => {
-                          const time = new Date(slot.start).toTimeString().slice(0, 5);
-                          return (
-                            <button
-                              key={index}
-                              onClick={() => setSelectedTime(time)}
-                              className={`px-3 py-2 rounded-lg font-albert text-sm transition-colors ${
-                                selectedTime === time
-                                  ? 'bg-brand-accent text-white'
-                                  : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]'
-                              }`}
-                            >
-                              {formatTime(time)}
-                            </button>
-                          );
-                        })}
-                      </div>
+                  {/* Timezone indicator */}
+                  {userTimezone && (
+                    <div className="flex items-center justify-center gap-1 mt-3 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                      <Globe className="w-3 h-3" />
+                      <span>{formatTimezone(userTimezone)}</span>
                     </div>
                   )}
+                </div>
 
-                  {/* Add Time Button */}
-                  {selectedDate && selectedTime && (
-                    <button
-                      onClick={addProposedSlot}
-                      className="flex items-center gap-2 px-4 py-2 bg-brand-accent/10 text-brand-accent rounded-lg font-albert font-medium hover:bg-brand-accent/20 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add this time
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
+                {/* Time slots */}
+                {selectedDate && (
+                  <div>
+                    <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
+                      {selectedDate.toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </h4>
+
+                    {(() => {
+                      const dateStr = formatDateLocal(selectedDate);
+                      const daySlots = slotsByDate[dateStr] || [];
+
+                      if (daySlots.length === 0) {
+                        return (
+                          <p className="text-center py-8 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                            No available times on this day
+                          </p>
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                          {daySlots.map((slot, index) => {
+                            // slot.start is ISO string - convert to local time
+                            const slotDate = new Date(slot.start);
+                            const localHours = String(slotDate.getHours()).padStart(2, '0');
+                            const localMinutes = String(slotDate.getMinutes()).padStart(2, '0');
+                            const time = `${localHours}:${localMinutes}`;
+                            const isSelected = selectedTime === time;
+                            return (
+                              <button
+                                key={index}
+                                onClick={() => {
+                                  setSelectedTime(time);
+                                  // In confirm mode, auto-add the slot immediately
+                                  if (mode === 'confirm') {
+                                    const localDateStr = formatDateLocal(selectedDate);
+                                    const startDateTime = new Date(`${localDateStr}T${time}`);
+                                    const endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
+                                    setProposedSlots([{
+                                      id: `slot_${Date.now()}`,
+                                      date: localDateStr,
+                                      startTime: time,
+                                      endTime: `${String(endDateTime.getHours()).padStart(2, '0')}:${String(endDateTime.getMinutes()).padStart(2, '0')}`,
+                                    }]);
+                                  }
+                                }}
+                                className={`px-3 py-2.5 rounded-xl text-sm font-albert font-medium transition-colors ${
+                                  isSelected
+                                    ? 'bg-brand-accent text-white'
+                                    : 'bg-white dark:bg-[#1d222b] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:border-brand-accent'
+                                }`}
+                              >
+                                {formatTime(time)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Add to proposed times button - only show in propose mode */}
+                    {mode === 'propose' && selectedTime && (
+                      <button
+                        onClick={addProposedSlot}
+                        className="mt-4 flex items-center gap-2 px-4 py-2 bg-brand-accent/10 text-brand-accent rounded-lg font-albert font-medium hover:bg-brand-accent/20 transition-colors"
+                      >
+                        <Check className="w-4 h-4" />
+                        Add this time to proposal
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Proposed Times List */}
           {proposedSlots.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                New Proposed Times
+                {mode === 'confirm' ? 'New Time' : 'New Proposed Times'}
               </label>
               <div className="space-y-2">
                 {proposedSlots.map(slot => (
@@ -380,24 +552,72 @@ export function RescheduleCallModal({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
-          <button
-            onClick={onClose}
-            className="px-6 py-3 text-[#5f5a55] dark:text-[#b2b6c2] font-albert font-medium hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={proposedSlots.length === 0 || isLoading}
-            className="flex items-center gap-2 px-6 py-3 bg-[#1a1a1a] dark:bg-brand-accent text-white rounded-xl font-albert font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-          >
-            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            Send Reschedule Request
-          </button>
-        </div>
+      {/* Footer */}
+      <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+        <button
+          onClick={onClose}
+          className="px-6 py-3 text-[#5f5a55] dark:text-[#b2b6c2] font-albert font-medium hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={proposedSlots.length === 0 || isLoading}
+          className="flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+          {mode === 'confirm' ? 'Reschedule Call' : 'Send Reschedule Request'}
+        </button>
       </div>
-    </div>
+    </>
+  );
+
+  // Mobile: Use Drawer component
+  if (isMobile) {
+    return (
+      <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DrawerContent className="h-[90vh] max-h-[90vh] flex flex-col">
+          {modalContent}
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Desktop: Use Dialog with portal
+  return (
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-[10000]" onClose={onClose}>
+        {/* Backdrop */}
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 z-[10000] bg-black/40 backdrop-blur-sm" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 z-[10001] overflow-hidden">
+          <div className="flex h-full items-center justify-center p-4">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-2xl max-h-[85vh] transform rounded-2xl bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all flex flex-col overflow-hidden">
+                {modalContent}
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </div>
+      </Dialog>
+    </Transition>
   );
 }

@@ -5,7 +5,8 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { X, Plus, Trash2, GripVertical, ImageIcon, Video, Youtube, PlayCircle, Monitor, Code, Sparkles, Lock, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
-import type { FunnelStep, FunnelStepType, FunnelQuestionOption, InfluencePromptConfig, FunnelStepTrackingConfig, MetaPixelEvent, CoachTier } from '@/types';
+import type { FunnelStep, FunnelStepType, FunnelQuestionOption, InfluencePromptConfig, FunnelStepTrackingConfig, MetaPixelEvent, CoachTier, IntakeCallConfig } from '@/types';
+import { IntakeConfigSelect } from '../intake/IntakeConfigSelect';
 import { nanoid } from 'nanoid';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
@@ -102,6 +103,8 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
         return <ExplainerConfigEditor config={config} onChange={setConfig} />;
       case 'success':
         return <SuccessConfigEditor config={config} onChange={setConfig} />;
+      case 'scheduling':
+        return <SchedulingConfigEditor config={config} onChange={setConfig} />;
       default:
         return (
           <div className="text-text-secondary text-center py-8">
@@ -1592,6 +1595,114 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ============================================================================
+// SCHEDULING CONFIG EDITOR
+// ============================================================================
+
+function SchedulingConfigEditor({ config, onChange }: { config: Record<string, unknown>; onChange: (c: Record<string, unknown>) => void }) {
+  const [intakeConfigs, setIntakeConfigs] = React.useState<Array<{ id: string; name: string; duration: number }>>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  const fetchIntakeConfigs = React.useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch('/api/coach/intake-configs');
+      const data = await res.json();
+      if (data.configs) {
+        setIntakeConfigs(data.configs);
+      }
+    } catch (err) {
+      console.error('Failed to fetch intake configs:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchIntakeConfigs();
+  }, [fetchIntakeConfigs]);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+          Intake Call Type *
+        </label>
+        {isLoading ? (
+          <div className="animate-pulse h-10 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+        ) : intakeConfigs.length === 0 ? (
+          <div className="p-4 border border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-center">
+            <p className="text-sm text-text-muted dark:text-[#b2b6c2] mb-2">
+              No intake calls configured yet
+            </p>
+            <a
+              href="/coach/settings?tab=intake"
+              className="text-sm text-brand-accent hover:underline"
+            >
+              Create an intake call first
+            </a>
+          </div>
+        ) : (
+          <IntakeConfigSelect
+            configs={intakeConfigs}
+            value={config.intakeCallConfigId as string || ''}
+            onChange={(value) => onChange({ ...config, intakeCallConfigId: value })}
+            onConfigUpdate={() => fetchIntakeConfigs()}
+            onConfigDelete={() => fetchIntakeConfigs()}
+            placeholder="Select an intake call..."
+            required
+          />
+        )}
+        <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
+          Users will schedule a call using this intake configuration
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+          Heading
+        </label>
+        <input
+          type="text"
+          value={config.heading as string || ''}
+          onChange={(e) => onChange({ ...config, heading: e.target.value })}
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
+          placeholder="Schedule Your Call"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+          Subheading
+        </label>
+        <input
+          type="text"
+          value={config.subheading as string || ''}
+          onChange={(e) => onChange({ ...config, subheading: e.target.value })}
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
+          placeholder="Pick a time that works for you"
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="requireSignupFirst"
+          checked={config.requireSignupFirst !== false}
+          onChange={(e) => onChange({ ...config, requireSignupFirst: e.target.checked })}
+          className="w-4 h-4 accent-brand-accent"
+        />
+        <label htmlFor="requireSignupFirst" className="text-sm text-text-primary dark:text-[#f5f5f8]">
+          Require signup before scheduling
+        </label>
+      </div>
+      <p className="text-xs text-text-muted dark:text-[#b2b6c2] -mt-2 ml-6">
+        If enabled, users must complete a signup step before this step
+      </p>
     </div>
   );
 }

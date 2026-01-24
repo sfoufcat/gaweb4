@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { 
-  Plus, 
-  GripVertical, 
-  Trash2, 
+import {
+  Plus,
+  GripVertical,
+  Trash2,
   Pencil,
   MessageSquare,
   UserPlus,
@@ -22,7 +22,8 @@ import {
   LayoutTemplate,
   TrendingUp,
   TrendingDown,
-  AlertTriangle
+  AlertTriangle,
+  Calendar,
 } from 'lucide-react';
 // Note: Lock is still used in the Add Step modal for tier-gated steps
 import type { FunnelStep, FunnelStepType, CoachTier, Funnel, Program, Squad, InfluencePromptConfig, FunnelStepConfig, FunnelStepConfigUpsell, FunnelStepConfigDownsell } from '@/types';
@@ -120,19 +121,31 @@ const STEP_TYPE_INFO: Record<FunnelStepType, {
     description: '[Legacy] Use Explainer instead',
     color: 'bg-cyan-100 text-cyan-600'
   },
-  success: { 
-    icon: CheckCircle, 
-    label: 'Success', 
+  success: {
+    icon: CheckCircle,
+    label: 'Success',
     description: 'Completion celebration',
     color: 'bg-emerald-100 text-emerald-600'
   },
+  scheduling: {
+    icon: Calendar,
+    label: 'Scheduling',
+    description: 'Book an intake call',
+    color: 'bg-teal-100 text-teal-600'
+  },
 };
 
-// Fixed/required step types
+// Fixed/required step types (for program/content funnels)
 const FIXED_STEP_TYPES: FunnelStepType[] = ['signup', 'payment', 'success'];
+
+// Fixed/required step types for intake funnels (no signup needed)
+const INTAKE_FIXED_STEP_TYPES: FunnelStepType[] = ['scheduling', 'success'];
 
 // Step types available for adding (exclude fixed types)
 const ADDABLE_STEP_TYPES: FunnelStepType[] = ['question', 'explainer', 'landing_page', 'goal_setting', 'identity', 'analyzing', 'plan_reveal', 'transformation', 'upsell', 'downsell'];
+
+// Step types available for intake funnels (all steps including payment)
+const INTAKE_ADDABLE_STEP_TYPES: FunnelStepType[] = ['question', 'explainer', 'landing_page', 'goal_setting', 'identity', 'analyzing', 'plan_reveal', 'transformation', 'upsell', 'downsell', 'payment'];
 
 // Maximum allowed upsells and downsells per funnel
 const MAX_UPSELLS = 2;
@@ -168,6 +181,9 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
   
   // Track steps with invalid cohorts (expired or unavailable)
   const [invalidCohortStepIds, setInvalidCohortStepIds] = useState<string[]>([]);
+
+  // Track if we've already ensured required steps (prevent infinite loop)
+  const hasEnsuredStepsRef = useRef(false);
 
   useEffect(() => {
     setMounted(true);
@@ -235,43 +251,68 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
 
   // Ensure required steps exist
   const ensureRequiredSteps = useCallback(async (currentSteps: FunnelStep[]) => {
-    const hasSignup = currentSteps.some(s => s.type === 'signup');
-    const hasPayment = currentSteps.some(s => s.type === 'payment');
-    const hasSuccess = currentSteps.some(s => s.type === 'success');
-    
     const stepsToCreate: { type: FunnelStepType; config: unknown; order: number }[] = [];
     let currentMaxOrder = Math.max(...currentSteps.map(s => s.order), -1);
-    
-    // Payment should come first (only if paid)
-    if (!hasPayment && isPaid) {
-      currentMaxOrder++;
-      stepsToCreate.push({
-        type: 'payment',
-        config: { useProgramPricing: true },
-        order: currentMaxOrder,
-      });
+
+    // Intake funnels: scheduling + success (no signup needed)
+    if (funnel?.targetType === 'intake') {
+      const hasScheduling = currentSteps.some(s => s.type === 'scheduling');
+      const hasSuccess = currentSteps.some(s => s.type === 'success');
+
+      if (!hasScheduling) {
+        currentMaxOrder++;
+        stepsToCreate.push({
+          type: 'scheduling',
+          config: { intakeConfigId: funnel.intakeConfigId },
+          order: currentMaxOrder,
+        });
+      }
+
+      if (!hasSuccess) {
+        currentMaxOrder++;
+        stepsToCreate.push({
+          type: 'success',
+          config: { showConfetti: true, redirectDelay: 3000 },
+          order: currentMaxOrder,
+        });
+      }
+    } else {
+      // Program/squad/content funnels: payment + signup + success
+      const hasSignup = currentSteps.some(s => s.type === 'signup');
+      const hasPayment = currentSteps.some(s => s.type === 'payment');
+      const hasSuccess = currentSteps.some(s => s.type === 'success');
+
+      // Payment should come first (only if paid)
+      if (!hasPayment && isPaid) {
+        currentMaxOrder++;
+        stepsToCreate.push({
+          type: 'payment',
+          config: { useProgramPricing: true },
+          order: currentMaxOrder,
+        });
+      }
+
+      // Signup should come after payment
+      if (!hasSignup) {
+        currentMaxOrder++;
+        stepsToCreate.push({
+          type: 'signup',
+          config: { showSocialLogin: true },
+          order: currentMaxOrder,
+        });
+      }
+
+      // Success should be last
+      if (!hasSuccess) {
+        currentMaxOrder++;
+        stepsToCreate.push({
+          type: 'success',
+          config: { showConfetti: true, redirectDelay: 3000 },
+          order: currentMaxOrder,
+        });
+      }
     }
-    
-    // Signup should come after payment
-    if (!hasSignup) {
-      currentMaxOrder++;
-      stepsToCreate.push({
-        type: 'signup',
-        config: { showSocialLogin: true },
-        order: currentMaxOrder,
-      });
-    }
-    
-    // Success should be last
-    if (!hasSuccess) {
-      currentMaxOrder++;
-      stepsToCreate.push({
-        type: 'success',
-        config: { showConfetti: true, redirectDelay: 3000 },
-        order: currentMaxOrder,
-      });
-    }
-    
+
     if (stepsToCreate.length > 0) {
       try {
         for (const step of stepsToCreate) {
@@ -287,7 +328,7 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
         console.error('Failed to create required steps:', err);
       }
     }
-  }, [funnelId, isPaid, fetchSteps]);
+  }, [funnelId, funnel, isPaid, fetchSteps]);
 
   useEffect(() => {
     fetchFunnelMetadata();
@@ -345,9 +386,10 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     }
   }, [steps, isLoading]);
 
-  // Ensure required steps exist after initial load
+  // Ensure required steps exist after initial load (only once)
   useEffect(() => {
-    if (!isLoading && steps.length >= 0 && funnel) {
+    if (!isLoading && funnel && !hasEnsuredStepsRef.current) {
+      hasEnsuredStepsRef.current = true;
       ensureRequiredSteps(steps);
     }
   }, [isLoading, funnel]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -478,12 +520,13 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
   };
 
   const handleDeleteStep = (stepId: string, stepType: FunnelStepType) => {
-    // Prevent deletion of fixed steps
-    if (FIXED_STEP_TYPES.includes(stepType)) {
+    // Prevent deletion of fixed steps - use appropriate list based on funnel type
+    const fixedSteps = funnel?.targetType === 'intake' ? INTAKE_FIXED_STEP_TYPES : FIXED_STEP_TYPES;
+    if (fixedSteps.includes(stepType)) {
       alert('This step is required and cannot be deleted.');
       return;
     }
-    
+
     // Open confirmation modal
     setStepToDelete({ id: stepId, type: stepType });
   };
@@ -530,7 +573,8 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
   const renderStepRow = (step: FunnelStep) => {
     const typeInfo = STEP_TYPE_INFO[step.type];
     const Icon = typeInfo?.icon || Info;
-    const isRequired = FIXED_STEP_TYPES.includes(step.type);
+    const fixedSteps = funnel?.targetType === 'intake' ? INTAKE_FIXED_STEP_TYPES : FIXED_STEP_TYPES;
+    const isRequired = fixedSteps.includes(step.type);
     const isSignupStep = step.type === 'signup';
     const hasInvalidCohort = invalidCohortStepIds.includes(step.id);
 
@@ -738,7 +782,7 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                     </div>
                   )}
                   
-                  {ADDABLE_STEP_TYPES.map((type) => {
+                  {(funnel?.targetType === 'intake' ? INTAKE_ADDABLE_STEP_TYPES : ADDABLE_STEP_TYPES).map((type) => {
                     const info = STEP_TYPE_INFO[type];
                     const Icon = info.icon;
                     const isAllowed = canUseFunnelStep(coachTier, type);

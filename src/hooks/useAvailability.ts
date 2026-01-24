@@ -26,8 +26,11 @@ export function useAvailability(): UseAvailabilityReturn {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('/api/coach/availability');
-      
+      // Pass client's timezone so the API can use it as default for new coaches
+      const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const params = new URLSearchParams({ clientTimezone });
+      const response = await fetch(`/api/coach/availability?${params}`);
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to fetch availability');
@@ -144,7 +147,11 @@ export function useAvailableSlots(
   const [slots, setSlots] = useState<Array<{ start: string; end: string; duration: number }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timezone, setTimezone] = useState<string>('America/New_York');
+  const [timezone, setTimezone] = useState<string>(() =>
+    typeof window !== 'undefined'
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+      : 'UTC'
+  );
 
   const fetchSlots = useCallback(async () => {
     if (!startDate || !endDate) {
@@ -173,7 +180,7 @@ export function useAvailableSlots(
 
       const data = await response.json();
       setSlots(data.slots || []);
-      setTimezone(data.timezone || 'America/New_York');
+      setTimezone(data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
     } catch (err) {
       console.error('[useAvailableSlots] Error:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch slots');

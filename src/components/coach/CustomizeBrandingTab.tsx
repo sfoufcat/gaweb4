@@ -15,6 +15,7 @@ import { DailyFocusSettings } from './DailyFocusSettings';
 import { AlignmentActivitiesSettings } from './AlignmentActivitiesSettings';
 import { GlobalPixelsSettings } from './GlobalPixelsSettings';
 import { MarketplaceSettings } from './MarketplaceSettings';
+import { HidePoweredByToggle } from './HidePoweredByToggle';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgSystemNotifications, MenuItemKey, CoachEmailPreferences, OrgFeatureLabels, OrgContentLabels } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_SYSTEM_NOTIFICATIONS, DEFAULT_COACH_EMAIL_PREFERENCES, validateSubdomain, DEFAULT_FEATURE_LABELS, DEFAULT_CONTENT_LABELS } from '@/types';
@@ -2723,6 +2724,20 @@ export function CustomizeBrandingTab({ initialSubtab, onSubtabChange }: Customiz
           appTitle={appTitle}
           logoUrl={logoUrl || '/logo.png'}
         />
+      </div>
+
+      {/* White-label Settings Section */}
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6 mt-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings className="w-5 h-5 text-brand-accent" />
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">White-label</h3>
+        </div>
+
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-6 font-albert">
+          Customize your email branding to give clients a fully branded experience.
+        </p>
+
+        <HidePoweredByToggle />
       </div>
 
       {/* Stripe Connect Section */}

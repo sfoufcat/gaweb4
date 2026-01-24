@@ -20,7 +20,7 @@ import type { Questionnaire } from '@/types/questionnaire';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar as CalendarIcon, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine, RefreshCw, UserPlus, Search, SlidersHorizontal } from 'lucide-react';
+import { Plus, Users, User, Calendar as CalendarIcon, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine, RefreshCw, UserPlus, Search, SlidersHorizontal, MessageCircle, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Popover,
@@ -529,6 +529,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [isNewProgramModalOpen, setIsNewProgramModalOpen] = useState(false);
   const pendingNumModulesRef = useRef<number>(1); // For new program creation
   const [isCohortModalOpen, setIsCohortModalOpen] = useState(false);
+  const [isCohortAdvancedOpen, setIsCohortAdvancedOpen] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
   const [editingCohort, setEditingCohort] = useState<ProgramCohort | null>(null);
   
@@ -1581,7 +1582,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               // Create weeks and distribute across modules
               const weekPromises = [];
               for (let weekIdx = 0; weekIdx < numWeeks; weekIdx++) {
-                const weekNum = weekIdx + 1;
+                // First week (idx 0) = Onboarding (weekNum 0), then Week 1, 2, etc.
+                const weekNum = weekIdx;
                 const startDay = weekIdx * daysPerWeek + 1;
                 const endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
 
@@ -2126,19 +2128,26 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   }, [selectedProgram?.id]);
 
   // Set default sidebar selection when program weeks are loaded
-  // In template mode: select first week
+  // In template mode: always select Onboarding (week 0) as the default
   // This runs after fetchProgramDetails populates programWeeks
   useEffect(() => {
     // Only set default if sidebar selection is null (fresh program load)
     // And only for template mode
     if (!sidebarSelection && programWeeks.length > 0 && clientViewContext.mode === 'template') {
-      // Find the first week (smallest weekNumber)
-      const firstWeek = [...programWeeks].sort((a, b) => a.weekNumber - b.weekNumber)[0];
-      if (firstWeek) {
-        setSidebarSelection({ type: 'week', id: firstWeek.id, weekNumber: firstWeek.weekNumber, moduleId: firstWeek.moduleId });
-        // Ensure week 1 is expanded
-        setExpandedWeeks(new Set([firstWeek.weekNumber]));
-      }
+      // Always default to Onboarding (weekNumber 0) in template mode
+      // The sidebar always calculates Onboarding as the first week
+      // Use stored week data if available, otherwise create virtual selection
+      const onboardingWeek = programWeeks.find(w => w.weekNumber === 0);
+      const firstModuleId = programWeeks[0]?.moduleId || '';
+
+      setSidebarSelection({
+        type: 'week',
+        id: onboardingWeek?.id || 'week-0',
+        weekNumber: 0, // Always select Onboarding
+        moduleId: onboardingWeek?.moduleId || firstModuleId,
+        displayLabel: 'Onboarding',
+      });
+      setExpandedWeeks(new Set([0]));
     }
   }, [programWeeks, sidebarSelection, clientViewContext.mode]);
 
@@ -2461,6 +2470,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       });
     }
     setSaveError(null);
+    setIsCohortAdvancedOpen(false); // Reset advanced dropdown state
     setIsCohortModalOpen(true);
   };
 
@@ -3371,43 +3381,47 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               </div>
             </>
           ) : (
-            <div className="flex items-center gap-3 w-full">
-              {/* Left section - scrollable */}
-              <div className="flex items-center gap-3 min-w-0 overflow-x-auto scrollbar-hide flex-1">
-              {/* Back button */}
-              <button
-                onClick={() => safeNavigate(() => handleViewModeChange('list'))}
-                className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
-                title="Back to Programs"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 w-full">
+              {/* Row 1 on mobile: Back + Title + Badges */}
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Back button */}
+                <button
+                  onClick={() => safeNavigate(() => handleViewModeChange('list'))}
+                  className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e8e5e1] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
+                  title="Back to Programs"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
 
-              {/* Program name and badge */}
-              <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
-                <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate max-w-[200px]">
-                  {selectedProgram?.name}
-                </h2>
-                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                  selectedProgram?.type === 'group'
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                    : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
-                }`}>
-                  {selectedProgram?.type === 'group' ? 'Group' : '1:1'}
-                </span>
-                {/* Evergreen badge */}
-                {selectedProgram?.durationType === 'evergreen' && (
-                  <div
-                    className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0"
-                    title="Evergreen Program"
-                  >
-                    <RefreshCw className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                )}
+                {/* Program name and badge */}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                    {selectedProgram?.name}
+                  </h2>
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                    selectedProgram?.type === 'group'
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                      : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                  }`}>
+                    {selectedProgram?.type === 'group' ? 'Group' : '1:1'}
+                  </span>
+                  {/* Evergreen badge */}
+                  {selectedProgram?.durationType === 'evergreen' && (
+                    <div
+                      className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0"
+                      title="Evergreen Program"
+                    >
+                      <RefreshCw className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Divider - hidden on mobile */}
+                <div className="hidden md:block w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
               </div>
 
-              {/* Divider */}
-              <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
+              {/* Row 2 on mobile: Selectors + Dropdown + Settings */}
+              <div className="flex items-center gap-2 min-w-0 flex-1 justify-between">
 
               {/* Client/Cohort Selector - right after divider */}
               <div className={viewMode !== 'days' && viewMode !== 'overview' ? 'invisible' : ''}>
@@ -3468,10 +3482,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   </button>
                 </div>
               )}
-              </div>
 
-              {/* Right side controls - outside scrollable area */}
-              <div className="flex-shrink-0 flex items-center gap-2">
+              {/* Right side controls */}
+              <div className="flex-shrink-0 flex items-center gap-2 ml-auto">
                 {/* Today / Enrollment Status - only for individual programs with client selected */}
                 {viewMode === 'days' && selectedProgram?.type === 'individual' && clientViewContext.mode === 'client' && currentEnrollment && (
                   currentEnrollment.status === 'active' && currentEnrollment.currentDayIndex && currentEnrollment.currentDayIndex > 0 ? (
@@ -3759,6 +3772,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   isSaving={saving}
                 />
               </div>
+              </div>
             </div>
           )}
         </div>
@@ -3833,7 +3847,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       className="glass-card overflow-hidden cursor-pointer group"
                       onClick={() => safeNavigate(() => {
                         setSelectedProgram(program);
-                        handleViewModeChange('days');
+                        handleViewModeChange('overview');
                       })}
                     >
                       {/* Cover Image */}
@@ -3967,7 +3981,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       className="glass-card overflow-hidden cursor-pointer group opacity-80 hover:opacity-100 transition-opacity"
                       onClick={() => safeNavigate(() => {
                         setSelectedProgram(program);
-                        handleViewModeChange('days');
+                        handleViewModeChange('overview');
                       })}
                     >
                       {/* Cover Image */}
@@ -6285,210 +6299,284 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         </Dialog>
       </Transition>
 
-      {/* Cohort Create/Edit Modal */}
-      <Transition appear show={isCohortModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-[70]" onClose={() => !saving && setIsCohortModalOpen(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-          </Transition.Child>
+      {/* Cohort Create/Edit Modal - Beautiful Slide-up */}
+      <AnimatePresence>
+        {isCohortModalOpen && (
+          <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => !saving && setIsCohortModalOpen(false)}
+            />
 
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 p-6 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
-                  <Dialog.Title className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
+            {/* Panel */}
+            <motion.div
+              initial={{ opacity: 0, y: '100%' }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full sm:max-w-lg max-h-[90vh] overflow-hidden bg-white dark:bg-[#171b22] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col"
+            >
+              {/* Header */}
+              <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+                <div>
+                  <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                     {editingCohort ? 'Edit Cohort' : 'Add Cohort'}
-                  </Dialog.Title>
+                  </h2>
+                  {selectedProgram && (
+                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                      {selectedProgram.name}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => !saving && setIsCohortModalOpen(false)}
+                  className="p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-                  <div className="space-y-4">
+              {/* Content - scrollable */}
+              <div className="flex-1 overflow-y-auto px-6 py-5">
+                <div className="space-y-5">
+                  {/* Name field */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                      Cohort Name
+                    </label>
+                    <input
+                      type="text"
+                      value={cohortFormData.name}
+                      onChange={(e) => setCohortFormData({ ...cohortFormData, name: e.target.value })}
+                      placeholder="e.g., March 2025"
+                      className="w-full px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
+                    />
+                  </div>
+
+                  {/* Date fields */}
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                        Name *
+                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                        Start Date
                       </label>
-                      <input
-                        type="text"
-                        value={cohortFormData.name}
-                        onChange={(e) => setCohortFormData({ ...cohortFormData, name: e.target.value })}
-                        placeholder="e.g., March 2025"
-                        className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                          Start Date *
-                        </label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button
-                              type="button"
-                              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-left flex items-center justify-between hover:border-brand-accent/50 transition-colors"
-                            >
-                              <span className={cohortFormData.startDate ? '' : 'text-[#8a8580] dark:text-[#6b7280]'}>
-                                {cohortFormData.startDate 
-                                  ? format(new Date(cohortFormData.startDate + 'T00:00:00'), 'MMM d, yyyy')
-                                  : 'Select date'}
-                              </span>
-                              <CalendarIcon className="h-4 w-4 text-[#8a8580] dark:text-[#6b7280]" />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent 
-                            className="w-auto p-0 rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] shadow-xl" 
-                            align="start"
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="w-full px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-left flex items-center justify-between hover:border-brand-accent/50 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
                           >
-                            <Calendar
-                              mode="single"
-                              selected={cohortFormData.startDate ? new Date(cohortFormData.startDate + 'T00:00:00') : undefined}
-                              onSelect={(date) => {
-                                if (date) {
-                                  const startDateStr = format(date, 'yyyy-MM-dd');
-                                  const endDate = new Date(date);
-                                  endDate.setDate(endDate.getDate() + (selectedProgram?.lengthDays || 30) - 1);
-                                  setCohortFormData({
-                                    ...cohortFormData,
-                                    startDate: startDateStr,
-                                    endDate: endDate.toISOString().split('T')[0],
-                                  });
-                                }
-                              }}
-                              showTodayButton
-                              onTodayClick={() => {
-                                const today = new Date();
-                                const startDateStr = format(today, 'yyyy-MM-dd');
-                                const endDate = new Date(today);
+                            <span className={cohortFormData.startDate ? '' : 'text-[#8a8580] dark:text-[#6b7280]'}>
+                              {cohortFormData.startDate
+                                ? format(new Date(cohortFormData.startDate + 'T00:00:00'), 'MMM d, yyyy')
+                                : 'Select'}
+                            </span>
+                            <CalendarIcon className="h-4 w-4 text-[#8a8580] dark:text-[#6b7280]" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-auto p-0 rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] shadow-xl"
+                          align="start"
+                        >
+                          <Calendar
+                            mode="single"
+                            selected={cohortFormData.startDate ? new Date(cohortFormData.startDate + 'T00:00:00') : undefined}
+                            onSelect={(date) => {
+                              if (date) {
+                                const startDateStr = format(date, 'yyyy-MM-dd');
+                                const endDate = new Date(date);
                                 endDate.setDate(endDate.getDate() + (selectedProgram?.lengthDays || 30) - 1);
                                 setCohortFormData({
                                   ...cohortFormData,
                                   startDate: startDateStr,
                                   endDate: endDate.toISOString().split('T')[0],
                                 });
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                          Duration
-                        </label>
-                        <div className="px-3 py-2.5 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-[#f9f8f6] dark:bg-[#0d1017] text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">
-                          {selectedProgram?.lengthDays || 30} days (from program)
-                        </div>
-                      </div>
+                              }
+                            }}
+                            showTodayButton
+                            onTodayClick={() => {
+                              const today = new Date();
+                              const startDateStr = format(today, 'yyyy-MM-dd');
+                              const endDate = new Date(today);
+                              endDate.setDate(endDate.getDate() + (selectedProgram?.lengthDays || 30) - 1);
+                              setCohortFormData({
+                                ...cohortFormData,
+                                startDate: startDateStr,
+                                endDate: endDate.toISOString().split('T')[0],
+                              });
+                            }}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                        Max Enrollment (optional)
+                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                        Duration
                       </label>
-                      <input
-                        type="number"
-                        value={cohortFormData.maxEnrollment || ''}
-                        onChange={(e) => setCohortFormData({ ...cohortFormData, maxEnrollment: parseInt(e.target.value) || null })}
-                        min={1}
-                        placeholder="No limit"
-                        className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                      />
+                      <div className="px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-[#f9f8f6] dark:bg-[#0d1017] text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">
+                        {selectedProgram?.lengthDays || 30} days
+                      </div>
                     </div>
+                  </div>
 
-                    <label className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer select-none">
-                      <BrandedCheckbox
-                        checked={cohortFormData.enrollmentOpen}
-                        onChange={(checked) => setCohortFormData({ ...cohortFormData, enrollmentOpen: checked })}
-                      />
-                      Enrollment open
+                  {/* Max enrollment */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                      Max Enrollment
+                      <span className="text-[#8a8580] dark:text-[#6b7280] font-normal ml-1">(optional)</span>
                     </label>
+                    <input
+                      type="number"
+                      value={cohortFormData.maxEnrollment || ''}
+                      onChange={(e) => setCohortFormData({ ...cohortFormData, maxEnrollment: parseInt(e.target.value) || null })}
+                      min={1}
+                      placeholder="No limit"
+                      className="w-full px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-all"
+                    />
+                  </div>
 
-                    {/* Advanced Settings - Collapsible */}
-                    <details className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                      <summary className="flex items-center gap-2 cursor-pointer list-none text-sm font-medium text-[#8a8580] dark:text-[#6b7280] font-albert hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors">
-                        <span>Advanced settings</span>
-                        <svg className="w-4 h-4 transition-transform [details[open]>&]:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </summary>
+                  {/* Enrollment toggle */}
+                  <div className="flex items-center justify-between p-4 bg-[#f9f8f6] dark:bg-[#11141b] rounded-xl">
+                    <div>
+                      <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                        Enrollment open
+                      </span>
+                      <p className="text-xs text-[#8a8580] dark:text-[#6b7280] font-albert mt-0.5">
+                        Allow new members to join
+                      </p>
+                    </div>
+                    <BrandedCheckbox
+                      checked={cohortFormData.enrollmentOpen}
+                      onChange={(checked) => setCohortFormData({ ...cohortFormData, enrollmentOpen: checked })}
+                    />
+                  </div>
 
-                      <div className="mt-4 space-y-4">
-                        {/* Chat after program ends */}
-                        <div>
-                          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert">
-                            Chat after program ends
-                          </label>
-                          <div className="space-y-3">
-                            <label className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer select-none">
-                              <BrandedRadio
-                                name="chatAfterProgram"
-                                checked={cohortFormData.keepChatOpen}
-                                onChange={() => setCohortFormData({ ...cohortFormData, keepChatOpen: true })}
-                              />
-                              Keep chat
-                            </label>
-                            <label className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer select-none">
-                              <BrandedRadio
-                                name="chatAfterProgram"
-                                checked={!cohortFormData.keepChatOpen}
-                                onChange={() => setCohortFormData({ ...cohortFormData, keepChatOpen: false })}
-                              />
-                              Archive chat
-                            </label>
+                  {/* Advanced Settings - Collapsible with Animation */}
+                  <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                    <button
+                      type="button"
+                      onClick={() => setIsCohortAdvancedOpen(!isCohortAdvancedOpen)}
+                      className="flex items-center gap-2 text-sm font-medium text-[#8a8580] dark:text-[#6b7280] font-albert hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
+                    >
+                      <span>Advanced settings</span>
+                      <motion.div
+                        animate={{ rotate: isCohortAdvancedOpen ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </motion.div>
+                    </button>
+
+                    <AnimatePresence>
+                      {isCohortAdvancedOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="mt-4 space-y-4">
+                            {/* Chat after program ends */}
+                            <div>
+                              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert">
+                                Chat after program ends
+                              </label>
+                              <div className="space-y-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setCohortFormData({ ...cohortFormData, keepChatOpen: true })}
+                                  className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                                    cohortFormData.keepChatOpen
+                                      ? 'border-brand-accent bg-brand-accent/5'
+                                      : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                                  }`}
+                                >
+                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                                    cohortFormData.keepChatOpen
+                                      ? 'bg-brand-accent/20'
+                                      : 'bg-[#f3f1ef] dark:bg-[#262b35]'
+                                  }`}>
+                                    <MessageCircle className={`w-5 h-5 ${cohortFormData.keepChatOpen ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                                  </div>
+                                  <div>
+                                    <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] block">
+                                      Keep chat
+                                    </span>
+                                    <span className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
+                                      Members can continue chatting
+                                    </span>
+                                  </div>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setCohortFormData({ ...cohortFormData, keepChatOpen: false })}
+                                  className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                                    !cohortFormData.keepChatOpen
+                                      ? 'border-brand-accent bg-brand-accent/5'
+                                      : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                                  }`}
+                                >
+                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                                    !cohortFormData.keepChatOpen
+                                      ? 'bg-brand-accent/20'
+                                      : 'bg-[#f3f1ef] dark:bg-[#262b35]'
+                                  }`}>
+                                    <Archive className={`w-5 h-5 ${!cohortFormData.keepChatOpen ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                                  </div>
+                                  <div>
+                                    <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] block">
+                                      Archive chat
+                                    </span>
+                                    <span className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert">
+                                      Chat becomes read-only
+                                    </span>
+                                  </div>
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-xs text-[#8a8580] dark:text-[#6b7280] mt-2 font-albert">
-                            {cohortFormData.keepChatOpen
-                              ? 'Members can continue chatting after program ends'
-                              : 'Chat is archived and read-only after program ends'}
-                          </p>
-                        </div>
-                      </div>
-                    </details>
-
-                    {saveError && (
-                      <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                        <p className="text-sm text-red-600 dark:text-red-400 font-albert">{saveError}</p>
-                      </div>
-                    )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
-                  <div className="flex justify-end gap-3 mt-6">
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsCohortModalOpen(false)}
-                      disabled={saving}
-                      className="border-[#e1ddd8] dark:border-[#262b35]"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleSaveCohort}
-                      disabled={saving || !cohortFormData.name || !cohortFormData.startDate}
-                      className="bg-brand-accent hover:bg-brand-accent/90 text-white"
-                    >
-                      {saving ? 'Saving...' : (editingCohort ? 'Update' : 'Create')}
-                    </Button>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
+                  {/* Error message */}
+                  {saveError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                      <p className="text-sm text-red-600 dark:text-red-400 font-albert">{saveError}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="sticky bottom-0 z-10 flex gap-3 px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCohortModalOpen(false)}
+                  disabled={saving}
+                  className="flex-1 border-[#e1ddd8] dark:border-[#262b35]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveCohort}
+                  disabled={saving || !cohortFormData.name || !cohortFormData.startDate}
+                  className="flex-1 bg-brand-accent hover:bg-brand-accent/90 text-white"
+                >
+                  {saving ? 'Saving...' : (editingCohort ? 'Update' : 'Create')}
+                </Button>
+              </div>
+            </motion.div>
           </div>
-        </Dialog>
-      </Transition>
+        )}
+      </AnimatePresence>
 
       {/* Delete Program Confirmation Modal */}
       <Transition appear show={deleteConfirmProgram !== null} as={Fragment}>

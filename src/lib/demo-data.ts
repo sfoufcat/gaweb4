@@ -958,7 +958,7 @@ export interface DemoFunnel {
   id: string;
   name: string;
   slug: string;
-  targetType: 'program' | 'squad' | 'content';
+  targetType: 'intake' | 'program' | 'squad' | 'content';
   targetId?: string;
   targetName?: string;
   isActive: boolean;
@@ -970,7 +970,8 @@ export interface DemoFunnel {
 const FUNNEL_TEMPLATES = [
   { name: 'Program Launch Funnel', targetType: 'program' as const },
   { name: 'Free Webinar Funnel', targetType: 'content' as const },
-  { name: 'Community Entry Funnel', targetType: 'squad' as const },
+  // DEPRECATED: Squad funnels disabled. Squads now managed via Program > Community
+  // { name: 'Community Entry Funnel', targetType: 'squad' as const },
   { name: 'Lead Magnet Funnel', targetType: 'content' as const },
 ];
 
@@ -979,8 +980,8 @@ const STEP_TYPES: DemoFunnelStep['type'][] = ['landing', 'form', 'video', 'check
 export function generateDemoFunnels(): DemoFunnel[] {
   const random = seededRandom(600);
   const funnels: DemoFunnel[] = [];
-  
-  for (let i = 0; i < 4; i++) {
+
+  for (let i = 0; i < FUNNEL_TEMPLATES.length; i++) {
     const template = FUNNEL_TEMPLATES[i];
     const numSteps = 3 + Math.floor(random() * 3); // 3-5 steps
     
@@ -991,11 +992,13 @@ export function generateDemoFunnels(): DemoFunnel[] {
       const program = DEMO_PROGRAMS[Math.floor(random() * DEMO_PROGRAMS.length)];
       targetId = program.id;
       targetName = program.name;
-    } else if (template.targetType === 'squad') {
-      const squad = DEMO_SQUADS[Math.floor(random() * DEMO_SQUADS.length)];
-      targetId = squad.id;
-      targetName = squad.name;
     }
+    // DEPRECATED: Squad funnels disabled
+    // } else if (template.targetType === 'squad') {
+    //   const squad = DEMO_SQUADS[Math.floor(random() * DEMO_SQUADS.length)];
+    //   targetId = squad.id;
+    //   targetName = squad.name;
+    // }
     
     const steps: DemoFunnelStep[] = [];
     for (let s = 0; s < numSteps; s++) {
@@ -1505,24 +1508,27 @@ export function generateDemoFunnelAnalytics(): {
   const random = seededRandom(1100);
   const funnels: DemoFunnelAnalytics[] = [];
   
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < FUNNEL_TEMPLATES.length; i++) {
     const template = FUNNEL_TEMPLATES[i];
     const numSteps = 3 + Math.floor(random() * 3);
-    
+
     let targetProgramId: string | undefined;
     let targetProgramName: string | undefined;
-    let targetSquadId: string | undefined;
-    let targetSquadName: string | undefined;
-    
+    // DEPRECATED: Squad funnels disabled
+    // let targetSquadId: string | undefined;
+    // let targetSquadName: string | undefined;
+
     if (template.targetType === 'program') {
       const program = DEMO_PROGRAMS[i % DEMO_PROGRAMS.length];
       targetProgramId = program.id;
       targetProgramName = program.name;
-    } else if (template.targetType === 'squad') {
-      const squad = DEMO_SQUADS[i % DEMO_SQUADS.length];
-      targetSquadId = squad.id;
-      targetSquadName = squad.name;
     }
+    // DEPRECATED: Squad funnels disabled
+    // } else if (template.targetType === 'squad') {
+    //   const squad = DEMO_SQUADS[i % DEMO_SQUADS.length];
+    //   targetSquadId = squad.id;
+    //   targetSquadName = squad.name;
+    // }
     
     const totalViews = 200 + Math.floor(random() * 800);
     const totalStarts = Math.floor(totalViews * (0.4 + random() * 0.3));
@@ -1565,8 +1571,11 @@ export function generateDemoFunnelAnalytics(): {
       name: template.name,
       programId: targetProgramId,
       programName: targetProgramName,
-      squadId: targetSquadId,
-      squadName: targetSquadName,
+      // DEPRECATED: Squad funnels disabled
+      // squadId: targetSquadId,
+      // squadName: targetSquadName,
+      squadId: undefined,
+      squadName: undefined,
       isActive: random() < 0.75,
       totalViews,
       totalStarts,
@@ -2031,7 +2040,9 @@ export function generateDemoScheduling(): DemoSchedulingData {
   return {
     availability,
     bookings,
-    timezone: 'America/New_York',
+    timezone: typeof window !== 'undefined'
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+      : 'UTC',
     bufferMinutes: 15,
     maxAdvanceDays: 60,
   };

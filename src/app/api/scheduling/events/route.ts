@@ -348,6 +348,7 @@ export async function GET(request: NextRequest) {
     // Note: For squad events, user is considered a participant if they're in the squad
     // Note: For coaches, include events from their coached squads even if hostUserId is null
     // Note: For org coaches, include community_event types in their organization
+    // Note: For intake_call events, include for org coaches even if hostUserId is 'system'
     events = events.filter(e => {
       const attendeeIds = e.attendeeIds || [];
       const isSquadMember = e.squadId && userSquadIds.includes(e.squadId);
@@ -357,15 +358,18 @@ export async function GET(request: NextRequest) {
       const eventData = e as any;
       const isCommunityEvent = e.eventType === 'community_event' || (eventData.date && eventData.startTime && !e.eventType);
       const isOrgCommunityEvent = isOrgCoach && isCommunityEvent && e.organizationId === orgId;
+      // Include intake_call events for org coaches (handles case where hostUserId may be 'system')
+      const isIntakeCall = e.eventType === 'intake_call' && e.organizationId === orgId;
+      const isOrgIntakeCall = isOrgCoach && isIntakeCall;
 
       if (roleParam === 'host') {
-        // Include events where user is host OR where user is coach of the squad OR org community events
-        return e.hostUserId === userId || isSquadCoach || isOrgCommunityEvent;
+        // Include events where user is host OR where user is coach of the squad OR org community events OR intake calls
+        return e.hostUserId === userId || isSquadCoach || isOrgCommunityEvent || isOrgIntakeCall;
       } else if (roleParam === 'attendee') {
         return (attendeeIds.includes(userId) || isSquadMember) && e.hostUserId !== userId;
       } else {
-        // 'all' - user is either host, attendee, squad member, squad coach, or org coach viewing community events
-        return e.hostUserId === userId || attendeeIds.includes(userId) || isSquadMember || isSquadCoach || isOrgCommunityEvent;
+        // 'all' - user is either host, attendee, squad member, squad coach, or org coach viewing community/intake events
+        return e.hostUserId === userId || attendeeIds.includes(userId) || isSquadMember || isSquadCoach || isOrgCommunityEvent || isOrgIntakeCall;
       }
     });
 

@@ -128,7 +128,7 @@ export function DatePicker({
         disabled={disabled}
         onClick={() => setOpen(true)}
         className={cn(
-          "w-full justify-between text-left font-normal h-auto py-2.5 px-3",
+          "w-full justify-between text-left font-normal h-12 px-4",
           "border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b]",
           "rounded-xl hover:bg-[#faf8f6] dark:hover:bg-[#1c2028]",
           "focus:ring-2 focus:ring-brand-accent focus:ring-offset-0",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react';
+import { useCallback, useEffect, useRef, useState, useLayoutEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -17,6 +17,9 @@ import {
   Edit2,
   Link as LinkIcon,
   Save,
+  CalendarX2,
+  FileText,
+  PlayCircle,
 } from 'lucide-react';
 import type { UnifiedEvent } from '@/types';
 
@@ -33,6 +36,14 @@ interface EventDetailPopupProps {
   isHost?: boolean;
   /** Callback when event is updated (e.g., meeting link changed) */
   onEventUpdated?: () => void;
+  /** Callback to open reschedule modal */
+  onReschedule?: () => void;
+  /** Callback to initiate cancel flow */
+  onCancel?: () => void;
+  /** Callback to view call summary */
+  onViewSummary?: (summaryId: string) => void;
+  /** Whether a cancel operation is in progress */
+  isCancelling?: boolean;
 }
 
 /**
@@ -52,6 +63,10 @@ export function EventDetailPopup({
   position,
   isHost = false,
   onEventUpdated,
+  onReschedule,
+  onCancel,
+  onViewSummary,
+  isCancelling = false,
 }: EventDetailPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
   const [computedPosition, setComputedPosition] = useState<{ top: number; left: number } | null>(null);
@@ -66,6 +81,24 @@ export function EventDetailPopup({
   useEffect(() => {
     setMeetingLinkInput(event.meetingLink || '');
   }, [event.meetingLink]);
+
+  // Determine if event is in the past
+  const isPastEvent = useMemo(() => {
+    const endTime = event.endDateTime
+      ? new Date(event.endDateTime)
+      : new Date(new Date(event.startDateTime).getTime() + (event.durationMinutes || 60) * 60000);
+    return endTime < new Date();
+  }, [event.startDateTime, event.endDateTime, event.durationMinutes]);
+
+  // Computed states for action visibility
+  // isConfirmed: true for scheduled events with schedulingStatus=confirmed OR regular events with status=confirmed (no schedulingStatus)
+  const isConfirmed = event.schedulingStatus === 'confirmed' ||
+                     (event.status === 'confirmed' && !event.schedulingStatus);
+  const isCanceled = event.status === 'canceled' || event.schedulingStatus === 'cancelled';
+  const canReschedule = !isPastEvent && isConfirmed && !isCanceled && isHost;
+  const canCancel = !isPastEvent && !isCanceled;
+  const hasSummary = !!event.callSummaryId;
+  const hasRecording = !!event.recordingUrl;
 
   // Save meeting link
   const handleSaveMeetingLink = useCallback(async () => {
@@ -533,10 +566,82 @@ export function EventDetailPopup({
               </p>
             </div>
           )}
+
+          {/* Past Event Actions */}
+          {isPastEvent && !isPending && (
+            <div className="pt-3 mt-3 border-t border-[#e1ddd8] dark:border-[#262b35] space-y-2">
+              {/* View Summary Button */}
+              {hasSummary && onViewSummary && (
+                <button
+                  onClick={() => onViewSummary(event.callSummaryId!)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
+                >
+                  <FileText className="w-4 h-4" />
+                  View Call Summary
+                </button>
+              )}
+
+              {/* View Recording Link */}
+              {hasRecording && (
+                <a
+                  href={event.recordingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  View Recording
+                  <ExternalLink className="w-3 h-3 ml-1" />
+                </a>
+              )}
+
+              {/* No summary message */}
+              {!hasSummary && !hasRecording && (
+                <div className="flex items-center justify-center gap-2 px-4 py-3 text-[#5f5a55] dark:text-[#b2b6c2] text-sm">
+                  <FileText className="w-4 h-4" />
+                  No summary available
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Future Event Actions (Reschedule/Cancel) */}
+          {!isPastEvent && !isPending && (canReschedule || canCancel) && (
+            <div className="pt-3 mt-3 border-t border-[#e1ddd8] dark:border-[#262b35] space-y-2">
+              <div className="flex gap-2">
+                {/* Reschedule Button */}
+                {canReschedule && onReschedule && (
+                  <button
+                    onClick={onReschedule}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
+                  >
+                    <CalendarClock className="w-4 h-4" />
+                    Reschedule
+                  </button>
+                )}
+
+                {/* Cancel Button */}
+                {canCancel && onCancel && (
+                  <button
+                    onClick={onCancel}
+                    disabled={isCancelling}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl font-albert font-medium text-sm hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 transition-colors"
+                  >
+                    {isCancelling ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CalendarX2 className="w-4 h-4" />
+                    )}
+                    {isHost ? 'Cancel' : 'Leave'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Footer for non-pending events */}
-        {!isPending && event.meetingLink && (
+        {/* Footer for non-pending future events with meeting link */}
+        {!isPending && !isPastEvent && event.meetingLink && (
           <div className="sticky bottom-0 px-5 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
             <a
               href={event.meetingLink}

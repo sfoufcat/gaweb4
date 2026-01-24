@@ -8,11 +8,12 @@ import type { Funnel, FunnelTargetType, FunnelContentType, FunnelTrackingConfig 
 /**
  * GET /api/coach/org-funnels
  * Get all funnels for the coach's organization
- * 
+ *
  * Query params:
  * - programId?: string (filter by program)
- * - squadId?: string (filter by squad)
+ * - squadId?: string (filter by squad) @deprecated Squad funnels disabled
  * - targetType?: 'program' | 'squad' | 'content' (filter by target type)
+ *   @deprecated 'squad' - Squad funnels disabled. Squads now managed via Program > Community
  * - contentType?: string (filter by content type when targetType is 'content')
  * - contentId?: string (filter by content ID)
  */
@@ -78,13 +79,14 @@ export async function GET(req: Request) {
 /**
  * POST /api/coach/org-funnels
  * Create a new funnel
- * 
+ *
  * Body:
  * - name: string
  * - slug: string
  * - targetType: 'program' | 'squad' | 'content' (default: 'program')
+ *   @deprecated 'squad' - Squad funnels disabled. Squads now managed via Program > Community
  * - programId?: string (required if targetType is 'program')
- * - squadId?: string (required if targetType is 'squad')
+ * - squadId?: string (required if targetType is 'squad') @deprecated
  * - contentType?: string (required if targetType is 'content')
  * - contentId?: string (required if targetType is 'content')
  * - description?: string
@@ -141,7 +143,7 @@ export async function POST(req: Request) {
     }
 
     // Validate target type
-    if (!['program', 'squad', 'content'].includes(targetType)) {
+    if (!['program', 'squad', 'content', 'intake'].includes(targetType)) {
       return NextResponse.json({ error: 'Invalid target type' }, { status: 400 });
     }
 
@@ -151,6 +153,9 @@ export async function POST(req: Request) {
     }
     if (targetType === 'squad' && !squadId) {
       return NextResponse.json({ error: 'Squad ID is required' }, { status: 400 });
+    }
+    if (targetType === 'intake' && !body.intakeConfigId) {
+      return NextResponse.json({ error: 'Intake config ID is required' }, { status: 400 });
     }
     if (targetType === 'content') {
       if (!contentType) {
@@ -175,13 +180,16 @@ export async function POST(req: Request) {
     // Get target ID and field for uniqueness check based on target type
     let targetId: string;
     let targetField: string;
-    
+
     if (targetType === 'program') {
       targetId = programId;
       targetField = 'programId';
     } else if (targetType === 'squad') {
       targetId = squadId;
       targetField = 'squadId';
+    } else if (targetType === 'intake') {
+      targetId = body.intakeConfigId;
+      targetField = 'intakeConfigId';
     } else {
       // For content, use contentId as the target
       targetId = contentId;
@@ -204,12 +212,15 @@ export async function POST(req: Request) {
     }
 
     // Verify target belongs to this organization
+    // Store program data for step creation logic
+    let programData: FirebaseFirestore.DocumentData | undefined;
+
     if (targetType === 'program') {
       const programDoc = await adminDb.collection('programs').doc(programId).get();
       if (!programDoc.exists) {
         return NextResponse.json({ error: 'Program not found' }, { status: 404 });
       }
-      const programData = programDoc.data();
+      programData = programDoc.data();
       if (programData?.organizationId !== organizationId) {
         return NextResponse.json({ error: 'Program not in your organization' }, { status: 403 });
       }
@@ -222,6 +233,16 @@ export async function POST(req: Request) {
       if (squadData?.organizationId !== organizationId) {
         return NextResponse.json({ error: 'Squad not in your organization' }, { status: 403 });
       }
+    } else if (targetType === 'intake') {
+      // Verify intake config belongs to this organization
+      const intakeConfigDoc = await adminDb.collection('intake_call_configs').doc(body.intakeConfigId).get();
+      if (!intakeConfigDoc.exists) {
+        return NextResponse.json({ error: 'Intake config not found' }, { status: 404 });
+      }
+      const intakeConfigData = intakeConfigDoc.data();
+      if (intakeConfigData?.organizationId !== organizationId) {
+        return NextResponse.json({ error: 'Intake config not in your organization' }, { status: 403 });
+      }
     } else if (targetType === 'content') {
       // Verify content belongs to this organization
       // Map contentType to collection name
@@ -233,7 +254,7 @@ export async function POST(req: Request) {
         link: 'links',
       };
       const collection = collectionMap[contentType];
-      
+
       const contentDoc = await adminDb.collection(collection).doc(contentId).get();
       if (!contentDoc.exists) {
         return NextResponse.json({ error: `${contentType} not found` }, { status: 404 });
@@ -275,6 +296,7 @@ export async function POST(req: Request) {
       targetType,
       programId: targetType === 'program' ? programId : null,
       squadId: targetType === 'squad' ? squadId : null,
+      intakeConfigId: targetType === 'intake' ? body.intakeConfigId : undefined,
       contentType: targetType === 'content' ? contentType : undefined,
       contentId: targetType === 'content' ? contentId : undefined,
       slug: slug.toLowerCase(),
@@ -292,11 +314,54 @@ export async function POST(req: Request) {
 
     const funnelRef = await adminDb.collection('funnels').add(funnelData);
 
-    console.log(`[COACH_ORG_FUNNELS] Created ${targetType} funnel ${funnelRef.id} for org ${organizationId}`);
+    // Create required steps based on target type
+    interface StepToCreate {
+      type: string;
+      config: Record<string, unknown>;
+      order: number;
+    }
+    const requiredSteps: StepToCreate[] = [];
+
+    if (targetType === 'intake') {
+      // Intake funnels need: scheduling + success
+      requiredSteps.push(
+        { type: 'scheduling', config: { intakeConfigId: body.intakeConfigId }, order: 0 },
+        { type: 'success', config: { showConfetti: true, redirectDelay: 3000 }, order: 1 }
+      );
+    } else {
+      // Program/squad/content funnels need: payment (if paid) + signup + success
+      let order = 0;
+      if (programData?.priceInCents && programData.priceInCents > 0) {
+        requiredSteps.push({ type: 'payment', config: { useProgramPricing: true }, order: order++ });
+      }
+      requiredSteps.push(
+        { type: 'signup', config: { showSocialLogin: true }, order: order++ },
+        { type: 'success', config: { showConfetti: true, redirectDelay: 3000 }, order: order++ }
+      );
+    }
+
+    // Create steps in subcollection using batch
+    const stepBatch = adminDb.batch();
+    for (const step of requiredSteps) {
+      const stepRef = adminDb.collection('funnels').doc(funnelRef.id).collection('steps').doc();
+      stepBatch.set(stepRef, {
+        funnelId: funnelRef.id,
+        type: step.type,
+        config: step.config,
+        order: step.order,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    // Update stepCount on funnel
+    stepBatch.update(funnelRef, { stepCount: requiredSteps.length });
+    await stepBatch.commit();
+
+    console.log(`[COACH_ORG_FUNNELS] Created ${targetType} funnel ${funnelRef.id} with ${requiredSteps.length} steps for org ${organizationId}`);
 
     return NextResponse.json({
       success: true,
-      funnel: { id: funnelRef.id, ...funnelData },
+      funnel: { id: funnelRef.id, ...funnelData, stepCount: requiredSteps.length },
     });
   } catch (error) {
     // Handle tenant required error

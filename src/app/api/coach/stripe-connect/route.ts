@@ -1,6 +1,6 @@
 /**
  * Stripe Connect API for Coach Billing
- * 
+ *
  * GET: Get current Stripe Connect status for the coach's organization
  * POST: Generate Stripe Connect onboarding link
  */
@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
-import type { StripeConnectStatus } from '@/types';
+import type { StripeConnectStatus, ClerkPublicMetadata, OrgRole } from '@/types';
 
 // Lazy initialization to avoid build-time errors
 let _stripe: Stripe | null = null;
@@ -25,31 +25,55 @@ function getStripe(): Stripe {
   return _stripe;
 }
 
-// Helper to get coach's organization ID
-async function getCoachOrganizationId(userId: string): Promise<string | null> {
-  // Check org_memberships for super_coach role
-  const membershipsSnap = await adminDb
-    .collection('org_memberships')
-    .where('userId', '==', userId)
-    .where('orgRole', '==', 'super_coach')
-    .where('isActive', '==', true)
-    .limit(1)
-    .get();
-  
-  if (!membershipsSnap.empty) {
-    return membershipsSnap.docs[0].data().organizationId;
+// Check if orgRole is super_coach
+function isSuperCoach(orgRole?: OrgRole): boolean {
+  return orgRole === 'super_coach';
+}
+
+// Helper to get coach's organization ID from Clerk session (matching requireCoachWithOrg pattern)
+async function getSuperCoachOrganizationId(): Promise<{ organizationId: string; userId: string } | null> {
+  const { userId, orgId, sessionClaims } = await auth();
+
+  if (!userId) {
+    return null;
   }
-  
-  // Fallback to user's publicMetadata.organizationId for legacy users
-  const userDoc = await adminDb.collection('users').doc(userId).get();
-  if (userDoc.exists) {
-    const userData = userDoc.data();
-    if (userData?.clerkPublicMetadata?.orgRole === 'super_coach') {
-      return userData.clerkPublicMetadata.organizationId || null;
-    }
+
+  const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+  const role = publicMetadata?.role;
+  const orgRole = publicMetadata?.orgRole;
+
+  // Check if user is super_coach or has admin/super_admin role
+  const isSuperAdmin = role === 'super_admin' || role === 'admin';
+  const hasSuperCoachAccess = isSuperCoach(orgRole) || isSuperAdmin;
+
+  if (!hasSuperCoachAccess) {
+    console.log('[getSuperCoachOrganizationId] User does not have super_coach access:', { role, orgRole });
+    return null;
   }
-  
-  return null;
+
+  // Get organization ID from session (same priority as requireCoachWithOrg)
+  const primaryOrgId = typeof publicMetadata?.primaryOrganizationId === 'string' ? publicMetadata.primaryOrganizationId : undefined;
+  const legacyOrgId = typeof publicMetadata?.organizationId === 'string' ? publicMetadata.organizationId : undefined;
+
+  // Also check for tenant context from headers
+  let tenantOrgId: string | null = null;
+  try {
+    const { headers } = await import('next/headers');
+    const headersList = await headers();
+    tenantOrgId = headersList.get('x-tenant-org-id');
+  } catch {
+    // Headers not available
+  }
+
+  const organizationId = tenantOrgId || orgId || primaryOrgId || legacyOrgId;
+
+  if (!organizationId) {
+    console.log('[getSuperCoachOrganizationId] No organization ID found');
+    return null;
+  }
+
+  console.log('[getSuperCoachOrganizationId] Found organization:', { organizationId, userId, orgRole });
+  return { organizationId, userId };
 }
 
 /**
@@ -58,20 +82,16 @@ async function getCoachOrganizationId(userId: string): Promise<string | null> {
  */
 export async function GET() {
   try {
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    const organizationId = await getCoachOrganizationId(userId);
-    
-    if (!organizationId) {
+    const authResult = await getSuperCoachOrganizationId();
+
+    if (!authResult) {
       return NextResponse.json(
         { error: 'Not authorized - must be a super_coach' },
         { status: 403 }
       );
     }
+
+    const { organizationId, userId } = authResult;
     
     // Get org_settings
     const settingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
@@ -137,21 +157,17 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    const organizationId = await getCoachOrganizationId(userId);
-    
-    if (!organizationId) {
+    const authResult = await getSuperCoachOrganizationId();
+
+    if (!authResult) {
       return NextResponse.json(
         { error: 'Not authorized - must be a super_coach' },
         { status: 403 }
       );
     }
-    
+
+    const { organizationId, userId } = authResult;
+
     // Get current settings
     const settingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
     const settings = settingsDoc.data();

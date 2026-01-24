@@ -339,10 +339,11 @@ export function AdminUsersTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDemoData]);
   
-  // Use demo data when in demo mode
+  // Use demo data when in demo mode, and filter out coaches from client list
   const displayUsers: ClerkAdminUser[] = useMemo(() => {
+    let result: ClerkAdminUser[];
     if (showDemoData) {
-      return demoUsers.map(u => ({
+      result = demoUsers.map(u => ({
         ...u,
         role: u.role as UserRole,
         orgRole: u.orgRole as OrgRole,
@@ -350,9 +351,20 @@ export function AdminUsersTab({
         coachingStatus: u.coachingStatus as CoachingStatus,
         updatedAt: u.updatedAt,
       }));
+    } else {
+      result = users;
     }
-    return users;
-  }, [showDemoData, demoUsers, users]);
+
+    // Exclude coaches from client list (coaches shouldn't appear as clients)
+    if (headerTitle.toLowerCase() === 'clients') {
+      result = result.filter(u => {
+        const role = u.orgRoleForOrg || u.orgRole || 'member';
+        return role !== 'coach' && role !== 'super_coach';
+      });
+    }
+
+    return result;
+  }, [showDemoData, demoUsers, users, headerTitle]);
   
   // Use demo squads when in demo mode
   const displaySquads = showDemoData ? demoSquadOptions : squads;
@@ -419,7 +431,8 @@ export function AdminUsersTab({
   const filteredUsers = useMemo(() => {
     let result = displayUsers;
 
-    // Hide super_coach users from clients list (coaches don't need to see org owners)
+    // Hide super_coach users from list (for non-client views where displayUsers doesn't filter them)
+    // For "Clients" view, displayUsers already excludes coaches, so this is a no-op
     result = result.filter((user) => {
       const userOrgRole = user.orgRoleForOrg || user.orgRole || 'member';
       return userOrgRole !== 'super_coach';
@@ -1077,8 +1090,9 @@ export function AdminUsersTab({
             <div>
               <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">{headerTitle}</h2>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert mt-1">
-                {filteredUsers.length} of {displayUsers.length} {headerTitle.toLowerCase()}{displayUsers.length !== 1 ? '' : ''}
-                {(searchQuery || clientFilter !== 'all') && ' matching filters'}
+                {(searchQuery || clientFilter !== 'all')
+                  ? `${filteredUsers.length} of ${displayUsers.length} ${headerTitle.toLowerCase()} matching filters`
+                  : `${filteredUsers.length} ${headerTitle.toLowerCase()}`}
               </p>
             </div>
             

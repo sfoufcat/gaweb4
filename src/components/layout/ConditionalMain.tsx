@@ -51,6 +51,8 @@ export function ConditionalMain({ children, layoutMode }: ConditionalMainProps) 
     pathname?.startsWith('/marketplace') ||
     pathname?.startsWith('/q/') ||
     pathname?.startsWith('/lander') ||
+    pathname?.startsWith('/book') ||
+    pathname?.startsWith('/intake-call') ||
     pathname === '/upgrade-premium/form' ||
     pathname === '/get-coach/form' ||
     isMarketingRoot;

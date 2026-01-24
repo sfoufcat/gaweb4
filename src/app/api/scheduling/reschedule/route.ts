@@ -6,12 +6,13 @@ import type { UnifiedEvent, ProposedTime } from '@/types';
 
 /**
  * POST /api/scheduling/reschedule
- * Reschedule a confirmed call by proposing new times
+ * Reschedule a confirmed call
  *
  * Body:
  * - eventId: string - The event ID to reschedule
  * - proposedTimes: Array<{ startDateTime: string, endDateTime: string }> - New proposed times
  * - reason?: string - Optional reason for rescheduling
+ * - confirmDirectly?: boolean - If true, update event directly without proposal
  */
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { eventId, proposedTimes, reason } = body;
+    const { eventId, proposedTimes, reason, confirmDirectly = false } = body;
 
     if (!eventId) {
       return NextResponse.json(
@@ -92,13 +93,9 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date().toISOString();
-
-    // Mark original event as rescheduled
-    await eventRef.update({
-      schedulingStatus: 'rescheduled',
-      status: 'completed',
-      updatedAt: now,
-    });
+    const newTime = proposedTimes[0];
+    const newStartDateTime = new Date(newTime.startDateTime).toISOString();
+    const newEndDateTime = new Date(newTime.endDateTime).toISOString();
 
     // Delete any pending reminder jobs for the original event
     const jobsSnapshot = await adminDb
@@ -112,6 +109,52 @@ export async function POST(request: NextRequest) {
       batch.delete(doc.ref);
     });
     await batch.commit();
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CONFIRM DIRECTLY: Update existing event in place
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (confirmDirectly) {
+      // Update the event directly with new time
+      await eventRef.update({
+        startDateTime: newStartDateTime,
+        endDateTime: newEndDateTime,
+        updatedAt: now,
+        schedulingNotes: reason || originalEvent.schedulingNotes,
+      });
+
+      const updatedEvent: UnifiedEvent = {
+        ...originalEvent,
+        startDateTime: newStartDateTime,
+        endDateTime: newEndDateTime,
+        updatedAt: now,
+        schedulingNotes: reason || originalEvent.schedulingNotes,
+      };
+
+      // Send notification to other participants
+      try {
+        await notifyCallRescheduled(updatedEvent, userId, reason);
+      } catch (notifyErr) {
+        console.error('[SCHEDULING_RESCHEDULE] Failed to send notification:', notifyErr);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Call rescheduled successfully',
+        originalEventId: eventId,
+        newEvent: updatedEvent,
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PROPOSE MODE: Create new event with proposed times (original 1:1 flow)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // Mark original event as rescheduled
+    await eventRef.update({
+      schedulingStatus: 'rescheduled',
+      status: 'completed',
+      updatedAt: now,
+    });
 
     // Create proposed time objects
     const formattedProposedTimes: ProposedTime[] = proposedTimes.map(

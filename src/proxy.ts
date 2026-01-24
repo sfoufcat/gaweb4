@@ -127,7 +127,7 @@ function isMarketingDomain(hostname: string): boolean {
 }
 
 interface ParsedHost {
-  type: 'platform' | 'subdomain' | 'custom_domain';
+  type: 'platform' | 'subdomain' | 'custom_domain' | 'demo';
   hostname: string;
   subdomain?: string;
 }
@@ -138,18 +138,33 @@ function parseHost(hostname: string): ParsedHost {
   if (PLATFORM_DOMAINS.includes(normalizedHost)) {
     return { type: 'platform', hostname: normalizedHost };
   }
-  
+
+  // Check for localhost subdomain FIRST (e.g., subdomain.localhost:3000)
+  // This enables tenant mode in local development
+  const localhostSubdomainMatch = normalizedHost.match(/^([a-z0-9-]+)\.localhost(?::\d+)?$/);
+  if (localhostSubdomainMatch) {
+    const subdomain = localhostSubdomainMatch[1];
+    // demo and app are special - not tenant subdomains
+    if (subdomain === 'demo') {
+      return { type: 'demo', hostname: normalizedHost };
+    }
+    if (subdomain === 'app' || subdomain === 'www') {
+      return { type: 'platform', hostname: normalizedHost };
+    }
+    return { type: 'subdomain', hostname: normalizedHost, subdomain };
+  }
+
   const isDevHost = DEV_HOSTS.some(dev => normalizedHost.startsWith(dev));
   if (isDevHost) {
     return { type: 'platform', hostname: normalizedHost };
   }
-  
+
   // Vercel deployment URLs should be treated as platform
   // This allows cron jobs and preview deployments to work
   if (normalizedHost.endsWith('.vercel.app')) {
     return { type: 'platform', hostname: normalizedHost };
   }
-  
+
   // Check for subdomain of the base domain
   const subdomainPattern = new RegExp(`^([a-z0-9-]+)\\.${BASE_DOMAIN.replace('.', '\\.')}$`);
   const subdomainMatch = normalizedHost.match(subdomainPattern);
@@ -325,6 +340,10 @@ const isPublicRoute = createRouteMatcher([
   '/privacy(.*)',
   '/refund-policy(.*)',
   '/subscription-policy(.*)',
+  '/book(.*)',  // Public booking pages (cancel/reschedule with token auth)
+  '/api/public/intake(.*)',  // Public intake APIs (token-based auth)
+  '/api/public/video-guest-token',  // Guest video token - token-based auth
+  '/intake-call(.*)',  // Guest intake call pages - token-based auth
 ]);
 
 // Define admin routes that require admin role
@@ -1048,6 +1067,8 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     pathname.startsWith('/coach/onboarding') ||
     pathname.startsWith('/coach/welcome') ||
     pathname.startsWith('/website') ||  // Public website - full-screen, no sidebar
+    pathname.startsWith('/book') ||  // Public booking pages - full-screen, no sidebar
+    pathname.startsWith('/intake-call') ||  // Intake call guest pages - full-screen, no sidebar
     pathname === '/upgrade-premium/form' ||
     pathname === '/get-coach/form' ||
     pathname.startsWith('/invite') ||

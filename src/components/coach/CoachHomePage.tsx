@@ -2103,7 +2103,8 @@ export function CoachHomePage() {
         <FunnelEditorDialog
           mode="create"
           programs={programs as unknown as FullProgram[]}
-          squads={squads}
+          // DEPRECATED: Squad funnels disabled
+          // squads={squads}
           onClose={() => setFunnelModalOpen(false)}
           onSaved={() => {
             setFunnelModalOpen(false);

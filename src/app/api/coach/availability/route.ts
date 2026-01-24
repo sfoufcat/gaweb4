@@ -8,21 +8,28 @@ import type { CoachAvailability, WeeklySchedule, BlockedSlot, TimeSlot } from '@
 /**
  * GET /api/coach/availability
  * Get the coach's availability settings for their organization
+ *
+ * Query params:
+ * - clientTimezone: Optional timezone from client (for default when no availability exists)
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Demo mode: return demo data
     const demoData = await withDemoMode('availability');
     if (demoData) return demoData;
-    
+
     const { userId, organizationId } = await requireCoachWithOrg();
+
+    // Get client timezone from query params (used for default when no availability exists)
+    const { searchParams } = new URL(request.url);
+    const clientTimezone = searchParams.get('clientTimezone') || 'America/New_York';
 
     // Get availability document for this org
     const docRef = adminDb.collection('coach_availability').doc(organizationId);
     const doc = await docRef.get();
 
     if (!doc.exists) {
-      // Return default availability settings
+      // Return default availability settings with client's timezone
       const defaultAvailability: Omit<CoachAvailability, 'createdAt' | 'updatedAt'> = {
         odId: organizationId,
         coachUserId: userId,
@@ -38,7 +45,7 @@ export async function GET() {
         blockedSlots: [],
         defaultDuration: 60,
         bufferBetweenCalls: 15,
-        timezone: 'America/New_York',
+        timezone: clientTimezone, // Use client's timezone as default
         advanceBookingDays: 30,
         minNoticeHours: 24,
         syncExternalBusy: true,
@@ -158,6 +165,7 @@ export async function PUT(request: NextRequest) {
       await docRef.update(updateData);
     } else {
       // Create new document with defaults
+      // Note: timezone should be provided by client; fallback to UTC if not specified
       const newDoc: CoachAvailability = {
         odId: organizationId,
         coachUserId: userId,
@@ -173,7 +181,7 @@ export async function PUT(request: NextRequest) {
         blockedSlots: blockedSlots || [],
         defaultDuration: defaultDuration || 60,
         bufferBetweenCalls: bufferBetweenCalls || 15,
-        timezone: timezone || 'America/New_York',
+        timezone: timezone || 'UTC',
         advanceBookingDays: advanceBookingDays || 30,
         minNoticeHours: minNoticeHours || 24,
         syncExternalBusy: syncExternalBusy ?? true,

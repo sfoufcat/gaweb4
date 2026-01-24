@@ -192,6 +192,7 @@ interface RescheduleOptions {
   eventId: string;
   proposedTimes: Array<{ startDateTime: string; endDateTime: string }>;
   reason?: string;
+  confirmDirectly?: boolean;
 }
 
 interface UseSchedulingActionsReturn {

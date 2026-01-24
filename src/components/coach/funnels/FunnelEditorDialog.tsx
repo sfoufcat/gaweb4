@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Layers, UsersRound, ChevronDown, ChevronUp, Code, FileText, BookOpen, Calendar, Download, Link as LinkIcon, Plus } from 'lucide-react';
+import { X, Layers, UsersRound, FileText, BookOpen, Calendar, Download, Link as LinkIcon, Plus, PhoneIncoming } from 'lucide-react';
 import { NewProgramModal } from '../programs/NewProgramModal';
-import type { Funnel, Program, FunnelTargetType, FunnelContentType, FunnelTrackingConfig } from '@/types';
+import type { Funnel, Program, FunnelTargetType, FunnelContentType, IntakeCallConfig } from '@/types';
+import { IntakeConfigSelect } from '../intake/IntakeConfigSelect';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import {
   Dialog,
@@ -21,11 +22,12 @@ import {
 } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
-interface Squad {
-  id: string;
-  name: string;
-  slug?: string;
-}
+// DEPRECATED: Squad funnels disabled. Squads now managed via Program > Community
+// interface Squad {
+//   id: string;
+//   name: string;
+//   slug?: string;
+// }
 
 interface ContentItem {
   id: string;
@@ -40,6 +42,7 @@ interface FunnelFormData {
   squadId: string;
   contentType: FunnelContentType;
   contentId: string;
+  intakeConfigId: string;
   description: string;
   accessType: string;
   isDefault: boolean;
@@ -49,7 +52,8 @@ interface FunnelEditorDialogProps {
   mode: 'create' | 'edit';
   funnel?: Funnel;
   programs: Program[];
-  squads?: Squad[];
+  // DEPRECATED: Squad funnels disabled. Squads now managed via Program > Community
+  // squads?: Squad[];
   /** Pre-selected content type when creating from content tab */
   initialContentType?: FunnelContentType;
   onClose: () => void;
@@ -74,7 +78,8 @@ export function FunnelEditorDialog({
   mode,
   funnel,
   programs,
-  squads = [],
+  // DEPRECATED: Squad funnels disabled
+  // squads = [],
   initialContentType,
   onClose,
   onSaved,
@@ -91,6 +96,10 @@ export function FunnelEditorDialog({
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
 
+  // Intake configs state
+  const [intakeConfigs, setIntakeConfigs] = useState<{ id: string; name: string; duration?: number }[]>([]);
+  const [isLoadingIntakeConfigs, setIsLoadingIntakeConfigs] = useState(false);
+
   const [formData, setFormData] = useState({
     name: funnel?.name || '',
     slug: funnel?.slug || '',
@@ -99,22 +108,11 @@ export function FunnelEditorDialog({
     squadId: funnel?.squadId || '',
     contentType: (funnel?.contentType || initialContentType || 'article') as FunnelContentType,
     contentId: funnel?.contentId || '',
+    intakeConfigId: funnel?.intakeConfigId || '',
     description: funnel?.description || '',
     accessType: funnel?.accessType || 'public',
     isDefault: funnel?.isDefault || false,
-    tracking: {
-      metaPixelId: funnel?.tracking?.metaPixelId || '',
-      googleAnalyticsId: funnel?.tracking?.googleAnalyticsId || '',
-      googleAdsId: funnel?.tracking?.googleAdsId || '',
-      customHeadHtml: funnel?.tracking?.customHeadHtml || '',
-      customBodyHtml: funnel?.tracking?.customBodyHtml || '',
-    } as FunnelTrackingConfig,
   });
-  
-  // Toggle for showing tracking settings
-  const [showTrackingSettings, setShowTrackingSettings] = useState(
-    !!(funnel?.tracking?.metaPixelId || funnel?.tracking?.googleAnalyticsId || funnel?.tracking?.googleAdsId || funnel?.tracking?.customHeadHtml || funnel?.tracking?.customBodyHtml)
-  );
 
   // Fetch content items when content type changes
   const fetchContentItems = useCallback(async (contentType: FunnelContentType) => {
@@ -163,6 +161,30 @@ export function FunnelEditorDialog({
     }
   }, [formData.targetType, formData.contentType, fetchContentItems]);
 
+  // Fetch intake configs
+  const fetchIntakeConfigs = useCallback(async () => {
+    setIsLoadingIntakeConfigs(true);
+    try {
+      const response = await fetch('/api/coach/intake-configs');
+      if (response.ok) {
+        const data = await response.json();
+        setIntakeConfigs(data.configs?.map((c: IntakeCallConfig) => ({ id: c.id, name: c.name, duration: c.duration })) || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch intake configs:', err);
+      setIntakeConfigs([]);
+    } finally {
+      setIsLoadingIntakeConfigs(false);
+    }
+  }, []);
+
+  // Fetch intake configs when target type is intake
+  useEffect(() => {
+    if (formData.targetType === 'intake') {
+      fetchIntakeConfigs();
+    }
+  }, [formData.targetType, fetchIntakeConfigs]);
+
   // Auto-generate slug from name
   const handleNameChange = (name: string) => {
     const slug = mode === 'create' 
@@ -209,6 +231,7 @@ export function FunnelEditorDialog({
           squadId: formData.squadId,
           contentType: formData.contentType,
           contentId: formData.contentId,
+          intakeConfigId: formData.intakeConfigId,
           description: formData.description,
           accessType: formData.accessType,
           isDefault: formData.isDefault,
@@ -217,26 +240,8 @@ export function FunnelEditorDialog({
         return;
       }
 
-      // Build tracking config (only include non-empty values)
-      const trackingConfig: FunnelTrackingConfig = {};
-      if (formData.tracking.metaPixelId?.trim()) {
-        trackingConfig.metaPixelId = formData.tracking.metaPixelId.trim();
-      }
-      if (formData.tracking.googleAnalyticsId?.trim()) {
-        trackingConfig.googleAnalyticsId = formData.tracking.googleAnalyticsId.trim();
-      }
-      if (formData.tracking.googleAdsId?.trim()) {
-        trackingConfig.googleAdsId = formData.tracking.googleAdsId.trim();
-      }
-      if (formData.tracking.customHeadHtml?.trim()) {
-        trackingConfig.customHeadHtml = formData.tracking.customHeadHtml.trim();
-      }
-      if (formData.tracking.customBodyHtml?.trim()) {
-        trackingConfig.customBodyHtml = formData.tracking.customBodyHtml.trim();
-      }
-
       let response: Response;
-      
+
       if (mode === 'edit' && funnel) {
         // Update existing funnel
         response = await fetch(`/api/coach/org-funnels/${funnel.id}`, {
@@ -248,7 +253,6 @@ export function FunnelEditorDialog({
             description: formData.description || null,
             accessType: formData.accessType,
             isDefault: formData.isDefault,
-            tracking: Object.keys(trackingConfig).length > 0 ? trackingConfig : null,
           }),
         });
       } else {
@@ -267,7 +271,6 @@ export function FunnelEditorDialog({
             description: formData.description || null,
             accessType: formData.accessType,
             isDefault: formData.isDefault,
-            tracking: Object.keys(trackingConfig).length > 0 ? trackingConfig : null,
           }),
         });
       }
@@ -294,6 +297,7 @@ export function FunnelEditorDialog({
 
   // Get target type description
   const getTargetDescription = () => {
+    if (formData.targetType === 'intake') return 'Schedule intake calls with prospects before they become clients';
     if (formData.targetType === 'program') return 'Enroll users in a program through this funnel';
     if (formData.targetType === 'squad') return 'Add users directly to a squad through this funnel';
     return 'Sell or gate access to content through this funnel';
@@ -313,7 +317,19 @@ export function FunnelEditorDialog({
                 <div className="flex gap-2 p-1 bg-[#f5f3f0] dark:bg-[#1a1f27] rounded-lg">
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, targetType: 'program', squadId: '', contentId: '' }))}
+                    onClick={() => setFormData(prev => ({ ...prev, targetType: 'intake', programId: '', squadId: '', contentId: '' }))}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-albert font-medium transition-all ${
+                      formData.targetType === 'intake'
+                        ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                    }`}
+                  >
+                    <PhoneIncoming className="w-4 h-4" />
+                    Intake
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, targetType: 'program', squadId: '', contentId: '', intakeConfigId: '' }))}
                     className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-albert font-medium transition-all ${
                       formData.targetType === 'program'
                         ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
@@ -326,7 +342,7 @@ export function FunnelEditorDialog({
                   {/* HIDDEN: Standalone squads disabled - squads now managed via Program > Community */}
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, targetType: 'content', programId: '', squadId: '' }))}
+                    onClick={() => setFormData(prev => ({ ...prev, targetType: 'content', programId: '', squadId: '', intakeConfigId: '' }))}
                     className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-albert font-medium transition-all ${
                       formData.targetType === 'content'
                         ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
@@ -341,6 +357,41 @@ export function FunnelEditorDialog({
                   {getTargetDescription()}
                 </p>
               </div>
+
+              {/* Intake Config Selector (when targetType is intake) */}
+              {formData.targetType === 'intake' && (
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                    Intake Call Config *
+                  </label>
+                  {isLoadingIntakeConfigs ? (
+                    <div className="py-4 text-center text-sm text-[#8c8c8c] dark:text-[#7f8694]">
+                      Loading intake configs...
+                    </div>
+                  ) : intakeConfigs.length === 0 ? (
+                    <div className="p-6 rounded-xl border border-dashed border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#13171f] text-center">
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-teal-500/10 flex items-center justify-center">
+                        <PhoneIncoming className="w-6 h-6 text-teal-500" />
+                      </div>
+                      <h4 className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1">
+                        No intake configs yet
+                      </h4>
+                      <p className="text-sm text-[#8c8c8c] dark:text-[#7f8694] font-albert mb-4">
+                        Create an intake call config first in Schedule → Intake Calls
+                      </p>
+                    </div>
+                  ) : (
+                    <IntakeConfigSelect
+                      configs={intakeConfigs}
+                      value={formData.intakeConfigId}
+                      onChange={(value) => setFormData(prev => ({ ...prev, intakeConfigId: value }))}
+                      onConfigUpdate={() => fetchIntakeConfigs()}
+                      onConfigDelete={() => fetchIntakeConfigs()}
+                      required={formData.targetType === 'intake'}
+                    />
+                  )}
+                </div>
+              )}
 
               {/* Program Selector (when targetType is program) */}
               {formData.targetType === 'program' && (
@@ -577,134 +628,6 @@ export function FunnelEditorDialog({
                 ? 'The default funnel is used when users visit /join/content/[type]/[id] without specifying a funnel'
                 : 'The default funnel is used when users visit /join/[program] without specifying a funnel'}
             </p>
-          </div>
-
-          {/* Tracking Settings (Collapsible) */}
-          <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowTrackingSettings(!showTrackingSettings)}
-              className="w-full flex items-center justify-between p-4 bg-[#faf8f6] dark:bg-[#1a1f27] hover:bg-[#f5f3f0] dark:hover:bg-[#1e232c] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <Code className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                <div className="text-left">
-                  <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">Tracking Pixels</span>
-                  <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-0.5">
-                    Meta Pixel, Google Analytics, custom code
-                  </p>
-                </div>
-              </div>
-              {showTrackingSettings ? (
-                <ChevronUp className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-              )}
-            </button>
-
-            {showTrackingSettings && (
-              <div className="p-4 space-y-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                {/* Meta Pixel ID */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                    Meta Pixel ID
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tracking.metaPixelId || ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      tracking: { ...prev.tracking, metaPixelId: e.target.value }
-                    }))}
-                    placeholder="e.g., 1234567890"
-                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c]"
-                  />
-                  <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1">
-                    Facebook/Meta Pixel ID for conversion tracking
-                  </p>
-                </div>
-
-                {/* Google Analytics ID */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                    Google Analytics ID
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tracking.googleAnalyticsId || ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      tracking: { ...prev.tracking, googleAnalyticsId: e.target.value }
-                    }))}
-                    placeholder="e.g., G-XXXXXXXXXX"
-                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c]"
-                  />
-                  <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1">
-                    Google Analytics 4 measurement ID
-                  </p>
-                </div>
-
-                {/* Google Ads ID */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                    Google Ads ID
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tracking.googleAdsId || ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      tracking: { ...prev.tracking, googleAdsId: e.target.value }
-                    }))}
-                    placeholder="e.g., AW-XXXXXXXXXX"
-                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c]"
-                  />
-                  <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1">
-                    Google Ads conversion tracking ID
-                  </p>
-                </div>
-
-                {/* Custom Head HTML */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                    Custom Head Code
-                  </label>
-                  <textarea
-                    value={formData.tracking.customHeadHtml || ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      tracking: { ...prev.tracking, customHeadHtml: e.target.value }
-                    }))}
-                    placeholder="<!-- TikTok Pixel, Snapchat Pixel, etc. -->"
-                    rows={3}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 resize-none font-mono text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c]"
-                  />
-                  <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1">
-                    Custom scripts injected in &lt;head&gt; - use for other tracking pixels
-                  </p>
-                </div>
-
-                {/* Custom Body HTML */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                    Custom Body Code
-                  </label>
-                  <textarea
-                    value={formData.tracking.customBodyHtml || ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      tracking: { ...prev.tracking, customBodyHtml: e.target.value }
-                    }))}
-                    placeholder="<!-- Scripts that need to run in body -->"
-                    rows={3}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:focus:ring-brand-accent/50 resize-none font-mono text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c]"
-                  />
-                  <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1">
-                    Custom scripts injected in &lt;body&gt;
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Error */}

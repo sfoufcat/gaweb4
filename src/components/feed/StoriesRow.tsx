@@ -6,6 +6,7 @@ import { useUser } from '@clerk/nextjs';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { useCurrentUserHasStory, type FeedStoryUser } from '@/hooks/useFeedStories';
 import { useStoryViewStatus, useStoryViewTracking, generateStoryContentData } from '@/hooks/useStoryViewTracking';
+import { useStoryViews } from '@/contexts/StoryViewsContext';
 import { prefetchStories } from '@/hooks/useStoryPrefetch';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { DEMO_USER } from '@/lib/demo-utils';
@@ -119,7 +120,29 @@ export function StoriesRow({
   
   const currentUserStatus = useCurrentUserHasStory();
   const { markStoryAsViewed } = useStoryViewTracking();
+  const { fetchServerViews } = useStoryViews();
   const hasPrefetchedRef = useRef(false);
+  const hasFetchedViewsRef = useRef(false);
+
+  // Batch fetch story view statuses from server (for cross-device sync)
+  // This single API call replaces N individual calls per story
+  useEffect(() => {
+    if (hasFetchedViewsRef.current || isLoading || storyUsers.length === 0) {
+      return;
+    }
+
+    hasFetchedViewsRef.current = true;
+
+    // Collect all story owner IDs including current user
+    const allOwnerIds = [
+      ...(user?.id ? [user.id] : []),
+      ...storyUsers.filter(u => u.hasStory || u.hasUnseenStory).map(u => u.id)
+    ];
+
+    if (allOwnerIds.length > 0) {
+      fetchServerViews(allOwnerIds);
+    }
+  }, [storyUsers, isLoading, user?.id, fetchServerViews]);
 
   // Pre-load stories in the background when Feed loads
   // This ensures stories are cached before user clicks on them

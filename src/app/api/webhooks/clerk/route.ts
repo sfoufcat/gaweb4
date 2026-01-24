@@ -22,6 +22,7 @@ import type { OrgMembership, OrgSettings } from '@/types';
 import { parseHost } from '@/lib/tenant/parseHost';
 import { DEFAULT_EMAIL_DEFAULTS } from '@/types';
 import { createOrganizationForCoach } from '@/lib/clerk-organizations';
+import { ensureCoachAvailability } from '@/lib/coach-availability-utils';
 
 // Email senders for verification emails
 const PLATFORM_DEFAULT_SENDER = 'Coachful <notifications@coachful.co>';
@@ -435,6 +436,10 @@ export async function POST(req: Request) {
           updatedAt: now,
         });
         console.log(`[CLERK_WEBHOOK] Initialized onboarding for org ${organizationId}`);
+
+        // Create default availability settings for the coach
+        await ensureCoachAvailability(organizationId, id);
+        console.log(`[CLERK_WEBHOOK] Created default availability for org ${organizationId}`);
       } catch (orgError) {
         console.error(`[CLERK_WEBHOOK] Failed to create organization for coach ${id}:`, orgError);
         // Don't fail the webhook - org can be created later via /coach/complete-signup

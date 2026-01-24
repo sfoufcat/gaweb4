@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import {
   Calendar,
   CalendarPlus,
@@ -36,12 +37,13 @@ import {
   type GoogleCalendarSettings,
 } from '@/lib/integrations/types';
 import { IntegrationErrorModal } from '@/components/coach/IntegrationErrorModal';
+import { ZOOM_LOGO_URL, GOOGLE_MEET_LOGO_URL } from '@/components/scheduling/MeetingProviderSelector';
 
 interface IntegrationsTabProps {
   coachTier?: 'starter' | 'pro' | 'scale';
 }
 
-// Map provider IDs to their icons
+// Map provider IDs to their icons (for providers without custom logos)
 const PROVIDER_ICONS: Record<IntegrationProvider, React.ElementType> = {
   google_calendar: Calendar,
   google_sheets: Table,
@@ -55,8 +57,31 @@ const PROVIDER_ICONS: Record<IntegrationProvider, React.ElementType> = {
   zapier: Zap,
   make: Workflow,
   calcom: CalendarPlus,
-  zoom: Video,
+  zoom: Video, // Fallback, but we use logo image
 };
+
+// Providers that have custom logo images
+const PROVIDER_LOGOS: Partial<Record<IntegrationProvider, string>> = {
+  zoom: ZOOM_LOGO_URL,
+};
+
+// Helper component to render provider icon (handles both lucide icons and image logos)
+function ProviderIcon({ provider, className, size = 20 }: { provider: IntegrationProvider; className?: string; size?: number }) {
+  const logoUrl = PROVIDER_LOGOS[provider];
+  if (logoUrl) {
+    return (
+      <Image
+        src={logoUrl}
+        alt={provider}
+        width={size}
+        height={size}
+        className={`object-contain ${className || ''}`}
+      />
+    );
+  }
+  const Icon = PROVIDER_ICONS[provider];
+  return <Icon className={className} style={{ width: size, height: size }} />;
+}
 
 // Category labels
 const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
@@ -516,13 +541,12 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
           </h3>
           <div className="grid gap-3">
             {integrations.filter(i => i.status === 'connected').map((integration) => {
-              const Icon = PROVIDER_ICONS[integration.provider];
               // Use INTEGRATION_PROVIDERS for consistent, user-friendly names
               const providerMeta = INTEGRATION_PROVIDERS[integration.provider] || {
                 name: integration.provider,
                 description: '',
               };
-              
+
               return (
                 <div
                   key={integration.id}
@@ -533,7 +557,7 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
                     {/* Left: Icon and info */}
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                       <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Icon className="w-5 h-5 text-green-600 dark:text-green-400" />
+                        <ProviderIcon provider={integration.provider} className="text-green-600 dark:text-green-400" size={20} />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -590,7 +614,7 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
                                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                             }`}
                           >
-                            <Video className="w-3.5 h-3.5" />
+                            <Image src={GOOGLE_MEET_LOGO_URL} alt="Meet" width={14} height={14} className="w-3.5 h-3.5 object-contain" />
                             <span className="hidden sm:inline">Meet</span>
                           </button>
                         </div>
@@ -627,15 +651,14 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
           </h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {providers.map((provider) => {
-              const Icon = PROVIDER_ICONS[provider.id];
               const isLocked = isTierLocked(provider);
               const isConfigured = isProviderConfigured(provider.id);
               const connected = getConnectedIntegration(provider.id);
-              
+
               if (connected) return null; // Already shown in connected section
-              
+
               const isDisabled = isLocked || !isConfigured;
-              
+
               return (
                 <div
                   key={provider.id}
@@ -645,11 +668,11 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      isDisabled 
-                        ? 'bg-gray-100 dark:bg-[#262b35]' 
+                      isDisabled
+                        ? 'bg-gray-100 dark:bg-[#262b35]'
                         : 'bg-gray-100 dark:bg-[#262b35]'
                     }`}>
-                      <Icon className={`w-5 h-5 ${isDisabled ? 'text-text-muted' : 'text-text-secondary'}`} />
+                      <ProviderIcon provider={provider.id} className={isDisabled ? 'text-text-muted' : 'text-text-secondary'} size={20} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1008,14 +1031,9 @@ export function IntegrationsTab({ coachTier = 'starter' }: IntegrationsTabProps)
                   {editingIntegration && (
                     <div className="space-y-4">
                       <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-[#262b35] rounded-lg">
-                        {PROVIDER_ICONS[editingIntegration.provider] && (
-                          <div className="w-8 h-8 bg-white dark:bg-[#1d222b] rounded-lg flex items-center justify-center">
-                            {(() => {
-                              const Icon = PROVIDER_ICONS[editingIntegration.provider];
-                              return <Icon className="w-4 h-4 text-text-secondary" />;
-                            })()}
-                          </div>
-                        )}
+                        <div className="w-8 h-8 bg-white dark:bg-[#1d222b] rounded-lg flex items-center justify-center">
+                          <ProviderIcon provider={editingIntegration.provider} className="text-text-secondary" size={16} />
+                        </div>
                         <div>
                           <p className="font-medium text-text-primary">
                             {editingIntegration.provider.replace(/_/g, ' ')}

@@ -20,8 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DatePicker } from '@/components/ui/date-picker';
 import type { WeeklySchedule, TimeSlot, BlockedSlot, CoachAvailability } from '@/types';
 
-// Demo mock availability data
-const DEMO_AVAILABILITY: CoachAvailability = {
+// Demo mock availability data - use a function to get user's local timezone
+const getDemoAvailability = (): CoachAvailability => ({
   coachUserId: 'demo-coach',
   odId: 'demo-org',
   weeklySchedule: {
@@ -43,14 +43,16 @@ const DEMO_AVAILABILITY: CoachAvailability = {
   ],
   defaultDuration: 30,
   bufferBetweenCalls: 15,
-  timezone: 'America/New_York',
+  timezone: typeof window !== 'undefined'
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone
+    : 'UTC',
   advanceBookingDays: 30,
   minNoticeHours: 24,
   syncExternalBusy: false,
   pushEventsToCalendar: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
-};
+});
 
 const DAYS_OF_WEEK = [
   { value: 0, label: 'Sunday', short: 'Sun' },
@@ -252,7 +254,7 @@ export function AvailabilityEditor() {
   const realAvailability = useAvailability();
   
   // In demo mode, use mock data
-  const availability = isDemoMode ? DEMO_AVAILABILITY : realAvailability.availability;
+  const availability = isDemoMode ? getDemoAvailability() : realAvailability.availability;
   const isLoading = isDemoMode ? false : realAvailability.isLoading;
   const error = isDemoMode ? null : realAvailability.error;
   const updateAvailability = realAvailability.updateAvailability;
@@ -604,15 +606,14 @@ export function AvailabilityEditor() {
                   Blocked Times
                 </h3>
                 <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                  Block specific dates and times when you&apos;re unavailable
+                  Block times you&apos;re unavailable
                 </p>
               </div>
             </div>
             <button
               onClick={() => setShowBlockedForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] dark:bg-brand-accent text-white rounded-xl font-albert font-medium hover:opacity-90 transition-opacity"
+              className="px-4 py-2 bg-[#1a1a1a] dark:bg-brand-accent text-white rounded-xl font-albert font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" />
               Block Time
             </button>
           </div>
@@ -756,7 +757,7 @@ export function AvailabilityEditor() {
         <button
           onClick={handleSaveSchedule}
           disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-3 bg-[#1a1a1a] dark:bg-brand-accent text-white rounded-xl font-albert font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          className="flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
         >
           {isSaving ? (
             <Loader2 className="w-5 h-5 animate-spin" />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import {
   Calendar,
   Link2,
@@ -13,36 +14,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
+import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
+import { ZOOM_LOGO_URL } from '@/components/scheduling/MeetingProviderSelector';
 
-// Google Calendar icon as inline SVG
-function GoogleCalendarIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="3" width="18" height="18" rx="2" fill="#fff" stroke="#4285F4" strokeWidth="1.5"/>
-      <path d="M3 8h18" stroke="#4285F4" strokeWidth="1.5"/>
-      <path d="M8 3v5" stroke="#4285F4" strokeWidth="1.5"/>
-      <path d="M16 3v5" stroke="#4285F4" strokeWidth="1.5"/>
-      <rect x="6" y="11" width="3" height="3" rx="0.5" fill="#EA4335"/>
-      <rect x="10.5" y="11" width="3" height="3" rx="0.5" fill="#FBBC04"/>
-      <rect x="15" y="11" width="3" height="3" rx="0.5" fill="#34A853"/>
-      <rect x="6" y="15.5" width="3" height="3" rx="0.5" fill="#4285F4"/>
-      <rect x="10.5" y="15.5" width="3" height="3" rx="0.5" fill="#EA4335"/>
-    </svg>
-  );
-}
-
-// Microsoft Outlook icon as inline SVG
-function OutlookIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="2" y="4" width="20" height="16" rx="2" fill="#0078D4"/>
-      <ellipse cx="8" cy="12" rx="4" ry="5" fill="#fff"/>
-      <ellipse cx="8" cy="12" rx="2.5" ry="3.5" fill="#0078D4"/>
-      <path d="M14 8h6v8h-6z" fill="#fff" fillOpacity="0.3"/>
-      <path d="M14 8l3 4-3 4" stroke="#fff" strokeWidth="1.5" fill="none"/>
-    </svg>
-  );
-}
+// Logo URLs
+const GOOGLE_CALENDAR_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2Fgooglemeet.png?alt=media&token=d0aa256e-b15d-4b02-817f-e779e88611fe';
+const OUTLOOK_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FMicrosoft_Office_Outlook_(2018%E2%80%932024).svg.png?alt=media&token=40dfcf83-d51e-442f-bcec-e0beef0d2e2f';
 
 interface CalendarSyncSectionProps {
   /** Called when sync settings change */
@@ -71,8 +48,10 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
     refetch,
   } = useCalendarIntegration();
 
-  const [isConnecting, setIsConnecting] = useState<'google' | 'microsoft' | null>(null);
-  const [isDisconnecting, setIsDisconnecting] = useState<'google' | 'microsoft' | null>(null);
+  const { zoom, refetch: refetchZoom } = useCoachIntegrations();
+
+  const [isConnecting, setIsConnecting] = useState<'google' | 'microsoft' | 'zoom' | null>(null);
+  const [isDisconnecting, setIsDisconnecting] = useState<'google' | 'microsoft' | 'zoom' | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const handleConnectGoogle = async () => {
@@ -120,6 +99,48 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
       onSettingsChange?.();
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Failed to disconnect Outlook');
+    } finally {
+      setIsDisconnecting(null);
+    }
+  };
+
+  const handleConnectZoom = async () => {
+    try {
+      setIsConnecting('zoom');
+      setLocalError(null);
+      const response = await fetch('/api/coach/integrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'zoom' }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to connect Zoom');
+      }
+      if (data.type === 'oauth' && data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : 'Failed to connect Zoom');
+      setIsConnecting(null);
+    }
+  };
+
+  const handleDisconnectZoom = async () => {
+    try {
+      setIsDisconnecting('zoom');
+      setLocalError(null);
+      const response = await fetch('/api/coach/integrations?provider=zoom', {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to disconnect Zoom');
+      }
+      refetchZoom();
+      onSettingsChange?.();
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : 'Failed to disconnect Zoom');
     } finally {
       setIsDisconnecting(null);
     }
@@ -226,7 +247,7 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
         {isGoogleConfigured && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl">
             <div className="flex items-center gap-3">
-              <GoogleCalendarIcon className="w-8 h-8 flex-shrink-0" />
+              <Image src={GOOGLE_CALENDAR_LOGO_URL} alt="Google Calendar" width={32} height={32} className="w-8 h-8 flex-shrink-0 object-contain" />
               <div className="min-w-0">
                 <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
                   Google Calendar
@@ -281,7 +302,7 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
         {isMicrosoftConfigured && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl">
             <div className="flex items-center gap-3">
-              <OutlookIcon className="w-8 h-8 flex-shrink-0" />
+              <Image src={OUTLOOK_LOGO_URL} alt="Outlook Calendar" width={32} height={32} className="w-8 h-8 flex-shrink-0 object-contain" />
               <div className="min-w-0">
                 <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
                   Outlook Calendar
@@ -332,6 +353,58 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
           </div>
         )}
 
+        {/* Zoom Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl">
+          <div className="flex items-center gap-3">
+            <Image src={ZOOM_LOGO_URL} alt="Zoom" width={32} height={32} className="w-8 h-8 flex-shrink-0 object-contain" />
+            <div className="min-w-0">
+              <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                Zoom
+              </p>
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                {zoom.connected ? zoom.accountEmail : 'Create Zoom meetings for calls'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 sm:flex-shrink-0">
+            {zoom.connected ? (
+              <>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 rounded-full">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-xs font-medium text-green-700 dark:text-green-400">Connected</span>
+                </div>
+                <button
+                  onClick={handleDisconnectZoom}
+                  disabled={isDisconnecting === 'zoom'}
+                  className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors disabled:opacity-50"
+                  title="Disconnect"
+                >
+                  {isDisconnecting === 'zoom' ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Unlink className="w-4 h-4" />
+                  )}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleConnectZoom}
+                disabled={isConnecting !== null}
+                className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg font-albert font-medium text-sm hover:bg-brand-accent/90 transition-colors disabled:opacity-50"
+              >
+                {isConnecting === 'zoom' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Link2 className="w-4 h-4" />
+                    Connect
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Benefits (show when neither connected) */}
         {!hasAnyConnected && (
           <div className="space-y-2 pt-2">
@@ -346,18 +419,7 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
           </div>
         )}
 
-        {/* Manage Integrations Link */}
-        <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-          <Link
-            href="/coach?tab=integrations"
-            className="flex items-center justify-center gap-2 w-full py-2.5 text-brand-accent hover:text-brand-accent/80 font-albert font-medium text-sm transition-colors"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Manage Integrations
-          </Link>
-        </div>
-
-        <p className="text-xs text-center text-[#a7a39e] dark:text-[#7d8190]">
+                <p className="text-xs text-center text-[#a7a39e] dark:text-[#7d8190]">
           We only access your calendar to check availability and add events.
         </p>
       </div>

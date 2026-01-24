@@ -28,6 +28,7 @@ import { ChatPreferencesProvider } from "@/contexts/ChatPreferencesContext";
 import { ChatChannelsProvider } from "@/contexts/ChatChannelsContext";
 import { AuthHintProvider } from "@/contexts/AuthHintContext";
 import { ViewModeProvider } from "@/contexts/ViewModeContext";
+import { StoryViewsProvider } from "@/contexts/StoryViewsContext";
 import { getServerChatFilterData } from "@/lib/chat-server";
 
 const geistSans = Geist({
@@ -203,7 +204,7 @@ export default async function RootLayout({
               
               <ThemeProvider initialOrgDefaultTheme={ssrBranding.branding.defaultTheme || DEFAULT_THEME}>
               <SWRProvider>
-              <BrandingProvider 
+              <BrandingProvider
                 initialBranding={ssrBranding.branding}
                 initialCoachingPromo={ssrBranding.coachingPromo}
                 initialIsDefault={ssrBranding.isDefault}
@@ -211,6 +212,7 @@ export default async function RootLayout({
                 initialProgramEmptyStateBehavior={ssrBranding.programEmptyStateBehavior}
                 initialSquadEmptyStateBehavior={ssrBranding.squadEmptyStateBehavior}
               >
+              <StoryViewsProvider>
               <SquadProvider>
               <CoachingProvider>
               <OrganizationProvider initialOrganizationId={ssrBranding.organizationId}>
@@ -256,6 +258,7 @@ export default async function RootLayout({
               </OrganizationProvider>
               </CoachingProvider>
               </SquadProvider>
+              </StoryViewsProvider>
               </BrandingProvider>
               </SWRProvider>
               </ThemeProvider>

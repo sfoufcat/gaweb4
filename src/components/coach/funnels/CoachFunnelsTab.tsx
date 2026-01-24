@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, 
-  ArrowLeft, 
-  Copy, 
-  ExternalLink, 
-  MoreVertical, 
-  Pencil, 
+import {
+  Plus,
+  ArrowLeft,
+  Copy,
+  ExternalLink,
+  MoreVertical,
+  Pencil,
   Trash2,
   Layers,
   Eye,
@@ -23,10 +23,15 @@ import {
   Calendar,
   Download,
   Link as LinkIcon,
-  ChevronDown
+  ChevronDown,
+  PhoneIncoming,
+  Code,
+  LayoutGrid,
 } from 'lucide-react';
-import type { Funnel, Program, FunnelTargetType, FunnelContentType, CoachTier } from '@/types';
+import type { Funnel, Program, FunnelTargetType, FunnelTabType, FunnelContentType, CoachTier } from '@/types';
 import { FunnelEditorDialog } from './FunnelEditorDialog';
+import { FunnelWizardModal } from './FunnelWizardModal';
+import { GlobalPixelsModal } from './GlobalPixelsModal';
 import { FunnelStepsEditor } from './FunnelStepsEditor';
 import {
   DropdownMenu,
@@ -59,11 +64,12 @@ import { generateDemoFunnels } from '@/lib/demo-data';
 
 type ViewMode = 'list' | 'editing';
 
-interface Squad {
-  id: string;
-  name: string;
-  slug?: string;
-}
+// DEPRECATED: Squad funnels disabled. Squads now managed via Program > Community
+// interface Squad {
+//   id: string;
+//   name: string;
+//   slug?: string;
+// }
 
 interface ContentItem {
   id: string;
@@ -93,7 +99,8 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
   
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
-  const [squads, setSquads] = useState<Squad[]>([]);
+  // DEPRECATED: Squad funnels disabled. Squads now managed via Program > Community
+  // const [squads, setSquads] = useState<Squad[]>([]);
   const [contentItems, setContentItems] = useState<Record<FunnelContentType, ContentItem[]>>({
     article: [],
     course: [],
@@ -107,8 +114,8 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
   // Demo data (memoized)
   const demoFunnels = useMemo(() => generateDemoFunnels(), []);
   
-  // Tab state
-  const [activeTab, setActiveTab] = useState<FunnelTargetType>('program');
+  // Tab state - default to 'all' to show all funnels
+  const [activeTab, setActiveTab] = useState<FunnelTabType>('all');
   const [selectedContentType, setSelectedContentType] = useState<FunnelContentType>('course');
   
   // Tenant required state - shown when accessing from platform domain
@@ -118,7 +125,8 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
   } | null>(null);
   
   // Dialogs & editing
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
+  const [showPixelsModal, setShowPixelsModal] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [funnelToEdit, setFunnelToEdit] = useState<Funnel | null>(null);
   const [editingFunnelId, setEditingFunnelId] = useState<string | null>(null);
@@ -165,10 +173,12 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
       setIsLoading(true);
       setTenantRequired(null);
       const params = new URLSearchParams();
-      
-      // Filter by target type
-      params.append('targetType', activeTab);
-      
+
+      // Filter by target type (skip if 'all' to get all funnels)
+      if (activeTab !== 'all') {
+        params.append('targetType', activeTab);
+      }
+
       if (activeTab === 'program' && selectedProgramId) {
         params.append('programId', selectedProgramId);
       }
@@ -224,13 +234,16 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
         updatedAt: df.updatedAt,
       }));
       
-      // Filter by target type
-      if (activeTab === 'program') {
-        filtered = filtered.filter(f => f.targetType === 'program');
-      } else if (activeTab === 'squad') {
-        filtered = filtered.filter(f => f.targetType === 'squad');
-      } else if (activeTab === 'content') {
-        filtered = filtered.filter(f => f.targetType === 'content');
+      // Filter by target type (skip if 'all')
+      if (activeTab !== 'all') {
+        if (activeTab === 'program') {
+          filtered = filtered.filter(f => f.targetType === 'program');
+        } else if (activeTab === 'content') {
+          filtered = filtered.filter(f => f.targetType === 'content');
+        } else if (activeTab === 'intake') {
+          filtered = filtered.filter(f => f.targetType === 'intake');
+        }
+        // DEPRECATED: Squad funnels disabled
       }
       
       return filtered;
@@ -249,16 +262,17 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
     }
   }, []);
 
-  const fetchSquads = useCallback(async () => {
-    try {
-      const response = await fetch('/api/coach/org-squads');
-      if (!response.ok) throw new Error('Failed to fetch squads');
-      const data = await response.json();
-      setSquads(data.squads || []);
-    } catch (err) {
-      console.error('Failed to fetch squads:', err);
-    }
-  }, []);
+  // DEPRECATED: Squad funnels disabled. Squads now managed via Program > Community
+  // const fetchSquads = useCallback(async () => {
+  //   try {
+  //     const response = await fetch('/api/coach/org-squads');
+  //     if (!response.ok) throw new Error('Failed to fetch squads');
+  //     const data = await response.json();
+  //     setSquads(data.squads || []);
+  //   } catch (err) {
+  //     console.error('Failed to fetch squads:', err);
+  //   }
+  // }, []);
 
   const fetchContentItems = useCallback(async (contentType: FunnelContentType) => {
     try {
@@ -291,8 +305,9 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
   useEffect(() => {
     fetchFunnels();
     fetchPrograms();
-    fetchSquads();
-  }, [fetchFunnels, fetchPrograms, fetchSquads]);
+    // DEPRECATED: Squad funnels disabled
+    // fetchSquads();
+  }, [fetchFunnels, fetchPrograms]);
 
   // Fetch current tier for limit checking
   useEffect(() => {
@@ -438,16 +453,18 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
     let errorMessage: string | null = null;
     
     // Check funnel target type
-    if (funnel.targetType === 'squad' && funnel.squadId) {
-      const squad = squads.find(s => s.id === funnel.squadId);
-      if (!squad) {
-        errorMessage = `Squad not found. Try refreshing.`;
-      } else if (!squad.slug) {
-        errorMessage = `Squad "${squad.name}" needs a URL slug. Edit the squad to add one.`;
-      } else {
-        url = `${window.location.origin}/join/squad/${squad.slug}/${funnel.slug}`;
-      }
-    } else if (funnel.targetType === 'program' && funnel.programId) {
+    // DEPRECATED: Squad funnels disabled. Squads now managed via Program > Community
+    // if (funnel.targetType === 'squad' && funnel.squadId) {
+    //   const squad = squads.find(s => s.id === funnel.squadId);
+    //   if (!squad) {
+    //     errorMessage = `Squad not found. Try refreshing.`;
+    //   } else if (!squad.slug) {
+    //     errorMessage = `Squad "${squad.name}" needs a URL slug. Edit the squad to add one.`;
+    //   } else {
+    //     url = `${window.location.origin}/join/squad/${squad.slug}/${funnel.slug}`;
+    //   }
+    // } else
+    if (funnel.targetType === 'program' && funnel.programId) {
       const program = programs.find(p => p.id === funnel.programId);
       if (!program) {
         errorMessage = `Program not found. Try refreshing.`;
@@ -459,6 +476,9 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
     } else if (funnel.targetType === 'content' && funnel.contentType && funnel.contentId) {
       // Content funnels use a different URL structure
       url = `${window.location.origin}/join/content/${funnel.contentType}/${funnel.contentId}/${funnel.slug}`;
+    } else if (funnel.targetType === 'intake' && funnel.intakeConfigId) {
+      // Intake funnels use /book/ path
+      url = `${window.location.origin}/book/${funnel.slug}`;
     } else {
       errorMessage = 'Funnel is not linked to a program, squad, or content.';
     }
@@ -480,14 +500,19 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
       const program = programs.find(p => p.id === funnel.programId);
       return program?.name || 'Unknown Program';
     }
+    // DEPRECATED: Squad funnels disabled. Squads now managed via Program > Community
     if (funnel.targetType === 'squad') {
-      const squad = squads.find(s => s.id === funnel.squadId);
-      return squad?.name || 'Unknown Squad';
+      // const squad = squads.find(s => s.id === funnel.squadId);
+      // return squad?.name || 'Unknown Squad';
+      return 'Squad (Deprecated)';
     }
     if (funnel.targetType === 'content' && funnel.contentType && funnel.contentId) {
       const items = contentItems[funnel.contentType] || [];
       const item = items.find(i => i.id === funnel.contentId);
       return item?.title || `Unknown ${funnel.contentType}`;
+    }
+    if (funnel.targetType === 'intake') {
+      return funnel.name || 'Intake Call';
     }
     return 'Unknown';
   };
@@ -597,28 +622,67 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
             Create and manage user acquisition funnels
           </p>
         </div>
-        <button
-          onClick={() => {
-            if (isDemoMode) {
-              openSignupModal();
-              return;
-            }
-            // Check funnel limit per target before opening modal
-            if (checkLimit('max_funnels_per_target', displayFunnels.length)) {
-              showLimitModal('max_funnels_per_target', displayFunnels.length);
-              return;
-            }
-            setShowCreateDialog(true);
-          }}
-          className="flex items-center gap-2 px-2.5 py-1.5 text-[15px] text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-medium rounded-lg transition-colors duration-200"
-        >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">New Funnel</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Global Pixels Button */}
+          <button
+            onClick={() => {
+              if (isDemoMode) {
+                openSignupModal();
+                return;
+              }
+              setShowPixelsModal(true);
+            }}
+            title="Global Tracking Pixels"
+            className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg transition-colors duration-200"
+          >
+            <Code className="w-4 h-4" />
+          </button>
+          {/* New Funnel Button */}
+          <button
+            onClick={() => {
+              if (isDemoMode) {
+                openSignupModal();
+                return;
+              }
+              // Check funnel limit per target before opening modal
+              if (checkLimit('max_funnels_per_target', displayFunnels.length)) {
+                showLimitModal('max_funnels_per_target', displayFunnels.length);
+                return;
+              }
+              setShowCreateWizard(true);
+            }}
+            className="flex items-center gap-2 px-2.5 py-1.5 text-[15px] text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white font-medium rounded-lg transition-colors duration-200"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">New Funnel</span>
+          </button>
+        </div>
       </div>
 
       {/* Target Type Tabs */}
       <div className="flex gap-2 p-1 bg-[#f5f3f0] dark:bg-[#1a1f27] rounded-lg w-fit">
+        <button
+          onClick={() => setActiveTab('all')}
+          className={`flex items-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+            activeTab === 'all'
+              ? 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] shadow-sm'
+              : 'text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8]'
+          }`}
+        >
+          <LayoutGrid className="w-4 h-4" />
+          All
+        </button>
+        <button
+          onClick={() => setActiveTab('intake')}
+          className={`flex items-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+            activeTab === 'intake'
+              ? 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] shadow-sm'
+              : 'text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8]'
+          }`}
+        >
+          <PhoneIncoming className="w-4 h-4" />
+          Intake
+        </button>
         <button
           onClick={() => setActiveTab('program')}
           className={`flex items-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-all ${
@@ -812,7 +876,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
                 showLimitModal('max_funnels_per_target', displayFunnels.length);
                 return;
               }
-              setShowCreateDialog(true);
+              setShowCreateWizard(true);
             }}
             className="px-6 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
           >
@@ -935,43 +999,27 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
       )}
       </div>
 
-      {/* Create Dialog */}
-      {showCreateDialog && (
-        <FunnelEditorDialog
-          mode="create"
+      {/* Create Wizard */}
+      {showCreateWizard && (
+        <FunnelWizardModal
+          isOpen={showCreateWizard}
+          onClose={() => setShowCreateWizard(false)}
           programs={programs}
-          squads={squads}
+          initialTargetType={activeTab !== 'content' ? activeTab : undefined}
           initialContentType={activeTab === 'content' ? selectedContentType : undefined}
-          onClose={() => setShowCreateDialog(false)}
           onSaved={() => {
-            setShowCreateDialog(false);
+            setShowCreateWizard(false);
             if (!isDemoMode) fetchFunnels();
           }}
-          demoMode={isDemoMode}
           onRefreshPrograms={fetchPrograms}
-          onDemoSave={(formData) => {
-            // Get target name based on type
-            let targetName = '';
-            if (formData.targetType === 'program') {
-              targetName = programs.find(p => p.id === formData.programId)?.name || 'Program';
-            } else if (formData.targetType === 'squad') {
-              targetName = squads.find(s => s.id === formData.squadId)?.name || 'Squad';
-            } else {
-              targetName = 'Content';
-            }
-            
-            demoSession.addFunnel({
-              name: formData.name,
-              slug: formData.slug,
-              targetType: formData.targetType,
-              targetId: formData.programId || formData.squadId || formData.contentId,
-              targetName,
-              isActive: true,
-              steps: [],
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            });
-          }}
+        />
+      )}
+
+      {/* Global Pixels Modal */}
+      {showPixelsModal && (
+        <GlobalPixelsModal
+          isOpen={showPixelsModal}
+          onClose={() => setShowPixelsModal(false)}
         />
       )}
 
@@ -981,7 +1029,8 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
           mode="edit"
           funnel={funnelToEdit}
           programs={programs}
-          squads={squads}
+          // DEPRECATED: Squad funnels disabled
+          // squads={squads}
           onClose={() => {
             setShowEditDialog(false);
             setFunnelToEdit(null);
@@ -997,17 +1046,18 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
             let targetName = '';
             if (formData.targetType === 'program') {
               targetName = programs.find(p => p.id === formData.programId)?.name || 'Program';
-            } else if (formData.targetType === 'squad') {
-              targetName = squads.find(s => s.id === formData.squadId)?.name || 'Squad';
+            // DEPRECATED: Squad funnels disabled
+            // } else if (formData.targetType === 'squad') {
+            //   targetName = squads.find(s => s.id === formData.squadId)?.name || 'Squad';
             } else {
               targetName = 'Content';
             }
-            
+
             demoSession.updateFunnel(funnelToEdit.id, {
               name: formData.name,
               slug: formData.slug,
               targetType: formData.targetType,
-              targetId: formData.programId || formData.squadId || formData.contentId,
+              targetId: formData.programId || formData.contentId,
               targetName,
               updatedAt: new Date().toISOString(),
             });

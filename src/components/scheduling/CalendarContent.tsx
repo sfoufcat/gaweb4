@@ -18,6 +18,7 @@ import {
   Download,
   RefreshCw,
   UserMinus,
+  PhoneIncoming,
 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { useSchedulingEvents, useSchedulingActions, usePendingProposals } from '@/hooks/useScheduling';
@@ -69,6 +70,7 @@ const EVENT_TYPE_INFO: Record<string, { label: string; icon: typeof Video; color
   coaching_1on1: { label: '1-on-1 Call', icon: User, color: 'text-brand-accent' },
   squad_call: { label: 'Squad Call', icon: Users, color: 'text-blue-500' },
   community_event: { label: 'Event', icon: Calendar, color: 'text-green-500' },
+  intake_call: { label: 'Intake Call', icon: PhoneIncoming, color: 'text-teal-500' },
 };
 
 interface EventItemProps {

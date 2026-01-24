@@ -541,41 +541,29 @@ function DetailsStep({ data, onChange, error, programsApiEndpoint, categoriesApi
           </button>
         </div>
 
-        {/* Stripe Warning & Price Input */}
+        {/* Stripe Warning - show when not connected regardless of pricing selection */}
+        {!stripeLoading && !stripeConnected && (
+          <StripeConnectWarning
+            variant="inline"
+            showCta={true}
+            message="Connect Stripe to accept payments"
+            subMessage="Required to enable paid content."
+            onConnectClick={onOpenStripeModal}
+          />
+        )}
+
+        {/* Price Input - only show when paid is selected AND stripe is connected */}
         <AnimatePresence mode="wait">
-          {data.pricing === 'paid' && (
+          {data.pricing === 'paid' && stripeConnected && (
             <motion.div
               key="paid-options"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="space-y-2 overflow-hidden"
+              className="overflow-hidden"
             >
-              {/* Stripe Warning */}
-              {!stripeLoading && !stripeConnected && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: 0.1 }}
-                >
-                  <StripeConnectWarning
-                    variant="inline"
-                    showCta={true}
-                    message="Connect Stripe to accept payments"
-                    subMessage="Set your price now — enable platform payments later."
-                    onConnectClick={onOpenStripeModal}
-                  />
-                </motion.div>
-              )}
-
-              {/* Price Input */}
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: stripeConnected ? 0 : 0.15 }}
-                className="relative"
-              >
+              <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm font-medium">$</span>
                 <input
                   type="number"
@@ -584,7 +572,7 @@ function DetailsStep({ data, onChange, error, programsApiEndpoint, categoriesApi
                   placeholder="9"
                   className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
                 />
-              </motion.div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

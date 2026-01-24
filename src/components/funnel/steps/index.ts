@@ -18,5 +18,6 @@ export { UpsellStep } from './UpsellStep';
 export { DownsellStep } from './DownsellStep';
 export { InfoStep } from './InfoStep'; // Legacy - use ExplainerStep
 export { SuccessStep } from './SuccessStep';
+export { SchedulingStep } from './SchedulingStep';
 
 

@@ -76,6 +76,9 @@ export async function GET(request: NextRequest) {
       dateCutoff.setDate(dateCutoff.getDate() - days);
     }
 
+    // Track unique paying customers across all revenue sources
+    const payingCustomerIds = new Set<string>();
+
     const results: {
       programs?: ProgramAnalytics[];
       squads?: SquadAnalytics[];
@@ -87,6 +90,8 @@ export async function GET(request: NextRequest) {
         totalEnrollments: number;
         totalMembers: number;
         totalRevenue: number;
+        avgRevenuePerClient: number;
+        payingCustomerCount: number;
       };
     } = {
       summary: {
@@ -96,6 +101,8 @@ export async function GET(request: NextRequest) {
         totalEnrollments: 0,
         totalMembers: 0,
         totalRevenue: 0,
+        avgRevenuePerClient: 0,
+        payingCustomerCount: 0,
       },
     };
 
@@ -131,14 +138,20 @@ export async function GET(request: NextRequest) {
           if (enrollment.status === 'active') activeEnrollments++;
           if (enrollment.status === 'completed') completedEnrollments++;
 
+          // Track paying customers (any enrollment with amountPaid > 0)
+          const amountPaid = enrollment.amountPaid || 0;
+          if (amountPaid > 0 && enrollment.userId) {
+            payingCustomerIds.add(enrollment.userId);
+          }
+
           // Filter revenue by date if days param specified
           if (dateCutoff) {
             const enrollmentDate = enrollment.createdAt?.toDate?.() || (enrollment.createdAt ? new Date(enrollment.createdAt) : null);
             if (enrollmentDate && enrollmentDate >= dateCutoff) {
-              programRevenue += enrollment.amountPaid || 0;
+              programRevenue += amountPaid;
             }
           } else {
-            programRevenue += enrollment.amountPaid || 0;
+            programRevenue += amountPaid;
           }
         }
 
@@ -259,14 +272,21 @@ export async function GET(request: NextRequest) {
             let revenue = 0;
             for (const purchaseDoc of purchasesSnapshot.docs) {
               const purchase = purchaseDoc.data();
+              const amountPaid = purchase.amountPaid || 0;
+
+              // Track paying customers (any purchase with amountPaid > 0)
+              if (amountPaid > 0 && purchase.userId) {
+                payingCustomerIds.add(purchase.userId);
+              }
+
               // Filter revenue by date if days param specified
               if (dateCutoff) {
                 const purchaseDate = purchase.createdAt?.toDate?.() || (purchase.createdAt ? new Date(purchase.createdAt) : null);
                 if (purchaseDate && purchaseDate >= dateCutoff) {
-                  revenue += purchase.amountPaid || 0;
+                  revenue += amountPaid;
                 }
               } else {
-                revenue += purchase.amountPaid || 0;
+                revenue += amountPaid;
               }
             }
 
@@ -303,6 +323,12 @@ export async function GET(request: NextRequest) {
       results.summary.totalContentItems = contentItems.length;
       results.summary.totalRevenue += totalContentRevenue / 100;
     }
+
+    // Calculate average revenue per paying customer (LTV)
+    results.summary.payingCustomerCount = payingCustomerIds.size;
+    results.summary.avgRevenuePerClient = payingCustomerIds.size > 0
+      ? results.summary.totalRevenue / payingCustomerIds.size
+      : 0;
 
     return NextResponse.json(results);
   } catch (error) {

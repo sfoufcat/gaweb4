@@ -2048,7 +2048,11 @@ export type NotificationType =
   | 'feed_mention'
   | 'story_reaction'
   // Coach AI fill prompts
-  | 'call_summary_fill_week';
+  | 'call_summary_fill_week'
+  // Intake call notifications (for coaches)
+  | 'intake_call_booked'
+  | 'intake_call_rescheduled'
+  | 'intake_call_cancelled';
 
 export interface Notification {
   id: string;
@@ -2119,6 +2123,22 @@ export const DEFAULT_SYSTEM_NOTIFICATIONS: OrgSystemNotifications = {
 
 export interface NotificationPreferences {
   email?: EmailNotificationPreferences;
+}
+
+// Story View Types (for cross-device sync)
+export interface StoryView {
+  viewerId: string;
+  storyOwnerId: string;
+  organizationId: string;
+  contentData: {
+    hash: string;
+    taskCount: number;
+    userPostCount: number;
+    hasDayClosed: boolean;
+    hasWeekClosed: boolean;
+    hasTasksToday: boolean;
+  };
+  viewedAt: string;
 }
 
 // Premium Upgrade Form Types
@@ -2787,7 +2807,10 @@ export interface OrgSettings {
   
   // Email notification preferences (which email types are enabled)
   emailPreferences?: CoachEmailPreferences;
-  
+
+  // White-label settings
+  hidePoweredByCoachful?: boolean;     // Hide "Powered by Coachful" in emails (default: false)
+
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
 }
@@ -3435,7 +3458,8 @@ export type FunnelStepType =
   | 'upsell'         // One-click upsell offer after payment
   | 'downsell'       // Shown if user declines preceding upsell
   | 'info'           // [DEPRECATED] Use 'explainer' - kept for backward compatibility
-  | 'success';       // Completion step
+  | 'success'        // Completion step
+  | 'scheduling';    // Intake call scheduling (Calendly-like booking)
 
 /**
  * Question types for question steps
@@ -3463,8 +3487,12 @@ export type InvitePaymentStatus = 'required' | 'pre_paid' | 'free';
 
 /**
  * Funnel target type - what the funnel enrolls users into
+ * @deprecated 'squad' - Squad funnels disabled. Squads now managed via Program > Community
  */
-export type FunnelTargetType = 'program' | 'squad' | 'content';
+export type FunnelTargetType = 'intake' | 'program' | 'squad' | 'content';
+
+// UI tab type for funnel filtering (includes 'all' option)
+export type FunnelTabType = 'all' | FunnelTargetType;
 
 /**
  * Content type for content funnels
@@ -3479,12 +3507,13 @@ export interface Funnel {
   id: string;
   organizationId: string;        // Clerk Organization ID (multi-tenant)
   
-  // Target - funnel can target a program, squad, or content item
+  // Target - funnel can target a program, squad, content item, or intake config
   targetType: FunnelTargetType;  // What this funnel enrolls users into
   programId: string | null;      // Program ID (when targetType = 'program')
   squadId: string | null;        // Squad ID (when targetType = 'squad')
   contentType?: FunnelContentType; // Content type (when targetType = 'content')
   contentId?: string;            // Content item ID (when targetType = 'content')
+  intakeConfigId?: string | null; // Intake config ID (when targetType = 'intake')
   
   // Identification
   slug: string;                  // URL-friendly identifier
@@ -3510,6 +3539,79 @@ export interface Funnel {
   
   // Tracking
   tracking?: FunnelTrackingConfig;  // Pixel IDs and custom scripts
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INTAKE CALL CONFIGURATION (Calendly-like public booking)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type IntakeCallMeetingProvider = 'zoom' | 'google_meet' | 'in_app' | 'manual';
+
+export interface IntakeFormField {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select' | 'phone' | 'email';
+  required: boolean;
+  placeholder?: string;
+  options?: string[];              // For select type
+}
+
+export interface IntakeCallConfig {
+  id: string;
+  organizationId: string;          // Clerk org ID
+  
+  // Basic Info
+  name: string;                    // "Discovery Call", "Strategy Session"
+  slug: string;                    // URL-friendly: org.coachful.co/book/{slug}
+  description?: string;            // What to expect
+  
+  // Duration & Availability
+  duration: number;                // Minutes: 15, 30, 45, 60
+  useOrgAvailability: boolean;     // true = use coach_availability settings
+  customAvailability?: {           // Override if useOrgAvailability = false
+    weeklySchedule: Record<number, { start: string; end: string }[]>;  // Day 0-6 → slots
+    bufferBetweenCalls: number;    // Minutes between calls
+    minNoticeHours: number;        // Minimum booking notice
+    advanceBookingDays: number;    // Max days ahead to book
+  };
+  
+  // Meeting Settings
+  meetingProvider: IntakeCallMeetingProvider;
+  manualMeetingUrl?: string;       // For manual provider
+  
+  // Public Page Customization
+  coverImageUrl?: string;
+  confirmationMessage?: string;    // Shown after booking
+  reminderEmailTemplate?: string;  // Custom reminder
+  
+  // Form Fields (collect info before booking)
+  requireEmail: boolean;           // Always true for guests
+  requireName: boolean;            // Always true
+  requirePhone?: boolean;          // Optional phone
+  customFields?: IntakeFormField[]; // Additional questions
+  
+  // Status
+  isActive: boolean;
+  
+  // Cancel/Reschedule Settings
+  allowCancellation: boolean;      // Allow self-service cancel
+  allowReschedule: boolean;        // Allow self-service reschedule
+  cancelDeadlineHours?: number;    // Hours before call to allow cancel (default 24)
+  
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Booking token for cancel/reschedule links
+export interface IntakeBookingToken {
+  id: string;                      // Token ID (used in URL)
+  eventId: string;                 // FK to events collection
+  intakeCallConfigId: string;      // FK to intake_call_configs
+  prospectEmail: string;           // For verification
+  expiresAt: string;               // Token expiry
+  createdAt: string;
 }
 
 // ============================================================================
@@ -3603,6 +3705,16 @@ export interface FunnelStepConfigPayment {
   stripePriceId?: string;        // Override Stripe price ID
   heading?: string;              // Custom heading
   features?: string[];           // Features to display
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SCHEDULING STEP CONFIG (Calendly-like intake call booking)
+// ═══════════════════════════════════════════════════════════════════════════
+export interface FunnelStepConfigScheduling {
+  intakeCallConfigId: string;    // FK to intake_call_configs collection
+  heading?: string;              // "Schedule Your Discovery Call"
+  subheading?: string;           // "Pick a time that works for you"
+  requireSignupFirst?: boolean;  // Must complete signup step first (default true)
 }
 
 export interface FunnelStepConfigGoal {
@@ -3936,7 +4048,8 @@ export type FunnelStepConfig =
   | { type: 'upsell'; config: FunnelStepConfigUpsell }
   | { type: 'downsell'; config: FunnelStepConfigDownsell }
   | { type: 'info'; config: FunnelStepConfigInfo }  // [DEPRECATED] Use 'explainer'
-  | { type: 'success'; config: FunnelStepConfigSuccess };
+  | { type: 'success'; config: FunnelStepConfigSuccess }
+  | { type: 'scheduling'; config: FunnelStepConfigScheduling };
 
 /**
  * Funnel step - A single step in a funnel
@@ -4855,7 +4968,8 @@ export type EventType =
   | 'community_event'    // Broad events (workshops, webinars, community events) - appears in Discover
   | 'squad_call'         // Squad group calls (coach or peer)
   | 'coaching_1on1'      // Individual coaching sessions
-  | 'cohort_call';       // Cohort group calls (scheduled by coach for cohort members)
+  | 'cohort_call'        // Cohort group calls (scheduled by coach for cohort members)
+  | 'intake_call';       // Pre-enrollment discovery/sales calls (public booking)
 
 /**
  * Event Scope - Who can see/access this event
@@ -5050,6 +5164,17 @@ export interface UnifiedEvent {
   clientUserId?: string;      // The client in a 1:1 coaching relationship
   clientName?: string;        // Client's display name
   clientAvatarUrl?: string;   // Client's profile image
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // INTAKE CALL FIELDS (for eventType = 'intake_call')
+  // ═══════════════════════════════════════════════════════════════════════════
+  intakeCallConfigId?: string;           // FK to intake_call_configs
+  intakeData?: Record<string, unknown>;  // Custom field responses from booking form
+  prospectEmail?: string;                // For unauthenticated bookings
+  prospectName?: string;                 // Prospect's name
+  prospectPhone?: string;                // Optional phone
+  funnelSessionId?: string;              // If booked via funnel
+  bookingTokenId?: string;               // For cancel/reschedule links
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PARTICIPANTS

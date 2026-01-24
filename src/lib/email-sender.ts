@@ -71,6 +71,12 @@ const EMAIL_TYPE_TO_PREFERENCE_KEY: Record<EmailNotificationType, keyof CoachEma
   call_cancelled: 'callCancelledEnabled',
 };
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer | string;
+  contentType?: string;
+}
+
 export interface SendTenantEmailOptions {
   to: string;
   subject: string;
@@ -81,6 +87,7 @@ export interface SendTenantEmailOptions {
   replyTo?: string;
   headers?: Record<string, string>;
   emailType?: 'transactional' | 'auth';  // Auth emails use different default sender
+  attachments?: EmailAttachment[];       // Optional file attachments (e.g., .ics calendar files)
 }
 
 export interface TenantSender {
@@ -289,16 +296,17 @@ export async function getOrgBrandingForEmail(organizationId: string | null): Pro
 export async function sendTenantEmail(
   options: SendTenantEmailOptions
 ): Promise<SendTenantEmailResult> {
-  const { 
-    to, 
-    subject, 
-    html, 
-    text, 
-    organizationId, 
-    userId, 
-    replyTo, 
+  const {
+    to,
+    subject,
+    html,
+    text,
+    organizationId,
+    userId,
+    replyTo,
     headers,
-    emailType = 'transactional' 
+    emailType = 'transactional',
+    attachments,
   } = options;
 
   // Check if Resend is configured
@@ -336,6 +344,11 @@ export async function sendTenantEmail(
       text,
       replyTo: replyTo || sender.replyTo,
       headers,
+      attachments: attachments?.map(att => ({
+        filename: att.filename,
+        content: typeof att.content === 'string' ? Buffer.from(att.content) : att.content,
+        contentType: att.contentType,
+      })),
     });
 
     if (result.error) {
@@ -352,6 +365,11 @@ export async function sendTenantEmail(
           text,
           replyTo,
           headers,
+          attachments: attachments?.map(att => ({
+            filename: att.filename,
+            content: typeof att.content === 'string' ? Buffer.from(att.content) : att.content,
+            contentType: att.contentType,
+          })),
         });
         
         if (fallbackResult.error) {

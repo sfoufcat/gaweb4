@@ -114,8 +114,28 @@ export async function GET(request: NextRequest) {
       ...doc.data(),
     } as FeedPost));
 
+    // Debug logging for feed analytics
+    console.log('[FEED_ANALYTICS_DEBUG]', {
+      organizationId,
+      days,
+      queryLimit: limit,
+      rawPostCount: postsSnapshot.size,
+      adminUserIds: Array.from(adminUserIds),
+      samplePost: posts[0] ? {
+        id: posts[0].id,
+        authorId: posts[0].authorId,
+        createdAt: posts[0].createdAt,
+        orgId: posts[0].organizationId
+      } : null,
+    });
+
     // Filter out admin posts
     const filteredPosts = posts.filter(post => !adminUserIds.has(post.authorId));
+
+    console.log('[FEED_ANALYTICS_DEBUG] After filter:', {
+      filteredCount: filteredPosts.length,
+      excludedCount: posts.length - filteredPosts.length,
+    });
 
     // Calculate statistics
     const posterStatsMap = new Map<string, PosterStats>();

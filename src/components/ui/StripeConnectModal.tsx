@@ -179,7 +179,8 @@ export function StripeConnectModal({ isOpen, onClose, onConnected }: StripeConne
 
       {/* Actions */}
       <div className="space-y-3">
-        {!isConnected && !hasOpenedStripe && (
+        {/* Initial state: not connected, hasn't opened Stripe yet */}
+        {!isConnected && !isPending && !hasOpenedStripe && (
           <button
             type="button"
             onClick={handleConnectStripe}
@@ -200,7 +201,8 @@ export function StripeConnectModal({ isOpen, onClose, onConnected }: StripeConne
           </button>
         )}
 
-        {hasOpenedStripe && !isConnected && (
+        {/* Pending or has opened Stripe: show Continue Setup + I've Connected */}
+        {!isConnected && (isPending || hasOpenedStripe) && (
           <>
             <button
               type="button"
@@ -216,7 +218,7 @@ export function StripeConnectModal({ isOpen, onClose, onConnected }: StripeConne
               ) : (
                 <>
                   <ExternalLink className="w-4 h-4" />
-                  Open Stripe Again
+                  Continue Setup
                 </>
               )}
             </button>
@@ -240,27 +242,6 @@ export function StripeConnectModal({ isOpen, onClose, onConnected }: StripeConne
               )}
             </button>
           </>
-        )}
-
-        {isPending && (
-          <button
-            type="button"
-            onClick={handleConnectStripe}
-            disabled={isConnecting}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-brand-accent text-white font-medium font-albert hover:bg-brand-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-          >
-            {isConnecting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Opening Stripe...
-              </>
-            ) : (
-              <>
-                <ExternalLink className="w-4 h-4" />
-                Continue Setup
-              </>
-            )}
-          </button>
         )}
 
         {isConnected && (

@@ -371,6 +371,9 @@ export async function requireCoachWithOrg(options?: {
   // TENANT MODE ENFORCEMENT
   // If not in tenant mode and platform mode not explicitly allowed
   if (!isTenantMode && !options?.allowPlatformMode) {
+    // Log available org sources for debugging
+    console.log(`[requireCoachWithOrg] Platform mode - orgId: ${orgId}, primaryOrgId: ${primaryOrgId}, legacyOrgId: ${legacyOrgId}, role: ${role}`);
+
     // Super admins always have full access on platform domain (for support/debugging)
     if (role === 'super_admin') {
       const organizationId = orgId || primaryOrgId || legacyOrgId;

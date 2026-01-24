@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Video, Phone, Link2, Check, Lightbulb, Unplug } from 'lucide-react';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import {
@@ -10,6 +11,10 @@ import {
 } from '@/components/ui/tooltip';
 
 export type MeetingProviderType = 'in_app' | 'zoom' | 'google_meet' | 'manual';
+
+// Logo URLs - exported for use in other components
+export const ZOOM_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2Fzoom-icon.webp?alt=media&token=55a3c5b2-56d6-4532-b8d9-f26e052c762c';
+export const GOOGLE_MEET_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2Fgooglemeet.png?alt=media&token=d0aa256e-b15d-4b02-817f-e779e88611fe';
 
 export interface MeetingProviderSelectorProps {
   /** Allow in-app calling option (for 1:1 calls only) */
@@ -40,15 +45,16 @@ interface ProviderConfig {
   id: MeetingProviderType;
   label: string;
   mobileLabel?: string; // Optional shorter label for mobile
-  icon: typeof Video;
+  icon?: typeof Video;
+  logoUrl?: string;
   requiresConnection?: boolean;
 }
 
 const PROVIDERS: ProviderConfig[] = [
   { id: 'in_app', label: 'In-App', icon: Phone },
-  { id: 'zoom', label: 'Zoom', icon: Video, requiresConnection: true },
-  { id: 'google_meet', label: 'Meet', icon: Video, requiresConnection: true },
-  { id: 'manual', label: 'Manual Link', mobileLabel: 'Link', icon: Link2 },
+  { id: 'zoom', label: 'Zoom', logoUrl: ZOOM_LOGO_URL, requiresConnection: true },
+  { id: 'google_meet', label: 'Meet', logoUrl: GOOGLE_MEET_LOGO_URL, requiresConnection: true },
+  { id: 'manual', label: 'Link', icon: Link2 },
 ];
 
 export function MeetingProviderSelector({
@@ -138,7 +144,17 @@ export function MeetingProviderSelector({
           }
         `}
       >
-        <Icon className="w-4 h-4" />
+        {provider.logoUrl ? (
+          <Image
+            src={provider.logoUrl}
+            alt={provider.label}
+            width={16}
+            height={16}
+            className="w-4 h-4 object-contain"
+          />
+        ) : Icon ? (
+          <Icon className="w-4 h-4" />
+        ) : null}
         {provider.mobileLabel ? (
           <>
             <span className="sm:hidden">{provider.mobileLabel}</span>
@@ -156,23 +172,26 @@ export function MeetingProviderSelector({
       </button>
     );
 
-    // Always use flex-1 wrapper for even distribution, put tooltip inside
-    return (
-      <div key={provider.id} className="flex-1 flex overflow-visible">
-        {isDisabled && provider.requiresConnection ? (
-          <TooltipProvider>
+    if (isDisabled && provider.requiresConnection) {
+      return (
+        <div key={provider.id} className="flex-1 min-w-0">
+          <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="flex-1">{tabButton}</span>
+                <div className="w-full">{tabButton}</div>
               </TooltipTrigger>
               <TooltipContent side="top">
                 <p>{getDisabledTooltip(provider.id)}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-        ) : (
-          tabButton
-        )}
+        </div>
+      );
+    }
+
+    return (
+      <div key={provider.id} className="flex-1 min-w-0">
+        {tabButton}
       </div>
     );
   };
@@ -294,7 +313,7 @@ export function MeetingProviderSelector({
       </label>
 
       {/* Provider Tabs */}
-      <div className="flex p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl mb-3 overflow-visible">
+      <div className="flex gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl mb-3 overflow-visible">
         {availableProviders.map(renderProviderTab)}
       </div>
 
