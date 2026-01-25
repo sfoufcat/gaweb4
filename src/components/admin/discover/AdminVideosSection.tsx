@@ -23,9 +23,10 @@ import {
   type ContentPricingData,
 } from '@/components/admin/ContentPricingFields';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { Search, X, Plus, Play, Clock, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Search, X, Plus, Play, Clock, Loader2, AlertCircle, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
 import type { DiscoverVideo, VideoStatus } from '@/types/discover';
 import { CreateVideoModal } from './CreateVideoModal';
+import { MediaUpload } from '@/components/admin/MediaUpload';
 
 // Simplified Edit Dialog (for existing videos)
 interface VideoEditDialogProps {
@@ -193,17 +194,20 @@ function VideoEditDialog({
           </div>
         </div>
 
-        {/* Custom Thumbnail URL */}
+        {/* Custom Thumbnail */}
         <div>
           <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1.5 font-albert">
-            Custom Thumbnail URL (optional)
+            Custom Thumbnail (optional)
           </label>
-          <input
-            type="text"
+          <MediaUpload
             value={formData.customThumbnailUrl}
-            onChange={(e) => setFormData((prev) => ({ ...prev, customThumbnailUrl: e.target.value }))}
-            className="w-full px-3 py-2.5 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-            placeholder="https://example.com/thumbnail.jpg"
+            onChange={(url) => setFormData((prev) => ({ ...prev, customThumbnailUrl: url }))}
+            folder="courses"
+            type="image"
+            uploadEndpoint="/api/coach/org-upload-media"
+            hideLabel
+            aspectRatio="16:9"
+            collapsiblePreview
           />
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
             Leave empty to use auto-generated thumbnail
@@ -549,33 +553,35 @@ export function AdminVideosSection({
 
                   {/* Video Info */}
                   <div className="p-4">
-                    <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                      {video.title}
-                    </h3>
-                    {video.description && (
-                      <p className="mt-1 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert line-clamp-2">
-                        {video.description}
-                      </p>
-                    )}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                          {video.title}
+                        </h3>
+                        {video.description && (
+                          <p className="mt-1 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert line-clamp-2">
+                            {video.description}
+                          </p>
+                        )}
+                      </div>
 
-                    {/* Actions */}
-                    <div className="mt-3 flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setVideoToEdit(video)}
-                        className="text-brand-accent hover:text-brand-accent/90 hover:bg-brand-accent/10 font-albert"
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setVideoToDelete(video)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 font-albert"
-                      >
-                        Delete
-                      </Button>
+                      {/* Actions */}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => setVideoToEdit(video)}
+                          className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
+                          title="Edit video"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setVideoToDelete(video)}
+                          className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                          title="Delete video"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

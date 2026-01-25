@@ -748,37 +748,28 @@ export function CourseEditor({
                   />
                 </div>
 
-                {/* Thumbnail - Collapsible */}
-                <details className="group">
-                  <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white font-albert select-none">
-                    <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
+                {/* Thumbnail Section */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                     Custom Thumbnail
                     {selectedLesson.videoThumbnailUrl && (
-                      <span className="text-xs text-brand-accent ml-1">(Set)</span>
+                      <span className="text-xs text-brand-accent ml-1 font-normal">(Set)</span>
                     )}
-                  </summary>
-                  <div className="mt-3 space-y-3">
-                    {/* Show auto-generated thumbnail preview if set */}
-                    {selectedLesson.videoThumbnailUrl && selectedLesson.videoThumbnailUrl.includes('thumbnail.jpg') && (
-                      <ThumbnailWithFallback
-                        src={selectedLesson.videoThumbnailUrl}
-                        alt="Auto-generated thumbnail"
-                      />
-                    )}
-                    <MediaUpload
-                      value={selectedLesson.videoThumbnailUrl || ''}
-                      onChange={(url) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoThumbnailUrl: url })}
-                      folder="courses/lessons"
-                      type="image"
-                      uploadEndpoint={uploadEndpoint}
-                      hideLabel
-                      aspectRatio="16:9"
-                    />
-                    <p className="text-xs text-[#9ca3af] font-albert">
-                      Optional. If not set, the video&apos;s first frame will be used.
-                    </p>
-                  </div>
-                </details>
+                  </label>
+                  <MediaUpload
+                    value={selectedLesson.videoThumbnailUrl || ''}
+                    onChange={(url) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoThumbnailUrl: url })}
+                    folder="courses/lessons"
+                    type="image"
+                    uploadEndpoint={uploadEndpoint}
+                    hideLabel
+                    aspectRatio="16:9"
+                    collapsiblePreview
+                  />
+                  <p className="text-xs text-[#9ca3af] font-albert">
+                    Optional. If not set, the video&apos;s first frame will be used.
+                  </p>
+                </div>
 
                 {/* Notes Section */}
                 <div>

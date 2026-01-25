@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import * as tus from 'tus-js-client';
+import { Loader2, Play } from 'lucide-react';
 import { pollForThumbnail } from '@/lib/video-thumbnail';
+import { VideoPlayer } from '@/components/video/VideoPlayer';
 
 type MediaType = 'image' | 'video' | 'any' | 'file';
 
@@ -76,7 +78,13 @@ const formatFileSize = (bytes: number) => {
 };
 
 const isVideoUrl = (url: string) => {
-  return /\.(mp4|webm|mov)(\?|$)/i.test(url);
+  // Match traditional video files
+  if (/\.(mp4|webm|mov)(\?|$)/i.test(url)) return true;
+  // Match HLS streams (.m3u8)
+  if (/\.m3u8(\?|$)/i.test(url)) return true;
+  // Match Bunny CDN video URLs (pattern: vz-*.b-cdn.net/{videoId}/*)
+  if (/vz-[a-z0-9-]+\.b-cdn\.net\/[a-f0-9-]+/i.test(url)) return true;
+  return false;
 };
 
 const isImageUrl = (url: string) => {
@@ -206,6 +214,12 @@ export function MediaUpload({
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
+  const [isWaitingForThumbnail, setIsWaitingForThumbnail] = useState(false);
+
+  // Reset thumbnail waiting state when video value changes
+  useEffect(() => {
+    setIsWaitingForThumbnail(false);
+  }, [value]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   const tusUploadRef = useRef<tus.Upload | null>(null);
@@ -336,9 +350,14 @@ export function MediaUpload({
 
           // Start polling for auto-generated thumbnail in background
           if (onThumbnailReady) {
-            pollForThumbnail(videoId).then((thumbnailUrl) => {
-              onThumbnailReady(thumbnailUrl);
-            });
+            setIsWaitingForThumbnail(true);
+            pollForThumbnail(videoId)
+              .then((thumbnailUrl) => {
+                onThumbnailReady(thumbnailUrl);
+              })
+              .finally(() => {
+                setIsWaitingForThumbnail(false);
+              });
           }
         },
       });
@@ -742,13 +761,26 @@ export function MediaUpload({
                 previewSize === 'thumbnail' ? 'w-20 h-20' : 'w-full'
               }`}>
                 {isVideo ? (
-                  <video
-                    src={value}
-                    controls
-                    className={previewSize === 'thumbnail'
-                      ? "w-full h-full object-cover bg-black"
-                      : "w-full h-auto max-h-48 object-contain bg-black"}
-                  />
+                  previewSize === 'thumbnail' ? (
+                    // Compact thumbnail mode - show play icon overlay
+                    <div className="w-full h-full bg-black flex items-center justify-center">
+                      <Play className="w-6 h-6 text-white/70" />
+                    </div>
+                  ) : (
+                    // Full-width video player with HLS support
+                    <div className="w-full">
+                      <VideoPlayer
+                        src={value}
+                        aspectRatio={aspectRatio === '4:3' ? '4:3' : aspectRatio === '1:1' ? '1:1' : '16:9'}
+                      />
+                      {isWaitingForThumbnail && (
+                        <div className="flex items-center gap-2 mt-2 px-1 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                          <Loader2 className="w-4 h-4 animate-spin text-brand-accent" />
+                          <span>Uploaded - Generating thumbnail...</span>
+                        </div>
+                      )}
+                    </div>
+                  )
                 ) : isFile && fileInfo ? (
                   // File preview (PDF, Word, Excel, etc.)
                   <div className={`flex items-center gap-3 p-4 ${
