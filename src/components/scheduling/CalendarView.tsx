@@ -68,6 +68,7 @@ import {
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 
 // Client type for picker
 interface CoachingClient {
@@ -214,9 +215,9 @@ function unifiedEventToDiscoverEvent(event: UnifiedEvent): DiscoverEvent {
 
 // Schedule type options (matching FunnelWizardModal card design)
 const SCHEDULE_TYPES = [
+  { value: 'intake' as ScheduleType, label: 'Intake Call', sublabel: 'Create a booking link for prospects', icon: PhoneIncoming, color: 'bg-teal-100 dark:bg-teal-900/30', iconColor: 'text-teal-600 dark:text-teal-400' },
   { value: '1on1' as ScheduleType, label: '1:1 Call', sublabel: 'Schedule a call with a specific client', icon: User, color: 'bg-orange-100 dark:bg-orange-900/30', iconColor: 'text-orange-600 dark:text-orange-400' },
   { value: 'group' as ScheduleType, label: 'Group Call', sublabel: 'Schedule a call for a program or community', icon: Users, color: 'bg-blue-100 dark:bg-blue-900/30', iconColor: 'text-blue-600 dark:text-blue-400' },
-  { value: 'intake' as ScheduleType, label: 'Intake Call', sublabel: 'Create a booking link for prospects', icon: PhoneIncoming, color: 'bg-teal-100 dark:bg-teal-900/30', iconColor: 'text-teal-600 dark:text-teal-400' },
 ];
 
 interface EventCardProps {
@@ -606,6 +607,10 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
   const [showRecurringCancelDialog, setShowRecurringCancelDialog] = useState(false);
   const [pendingCancelEvent, setPendingCancelEvent] = useState<UnifiedEvent | null>(null);
 
+  // Cancel success state - shows in same dialog before fading
+  // dialogType tracks which dialog should show success: 'single' for non-recurring, 'recurring' for recurring
+  const [cancelSuccess, setCancelSuccess] = useState<{ show: boolean; message: string; dialogType: 'single' | 'recurring' | null }>({ show: false, message: '', dialogType: null });
+
   // Call summary modal states
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<CallSummary | null>(null);
@@ -860,7 +865,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
   const handleRecurringCancelChoice = useCallback(async (scope: 'single' | 'future') => {
     if (!pendingCancelEvent) return;
 
-    setShowRecurringCancelDialog(false);
+    // Keep dialog open, just show loading state
     setIsCancelling(true);
 
     try {
@@ -870,9 +875,21 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
       setPendingCancelEvent(null);
       setSelectedEvent(null);
       refetchProposals();
+
+      // Show success in the same dialog
+      const message = result.cancelledCount > 1
+        ? `${result.cancelledCount} events cancelled`
+        : 'Event cancelled';
+      setCancelSuccess({ show: true, message, dialogType: 'recurring' });
+      // Auto-close after showing success
+      setTimeout(() => {
+        setShowRecurringCancelDialog(false);
+        setCancelSuccess({ show: false, message: '', dialogType: null });
+      }, 1500);
     } catch (err) {
       console.error('Failed to cancel recurring event:', err);
-      // On error, refetch to restore correct state
+      // On error, close dialog and refetch to restore correct state
+      setShowRecurringCancelDialog(false);
       refetch();
     } finally {
       setIsCancelling(false);
@@ -888,10 +905,17 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
       const result = await cancelEvent(cancelEventId, cancelReason.trim() || undefined, 'single');
       // Optimistically remove cancelled event from the calendar
       removeEvents(result.cancelledIds);
-      setCancelEventId(null);
       setCancelReason('');
       setSelectedEvent(null);
       refetchProposals();
+
+      // Show success in the same dialog
+      setCancelSuccess({ show: true, message: 'Event cancelled', dialogType: 'single' });
+      // Auto-close after showing success
+      setTimeout(() => {
+        setCancelEventId(null);
+        setCancelSuccess({ show: false, message: '', dialogType: null });
+      }, 1500);
     } catch (err) {
       console.error('Failed to cancel event:', err);
       // On error, refetch to restore correct state
@@ -1571,43 +1595,74 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
 
       {/* Cancel Confirmation Dialog */}
       <AlertDialog
-        open={!!cancelEventId}
+        open={!!cancelEventId || (cancelSuccess.show && cancelSuccess.dialogType === 'single')}
         onOpenChange={(open) => {
-          if (!open) {
+          if (!open && !cancelSuccess.show) {
             setCancelEventId(null);
             setCancelReason('');
           }
         }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Event?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will cancel the event and notify all participants. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-2">
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5">
-              Reason (optional)
-            </label>
-            <textarea
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="Let participants know why the event was cancelled..."
-              className="w-full px-3 py-2 text-sm bg-[#f9f8f7] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent resize-none"
-              rows={3}
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isCancelling}>Keep Event</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleCancelConfirm}
-              disabled={isCancelling}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-            >
-              {isCancelling ? 'Cancelling...' : 'Cancel Event'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
+        <AlertDialogContent
+          className={(cancelSuccess.show && cancelSuccess.dialogType === 'single') ? 'animate-in fade-in duration-200' : ''}
+          onOverlayClick={() => {
+            if (!cancelSuccess.show) {
+              setCancelEventId(null);
+              setCancelReason('');
+            }
+          }}
+        >
+          {(cancelSuccess.show && cancelSuccess.dialogType === 'single') ? (
+            // Success state
+            <>
+              <VisuallyHidden.Root>
+                <AlertDialogTitle>Event Cancelled</AlertDialogTitle>
+              </VisuallyHidden.Root>
+              <div className="flex flex-col items-center justify-center py-6 animate-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
+                  <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+                </div>
+                <h3 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  {cancelSuccess.message}
+                </h3>
+              </div>
+            </>
+          ) : (
+            // Cancel form state
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Cancel Event?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will cancel the event and notify all participants. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="py-2">
+                <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5">
+                  Reason (optional)
+                </label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Let participants know why the event was cancelled..."
+                  className="w-full px-3 py-2 text-sm bg-[#f9f8f7] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent resize-none"
+                  rows={3}
+                />
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isCancelling}>Keep Event</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleCancelConfirm();
+                  }}
+                  disabled={isCancelling}
+                  className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                >
+                  {isCancelling ? 'Cancelling...' : 'Cancel Event'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          )}
         </AlertDialogContent>
       </AlertDialog>
 
@@ -1619,38 +1674,72 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
       />
 
       {/* Recurring Event Cancel Dialog */}
-      <AlertDialog open={showRecurringCancelDialog} onOpenChange={(open) => {
-        if (!open && !isCancelling) {
+      <AlertDialog open={showRecurringCancelDialog || (cancelSuccess.show && cancelSuccess.dialogType === 'recurring')} onOpenChange={(open) => {
+        if (!open && !isCancelling && !cancelSuccess.show) {
           setShowRecurringCancelDialog(false);
           setPendingCancelEvent(null);
         }
       }}>
-        <AlertDialogContent className="sm:max-w-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Recurring Event</AlertDialogTitle>
-            <AlertDialogDescription>
-              This is a recurring event. Would you like to cancel just this occurrence or all future events in the series?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel disabled={isCancelling}>
-              Keep Event
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => handleRecurringCancelChoice('single')}
-              disabled={isCancelling}
-              className="bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]"
-            >
-              {isCancelling ? 'Cancelling...' : 'Cancel This Event'}
-            </AlertDialogAction>
-            <AlertDialogAction
-              onClick={() => handleRecurringCancelChoice('future')}
-              disabled={isCancelling}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isCancelling ? 'Cancelling...' : 'Cancel All Future'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
+        <AlertDialogContent
+          className="sm:max-w-lg"
+          onOverlayClick={() => {
+            if (!isCancelling && !cancelSuccess.show) {
+              setShowRecurringCancelDialog(false);
+              setPendingCancelEvent(null);
+            }
+          }}
+        >
+          {(cancelSuccess.show && cancelSuccess.dialogType === 'recurring') ? (
+            // Success state
+            <>
+              <VisuallyHidden.Root>
+                <AlertDialogTitle>Event Cancelled</AlertDialogTitle>
+              </VisuallyHidden.Root>
+              <div className="flex flex-col items-center justify-center py-6 animate-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
+                  <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+                </div>
+                <h3 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  {cancelSuccess.message}
+                </h3>
+              </div>
+            </>
+          ) : (
+            // Cancel choice state
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Cancel Recurring Event</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This is a recurring event. Would you like to cancel just this occurrence or all future events in the series?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                <AlertDialogCancel disabled={isCancelling}>
+                  Keep Event
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleRecurringCancelChoice('single');
+                  }}
+                  disabled={isCancelling}
+                  className="bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]"
+                >
+                  {isCancelling ? 'Cancelling...' : 'Cancel This Event'}
+                </AlertDialogAction>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleRecurringCancelChoice('future');
+                  }}
+                  disabled={isCancelling}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isCancelling ? 'Cancelling...' : 'Cancel All Future'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          )}
         </AlertDialogContent>
       </AlertDialog>
 
@@ -1663,7 +1752,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
           }
         }}>
           <DrawerContent className="flex flex-col">
-            <DrawerHeader className="border-b border-[#e1ddd8] dark:border-[#262b35] pb-3">
+            <DrawerHeader className="pb-3">
               <DrawerTitle className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                 What would you like to schedule?
               </DrawerTitle>
@@ -1741,7 +1830,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
         }}>
           <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-5 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+            <div className="px-6 py-5">
               <DialogHeader>
                 <DialogTitle className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                   What would you like to schedule?
@@ -1841,7 +1930,10 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
           setPendingEditEvent(null);
         }
       }}>
-        <AlertDialogContent className="sm:max-w-lg">
+        <AlertDialogContent className="sm:max-w-lg" onOverlayClick={() => {
+          setShowRecurringEditDialog(false);
+          setPendingEditEvent(null);
+        }}>
           <AlertDialogHeader>
             <AlertDialogTitle>Edit Recurring Event</AlertDialogTitle>
             <AlertDialogDescription>

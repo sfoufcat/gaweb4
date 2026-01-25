@@ -142,7 +142,7 @@ export function GlobalPixelsModal({ isOpen, onClose }: GlobalPixelsModalProps) {
       <div className="flex-shrink-0 px-6 pt-6 pb-5">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 flex items-center justify-center ring-1 ring-brand-accent/20">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 flex items-center justify-center border border-brand-accent/30">
               <Code className="w-6 h-6 text-brand-accent" />
             </div>
             <div>

@@ -696,11 +696,9 @@ export function EventDetailPopup({
               {!hasRecording && !hasSummary && isHost && (
                 <InlineRecordingUpload
                   eventId={event.id}
-                  clientUserId={event.clientUserId}
-                  cohortId={event.cohortId}
-                  squadId={event.squadId}
-                  onUploadComplete={(summaryId) => {
-                    onRecordingUploaded?.(event.id, summaryId);
+                  onUploadComplete={() => {
+                    // Trigger event refresh - recording is now linked
+                    onEventUpdated?.();
                   }}
                 />
               )}

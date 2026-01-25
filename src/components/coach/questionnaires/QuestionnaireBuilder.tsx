@@ -46,6 +46,10 @@ export function QuestionnaireBuilder({
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [justPublished, setJustPublished] = useState(false);
+
+  // Track if questionnaire was already published when loaded
+  const [wasActiveOnLoad] = useState(questionnaire.isActive);
   const [copiedLink, setCopiedLink] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -67,20 +71,31 @@ export function QuestionnaireBuilder({
     setHasUnsavedChanges(hasChanges);
   }, [title, description, questions, isActive, allowMultipleResponses, programIds, questionnaire]);
 
+  // Determine if this is a draft (not yet published)
+  const isDraft = !isActive && !wasActiveOnLoad;
+
   // Manual save - saves all current state
+  // For drafts, this acts as "Publish" and auto-activates
   const handleManualSave = async () => {
     setSaving(true);
+    const isPublishing = isDraft;
     try {
       await onSave({
         title,
         description,
         questions,
-        isActive,
+        isActive: isPublishing ? true : isActive,
         allowMultipleResponses,
         programIds,
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      if (isPublishing) {
+        setIsActive(true);
+        setJustPublished(true);
+        setTimeout(() => setJustPublished(false), 2000);
+      } else {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
     } catch (error) {
       console.error('Error saving:', error);
     } finally {
@@ -170,7 +185,7 @@ export function QuestionnaireBuilder({
                   : 'bg-[#e1ddd8] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]'
               }`}
             >
-              {isActive ? 'Active' : 'Draft'}
+              {isActive ? 'Published' : 'Draft'}
             </span>
 
             {/* Actions */}
@@ -219,27 +234,39 @@ export function QuestionnaireBuilder({
                 </button>
               )}
 
-              {/* Save button */}
+              {/* Save/Publish button */}
               <button
                 onClick={handleManualSave}
                 disabled={saving || !hasUnsavedChanges}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium font-albert ml-1 ${
                   saving
                     ? 'bg-[#e1ddd8] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]'
-                    : !hasUnsavedChanges
+                    : justPublished
                     ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                    : !hasUnsavedChanges
+                    ? 'bg-[#e1ddd8]/60 dark:bg-[#262b35]/60 text-[#5f5a55]/60 dark:text-[#b2b6c2]/60'
                     : 'bg-brand-accent text-white hover:bg-brand-accent/90'
                 }`}
               >
                 {saving ? (
                   <>
                     <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Saving
+                    {isDraft ? 'Publishing' : 'Saving'}
                   </>
-                ) : !hasUnsavedChanges ? (
+                ) : justPublished ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Published!
+                  </>
+                ) : saved ? (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     Saved
+                  </>
+                ) : isDraft ? (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    Publish
                   </>
                 ) : (
                   <>
@@ -271,6 +298,7 @@ export function QuestionnaireBuilder({
           onClose={() => setShowSettings(false)}
           isActive={isActive}
           setIsActive={setIsActive}
+          wasActiveOnLoad={wasActiveOnLoad}
           allowMultipleResponses={allowMultipleResponses}
           setAllowMultipleResponses={setAllowMultipleResponses}
           programIds={programIds}
@@ -343,11 +371,11 @@ export function QuestionnaireBuilder({
         {isDesktop && (
           <div className="w-80 flex-shrink-0 sticky top-24 self-start bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
             <div className="p-5 space-y-5">
-              {/* Active toggle */}
+              {/* Published toggle */}
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                    Active
+                    Published
                   </h4>
                   <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
                     Allow responses
@@ -411,6 +439,7 @@ function SettingsModal({
   onClose,
   isActive,
   setIsActive,
+  wasActiveOnLoad,
   allowMultipleResponses,
   setAllowMultipleResponses,
   programIds,
@@ -421,6 +450,7 @@ function SettingsModal({
   onClose: () => void;
   isActive: boolean;
   setIsActive: (value: boolean) => void;
+  wasActiveOnLoad: boolean;
   allowMultipleResponses: boolean;
   setAllowMultipleResponses: (value: boolean) => void;
   programIds: string[];
@@ -444,14 +474,14 @@ function SettingsModal({
           </div>
 
           <div className="space-y-5">
-            {/* Active toggle */}
+            {/* Published toggle */}
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  Active
+                  Published
                 </h4>
                 <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-                  When active, the questionnaire can receive responses
+                  When published, the questionnaire can receive responses
                 </p>
               </div>
               <Switch checked={isActive} onCheckedChange={setIsActive} />

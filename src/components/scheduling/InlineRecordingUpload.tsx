@@ -5,7 +5,7 @@ import {
   Upload,
   Loader2,
   FileAudio,
-  FileText,
+  FileVideo,
   X,
   CheckCircle2,
   AlertCircle,
@@ -15,31 +15,28 @@ import { Progress } from '@/components/ui/progress';
 
 interface InlineRecordingUploadProps {
   eventId: string;
-  clientUserId?: string;
-  cohortId?: string;
-  squadId?: string;
-  onUploadComplete?: (summaryId: string) => void;
-  onProcessingStarted?: () => void;
+  /** Called when upload completes successfully */
+  onUploadComplete?: () => void;
+  /** Called with the recording URL after it's set on the event */
+  onRecordingUploaded?: (recordingUrl: string) => void;
 }
 
-type UploadStatus = 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
+type UploadStatus = 'idle' | 'uploading' | 'saving' | 'completed' | 'error';
 
-const ACCEPTED_FORMATS = ['.mp3', '.m4a', '.wav', '.webm', '.ogg', '.mp4', '.pdf'];
+const ACCEPTED_FORMATS = ['.mp3', '.m4a', '.wav', '.webm', '.ogg', '.mp4', '.mov'];
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 
 /**
  * InlineRecordingUpload
  *
  * Compact recording upload component for EventDetailPopup.
- * Uploads external call recordings and generates AI summaries linked to the event.
+ * Uploads external call recordings to Firebase Storage and links them to the event.
+ * Summary generation is a separate step (via "Get Summary" button).
  */
 export function InlineRecordingUpload({
   eventId,
-  clientUserId,
-  cohortId,
-  squadId,
   onUploadComplete,
-  onProcessingStarted,
+  onRecordingUploaded,
 }: InlineRecordingUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<UploadStatus>('idle');
@@ -81,7 +78,7 @@ export function InlineRecordingUpload({
       setProgress(0);
       setError(null);
 
-      // Step 1: Get signed URL
+      // Step 1: Get signed URLs (upload + download)
       const signedUrlResponse = await fetch('/api/coach/recordings/get-upload-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,7 +94,7 @@ export function InlineRecordingUpload({
         throw new Error(errorData.error || 'Failed to get upload URL');
       }
 
-      const { uploadUrl, storagePath } = await signedUrlResponse.json();
+      const { uploadUrl, downloadUrl } = await signedUrlResponse.json();
 
       // Step 2: Upload to Firebase Storage
       const xhr = new XMLHttpRequest();
@@ -126,40 +123,27 @@ export function InlineRecordingUpload({
 
       await uploadPromise;
 
-      setStatus('processing');
-      onProcessingStarted?.();
+      setStatus('saving');
 
-      // Step 3: Trigger processing with eventId
-      const processResponse = await fetch('/api/coach/recordings/process', {
-        method: 'POST',
+      // Step 3: Link recording to event (no summary generation)
+      const recordingResponse = await fetch(`/api/events/${eventId}/recording`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          storagePath,
-          fileName: file.name,
-          fileSize: file.size,
-          eventId,
-          clientUserId,
-          cohortId,
-          squadId,
+          recordingUrl: downloadUrl,
         }),
       });
 
-      if (!processResponse.ok) {
-        const errorData = await processResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Processing failed');
-      }
-
-      const result = await processResponse.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Processing failed');
+      if (!recordingResponse.ok) {
+        const errorData = await recordingResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save recording');
       }
 
       setStatus('completed');
 
-      if (onUploadComplete && result.summaryId) {
-        onUploadComplete(result.summaryId);
-      }
+      // Notify parent to refresh event data
+      onUploadComplete?.();
+      onRecordingUploaded?.(downloadUrl);
     } catch (err) {
       console.error('Error uploading recording:', err);
       setError(err instanceof Error ? err.message : 'Upload failed');
@@ -199,25 +183,29 @@ export function InlineRecordingUpload({
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
         >
           <Upload className="w-4 h-4" />
-          Upload Recording for Summary
+          Upload Recording
         </button>
         <p className="text-xs text-center text-[#5f5a55] dark:text-[#b2b6c2]">
-          Audio, video, or PDF (max 500MB)
+          Audio or video (max 500MB)
         </p>
       </div>
     );
   }
 
-  // File selected - show file info and generate button
+  // Helper to get the right icon for file type
+  const getFileIcon = () => {
+    if (file?.type.startsWith('video/')) {
+      return <FileVideo className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2] shrink-0" />;
+    }
+    return <FileAudio className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2] shrink-0" />;
+  };
+
+  // File selected - show file info and upload button
   if (file && status === 'idle') {
     return (
       <div className="space-y-3 p-3 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl">
         <div className="flex items-center gap-2">
-          {file.type === 'application/pdf' ? (
-            <FileText className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2] shrink-0" />
-          ) : (
-            <FileAudio className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2] shrink-0" />
-          )}
+          {getFileIcon()}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate text-[#1a1a1a] dark:text-[#f5f5f8]">
               {file.name}
@@ -238,7 +226,7 @@ export function InlineRecordingUpload({
           className="w-full"
           size="sm"
         >
-          Generate Summary
+          Upload Recording
         </Button>
       </div>
     );
@@ -262,20 +250,15 @@ export function InlineRecordingUpload({
     );
   }
 
-  // Processing state
-  if (status === 'processing') {
+  // Saving state (linking to event)
+  if (status === 'saving') {
     return (
       <div className="p-3 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl">
         <div className="flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin text-brand-accent" />
-          <div>
-            <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-              Generating summary...
-            </p>
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-              This may take a few minutes
-            </p>
-          </div>
+          <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+            Saving recording...
+          </p>
         </div>
       </div>
     );
@@ -288,7 +271,7 @@ export function InlineRecordingUpload({
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
           <p className="text-sm font-medium text-green-800 dark:text-green-200">
-            Summary generated!
+            Recording uploaded!
           </p>
         </div>
       </div>

@@ -1006,7 +1006,7 @@ export default function CoachPage() {
             ) : (
               <Tabs defaultValue="all-clients" className="w-full">
                 {/* Sub-tabs for Clients section */}
-                <TabsList className="mb-6 bg-[#f5f3f0] dark:bg-[#1d222b] p-1 rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+                <TabsList className="mb-6 bg-[#f5f3f0] dark:bg-[#1d222b] p-1 rounded-xl">
                   <TabsTrigger
                     value="all-clients"
                     className="px-4 py-2 text-sm font-medium font-albert rounded-lg data-[state=active]:bg-white data-[state=active]:dark:bg-[#262b35] data-[state=active]:shadow-sm transition-all"

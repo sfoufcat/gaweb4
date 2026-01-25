@@ -97,12 +97,21 @@ export async function POST(request: NextRequest) {
       contentType: fileType,
     });
 
-    console.log(`[RECORDING_UPLOAD] Generated signed URL for: ${fileName}, path: ${storagePath}`);
+    // Also generate a long-lived read URL for viewing the recording
+    // (7 days - should be enough for most use cases; can regenerate if needed)
+    const [downloadUrl] = await fileRef.getSignedUrl({
+      version: 'v4',
+      action: 'read',
+      expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    console.log(`[RECORDING_UPLOAD] Generated signed URLs for: ${fileName}, path: ${storagePath}`);
 
     return NextResponse.json({
       uploadUrl,
       storagePath,
       bucketName: bucket.name,
+      downloadUrl, // Long-lived URL for viewing
     });
   } catch (error) {
     console.error('[RECORDING_UPLOAD] Error generating signed URL:', error);

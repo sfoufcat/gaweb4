@@ -25,6 +25,7 @@ import { CreditPurchaseModal } from '@/components/coach/CreditPurchaseModal';
 import { DayPreviewPopup } from './DayPreviewPopup';
 import { ScheduleCallModal } from '@/components/scheduling';
 import { ScheduleCohortEventModal } from '@/components/scheduling/ScheduleCohortEventModal';
+import { GenerateSummaryButton } from '@/components/scheduling/GenerateSummaryButton';
 // Audio utilities for duration detection
 import { getAudioDuration } from '@/lib/audio-compression';
 
@@ -2561,12 +2562,18 @@ export function WeekEditor({
                     const isToday = eventDate ? eventDate.toDateString() === new Date().toDateString() : false;
                     // Check if this call has a linked summary
                     const hasSummary = availableCallSummaries.some(s => s.eventId === eventId);
+                    // Check recording status
+                    const hasRecording = event?.recordingUrl || event?.hasCallRecording;
+                    const recordingStatus = event?.recordingStatus;
+                    const isProcessing = recordingStatus === 'processing';
+                    // Can generate summary if: past, has recording, no summary yet, not processing
+                    const canGenerateSummary = isPast && hasRecording && !hasSummary && !isProcessing;
 
                     return (
                       <div
                         key={eventId}
                         className={cn(
-                          "flex items-center gap-2 p-3 rounded-xl group",
+                          "p-3 rounded-xl group",
                           isPast && !hasSummary
                             ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
                             : hasSummary
@@ -2576,58 +2583,91 @@ export function WeekEditor({
                             : "bg-[#faf8f6] dark:bg-[#1e222a]"
                         )}
                       >
-                        {hasSummary ? (
-                          <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                        ) : isToday ? (
-                          <Calendar className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                        ) : isPast ? (
-                          <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                        ) : (
-                          <Calendar className="w-4 h-4 text-brand-accent flex-shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <span className="block text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                            {event?.title || `Call ${eventId.slice(0, 8)}...`}
-                          </span>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {eventDate && (
-                              <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                                {eventDate.toLocaleDateString('en-US', {
-                                  weekday: 'short',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                })}
-                              </span>
-                            )}
-                            {isRecurringInstance && (
-                              <span className="text-xs text-brand-accent">• Recurring</span>
-                            )}
-                            {hasSummary && (
-                              <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                                • Summary ready
-                              </span>
-                            )}
-                            {isPast && !hasSummary && (
-                              <span className="text-xs text-amber-600 dark:text-amber-400">
-                                • No summary
-                              </span>
-                            )}
-                            {isToday && (
-                              <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                                • Today
-                              </span>
-                            )}
+                        <div className="flex items-center gap-2">
+                          {hasSummary ? (
+                            <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          ) : isProcessing ? (
+                            <Loader2 className="w-4 h-4 text-brand-accent animate-spin flex-shrink-0" />
+                          ) : isToday ? (
+                            <Calendar className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                          ) : isPast ? (
+                            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                          ) : (
+                            <Calendar className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <span className="block text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                              {event?.title || `Call ${eventId.slice(0, 8)}...`}
+                            </span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {eventDate && (
+                                <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                                  {eventDate.toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                  })}
+                                </span>
+                              )}
+                              {isRecurringInstance && (
+                                <span className="text-xs text-brand-accent">• Recurring</span>
+                              )}
+                              {hasSummary && (
+                                <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                                  • Summary ready
+                                </span>
+                              )}
+                              {isProcessing && (
+                                <span className="text-xs text-brand-accent font-medium">
+                                  • Generating...
+                                </span>
+                              )}
+                              {isPast && !hasSummary && !isProcessing && hasRecording && (
+                                <span className="text-xs text-blue-600 dark:text-blue-400">
+                                  • Recording ready
+                                </span>
+                              )}
+                              {isPast && !hasSummary && !isProcessing && !hasRecording && (
+                                <span className="text-xs text-amber-600 dark:text-amber-400">
+                                  • No recording
+                                </span>
+                              )}
+                              {isToday && (
+                                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                  • Today
+                                </span>
+                              )}
+                            </div>
                           </div>
+                          <button
+                            onClick={() => removeEventLink(eventId)}
+                            className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Unlink call"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
-                        <button
-                          onClick={() => removeEventLink(eventId)}
-                          className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Unlink call"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        
+                        {/* Generate Summary Button */}
+                        {canGenerateSummary && (
+                          <div className="mt-2 pl-6">
+                            <GenerateSummaryButton
+                              eventId={eventId}
+                              durationMinutes={event?.durationMinutes || 60}
+                              onGenerated={(summaryId) => {
+                                // Add the new summary to linked summaries
+                                if (!formData.linkedSummaryIds.includes(summaryId)) {
+                                  addSummaryLink(summaryId);
+                                }
+                                // Notify parent if callback provided
+                                onSummaryGenerated?.(summaryId);
+                              }}
+                              className="w-full"
+                            />
+                          </div>
+                        )}
                       </div>
                     );
                   })}

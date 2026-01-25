@@ -206,7 +206,7 @@ interface UseSchedulingActionsReturn {
   proposeCall: (options: ProposeCallOptions) => Promise<UnifiedEvent>;
   requestCall: (options: RequestCallOptions) => Promise<UnifiedEvent>;
   respondToProposal: (options: RespondOptions) => Promise<UnifiedEvent>;
-  cancelEvent: (eventId: string, reason?: string, scope?: 'single' | 'future') => Promise<{ cancelledCount: number }>;
+  cancelEvent: (eventId: string, reason?: string, scope?: 'single' | 'future') => Promise<{ cancelledCount: number; cancelledIds: string[] }>;
   rescheduleEvent: (options: RescheduleOptions) => Promise<UnifiedEvent>;
   isLoading: boolean;
   error: string | null;
