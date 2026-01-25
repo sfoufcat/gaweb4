@@ -12,6 +12,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { createBunnyVideo, getOrCreateCollection, generateTusUploadConfig } from '@/lib/bunny-stream';
+import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { UserRole, OrgRole, ClerkPublicMetadata } from '@/types';
 
 // Accepted video extensions
@@ -92,12 +94,30 @@ export async function POST(request: NextRequest) {
     // Generate TUS upload configuration with proper SHA256 signature
     const tusConfig = await generateTusUploadConfig(videoId);
 
+    // Create placeholder document in discover_videos so webhook can find it
+    // This prevents race condition where webhook fires before user completes wizard
+    let discoverVideoId: string | null = null;
+    if (!isPreview) {
+      const placeholderDoc = await adminDb.collection('discover_videos').add({
+        bunnyVideoId: videoId,
+        videoStatus: 'uploading',
+        organizationId,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      discoverVideoId = placeholderDoc.id;
+      console.log(
+        `[DISCOVER_VIDEO_UPLOAD] Created placeholder doc ${discoverVideoId} for Bunny video ${videoId}`
+      );
+    }
+
     console.log(
       `[DISCOVER_VIDEO_UPLOAD] Created Bunny video ${videoId} for: ${fileName}, org: ${organizationId}, isPreview: ${isPreview}`
     );
 
     return NextResponse.json({
       videoId,
+      discoverVideoId,
       tusEndpoint: tusConfig.endpoint,
       tusHeaders: tusConfig.headers,
       isPreview,

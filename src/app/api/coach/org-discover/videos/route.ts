@@ -2,7 +2,9 @@
  * Coach API: Organization-scoped Videos Management
  *
  * GET /api/coach/org-discover/videos - List videos in coach's organization
- * POST /api/coach/org-discover/videos - Create new video in coach's organization
+ * POST /api/coach/org-discover/videos - Create or update video in coach's organization
+ *   - If `id` provided: updates existing placeholder doc (from get-upload-url)
+ *   - If no `id`: creates new doc (backwards compat)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -71,6 +73,9 @@ export async function POST(request: NextRequest) {
     // Generate thumbnail URL from Bunny if not custom
     const thumbnailUrl = body.customThumbnailUrl || getThumbnailUrl(body.bunnyVideoId);
 
+    // If id provided, update existing placeholder doc; otherwise create new
+    const existingId = body.id;
+
     const videoData = {
       title: body.title,
       description: body.description || '',
@@ -96,21 +101,46 @@ export async function POST(request: NextRequest) {
       features: body.features || [],
       testimonials: body.testimonials || [],
       faqs: body.faqs || [],
-      createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    const docRef = await adminDb.collection('discover_videos').add(videoData);
+    let docId: string;
 
-    console.log(`[COACH_ORG_VIDEOS] Created video ${docRef.id} in organization ${organizationId}`);
+    if (existingId) {
+      // Update existing placeholder doc (created during upload)
+      const docRef = adminDb.collection('discover_videos').doc(existingId);
+      const existingDoc = await docRef.get();
+
+      if (!existingDoc.exists) {
+        return NextResponse.json({ error: 'Video document not found' }, { status: 404 });
+      }
+
+      // Verify org ownership
+      const existingData = existingDoc.data();
+      if (existingData?.organizationId !== organizationId) {
+        return NextResponse.json({ error: 'Forbidden: Video belongs to another organization' }, { status: 403 });
+      }
+
+      await docRef.update(videoData);
+      docId = existingId;
+      console.log(`[COACH_ORG_VIDEOS] Updated video ${docId} in organization ${organizationId}`);
+    } else {
+      // Create new doc (backwards compat for clients not using placeholder flow)
+      const docRef = await adminDb.collection('discover_videos').add({
+        ...videoData,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      docId = docRef.id;
+      console.log(`[COACH_ORG_VIDEOS] Created video ${docId} in organization ${organizationId}`);
+    }
 
     return NextResponse.json(
       {
         success: true,
-        id: docRef.id,
-        message: 'Video created successfully',
+        id: docId,
+        message: existingId ? 'Video updated successfully' : 'Video created successfully',
       },
-      { status: 201 }
+      { status: existingId ? 200 : 201 }
     );
   } catch (error) {
     console.error('[COACH_ORG_VIDEOS_POST] Error:', error);

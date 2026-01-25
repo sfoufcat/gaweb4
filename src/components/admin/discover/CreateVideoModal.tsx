@@ -40,6 +40,7 @@ interface VideoWizardData {
   title: string;
   description: string;
   bunnyVideoId: string;
+  discoverVideoId: string; // Firestore doc ID (placeholder created on upload)
   thumbnailUrl: string; // Auto-generated from Bunny
   // Step 2: Details
   thumbnailOption: ThumbnailOption;
@@ -55,6 +56,7 @@ const DEFAULT_WIZARD_DATA: VideoWizardData = {
   title: '',
   description: '',
   bunnyVideoId: '',
+  discoverVideoId: '',
   thumbnailUrl: '',
   thumbnailOption: 'auto',
   customThumbnailUrl: '',
@@ -188,11 +190,12 @@ export function CreateVideoModal({
   }, []);
 
   // Upload video to Bunny via TUS
+  // Returns { bunnyVideoId, discoverVideoId } for main videos, or { bunnyVideoId } for previews
   const uploadVideoToBunny = async (
     file: File,
     isPreview: boolean,
     onProgress: (progress: number) => void
-  ): Promise<string> => {
+  ): Promise<{ bunnyVideoId: string; discoverVideoId?: string }> => {
     const urlResponse = await fetch('/api/coach/discover-videos/get-upload-url', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -208,7 +211,7 @@ export function CreateVideoModal({
       throw new Error(error.error || 'Failed to get upload URL');
     }
 
-    const { videoId, tusEndpoint, tusHeaders } = await urlResponse.json();
+    const { videoId, discoverVideoId, tusEndpoint, tusHeaders } = await urlResponse.json();
 
     // Debug: Log what we received from server
     console.log('[VIDEO_UPLOAD] TUS config:', {
@@ -251,10 +254,10 @@ export function CreateVideoModal({
           onProgress(percentage);
         },
         onSuccess: () => {
-          console.log('[VIDEO_UPLOAD] Upload complete:', videoId);
+          console.log('[VIDEO_UPLOAD] Upload complete:', videoId, 'discoverVideoId:', discoverVideoId);
           // Track this video ID as pending (uploaded but not yet saved)
           setPendingBunnyVideoIds((prev) => [...prev, videoId]);
-          resolve(videoId);
+          resolve({ bunnyVideoId: videoId, discoverVideoId });
         },
       });
 
@@ -284,10 +287,10 @@ export function CreateVideoModal({
         setIsUploading(true);
         setUploadError(null);
         try {
-          const videoId = await uploadVideoToBunny(mainVideoFile, false, setMainUploadProgress);
-          updateWizardData({ bunnyVideoId: videoId });
+          const { bunnyVideoId, discoverVideoId } = await uploadVideoToBunny(mainVideoFile, false, setMainUploadProgress);
+          updateWizardData({ bunnyVideoId, discoverVideoId: discoverVideoId || '' });
           // Fetch thumbnail after upload
-          fetchThumbnail(videoId);
+          fetchThumbnail(bunnyVideoId);
           setStep('details');
         } catch (error) {
           setUploadError(error instanceof Error ? error.message : 'Upload failed');
@@ -316,11 +319,14 @@ export function CreateVideoModal({
       // Upload preview video if file selected
       if (previewVideoFile && !previewBunnyVideoId) {
         setIsUploading(true);
-        previewBunnyVideoId = await uploadVideoToBunny(previewVideoFile, true, setPreviewUploadProgress);
+        const result = await uploadVideoToBunny(previewVideoFile, true, setPreviewUploadProgress);
+        previewBunnyVideoId = result.bunnyVideoId;
         setIsUploading(false);
       }
 
       const videoData = {
+        // If we have a discoverVideoId from placeholder, include it to update existing doc
+        id: wizardData.discoverVideoId || undefined,
         title: wizardData.title,
         description: wizardData.description,
         bunnyVideoId: wizardData.bunnyVideoId,
@@ -868,61 +874,6 @@ function DetailsStep({
         )}
       </div>
 
-      {/* Preview/Trailer Video */}
-      <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
-          Preview/Trailer
-          <span className="text-[#8c8a87] dark:text-[#8b8f9a] font-normal ml-1.5">(optional)</span>
-        </label>
-        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mb-2 font-albert">
-          Short preview shown in the payment popup for paid videos
-        </p>
-        <input
-          ref={previewInputRef}
-          type="file"
-          accept="video/mp4,video/quicktime,video/webm"
-          onChange={handlePreviewChange}
-          className="hidden"
-        />
-
-        {previewVideoFile ? (
-          <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                <Play className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate font-albert">
-                  {previewVideoFile.name}
-                </p>
-                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  {formatFileSize(previewVideoFile.size)}
-                </p>
-              </div>
-              <button
-                onClick={() => setPreviewVideoFile(null)}
-                className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => previewInputRef.current?.click()}
-            className="w-full p-3 border border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-colors"
-          >
-            <div className="flex items-center justify-center gap-2">
-              <Plus className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                Add preview video
-              </span>
-            </div>
-          </button>
-        )}
-      </div>
-
       {/* Link to Programs */}
       <div>
         <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
@@ -1036,6 +987,65 @@ function DetailsStep({
                   placeholder="29"
                   className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors text-sm"
                 />
+              </motion.div>
+
+              {/* Preview/Trailer Video - only for paid content */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: stripeConnected ? 0.1 : 0.2 }}
+              >
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
+                  Preview/Trailer
+                  <span className="text-[#8c8a87] dark:text-[#8b8f9a] font-normal ml-1.5">(optional)</span>
+                </label>
+                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mb-2 font-albert">
+                  Short preview shown in the payment popup
+                </p>
+                <input
+                  ref={previewInputRef}
+                  type="file"
+                  accept="video/mp4,video/quicktime,video/webm"
+                  onChange={handlePreviewChange}
+                  className="hidden"
+                />
+
+                {previewVideoFile ? (
+                  <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                        <Play className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate font-albert">
+                          {previewVideoFile.name}
+                        </p>
+                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                          {formatFileSize(previewVideoFile.size)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setPreviewVideoFile(null)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => previewInputRef.current?.click()}
+                    className="w-full p-3 border border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-colors"
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <Plus className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                      <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                        Add preview video
+                      </span>
+                    </div>
+                  </button>
+                )}
               </motion.div>
             </motion.div>
           )}

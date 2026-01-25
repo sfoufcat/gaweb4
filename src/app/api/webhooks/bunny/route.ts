@@ -185,27 +185,33 @@ export async function POST(request: NextRequest) {
     if (!discoverVideosQuery.empty) {
       const videoDoc = discoverVideosQuery.docs[0];
 
-      if (isSuccess) {
-        const playbackUrl = getPlaybackUrl(videoId);
+      try {
+        if (isSuccess) {
+          const playbackUrl = getPlaybackUrl(videoId);
 
-        await videoDoc.ref.update({
-          playbackUrl,
-          durationSeconds: durationSeconds || null,
-          videoStatus: 'ready',
-          updatedAt: FieldValue.serverTimestamp(),
-        });
+          await videoDoc.ref.update({
+            playbackUrl,
+            durationSeconds: durationSeconds || null,
+            videoStatus: 'ready',
+            updatedAt: FieldValue.serverTimestamp(),
+          });
 
-        console.log(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} ready: ${playbackUrl}`);
-      } else {
-        await videoDoc.ref.update({
-          videoStatus: 'failed',
-          updatedAt: FieldValue.serverTimestamp(),
-        });
+          console.log(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} ready: ${playbackUrl}`);
+        } else {
+          await videoDoc.ref.update({
+            videoStatus: 'failed',
+            updatedAt: FieldValue.serverTimestamp(),
+          });
 
-        console.error(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} encoding failed`);
+          console.error(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} encoding failed`);
+        }
+
+        return NextResponse.json({ received: true, discoverVideoId: videoDoc.id });
+      } catch (updateError) {
+        // Log the error but don't fail the webhook - doc may have been deleted
+        console.warn(`[BUNNY_WEBHOOK] Failed to update discover video ${videoDoc.id}:`, updateError);
+        return NextResponse.json({ received: true, discoverVideoId: videoDoc.id, updateFailed: true });
       }
-
-      return NextResponse.json({ received: true, discoverVideoId: videoDoc.id });
     }
 
     // Check for discover video preview with this bunnyVideoId
@@ -218,18 +224,23 @@ export async function POST(request: NextRequest) {
     if (!previewVideosQuery.empty) {
       const videoDoc = previewVideosQuery.docs[0];
 
-      if (isSuccess) {
-        const playbackUrl = getPlaybackUrl(videoId);
+      try {
+        if (isSuccess) {
+          const playbackUrl = getPlaybackUrl(videoId);
 
-        await videoDoc.ref.update({
-          previewPlaybackUrl: playbackUrl,
-          updatedAt: FieldValue.serverTimestamp(),
-        });
+          await videoDoc.ref.update({
+            previewPlaybackUrl: playbackUrl,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
 
-        console.log(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} preview ready: ${playbackUrl}`);
+          console.log(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} preview ready: ${playbackUrl}`);
+        }
+
+        return NextResponse.json({ received: true, discoverVideoId: videoDoc.id, isPreview: true });
+      } catch (updateError) {
+        console.warn(`[BUNNY_WEBHOOK] Failed to update discover video preview ${videoDoc.id}:`, updateError);
+        return NextResponse.json({ received: true, discoverVideoId: videoDoc.id, isPreview: true, updateFailed: true });
       }
-
-      return NextResponse.json({ received: true, discoverVideoId: videoDoc.id, isPreview: true });
     }
 
     console.log(`[BUNNY_WEBHOOK] No matching event, course, or discover video found for video ${videoId}`);
