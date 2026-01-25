@@ -32,6 +32,7 @@ const CONTENT_COLLECTIONS: Record<ContentPurchaseType, string> = {
   course: 'courses',
   download: 'program_downloads',
   link: 'program_links',
+  video: 'discover_videos',
 };
 
 interface ContentData {

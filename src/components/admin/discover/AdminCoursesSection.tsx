@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Pencil, Trash2, ChevronLeft, ChevronRight, Search, X, Plus } from 'lucide-react';
+import { Pencil, Trash2, ChevronLeft, ChevronRight, Search, X, Plus, Layers, PlayCircle } from 'lucide-react';
 import type { DiscoverCourse } from '@/types/discover';
 import {
   AlertDialog,
@@ -439,14 +439,15 @@ export function AdminCoursesSection({
                 <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-brand-accent transition-colors">
                   {course.title}
                 </h3>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  <span>{course.category}</span>
-                  <span className="hidden sm:inline">•</span>
-                  <span className="hidden sm:inline">{course.level}</span>
-                  <span className="hidden sm:inline">•</span>
-                  <span className="hidden sm:inline">{course.totalModules || course.modules?.length || 0} modules</span>
-                  <span className="hidden sm:inline">•</span>
-                  <span className="hidden sm:inline">{course.totalLessons || course.modules?.reduce((sum, m) => sum + m.lessons.length, 0) || 0} lessons</span>
+                <div className="flex items-center gap-x-4 mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  <span className="inline-flex items-center gap-1">
+                    <Layers className="w-3.5 h-3.5" />
+                    {course.totalModules || course.modules?.length || 0} modules
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <PlayCircle className="w-3.5 h-3.5" />
+                    {course.totalLessons || course.modules?.reduce((sum, m) => sum + m.lessons.length, 0) || 0} lessons
+                  </span>
                 </div>
               </div>
 

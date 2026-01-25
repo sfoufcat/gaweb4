@@ -1438,7 +1438,7 @@ export interface DayCourseAssignment {
 // =============================================================================
 
 /** Content type for purchases */
-export type ContentPurchaseType = 'event' | 'article' | 'course' | 'download' | 'link';
+export type ContentPurchaseType = 'event' | 'article' | 'course' | 'download' | 'link' | 'video';
 
 /**
  * User content purchase record

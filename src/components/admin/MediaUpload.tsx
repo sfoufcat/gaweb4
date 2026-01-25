@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
+import * as tus from 'tus-js-client';
 
 type MediaType = 'image' | 'video' | 'any' | 'file';
 
@@ -200,6 +201,7 @@ export function MediaUpload({
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const tusUploadRef = useRef<tus.Upload | null>(null);
   const dragCounterRef = useRef(0);
 
   const acceptedTypes = getAcceptedTypes(type);
@@ -213,14 +215,14 @@ export function MediaUpload({
     return isCoachEndpoint && exceedsLimit;
   };
 
-  // Direct upload to Firebase Storage via signed URL (bypasses Vercel 4.5MB limit)
+  // Direct upload - routes to Bunny Stream (video/audio) or Firebase Storage (other files)
   const handleDirectUpload = async (file: File) => {
     setError(null);
     setUploading(true);
     setProgress(0);
 
     try {
-      // Step 1: Get signed upload URL from server
+      // Step 1: Get upload configuration from server
       const urlResponse = await fetch('/api/coach/org-upload-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -236,66 +238,141 @@ export function MediaUpload({
         throw new Error(data.error || 'Failed to get upload URL');
       }
 
-      const { uploadUrl, publicUrl, storagePath } = await urlResponse.json();
+      const uploadConfig = await urlResponse.json();
 
-      // Step 2: Upload directly to Firebase Storage with progress tracking
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhrRef.current = xhr;
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            // Use 0-90% for upload, 90-100% for making public
-            const percent = Math.round((e.loaded / e.total) * 90);
-            setProgress(percent);
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error('Network error during upload'));
-        xhr.onabort = () => reject(new Error('Upload cancelled'));
-
-        xhr.open('PUT', uploadUrl);
-        xhr.setRequestHeader('Content-Type', file.type);
-        xhr.send(file);
-      });
-
-      // Step 3: Make the file publicly accessible
-      setProgress(95);
-      const makePublicResponse = await fetch('/api/coach/org-make-public', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storagePath }),
-      });
-
-      if (!makePublicResponse.ok) {
-        const data = await makePublicResponse.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to make file public');
+      if (uploadConfig.uploadType === 'bunny') {
+        // Bunny Stream upload for video/audio using TUS protocol
+        await handleBunnyUpload(file, uploadConfig);
+      } else {
+        // Firebase Storage upload for images/documents
+        await handleFirebaseDirectUpload(file, uploadConfig);
       }
-
-      setProgress(100);
-
-      // Small delay to show 100% before clearing
-      setTimeout(() => {
-        onChange(publicUrl);
-        setUploading(false);
-        setProgress(0);
-        xhrRef.current = null;
-      }, 200);
     } catch (err) {
       console.error('Direct upload error:', err);
       setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
       setUploading(false);
       setProgress(0);
       xhrRef.current = null;
+      tusUploadRef.current = null;
     }
+  };
+
+  // Bunny Stream upload using TUS protocol
+  const handleBunnyUpload = async (
+    file: File,
+    config: {
+      videoId: string;
+      tusEndpoint: string;
+      tusHeaders: Record<string, string>;
+    }
+  ) => {
+    const { videoId, tusEndpoint, tusHeaders } = config;
+
+    return new Promise<void>((resolve, reject) => {
+      const upload = new tus.Upload(file, {
+        endpoint: tusEndpoint,
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        headers: tusHeaders,
+        metadata: {
+          filename: file.name,
+          filetype: file.type,
+        },
+        onError: (error) => {
+          console.error('TUS upload error:', error);
+          reject(new Error('Upload failed: ' + error.message));
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          const percentage = Math.round((bytesUploaded / bytesTotal) * 100);
+          setProgress(percentage);
+        },
+        onSuccess: () => {
+          setProgress(100);
+          // For videos, the final URL comes from webhook after encoding
+          // Return a placeholder that will be updated by webhook
+          // The course editor will need to handle the encoding state
+          const cdnHostname = process.env.NEXT_PUBLIC_BUNNY_CDN_HOSTNAME || 'vz-cdn.b-cdn.net';
+          const playbackUrl = `https://${cdnHostname}/${videoId}/playlist.m3u8`;
+
+          setTimeout(() => {
+            onChange(playbackUrl);
+            setUploading(false);
+            setProgress(0);
+            tusUploadRef.current = null;
+            resolve();
+          }, 200);
+        },
+      });
+
+      tusUploadRef.current = upload;
+
+      // Check for previous uploads to resume
+      upload.findPreviousUploads().then((previousUploads) => {
+        if (previousUploads.length) {
+          upload.resumeFromPreviousUpload(previousUploads[0]);
+        }
+        upload.start();
+      });
+    });
+  };
+
+  // Firebase Storage direct upload
+  const handleFirebaseDirectUpload = async (
+    file: File,
+    config: { uploadUrl: string; publicUrl: string; storagePath: string }
+  ) => {
+    const { uploadUrl, publicUrl, storagePath } = config;
+
+    // Upload directly to Firebase Storage with progress tracking
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhrRef.current = xhr;
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          // Use 0-90% for upload, 90-100% for making public
+          const percent = Math.round((e.loaded / e.total) * 90);
+          setProgress(percent);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.onabort = () => reject(new Error('Upload cancelled'));
+
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.send(file);
+    });
+
+    // Make the file publicly accessible
+    setProgress(95);
+    const makePublicResponse = await fetch('/api/coach/org-make-public', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storagePath }),
+    });
+
+    if (!makePublicResponse.ok) {
+      const data = await makePublicResponse.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to make file public');
+    }
+
+    setProgress(100);
+
+    // Small delay to show 100% before clearing
+    setTimeout(() => {
+      onChange(publicUrl);
+      setUploading(false);
+      setProgress(0);
+      xhrRef.current = null;
+    }, 200);
   };
 
   // Server-side upload (for images and small files)

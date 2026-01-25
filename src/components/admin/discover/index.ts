@@ -2,6 +2,7 @@ export { AdminDiscoverTab } from './AdminDiscoverTab';
 export { AdminEventsSection } from './AdminEventsSection';
 export { AdminArticlesSection } from './AdminArticlesSection';
 export { AdminCoursesSection } from './AdminCoursesSection';
+export { AdminVideosSection } from './AdminVideosSection';
 export { AdminDownloadsSection } from './AdminDownloadsSection';
 export { AdminLinksSection } from './AdminLinksSection';
 export { AdminQuestionnairesSection } from './AdminQuestionnairesSection';

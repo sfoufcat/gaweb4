@@ -9,6 +9,7 @@ import type {
   DiscoverCategory,
   DiscoverProgram,
   DiscoverSquad,
+  DiscoverVideo,
   TrendingItem,
   RecommendedItem,
 } from '@/types/discover';
@@ -19,6 +20,7 @@ interface DiscoverContextType {
   pastEvents: DiscoverEvent[];
   articles: DiscoverArticle[];
   courses: DiscoverCourse[];
+  videos: DiscoverVideo[];
   categories: DiscoverCategory[];
   trending: TrendingItem[];
   recommended: RecommendedItem[];

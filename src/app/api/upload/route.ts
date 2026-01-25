@@ -1,23 +1,34 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import sharp from 'sharp';
+import { createBunnyVideo, uploadVideoBuffer, getPlaybackUrl } from '@/lib/bunny-stream';
 
 /**
  * POST /api/upload
  * Generic media upload endpoint for authenticated users
  * Used by feed posts, stories, coach recordings, and other user-generated content
  *
+ * ROUTING:
+ * - Videos → Bunny Stream (auto-compression, CDN delivery)
+ * - Images → Firebase Storage (sharp compression)
+ * - Audio → Firebase Storage (no processing)
+ *
  * Images are automatically compressed using sharp:
  * - Max width: 2000px (maintains aspect ratio)
  * - Quality: 80%
  * - Format preserved (JPEG, PNG, WebP)
  *
- * Audio files are stored as-is (no processing)
+ * Videos are uploaded to Bunny Stream:
+ * - Auto-compression and transcoding
+ * - CDN delivery via Bunny CDN
+ * - Returns immediately with bunnyVideoId (encoding happens async)
  *
  * Expects: multipart/form-data with:
  *   - file: File
  *
- * Returns: { success: true, url: string }
+ * Returns:
+ *   - For images/audio: { success: true, url: string }
+ *   - For videos: { success: true, url: string, bunnyVideoId: string, status: 'encoding' }
  */
 export async function POST(req: Request) {
   try {
@@ -59,7 +70,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `File size must be less than ${maxSizeMB}MB` }, { status: 400 });
     }
 
-    // Step 5: Check storage bucket config
+    // Step 5: Route videos to Bunny Stream
+    if (isVideo) {
+      try {
+        // Get file as ArrayBuffer for Bunny upload
+        const arrayBuffer = await file.arrayBuffer();
+
+        // Create video in Bunny and upload
+        const timestamp = Date.now();
+        const videoTitle = `${userId}_${timestamp}_${file.name}`;
+        const { videoId } = await createBunnyVideo(videoTitle);
+
+        await uploadVideoBuffer(videoId, arrayBuffer);
+
+        // Return immediately - Bunny will encode async and webhook will fire when ready
+        const playbackUrl = getPlaybackUrl(videoId);
+
+        console.log(`[UPLOAD] Video uploaded to Bunny: ${videoId}, user: ${userId}`);
+
+        return NextResponse.json({
+          success: true,
+          url: playbackUrl, // HLS playback URL (will work after encoding)
+          bunnyVideoId: videoId,
+          status: 'encoding', // Video is being processed
+        });
+      } catch (bunnyError) {
+        console.error('[UPLOAD] Bunny upload error:', bunnyError);
+        // Fall back to Firebase if Bunny fails
+        console.log('[UPLOAD] Falling back to Firebase for video');
+      }
+    }
+
+    // Step 6: Check storage bucket config (for images, audio, and video fallback)
     const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
     if (!bucketName) {
       console.error('[UPLOAD] Missing NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET env var');

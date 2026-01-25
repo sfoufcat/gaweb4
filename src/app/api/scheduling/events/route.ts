@@ -395,6 +395,9 @@ export async function GET(request: NextRequest) {
     // Filter out events without valid startDateTime (safety check)
     events = events.filter(e => e && e.startDateTime);
 
+    // Filter out cancelled events
+    events = events.filter(e => e.status !== 'canceled' && e.schedulingStatus !== 'cancelled');
+
     // Filter out recurring parent events - only show their instances
     // Parent events have isRecurring=true, instances have parentEventId set
     events = events.filter(e => !e.isRecurring);

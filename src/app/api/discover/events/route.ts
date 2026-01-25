@@ -133,7 +133,12 @@ export async function GET() {
         if (Array.isArray(event.programIds) && event.programIds.length > 0) {
           return false;
         }
-        
+
+        // Exclude cancelled events
+        if (event.status === 'canceled') {
+          return false;
+        }
+
         return true;
       });
 

@@ -29,6 +29,7 @@ const CONTENT_COLLECTIONS: Record<ContentPurchaseType, string> = {
   course: 'courses',
   download: 'program_downloads',
   link: 'program_links',
+  video: 'discover_videos',
 };
 
 interface ContentDetails {
@@ -294,6 +295,7 @@ export async function GET(request: Request) {
         events: myContent.filter(i => i.contentType === 'event').length,
         downloads: myContent.filter(i => i.contentType === 'download').length,
         links: myContent.filter(i => i.contentType === 'link').length,
+        videos: myContent.filter(i => i.contentType === 'video').length,
       },
     });
 

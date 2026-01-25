@@ -10,6 +10,7 @@ import type {
   DiscoverCategory,
   DiscoverProgram,
   DiscoverSquad,
+  DiscoverVideo,
   TrendingItem,
   RecommendedItem,
   EventUpdate,
@@ -317,6 +318,7 @@ export function useDiscoverData() {
   const { events, loading: eventsLoading } = useDiscoverEvents();
   const { articles, loading: articlesLoading } = useDiscoverArticles();
   const { courses, loading: coursesLoading } = useDiscoverCourses();
+  const { videos, loading: videosLoading } = useDiscoverVideos();
   const { categories } = useDiscoverCategories();
   const {
     groupPrograms,
@@ -326,7 +328,7 @@ export function useDiscoverData() {
   } = useDiscoverPrograms();
   const { publicSquads, loading: squadsLoading } = useDiscoverSquads();
 
-  const loading = eventsLoading || articlesLoading || coursesLoading || programsLoading || squadsLoading;
+  const loading = eventsLoading || articlesLoading || coursesLoading || videosLoading || programsLoading || squadsLoading;
 
   // Split events into upcoming and past
   const { upcomingEvents, pastEvents } = useMemo(() => {
@@ -337,6 +339,11 @@ export function useDiscoverData() {
     const past: DiscoverEvent[] = [];
 
     events.forEach((event) => {
+      // Skip cancelled events (backup filter in case API doesn't filter them)
+      if ((event as DiscoverEvent & { status?: string }).status === 'canceled') {
+        return;
+      }
+
       // Parse date as local date (add T12:00:00 to avoid timezone issues with YYYY-MM-DD)
       const eventDate = new Date(event.date + 'T12:00:00');
       eventDate.setHours(0, 0, 0, 0);
@@ -428,6 +435,7 @@ export function useDiscoverData() {
     pastEvents,
     articles,
     courses,
+    videos,
     categories,
     trending,
     recommended,
@@ -452,6 +460,7 @@ export function useMyContent() {
       events: number;
       downloads: number;
       links: number;
+      videos: number;
     };
   }>(
     '/api/my-content',
@@ -473,6 +482,7 @@ export function useMyContent() {
       events: 0,
       downloads: 0,
       links: 0,
+      videos: 0,
     },
     loading: isLoading && !data,
     error: error?.message ?? null,
@@ -513,5 +523,45 @@ export function useDiscoverLinks() {
     links: data?.links ?? [],
     loading: isLoading && !data,
     error: error?.message ?? null,
+  };
+}
+
+// Hook: useDiscoverVideos - Fetches public videos
+export function useDiscoverVideos() {
+  const { data, error, isLoading } = useSWR<{ videos: DiscoverVideo[] }>(
+    '/api/discover/videos',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5 * 60 * 1000, // 5 minutes
+    }
+  );
+
+  return {
+    videos: data?.videos ?? [],
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+  };
+}
+
+// Hook: useVideo - Fetches single video from API with SWR caching
+export function useVideo(videoId: string) {
+  const { data, error, isLoading, mutate } = useSWR<{
+    video: DiscoverVideo;
+    isOwned: boolean;
+  }>(
+    videoId ? `/api/discover/videos/${videoId}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+    }
+  );
+
+  return {
+    video: data?.video ?? null,
+    isOwned: data?.isOwned ?? false,
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+    refresh: mutate,
   };
 }

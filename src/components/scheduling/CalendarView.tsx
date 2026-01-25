@@ -1752,7 +1752,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
           }
         }}>
           <DrawerContent className="flex flex-col">
-            <DrawerHeader className="pb-3">
+            <DrawerHeader className="pb-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
               <DrawerTitle className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                 What would you like to schedule?
               </DrawerTitle>
@@ -1760,7 +1760,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
                 Choose the type of event to create
               </DrawerDescription>
             </DrawerHeader>
-            <div className="space-y-3 p-4">
+            <div className="space-y-3 px-4 py-6">
               {SCHEDULE_TYPES.map((type) => {
                 const Icon = type.icon;
                 const isSelected = selectedScheduleType === type.value;
@@ -1830,8 +1830,8 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
         }}>
           <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-5">
-              <DialogHeader>
+            <div className="px-6 pt-6 pb-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <DialogHeader className="pb-0 border-0">
                 <DialogTitle className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                   What would you like to schedule?
                 </DialogTitle>
@@ -1841,7 +1841,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
               </DialogHeader>
             </div>
             {/* Content */}
-            <div className="space-y-3 p-6">
+            <div className="space-y-3 px-6 py-6">
               {SCHEDULE_TYPES.map((type) => {
                 const Icon = type.icon;
                 const isSelected = selectedScheduleType === type.value;

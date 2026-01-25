@@ -1,0 +1,183 @@
+/**
+ * Admin API: Single Video Management
+ *
+ * GET /api/admin/discover/videos/[id] - Get video details
+ * PATCH /api/admin/discover/videos/[id] - Update video
+ * DELETE /api/admin/discover/videos/[id] - Delete video
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { adminDb } from '@/lib/firebase-admin';
+import { canManageDiscoverContent } from '@/lib/admin-utils-shared';
+import { getCurrentUserRole } from '@/lib/admin-utils-clerk';
+import { FieldValue } from 'firebase-admin/firestore';
+import { deleteVideo as deleteBunnyVideo, getThumbnailUrl } from '@/lib/bunny-stream';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const role = await getCurrentUserRole();
+    if (!canManageDiscoverContent(role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const videoDoc = await adminDb.collection('discover_videos').doc(id).get();
+
+    if (!videoDoc.exists) {
+      return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+    }
+
+    const videoData = videoDoc.data();
+    const video = {
+      id: videoDoc.id,
+      ...videoData,
+      createdAt: videoData?.createdAt?.toDate?.()?.toISOString?.() || videoData?.createdAt,
+      updatedAt: videoData?.updatedAt?.toDate?.()?.toISOString?.() || videoData?.updatedAt,
+    };
+
+    return NextResponse.json({ video });
+  } catch (error) {
+    console.error('[ADMIN_VIDEO_GET] Error:', error);
+    return NextResponse.json({ error: 'Failed to fetch video' }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const role = await getCurrentUserRole();
+    if (!canManageDiscoverContent(role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+
+    // Check if video exists
+    const videoDoc = await adminDb.collection('discover_videos').doc(id).get();
+    if (!videoDoc.exists) {
+      return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+    }
+
+    // Build update data
+    const updateData: Record<string, unknown> = {
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    // Only update fields that are provided
+    const allowedFields = [
+      'title',
+      'description',
+      'bunnyVideoId',
+      'playbackUrl',
+      'customThumbnailUrl',
+      'durationSeconds',
+      'videoStatus',
+      'previewBunnyVideoId',
+      'previewPlaybackUrl',
+      'programIds',
+      'order',
+      'priceInCents',
+      'currency',
+      'purchaseType',
+      'isPublic',
+    ];
+
+    for (const field of allowedFields) {
+      if (body[field] !== undefined) {
+        updateData[field] = body[field];
+      }
+    }
+
+    // Update thumbnail URL if bunnyVideoId changed or customThumbnailUrl changed
+    if (body.bunnyVideoId !== undefined || body.customThumbnailUrl !== undefined) {
+      const bunnyVideoId = body.bunnyVideoId || videoDoc.data()?.bunnyVideoId;
+      updateData.thumbnailUrl = body.customThumbnailUrl || getThumbnailUrl(bunnyVideoId);
+    }
+
+    await adminDb.collection('discover_videos').doc(id).update(updateData);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Video updated successfully',
+    });
+  } catch (error) {
+    console.error('[ADMIN_VIDEO_PATCH] Error:', error);
+    return NextResponse.json({ error: 'Failed to update video' }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const role = await getCurrentUserRole();
+    if (!canManageDiscoverContent(role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { id } = await params;
+
+    // Check if video exists
+    const videoDoc = await adminDb.collection('discover_videos').doc(id).get();
+    if (!videoDoc.exists) {
+      return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+    }
+
+    const videoData = videoDoc.data();
+
+    // Delete video from Bunny Stream
+    if (videoData?.bunnyVideoId) {
+      try {
+        await deleteBunnyVideo(videoData.bunnyVideoId);
+      } catch (err) {
+        console.warn(`[ADMIN_VIDEO_DELETE] Failed to delete Bunny video ${videoData.bunnyVideoId}:`, err);
+        // Continue with Firestore deletion even if Bunny fails
+      }
+    }
+
+    // Delete preview video from Bunny Stream if exists
+    if (videoData?.previewBunnyVideoId) {
+      try {
+        await deleteBunnyVideo(videoData.previewBunnyVideoId);
+      } catch (err) {
+        console.warn(
+          `[ADMIN_VIDEO_DELETE] Failed to delete Bunny preview video ${videoData.previewBunnyVideoId}:`,
+          err
+        );
+      }
+    }
+
+    await adminDb.collection('discover_videos').doc(id).delete();
+
+    return NextResponse.json({
+      success: true,
+      message: 'Video deleted successfully',
+    });
+  } catch (error) {
+    console.error('[ADMIN_VIDEO_DELETE] Error:', error);
+    return NextResponse.json({ error: 'Failed to delete video' }, { status: 500 });
+  }
+}

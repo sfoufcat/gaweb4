@@ -1,11 +1,13 @@
 /**
  * API Route: Event Recording Management
  *
- * PATCH /api/events/[eventId]/recording - Set recording URL on an event
+ * PATCH /api/events/[eventId]/recording - Set recording on an event
  *
- * This endpoint allows coaches to attach a recording URL to an event
- * without triggering summary generation. Summary generation happens
- * separately via /api/events/[eventId]/generate-summary.
+ * Supports two modes:
+ * 1. Bunny Stream: Pass bunnyVideoId - webhook will set URL when encoding completes
+ * 2. Direct URL: Pass recordingUrl for external recordings (Zoom, etc.)
+ *
+ * Summary generation happens separately via /api/events/[eventId]/generate-summary.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -27,23 +29,32 @@ export async function PATCH(
 
     const { eventId } = await params;
     const body = await request.json();
-    const { recordingUrl } = body;
+    const { recordingUrl, bunnyVideoId } = body;
 
-    if (!recordingUrl || typeof recordingUrl !== 'string') {
+    // Must provide either recordingUrl or bunnyVideoId
+    if (!recordingUrl && !bunnyVideoId) {
       return NextResponse.json(
-        { error: 'recordingUrl is required and must be a string' },
+        { error: 'Either recordingUrl or bunnyVideoId is required' },
         { status: 400 }
       );
     }
 
-    // Basic URL validation
-    try {
-      new URL(recordingUrl);
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid recording URL format' },
-        { status: 400 }
-      );
+    // Validate recordingUrl if provided
+    if (recordingUrl) {
+      if (typeof recordingUrl !== 'string') {
+        return NextResponse.json(
+          { error: 'recordingUrl must be a string' },
+          { status: 400 }
+        );
+      }
+      try {
+        new URL(recordingUrl);
+      } catch {
+        return NextResponse.json(
+          { error: 'Invalid recording URL format' },
+          { status: 400 }
+        );
+      }
     }
 
     // Get existing event
@@ -69,21 +80,43 @@ export async function PATCH(
       );
     }
 
-    // Update the event with recording info
-    await eventRef.update({
-      recordingUrl,
-      hasCallRecording: true,
-      recordingStatus: 'ready', // Ready for user to click "Get Summary"
+    // Build update object based on what was provided
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateData: Record<string, any> = {
       updatedAt: FieldValue.serverTimestamp(),
-    });
+    };
 
-    console.log(`[EVENT_RECORDING] Recording URL set for event ${eventId} by user ${userId}`);
+    if (bunnyVideoId) {
+      // Bunny upload - webhook will set recordingUrl when encoding completes
+      updateData.bunnyVideoId = bunnyVideoId;
+      updateData.recordingStatus = 'encoding'; // Will become 'ready' via webhook
+      updateData.hasCallRecording = false; // Will become true via webhook
+
+      console.log(
+        `[EVENT_RECORDING] Bunny video ${bunnyVideoId} linked to event ${eventId} by user ${userId}`
+      );
+    } else if (recordingUrl) {
+      // Direct URL (external recording like Zoom)
+      updateData.recordingUrl = recordingUrl;
+      updateData.hasCallRecording = true;
+      updateData.recordingStatus = 'ready'; // Ready for user to click "Get Summary"
+
+      console.log(
+        `[EVENT_RECORDING] Recording URL set for event ${eventId} by user ${userId}`
+      );
+    }
+
+    await eventRef.update(updateData);
 
     return NextResponse.json({
       success: true,
-      message: 'Recording URL added successfully',
+      message: bunnyVideoId
+        ? 'Recording upload started - will be ready after encoding'
+        : 'Recording URL added successfully',
       eventId,
-      recordingUrl,
+      bunnyVideoId: bunnyVideoId || undefined,
+      recordingUrl: recordingUrl || undefined,
+      status: bunnyVideoId ? 'encoding' : 'ready',
     });
   } catch (error) {
     console.error('[EVENT_RECORDING] Error:', error);

@@ -5,15 +5,16 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useDiscover } from '@/hooks/useDiscover';
 import { useMyContent } from '@/hooks/useDiscoverData';
-import { 
-  EventCard, 
-  CourseCard, 
+import {
+  EventCard,
+  CourseCard,
+  VideoCard,
   ProgramCard,
-  CategoryPills, 
+  CategoryPills,
   ProgramTypePills,
   BrowseMyContentPills,
   MyContentTypePills,
-  TrendingItem, 
+  TrendingItem,
   RecommendedCard,
   SectionHeader,
   ArticleCard,
@@ -21,11 +22,11 @@ import {
   DiscoverEmptyState,
 } from '@/components/discover';
 import type { ProgramType, DiscoverViewMode, MyContentFilter } from '@/components/discover';
-import { FileText, BookOpen, Calendar, Download, Link as LinkIcon, Users, Layers } from 'lucide-react';
+import { FileText, BookOpen, Calendar, Download, Link as LinkIcon, Users, Layers, Video } from 'lucide-react';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 
 export default function DiscoverPage() {
-  const { upcomingEvents, pastEvents, courses, articles, categories, trending, recommended, groupPrograms, individualPrograms, enrollmentConstraints, publicSquads, loading } = useDiscover();
+  const { upcomingEvents, pastEvents, courses, videos, articles, categories, trending, recommended, groupPrograms, individualPrograms, enrollmentConstraints, publicSquads, loading } = useDiscover();
   const { myContent, totalCount: myContentCount, counts: myContentCounts, loading: myContentLoading } = useMyContent();
   const { program: programTitle, squad: squadTitle } = useMenuTitles();
   const [viewMode, setViewMode] = useState<DiscoverViewMode>('browse');
@@ -50,12 +51,13 @@ export default function DiscoverPage() {
     return individualPrograms.filter(p => !p.userEnrollment);
   }, [individualPrograms]);
 
-  // Build sets of owned article, course, and event IDs for filtering
+  // Build sets of owned article, course, event, and video IDs for filtering
   const ownedContentIds = useMemo(() => {
     const articleIds = new Set<string>();
     const courseIds = new Set<string>();
     const eventIds = new Set<string>();
-    
+    const videoIds = new Set<string>();
+
     myContent.forEach((item) => {
       if (item.contentType === 'article') {
         articleIds.add(item.contentId);
@@ -63,10 +65,12 @@ export default function DiscoverPage() {
         courseIds.add(item.contentId);
       } else if (item.contentType === 'event') {
         eventIds.add(item.contentId);
+      } else if (item.contentType === 'video') {
+        videoIds.add(item.contentId);
       }
     });
-    
-    return { articleIds, courseIds, eventIds };
+
+    return { articleIds, courseIds, eventIds, videoIds };
   }, [myContent]);
 
   // Filter out owned articles from browse view
@@ -88,6 +92,11 @@ export default function DiscoverPage() {
   const availablePastEvents = useMemo(() => {
     return pastEvents.filter(e => !ownedContentIds.eventIds.has(e.id));
   }, [pastEvents, ownedContentIds.eventIds]);
+
+  // Filter out owned videos from browse view
+  const availableVideos = useMemo(() => {
+    return videos.filter(v => !ownedContentIds.videoIds.has(v.id));
+  }, [videos, ownedContentIds.videoIds]);
 
   // Get selected category name for filtering
   const selectedCategoryName = useMemo(() => {
@@ -120,26 +129,28 @@ export default function DiscoverPage() {
   // Check if there is any content to show in browse mode (unfiltered)
   const hasAnyContent = useMemo(() => {
     return (
-      availableGroupPrograms.length > 0 || 
-      availableIndividualPrograms.length > 0 || 
-      categories.length > 0 || 
-      availableUpcomingEvents.length > 0 || 
-      availablePastEvents.length > 0 || 
-      availableCourses.length > 0 || 
-      trending.length > 0 || 
-      recommended.length > 0 || 
+      availableGroupPrograms.length > 0 ||
+      availableIndividualPrograms.length > 0 ||
+      categories.length > 0 ||
+      availableUpcomingEvents.length > 0 ||
+      availablePastEvents.length > 0 ||
+      availableCourses.length > 0 ||
+      availableVideos.length > 0 ||
+      trending.length > 0 ||
+      recommended.length > 0 ||
       availableArticles.length > 0
     );
   }, [
-    availableGroupPrograms.length, 
-    availableIndividualPrograms.length, 
+    availableGroupPrograms.length,
+    availableIndividualPrograms.length,
     categories.length,
     availableUpcomingEvents.length,
     availablePastEvents.length,
     availableCourses.length,
+    availableVideos.length,
     trending.length,
     recommended.length,
-    availableArticles.length
+    availableArticles.length,
   ]);
 
   // Paginated My Content
@@ -252,6 +263,7 @@ export default function DiscoverPage() {
     switch (type) {
       case 'article': return FileText;
       case 'course': return BookOpen;
+      case 'video': return Video;
       case 'event': return Calendar;
       case 'download': return Download;
       case 'link': return LinkIcon;
@@ -266,6 +278,7 @@ export default function DiscoverPage() {
     switch (type) {
       case 'article': return `/discover/articles/${id}`;
       case 'course': return `/discover/courses/${id}`;
+      case 'video': return `/discover/videos/${id}`;
       case 'event': return `/discover/events/${id}`;
       case 'download': return `/discover/downloads/${id}`;
       case 'link': return `/discover/links/${id}`;
@@ -550,7 +563,7 @@ export default function DiscoverPage() {
             <section className="px-4 py-5 overflow-hidden">
               <div className="flex flex-col gap-4">
                 <SectionHeader title="Courses" />
-                
+
                 {/* Grid when category selected, horizontal scroll otherwise */}
                 {selectedCategory ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -565,6 +578,21 @@ export default function DiscoverPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </section>
+          )}
+
+          {/* 6. Videos - Only show when no category selected */}
+          {!selectedCategory && availableVideos.length > 0 && (
+            <section className="px-4 py-5 overflow-hidden">
+              <div className="flex flex-col gap-4">
+                <SectionHeader title="Videos" />
+
+                <div className="flex gap-3 overflow-x-auto pb-6 -mx-4 px-4 scrollbar-hide">
+                  {availableVideos.map((video) => (
+                    <VideoCard key={video.id} video={video} />
+                  ))}
+                </div>
               </div>
             </section>
           )}

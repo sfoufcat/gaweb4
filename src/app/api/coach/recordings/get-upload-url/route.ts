@@ -1,8 +1,11 @@
 /**
- * Get Signed Upload URL API
+ * Get Upload URL API
  *
- * Returns a signed URL for direct upload to Firebase Storage.
- * This bypasses Vercel's 4.5MB body size limit for serverless functions.
+ * Returns upload configuration for direct upload to Bunny Stream (video/audio)
+ * or Firebase Storage (PDFs and other documents).
+ *
+ * Video/audio files → Bunny Stream (cheaper, auto-compression)
+ * PDFs/documents → Firebase Storage (simpler, no processing needed)
  */
 
 import { auth } from '@clerk/nextjs/server';
@@ -10,10 +13,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminStorage } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { createBunnyVideo, getOrCreateCollection } from '@/lib/bunny-stream';
 import type { UserRole, OrgRole, ClerkPublicMetadata } from '@/types';
 
 // Accepted file extensions
 const VALID_EXTENSIONS = ['.mp3', '.m4a', '.wav', '.webm', '.ogg', '.mp4', '.mov', '.pdf'];
+
+// Video/audio extensions that go to Bunny
+const BUNNY_EXTENSIONS = ['.mp3', '.m4a', '.wav', '.webm', '.ogg', '.mp4', '.mov'];
 
 // Max file size: 500MB
 const MAX_FILE_SIZE = 500 * 1024 * 1024;
@@ -21,16 +28,24 @@ const MAX_FILE_SIZE = 500 * 1024 * 1024;
 /**
  * POST /api/coach/recordings/get-upload-url
  *
- * Get a signed URL for direct upload to Firebase Storage.
+ * Get upload configuration for direct upload.
  *
  * Request body:
  * - fileName: Original file name
  * - fileType: MIME type
  * - fileSize: File size in bytes
  *
- * Returns:
+ * Returns for video/audio (Bunny):
+ * - uploadType: 'bunny'
+ * - tusEndpoint: TUS upload endpoint
+ * - tusHeaders: Headers for TUS upload
+ * - videoId: Bunny video ID (store this to track encoding status)
+ *
+ * Returns for PDF/documents (Firebase):
+ * - uploadType: 'firebase'
  * - uploadUrl: Signed URL for PUT upload
- * - storagePath: Path in Firebase Storage (needed for processing step)
+ * - downloadUrl: Long-lived URL for viewing
+ * - storagePath: Path in Firebase Storage
  */
 export async function POST(request: NextRequest) {
   try {
@@ -40,7 +55,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata & { role?: UserRole; orgRole?: OrgRole };
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata & {
+      role?: UserRole;
+      orgRole?: OrgRole;
+    };
     const role = publicMetadata?.role;
     const orgRole = publicMetadata?.orgRole;
 
@@ -80,41 +98,74 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique file path
-    const timestamp = Date.now();
-    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const storagePath = `organizations/${organizationId}/recordings/${timestamp}_${sanitizedFileName}`;
+    // Route to Bunny Stream for video/audio, Firebase for PDFs
+    const useBunny = BUNNY_EXTENSIONS.includes(fileExtension);
 
-    // Get signed URL for upload
-    const bucket = adminStorage.bucket();
-    const fileRef = bucket.file(storagePath);
+    if (useBunny) {
+      // Create video in Bunny Stream with org collection for multi-tenancy
+      const collectionId = await getOrCreateCollection(organizationId);
+      const timestamp = Date.now();
+      const videoTitle = `${timestamp}_${fileName}`;
 
-    // Generate signed URL for PUT upload (expires in 15 minutes)
-    const [uploadUrl] = await fileRef.getSignedUrl({
-      version: 'v4',
-      action: 'write',
-      expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-      contentType: fileType,
-    });
+      const { videoId, libraryId } = await createBunnyVideo(videoTitle, collectionId);
 
-    // Also generate a long-lived read URL for viewing the recording
-    // (7 days - should be enough for most use cases; can regenerate if needed)
-    const [downloadUrl] = await fileRef.getSignedUrl({
-      version: 'v4',
-      action: 'read',
-      expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+      // Generate TUS upload configuration
+      const expirationTime = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
-    console.log(`[RECORDING_UPLOAD] Generated signed URLs for: ${fileName}, path: ${storagePath}`);
+      console.log(
+        `[RECORDING_UPLOAD] Created Bunny video ${videoId} for: ${fileName}, org: ${organizationId}`
+      );
 
-    return NextResponse.json({
-      uploadUrl,
-      storagePath,
-      bucketName: bucket.name,
-      downloadUrl, // Long-lived URL for viewing
-    });
+      return NextResponse.json({
+        uploadType: 'bunny',
+        videoId,
+        tusEndpoint: 'https://video.bunnycdn.com/tusupload',
+        tusHeaders: {
+          AuthorizationSignature: process.env.BUNNY_API_KEY,
+          AuthorizationExpire: expirationTime.toString(),
+          VideoId: videoId,
+          LibraryId: libraryId,
+        },
+        // Recording URL will be set by webhook after encoding completes
+      });
+    } else {
+      // Use Firebase Storage for PDFs and other documents
+      const timestamp = Date.now();
+      const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const storagePath = `organizations/${organizationId}/recordings/${timestamp}_${sanitizedFileName}`;
+
+      const bucket = adminStorage.bucket();
+      const fileRef = bucket.file(storagePath);
+
+      // Generate signed URL for PUT upload (expires in 15 minutes)
+      const [uploadUrl] = await fileRef.getSignedUrl({
+        version: 'v4',
+        action: 'write',
+        expires: Date.now() + 15 * 60 * 1000,
+        contentType: fileType,
+      });
+
+      // Generate a long-lived read URL
+      const [downloadUrl] = await fileRef.getSignedUrl({
+        version: 'v4',
+        action: 'read',
+        expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      console.log(
+        `[RECORDING_UPLOAD] Generated Firebase URLs for: ${fileName}, path: ${storagePath}`
+      );
+
+      return NextResponse.json({
+        uploadType: 'firebase',
+        uploadUrl,
+        storagePath,
+        bucketName: bucket.name,
+        downloadUrl,
+      });
+    }
   } catch (error) {
-    console.error('[RECORDING_UPLOAD] Error generating signed URL:', error);
+    console.error('[RECORDING_UPLOAD] Error generating upload URL:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to generate upload URL' },
       { status: 500 }

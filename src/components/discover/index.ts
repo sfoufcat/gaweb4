@@ -1,6 +1,7 @@
 // Discover Components
 export { EventCard } from './EventCard';
 export { CourseCard } from './CourseCard';
+export { VideoCard } from './VideoCard';
 export { ProgramCard } from './ProgramCard';
 export { CategoryPills } from './CategoryPills';
 export { ProgramTypePills } from './ProgramTypePills';

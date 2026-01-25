@@ -22,10 +22,11 @@ const CONTENT_COLLECTIONS: Record<FunnelContentType, string> = {
   event: 'events',
   download: 'downloads',
   link: 'links',
+  video: 'discover_videos',
 };
 
 // Map FunnelContentType to ContentPurchaseType (they're the same but different type aliases)
-type ContentPurchaseType = 'event' | 'article' | 'course' | 'download' | 'link';
+type ContentPurchaseType = 'event' | 'article' | 'course' | 'download' | 'link' | 'video';
 
 /**
  * Check if user has already purchased this content

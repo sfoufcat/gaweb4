@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import * as tus from 'tus-js-client';
 
 interface InlineRecordingUploadProps {
   eventId: string;
@@ -21,7 +22,7 @@ interface InlineRecordingUploadProps {
   onRecordingUploaded?: (recordingUrl: string) => void;
 }
 
-type UploadStatus = 'idle' | 'uploading' | 'saving' | 'completed' | 'error';
+type UploadStatus = 'idle' | 'uploading' | 'encoding' | 'saving' | 'completed' | 'error';
 
 const ACCEPTED_FORMATS = ['.mp3', '.m4a', '.wav', '.webm', '.ogg', '.mp4', '.mov'];
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
@@ -30,7 +31,7 @@ const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
  * InlineRecordingUpload
  *
  * Compact recording upload component for EventDetailPopup.
- * Uploads external call recordings to Firebase Storage and links them to the event.
+ * Uploads recordings to Bunny Stream (video/audio) for compression and CDN delivery.
  * Summary generation is a separate step (via "Get Summary" button).
  */
 export function InlineRecordingUpload({
@@ -43,6 +44,7 @@ export function InlineRecordingUpload({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadRef = useRef<tus.Upload | null>(null);
 
   const handleFileSelect = useCallback((selectedFile: File) => {
     const extension = '.' + selectedFile.name.split('.').pop()?.toLowerCase();
@@ -78,8 +80,8 @@ export function InlineRecordingUpload({
       setProgress(0);
       setError(null);
 
-      // Step 1: Get signed URLs (upload + download)
-      const signedUrlResponse = await fetch('/api/coach/recordings/get-upload-url', {
+      // Step 1: Get upload configuration from API
+      const configResponse = await fetch('/api/coach/recordings/get-upload-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -89,61 +91,20 @@ export function InlineRecordingUpload({
         }),
       });
 
-      if (!signedUrlResponse.ok) {
-        const errorData = await signedUrlResponse.json().catch(() => ({}));
+      if (!configResponse.ok) {
+        const errorData = await configResponse.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to get upload URL');
       }
 
-      const { uploadUrl, downloadUrl } = await signedUrlResponse.json();
+      const uploadConfig = await configResponse.json();
 
-      // Step 2: Upload to Firebase Storage
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const percentComplete = Math.round((e.loaded / e.total) * 100);
-          setProgress(percentComplete);
-        }
-      });
-
-      const uploadPromise = new Promise<void>((resolve, reject) => {
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(`Upload failed (${xhr.status})`));
-          }
-        };
-        xhr.onerror = () => reject(new Error('Network error'));
-      });
-
-      xhr.open('PUT', uploadUrl);
-      xhr.setRequestHeader('Content-Type', file.type);
-      xhr.send(file);
-
-      await uploadPromise;
-
-      setStatus('saving');
-
-      // Step 3: Link recording to event (no summary generation)
-      const recordingResponse = await fetch(`/api/events/${eventId}/recording`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recordingUrl: downloadUrl,
-        }),
-      });
-
-      if (!recordingResponse.ok) {
-        const errorData = await recordingResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to save recording');
+      if (uploadConfig.uploadType === 'bunny') {
+        // Bunny Stream upload using TUS protocol
+        await uploadToBunny(uploadConfig);
+      } else {
+        // Firebase upload for PDFs (fallback, though PDFs shouldn't use this component)
+        await uploadToFirebase(uploadConfig);
       }
-
-      setStatus('completed');
-
-      // Notify parent to refresh event data
-      onUploadComplete?.();
-      onRecordingUploaded?.(downloadUrl);
     } catch (err) {
       console.error('Error uploading recording:', err);
       setError(err instanceof Error ? err.message : 'Upload failed');
@@ -151,7 +112,133 @@ export function InlineRecordingUpload({
     }
   };
 
+  const uploadToBunny = async (config: {
+    videoId: string;
+    tusEndpoint: string;
+    tusHeaders: Record<string, string>;
+  }) => {
+    const { videoId, tusEndpoint, tusHeaders } = config;
+
+    return new Promise<void>((resolve, reject) => {
+      const upload = new tus.Upload(file!, {
+        endpoint: tusEndpoint,
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        headers: tusHeaders,
+        metadata: {
+          filename: file!.name,
+          filetype: file!.type,
+        },
+        onError: (error) => {
+          console.error('TUS upload error:', error);
+          reject(new Error('Upload failed: ' + error.message));
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          const percentage = Math.round((bytesUploaded / bytesTotal) * 100);
+          setProgress(percentage);
+        },
+        onSuccess: async () => {
+          try {
+            setStatus('encoding');
+            setProgress(100);
+
+            // Link the Bunny video to the event
+            // The webhook will update recordingUrl when encoding completes
+            const recordingResponse = await fetch(`/api/events/${eventId}/recording`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                bunnyVideoId: videoId,
+              }),
+            });
+
+            if (!recordingResponse.ok) {
+              const errorData = await recordingResponse.json().catch(() => ({}));
+              throw new Error(errorData.error || 'Failed to save recording');
+            }
+
+            setStatus('completed');
+
+            // Notify parent - recording is being encoded, will be ready soon
+            onUploadComplete?.();
+            // Don't call onRecordingUploaded yet - no URL until webhook fires
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        },
+      });
+
+      uploadRef.current = upload;
+
+      // Check for previous uploads to resume
+      upload.findPreviousUploads().then((previousUploads) => {
+        if (previousUploads.length) {
+          upload.resumeFromPreviousUpload(previousUploads[0]);
+        }
+        upload.start();
+      });
+    });
+  };
+
+  const uploadToFirebase = async (config: {
+    uploadUrl: string;
+    downloadUrl: string;
+  }) => {
+    const { uploadUrl, downloadUrl } = config;
+
+    // Upload to Firebase using XHR
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const percentComplete = Math.round((e.loaded / e.total) * 100);
+        setProgress(percentComplete);
+      }
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Upload failed (${xhr.status})`));
+        }
+      };
+      xhr.onerror = () => reject(new Error('Network error'));
+
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', file!.type);
+      xhr.send(file);
+    });
+
+    setStatus('saving');
+
+    // Link recording to event
+    const recordingResponse = await fetch(`/api/events/${eventId}/recording`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recordingUrl: downloadUrl,
+      }),
+    });
+
+    if (!recordingResponse.ok) {
+      const errorData = await recordingResponse.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to save recording');
+    }
+
+    setStatus('completed');
+    onUploadComplete?.();
+    onRecordingUploaded?.(downloadUrl);
+  };
+
   const handleReset = () => {
+    // Abort any ongoing TUS upload
+    if (uploadRef.current) {
+      uploadRef.current.abort();
+      uploadRef.current = null;
+    }
+
     setFile(null);
     setStatus('idle');
     setProgress(0);
@@ -221,11 +308,7 @@ export function InlineRecordingUpload({
             <X className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
           </button>
         </div>
-        <Button
-          onClick={handleUpload}
-          className="w-full"
-          size="sm"
-        >
+        <Button onClick={handleUpload} className="w-full" size="sm">
           Upload Recording
         </Button>
       </div>
@@ -241,11 +324,28 @@ export function InlineRecordingUpload({
           <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
             Uploading...
           </span>
-          <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] ml-auto">
-            {progress}%
-          </span>
+          <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] ml-auto">{progress}%</span>
         </div>
         <Progress value={progress} className="h-1.5" />
+      </div>
+    );
+  }
+
+  // Encoding state (Bunny is processing the video)
+  if (status === 'encoding') {
+    return (
+      <div className="p-3 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl">
+        <div className="flex items-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin text-brand-accent" />
+          <div>
+            <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+              Processing video...
+            </p>
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+              This may take a few minutes
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -270,9 +370,14 @@ export function InlineRecordingUpload({
       <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
-          <p className="text-sm font-medium text-green-800 dark:text-green-200">
-            Recording uploaded!
-          </p>
+          <div>
+            <p className="text-sm font-medium text-green-800 dark:text-green-200">
+              Recording uploaded!
+            </p>
+            <p className="text-xs text-green-600 dark:text-green-400">
+              Will be ready shortly after processing
+            </p>
+          </div>
         </div>
       </div>
     );
