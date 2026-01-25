@@ -516,12 +516,12 @@ export function AdminVideosSection({
                     </div>
 
                     {/* Duration badge */}
-                    {video.durationSeconds != null && video.durationSeconds > 0 && (
+                    {typeof video.durationSeconds === 'number' && video.durationSeconds > 0 ? (
                       <div className="absolute bottom-2 right-2 text-white text-xs font-medium font-albert flex items-center gap-1 drop-shadow-md">
                         <Clock className="w-3 h-3" />
                         {formatDuration(video.durationSeconds)}
                       </div>
-                    )}
+                    ) : null}
 
                     {/* Status badge */}
                     <div className="absolute top-2 left-2">
@@ -540,14 +540,14 @@ export function AdminVideosSection({
                     </div>
 
                     {/* Price badge */}
-                    {video.priceInCents && video.priceInCents > 0 && (
+                    {video.priceInCents != null && video.priceInCents > 0 && (
                       <div className="absolute top-2 right-2 px-2 py-0.5 bg-green-500 text-white text-xs font-medium rounded font-albert">
                         ${(video.priceInCents / 100).toFixed(0)}
                       </div>
                     )}
                   </div>
 
-                  {/* Info */}
+                  {/* Video Info */}
                   <div className="p-4">
                     <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
                       {video.title}
