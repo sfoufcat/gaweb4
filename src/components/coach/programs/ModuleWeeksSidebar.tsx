@@ -1673,39 +1673,6 @@ export function ModuleWeeksSidebar({
             <h3 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Structure</h3>
           </div>
 
-          {/* Save/Discard buttons - only visible when changes exist */}
-          <AnimatePresence>
-            {hasUnsavedChanges && (
-              <motion.div
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-                transition={{ duration: 0.15 }}
-                className="flex items-center gap-1"
-              >
-                <button
-                  onClick={onDiscardAll}
-                  disabled={isSaving}
-                  className="p-1.5 text-[#5f5a55] hover:text-red-500 dark:text-[#b2b6c2] dark:hover:text-red-400 transition-colors disabled:opacity-50"
-                  title="Discard all changes"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={onSaveAll}
-                  disabled={isSaving}
-                  className="p-1.5 text-[#5f5a55] hover:text-brand-accent dark:text-[#b2b6c2] dark:hover:text-brand-accent transition-colors disabled:opacity-50"
-                  title="Save all changes"
-                >
-                  {isSaving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </div>
 

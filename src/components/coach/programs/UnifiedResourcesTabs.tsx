@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   GraduationCap,
@@ -8,6 +8,7 @@ import {
   Download,
   Link2,
   FileQuestion,
+  Video,
   X,
   Calendar,
   ChevronDown,
@@ -17,10 +18,10 @@ import { cn } from '@/lib/utils';
 import { DayCourseSelector } from './DayCourseSelector';
 import { ResourceLinkDropdown } from './ResourceLinkDropdown';
 import type { WeekResourceAssignment, ResourceDayTag, DayCourseAssignment } from '@/types';
-import type { DiscoverCourse } from '@/types/discover';
+import type { DiscoverCourse, DiscoverVideo } from '@/types/discover';
 
 // Resource types
-type ResourceType = 'courses' | 'articles' | 'downloads' | 'links' | 'questionnaires';
+type ResourceType = 'courses' | 'articles' | 'downloads' | 'links' | 'questionnaires' | 'videos';
 
 interface ResourceTabConfig {
   id: ResourceType;
@@ -32,6 +33,7 @@ interface ResourceTabConfig {
 
 const TABS: ResourceTabConfig[] = [
   { id: 'courses', label: 'Courses', shortLabel: 'Courses', icon: GraduationCap, resourceType: 'course' },
+  { id: 'videos', label: 'Videos', shortLabel: 'Videos', icon: Video, resourceType: 'video' },
   { id: 'articles', label: 'Articles', shortLabel: 'Articles', icon: FileText, resourceType: 'article' },
   { id: 'downloads', label: 'Downloads', shortLabel: 'Files', icon: Download, resourceType: 'download' },
   { id: 'links', label: 'Links', shortLabel: 'Links', icon: Link2, resourceType: 'link' },
@@ -71,6 +73,7 @@ interface UnifiedResourcesTabsProps {
 
   // Available resources for linking
   availableCourses: DiscoverCourse[];
+  availableVideos?: DiscoverVideo[];
   availableArticles: ResourceItem[];
   availableDownloads: ResourceItem[];
   availableLinks: ResourceItem[];
@@ -222,6 +225,7 @@ export function UnifiedResourcesTabs({
   resourceAssignments,
   onResourceAssignmentsChange,
   availableCourses,
+  availableVideos = [],
   availableArticles,
   availableDownloads,
   availableLinks,
@@ -231,11 +235,27 @@ export function UnifiedResourcesTabs({
   contentCompletion,
 }: UnifiedResourcesTabsProps) {
   const [activeTab, setActiveTab] = useState<ResourceType>('courses');
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
+  const mobileDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close mobile dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileDropdownRef.current && !mobileDropdownRef.current.contains(event.target as Node)) {
+        setMobileDropdownOpen(false);
+      }
+    };
+    if (mobileDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [mobileDropdownOpen]);
 
   // Get assignments by type
   const assignmentsByType = useMemo(() => {
     const byType: Record<WeekResourceAssignment['resourceType'], WeekResourceAssignment[]> = {
       course: [],
+      video: [],
       article: [],
       download: [],
       link: [],
@@ -252,6 +272,7 @@ export function UnifiedResourcesTabs({
   // Get count for each resource type
   const counts = useMemo(() => ({
     courses: assignmentsByType.course.length,
+    videos: assignmentsByType.video.length,
     articles: assignmentsByType.article.length,
     downloads: assignmentsByType.download.length,
     links: assignmentsByType.link.length,
@@ -346,6 +367,9 @@ export function UnifiedResourcesTabs({
   const availableQuestionnairesToLink = availableQuestionnaires.filter(
     (q) => !getLinkedIds('questionnaire').includes(q.id)
   );
+  const availableVideosToLink = availableVideos.filter(
+    (v) => !getLinkedIds('video').includes(v.id)
+  );
 
   // Split into program vs platform content
   const programArticles = availableArticlesToLink.filter((a) => a.programId === programId);
@@ -354,6 +378,9 @@ export function UnifiedResourcesTabs({
   const platformDownloads = availableDownloadsToLink.filter((d) => d.programId !== programId);
   const programLinks = availableLinksToLink.filter((l) => l.programId === programId);
   const platformLinks = availableLinksToLink.filter((l) => l.programId !== programId);
+  // Videos use programIds array instead of single programId
+  const programVideos = availableVideosToLink.filter((v) => v.programIds?.includes(programId || ''));
+  const platformVideos = availableVideosToLink.filter((v) => !v.programIds?.includes(programId || ''));
 
   // Helper to get title for an assignment
   const getTitle = (
@@ -364,10 +391,112 @@ export function UnifiedResourcesTabs({
     return item?.title || `Item ${assignment.resourceId.slice(0, 8)}...`;
   };
 
+  // Get active tab config
+  const activeTabConfig = TABS.find((t) => t.id === activeTab) || TABS[0];
+  const ActiveIcon = activeTabConfig.icon;
+
+  // Track dropdown button position for portal
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Calculate position and open dropdown
+  const handleOpenDropdown = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const dropdownHeight = TABS.length * 44 + 8;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const openUp = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
+
+      setDropdownPosition({
+        top: openUp ? rect.top - dropdownHeight - 4 : rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+      setMobileDropdownOpen(true);
+    }
+  };
+
+  const handleCloseDropdown = () => {
+    setMobileDropdownOpen(false);
+    setDropdownPosition(null);
+  };
+
   return (
     <div className="space-y-4">
-      {/* Tab Bar */}
-      <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-2xl p-1.5 flex gap-1 overflow-x-auto scrollbar-none -mx-1 px-1">
+      {/* Mobile Dropdown */}
+      <div className="sm:hidden" ref={mobileDropdownRef}>
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={() => mobileDropdownOpen ? handleCloseDropdown() : handleOpenDropdown()}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-[#f3f1ef] dark:bg-[#11141b] rounded-2xl text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]"
+        >
+          <div className="flex items-center gap-2">
+            <ActiveIcon className="w-4 h-4 text-brand-accent" />
+            <span className="font-albert">{activeTabConfig.label}</span>
+            {counts[activeTab] > 0 && (
+              <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-brand-accent/15 text-brand-accent">
+                {counts[activeTab]}
+              </span>
+            )}
+          </div>
+          <ChevronDown className={cn('w-4 h-4 text-[#8c8c8c] transition-transform', mobileDropdownOpen && 'rotate-180')} />
+        </button>
+        {mobileDropdownOpen && dropdownPosition && typeof document !== 'undefined' && createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[9998]"
+              onClick={handleCloseDropdown}
+            />
+            <div
+              className="fixed z-[9999] bg-white dark:bg-[#1e222a] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] shadow-lg py-1 animate-in fade-in zoom-in-95 duration-100"
+              style={{ top: dropdownPosition.top, left: dropdownPosition.left, width: dropdownPosition.width }}
+            >
+              {TABS.map((tab) => {
+                const Icon = tab.icon;
+                const count = counts[tab.id];
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      handleCloseDropdown();
+                    }}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-4 py-2.5 text-sm font-albert transition-colors',
+                      isActive
+                        ? 'bg-brand-accent/10 text-brand-accent'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                    )}
+                  >
+                    <Icon className={cn('w-4 h-4', isActive && 'text-brand-accent')} />
+                    <span className="flex-1 text-left">{tab.label}</span>
+                    {count > 0 && (
+                      <span
+                        className={cn(
+                          'text-xs font-medium px-1.5 py-0.5 rounded-full min-w-[20px] text-center',
+                          isActive
+                            ? 'bg-brand-accent/15 text-brand-accent'
+                            : 'bg-[#e1ddd8]/60 dark:bg-[#262b35] text-[#8c8c8c] dark:text-[#7d8190]'
+                        )}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </>,
+          document.body
+        )}
+      </div>
+
+      {/* Desktop Tab Bar */}
+      <div className="hidden sm:flex bg-[#f3f1ef] dark:bg-[#11141b] rounded-2xl p-1.5 gap-1 overflow-x-auto scrollbar-none -mx-1 px-1">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const count = counts[tab.id];
@@ -386,8 +515,7 @@ export function UnifiedResourcesTabs({
               )}
             >
               <Icon className={cn('w-4 h-4 flex-shrink-0', isActive && 'text-brand-accent')} />
-              <span className="hidden sm:inline font-albert">{tab.label}</span>
-              <span className="sm:hidden font-albert">{tab.shortLabel}</span>
+              <span className="font-albert">{tab.label}</span>
               {count > 0 && (
                 <span
                   className={cn(
@@ -435,6 +563,57 @@ export function UnifiedResourcesTabs({
               onChange={handleCourseAssignmentsChange}
               availableCourses={availableCourses}
             />
+          </div>
+        )}
+
+        {/* Videos Tab */}
+        {activeTab === 'videos' && (
+          <div>
+            {assignmentsByType.video.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {assignmentsByType.video.map((assignment) => {
+                  const video = availableVideos.find(v => v.id === assignment.resourceId);
+                  return (
+                    <LinkedResourceItem
+                      key={assignment.id}
+                      assignment={assignment}
+                      title={video?.title || `Video ${assignment.resourceId.slice(0, 8)}...`}
+                      icon={Video}
+                      onRemove={() => removeResource(assignment.id)}
+                      onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
+                      includeWeekends={includeWeekends}
+                      completion={contentCompletion?.get(assignment.resourceId)}
+                    />
+                  );
+                })}
+              </div>
+            )}
+            <ResourceLinkDropdown
+              placeholder="Add a video..."
+              icon={Video}
+              groups={[
+                {
+                  label: 'Program Content',
+                  items: programVideos.map((v) => ({ id: v.id, title: v.title })),
+                  iconClassName: 'text-brand-accent',
+                },
+                {
+                  label: 'Platform Content',
+                  items: platformVideos.map((v) => ({ id: v.id, title: v.title })),
+                  iconClassName: 'text-[#8c8c8c]',
+                },
+              ]}
+              onSelect={(id) => addResource('video', id)}
+              onCreateNew={() => {
+                window.location.href = '/coach?tab=discover';
+              }}
+              createNewLabel="Create new video"
+            />
+            {assignmentsByType.video.length === 0 && availableVideosToLink.length === 0 && (
+              <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-3 text-center">
+                No videos available
+              </p>
+            )}
           </div>
         )}
 

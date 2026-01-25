@@ -8,6 +8,7 @@ import {
   Download,
   Link2,
   FileQuestion,
+  Video,
   CheckCircle,
   ChevronRight,
   ExternalLink,
@@ -21,7 +22,7 @@ import type {
   ContentProgress,
   ProgramInstanceWeek,
 } from '@/types';
-import type { DiscoverCourse, DiscoverArticle } from '@/types/discover';
+import type { DiscoverCourse, DiscoverArticle, DiscoverVideo } from '@/types/discover';
 import { getResourcesForDay } from '@/lib/program-utils';
 
 interface ResourceItem {
@@ -45,6 +46,7 @@ interface ProgramDayResourcesProps {
   downloads?: ResourceItem[];
   links?: ResourceItem[];
   questionnaires?: ResourceItem[];
+  videos?: DiscoverVideo[];
 
   // Instance context for progress tracking
   instanceId?: string;
@@ -58,6 +60,7 @@ interface ProgramDayResourcesProps {
 // Resource type icon mapping
 const RESOURCE_ICONS = {
   course: GraduationCap,
+  video: Video,
   article: FileText,
   download: Download,
   link: Link2,
@@ -67,6 +70,7 @@ const RESOURCE_ICONS = {
 // Resource type colors
 const RESOURCE_COLORS = {
   course: 'text-purple-500',
+  video: 'text-red-500',
   article: 'text-blue-500',
   download: 'text-green-500',
   link: 'text-orange-500',
@@ -113,6 +117,8 @@ function ResourceCard({
     switch (assignment.resourceType) {
       case 'course':
         return buildUrlWithContext(`/discover/courses/${assignment.resourceId}`);
+      case 'video':
+        return buildUrlWithContext(`/discover/videos/${assignment.resourceId}`);
       case 'article':
         return buildUrlWithContext(`/discover/articles/${assignment.resourceId}`);
       case 'download':
@@ -253,6 +259,7 @@ export function ProgramDayResources({
   downloads = [],
   links = [],
   questionnaires = [],
+  videos = [],
   instanceId,
   showTitle = true,
   compact = false,
@@ -281,6 +288,7 @@ export function ProgramDayResources({
   const groupedResources = useMemo(() => {
     const groups: Record<string, WeekResourceAssignment[]> = {
       course: [],
+      video: [],
       article: [],
       download: [],
       link: [],
@@ -334,6 +342,13 @@ export function ProgramDayResources({
         return {
           title: assignment.title || form?.title || 'Form',
           description: assignment.description,
+        };
+      }
+      case 'video': {
+        const video = videos.find((v) => v.id === assignment.resourceId);
+        return {
+          title: assignment.title || video?.title || 'Video',
+          description: assignment.description || video?.description,
         };
       }
       default:

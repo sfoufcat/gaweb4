@@ -25,6 +25,7 @@ interface CohortSelectorProps {
   onCreateCohort?: () => void;
   loading?: boolean;
   className?: string;
+  size?: 'default' | 'large';
 }
 
 export function CohortSelector({
@@ -34,6 +35,7 @@ export function CohortSelector({
   onCreateCohort,
   loading = false,
   className = '',
+  size = 'default',
 }: CohortSelectorProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -106,6 +108,8 @@ export function CohortSelector({
     }
   };
 
+  const isLarge = size === 'large';
+
   return (
     <div className={className}>
       <Popover open={open} onOpenChange={setOpen}>
@@ -114,20 +118,28 @@ export function CohortSelector({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between h-auto min-h-[36px] sm:min-h-[40px] font-normal text-left border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] px-2 sm:px-3"
+            className={`w-full justify-between h-auto font-normal text-left border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] ${
+              isLarge ? 'min-h-[44px] px-3' : 'min-h-[36px] sm:min-h-[40px] px-2 sm:px-3'
+            }`}
           >
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+            <div className={`flex items-center flex-1 min-w-0 ${isLarge ? 'gap-2' : 'gap-1.5 sm:gap-2'}`}>
               {currentDisplay.isTemplate ? (
-                <div className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-brand-accent/10 flex-shrink-0">
-                  <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-brand-accent" />
+                <div className={`flex items-center justify-center rounded-full bg-brand-accent/10 flex-shrink-0 ${
+                  isLarge ? 'h-7 w-7' : 'h-6 w-6 sm:h-7 sm:w-7'
+                }`}>
+                  <FileText className={`text-brand-accent ${isLarge ? 'h-4 w-4' : 'h-3.5 w-3.5 sm:h-4 sm:w-4'}`} />
                 </div>
               ) : (
-                <div className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30 flex-shrink-0">
-                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600 dark:text-purple-400" />
+                <div className={`flex items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30 flex-shrink-0 ${
+                  isLarge ? 'h-7 w-7' : 'h-6 w-6 sm:h-7 sm:w-7'
+                }`}>
+                  <Users className={`text-purple-600 dark:text-purple-400 ${isLarge ? 'h-4 w-4' : 'h-3.5 w-3.5 sm:h-4 sm:w-4'}`} />
                 </div>
               )}
               <div className="flex flex-col min-w-0">
-                <span className="text-xs sm:text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                <span className={`font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate ${
+                  isLarge ? 'text-sm' : 'text-xs sm:text-sm'
+                }`}>
                   {loading ? 'Loading...' : currentDisplay.name}
                   {!currentDisplay.isTemplate && currentDisplay.enrollmentCount !== undefined && (
                     <span className="text-brand-accent ml-1">({currentDisplay.enrollmentCount})</span>
@@ -135,10 +147,10 @@ export function CohortSelector({
                 </span>
               </div>
             </div>
-            <ChevronDown className="ml-1.5 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 opacity-50" />
+            <ChevronDown className={`shrink-0 opacity-50 ${isLarge ? 'ml-2 h-4 w-4' : 'ml-1.5 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4'}`} />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[320px] p-0" align="start">
+        <PopoverContent className={`p-0 ${isLarge ? 'w-[var(--radix-popover-trigger-width)]' : 'w-[320px]'}`} align="start">
           {/* Search input */}
           <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
             <input

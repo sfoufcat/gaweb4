@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { X, Plus, Trash2, GripVertical, ImageIcon, Video, Youtube, PlayCircle, Monitor, Code, Sparkles, Lock, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
@@ -18,6 +17,9 @@ import { AIHelperModal } from '@/components/ai';
 import type { LandingPageDraft, ProgramContentDraft, WebsiteContentDraft, AIGenerationContext } from '@/lib/ai/types';
 import { hasPermission } from '@/lib/coach-permissions';
 import { Button } from '@/components/ui/button';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface StepConfigEditorProps {
   step: FunnelStep;
@@ -60,6 +62,9 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
   const [pendingBunnyVideoIds, setPendingBunnyVideoIds] = useState<string[]>([]);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Responsive: use drawer on mobile, dialog on desktop
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
 
   const hasPendingUploads = pendingBunnyVideoIds.length > 0;
 
@@ -162,37 +167,25 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
     }
   };
 
-  const content = (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={(e) => e.target === e.currentTarget && handleClose()}
-    >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-4xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-h-[90vh] overflow-hidden flex flex-col"
-      >
-        {/* Header */}
-        <div className="p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold font-albert text-text-primary dark:text-[#f5f5f8] capitalize">
-              {step.type.replace(/_/g, ' ')} Configuration
-            </h3>
-            <button
-              onClick={handleClose}
-              className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
-            </button>
-          </div>
+  const modalContent = (
+    <>
+      {/* Header */}
+      <div className="p-4 lg:p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold font-albert text-text-primary dark:text-[#f5f5f8] capitalize">
+            {step.type.replace(/_/g, ' ')} Configuration
+          </h3>
+          <button
+            onClick={handleClose}
+            className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+          </button>
         </div>
+      </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6 font-albert overscroll-contain">
+      {/* Content */}
+      <div className="p-4 lg:p-6 overflow-y-auto flex-1 space-y-6 font-albert overscroll-contain">
           {/* Step Name - shown for all step types */}
           <div>
             <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Step Name</label>
@@ -338,29 +331,60 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex gap-3">
-          <button
-            onClick={handleClose}
-            className="flex-1 py-2 px-4 text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex-1 py-2 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors"
-          >
-            {isSaving ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
+      {/* Footer */}
+      <div className="p-4 lg:p-6 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex gap-3">
+        <button
+          onClick={handleClose}
+          className="flex-1 py-2 px-4 text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="flex-1 py-2 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors"
+        >
+          {isSaving ? 'Saving...' : 'Save'}
+        </button>
+      </div>
+    </>
   );
 
+  // Desktop: Dialog
+  if (isDesktop) {
+    return (
+      <>
+        <Dialog open onOpenChange={(open) => !open && handleClose()}>
+          <DialogContent className="max-w-4xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl bg-white dark:bg-[#171b22]" hideCloseButton>
+            <DialogHeader className="sr-only">
+              <DialogTitle>{step.type.replace(/_/g, ' ')} Configuration</DialogTitle>
+            </DialogHeader>
+            {modalContent}
+          </DialogContent>
+        </Dialog>
+        <DiscardUploadDialog
+          isOpen={showDiscardDialog}
+          onStay={handleDiscardCancel}
+          onDiscard={handleDiscardConfirm}
+          isDeleting={isDeleting}
+          title="Discard Uploaded Video?"
+          description="You have an uploaded video that hasn't been saved. If you leave now, the video will be permanently deleted."
+        />
+      </>
+    );
+  }
+
+  // Mobile: Drawer (slideup)
   return (
     <>
-      {createPortal(content, document.body)}
+      <Drawer open onOpenChange={(open) => !open && handleClose()}>
+        <DrawerContent className="max-h-[90vh] flex flex-col bg-white dark:bg-[#171b22]">
+          <DrawerHeader className="sr-only">
+            <DrawerTitle>{step.type.replace(/_/g, ' ')} Configuration</DrawerTitle>
+          </DrawerHeader>
+          {modalContent}
+        </DrawerContent>
+      </Drawer>
       <DiscardUploadDialog
         isOpen={showDiscardDialog}
         onStay={handleDiscardCancel}

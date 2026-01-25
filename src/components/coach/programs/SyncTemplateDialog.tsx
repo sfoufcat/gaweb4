@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Users, User, Loader2, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { Users, User, Loader2, CheckCircle2, AlertCircle, Sparkles, FileText, Palette, MessageSquare, ListChecks, Target, StickyNote, Repeat, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -71,14 +71,14 @@ const DEFAULT_SYNC_FIELDS: SyncFieldOptions = {
   syncHabits: false,
 };
 
-const FIELD_OPTIONS: { key: keyof SyncFieldOptions; label: string; icon?: string }[] = [
-  { key: 'syncName', label: 'Week name & description' },
-  { key: 'syncTheme', label: 'Week theme' },
-  { key: 'syncPrompt', label: 'Weekly prompt' },
-  { key: 'syncTasks', label: 'Tasks' },
-  { key: 'syncFocus', label: 'Focus items' },
-  { key: 'syncNotes', label: 'Notes' },
-  { key: 'syncHabits', label: 'Habits' },
+const FIELD_OPTIONS: { key: keyof SyncFieldOptions; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { key: 'syncName', label: 'Week name & description', icon: FileText },
+  { key: 'syncTheme', label: 'Week theme', icon: Palette },
+  { key: 'syncPrompt', label: 'Weekly prompt', icon: MessageSquare },
+  { key: 'syncTasks', label: 'Tasks', icon: ListChecks },
+  { key: 'syncFocus', label: 'Focus items', icon: Target },
+  { key: 'syncNotes', label: 'Notes', icon: StickyNote },
+  { key: 'syncHabits', label: 'Habits', icon: Repeat },
 ];
 
 // ============================================================================
@@ -211,22 +211,38 @@ function SyncContent({
             {allFieldsSelected ? 'Deselect all' : 'Select all'}
           </button>
         </div>
-        <div className="space-y-1">
-          {FIELD_OPTIONS.map(({ key, label }) => (
-            <label
-              key={key}
-              className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer group
-                hover:bg-brand-accent/5 dark:hover:bg-brand-accent/10 transition-colors"
-            >
-              <BrandedCheckbox
-                checked={syncFields[key]}
-                onChange={() => toggleField(key)}
-              />
-              <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors">
-                {label}
-              </span>
-            </label>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {FIELD_OPTIONS.map(({ key, label, icon: Icon }) => {
+            const isSelected = syncFields[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => toggleField(key)}
+                className={`relative flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all duration-200 text-left ${
+                  isSelected
+                    ? 'border-brand-accent bg-brand-accent/5 dark:bg-brand-accent/10'
+                    : 'border-[#e1ddd8] dark:border-[#2a2f3a] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+                }`}
+              >
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                  isSelected ? 'bg-brand-accent/15' : 'bg-[#f3f1ef] dark:bg-[#262b35]'
+                }`}>
+                  <Icon className={`w-4.5 h-4.5 transition-colors ${isSelected ? 'text-brand-accent' : 'text-[#8a8580] dark:text-[#6b7280]'}`} />
+                </div>
+                <span className={`text-sm font-medium transition-colors ${
+                  isSelected ? 'text-brand-accent' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                }`}>
+                  {label}
+                </span>
+                {isSelected && (
+                  <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -236,27 +252,51 @@ function SyncContent({
           <span className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 block">
             Apply to
           </span>
-          <div className="space-y-1">
-            <label className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer hover:bg-brand-accent/5 dark:hover:bg-brand-accent/10 transition-colors">
-              <BrandedRadio
-                checked={targetMode === 'all'}
-                onChange={() => handleTargetModeChange('all')}
-                name="targetMode"
-              />
-              <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => handleTargetModeChange('all')}
+              className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all duration-200 text-left ${
+                targetMode === 'all'
+                  ? 'border-brand-accent bg-brand-accent/5 dark:bg-brand-accent/10'
+                  : 'border-[#e1ddd8] dark:border-[#2a2f3a] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+              }`}
+            >
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                targetMode === 'all'
+                  ? 'border-brand-accent bg-brand-accent'
+                  : 'border-[#d1cdc8] dark:border-[#3a4150]'
+              }`}>
+                {targetMode === 'all' && <Check className="w-3 h-3 text-white" />}
+              </div>
+              <span className={`text-sm font-medium transition-colors ${
+                targetMode === 'all' ? 'text-brand-accent' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+              }`}>
                 All {targetLabelPlural} ({targets.length})
               </span>
-            </label>
-            <label className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer hover:bg-brand-accent/5 dark:hover:bg-brand-accent/10 transition-colors">
-              <BrandedRadio
-                checked={targetMode === 'select'}
-                onChange={() => handleTargetModeChange('select')}
-                name="targetMode"
-              />
-              <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                Select specific {targetLabelPlural}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTargetModeChange('select')}
+              className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all duration-200 text-left ${
+                targetMode === 'select'
+                  ? 'border-brand-accent bg-brand-accent/5 dark:bg-brand-accent/10'
+                  : 'border-[#e1ddd8] dark:border-[#2a2f3a] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+              }`}
+            >
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                targetMode === 'select'
+                  ? 'border-brand-accent bg-brand-accent'
+                  : 'border-[#d1cdc8] dark:border-[#3a4150]'
+              }`}>
+                {targetMode === 'select' && <Check className="w-3 h-3 text-white" />}
+              </div>
+              <span className={`text-sm font-medium transition-colors ${
+                targetMode === 'select' ? 'text-brand-accent' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+              }`}>
+                Select specific
               </span>
-            </label>
+            </button>
           </div>
 
           {targetMode === 'select' && (
@@ -316,21 +356,34 @@ function SyncContent({
       )}
 
       {/* Preserve data option */}
-      <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
-        <label className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer group hover:bg-brand-accent/5 dark:hover:bg-brand-accent/10 transition-colors">
-          <BrandedCheckbox
-            checked={preserveData}
-            onChange={handlePreserveDataChange}
-          />
-          <div>
-            <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors block">
+      <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+        <button
+          type="button"
+          onClick={handlePreserveDataChange}
+          className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all duration-200 text-left ${
+            preserveData
+              ? 'border-brand-accent bg-brand-accent/5 dark:bg-brand-accent/10'
+              : 'border-[#e1ddd8] dark:border-[#2a2f3a] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+          }`}
+        >
+          <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+            preserveData
+              ? 'border-brand-accent bg-brand-accent'
+              : 'border-[#d1cdc8] dark:border-[#3a4150]'
+          }`}>
+            {preserveData && <Check className="w-3.5 h-3.5 text-white" />}
+          </div>
+          <div className="flex-1">
+            <span className={`text-sm font-medium block transition-colors ${
+              preserveData ? 'text-brand-accent' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+            }`}>
               Preserve {targetLabel}-specific data
             </span>
             <span className="text-xs text-text-muted">
               Keep existing notes, recordings, and custom links
             </span>
           </div>
-        </label>
+        </button>
       </div>
 
       {/* Error/Success messages */}
@@ -650,7 +703,7 @@ export function SyncTemplateDialog({
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden rounded-2xl">
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden rounded-2xl">
           <DialogHeader className="sr-only">
             <DialogTitle>{dialogTitle}</DialogTitle>
             <DialogDescription>{dialogDesc}</DialogDescription>

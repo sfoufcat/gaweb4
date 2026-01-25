@@ -67,7 +67,7 @@ export function VideoCard({ video }: VideoCardProps) {
         </div>
 
         {/* Duration badge */}
-        {video.durationSeconds && (
+        {video.durationSeconds != null && video.durationSeconds > 0 && (
           <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs font-medium rounded px-1.5 py-0.5 flex items-center gap-1 font-albert">
             <Clock className="w-3 h-3" />
             {formatDuration(video.durationSeconds)}

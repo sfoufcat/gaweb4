@@ -1516,7 +1516,7 @@ export type ResourceDayTag = 'week' | 'daily' | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export interface WeekResourceAssignment {
   id: string;                     // Unique ID for this assignment
-  resourceType: 'course' | 'article' | 'download' | 'link' | 'questionnaire';
+  resourceType: 'course' | 'article' | 'download' | 'link' | 'questionnaire' | 'video';
   resourceId: string;             // The content ID
 
   // Day targeting (mirrors task dayTag)
@@ -5226,7 +5226,8 @@ export interface UnifiedEvent {
   hasCallRecording?: boolean;            // Whether recording exists
   recordingStatus?: 'recording' | 'processing' | 'ready' | 'failed';
   streamVideoCallId?: string;            // Stream Video call ID
-  generateSummary?: boolean;             // Per-event override for auto-generation
+  autoGenerateSummary?: boolean;         // Auto-generate summary when recording available (uses 1 credit)
+  bunnyVideoId?: string;                 // Bunny Stream video ID for uploaded recordings
   meetingUrl?: string;                   // Zoom/Google Meet/manual link
   meetingProvider?: 'zoom' | 'google_meet' | 'stream' | 'manual';
   

@@ -35,6 +35,7 @@ interface ClientSelectorProps {
   onChange: (context: ClientViewContext) => void;
   loading?: boolean;
   className?: string;
+  size?: 'default' | 'large';
 }
 
 export function ClientSelector({
@@ -43,6 +44,7 @@ export function ClientSelector({
   onChange,
   loading = false,
   className = '',
+  size = 'default',
 }: ClientSelectorProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -145,6 +147,8 @@ export function ClientSelector({
     setSearchTerm('');
   };
 
+  const isLarge = size === 'large';
+
   return (
     <div className={className}>
       <Popover open={open} onOpenChange={setOpen}>
@@ -153,12 +157,16 @@ export function ClientSelector({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between h-auto min-h-[36px] sm:min-h-[40px] font-normal text-left border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] px-2 sm:px-3"
+            className={`w-full justify-between h-auto font-normal text-left border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] ${
+              isLarge ? 'min-h-[44px] px-3' : 'min-h-[36px] sm:min-h-[40px] px-2 sm:px-3'
+            }`}
           >
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+            <div className={`flex items-center flex-1 min-w-0 ${isLarge ? 'gap-2' : 'gap-1.5 sm:gap-2'}`}>
               {currentDisplay.isTemplate ? (
-                <div className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-brand-accent/10 flex-shrink-0">
-                  <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-brand-accent" />
+                <div className={`flex items-center justify-center rounded-full bg-brand-accent/10 flex-shrink-0 ${
+                  isLarge ? 'h-7 w-7' : 'h-6 w-6 sm:h-7 sm:w-7'
+                }`}>
+                  <FileText className={`text-brand-accent ${isLarge ? 'h-4 w-4' : 'h-3.5 w-3.5 sm:h-4 sm:w-4'}`} />
                 </div>
               ) : currentDisplay.imageUrl ? (
                 <Image
@@ -166,28 +174,34 @@ export function ClientSelector({
                   alt={currentDisplay.name}
                   width={28}
                   height={28}
-                  className="rounded-full flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7"
+                  className={`rounded-full flex-shrink-0 ${isLarge ? 'w-7 h-7' : 'w-6 h-6 sm:w-7 sm:h-7'}`}
                 />
               ) : (
-                <div className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
-                  <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-text-secondary dark:text-[#7d8190]" />
+                <div className={`flex items-center justify-center rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0 ${
+                  isLarge ? 'h-7 w-7' : 'h-6 w-6 sm:h-7 sm:w-7'
+                }`}>
+                  <User className={`text-text-secondary dark:text-[#7d8190] ${isLarge ? 'h-4 w-4' : 'h-3.5 w-3.5 sm:h-4 sm:w-4'}`} />
                 </div>
               )}
               <div className="flex flex-col min-w-0">
-                <span className="text-xs sm:text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                <span className={`font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate ${
+                  isLarge ? 'text-sm' : 'text-xs sm:text-sm'
+                }`}>
                   {loading ? 'Loading...' : currentDisplay.name}
                 </span>
                 {currentDisplay.subtitle && (
-                  <span className="text-[10px] sm:text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                  <span className={`text-[#5f5a55] dark:text-[#b2b6c2] truncate ${
+                    isLarge ? 'text-xs' : 'text-[10px] sm:text-xs'
+                  }`}>
                     {currentDisplay.subtitle}
                   </span>
                 )}
               </div>
             </div>
-            <ChevronDown className="ml-1.5 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 opacity-50" />
+            <ChevronDown className={`shrink-0 opacity-50 ${isLarge ? 'ml-2 h-4 w-4' : 'ml-1.5 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4'}`} />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[320px] p-0" align="start">
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
           {/* Search input */}
           <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
             <input

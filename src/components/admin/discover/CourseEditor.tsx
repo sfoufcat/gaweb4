@@ -464,7 +464,7 @@ export function CourseEditor({
               disabled={saving || !formData.title.trim()}
               className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert text-sm sm:text-base px-3 sm:px-4"
             >
-              {saving ? 'Saving...' : isEditing ? 'Update' : 'Create'}
+              {saving ? 'Saving...' : isEditing ? 'Save' : 'Create'}
             </Button>
           </div>
         </div>

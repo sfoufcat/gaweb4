@@ -70,7 +70,7 @@ export function MeetingProviderSelector({
   label = 'Meeting Link',
   savedMeetingLink,
 }: MeetingProviderSelectorProps) {
-  const { zoom, googleMeet, isLoading } = useCoachIntegrations();
+  const { zoom, googleMeet, isLoading, error } = useCoachIntegrations();
 
   // Filter providers based on allowInApp
   const availableProviders = PROVIDERS.filter(
@@ -303,6 +303,11 @@ export function MeetingProviderSelector({
         </div>
       </div>
     );
+  }
+
+  // If there's an error loading integrations, show the selector anyway (will default to manual)
+  if (error) {
+    console.warn('[MeetingProviderSelector] Integration check failed:', error);
   }
 
   return (

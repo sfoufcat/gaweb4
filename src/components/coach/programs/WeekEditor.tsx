@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment, ProgramCohort, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire, DayCourseAssignment, WeekResourceAssignment } from '@/types';
-import type { DiscoverCourse } from '@/types/discover';
-import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, CalendarPlus, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video, AlertCircle } from 'lucide-react';
+import type { DiscoverCourse, DiscoverVideo } from '@/types/discover';
+import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, CalendarPlus, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video, AlertCircle, Save } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -24,8 +24,10 @@ import { UnifiedResourcesTabs, type ContentCompletionData } from './UnifiedResou
 import { CreditPurchaseModal } from '@/components/coach/CreditPurchaseModal';
 import { DayPreviewPopup } from './DayPreviewPopup';
 import { ScheduleCallModal } from '@/components/scheduling';
-import { ScheduleCohortEventModal } from '@/components/scheduling/ScheduleCohortEventModal';
+import { CreateEventModal } from '@/components/scheduling/CreateEventModal';
 import { GenerateSummaryButton } from '@/components/scheduling/GenerateSummaryButton';
+import { InlineRecordingUpload } from '@/components/scheduling/InlineRecordingUpload';
+import { VideoPlayer } from '@/components/video/VideoPlayer';
 // Audio utilities for duration detection
 import { getAudioDuration } from '@/lib/audio-compression';
 
@@ -58,12 +60,13 @@ interface WeekEditorProps {
   // Available items for manual linking
   availableCallSummaries?: CallSummary[];
   availableEvents?: UnifiedEvent[];
-  // Resources - articles, downloads, links, questionnaires, courses
+  // Resources - articles, downloads, links, questionnaires, courses, videos
   availableArticles?: DiscoverArticle[];
   availableDownloads?: DiscoverDownload[];
   availableLinks?: DiscoverLink[];
   availableQuestionnaires?: Questionnaire[];
   availableCourses?: DiscoverCourse[];
+  availableVideos?: DiscoverVideo[];
   // Client view mode (for 1:1 programs)
   isClientView?: boolean;
   clientName?: string;
@@ -498,6 +501,7 @@ export function WeekEditor({
   availableLinks = EMPTY_ARRAY,
   availableQuestionnaires = EMPTY_ARRAY,
   availableCourses = EMPTY_ARRAY,
+  availableVideos = EMPTY_ARRAY,
   isClientView = false,
   clientName,
   clientUserId,
@@ -2145,7 +2149,7 @@ export function WeekEditor({
   return (
     <div className="space-y-3 sm:space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 sm:gap-3">
           <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             {week.name || (week.weekNumber === 0 ? 'Onboarding' : week.weekNumber === -1 ? 'Closing' : `Week ${week.weekNumber}`)}
@@ -2169,6 +2173,41 @@ export function WeekEditor({
           )}
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Save/Discard buttons - show when there are unsaved changes */}
+          <AnimatePresence>
+            {editorContext?.hasUnsavedChanges && (
+              <motion.div
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.15 }}
+                className="flex items-center gap-2"
+              >
+                <button
+                  onClick={() => editorContext.discardAllChanges()}
+                  disabled={editorContext.isSaving}
+                  className="flex items-center gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 text-xs sm:text-sm text-[#5f5a55] hover:text-red-500 dark:text-[#b2b6c2] dark:hover:text-red-400 transition-colors disabled:opacity-50 rounded-lg border border-[#e1ddd8] dark:border-[#363d4a] hover:border-red-300 dark:hover:border-red-500/50"
+                  title="Discard all changes"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="hidden sm:inline">Discard</span>
+                </button>
+                <Button
+                  onClick={() => editorContext.saveAllChanges()}
+                  disabled={editorContext.isSaving}
+                  className="flex items-center gap-1.5 h-8 sm:h-9 px-3 sm:px-4 bg-brand-accent hover:bg-brand-accent/90 text-white text-xs sm:text-sm font-medium"
+                >
+                  {editorContext.isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  <span>Save</span>
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {onFillWithAI && (
             <Button
               variant="outline"
@@ -2236,7 +2275,7 @@ export function WeekEditor({
             value={formData.theme}
             onChange={(e) => { setFormData({ ...formData, theme: e.target.value }); }}
             placeholder="e.g., Building Foundations"
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
           />
         </div>
 
@@ -2250,7 +2289,7 @@ export function WeekEditor({
             onChange={(e) => { setFormData({ ...formData, description: e.target.value }); }}
             placeholder="What clients will accomplish this week..."
             rows={2}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
           />
         </div>
 
@@ -2264,7 +2303,7 @@ export function WeekEditor({
             onChange={(e) => { setFormData({ ...formData, weeklyPrompt: e.target.value }); }}
             placeholder="Motivational message or guidance for this week..."
             rows={2}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
           />
         </div>
       </CollapsibleSection>
@@ -2330,7 +2369,7 @@ export function WeekEditor({
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addTask()}
                 placeholder="Add a task..."
-                className="flex-1 px-3 py-2 text-sm bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
+                className="flex-1 px-3 py-2 text-sm bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
               />
               <Button onClick={addTask} variant="outline" size="sm">
                 <Plus className="w-4 h-4" />
@@ -2512,7 +2551,7 @@ export function WeekEditor({
                   onChange={(e) => setNewFocus(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addFocus()}
                   placeholder="Add outcome..."
-                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
                 />
                 <Button onClick={addFocus} variant="outline" size="sm">
                   <Plus className="w-4 h-4" />
@@ -2529,7 +2568,7 @@ export function WeekEditor({
         icon={Video}
         description="Calls, recordings, and summaries"
         defaultOpen={false}
-        hasContent={formData.linkedCallEventIds?.length > 0 || formData.linkedSummaryIds?.length > 0}
+        hasContent={formData.linkedCallEventIds?.length > 0}
       >
         {/* Template mode message */}
         {!isClientView && !isCohortMode ? (
@@ -2538,27 +2577,20 @@ export function WeekEditor({
               <Info className="w-5 h-5 text-[#8c8c8c] dark:text-[#7d8190] mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
-                  Schedule calls when viewing {programType === 'group' ? 'a cohort' : 'a client'}
+                  Schedule sessions when viewing {programType === 'group' ? 'a cohort' : 'a client'}
                 </p>
                 <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
                   {programType === 'group'
-                    ? 'Select a cohort from the dropdown above to schedule calls, link summaries, and upload recordings.'
-                    : 'Select a client from the dropdown above to schedule calls, link summaries, and upload recordings.'}
+                    ? 'Select a cohort from the dropdown above to schedule sessions.'
+                    : 'Select a client from the dropdown above to schedule sessions.'}
                 </p>
               </div>
             </div>
           </div>
         ) : (
           <>
-            {/* Scheduled Calls */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                <Phone className="w-4 h-4 inline mr-1.5" />
-                Scheduled Calls
-              </label>
-              <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-                Calls scheduled for this week
-              </p>
+            {/* Sessions list */}
+            <div>
 
               {/* Currently linked events */}
               {formData.linkedCallEventIds.length > 0 && (
@@ -2659,6 +2691,39 @@ export function WeekEditor({
                           </button>
                         </div>
                         
+                        {/* Video Player for past sessions with recording */}
+                        {isPast && hasRecording && event?.recordingUrl && (
+                          <div className="mt-3">
+                            <VideoPlayer
+                              src={event.recordingUrl}
+                              poster={event.coverImageUrl}
+                              className="rounded-lg overflow-hidden"
+                              aspectRatio="16:9"
+                            />
+                            <a
+                              href={event.recordingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 mt-2 text-xs text-brand-accent hover:underline font-medium"
+                            >
+                              <Video className="w-3.5 h-3.5" />
+                              View Full Recording
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Upload Recording for past sessions without recording */}
+                        {isPast && !hasRecording && !isProcessing && (
+                          <div className="mt-3 pl-6">
+                            <InlineRecordingUpload
+                              eventId={eventId}
+                              onUploadComplete={() => {
+                                onCallScheduled?.();
+                              }}
+                            />
+                          </div>
+                        )}
+
                         {/* Generate Summary Button */}
                         {canGenerateSummary && (
                           <div className="mt-2 pl-6">
@@ -2683,191 +2748,95 @@ export function WeekEditor({
                 </div>
               )}
 
-              {/* Action buttons */}
-              <div className="flex flex-wrap gap-2">
-                {/* Schedule Call button (1:1 programs) */}
-                {isClientView && clientUserId && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowScheduleCallModal(true)}
-                    className="flex items-center gap-1.5"
-                  >
-                    <CalendarPlus className="w-4 h-4" />
-                    Schedule Call
-                  </Button>
-                )}
+              {/* Action buttons - only show when there are sessions */}
+              {formData.linkedCallEventIds.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {/* Schedule Call button (1:1 programs) */}
+                  {isClientView && clientUserId && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowScheduleCallModal(true)}
+                      className="flex items-center gap-1.5"
+                    >
+                      <CalendarPlus className="w-4 h-4" />
+                      Schedule Call
+                    </Button>
+                  )}
 
-                {/* Schedule Event button (cohort/group programs) */}
-                {isCohortMode && cohortId && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowScheduleCohortModal(true)}
-                    className="flex items-center gap-1.5"
-                  >
-                    <CalendarPlus className="w-4 h-4" />
-                    Schedule Event
-                  </Button>
-                )}
+                  {/* Schedule Session button (cohort/group programs) */}
+                  {isCohortMode && cohortId && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowScheduleCohortModal(true)}
+                      className="flex items-center gap-1.5"
+                    >
+                      <CalendarPlus className="w-4 h-4" />
+                      Schedule Session
+                    </Button>
+                  )}
 
-                {/* Link existing call dropdown */}
-                {availableEventsToLink.length > 0 && (
-                  <select
-                    className="px-3 py-1.5 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-                    value=""
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        addEventLink(e.target.value);
-                      }
-                    }}
-                  >
-                    <option value="">Link existing call...</option>
-                    {availableEventsToLink.map((event) => (
-                      <option key={event.id} value={event.id}>
-                        {event.title || 'Call'} - {event.startDateTime ? new Date(event.startDateTime).toLocaleDateString() : 'No date'}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
+                  {/* Link existing call dropdown */}
+                  {availableEventsToLink.length > 0 && (
+                    <select
+                      className="px-3 py-1.5 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          addEventLink(e.target.value);
+                        }
+                      }}
+                    >
+                      <option value="">Link existing call...</option>
+                      {availableEventsToLink.map((event) => (
+                        <option key={event.id} value={event.id}>
+                          {event.title || 'Call'} - {event.startDateTime ? new Date(event.startDateTime).toLocaleDateString() : 'No date'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
 
-              {formData.linkedCallEventIds.length === 0 && availableEventsToLink.length === 0 && !isClientView && (
-                <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic">
-                  No calls scheduled for this week
-                </p>
+              {/* Empty state - beautiful centered design */}
+              {formData.linkedCallEventIds.length === 0 && (
+                <div className="py-8 text-center">
+                  <div className="w-14 h-14 bg-[#f3f1ef] dark:bg-[#272d38] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Video className="w-7 h-7 text-[#a7a39e] dark:text-[#7d8190]" />
+                  </div>
+                  <p className="text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                    No sessions yet
+                  </p>
+                  <p className="text-[13px] text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-4">
+                    {isClientView
+                      ? 'Schedule a call to meet with your client'
+                      : isCohortMode
+                      ? 'Schedule a session for your cohort'
+                      : 'Select a cohort or client to schedule sessions'}
+                  </p>
+                  {/* CTA buttons */}
+                  {isClientView && clientUserId && (
+                    <Button
+                      onClick={() => setShowScheduleCallModal(true)}
+                      className="gap-1.5"
+                    >
+                      <CalendarPlus className="w-4 h-4" />
+                      Schedule Call
+                    </Button>
+                  )}
+                  {isCohortMode && cohortId && (
+                    <Button
+                      onClick={() => setShowScheduleCohortModal(true)}
+                      className="gap-1.5"
+                    >
+                      <CalendarPlus className="w-4 h-4" />
+                      Schedule Session
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
-
-        {/* Linked Call Summaries */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <MessageSquare className="w-4 h-4 inline mr-1.5" />
-            Linked Call Summaries
-          </label>
-          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-            Call summaries linked to this week for context and action items
-          </p>
-
-          {/* Currently linked summaries */}
-          {formData.linkedSummaryIds.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {formData.linkedSummaryIds.map((summaryId) => {
-                const summary = availableCallSummaries.find(s => s.id === summaryId);
-                const summaryLabel = summary ? getSummaryLabel(summary) : `Summary ${summaryId.slice(0, 8)}...`;
-                const summaryStatus = summary?.status || 'completed';
-                const isProcessing = summaryStatus === 'processing';
-                const isFailed = summaryStatus === 'failed';
-                const isReady = summaryStatus === 'completed';
-
-                return (
-                  <div
-                    key={summaryId}
-                    className={cn(
-                      "flex items-center gap-2 p-3 rounded-xl group",
-                      isFailed
-                        ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
-                        : isProcessing
-                        ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
-                        : "bg-[#faf8f6] dark:bg-[#1e222a]"
-                    )}
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="w-4 h-4 text-amber-500 animate-spin flex-shrink-0" />
-                    ) : isFailed ? (
-                      <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    ) : (
-                      <MessageSquare className="w-4 h-4 text-brand-accent flex-shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <span className="block text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                        {summaryLabel}
-                      </span>
-                      {isProcessing && (
-                        <span className="text-xs text-amber-600 dark:text-amber-400">
-                          Generating summary...
-                        </span>
-                      )}
-                      {isFailed && (
-                        <span className="text-xs text-red-600 dark:text-red-400">
-                          {summary?.processingError || 'Summary generation failed'}
-                        </span>
-                      )}
-                      {isReady && summary?.callStartedAt && (
-                        <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                          {new Date(summary.callStartedAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {isReady && (
-                        <button
-                          onClick={() => {
-                            if (summary) {
-                              setViewingSummary(summary);
-                              setIsViewModalOpen(true);
-                            }
-                          }}
-                          className="px-2 py-1 text-xs text-brand-accent hover:bg-brand-accent/10 rounded-lg font-medium transition-colors"
-                        >
-                          View
-                        </button>
-                      )}
-                      {isFailed && (
-                        <button
-                          onClick={() => {
-                            // TODO: Implement retry functionality
-                            console.log('Retry summary generation for:', summaryId);
-                          }}
-                          className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg font-medium transition-colors"
-                        >
-                          Retry
-                        </button>
-                      )}
-                      <button
-                        onClick={() => removeSummaryLink(summaryId)}
-                        className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Add summary dropdown - using ResourceLinkDropdown */}
-          <ResourceLinkDropdown
-            placeholder="Add a call summary..."
-            icon={MessageSquare}
-            groups={[
-              {
-                label: 'Available Summaries',
-                items: availableSummariesToLink.map(s => ({
-                  id: s.id,
-                  title: clientName || cohortName || `Summary ${s.id.slice(0, 8)}...`,
-                  subtitle: formatSummaryDate(s.createdAt) || undefined,
-                })),
-                iconClassName: 'text-brand-accent',
-              },
-            ]}
-            onSelect={addSummaryLink}
-            onDelete={deleteSummary}
-            pageSize={10}
-          />
-
-          {formData.linkedSummaryIds.length === 0 && availableSummariesToLink.length === 0 && (
-            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-2">
-              No call summaries available to link
-            </p>
-          )}
-        </div>
 
         {/* Summary View Modal */}
         <CallSummaryViewModal
@@ -2900,269 +2869,6 @@ export function WeekEditor({
             editorContext?.setBypassBeforeUnload(false);
           }}
         />
-
-        {/* Coach Recording Upload */}
-        <div>
-          <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-            <Mic className="w-4 h-4 inline mr-1.5" />
-            Coach Recording
-          </label>
-          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-            Upload a recording to generate an AI summary
-            {(isClientView && clientUserId) || isCohortMode ? (
-              <span className="text-brand-accent ml-1">(Summary will be linked to this week)</span>
-            ) : null}
-          </p>
-
-          {/* Already has a recording URL */}
-          {formData.coachRecordingUrl && !recordingFile && recordingStatus === 'idle' ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg">
-                <Mic className="w-4 h-4 text-brand-accent" />
-                <a
-                  href={formData.coachRecordingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-brand-accent hover:underline truncate flex-1"
-                >
-                  {formData.coachRecordingUrl.split('/').pop() || 'Recording'}
-                </a>
-                <button
-                  onClick={() => setFormData({ ...formData, coachRecordingUrl: '', coachRecordingNotes: '' })}
-                  className="p-1 text-[#a7a39e] hover:text-red-500 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <textarea
-                value={formData.coachRecordingNotes}
-                onChange={(e) => setFormData({ ...formData, coachRecordingNotes: e.target.value })}
-                placeholder="Add notes or transcript from this recording..."
-                rows={3}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none text-sm"
-              />
-            </div>
-          ) : recordingFile && recordingStatus === 'idle' ? (
-            /* File selected, ready to upload */
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg">
-                <Mic className="w-4 h-4 text-brand-accent" />
-                <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate flex-1">
-                  {recordingFile.name}
-                </span>
-                <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                  {(recordingFile.size / (1024 * 1024)).toFixed(1)} MB
-                </span>
-                <button
-                  onClick={() => { setRecordingFile(null); setRecordingError(null); }}
-                  className="p-1 text-[#a7a39e] hover:text-red-500 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="flex gap-2">
-                {(isClientView && clientUserId) || isCohortMode ? (
-                  <Button
-                    onClick={handleUploadAndGenerateSummary}
-                    className="flex-1 flex items-center justify-center gap-2"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    Generate Summary
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => handleSimpleUpload(recordingFile)}
-                    className="flex-1 flex items-center justify-center gap-2"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Upload Recording
-                  </Button>
-                )}
-              </div>
-              {/* Guidance message for template mode */}
-              {!isClientView && !isCohortMode && (
-                <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] italic">
-                  {programType === 'group'
-                    ? 'Select a cohort to upload recordings and generate AI summaries'
-                    : 'Switch to a client view to generate AI summaries'}
-                </p>
-              )}
-            </div>
-          ) : recordingStatus === 'uploading' ? (
-            /* Uploading state */
-            <div className="p-4 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg">
-              <div className="flex items-center gap-3 mb-2">
-                <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
-                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  Uploading... {uploadProgress}%
-                </span>
-              </div>
-              <div className="w-full h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-brand-accent transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          ) : recordingStatus === 'processing' || recordingStatus === 'background' ? (
-            /* Processing/Background state - show detailed status with spinner */
-            <div className="p-4 border border-brand-accent/30 bg-brand-accent/5 rounded-lg relative">
-              {pendingRecordingId && (
-                <button
-                  onClick={handleCancelRecording}
-                  className="absolute top-2 right-2 p-1 text-[#8c8c8c] hover:text-red-500 transition-colors"
-                  aria-label="Cancel processing"
-                  title="Cancel processing"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-              <div className="flex items-center gap-3">
-                <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
-                <div>
-                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    {detailedStatus === 'uploaded' && 'Processing upload...'}
-                    {detailedStatus === 'transcribing' && 'Transcribing audio...'}
-                    {detailedStatus === 'summarizing' && 'Generating AI summary...'}
-                    {!detailedStatus && 'Processing...'}
-                  </p>
-                  <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                    You can leave this page. The summary will appear in Linked Call Summaries when ready.
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : recordingStatus === 'completed' ? (
-            /* Completed state - persistent until refresh */
-            <div className="p-4 border border-green-500/30 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-green-600" />
-                  <div>
-                    <p className="text-sm font-medium text-green-800 dark:text-green-300">
-                      Summary Generated
-                    </p>
-                    <p className="text-xs text-green-600 dark:text-green-400">
-                      Linked to this week&apos;s call summaries
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    setRecordingStatus('idle');
-                    setRecordingFile(null);
-                    setRecordingError(null);
-                    setPendingRecordingId(null);
-                  }}
-                  className="text-xs text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-200 underline underline-offset-2 transition-colors"
-                >
-                  Upload another
-                </button>
-              </div>
-            </div>
-          ) : recordingStatus === 'error' ? (
-            /* Error state with dismiss X */
-            <div className="p-4 border border-red-500/30 bg-red-50 dark:bg-red-900/20 rounded-lg relative">
-              <button
-                onClick={async () => {
-                  // Delete the failed recording from Firestore so it doesn't reappear on refresh
-                  if (pendingRecordingId) {
-                    try {
-                      await fetch(`/api/coach/recordings/${pendingRecordingId}/cancel`, {
-                        method: 'DELETE',
-                      });
-                    } catch (err) {
-                      console.error('Failed to delete recording:', err);
-                    }
-                  }
-                  setRecordingStatus('idle');
-                  setRecordingError(null);
-                  setPendingRecordingId(null);
-                }}
-                className="absolute top-2 right-2 p-1 text-red-400 hover:text-red-600 transition-colors"
-                aria-label="Dismiss"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              {recordingError?.includes('Insufficient credits') ? (
-                /* Insufficient credits - special layout with buy button */
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 pr-6">
-                  <div className="flex items-start gap-3 flex-1">
-                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-red-800 dark:text-red-300">
-                        Insufficient credits
-                      </p>
-                      <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-                        You need more credits to generate this summary
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setShowCreditModal(true)}
-                    className="shrink-0 bg-red-500 hover:bg-red-600 text-white text-xs px-4 py-2 h-auto font-medium shadow-sm self-center sm:self-auto"
-                  >
-                    Buy Credits
-                  </Button>
-                </div>
-              ) : (
-                /* Generic error */
-                <div className="flex items-start gap-3 pr-6">
-                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-red-800 dark:text-red-300">
-                      Processing failed
-                    </p>
-                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                      {recordingError || 'An error occurred while processing the recording'}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : !isClientView && !isCohortMode ? (
-            /* Template mode: Show disabled overlay */
-            <div className="relative border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-6 text-center bg-[#faf8f6] dark:bg-[#1e222a]/50">
-              <Upload className="w-8 h-8 text-[#c9c5c0] dark:text-[#4a4f5c] mx-auto mb-2" />
-              <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">
-                Recording uploads are not available for templates
-              </p>
-              <p className="text-xs text-[#a7a39e] dark:text-[#5f6470] font-albert">
-                {programType === 'group'
-                  ? 'Select a cohort above to upload recordings and generate AI summaries'
-                  : 'Select a client above to upload recordings and generate AI summaries'}
-              </p>
-            </div>
-          ) : (
-            /* Default: File selector */
-            <div className="relative border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-6 text-center hover:border-brand-accent/50 transition-colors">
-              <Upload className="w-8 h-8 text-[#a7a39e] dark:text-[#7d8190] mx-auto mb-2" />
-              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-                Drag & drop or click to upload
-              </p>
-              <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
-                MP3, MP4, WAV, M4A, or WebM up to 100MB
-              </p>
-              <input
-                type="file"
-                accept="audio/*,video/*"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    handleRecordingSelect(file);
-                  }
-                }}
-              />
-            </div>
-          )}
-
-          {/* Error message */}
-          {recordingError && recordingStatus === 'idle' && (
-            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{recordingError}</p>
-          )}
-        </div>
           </>
         )}
       </CollapsibleSection>
@@ -3179,6 +2885,7 @@ export function WeekEditor({
           resourceAssignments={formData.resourceAssignments}
           onResourceAssignmentsChange={handleResourceAssignmentsChange}
           availableCourses={availableCourses}
+          availableVideos={availableVideos}
           availableArticles={availableArticles}
           availableDownloads={availableDownloads}
           availableLinks={availableLinks}
@@ -3251,7 +2958,7 @@ export function WeekEditor({
                 onChange={(e) => setNewNote(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addNote()}
                 placeholder="Add note..."
-                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
               />
               <Button onClick={addNote} variant="outline" size="sm">
                 <Plus className="w-4 h-4" />
@@ -3272,7 +2979,7 @@ export function WeekEditor({
             onChange={(e) => setFormData({ ...formData, manualNotes: e.target.value })}
             placeholder="Add your notes from calls, observations, or planning..."
             rows={4}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
           />
         </div>
       </CollapsibleSection>
@@ -3324,22 +3031,14 @@ export function WeekEditor({
         />
       )}
 
-      {/* Schedule Cohort Event Modal (group programs) */}
+      {/* Schedule Session Modal (group programs - using CreateEventModal) */}
       {isCohortMode && cohortId && programId && (
-        <ScheduleCohortEventModal
+        <CreateEventModal
           isOpen={showScheduleCohortModal}
           onClose={() => setShowScheduleCohortModal(false)}
-          cohort={{
-            id: cohortId,
-            name: cohortName || cohorts?.find(c => c.id === cohortId)?.name || 'Cohort',
-            endDate: cohorts?.find(c => c.id === cohortId)?.endDate,
-          }}
           programId={programId}
-          programName={week.name || 'Program'}
+          cohortId={cohortId}
           instanceId={instanceId || undefined}
-          instanceStartDate={cohorts?.find(c => c.id === cohortId)?.startDate}
-          programLengthDays={days.length > 0 ? days.length : undefined}
-          includeWeekends={includeWeekends}
           onSuccess={() => {
             setShowScheduleCohortModal(false);
             onCallScheduled?.();

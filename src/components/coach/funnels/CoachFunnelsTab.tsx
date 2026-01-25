@@ -897,10 +897,10 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
               animate={{ opacity: 1, y: 0 }}
               className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 hover:border-[#d4d0cb] dark:hover:border-[#363c49] transition-colors"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-                <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+              <div className="flex flex-row items-center justify-between gap-2">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                   {/* Status indicator */}
-                  <div className={`w-2 h-2 rounded-full mt-1.5 sm:mt-0 ${funnel.isActive ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${funnel.isActive ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
                   
                   <div>
                     <div className="flex items-center gap-2">
@@ -922,13 +922,14 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-auto">
+                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                   {/* Quick actions */}
                   <button
                     onClick={() => handleEditSteps(funnel)}
-                    className="px-3 py-1.5 text-sm text-brand-accent hover:bg-brand-accent/5 dark:hover:bg-brand-accent/5 rounded-lg transition-colors"
+                    className="p-2 sm:px-3 sm:py-1.5 text-sm text-brand-accent hover:bg-brand-accent/5 dark:hover:bg-brand-accent/5 rounded-lg transition-colors"
                   >
-                    Edit Steps
+                    <Pencil className="w-4 h-4 sm:hidden" />
+                    <span className="hidden sm:inline">Edit Steps</span>
                   </button>
                   
                   <button

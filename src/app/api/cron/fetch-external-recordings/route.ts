@@ -2,9 +2,12 @@
  * Fetch External Recordings Cron Job
  *
  * Runs every 15 minutes to check for completed Zoom and Google Meet calls
- * and fetch their recording URLs. Does NOT auto-generate summaries.
+ * and fetch their recording URLs.
  *
- * Summaries are generated on-demand when coach clicks "Get Summary" button.
+ * If the event has `autoGenerateSummary: true`, will automatically trigger
+ * summary generation (deducting credits at generation time).
+ *
+ * Otherwise, summaries are generated on-demand when coach clicks "Get Summary" button.
  */
 
 import { NextResponse } from 'next/server';
@@ -12,6 +15,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getZoomRecordings } from '@/lib/integrations/zoom';
 import { findMeetRecordingByEventId } from '@/lib/integrations/google-drive';
+import { generateSummaryForEvent } from '@/lib/event-summary';
 import type { UnifiedEvent } from '@/types';
 
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -26,6 +30,7 @@ interface ProcessingResult {
   success: boolean;
   provider: string;
   recordingFound: boolean;
+  autoSummaryTriggered?: boolean;
   error?: string;
 }
 
@@ -98,14 +103,16 @@ export async function GET(request: Request) {
     const successful = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
     const recordingsFound = results.filter(r => r.recordingFound).length;
+    const autoSummariesTriggered = results.filter(r => r.autoSummaryTriggered).length;
     const duration = Date.now() - startTime;
 
-    console.log(`[CRON_RECORDINGS] Completed: ${recordingsFound} recordings found, ${failed} failed in ${duration}ms`);
+    console.log(`[CRON_RECORDINGS] Completed: ${recordingsFound} recordings found, ${autoSummariesTriggered} auto-summaries triggered, ${failed} failed in ${duration}ms`);
 
     return NextResponse.json({
       success: true,
       checked: eligibleEvents.length,
       recordingsFound,
+      autoSummariesTriggered,
       failed,
       duration,
       timestamp: new Date().toISOString(),
@@ -182,5 +189,20 @@ async function fetchEventRecording(event: UnifiedEvent): Promise<ProcessingResul
   });
 
   console.log(`[CRON_RECORDINGS] Saved recording URL for event ${eventId}`);
+
+  // Check if auto-summary generation is enabled
+  if (event.autoGenerateSummary) {
+    console.log(`[CRON_RECORDINGS] Auto-summary enabled for event ${eventId}, triggering generation`);
+    const summaryResult = await generateSummaryForEvent(eventId, true);
+    return {
+      eventId,
+      success: true,
+      provider: meetingProvider || 'unknown',
+      recordingFound: true,
+      autoSummaryTriggered: summaryResult.success,
+      error: summaryResult.error,
+    };
+  }
+
   return { eventId, success: true, provider: meetingProvider || 'unknown', recordingFound: true };
 }

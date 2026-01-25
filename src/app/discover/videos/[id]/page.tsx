@@ -232,7 +232,7 @@ export default function VideoDetailPage({ params }: VideoPageProps) {
 
             {/* Meta info */}
             <div className="flex items-center gap-3 flex-wrap">
-              {video.durationSeconds && (
+              {video.durationSeconds != null && video.durationSeconds > 0 && (
                 <div className="flex items-center gap-1.5 text-[#5f5a55] dark:text-[#b2b6c2]">
                   <Clock className="w-4 h-4" />
                   <span className="text-sm font-albert">{formatDuration(video.durationSeconds)}</span>

@@ -516,8 +516,8 @@ export function AdminVideosSection({
                     </div>
 
                     {/* Duration badge */}
-                    {video.durationSeconds && (
-                      <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/70 text-white text-xs font-medium rounded font-albert flex items-center gap-1">
+                    {video.durationSeconds != null && video.durationSeconds > 0 && (
+                      <div className="absolute bottom-2 right-2 text-white text-xs font-medium font-albert flex items-center gap-1 drop-shadow-md">
                         <Clock className="w-3 h-3" />
                         {formatDuration(video.durationSeconds)}
                       </div>

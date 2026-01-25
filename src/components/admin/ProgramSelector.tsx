@@ -123,13 +123,20 @@ export function ProgramSelector({
                 className="inline-flex items-center gap-1 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] text-xs px-2 py-0.5 rounded-full"
               >
                 {program.name}
-                <button
-                  type="button"
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => removeProgram(program.id, e)}
-                  className="hover:bg-black/10 dark:hover:bg-white/10 rounded-full p-0.5"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      removeProgram(program.id, e as unknown as React.MouseEvent);
+                    }
+                  }}
+                  className="hover:bg-black/10 dark:hover:bg-white/10 rounded-full p-0.5 cursor-pointer"
                 >
                   <X className="h-3 w-3" />
-                </button>
+                </span>
               </span>
             ))}
           </div>
