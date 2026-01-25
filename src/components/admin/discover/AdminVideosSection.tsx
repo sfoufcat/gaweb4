@@ -12,7 +12,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
@@ -23,11 +24,12 @@ import {
 } from '@/components/admin/ContentPricingFields';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { Search, X, Plus, Play, Clock, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import * as tus from 'tus-js-client';
 import type { DiscoverVideo, VideoStatus } from '@/types/discover';
+import { CreateVideoModal } from './CreateVideoModal';
 
-interface VideoFormDialogProps {
-  video: DiscoverVideo | null;
+// Simplified Edit Dialog (for existing videos)
+interface VideoEditDialogProps {
+  video: DiscoverVideo;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
@@ -35,48 +37,31 @@ interface VideoFormDialogProps {
   programsApiEndpoint: string;
 }
 
-function VideoFormDialog({
+function VideoEditDialog({
   video,
   isOpen,
   onClose,
   onSave,
   apiEndpoint,
   programsApiEndpoint,
-}: VideoFormDialogProps) {
-  const isEditing = !!video;
+}: VideoEditDialogProps) {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    bunnyVideoId: '',
-    videoStatus: 'uploading' as VideoStatus,
     customThumbnailUrl: '',
-    previewBunnyVideoId: '',
     programIds: [] as string[],
     order: 0,
     pricing: getDefaultPricingData() as ContentPricingData,
   });
-
-  // Upload states
-  const [mainVideoFile, setMainVideoFile] = useState<File | null>(null);
-  const [previewVideoFile, setPreviewVideoFile] = useState<File | null>(null);
-  const [mainUploadProgress, setMainUploadProgress] = useState(0);
-  const [previewUploadProgress, setPreviewUploadProgress] = useState(0);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  const mainInputRef = useRef<HTMLInputElement>(null);
-  const previewInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (video) {
+    if (video && isOpen) {
       setFormData({
         title: video.title || '',
         description: video.description || '',
-        bunnyVideoId: video.bunnyVideoId || '',
-        videoStatus: video.videoStatus || 'encoding',
         customThumbnailUrl: video.customThumbnailUrl || '',
-        previewBunnyVideoId: video.previewBunnyVideoId || '',
         programIds: video.programIds || [],
         order: video.order || 0,
         pricing: {
@@ -86,123 +71,24 @@ function VideoFormDialog({
           isPublic: video.isPublic !== false,
         },
       });
-    } else {
-      setFormData({
-        title: '',
-        description: '',
-        bunnyVideoId: '',
-        videoStatus: 'uploading',
-        customThumbnailUrl: '',
-        previewBunnyVideoId: '',
-        programIds: [],
-        order: 0,
-        pricing: getDefaultPricingData(),
-      });
+      setError(null);
     }
-    setMainVideoFile(null);
-    setPreviewVideoFile(null);
-    setMainUploadProgress(0);
-    setPreviewUploadProgress(0);
-    setUploadError(null);
-    setIsUploading(false);
   }, [video, isOpen]);
-
-  const uploadVideoToBundle = async (
-    file: File,
-    isPreview: boolean,
-    onProgress: (progress: number) => void
-  ): Promise<string> => {
-    // Get upload URL from API
-    const urlResponse = await fetch('/api/coach/discover-videos/get-upload-url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fileName: file.name,
-        fileSize: file.size,
-        isPreview,
-      }),
-    });
-
-    if (!urlResponse.ok) {
-      const error = await urlResponse.json();
-      throw new Error(error.error || 'Failed to get upload URL');
-    }
-
-    const { videoId, tusEndpoint, tusHeaders } = await urlResponse.json();
-
-    // Upload via TUS protocol
-    return new Promise((resolve, reject) => {
-      const upload = new tus.Upload(file, {
-        endpoint: tusEndpoint,
-        headers: tusHeaders,
-        retryDelays: [0, 3000, 5000, 10000, 20000],
-        metadata: {
-          filename: file.name,
-          filetype: file.type,
-        },
-        onError: (error) => {
-          console.error('[VIDEO_UPLOAD] TUS error:', error);
-          reject(new Error('Upload failed. Please try again.'));
-        },
-        onProgress: (bytesUploaded, bytesTotal) => {
-          const percentage = Math.round((bytesUploaded / bytesTotal) * 100);
-          onProgress(percentage);
-        },
-        onSuccess: () => {
-          console.log('[VIDEO_UPLOAD] Upload complete:', videoId);
-          resolve(videoId);
-        },
-      });
-
-      upload.start();
-    });
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setUploadError(null);
+    setError(null);
 
     try {
-      let bunnyVideoId = formData.bunnyVideoId;
-      let previewBunnyVideoId = formData.previewBunnyVideoId;
-
-      // Upload main video if new file selected
-      if (mainVideoFile) {
-        setIsUploading(true);
-        bunnyVideoId = await uploadVideoToBundle(mainVideoFile, false, setMainUploadProgress);
-      }
-
-      // Upload preview video if new file selected
-      if (previewVideoFile) {
-        setIsUploading(true);
-        previewBunnyVideoId = await uploadVideoToBundle(
-          previewVideoFile,
-          true,
-          setPreviewUploadProgress
-        );
-      }
-
-      setIsUploading(false);
-
-      // Validate
       if (!formData.title) {
         throw new Error('Title is required');
       }
-      if (!bunnyVideoId && !mainVideoFile) {
-        throw new Error('Please upload a video');
-      }
 
-      const url = isEditing ? `${apiEndpoint}/${video.id}` : apiEndpoint;
-
-      // Flatten pricing into payload
       const payload = {
         title: formData.title,
         description: formData.description,
-        bunnyVideoId,
-        videoStatus: mainVideoFile ? 'encoding' : formData.videoStatus,
         customThumbnailUrl: formData.customThumbnailUrl || null,
-        previewBunnyVideoId: previewBunnyVideoId || null,
         programIds: formData.programIds,
         order: formData.order,
         priceInCents: formData.pricing.priceInCents,
@@ -211,65 +97,25 @@ function VideoFormDialog({
         isPublic: formData.pricing.isPublic,
       };
 
-      const response = await fetch(url, {
-        method: isEditing ? 'PATCH' : 'POST',
+      const response = await fetch(`${apiEndpoint}/${video.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save video');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save video');
       }
 
       onSave();
       onClose();
     } catch (err) {
       console.error('Error saving video:', err);
-      setUploadError(err instanceof Error ? err.message : 'Failed to save video');
+      setError(err instanceof Error ? err.message : 'Failed to save video');
     } finally {
       setSaving(false);
-      setIsUploading(false);
     }
-  };
-
-  const handleMainVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      const validTypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska'];
-      if (!validTypes.includes(file.type)) {
-        setUploadError('Please select a valid video file (MP4, MOV, WebM, or MKV)');
-        return;
-      }
-      setMainVideoFile(file);
-      setMainUploadProgress(0);
-      setUploadError(null);
-    }
-  };
-
-  const handlePreviewVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const validTypes = ['video/mp4', 'video/quicktime', 'video/webm'];
-      if (!validTypes.includes(file.type)) {
-        setUploadError('Please select a valid video file (MP4, MOV, or WebM)');
-        return;
-      }
-      setPreviewVideoFile(file);
-      setPreviewUploadProgress(0);
-      setUploadError(null);
-    }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024 * 1024) {
-      return `${(bytes / 1024).toFixed(1)} KB`;
-    }
-    if (bytes < 1024 * 1024 * 1024) {
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    }
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   };
 
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -278,7 +124,7 @@ function VideoFormDialog({
     <form onSubmit={handleSubmit}>
       <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
         <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-          {isEditing ? 'Edit Video' : 'Add Video'}
+          Edit Video
         </h2>
       </div>
 
@@ -312,196 +158,64 @@ function VideoFormDialog({
           />
         </div>
 
-        {/* Main Video Upload */}
+        {/* Video Status Display */}
         <div>
           <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1.5 font-albert">
-            Video *
+            Video Status
           </label>
-          <input
-            ref={mainInputRef}
-            type="file"
-            accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
-            onChange={handleMainVideoChange}
-            className="hidden"
-          />
-
-          {/* Current/Selected Video Display */}
-          {(mainVideoFile || formData.bunnyVideoId) && (
-            <div className="mb-3 p-4 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center">
-                  <Play className="w-5 h-5 text-brand-accent" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate font-albert">
-                    {mainVideoFile?.name || 'Uploaded video'}
-                  </p>
-                  {mainVideoFile && (
-                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                      {formatFileSize(mainVideoFile.size)}
-                    </p>
-                  )}
-                  {!mainVideoFile && formData.videoStatus && (
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {formData.videoStatus === 'ready' && (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                          <span className="text-xs text-green-600 dark:text-green-400 font-albert">
-                            Ready
-                          </span>
-                        </>
-                      )}
-                      {formData.videoStatus === 'encoding' && (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 text-amber-500 animate-spin" />
-                          <span className="text-xs text-amber-600 dark:text-amber-400 font-albert">
-                            Processing...
-                          </span>
-                        </>
-                      )}
-                      {formData.videoStatus === 'failed' && (
-                        <>
-                          <AlertCircle className="w-3.5 h-3.5 text-red-500" />
-                          <span className="text-xs text-red-600 dark:text-red-400 font-albert">
-                            Failed
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => mainInputRef.current?.click()}
-                  className="text-brand-accent hover:text-brand-accent/90 hover:bg-brand-accent/10 font-albert"
-                >
-                  Replace
-                </Button>
-              </div>
-
-              {/* Upload Progress */}
-              {isUploading && mainUploadProgress > 0 && mainUploadProgress < 100 && (
-                <div className="mt-3">
-                  <div className="flex items-center justify-between text-xs text-[#5f5a55] dark:text-[#b2b6c2] mb-1 font-albert">
-                    <span>Uploading...</span>
-                    <span>{mainUploadProgress}%</span>
-                  </div>
-                  <div className="h-1.5 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-brand-accent rounded-full transition-all duration-300"
-                      style={{ width: `${mainUploadProgress}%` }}
-                    />
-                  </div>
-                </div>
+          <div className="p-3 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+            <div className="flex items-center gap-2">
+              {video.videoStatus === 'ready' && (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <span className="text-sm text-green-600 dark:text-green-400 font-albert">Ready</span>
+                </>
+              )}
+              {video.videoStatus === 'encoding' && (
+                <>
+                  <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />
+                  <span className="text-sm text-amber-600 dark:text-amber-400 font-albert">Processing...</span>
+                </>
+              )}
+              {video.videoStatus === 'failed' && (
+                <>
+                  <AlertCircle className="w-4 h-4 text-red-500" />
+                  <span className="text-sm text-red-600 dark:text-red-400 font-albert">Failed</span>
+                </>
+              )}
+              {video.videoStatus === 'uploading' && (
+                <>
+                  <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                  <span className="text-sm text-blue-600 dark:text-blue-400 font-albert">Uploading...</span>
+                </>
               )}
             </div>
-          )}
-
-          {/* Upload Button */}
-          {!mainVideoFile && !formData.bunnyVideoId && (
-            <button
-              type="button"
-              onClick={() => mainInputRef.current?.click()}
-              className="w-full p-6 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-brand-accent hover:bg-brand-accent/5 transition-colors cursor-pointer"
-            >
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-12 h-12 rounded-full bg-brand-accent/10 flex items-center justify-center">
-                  <Play className="w-6 h-6 text-brand-accent" />
-                </div>
-                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  Click to upload video
-                </p>
-                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  MP4, MOV, WebM, or MKV (max 2GB)
-                </p>
-              </div>
-            </button>
-          )}
+          </div>
         </div>
 
-        {/* Preview Video Upload (optional) */}
+        {/* Custom Thumbnail URL */}
         <div>
           <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1.5 font-albert">
-            Preview/Trailer (optional)
+            Custom Thumbnail URL (optional)
           </label>
-          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mb-2 font-albert">
-            Short preview shown in the payment popup for paid videos
-          </p>
           <input
-            ref={previewInputRef}
-            type="file"
-            accept="video/mp4,video/quicktime,video/webm"
-            onChange={handlePreviewVideoChange}
-            className="hidden"
+            type="text"
+            value={formData.customThumbnailUrl}
+            onChange={(e) => setFormData((prev) => ({ ...prev, customThumbnailUrl: e.target.value }))}
+            className="w-full px-3 py-2.5 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+            placeholder="https://example.com/thumbnail.jpg"
           />
-
-          {(previewVideoFile || formData.previewBunnyVideoId) && (
-            <div className="p-3 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                  <Play className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate font-albert">
-                    {previewVideoFile?.name || 'Preview video'}
-                  </p>
-                  {previewVideoFile && (
-                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                      {formatFileSize(previewVideoFile.size)}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setPreviewVideoFile(null);
-                    setFormData((prev) => ({ ...prev, previewBunnyVideoId: '' }));
-                  }}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 font-albert"
-                >
-                  Remove
-                </Button>
-              </div>
-
-              {isUploading && previewUploadProgress > 0 && previewUploadProgress < 100 && (
-                <div className="mt-2">
-                  <div className="h-1 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-purple-500 rounded-full transition-all duration-300"
-                      style={{ width: `${previewUploadProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {!previewVideoFile && !formData.previewBunnyVideoId && (
-            <button
-              type="button"
-              onClick={() => previewInputRef.current?.click()}
-              className="w-full p-4 border border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-colors cursor-pointer"
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Plus className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  Add preview video
-                </span>
-              </div>
-            </button>
-          )}
+          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
+            Leave empty to use auto-generated thumbnail
+          </p>
         </div>
 
         {/* Error Display */}
-        {uploadError && (
+        {error && (
           <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
-              <p className="text-sm text-red-600 dark:text-red-400 font-albert">{uploadError}</p>
+              <p className="text-sm text-red-600 dark:text-red-400 font-albert">{error}</p>
             </div>
           </div>
         )}
@@ -531,28 +245,17 @@ function VideoFormDialog({
           type="button"
           variant="outline"
           onClick={onClose}
-          disabled={saving || isUploading}
+          disabled={saving}
           className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 font-albert"
         >
           Cancel
         </Button>
         <Button
           type="submit"
-          disabled={saving || isUploading}
+          disabled={saving}
           className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
         >
-          {isUploading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Uploading...
-            </>
-          ) : saving ? (
-            'Saving...'
-          ) : isEditing ? (
-            'Update Video'
-          ) : (
-            'Add Video'
-          )}
+          {saving ? 'Saving...' : 'Update Video'}
         </Button>
       </div>
     </form>
@@ -562,6 +265,9 @@ function VideoFormDialog({
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-2xl p-0" hideCloseButton>
+          <VisuallyHidden>
+            <DialogTitle>Edit Video</DialogTitle>
+          </VisuallyHidden>
           {content}
         </DialogContent>
       </Dialog>
@@ -603,7 +309,7 @@ export function AdminVideosSection({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [videoToEdit, setVideoToEdit] = useState<DiscoverVideo | null>(null);
   const [videoToDelete, setVideoToDelete] = useState<DiscoverVideo | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Derive endpoints from API endpoint
@@ -665,8 +371,8 @@ export function AdminVideosSection({
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete video');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete video');
       }
 
       await fetchVideos();
@@ -677,6 +383,10 @@ export function AdminVideosSection({
     } finally {
       setDeleteLoading(false);
     }
+  };
+
+  const handleVideoCreated = () => {
+    fetchVideos();
   };
 
   if (loading) {
@@ -754,10 +464,7 @@ export function AdminVideosSection({
               </button>
 
               <button
-                onClick={() => {
-                  setVideoToEdit(null);
-                  setIsFormOpen(true);
-                }}
+                onClick={() => setIsCreateModalOpen(true)}
                 className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -856,10 +563,7 @@ export function AdminVideosSection({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          setVideoToEdit(video);
-                          setIsFormOpen(true);
-                        }}
+                        onClick={() => setVideoToEdit(video)}
                         className="text-brand-accent hover:text-brand-accent/90 hover:bg-brand-accent/10 font-albert"
                       >
                         Edit
@@ -881,18 +585,26 @@ export function AdminVideosSection({
         </div>
       </div>
 
-      {/* Video Form Dialog */}
-      <VideoFormDialog
-        video={videoToEdit}
-        isOpen={isFormOpen}
-        onClose={() => {
-          setIsFormOpen(false);
-          setVideoToEdit(null);
-        }}
-        onSave={fetchVideos}
+      {/* Create Video Modal (2-step wizard) */}
+      <CreateVideoModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onVideoCreated={handleVideoCreated}
         apiEndpoint={apiEndpoint}
         programsApiEndpoint={programsApiEndpoint}
       />
+
+      {/* Edit Video Dialog (simplified) */}
+      {videoToEdit && (
+        <VideoEditDialog
+          video={videoToEdit}
+          isOpen={!!videoToEdit}
+          onClose={() => setVideoToEdit(null)}
+          onSave={fetchVideos}
+          apiEndpoint={apiEndpoint}
+          programsApiEndpoint={programsApiEndpoint}
+        />
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!videoToDelete} onOpenChange={(open) => !open && setVideoToDelete(null)}>

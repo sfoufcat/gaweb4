@@ -204,10 +204,26 @@ export async function processCallSummary(
 
     const durationSeconds = transcription.durationSeconds || 0;
 
-    // Skip very short calls (less than 2 minutes)
-    if (durationSeconds < 120) {
+    // Skip very short calls (less than 2 minutes) - but allow PDFs (durationSeconds = 0)
+    if (durationSeconds > 0 && durationSeconds < 120) {
       console.log(`[AI Call Summary] Skipping short call (${durationSeconds}s)`);
       return { success: false, error: 'Call too short for summary (< 2 minutes)' };
+    }
+
+    // Get transcript - either from URL (new) or direct field (legacy)
+    let transcriptText: string;
+    if (transcription.transcriptUrl) {
+      // New format: fetch from Bunny Storage
+      const response = await fetch(transcription.transcriptUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch transcript from URL: ${response.status}`);
+      }
+      transcriptText = await response.text();
+    } else if (transcription.transcript) {
+      // Legacy format: read from Firestore field
+      transcriptText = transcription.transcript;
+    } else {
+      throw new Error('No transcript found');
     }
 
     // Create call summary record with 'processing' status
@@ -258,7 +274,7 @@ export async function processCallSummary(
       await generateAndStoreSummary(
         orgId,
         summaryId,
-        transcription.transcript,
+        transcriptText,
         durationSeconds,
         context
       );

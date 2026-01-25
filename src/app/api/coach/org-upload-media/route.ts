@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import sharp from 'sharp';
+import { uploadToBunnyStorage, isBunnyStorageConfigured } from '@/lib/bunny-storage';
 
 /**
  * POST /api/coach/org-upload-media
@@ -164,25 +165,41 @@ export async function POST(req: Request) {
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const storagePath = `orgs/${organizationId}/discover/${folder}/${timestamp}-${sanitizedName}`;
-    const fileRef = bucket.file(storagePath);
 
-    try {
-      await fileRef.save(buffer, {
-        metadata: {
-          contentType: finalContentType,
-          cacheControl: 'public, max-age=31536000',
-        },
-      });
+    let url: string;
 
-      // Make the file publicly accessible
-      await fileRef.makePublic();
-    } catch (uploadError) {
-      console.error('[COACH_UPLOAD] File save error:', uploadError);
-      return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 });
+    // Use Bunny Storage for images and documents (12x cheaper bandwidth)
+    // Videos still use Firebase (for now) due to transcoding needs
+    if ((isImage || isDocument) && isBunnyStorageConfigured()) {
+      try {
+        url = await uploadToBunnyStorage(buffer, storagePath, finalContentType);
+        console.log('[COACH_UPLOAD] Uploaded to Bunny Storage:', url, 'type:', isImage ? 'image' : 'document');
+      } catch (bunnyError) {
+        console.error('[COACH_UPLOAD] Bunny Storage error:', bunnyError);
+        return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 });
+      }
+    } else {
+      // Firebase Storage for videos or when Bunny not configured
+      const fileRef = bucket.file(storagePath);
+      try {
+        await fileRef.save(buffer, {
+          metadata: {
+            contentType: finalContentType,
+            cacheControl: 'public, max-age=31536000',
+          },
+        });
+
+        // Make the file publicly accessible
+        await fileRef.makePublic();
+        url = `https://storage.googleapis.com/${bucketName}/${storagePath}`;
+        console.log('[COACH_UPLOAD] Uploaded to Firebase:', url);
+      } catch (uploadError) {
+        console.error('[COACH_UPLOAD] Firebase save error:', uploadError);
+        return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 });
+      }
     }
 
     // Step 10: Return success with URL
-    const url = `https://storage.googleapis.com/${bucketName}/${storagePath}`;
     console.log('[COACH_UPLOAD] Success:', url);
 
     return NextResponse.json({ 

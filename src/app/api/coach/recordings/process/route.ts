@@ -17,6 +17,7 @@ import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { transcribeCallWithGroq, checkCreditsAvailable, deductCredits, refundCredits } from '@/lib/platform-transcription';
 import { processCallSummary } from '@/lib/ai/call-summary';
 import { extractTextFromPdfBuffer } from '@/lib/pdf-extraction';
+import { uploadToBunnyStorage } from '@/lib/bunny-storage';
 import type { UserRole, OrgRole, ClerkPublicMetadata, UploadedRecording } from '@/types';
 
 // Helper to check if file is a PDF
@@ -450,15 +451,29 @@ async function processPdfUpload(
       throw new Error('PDF appears to be empty or contains too little text');
     }
 
-    // Update with extracted text
+    // Generate a unique call ID for this PDF
+    const callId = `pdf_${recordingId}`;
+
+    // Store extracted text in Bunny Storage (avoids Firestore 1MB limit, 18x cheaper)
+    const extractedTextUrl = await uploadToBunnyStorage(
+      Buffer.from(pdfResult.text, 'utf-8'),
+      `orgs/${orgId}/text/${recordingId}-extracted.txt`,
+      'text/plain'
+    );
+
+    // Update with extracted text URL (not the full text)
     await recordingRef.update({
       status: 'summarizing',
-      extractedText: pdfResult.text,
+      extractedTextUrl, // URL to Bunny Storage
       pageCount: pdfResult.pageCount,
     });
 
-    // Generate a unique call ID for this PDF
-    const callId = `pdf_${recordingId}`;
+    // Store transcript in Bunny Storage as well
+    const transcriptUrl = await uploadToBunnyStorage(
+      Buffer.from(pdfResult.text, 'utf-8'),
+      `orgs/${orgId}/transcripts/${callId}.txt`,
+      'text/plain'
+    );
 
     // Create a "transcription" record for the PDF (for consistency with audio flow)
     const transcriptionsRef = adminDb
@@ -471,7 +486,7 @@ async function processPdfUpload(
       callId,
       recordingUrl: fileUrl,
       status: 'completed',
-      transcript: pdfResult.text,
+      transcriptUrl, // URL to Bunny Storage instead of full text
       durationSeconds: 0, // PDFs don't have duration
       language: 'en',
       segments: [],

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { DiscardUploadDialog } from '@/components/ui/DiscardUploadDialog';
 import * as tus from 'tus-js-client';
 
 interface InlineRecordingUploadProps {
@@ -45,6 +46,11 @@ export function InlineRecordingUpload({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<tus.Upload | null>(null);
+
+  // Track pending Bunny video for cleanup on discard
+  const [pendingBunnyVideoId, setPendingBunnyVideoId] = useState<string | null>(null);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleFileSelect = useCallback((selectedFile: File) => {
     const extension = '.' + selectedFile.name.split('.').pop()?.toLowerCase();
@@ -119,6 +125,9 @@ export function InlineRecordingUpload({
   }) => {
     const { videoId, tusEndpoint, tusHeaders } = config;
 
+    // Track this video ID for cleanup if user cancels
+    setPendingBunnyVideoId(videoId);
+
     return new Promise<void>((resolve, reject) => {
       const upload = new tus.Upload(file!, {
         endpoint: tusEndpoint,
@@ -157,6 +166,8 @@ export function InlineRecordingUpload({
             }
 
             setStatus('completed');
+            // Video is now linked to event, no longer needs cleanup
+            setPendingBunnyVideoId(null);
 
             // Notify parent - recording is being encoded, will be ready soon
             onUploadComplete?.();
@@ -232,7 +243,34 @@ export function InlineRecordingUpload({
     onRecordingUploaded?.(downloadUrl);
   };
 
+  // Check if we have a pending upload that needs cleanup
+  const hasPendingUpload = pendingBunnyVideoId !== null && status !== 'completed';
+
+  const deletePendingVideo = async () => {
+    if (!pendingBunnyVideoId) return;
+
+    setIsDeleting(true);
+    try {
+      await fetch(`/api/coach/bunny-video/${pendingBunnyVideoId}`, { method: 'DELETE' }).catch(
+        (err) => console.warn(`Failed to delete orphaned video ${pendingBunnyVideoId}:`, err)
+      );
+    } finally {
+      setIsDeleting(false);
+      setPendingBunnyVideoId(null);
+    }
+  };
+
   const handleReset = () => {
+    // If there's a pending upload, show confirmation dialog
+    if (hasPendingUpload) {
+      setShowDiscardDialog(true);
+      return;
+    }
+
+    doReset();
+  };
+
+  const doReset = () => {
     // Abort any ongoing TUS upload
     if (uploadRef.current) {
       uploadRef.current.abort();
@@ -243,9 +281,20 @@ export function InlineRecordingUpload({
     setStatus('idle');
     setProgress(0);
     setError(null);
+    setPendingBunnyVideoId(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleDiscardConfirm = async () => {
+    await deletePendingVideo();
+    setShowDiscardDialog(false);
+    doReset();
+  };
+
+  const handleDiscardCancel = () => {
+    setShowDiscardDialog(false);
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -315,38 +364,56 @@ export function InlineRecordingUpload({
     );
   }
 
+  // Shared discard dialog component
+  const discardDialog = (
+    <DiscardUploadDialog
+      isOpen={showDiscardDialog}
+      onStay={handleDiscardCancel}
+      onDiscard={handleDiscardConfirm}
+      isDeleting={isDeleting}
+      title="Discard Recording?"
+      description="You have an uploaded recording that hasn't been saved. If you leave now, the recording will be permanently deleted."
+    />
+  );
+
   // Uploading state
   if (status === 'uploading') {
     return (
-      <div className="space-y-2 p-3 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl">
-        <div className="flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin text-brand-accent" />
-          <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-            Uploading...
-          </span>
-          <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] ml-auto">{progress}%</span>
+      <>
+        <div className="space-y-2 p-3 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl">
+          <div className="flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-brand-accent" />
+            <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+              Uploading...
+            </span>
+            <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] ml-auto">{progress}%</span>
+          </div>
+          <Progress value={progress} className="h-1.5" />
         </div>
-        <Progress value={progress} className="h-1.5" />
-      </div>
+        {discardDialog}
+      </>
     );
   }
 
   // Encoding state (Bunny is processing the video)
   if (status === 'encoding') {
     return (
-      <div className="p-3 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl">
-        <div className="flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin text-brand-accent" />
-          <div>
-            <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-              Processing video...
-            </p>
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-              This may take a few minutes
-            </p>
+      <>
+        <div className="p-3 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl">
+          <div className="flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-brand-accent" />
+            <div>
+              <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                Processing video...
+              </p>
+              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                This may take a few minutes
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+        {discardDialog}
+      </>
     );
   }
 
@@ -386,33 +453,37 @@ export function InlineRecordingUpload({
   // Error state
   if (status === 'error' && error) {
     return (
-      <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-        <div className="flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-red-800 dark:text-red-200">
-              {error.includes('Insufficient credits') ? 'Insufficient credits' : 'Upload failed'}
-            </p>
-            <p className="text-xs text-red-600 dark:text-red-400 truncate">
-              {error.includes('Insufficient credits') ? (
-                <a href="/coach/plan" className="underline">
-                  Upgrade your plan
-                </a>
-              ) : (
-                error
-              )}
-            </p>
+      <>
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                {error.includes('Insufficient credits') ? 'Insufficient credits' : 'Upload failed'}
+              </p>
+              <p className="text-xs text-red-600 dark:text-red-400 truncate">
+                {error.includes('Insufficient credits') ? (
+                  <a href="/coach/plan" className="underline">
+                    Upgrade your plan
+                  </a>
+                ) : (
+                  error
+                )}
+              </p>
+            </div>
           </div>
+          <button
+            onClick={handleReset}
+            className="mt-2 text-xs text-red-600 dark:text-red-400 hover:underline"
+          >
+            Try again
+          </button>
         </div>
-        <button
-          onClick={handleReset}
-          className="mt-2 text-xs text-red-600 dark:text-red-400 hover:underline"
-        >
-          Try again
-        </button>
-      </div>
+        {discardDialog}
+      </>
     );
   }
 
-  return null;
+  // Fallback - render discard dialog if needed (for any status)
+  return discardDialog;
 }

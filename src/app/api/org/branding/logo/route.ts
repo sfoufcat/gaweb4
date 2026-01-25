@@ -4,6 +4,7 @@ import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ensureCoachHasOrganization } from '@/lib/clerk-organizations';
 import sharp from 'sharp';
 import type { UserRole, OrgRole } from '@/types';
+import { uploadToBunnyStorage, isBunnyStorageConfigured } from '@/lib/bunny-storage';
 
 /**
  * POST /api/org/branding/logo
@@ -155,31 +156,46 @@ export async function POST(req: Request) {
 
     // Step 11: Create unique filename and upload
     const timestamp = Date.now();
-    const extension = finalContentType === 'image/png' ? 'png' : 
-                      finalContentType === 'image/jpeg' ? 'jpg' : 
-                      finalContentType === 'image/webp' ? 'webp' : 
+    const extension = finalContentType === 'image/png' ? 'png' :
+                      finalContentType === 'image/jpeg' ? 'jpg' :
+                      finalContentType === 'image/webp' ? 'webp' :
                       file.name.split('.').pop() || 'png';
     const logoPrefix = isHorizontal ? 'horizontal-logo' : 'logo';
     const storagePath = `org-branding/${organizationId}/${logoPrefix}-${timestamp}.${extension}`;
-    const fileRef = bucket.file(storagePath);
 
-    try {
-      await fileRef.save(buffer, {
-        metadata: {
-          contentType: finalContentType,
-          cacheControl: 'public, max-age=31536000',
-        },
-      });
+    let url: string;
 
-      // Make the file publicly accessible
-      await fileRef.makePublic();
-    } catch (uploadError) {
-      console.error('[ORG_LOGO_UPLOAD] File save error:', uploadError);
-      return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 });
+    // Use Bunny Storage if configured, otherwise Firebase
+    if (isBunnyStorageConfigured()) {
+      try {
+        url = await uploadToBunnyStorage(buffer, storagePath, finalContentType);
+        console.log('[ORG_LOGO_UPLOAD] Uploaded to Bunny Storage:', url);
+      } catch (bunnyError) {
+        console.error('[ORG_LOGO_UPLOAD] Bunny Storage error:', bunnyError);
+        return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 });
+      }
+    } else {
+      // Firebase Storage fallback
+      const fileRef = bucket.file(storagePath);
+      try {
+        await fileRef.save(buffer, {
+          metadata: {
+            contentType: finalContentType,
+            cacheControl: 'public, max-age=31536000',
+          },
+        });
+
+        // Make the file publicly accessible
+        await fileRef.makePublic();
+        url = `https://storage.googleapis.com/${bucketName}/${storagePath}`;
+        console.log('[ORG_LOGO_UPLOAD] Uploaded to Firebase:', url);
+      } catch (uploadError) {
+        console.error('[ORG_LOGO_UPLOAD] Firebase save error:', uploadError);
+        return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 });
+      }
     }
 
     // Step 12: Return success with URL
-    const url = `https://storage.googleapis.com/${bucketName}/${storagePath}`;
     console.log('[ORG_LOGO_UPLOAD] Success:', url);
 
     return NextResponse.json({ 

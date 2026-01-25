@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import { createBunnyVideo, getOrCreateCollection } from '@/lib/bunny-stream';
+import { createBunnyVideo, getOrCreateCollection, generateTusUploadConfig } from '@/lib/bunny-stream';
+import { isBunnyStorageConfigured } from '@/lib/bunny-storage';
 
 /**
  * POST /api/coach/org-upload-url
@@ -77,6 +78,7 @@ export async function POST(req: Request) {
     // Step 4: Route based on content type
     const isVideo = contentType.startsWith('video/');
     const isAudio = contentType.startsWith('audio/');
+    const isImage = contentType.startsWith('image/');
 
     if (isVideo || isAudio) {
       // Use Bunny Stream for video/audio
@@ -85,10 +87,10 @@ export async function POST(req: Request) {
         const timestamp = Date.now();
         const videoTitle = `${folder}/${timestamp}_${filename}`;
 
-        const { videoId, libraryId } = await createBunnyVideo(videoTitle, collectionId);
+        const { videoId } = await createBunnyVideo(videoTitle, collectionId);
 
-        // Generate TUS upload configuration
-        const expirationTime = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+        // Generate TUS upload configuration with proper SHA256 signature
+        const tusConfig = await generateTusUploadConfig(videoId);
 
         console.log(
           `[ORG_UPLOAD_URL] Created Bunny video ${videoId} for: ${filename}, folder: ${folder}, org: ${organizationId}`
@@ -98,13 +100,8 @@ export async function POST(req: Request) {
           success: true,
           uploadType: 'bunny',
           videoId,
-          tusEndpoint: 'https://video.bunnycdn.com/tusupload',
-          tusHeaders: {
-            AuthorizationSignature: process.env.BUNNY_API_KEY,
-            AuthorizationExpire: expirationTime.toString(),
-            VideoId: videoId,
-            LibraryId: libraryId,
-          },
+          tusEndpoint: tusConfig.endpoint,
+          tusHeaders: tusConfig.headers,
           // Note: URL will be available after Bunny encodes the video
         });
       } catch (bunnyError) {
@@ -114,8 +111,23 @@ export async function POST(req: Request) {
           { status: 500 }
         );
       }
+    } else if (isBunnyStorageConfigured()) {
+      // Use Bunny Storage for images and documents (12x cheaper bandwidth than Firebase)
+      // Return uploadType: 'bunny-storage' to signal client should use server upload
+      const timestamp = Date.now();
+      const sanitizedName = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const storagePath = `orgs/${organizationId}/discover/${folder}/${timestamp}-${sanitizedName}`;
+
+      console.log('[ORG_UPLOAD_URL] Bunny Storage path for file:', storagePath, 'type:', contentType);
+
+      return NextResponse.json({
+        success: true,
+        uploadType: 'bunny-storage',
+        storagePath,
+        // Client should use /api/coach/org-upload-media for actual upload
+      });
     } else {
-      // Use Firebase Storage for images, documents, etc.
+      // Fallback to Firebase Storage when Bunny not configured
       const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
       if (!bucketName) {
         console.error('[ORG_UPLOAD_URL] Missing NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET env var');

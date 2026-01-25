@@ -341,6 +341,7 @@ export function getProductRedirectUrl(
           event: 'events',
           download: 'downloads',
           link: 'links',
+          video: 'videos',
         };
         return `/discover/${pathMap[contentType]}/${productId}`;
       }

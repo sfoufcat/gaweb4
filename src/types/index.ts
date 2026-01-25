@@ -3500,7 +3500,7 @@ export type FunnelTabType = 'all' | FunnelTargetType;
 /**
  * Content type for content funnels
  */
-export type FunnelContentType = 'article' | 'course' | 'event' | 'download' | 'link';
+export type FunnelContentType = 'article' | 'course' | 'event' | 'download' | 'link' | 'video';
 
 /**
  * Funnel - Coach-created user acquisition flow
@@ -3790,6 +3790,7 @@ export interface FunnelStepConfigExplainer {
   mediaType?: ExplainerMediaType;
   imageUrl?: string;           // For 'image' type
   videoUrl?: string;           // For 'video_upload' type
+  videoThumbnailUrl?: string;  // Auto-generated or custom thumbnail for video
   youtubeUrl?: string;         // For 'youtube' type (full URL)
   vimeoUrl?: string;           // For 'vimeo' type
   loomUrl?: string;            // For 'loom' type
@@ -6066,7 +6067,8 @@ export interface UploadedRecording {
   fileSizeBytes: number;
   fileType?: 'audio' | 'video' | 'pdf';  // Type of uploaded file
   durationSeconds?: number;          // Extracted from audio/video file
-  extractedText?: string;            // For PDFs: extracted text content
+  extractedText?: string;            // For PDFs: extracted text content (legacy - stored in Firestore)
+  extractedTextUrl?: string;         // For PDFs: URL to extracted text in Bunny Storage (new)
   pageCount?: number;                // For PDFs: number of pages
   status: 'uploaded' | 'transcribing' | 'summarizing' | 'completed' | 'failed';
   callSummaryId?: string;            // Once processed

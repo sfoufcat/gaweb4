@@ -31,21 +31,33 @@ import { Button } from '@/components/ui/button';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useTheme } from '@/contexts/ThemeContext';
-import { 
-  Loader2, 
-  Check, 
-  Shield, 
-  FileText, 
-  BookOpen, 
-  Calendar, 
-  Download, 
+import {
+  Loader2,
+  Check,
+  Shield,
+  FileText,
+  BookOpen,
+  Calendar,
+  Download,
   Link as LinkIcon,
+  Video,
   ArrowLeft,
   Lock,
   CreditCard,
   Plus,
   CircleCheck,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+// Lazy load VideoPlayer for preview videos
+const VideoPlayer = dynamic(() => import('@/components/video/VideoPlayer').then(m => m.VideoPlayer), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full aspect-video bg-black/5 dark:bg-white/5 rounded-xl animate-pulse flex items-center justify-center">
+      <Video className="w-8 h-8 text-text-muted" />
+    </div>
+  ),
+});
 import type { PurchasableContentType } from '@/types/discover';
 import type { OrderBumpConfig, OrderBump, DiscountContentType } from '@/types';
 import { OrderBumpList, calculateBumpTotal, DiscountCodeInput } from '@/components/checkout';
@@ -77,6 +89,7 @@ interface ContentPurchaseSheetProps {
     keyOutcomes?: string[];
     organizationId?: string; // For fetching saved cards
     orderBumps?: OrderBumpConfig; // Order bump configuration
+    previewVideoUrl?: string; // Preview/trailer video URL for video content
   };
   onPurchaseComplete?: () => void;
 }
@@ -103,6 +116,8 @@ function getContentTypeIcon(type: PurchasableContentType) {
       return FileText;
     case 'course':
       return BookOpen;
+    case 'video':
+      return Video;
     case 'event':
       return Calendar;
     case 'download':
@@ -548,6 +563,23 @@ function PreviewContent({
   
   return (
     <div className="flex flex-col">
+      {/* Preview Video - For video content with trailer */}
+      {content.type === 'video' && content.previewVideoUrl && (
+        <div className="px-5 sm:px-6 pb-4">
+          <div className="rounded-xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+            <VideoPlayer
+              src={content.previewVideoUrl}
+              poster={content.coverImageUrl}
+              autoPlay={false}
+              className="aspect-video"
+            />
+          </div>
+          <p className="text-xs text-center text-text-muted mt-2">
+            Preview trailer
+          </p>
+        </div>
+      )}
+
       {/* Content Preview */}
       <div className="px-5 sm:px-6 pb-6">
         <div className="flex gap-5">
@@ -564,25 +596,25 @@ function PreviewContent({
                 />
               </div>
             ) : (
-              <div 
+              <div
                 className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl flex items-center justify-center shadow-sm ring-1 ring-black/5 dark:ring-white/10"
                 style={{ backgroundColor: hexToRgba(colors.accentLight, 0.08) }}
               >
-                <ContentIcon 
-                  className="w-9 h-9 sm:w-10 sm:h-10" 
-                  style={{ color: colors.accentLight }} 
+                <ContentIcon
+                  className="w-9 h-9 sm:w-10 sm:h-10"
+                  style={{ color: colors.accentLight }}
                 />
               </div>
             )}
           </div>
-          
+
           {/* Content Info */}
           <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <div 
+            <div
               className="text-xs font-semibold px-2.5 py-1 rounded-md w-fit mb-2"
-              style={{ 
+              style={{
                 backgroundColor: hexToRgba(colors.accentLight, 0.1),
-                color: colors.accentLight 
+                color: colors.accentLight,
               }}
             >
               {content.type.charAt(0).toUpperCase() + content.type.slice(1)}

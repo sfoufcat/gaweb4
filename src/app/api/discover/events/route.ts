@@ -102,6 +102,7 @@ export async function GET() {
           squadId: data.squadId,
           programId: data.programId,
           programIds: data.programIds,
+          status: data.status,
           // Override timestamp fields
           date: eventDate,
           startTime,

@@ -55,6 +55,7 @@ const CONTENT_COLLECTION_MAP: Record<FunnelContentType, string> = {
   event: 'events',
   download: 'downloads',
   link: 'links',
+  video: 'discover_videos',
 };
 
 export default async function ContentFunnelPage({ params, searchParams }: ContentFunnelPageProps) {

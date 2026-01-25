@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import sharp from 'sharp';
 import { createBunnyVideo, uploadVideoBuffer, getPlaybackUrl } from '@/lib/bunny-stream';
+import { uploadToBunnyStorage, isBunnyStorageConfigured } from '@/lib/bunny-storage';
 
 /**
  * POST /api/upload
@@ -175,25 +176,40 @@ export async function POST(req: Request) {
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const folder = isAudio ? 'recordings' : 'uploads';
     const storagePath = `users/${userId}/${folder}/${timestamp}-${sanitizedName}`;
-    const fileRef = bucket.file(storagePath);
 
-    try {
-      await fileRef.save(buffer, {
-        metadata: {
-          contentType: finalContentType,
-          cacheControl: 'public, max-age=31536000',
-        },
-      });
+    let url: string;
 
-      // Make the file publicly accessible
-      await fileRef.makePublic();
-    } catch (uploadError) {
-      console.error('[UPLOAD] File save error:', uploadError);
-      return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 });
+    // Use Bunny Storage for images if configured, Firebase for audio/video fallback
+    if (isImage && isBunnyStorageConfigured()) {
+      try {
+        url = await uploadToBunnyStorage(buffer, storagePath, finalContentType);
+        console.log('[UPLOAD] Uploaded to Bunny Storage:', url);
+      } catch (bunnyError) {
+        console.error('[UPLOAD] Bunny Storage error:', bunnyError);
+        return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 });
+      }
+    } else {
+      // Firebase Storage for audio or when Bunny not configured
+      const fileRef = bucket.file(storagePath);
+      try {
+        await fileRef.save(buffer, {
+          metadata: {
+            contentType: finalContentType,
+            cacheControl: 'public, max-age=31536000',
+          },
+        });
+
+        // Make the file publicly accessible
+        await fileRef.makePublic();
+        url = `https://storage.googleapis.com/${bucketName}/${storagePath}`;
+        console.log('[UPLOAD] Uploaded to Firebase:', url);
+      } catch (uploadError) {
+        console.error('[UPLOAD] Firebase save error:', uploadError);
+        return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 });
+      }
     }
 
     // Step 10: Return success with URL
-    const url = `https://storage.googleapis.com/${bucketName}/${storagePath}`;
     console.log('[UPLOAD] Success:', url);
 
     return NextResponse.json({ 

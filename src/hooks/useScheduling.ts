@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { mutate } from 'swr';
 import type { UnifiedEvent, ProposedTime } from '@/types';
 
 interface UseSchedulingEventsOptions {
@@ -321,6 +322,10 @@ export function useSchedulingActions(): UseSchedulingActionsReturn {
       }
 
       const data = await response.json();
+
+      // Invalidate Discover events cache so cancelled events disappear immediately
+      mutate('/api/discover/events');
+
       return {
         cancelledCount: data.cancelledCount || 1,
         cancelledIds: data.cancelledIds || [eventId],

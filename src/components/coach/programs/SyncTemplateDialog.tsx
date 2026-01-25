@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Users, User, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Users, User, Loader2, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,6 +12,16 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+} from '@/components/ui/drawer';
+import { BrandedCheckbox, BrandedRadio } from '@/components/ui/checkbox';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { ProgramEnrollment, ProgramCohort, TemplateSyncOptions } from '@/types';
 
 // ============================================================================
@@ -61,7 +71,7 @@ const DEFAULT_SYNC_FIELDS: SyncFieldOptions = {
   syncHabits: false,
 };
 
-const FIELD_OPTIONS: { key: keyof SyncFieldOptions; label: string }[] = [
+const FIELD_OPTIONS: { key: keyof SyncFieldOptions; label: string; icon?: string }[] = [
   { key: 'syncName', label: 'Week name & description' },
   { key: 'syncTheme', label: 'Week theme' },
   { key: 'syncPrompt', label: 'Weekly prompt' },
@@ -118,6 +128,229 @@ async function getInstanceForCohort(cohortId: string, programId: string): Promis
 }
 
 // ============================================================================
+// Shared Content Component
+// ============================================================================
+
+interface SyncContentProps {
+  dialogTitle: string;
+  dialogDesc: string;
+  syncFields: SyncFieldOptions;
+  toggleField: (key: keyof SyncFieldOptions) => void;
+  toggleSelectAll: () => void;
+  allFieldsSelected: boolean;
+  someFieldsSelected: boolean;
+  isSingleTargetMode: boolean;
+  targetMode: 'all' | 'select';
+  handleTargetModeChange: (mode: 'all' | 'select') => void;
+  targetLabelPlural: string;
+  targets: (EnrollmentWithUser | ProgramCohort)[];
+  selectedIds: Set<string>;
+  handleToggleTarget: (id: string) => void;
+  isLoading: boolean;
+  targetType: 'clients' | 'cohorts';
+  getClientName: (enrollment: EnrollmentWithUser) => string;
+  getCohortName: (cohort: ProgramCohort) => string;
+  preserveData: boolean;
+  handlePreserveDataChange: () => void;
+  targetLabel: string;
+  error: string | null;
+  success: string | null;
+}
+
+function SyncContent({
+  dialogTitle,
+  dialogDesc,
+  syncFields,
+  toggleField,
+  toggleSelectAll,
+  allFieldsSelected,
+  someFieldsSelected,
+  isSingleTargetMode,
+  targetMode,
+  handleTargetModeChange,
+  targetLabelPlural,
+  targets,
+  selectedIds,
+  handleToggleTarget,
+  isLoading,
+  targetType,
+  getClientName,
+  getCohortName,
+  preserveData,
+  handlePreserveDataChange,
+  targetLabel,
+  error,
+  success,
+}: SyncContentProps) {
+  return (
+    <div className="space-y-6">
+      {/* Header with icon */}
+      <div className="flex items-center gap-3 pb-2 border-b border-gray-100 dark:border-gray-800">
+        <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center">
+          <Sparkles className="w-5 h-5 text-brand-accent" />
+        </div>
+        <div>
+          <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+            {dialogTitle}
+          </h3>
+          <p className="text-sm text-text-muted">{dialogDesc}</p>
+        </div>
+      </div>
+
+      {/* What to sync */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+            Select what to sync
+          </span>
+          <button
+            type="button"
+            onClick={toggleSelectAll}
+            className="text-xs font-medium text-brand-accent hover:text-brand-accent/80 transition-colors"
+          >
+            {allFieldsSelected ? 'Deselect all' : 'Select all'}
+          </button>
+        </div>
+        <div className="space-y-1">
+          {FIELD_OPTIONS.map(({ key, label }) => (
+            <label
+              key={key}
+              className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer group
+                hover:bg-brand-accent/5 dark:hover:bg-brand-accent/10 transition-colors"
+            >
+              <BrandedCheckbox
+                checked={syncFields[key]}
+                onChange={() => toggleField(key)}
+              />
+              <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors">
+                {label}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Apply to - only show in multi-target mode */}
+      {!isSingleTargetMode && (
+        <div>
+          <span className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 block">
+            Apply to
+          </span>
+          <div className="space-y-1">
+            <label className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer hover:bg-brand-accent/5 dark:hover:bg-brand-accent/10 transition-colors">
+              <BrandedRadio
+                checked={targetMode === 'all'}
+                onChange={() => handleTargetModeChange('all')}
+                name="targetMode"
+              />
+              <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                All {targetLabelPlural} ({targets.length})
+              </span>
+            </label>
+            <label className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer hover:bg-brand-accent/5 dark:hover:bg-brand-accent/10 transition-colors">
+              <BrandedRadio
+                checked={targetMode === 'select'}
+                onChange={() => handleTargetModeChange('select')}
+                name="targetMode"
+              />
+              <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                Select specific {targetLabelPlural}
+              </span>
+            </label>
+          </div>
+
+          {targetMode === 'select' && (
+            <div className="mt-3 max-h-44 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-900/50">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
+                </div>
+              ) : targets.length === 0 ? (
+                <div className="text-sm text-gray-500 py-6 text-center">
+                  No {targetLabelPlural} found
+                </div>
+              ) : (
+                targets.map(target => {
+                  const id = target.id;
+                  const isSelected = selectedIds.has(id);
+                  const name = targetType === 'clients'
+                    ? getClientName(target as EnrollmentWithUser)
+                    : getCohortName(target as ProgramCohort);
+                  const imageUrl = targetType === 'clients'
+                    ? (target as EnrollmentWithUser).user?.imageUrl
+                    : undefined;
+
+                  return (
+                    <label
+                      key={id}
+                      className={`flex items-center gap-3 p-3 cursor-pointer transition-colors
+                        ${isSelected ? 'bg-brand-accent/10' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                    >
+                      <BrandedCheckbox
+                        checked={isSelected}
+                        onChange={() => handleToggleTarget(id)}
+                      />
+                      {imageUrl ? (
+                        <Image
+                          src={imageUrl}
+                          alt={name}
+                          width={28}
+                          height={28}
+                          className="rounded-full"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-brand-accent/10 flex items-center justify-center">
+                          <User className="w-3.5 h-3.5 text-brand-accent" />
+                        </div>
+                      )}
+                      <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                        {name}
+                      </span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Preserve data option */}
+      <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+        <label className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer group hover:bg-brand-accent/5 dark:hover:bg-brand-accent/10 transition-colors">
+          <BrandedCheckbox
+            checked={preserveData}
+            onChange={handlePreserveDataChange}
+          />
+          <div>
+            <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors block">
+              Preserve {targetLabel}-specific data
+            </span>
+            <span className="text-xs text-text-muted">
+              Keep existing notes, recordings, and custom links
+            </span>
+          </div>
+        </label>
+      </div>
+
+      {/* Error/Success messages */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <span>{typeof error === 'string' ? error : 'An error occurred'}</span>
+        </div>
+      )}
+      {success && (
+        <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-xl text-sm">
+          <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+          <span>{typeof success === 'string' ? success : 'Operation completed'}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -133,6 +366,8 @@ export function SyncTemplateDialog({
   singleCohortName,
   onSyncComplete,
 }: SyncTemplateDialogProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -149,7 +384,6 @@ export function SyncTemplateDialog({
   const isSingleTargetMode = !!singleCohortId;
 
   // Set provided data - only if there's actual data (length > 0)
-  // Using length check prevents infinite loops when parent passes new [] reference each render
   useEffect(() => {
     if (providedEnrollments && providedEnrollments.length > 0) {
       setEnrollments(providedEnrollments);
@@ -193,7 +427,6 @@ export function SyncTemplateDialog({
   // Reset state only when dialog transitions from open to closed
   useEffect(() => {
     if (prevOpenRef.current && !open) {
-      // Dialog just closed - reset state
       setError(null);
       setSuccess(null);
       setSyncFields(DEFAULT_SYNC_FIELDS);
@@ -357,187 +590,101 @@ export function SyncTemplateDialog({
     setPreserveData(p => !p);
   }, []);
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-brand-accent" />
-            {dialogTitle}
-          </DialogTitle>
-          <DialogDescription>{dialogDesc}</DialogDescription>
-        </DialogHeader>
+  const contentProps: SyncContentProps = {
+    dialogTitle,
+    dialogDesc,
+    syncFields,
+    toggleField,
+    toggleSelectAll,
+    allFieldsSelected,
+    someFieldsSelected,
+    isSingleTargetMode,
+    targetMode,
+    handleTargetModeChange,
+    targetLabelPlural,
+    targets,
+    selectedIds,
+    handleToggleTarget,
+    isLoading,
+    targetType,
+    getClientName,
+    getCohortName,
+    preserveData,
+    handlePreserveDataChange,
+    targetLabel,
+    error,
+    success,
+  };
 
-        <div className="space-y-5 py-2">
-          {/* What to sync */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                Select what to sync:
-              </span>
-              <button
-                type="button"
-                onClick={toggleSelectAll}
-                className="text-xs font-medium text-brand-accent hover:text-brand-accent/80"
-              >
-                {allFieldsSelected ? 'Deselect all' : 'Select all'}
-              </button>
-            </div>
-            <div className="space-y-2">
-              {FIELD_OPTIONS.map(({ key, label }) => (
-                <label key={key} className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={syncFields[key]}
-                    onChange={() => toggleField(key)}
-                    className="w-4 h-4 accent-[var(--brand-accent)] cursor-pointer"
-                  />
-                  <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors">
-                    {label}
-                  </span>
-                </label>
-              ))}
-            </div>
+  const footerButtons = (
+    <>
+      <Button
+        variant="outline"
+        onClick={() => onOpenChange(false)}
+        disabled={isSyncing}
+        className="flex-1 sm:flex-none"
+      >
+        Cancel
+      </Button>
+      <Button
+        onClick={handleSync}
+        disabled={isSyncing || !someFieldsSelected}
+        className="flex-1 sm:flex-none bg-brand-accent hover:bg-brand-accent/90 text-white shadow-sm"
+      >
+        {isSyncing ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Syncing...
+          </>
+        ) : (
+          <>
+            <Users className="w-4 h-4 mr-2" />
+            Sync Changes
+          </>
+        )}
+      </Button>
+    </>
+  );
+
+  // Desktop: Dialog
+  if (isDesktop) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden rounded-2xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{dialogTitle}</DialogTitle>
+            <DialogDescription>{dialogDesc}</DialogDescription>
+          </DialogHeader>
+
+          <div className="p-6 max-h-[80vh] overflow-y-auto">
+            <SyncContent {...contentProps} />
           </div>
 
-          {/* Apply to - only show in multi-target mode */}
-          {!isSingleTargetMode && (
-            <div>
-              <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 block">
-                Apply to:
-              </span>
-              <div className="space-y-2">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="targetMode"
-                    checked={targetMode === 'all'}
-                    onChange={() => handleTargetModeChange('all')}
-                    className="w-4 h-4 accent-[var(--brand-accent)]"
-                  />
-                  <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    All {targetLabelPlural} ({targets.length})
-                  </span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="targetMode"
-                    checked={targetMode === 'select'}
-                    onChange={() => handleTargetModeChange('select')}
-                    className="w-4 h-4 accent-[var(--brand-accent)]"
-                  />
-                  <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Select specific {targetLabelPlural}
-                  </span>
-                </label>
-              </div>
+          <DialogFooter className="p-4 pt-0 gap-2 sm:gap-2">
+            {footerButtons}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
-              {targetMode === 'select' && (
-                <div className="mt-3 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
-                    </div>
-                  ) : targets.length === 0 ? (
-                    <div className="text-sm text-gray-500 py-4 text-center">
-                      No {targetLabelPlural} found
-                    </div>
-                  ) : (
-                    targets.map(target => {
-                      const id = target.id;
-                      const isSelected = selectedIds.has(id);
-                      const name = targetType === 'clients'
-                        ? getClientName(target as EnrollmentWithUser)
-                        : getCohortName(target as ProgramCohort);
-                      const imageUrl = targetType === 'clients'
-                        ? (target as EnrollmentWithUser).user?.imageUrl
-                        : undefined;
+  // Mobile: Drawer
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[90vh]">
+        <DrawerHeader className="sr-only">
+          <DrawerTitle>{dialogTitle}</DrawerTitle>
+          <DrawerDescription>{dialogDesc}</DrawerDescription>
+        </DrawerHeader>
 
-                      return (
-                        <label
-                          key={id}
-                          className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => handleToggleTarget(id)}
-                            className="w-4 h-4 accent-[var(--brand-accent)]"
-                          />
-                          {imageUrl ? (
-                            <Image
-                              src={imageUrl}
-                              alt={name}
-                              width={24}
-                              height={24}
-                              className="rounded-full"
-                            />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-brand-accent/10 flex items-center justify-center">
-                              <User className="w-3.5 h-3.5 text-brand-accent" />
-                            </div>
-                          )}
-                          <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                            {name}
-                          </span>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Preserve data option */}
-          <label className="flex items-center gap-3 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={preserveData}
-              onChange={handlePreserveDataChange}
-              className="w-4 h-4 accent-[var(--brand-accent)] cursor-pointer"
-            />
-            <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors">
-              Preserve {targetLabel}-specific data
-            </span>
-          </label>
-
-          {/* Error/Success messages */}
-          {error && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              {typeof error === 'string' ? error : 'An error occurred'}
-            </div>
-          )}
-          {success && (
-            <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-sm">
-              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-              {typeof success === 'string' ? success : 'Operation completed'}
-            </div>
-          )}
+        <div className="px-4 pb-2 max-h-[70vh] overflow-y-auto">
+          <SyncContent {...contentProps} />
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSyncing}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSync}
-            disabled={isSyncing || !someFieldsSelected}
-            className="bg-brand-accent hover:bg-brand-accent/90 text-white"
-          >
-            {isSyncing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Syncing...
-              </>
-            ) : (
-              'Sync Changes'
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <DrawerFooter className="flex-row gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+          {footerButtons}
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }

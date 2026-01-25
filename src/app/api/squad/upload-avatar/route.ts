@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getStorage } from 'firebase-admin/storage';
+import { uploadToBunnyStorage, isBunnyStorageConfigured } from '@/lib/bunny-storage';
 
 /**
  * POST /api/squad/upload-avatar
@@ -62,41 +63,53 @@ export async function POST(req: Request) {
 
     // Get file extension
     const extension = file.type.split('/')[1] || 'jpg';
-    const filename = `squad-avatars/${squadId}/${Date.now()}.${extension}`;
+    const storagePath = `squad-avatars/${squadId}/${Date.now()}.${extension}`;
 
-    // Upload to Firebase Storage
-    let bucket;
-    try {
-      const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-      if (!bucketName) {
-        console.error('[SQUAD_UPLOAD_STORAGE] Missing NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET env var');
-        return NextResponse.json({ error: 'Storage bucket not configured' }, { status: 500 });
+    let avatarUrl: string;
+
+    // Use Bunny Storage if configured, otherwise Firebase
+    if (isBunnyStorageConfigured()) {
+      try {
+        avatarUrl = await uploadToBunnyStorage(buffer, storagePath, file.type);
+        console.log('[SQUAD_UPLOAD] Uploaded to Bunny Storage:', avatarUrl);
+      } catch (bunnyError) {
+        console.error('[SQUAD_UPLOAD] Bunny Storage error:', bunnyError);
+        return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 });
       }
-      bucket = getStorage().bucket(bucketName);
-    } catch (storageError) {
-      console.error('[SQUAD_UPLOAD_STORAGE_INIT_ERROR]', storageError);
-      return NextResponse.json({ error: 'Storage not configured' }, { status: 500 });
+    } else {
+      // Firebase Storage fallback
+      let bucket;
+      try {
+        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        if (!bucketName) {
+          console.error('[SQUAD_UPLOAD_STORAGE] Missing NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET env var');
+          return NextResponse.json({ error: 'Storage bucket not configured' }, { status: 500 });
+        }
+        bucket = getStorage().bucket(bucketName);
+      } catch (storageError) {
+        console.error('[SQUAD_UPLOAD_STORAGE_INIT_ERROR]', storageError);
+        return NextResponse.json({ error: 'Storage not configured' }, { status: 500 });
+      }
+
+      const fileRef = bucket.file(storagePath);
+
+      try {
+        await fileRef.save(buffer, {
+          metadata: {
+            contentType: file.type,
+            cacheControl: 'public, max-age=31536000',
+          },
+        });
+
+        // Make the file publicly accessible
+        await fileRef.makePublic();
+        avatarUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+        console.log('[SQUAD_UPLOAD] Uploaded to Firebase:', avatarUrl);
+      } catch (uploadError) {
+        console.error('[SQUAD_UPLOAD_FILE_ERROR]', uploadError);
+        return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 });
+      }
     }
-
-    const fileRef = bucket.file(filename);
-
-    try {
-      await fileRef.save(buffer, {
-        metadata: {
-          contentType: file.type,
-          cacheControl: 'public, max-age=31536000',
-        },
-      });
-
-      // Make the file publicly accessible
-      await fileRef.makePublic();
-    } catch (uploadError) {
-      console.error('[SQUAD_UPLOAD_FILE_ERROR]', uploadError);
-      return NextResponse.json({ error: 'Failed to upload file to storage' }, { status: 500 });
-    }
-
-    // Get the public URL
-    const avatarUrl = `https://storage.googleapis.com/${bucket.name}/${filename}`;
 
     return NextResponse.json({ 
       success: true,

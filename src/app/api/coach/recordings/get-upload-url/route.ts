@@ -2,18 +2,18 @@
  * Get Upload URL API
  *
  * Returns upload configuration for direct upload to Bunny Stream (video/audio)
- * or Firebase Storage (PDFs and other documents).
+ * or Bunny Storage (PDFs and other documents).
  *
  * Video/audio files → Bunny Stream (cheaper, auto-compression)
- * PDFs/documents → Firebase Storage (simpler, no processing needed)
+ * PDFs/documents → Bunny Storage (cheaper than Firebase, 12x bandwidth savings)
  */
 
 import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { adminStorage } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import { createBunnyVideo, getOrCreateCollection } from '@/lib/bunny-stream';
+import { createBunnyVideo, getOrCreateCollection, generateTusUploadConfig } from '@/lib/bunny-stream';
+import { isBunnyStorageConfigured, getBunnyStorageUrl } from '@/lib/bunny-storage';
 import type { UserRole, OrgRole, ClerkPublicMetadata } from '@/types';
 
 // Accepted file extensions
@@ -107,10 +107,10 @@ export async function POST(request: NextRequest) {
       const timestamp = Date.now();
       const videoTitle = `${timestamp}_${fileName}`;
 
-      const { videoId, libraryId } = await createBunnyVideo(videoTitle, collectionId);
+      const { videoId } = await createBunnyVideo(videoTitle, collectionId);
 
-      // Generate TUS upload configuration
-      const expirationTime = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+      // Generate TUS upload configuration with proper SHA256 signature
+      const tusConfig = await generateTusUploadConfig(videoId);
 
       console.log(
         `[RECORDING_UPLOAD] Created Bunny video ${videoId} for: ${fileName}, org: ${organizationId}`
@@ -119,49 +119,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         uploadType: 'bunny',
         videoId,
-        tusEndpoint: 'https://video.bunnycdn.com/tusupload',
-        tusHeaders: {
-          AuthorizationSignature: process.env.BUNNY_API_KEY,
-          AuthorizationExpire: expirationTime.toString(),
-          VideoId: videoId,
-          LibraryId: libraryId,
-        },
+        tusEndpoint: tusConfig.endpoint,
+        tusHeaders: tusConfig.headers,
         // Recording URL will be set by webhook after encoding completes
       });
     } else {
-      // Use Firebase Storage for PDFs and other documents
+      // Use Bunny Storage for PDFs and other documents (12x cheaper bandwidth)
       const timestamp = Date.now();
       const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const storagePath = `organizations/${organizationId}/recordings/${timestamp}_${sanitizedFileName}`;
+      const storagePath = `orgs/${organizationId}/recordings/${timestamp}-${sanitizedFileName}`;
 
-      const bucket = adminStorage.bucket();
-      const fileRef = bucket.file(storagePath);
+      if (!isBunnyStorageConfigured()) {
+        return NextResponse.json(
+          { error: 'Storage not configured. Please contact support.' },
+          { status: 500 }
+        );
+      }
 
-      // Generate signed URL for PUT upload (expires in 15 minutes)
-      const [uploadUrl] = await fileRef.getSignedUrl({
-        version: 'v4',
-        action: 'write',
-        expires: Date.now() + 15 * 60 * 1000,
-        contentType: fileType,
-      });
-
-      // Generate a long-lived read URL
-      const [downloadUrl] = await fileRef.getSignedUrl({
-        version: 'v4',
-        action: 'read',
-        expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
+      // For Bunny Storage, we return the path and let the client upload via server endpoint
+      // since Bunny Storage doesn't support signed URLs for direct PUT
+      const downloadUrl = getBunnyStorageUrl(storagePath);
 
       console.log(
-        `[RECORDING_UPLOAD] Generated Firebase URLs for: ${fileName}, path: ${storagePath}`
+        `[RECORDING_UPLOAD] Generated Bunny Storage path for: ${fileName}, path: ${storagePath}`
       );
 
       return NextResponse.json({
-        uploadType: 'firebase',
-        uploadUrl,
+        uploadType: 'bunny-storage',
         storagePath,
-        bucketName: bucket.name,
         downloadUrl,
+        // Client should use /api/coach/recordings/upload endpoint for actual upload
       });
     }
   } catch (error) {

@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import Image from 'next/image';
 import * as tus from 'tus-js-client';
+import { pollForThumbnail } from '@/lib/video-thumbnail';
 
 type MediaType = 'image' | 'video' | 'any' | 'file';
 
@@ -23,6 +24,10 @@ interface MediaUploadProps {
   previewSize?: 'full' | 'thumbnail';
   /** When true, preview is shown in a collapsible drawer to save space in modals */
   collapsiblePreview?: boolean;
+  /** Callback when a Bunny video is created (for tracking pending uploads that need cleanup on discard) */
+  onBunnyVideoCreated?: (videoId: string) => void;
+  /** Callback when auto-generated thumbnail is ready (after polling Bunny CDN) - only for video type */
+  onThumbnailReady?: (thumbnailUrl: string) => void;
 }
 
 const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -192,6 +197,8 @@ export function MediaUpload({
   aspectRatio,
   previewSize = 'full',
   collapsiblePreview = false,
+  onBunnyVideoCreated,
+  onThumbnailReady,
 }: MediaUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -243,8 +250,13 @@ export function MediaUpload({
       if (uploadConfig.uploadType === 'bunny') {
         // Bunny Stream upload for video/audio using TUS protocol
         await handleBunnyUpload(file, uploadConfig);
+      } else if (uploadConfig.uploadType === 'bunny-storage') {
+        // Bunny Storage for images - use server endpoint instead of direct upload
+        // This happens when the file exceeds Vercel limit but is an image
+        // Fall back to server upload which handles Bunny Storage
+        await handleServerUpload(file);
       } else {
-        // Firebase Storage upload for images/documents
+        // Firebase Storage upload for documents
         await handleFirebaseDirectUpload(file, uploadConfig);
       }
     } catch (err) {
@@ -268,6 +280,16 @@ export function MediaUpload({
   ) => {
     const { videoId, tusEndpoint, tusHeaders } = config;
 
+    // Debug: Log what we're sending to TUS
+    console.log('[BUNNY_TUS_CLIENT] Starting upload:', {
+      videoId,
+      tusEndpoint,
+      headers: {
+        ...tusHeaders,
+        AuthorizationSignature: String(tusHeaders.AuthorizationSignature).substring(0, 20) + '...',
+      },
+    });
+
     return new Promise<void>((resolve, reject) => {
       const upload = new tus.Upload(file, {
         endpoint: tusEndpoint,
@@ -276,6 +298,17 @@ export function MediaUpload({
         metadata: {
           filename: file.name,
           filetype: file.type,
+        },
+        onBeforeRequest: (req) => {
+          // Debug: Log actual request headers
+          console.log('[BUNNY_TUS_CLIENT] Request headers:', {
+            method: req.getMethod(),
+            url: req.getURL(),
+            AuthorizationSignature: req.getHeader('AuthorizationSignature')?.substring(0, 20) + '...',
+            AuthorizationExpire: req.getHeader('AuthorizationExpire'),
+            VideoId: req.getHeader('VideoId'),
+            LibraryId: req.getHeader('LibraryId'),
+          });
         },
         onError: (error) => {
           console.error('TUS upload error:', error);
@@ -300,10 +333,20 @@ export function MediaUpload({
             tusUploadRef.current = null;
             resolve();
           }, 200);
+
+          // Start polling for auto-generated thumbnail in background
+          if (onThumbnailReady) {
+            pollForThumbnail(videoId).then((thumbnailUrl) => {
+              onThumbnailReady(thumbnailUrl);
+            });
+          }
         },
       });
 
       tusUploadRef.current = upload;
+
+      // Notify parent that a Bunny video was created (for cleanup on discard)
+      onBunnyVideoCreated?.(videoId);
 
       // Check for previous uploads to resume
       upload.findPreviousUploads().then((previousUploads) => {

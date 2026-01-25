@@ -566,6 +566,9 @@ export function WeekEditor({
   const lastSavedFormDataRef = useRef<string | null>(null);
   // Track last processed fingerprint to prevent infinite reset loops
   const lastProcessedFingerprint = useRef<string | null>(null);
+  // Ref for editorContext to avoid dependency changes when pendingChanges updates
+  const editorContextRef = useRef(editorContext);
+  editorContextRef.current = editorContext;
 
   // Form data type
   type WeekFormData = {
@@ -1246,8 +1249,12 @@ export function WeekEditor({
 
   // Check for changes and register with context
   useEffect(() => {
+    // Use ref to get current editorContext without adding it to dependencies
+    // This prevents infinite loops when registerChange updates pendingChanges
+    const currentEditorContext = editorContextRef.current;
+
     // Skip registration while context is currently saving
-    if (editorContext?.isSaving) {
+    if (currentEditorContext?.isSaving) {
       console.log('[WeekEditor:changeDetection] Skipping - context is saving');
       return;
     }
@@ -1366,7 +1373,8 @@ export function WeekEditor({
     setHasChanges(changed);
 
     // Register changes with context if available
-    if (editorContext && changed && programId) {
+    // Use currentEditorContext (from ref) to avoid dependency on editorContext object
+    if (currentEditorContext && changed && programId) {
       // GUARD: In client/cohort mode, we MUST have an instanceId before registering changes
       // Otherwise, the save would incorrectly go to the template endpoint
       if (isInstanceContext && !effectiveInstanceId) {
@@ -1379,10 +1387,10 @@ export function WeekEditor({
         console.warn('[WEEK_EDITOR] In client/cohort mode but no instanceId available after lookup');
         return;
       }
-      
+
       // Check if this is a temp week (doesn't exist in DB yet)
       const isTempWeek = week.id.startsWith('temp-');
-      
+
       // Build the pending data with context-specific fields
       let pendingDataForContext: Record<string, unknown> = { ...formData };
       let httpMethod: 'PATCH' | 'POST' | 'PUT' = 'PATCH';
@@ -1419,15 +1427,15 @@ export function WeekEditor({
       // CRITICAL: When registering a client/cohort change, discard any template change
       // for the same week to prevent dual saves (template + cohort both being saved)
       if (viewContext !== 'template' && clientContextId) {
-        const templateKey = editorContext.getChangeKey('week', week.id, undefined);
-        editorContext.discardChange(templateKey);
+        const templateKey = currentEditorContext.getChangeKey('week', week.id, undefined);
+        currentEditorContext.discardChange(templateKey);
       }
 
       // Update fingerprint to track that we've processed this state
       // (Uses same format as early exit check above)
       lastRegisteredFingerprint.current = stateFingerprint;
 
-      editorContext.registerChange({
+      currentEditorContext.registerChange({
         entityType: 'week',
         entityId: week.id,
         weekNumber: week.weekNumber,
@@ -1457,14 +1465,15 @@ export function WeekEditor({
         apiEndpoint: endpoint,
         httpMethod,
       });
-    } else if (editorContext && !changed) {
+    } else if (currentEditorContext && !changed) {
       // Remove from pending changes if no longer changed
-      const changeKey = editorContext.getChangeKey('week', week.id, clientContextId);
-      editorContext.discardChange(changeKey);
+      const changeKey = currentEditorContext.getChangeKey('week', week.id, clientContextId);
+      currentEditorContext.discardChange(changeKey);
     }
-  // Note: Removed getDefaultFormData from deps as it's not used in this effect
+  // Note: editorContext is accessed via ref (editorContextRef.current) to prevent infinite loops
+  // when registerChange updates pendingChanges and causes context reference to change
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData, week.id, week.weekNumber, week.name, week.theme, week.description, week.weeklyPrompt, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.weeklyTasks, week.currentFocus, week.notes, week.linkedSummaryIds, week.linkedCallEventIds, week.linkedArticleIds, week.linkedDownloadIds, week.linkedLinkIds, week.linkedQuestionnaireIds, week.courseAssignments, week.resourceAssignments, editorContext, programId, viewContext, clientContextId, getApiEndpoint, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
+  }, [formData, week.id, week.weekNumber, week.name, week.theme, week.description, week.weeklyPrompt, week.manualNotes, week.distribution, week.coachRecordingUrl, week.coachRecordingNotes, week.weeklyTasks, week.currentFocus, week.notes, week.linkedSummaryIds, week.linkedCallEventIds, week.linkedArticleIds, week.linkedDownloadIds, week.linkedLinkIds, week.linkedQuestionnaireIds, week.courseAssignments, week.resourceAssignments, programId, viewContext, clientContextId, getApiEndpoint, isInstanceContext, effectiveInstanceId, instanceLookupLoading]);
 
   // handleSave is only used by the SyncTemplateDialog now
   const handleSave = async () => {

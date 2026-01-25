@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import ReactPlayer from 'react-player';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ReactPlayer = require('react-player').default as any;
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +25,8 @@ export function VideoPlayer({
   onEnded,
   aspectRatio = '16:9',
 }: VideoPlayerProps) {
-  const playerRef = useRef<ReactPlayer>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [playing, setPlaying] = useState(autoPlay);
@@ -39,7 +41,7 @@ export function VideoPlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
 
-  const controlsTimeoutRef = useRef<NodeJS.Timeout>();
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const aspectRatioClass = {
     '16:9': 'aspect-video',
@@ -154,20 +156,17 @@ export function VideoPlayer({
         width="100%"
         height="100%"
         style={{ position: 'absolute', top: 0, left: 0 }}
-        onProgress={handleProgress}
-        onDuration={setDuration}
-        onEnded={handleEnded}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onProgress={handleProgress as any}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onDuration={setDuration as any}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onEnded={handleEnded as any}
         onBuffer={() => setIsBuffering(true)}
         onBufferEnd={() => setIsBuffering(false)}
         onStart={() => setHasStarted(true)}
-        config={{
-          file: {
-            attributes: {
-              poster: poster,
-              preload: 'metadata',
-            },
-          },
-        }}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        config={{ file: { attributes: { poster, preload: 'metadata' } } } as any}
       />
 
       {/* Poster Overlay (before playing) */}

@@ -125,6 +125,7 @@ export function FunnelEditorDialog({
         event: '/api/coach/org-discover/events',
         download: '/api/coach/org-discover/downloads',
         link: '/api/coach/org-discover/links',
+        video: '/api/coach/org-discover/videos',
       };
       
       const response = await fetch(endpointMap[contentType]);

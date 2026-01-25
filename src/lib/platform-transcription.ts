@@ -7,6 +7,7 @@
 
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { uploadToBunnyStorage } from './bunny-storage';
 
 // =============================================================================
 // TYPES
@@ -197,10 +198,17 @@ async function processTranscription(
     // Perform transcription
     const result = await transcribeWithGroq(recordingUrl);
 
-    // Update with results
+    // Store transcript in Bunny Storage (avoids Firestore 1MB limit, 18x cheaper)
+    const transcriptUrl = await uploadToBunnyStorage(
+      Buffer.from(result.text, 'utf-8'),
+      `orgs/${orgId}/transcripts/${transcriptionId}.txt`,
+      'text/plain'
+    );
+
+    // Update with results - store URL instead of full text
     await transcriptionRef.update({
       status: 'completed',
-      transcript: result.text,
+      transcriptUrl, // URL to Bunny Storage
       segments: result.segments || [],
       durationSeconds: result.durationSeconds,
       language: result.language,

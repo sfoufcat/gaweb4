@@ -107,6 +107,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
     event: [],
     download: [],
     link: [],
+    video: [],
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -282,6 +283,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
         event: '/api/coach/org-discover/events',
         download: '/api/coach/org-discover/downloads',
         link: '/api/coach/org-discover/links',
+        video: '/api/coach/org-discover/videos',
       };
       
       const response = await fetch(endpointMap[contentType]);

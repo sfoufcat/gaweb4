@@ -7,13 +7,14 @@
 
 import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, adminStorage } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { transcribeCallWithGroq, checkCreditsAvailable, deductCredits, refundCredits } from '@/lib/platform-transcription';
 import { processCallSummary } from '@/lib/ai/call-summary';
 import { extractTextFromPdfBuffer } from '@/lib/pdf-extraction';
+import { uploadToBunnyStorage, isBunnyStorageConfigured } from '@/lib/bunny-storage';
 import type { UserRole, OrgRole, ClerkPublicMetadata, UploadedRecording } from '@/types';
 
 // Max file size: 500MB
@@ -144,25 +145,20 @@ export async function POST(request: NextRequest) {
 
     // Generate unique file path
     const timestamp = Date.now();
-    const storagePath = `organizations/${organizationId}/recordings/${timestamp}_${file.name}`;
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const storagePath = `orgs/${organizationId}/recordings/${timestamp}-${sanitizedFileName}`;
 
-    // Upload to Firebase Storage
-    const bucket = adminStorage.bucket();
+    // Upload to Bunny Storage (12x cheaper bandwidth than Firebase)
     const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const fileRef = bucket.file(storagePath);
 
-    await fileRef.save(fileBuffer, {
-      contentType: file.type,
-      metadata: {
-        organizationId,
-        uploadedBy: userId,
-        clientUserId,
-      },
-    });
+    if (!isBunnyStorageConfigured()) {
+      return NextResponse.json(
+        { error: 'Storage not configured. Please contact support.' },
+        { status: 500 }
+      );
+    }
 
-    // Make file publicly accessible (or use signed URLs)
-    await fileRef.makePublic();
-    const fileUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    const fileUrl = await uploadToBunnyStorage(fileBuffer, storagePath, file.type);
 
     // Create uploaded recording record
     const recordingsRef = adminDb
@@ -437,15 +433,29 @@ async function processPdfUpload(
       throw new Error('PDF appears to be empty or contains too little text');
     }
 
-    // Update with extracted text
+    // Generate a unique call ID for this PDF
+    const callId = `pdf_${recordingId}`;
+
+    // Store extracted text in Bunny Storage (avoids Firestore 1MB limit, 18x cheaper)
+    const extractedTextUrl = await uploadToBunnyStorage(
+      Buffer.from(pdfResult.text, 'utf-8'),
+      `orgs/${orgId}/text/${recordingId}-extracted.txt`,
+      'text/plain'
+    );
+
+    // Update with extracted text URL (not the full text)
     await recordingRef.update({
       status: 'summarizing',
-      extractedText: pdfResult.text,
+      extractedTextUrl, // URL to Bunny Storage
       pageCount: pdfResult.pageCount,
     });
 
-    // Generate a unique call ID for this PDF
-    const callId = `pdf_${recordingId}`;
+    // Store transcript in Bunny Storage as well
+    const transcriptUrl = await uploadToBunnyStorage(
+      Buffer.from(pdfResult.text, 'utf-8'),
+      `orgs/${orgId}/transcripts/${callId}.txt`,
+      'text/plain'
+    );
 
     // Create a "transcription" record for the PDF (for consistency with audio flow)
     const transcriptionsRef = adminDb
@@ -458,7 +468,7 @@ async function processPdfUpload(
       callId,
       recordingUrl: fileUrl,
       status: 'completed',
-      transcript: pdfResult.text,
+      transcriptUrl, // URL to Bunny Storage instead of full text
       durationSeconds: 0, // PDFs don't have duration
       language: 'en',
       segments: [],

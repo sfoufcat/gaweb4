@@ -212,6 +212,7 @@ export function FunnelWizardModal({
         event: '/api/coach/org-discover/events',
         download: '/api/coach/org-discover/downloads',
         link: '/api/coach/org-discover/links',
+        video: '/api/coach/org-discover/videos',
       };
 
       const response = await fetch(endpointMap[type]);
@@ -224,6 +225,7 @@ export function FunnelWizardModal({
       else if (data.events) items = data.events.map((e: { id: string; title: string }) => ({ id: e.id, title: e.title }));
       else if (data.downloads) items = data.downloads.map((d: { id: string; title: string }) => ({ id: d.id, title: d.title }));
       else if (data.links) items = data.links.map((l: { id: string; title: string }) => ({ id: l.id, title: l.title }));
+      else if (data.videos) items = data.videos.map((v: { id: string; title: string }) => ({ id: v.id, title: v.title }));
 
       setContentItems(items);
     } catch (err) {

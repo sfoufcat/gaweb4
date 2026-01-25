@@ -524,6 +524,321 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     return map;
   }, [instanceTaskCompletionMap]);
 
+  // Refs to hold latest instance data - allows useMemo to read current values
+  // without triggering recomputation on every reference change
+  const instanceWeeksRef = useRef(instanceWeeks);
+  const instanceRef = useRef(instance);
+  instanceWeeksRef.current = instanceWeeks;
+  instanceRef.current = instance;
+
+  // Create stable keys for instance week data to prevent useMemo re-computation on reference changes
+  // This is the key insight: instanceWeeks/instance change reference on every SWR fetch,
+  // but we only want to recompute selectedWeek when the actual week DATA changes
+  const instanceWeekStableKey = useMemo(() => {
+    if (sidebarSelection?.type !== 'week') return null;
+    const weekNumber = sidebarSelection.weekNumber;
+    const instanceWeek = instanceWeeks?.find(w => w.weekNumber === weekNumber);
+    const rawInstanceWeek = instance?.weeks?.find(w => w.weekNumber === weekNumber);
+    if (!instanceWeek && !rawInstanceWeek) return null;
+    // Create a stable string key from the actual week data values
+    return JSON.stringify({
+      weekNumber,
+      name: instanceWeek?.name,
+      theme: instanceWeek?.theme,
+      description: instanceWeek?.description,
+      weeklyPrompt: instanceWeek?.weeklyPrompt,
+      weeklyTasks: instanceWeek?.weeklyTasks,
+      weeklyHabits: instanceWeek?.weeklyHabits,
+      distribution: instanceWeek?.distribution,
+      notes: instanceWeek?.notes,
+      currentFocus: instanceWeek?.currentFocus,
+      coachRecordingUrl: instanceWeek?.coachRecordingUrl,
+      coachRecordingNotes: instanceWeek?.coachRecordingNotes,
+      manualNotes: instanceWeek?.manualNotes,
+      linkedSummaryIds: instanceWeek?.linkedSummaryIds,
+      linkedCallEventIds: instanceWeek?.linkedCallEventIds,
+      startDayIndex: instanceWeek?.startDayIndex,
+      endDayIndex: instanceWeek?.endDayIndex,
+      calendarStartDate: instanceWeek?.calendarStartDate,
+      actualStartDayOfWeek: instanceWeek?.actualStartDayOfWeek,
+      // Raw instance week fields
+      linkedArticleIds: rawInstanceWeek?.linkedArticleIds,
+      linkedDownloadIds: rawInstanceWeek?.linkedDownloadIds,
+      linkedLinkIds: rawInstanceWeek?.linkedLinkIds,
+      linkedQuestionnaireIds: rawInstanceWeek?.linkedQuestionnaireIds,
+      courseAssignments: rawInstanceWeek?.courseAssignments,
+      resourceAssignments: rawInstanceWeek?.resourceAssignments,
+    });
+  }, [sidebarSelection, instanceWeeks, instance?.weeks]);
+
+  // Memoized selectedWeek computation - prevents infinite loop by stabilizing object reference
+  // Uses instanceWeekStableKey instead of raw instance/instanceWeeks to prevent re-computation
+  const memoizedSelectedWeek = useMemo(() => {
+    // Only compute if we have a week selection
+    if (sidebarSelection?.type !== 'week') return null;
+
+    const weekNumber = sidebarSelection.weekNumber;
+    const templateWeek = programWeeks.find(w => w.weekNumber === weekNumber);
+
+    // For individual programs in client mode
+    const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
+
+    // Calculate week bounds from program settings
+    const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
+
+    // Week 0 (onboarding) special handling for fallback calculation
+    const isInstanceMode = !!(
+      (clientViewContext.mode === 'client' && clientViewContext.enrollmentId) ||
+      (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId)
+    );
+    // Use refs to get current instance data without adding to dependencies
+    const currentInstanceWeeks = instanceWeeksRef.current;
+    const currentInstance = instanceRef.current;
+    const weeksSource = isInstanceMode ? currentInstanceWeeks : programWeeks;
+
+    let startDay: number;
+    let endDay: number;
+
+    const selectedWeekData = weeksSource.find(w => w.weekNumber === weekNumber);
+    const totalDays = selectedProgram?.lengthDays || 30;
+    const isSpecialWeek = weekNumber === 0 || weekNumber === -1;
+    const shouldUseStoredIndices = selectedWeekData?.startDayIndex !== undefined &&
+      selectedWeekData?.endDayIndex !== undefined &&
+      (isInstanceMode || !isSpecialWeek);
+
+    if (shouldUseStoredIndices) {
+      startDay = selectedWeekData!.startDayIndex as number;
+      endDay = selectedWeekData!.endDayIndex as number;
+    } else if (weekNumber === 0) {
+      startDay = 1;
+      endDay = Math.min(daysPerWeek, totalDays);
+    } else if (weekNumber === -1) {
+      startDay = Math.max(1, totalDays - daysPerWeek + 1);
+      endDay = totalDays;
+    } else {
+      // Regular weeks: calculate based on week number
+      startDay = (weekNumber - 1) * daysPerWeek + 1;
+      endDay = Math.min(weekNumber * daysPerWeek, totalDays);
+    }
+
+    // Determine which week data to use
+    const isCohortMode = selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort';
+    const existingWeek = templateWeek;
+
+    // NEW SYSTEM: Check if we have instance week data
+    // Use refs to get current values without dependency changes
+    const instanceWeek = currentInstanceWeeks?.find(w => w.weekNumber === weekNumber);
+    const rawInstanceWeek = currentInstance?.weeks?.find(w => w.weekNumber === weekNumber);
+    const useNewSystem = !!instanceId && (templateWeek || instanceWeek);
+    const instanceDataAvailable = useNewSystem && currentInstance && !instanceLoading;
+
+    // Build selectedWeek object
+    const selectedWeek: ProgramWeek & { calendarStartDate?: string; actualStartDayOfWeek?: number } = useNewSystem ? {
+      id: templateWeek?.id || `instance-week-${weekNumber}`,
+      programId: templateWeek?.programId || selectedProgram?.id || '',
+      organizationId: templateWeek?.organizationId || selectedProgram?.organizationId || '',
+      weekNumber: instanceWeek?.weekNumber ?? templateWeek?.weekNumber ?? weekNumber,
+      order: templateWeek?.order || templateWeek?.weekNumber || weekNumber,
+      startDayIndex: instanceWeek?.startDayIndex ?? templateWeek?.startDayIndex ?? startDay,
+      endDayIndex: instanceWeek?.endDayIndex ?? templateWeek?.endDayIndex ?? endDay,
+      createdAt: templateWeek?.createdAt || new Date().toISOString(),
+      updatedAt: instanceWeek?.updatedAt || templateWeek?.updatedAt || new Date().toISOString(),
+      fillSource: templateWeek?.fillSource,
+      calendarStartDate: instanceWeek?.calendarStartDate,
+      actualStartDayOfWeek: instanceWeek?.actualStartDayOfWeek,
+      moduleId: instanceDataAvailable
+        ? (instanceWeek?.moduleId ?? '')
+        : (instanceWeek?.moduleId ?? templateWeek?.moduleId ?? ''),
+      name: instanceDataAvailable
+        ? (instanceWeek?.name || sidebarSelection.displayLabel || '')
+        : (instanceWeek?.name || templateWeek?.name || sidebarSelection.displayLabel || ''),
+      description: instanceDataAvailable
+        ? (instanceWeek?.description ?? '')
+        : (instanceWeek?.description ?? templateWeek?.description ?? ''),
+      theme: instanceDataAvailable
+        ? (instanceWeek?.theme ?? '')
+        : (instanceWeek?.theme ?? templateWeek?.theme ?? ''),
+      notes: instanceDataAvailable
+        ? (instanceWeek?.notes ?? [])
+        : (instanceWeek?.notes ?? templateWeek?.notes ?? []),
+      currentFocus: instanceDataAvailable
+        ? (instanceWeek?.currentFocus ?? [])
+        : (instanceWeek?.currentFocus ?? templateWeek?.currentFocus ?? []),
+      weeklyPrompt: instanceDataAvailable
+        ? (instanceWeek?.weeklyPrompt ?? '')
+        : (instanceWeek?.weeklyPrompt ?? templateWeek?.weeklyPrompt ?? ''),
+      weeklyTasks: instanceDataAvailable
+        ? (instanceWeek?.weeklyTasks ?? [])
+        : (instanceWeek?.weeklyTasks ?? templateWeek?.weeklyTasks ?? []),
+      weeklyHabits: instanceDataAvailable
+        ? (instanceWeek?.weeklyHabits ?? [])
+        : (instanceWeek?.weeklyHabits ?? templateWeek?.weeklyHabits ?? []),
+      distribution: instanceDataAvailable
+        ? (instanceWeek?.distribution ?? 'spread')
+        : (instanceWeek?.distribution ?? templateWeek?.distribution ?? 'spread'),
+      coachRecordingUrl: instanceDataAvailable
+        ? (instanceWeek?.coachRecordingUrl ?? '')
+        : (instanceWeek?.coachRecordingUrl ?? templateWeek?.coachRecordingUrl ?? ''),
+      coachRecordingNotes: instanceDataAvailable
+        ? (instanceWeek?.coachRecordingNotes ?? '')
+        : (instanceWeek?.coachRecordingNotes ?? templateWeek?.coachRecordingNotes ?? ''),
+      manualNotes: instanceDataAvailable
+        ? (instanceWeek?.manualNotes ?? undefined)
+        : (instanceWeek?.manualNotes ?? templateWeek?.manualNotes),
+      linkedSummaryIds: instanceDataAvailable
+        ? (instanceWeek?.linkedSummaryIds ?? [])
+        : (instanceWeek?.linkedSummaryIds ?? templateWeek?.linkedSummaryIds ?? []),
+      linkedCallEventIds: instanceDataAvailable
+        ? (instanceWeek?.linkedCallEventIds ?? [])
+        : (instanceWeek?.linkedCallEventIds ?? templateWeek?.linkedCallEventIds ?? []),
+      linkedArticleIds: instanceDataAvailable
+        ? (rawInstanceWeek?.linkedArticleIds ?? [])
+        : (rawInstanceWeek?.linkedArticleIds ?? templateWeek?.linkedArticleIds ?? []),
+      linkedDownloadIds: instanceDataAvailable
+        ? (rawInstanceWeek?.linkedDownloadIds ?? [])
+        : (rawInstanceWeek?.linkedDownloadIds ?? templateWeek?.linkedDownloadIds ?? []),
+      linkedLinkIds: instanceDataAvailable
+        ? (rawInstanceWeek?.linkedLinkIds ?? [])
+        : (rawInstanceWeek?.linkedLinkIds ?? templateWeek?.linkedLinkIds ?? []),
+      linkedQuestionnaireIds: instanceDataAvailable
+        ? (rawInstanceWeek?.linkedQuestionnaireIds ?? [])
+        : (rawInstanceWeek?.linkedQuestionnaireIds ?? templateWeek?.linkedQuestionnaireIds ?? []),
+      courseAssignments: instanceDataAvailable
+        ? (rawInstanceWeek?.courseAssignments ?? [])
+        : (rawInstanceWeek?.courseAssignments ?? templateWeek?.courseAssignments ?? []),
+      resourceAssignments: instanceDataAvailable
+        ? (rawInstanceWeek?.resourceAssignments ?? [])
+        : (rawInstanceWeek?.resourceAssignments ?? templateWeek?.resourceAssignments ?? []),
+    } : isCohortMode && !instanceId && templateWeek ? {
+      // OLD SYSTEM FALLBACK for unmigrated cohorts
+      id: templateWeek.id,
+      programId: templateWeek.programId,
+      moduleId: templateWeek.moduleId || '',
+      organizationId: templateWeek.organizationId,
+      weekNumber: templateWeek.weekNumber,
+      order: templateWeek.order || templateWeek.weekNumber,
+      startDayIndex: templateWeek.startDayIndex || startDay,
+      endDayIndex: templateWeek.endDayIndex || endDay,
+      name: templateWeek.name || sidebarSelection.displayLabel || '',
+      description: templateWeek.description,
+      theme: templateWeek.theme,
+      createdAt: templateWeek.createdAt,
+      updatedAt: templateWeek.updatedAt,
+      fillSource: templateWeek.fillSource,
+      notes: templateWeek.notes || [],
+      currentFocus: templateWeek.currentFocus || [],
+      weeklyPrompt: cohortWeekContent?.weeklyPrompt ?? templateWeek.weeklyPrompt,
+      weeklyTasks: cohortWeekContent?.weeklyTasks ?? templateWeek.weeklyTasks ?? [],
+      weeklyHabits: cohortWeekContent?.weeklyHabits ?? templateWeek.weeklyHabits ?? [],
+      distribution: cohortWeekContent?.distribution ?? templateWeek.distribution ?? 'spread',
+      coachRecordingUrl: cohortWeekContent?.coachRecordingUrl ?? templateWeek.coachRecordingUrl,
+      coachRecordingNotes: cohortWeekContent?.coachRecordingNotes ?? templateWeek.coachRecordingNotes,
+      manualNotes: cohortWeekContent?.manualNotes ?? templateWeek.manualNotes,
+      linkedSummaryIds: cohortWeekContent?.linkedSummaryIds ?? templateWeek.linkedSummaryIds ?? [],
+      linkedCallEventIds: cohortWeekContent?.linkedCallEventIds ?? templateWeek.linkedCallEventIds ?? [],
+      linkedArticleIds: templateWeek.linkedArticleIds ?? [],
+      linkedDownloadIds: templateWeek.linkedDownloadIds ?? [],
+      linkedLinkIds: templateWeek.linkedLinkIds ?? [],
+      linkedQuestionnaireIds: templateWeek.linkedQuestionnaireIds ?? [],
+      courseAssignments: templateWeek.courseAssignments ?? [],
+      resourceAssignments: templateWeek.resourceAssignments ?? [],
+    } : existingWeek ? {
+      // Template mode with existing week
+      id: existingWeek.id,
+      programId: existingWeek.programId,
+      moduleId: existingWeek.moduleId || '',
+      organizationId: existingWeek.organizationId,
+      weekNumber: existingWeek.weekNumber,
+      order: existingWeek.order || existingWeek.weekNumber,
+      startDayIndex: isSpecialWeek ? startDay : (existingWeek.startDayIndex || startDay),
+      endDayIndex: isSpecialWeek ? endDay : (existingWeek.endDayIndex || endDay),
+      name: existingWeek.name || sidebarSelection.displayLabel || '',
+      description: existingWeek.description,
+      theme: existingWeek.theme,
+      weeklyPrompt: existingWeek.weeklyPrompt,
+      weeklyTasks: existingWeek.weeklyTasks || [],
+      weeklyHabits: existingWeek.weeklyHabits || [],
+      currentFocus: existingWeek.currentFocus || [],
+      notes: existingWeek.notes || [],
+      distribution: existingWeek.distribution || 'spread',
+      linkedSummaryIds: existingWeek.linkedSummaryIds || [],
+      linkedCallEventIds: existingWeek.linkedCallEventIds || [],
+      manualNotes: existingWeek.manualNotes,
+      coachRecordingUrl: existingWeek.coachRecordingUrl,
+      coachRecordingNotes: existingWeek.coachRecordingNotes,
+      fillSource: existingWeek.fillSource,
+      createdAt: existingWeek.createdAt,
+      updatedAt: existingWeek.updatedAt,
+      linkedArticleIds: existingWeek.linkedArticleIds || [],
+      linkedDownloadIds: existingWeek.linkedDownloadIds || [],
+      linkedLinkIds: existingWeek.linkedLinkIds || [],
+      linkedQuestionnaireIds: existingWeek.linkedQuestionnaireIds || [],
+      courseAssignments: existingWeek.courseAssignments || [],
+      resourceAssignments: existingWeek.resourceAssignments || [],
+    } : {
+      // New temp week
+      id: `temp-week-${weekNumber}`,
+      programId: selectedProgram?.id || '',
+      moduleId: '',
+      organizationId: selectedProgram?.organizationId || '',
+      weekNumber,
+      order: weekNumber,
+      startDayIndex: startDay,
+      endDayIndex: endDay,
+      name: sidebarSelection.displayLabel || '',
+      distribution: 'spread' as const,
+      weeklyTasks: [],
+      weeklyHabits: [],
+      currentFocus: [],
+      notes: [],
+      linkedSummaryIds: [],
+      linkedCallEventIds: [],
+      linkedArticleIds: [],
+      linkedDownloadIds: [],
+      linkedLinkIds: [],
+      linkedQuestionnaireIds: [],
+      courseAssignments: [],
+      resourceAssignments: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    return {
+      selectedWeek,
+      templateWeek,
+      instanceWeek,
+      rawInstanceWeek,
+      startDay,
+      endDay,
+      isClientMode,
+      isCohortMode,
+      isInstanceMode,
+      useNewSystem,
+      instanceDataAvailable,
+      isSpecialWeek,
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    sidebarSelection,
+    programWeeks,
+    selectedProgram?.type,
+    selectedProgram?.id,
+    selectedProgram?.organizationId,
+    selectedProgram?.includeWeekends,
+    selectedProgram?.lengthDays,
+    clientViewContext.mode,
+    clientViewContext.mode === 'client' ? clientViewContext.enrollmentId : undefined,
+    cohortViewContext.mode,
+    cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined,
+    // Use stable key instead of raw instance/instanceWeeks to prevent re-computation on reference changes
+    instanceWeekStableKey,
+    instanceId,
+    instanceLoading,
+    cohortWeekContent,
+    // Still need instanceWeeks and instance for the computation, but instanceWeekStableKey controls when to recompute
+    // The eslint-disable above acknowledges this intentional omission
+  ]);
+
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
   const [isNewProgramModalOpen, setIsNewProgramModalOpen] = useState(false);
@@ -4385,286 +4700,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 })()
               ) : sidebarSelection?.type === 'week' ? (
                 // Week Editor (for weekly mode)
+                // Uses memoized selectedWeek to prevent infinite loops from object recreation
                 (() => {
-                  const weekNumber = sidebarSelection.weekNumber;
-                  console.log('[WEEK_EDITOR_CONTEXT]', {
-                    sidebarWeekNumber: weekNumber,
-                    sidebarSelection,
-                    programWeeksNumbers: programWeeks.map(w => w.weekNumber),
-                    instanceWeeksNumbers: instance?.weeks?.map(w => w.weekNumber),
-                    isCohortMode: selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort',
-                    hasInstance: !!instance,
-                    instanceId,
-                  });
-                  const templateWeek = programWeeks.find(w => w.weekNumber === weekNumber);
-
-                  // For individual programs in client mode
-                  const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
-                  // Client/cohort week data now comes from instance (auto-created via useInstanceIdLookup)
-
-                  // Calculate week bounds from program settings
-                  const daysPerWeek = selectedProgram?.includeWeekends !== false ? 7 : 5;
-
-                  // Week 0 (onboarding) special handling for fallback calculation
-                  // CRITICAL: Use instance weeks when in instance mode, template weeks otherwise
-                  const isInstanceMode = !!(
-                    (clientViewContext.mode === 'client' && clientViewContext.enrollmentId) ||
-                    (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId)
-                  );
-                  // Use instanceWeeks (with recalculated calendar data) instead of raw instance.weeks
-                  const weeksSource = isInstanceMode ? instanceWeeks : programWeeks;
-
-                  let startDay: number;
-                  let endDay: number;
-
-                  // First, try to get startDayIndex/endDayIndex directly from the selected week in weeksSource
-                  const selectedWeekData = weeksSource.find(w => w.weekNumber === weekNumber);
-
-                  const totalDays = selectedProgram?.lengthDays || 30;
-                  // For special weeks (onboarding/closing) in template mode, always recalculate based on current settings
-                  // This ensures day counts update when program.includeWeekends changes
-                  const isSpecialWeek = weekNumber === 0 || weekNumber === -1;
-                  const shouldUseStoredIndices = selectedWeekData?.startDayIndex !== undefined &&
-                    selectedWeekData?.endDayIndex !== undefined &&
-                    (isInstanceMode || !isSpecialWeek);
-
-                  if (shouldUseStoredIndices) {
-                    // Use pre-calculated indices from the week data (most accurate)
-                    // We've already verified these are defined in shouldUseStoredIndices check
-                    startDay = selectedWeekData!.startDayIndex as number;
-                    endDay = selectedWeekData!.endDayIndex as number;
-                  } else if (weekNumber === 0) {
-                    startDay = 1;
-                    // Onboarding gets full week (5 days for weekdays-only, 7 for include weekends)
-                    endDay = Math.min(daysPerWeek, totalDays);
-                  } else if (weekNumber === -1) {
-                    // Closing week: last daysPerWeek of the program
-                    startDay = Math.max(1, totalDays - daysPerWeek + 1);
-                    endDay = totalDays;
-                  } else {
-                    // Check if Week 0 exists to offset regular weeks
-                    const weekZero = weeksSource.find(w => w.weekNumber === 0);
-                    const weekZeroEnd = weekZero?.endDayIndex ?? 0;
-                    startDay = weekZeroEnd > 0 ? (weekZeroEnd + 1 + (weekNumber - 1) * daysPerWeek) : ((weekNumber - 1) * daysPerWeek + 1);
-                    endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
+                  // Use memoized week data to prevent object recreation on every render
+                  if (!memoizedSelectedWeek) {
+                    return <p>Week data not found</p>;
                   }
 
-                  console.log('[WEEK_EDITOR] Day index calculation:', {
-                    weekNumber,
-                    isInstanceMode,
-                    weeksSourceLength: weeksSource.length,
-                    selectedWeekData: selectedWeekData ? { startDayIndex: selectedWeekData.startDayIndex, endDayIndex: selectedWeekData.endDayIndex } : null,
+                  const {
+                    selectedWeek,
+                    templateWeek,
                     startDay,
                     endDay,
-                  });
+                    isClientMode,
+                    isCohortMode,
+                  } = memoizedSelectedWeek;
 
-                  // Determine which week data to use
-                  const isCohortMode = selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort';
-                  // Note: In client/cohort mode, we always use instance data (new system)
-                  // existingWeek is only used as fallback for template mode
-                  const existingWeek = templateWeek;
-
-                  // NEW SYSTEM: Check if we have instance week data
-                  // Use instanceWeeks (derived with calendar fallbacks) instead of raw instance.weeks
-                  const instanceWeek = instanceWeeks?.find(w => w.weekNumber === weekNumber);
-                  // Raw instance week has all fields (ProgramInstanceWeek) including resource assignments
-                  const rawInstanceWeek = instance?.weeks?.find(w => w.weekNumber === weekNumber);
-
-                  // Use existing week data or create a default
-                  // Priority: instanceId means new system (always), else old system fallback
-                  // When instanceId exists, we use instance data even if still loading (template as base)
-                  // FIXED: Use new system if we have instanceId AND (templateWeek OR instanceWeek exists)
-                  // This handles the case where week exists in instance but not in template (e.g., week 0 onboarding)
-                  const useNewSystem = !!instanceId && (templateWeek || instanceWeek);
-
-                  // CRITICAL: When in new system mode with instance loaded, ALWAYS use instance data
-                  // Don't fall back to stale templateWeek.weeklyTasks - use empty array if instanceWeek not found
-                  const instanceDataAvailable = useNewSystem && instance && !instanceLoading;
-
-                  // ARCHITECTURE: In instance mode, use ONLY instance data - NO template fallback
-                  // Template and instance are COMPLETELY SEPARATE data stores.
-                  // Template → Instance sync only happens via explicit "Sync to Client/Cohort" button.
-                  const selectedWeek: ProgramWeek & { calendarStartDate?: string; actualStartDayOfWeek?: number } = useNewSystem ? {
-                    // NEW SYSTEM: Use instance week data ONLY (no template mixing!)
-                    // Structural fields use template for compatibility, content fields use instance ONLY
-                    id: templateWeek?.id || `instance-week-${weekNumber}`,
-                    programId: templateWeek?.programId || selectedProgram?.id || '',
-                    organizationId: templateWeek?.organizationId || selectedProgram?.organizationId || '',
-                    weekNumber: instanceWeek?.weekNumber ?? templateWeek?.weekNumber ?? weekNumber,
-                    order: templateWeek?.order || templateWeek?.weekNumber || weekNumber,
-                    // Use instance week indices (recalculated with correct calendar data)
-                    startDayIndex: instanceWeek?.startDayIndex ?? templateWeek?.startDayIndex ?? startDay,
-                    endDayIndex: instanceWeek?.endDayIndex ?? templateWeek?.endDayIndex ?? endDay,
-                    createdAt: templateWeek?.createdAt || new Date().toISOString(),
-                    updatedAt: instanceWeek?.updatedAt || templateWeek?.updatedAt || new Date().toISOString(),
-                    fillSource: templateWeek?.fillSource,
-                    // Calendar date for day preview display (from recalculated instance data)
-                    calendarStartDate: instanceWeek?.calendarStartDate,
-                    // For onboarding week: which day enrollment starts (for blur effect)
-                    actualStartDayOfWeek: instanceWeek?.actualStartDayOfWeek,
-                    // CONTENT FIELDS: When instance data available, use ONLY instance data (no template fallback!)
-                    // This ensures template changes don't "bleed through" to client/cohort view
-                    moduleId: instanceDataAvailable
-                      ? (instanceWeek?.moduleId ?? '')
-                      : (instanceWeek?.moduleId ?? templateWeek?.moduleId ?? ''),
-                    name: instanceDataAvailable
-                      ? (instanceWeek?.name || sidebarSelection.displayLabel || '')
-                      : (instanceWeek?.name || templateWeek?.name || sidebarSelection.displayLabel || ''),
-                    description: instanceDataAvailable
-                      ? (instanceWeek?.description ?? '')
-                      : (instanceWeek?.description ?? templateWeek?.description ?? ''),
-                    theme: instanceDataAvailable
-                      ? (instanceWeek?.theme ?? '')
-                      : (instanceWeek?.theme ?? templateWeek?.theme ?? ''),
-                    notes: instanceDataAvailable
-                      ? (instanceWeek?.notes ?? [])
-                      : (instanceWeek?.notes ?? templateWeek?.notes ?? []),
-                    currentFocus: instanceDataAvailable
-                      ? (instanceWeek?.currentFocus ?? [])
-                      : (instanceWeek?.currentFocus ?? templateWeek?.currentFocus ?? []),
-                    weeklyPrompt: instanceDataAvailable
-                      ? (instanceWeek?.weeklyPrompt ?? '')
-                      : (instanceWeek?.weeklyPrompt ?? templateWeek?.weeklyPrompt ?? ''),
-                    weeklyTasks: instanceDataAvailable
-                      ? (instanceWeek?.weeklyTasks ?? [])
-                      : (instanceWeek?.weeklyTasks ?? templateWeek?.weeklyTasks ?? []),
-                    weeklyHabits: instanceDataAvailable
-                      ? (instanceWeek?.weeklyHabits ?? [])
-                      : (instanceWeek?.weeklyHabits ?? templateWeek?.weeklyHabits ?? []),
-                    distribution: instanceDataAvailable
-                      ? (instanceWeek?.distribution ?? 'spread')
-                      : (instanceWeek?.distribution ?? templateWeek?.distribution ?? 'spread'),
-                    coachRecordingUrl: instanceDataAvailable
-                      ? (instanceWeek?.coachRecordingUrl ?? '')
-                      : (instanceWeek?.coachRecordingUrl ?? templateWeek?.coachRecordingUrl ?? ''),
-                    coachRecordingNotes: instanceDataAvailable
-                      ? (instanceWeek?.coachRecordingNotes ?? '')
-                      : (instanceWeek?.coachRecordingNotes ?? templateWeek?.coachRecordingNotes ?? ''),
-                    manualNotes: instanceDataAvailable
-                      ? (instanceWeek?.manualNotes ?? undefined)
-                      : (instanceWeek?.manualNotes ?? templateWeek?.manualNotes),
-                    linkedSummaryIds: instanceDataAvailable
-                      ? (instanceWeek?.linkedSummaryIds ?? [])
-                      : (instanceWeek?.linkedSummaryIds ?? templateWeek?.linkedSummaryIds ?? []),
-                    linkedCallEventIds: instanceDataAvailable
-                      ? (instanceWeek?.linkedCallEventIds ?? [])
-                      : (instanceWeek?.linkedCallEventIds ?? templateWeek?.linkedCallEventIds ?? []),
-                    // Resource assignments - use raw instance.weeks for these fields (not in ClientProgramWeek type)
-                    linkedArticleIds: instanceDataAvailable
-                      ? (rawInstanceWeek?.linkedArticleIds ?? [])
-                      : (rawInstanceWeek?.linkedArticleIds ?? templateWeek?.linkedArticleIds ?? []),
-                    linkedDownloadIds: instanceDataAvailable
-                      ? (rawInstanceWeek?.linkedDownloadIds ?? [])
-                      : (rawInstanceWeek?.linkedDownloadIds ?? templateWeek?.linkedDownloadIds ?? []),
-                    linkedLinkIds: instanceDataAvailable
-                      ? (rawInstanceWeek?.linkedLinkIds ?? [])
-                      : (rawInstanceWeek?.linkedLinkIds ?? templateWeek?.linkedLinkIds ?? []),
-                    linkedQuestionnaireIds: instanceDataAvailable
-                      ? (rawInstanceWeek?.linkedQuestionnaireIds ?? [])
-                      : (rawInstanceWeek?.linkedQuestionnaireIds ?? templateWeek?.linkedQuestionnaireIds ?? []),
-                    courseAssignments: instanceDataAvailable
-                      ? (rawInstanceWeek?.courseAssignments ?? [])
-                      : (rawInstanceWeek?.courseAssignments ?? templateWeek?.courseAssignments ?? []),
-                    resourceAssignments: instanceDataAvailable
-                      ? (rawInstanceWeek?.resourceAssignments ?? [])
-                      : (rawInstanceWeek?.resourceAssignments ?? templateWeek?.resourceAssignments ?? []),
-                  } : isCohortMode && !instanceId && templateWeek ? {
-                    // OLD SYSTEM FALLBACK: Use cohortWeekContent (deprecated - for unmigrated cohorts)
-                    // Only used when instanceId is NOT available (not migrated)
-                    id: templateWeek.id,
-                    programId: templateWeek.programId,
-                    moduleId: templateWeek.moduleId || '',
-                    organizationId: templateWeek.organizationId,
-                    weekNumber: templateWeek.weekNumber,
-                    order: templateWeek.order || templateWeek.weekNumber,
-                    startDayIndex: templateWeek.startDayIndex || startDay,
-                    endDayIndex: templateWeek.endDayIndex || endDay,
-                    name: templateWeek.name || sidebarSelection.displayLabel || '',
-                    description: templateWeek.description,
-                    theme: templateWeek.theme,
-                    createdAt: templateWeek.createdAt,
-                    updatedAt: templateWeek.updatedAt,
-                    fillSource: templateWeek.fillSource,
-                    notes: templateWeek.notes || [],
-                    currentFocus: templateWeek.currentFocus || [],
-                    weeklyPrompt: cohortWeekContent?.weeklyPrompt ?? templateWeek.weeklyPrompt,
-                    weeklyTasks: cohortWeekContent?.weeklyTasks ?? templateWeek.weeklyTasks ?? [],
-                    weeklyHabits: cohortWeekContent?.weeklyHabits ?? templateWeek.weeklyHabits ?? [],
-                    distribution: cohortWeekContent?.distribution ?? templateWeek.distribution ?? 'spread',
-                    coachRecordingUrl: cohortWeekContent?.coachRecordingUrl ?? templateWeek.coachRecordingUrl,
-                    coachRecordingNotes: cohortWeekContent?.coachRecordingNotes ?? templateWeek.coachRecordingNotes,
-                    manualNotes: cohortWeekContent?.manualNotes ?? templateWeek.manualNotes,
-                    linkedSummaryIds: cohortWeekContent?.linkedSummaryIds ?? templateWeek.linkedSummaryIds ?? [],
-                    linkedCallEventIds: cohortWeekContent?.linkedCallEventIds ?? templateWeek.linkedCallEventIds ?? [],
-                    // Resource assignments
-                    linkedArticleIds: templateWeek.linkedArticleIds ?? [],
-                    linkedDownloadIds: templateWeek.linkedDownloadIds ?? [],
-                    linkedLinkIds: templateWeek.linkedLinkIds ?? [],
-                    linkedQuestionnaireIds: templateWeek.linkedQuestionnaireIds ?? [],
-                    courseAssignments: templateWeek.courseAssignments ?? [],
-                    resourceAssignments: templateWeek.resourceAssignments ?? [],
-                  } : existingWeek ? {
-                    // For client weeks, map to ProgramWeek structure
-                    id: existingWeek.id,
-                    programId: existingWeek.programId,
-                    moduleId: existingWeek.moduleId || '',
-                    organizationId: existingWeek.organizationId,
-                    weekNumber: existingWeek.weekNumber,
-                    order: existingWeek.order || existingWeek.weekNumber,
-                    // For special weeks (onboarding/closing), always use calculated values to reflect includeWeekends changes
-                    startDayIndex: isSpecialWeek ? startDay : (existingWeek.startDayIndex || startDay),
-                    endDayIndex: isSpecialWeek ? endDay : (existingWeek.endDayIndex || endDay),
-                    name: existingWeek.name || sidebarSelection.displayLabel || '',
-                    description: existingWeek.description,
-                    theme: existingWeek.theme,
-                    weeklyPrompt: existingWeek.weeklyPrompt,
-                    weeklyTasks: existingWeek.weeklyTasks || [],
-                    weeklyHabits: existingWeek.weeklyHabits || [],
-                    currentFocus: existingWeek.currentFocus || [],
-                    notes: existingWeek.notes || [],
-                    distribution: existingWeek.distribution || 'spread',
-                    linkedSummaryIds: existingWeek.linkedSummaryIds || [],
-                    linkedCallEventIds: existingWeek.linkedCallEventIds || [],
-                    manualNotes: existingWeek.manualNotes,
-                    coachRecordingUrl: existingWeek.coachRecordingUrl,
-                    coachRecordingNotes: existingWeek.coachRecordingNotes,
-                    fillSource: existingWeek.fillSource,
-                    createdAt: existingWeek.createdAt,
-                    updatedAt: existingWeek.updatedAt,
-                    // Resource assignments
-                    linkedArticleIds: existingWeek.linkedArticleIds || [],
-                    linkedDownloadIds: existingWeek.linkedDownloadIds || [],
-                    linkedLinkIds: existingWeek.linkedLinkIds || [],
-                    linkedQuestionnaireIds: existingWeek.linkedQuestionnaireIds || [],
-                    courseAssignments: existingWeek.courseAssignments || [],
-                    resourceAssignments: existingWeek.resourceAssignments || [],
-                  } : {
-                    id: `temp-week-${weekNumber}`,
-                    programId: selectedProgram?.id || '',
-                    moduleId: '', // Temporary - will be assigned when saved
-                    organizationId: selectedProgram?.organizationId || '',
-                    weekNumber,
-                    order: weekNumber,
-                    startDayIndex: startDay,
-                    endDayIndex: endDay,
-                    name: sidebarSelection.displayLabel || '', // Use sidebar label for display
-                    distribution: 'spread' as const,
-                    weeklyTasks: [],
-                    weeklyHabits: [],
-                    currentFocus: [],
-                    notes: [],
-                    linkedSummaryIds: [],
-                    linkedCallEventIds: [],
-                    // Resource assignments
-                    linkedArticleIds: [],
-                    linkedDownloadIds: [],
-                    linkedLinkIds: [],
-                    linkedQuestionnaireIds: [],
-                    courseAssignments: [],
-                    resourceAssignments: [],
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                  };
+                  const weekNumber = sidebarSelection.weekNumber;
 
                   // Show loading indicator when switching between clients (instance loading)
                   if (isClientMode && (instanceIdLoading || (instanceId && instanceLoading && !instance))) {
@@ -4868,9 +4920,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       availableQuestionnaires={availableQuestionnaires}
                       availableCourses={organizationCourses}
                       isClientView={isClientMode}
-                      clientName={isClientMode ? clientViewContext.userName : undefined}
-                      clientUserId={isClientMode ? clientViewContext.userId : undefined}
-                      enrollmentId={isClientMode ? clientViewContext.enrollmentId : undefined}
+                      clientName={clientViewContext.mode === 'client' ? clientViewContext.userName : undefined}
+                      clientUserId={clientViewContext.mode === 'client' ? clientViewContext.userId : undefined}
+                      enrollmentId={clientViewContext.mode === 'client' ? clientViewContext.enrollmentId : undefined}
                       programId={selectedProgram?.id}
                       programType={selectedProgram?.type}
                       enrollments={programEnrollments}

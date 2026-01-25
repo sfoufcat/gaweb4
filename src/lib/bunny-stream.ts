@@ -63,6 +63,14 @@ function mapBunnyStatus(status: number): VideoStatus['status'] {
 
 /**
  * Get Bunny configuration from environment
+ *
+ * BUNNY_API_KEY must be the Stream/Video Library API key.
+ * Find at: Dashboard > Stream > [Your Library Name] > API > API Key
+ *
+ * This same key is used for:
+ * - Video management (create, delete, status)
+ * - Collection management
+ * - TUS upload authentication (SHA256 signature)
  */
 function getBunnyConfig() {
   const apiKey = process.env.BUNNY_API_KEY;
@@ -71,7 +79,7 @@ function getBunnyConfig() {
 
   if (!apiKey || !libraryId || !cdnHostname) {
     throw new Error(
-      'Missing Bunny Stream configuration. Required: BUNNY_API_KEY, BUNNY_LIBRARY_ID, BUNNY_CDN_HOSTNAME'
+      'Missing Bunny Stream configuration. Required: BUNNY_API_KEY (from Stream > Video Library > API), BUNNY_LIBRARY_ID, BUNNY_CDN_HOSTNAME'
     );
   }
 
@@ -91,6 +99,8 @@ export async function createBunnyVideo(
 ): Promise<CreateVideoResult> {
   const { apiKey, libraryId } = getBunnyConfig();
 
+  console.log('[BUNNY] Creating video:', { title, collectionId, libraryId });
+
   const response = await fetch(`${BUNNY_API_BASE}/${libraryId}/videos`, {
     method: 'POST',
     headers: {
@@ -105,10 +115,12 @@ export async function createBunnyVideo(
 
   if (!response.ok) {
     const error = await response.text();
+    console.error('[BUNNY] Create video failed:', { status: response.status, error });
     throw new Error(`Failed to create Bunny video: ${error}`);
   }
 
   const video: BunnyVideoResponse = await response.json();
+  console.log('[BUNNY] Video created successfully:', { videoId: video.guid });
 
   // TUS upload URL format for Bunny Stream
   const tusUploadUrl = `https://video.bunnycdn.com/tusupload?libraryId=${libraryId}&videoId=${video.guid}&expirationTime=${Date.now() + 24 * 60 * 60 * 1000}`;
@@ -225,65 +237,112 @@ export async function deleteVideo(videoId: string): Promise<void> {
  * @param organizationId - Organization ID to use as collection name
  * @returns Collection ID
  */
-export async function getOrCreateCollection(organizationId: string): Promise<string> {
+export async function getOrCreateCollection(organizationId: string): Promise<string | undefined> {
   const { apiKey, libraryId } = getBunnyConfig();
 
-  // First, try to find existing collection
-  const listResponse = await fetch(`${BUNNY_API_BASE}/${libraryId}/collections?search=${organizationId}`, {
-    method: 'GET',
-    headers: {
-      AccessKey: apiKey,
-    },
-  });
+  try {
+    // First, try to find existing collection
+    const listResponse = await fetch(`${BUNNY_API_BASE}/${libraryId}/collections?search=${organizationId}`, {
+      method: 'GET',
+      headers: {
+        AccessKey: apiKey,
+      },
+    });
 
-  if (listResponse.ok) {
-    const collections = await listResponse.json();
-    if (collections.items && collections.items.length > 0) {
-      const existing = collections.items.find(
-        (c: { name: string }) => c.name === organizationId
-      );
-      if (existing) {
-        return existing.guid;
+    if (listResponse.ok) {
+      const collections = await listResponse.json();
+      if (collections.items && collections.items.length > 0) {
+        const existing = collections.items.find(
+          (c: { name: string }) => c.name === organizationId
+        );
+        if (existing) {
+          return existing.guid;
+        }
       }
     }
+
+    // Create new collection
+    const createResponse = await fetch(`${BUNNY_API_BASE}/${libraryId}/collections`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        AccessKey: apiKey,
+      },
+      body: JSON.stringify({
+        name: organizationId,
+      }),
+    });
+
+    if (!createResponse.ok) {
+      // Log error but don't throw - collections are optional for organization
+      console.warn(`[BUNNY] Could not create collection for ${organizationId}, proceeding without collection`);
+      return undefined;
+    }
+
+    const collection = await createResponse.json();
+    return collection.guid;
+  } catch (error) {
+    // Collections are optional - videos can exist without collections
+    console.warn(`[BUNNY] Collection operation failed for ${organizationId}, proceeding without collection:`, error);
+    return undefined;
   }
-
-  // Create new collection
-  const createResponse = await fetch(`${BUNNY_API_BASE}/${libraryId}/collections`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      AccessKey: apiKey,
-    },
-    body: JSON.stringify({
-      name: organizationId,
-    }),
-  });
-
-  if (!createResponse.ok) {
-    const error = await createResponse.text();
-    throw new Error(`Failed to create collection: ${error}`);
-  }
-
-  const collection = await createResponse.json();
-  return collection.guid;
 }
 
 /**
- * Generate a signed TUS upload URL with authentication header
+ * Generate SHA256 hash for Bunny TUS authentication
+ * Signature = SHA256(library_id + api_key + expiration_time + video_id)
+ *
+ * Per Bunny docs: https://docs.bunny.net/reference/tus-resumable-uploads
+ */
+async function generateTusSignature(
+  libraryId: string,
+  apiKey: string,
+  expirationTime: number,
+  videoId: string
+): Promise<string> {
+  // Per Bunny docs: SHA256(library_id + api_key + expiration_time + video_id)
+  const data = `${libraryId}${apiKey}${expirationTime}${videoId}`;
+  console.log('[BUNNY_TUS] Raw signature components:', { libraryId, apiKeyLen: apiKey.length, expirationTime, videoId });
+  // Debug: Log the exact string being hashed (with key masked)
+  const maskedData = `${libraryId}${'*'.repeat(apiKey.length)}${expirationTime}${videoId}`;
+  console.log('[BUNNY_TUS] Signature input (masked):', maskedData);
+  console.log('[BUNNY_TUS] Signature input length:', data.length);
+
+  const encoder = new TextEncoder();
+  const dataBuffer = encoder.encode(data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Generate TUS upload configuration with proper SHA256 signature
  *
  * @param videoId - Bunny video GUID
  * @param expirationHours - How long the URL should be valid (default 24 hours)
  * @returns TUS upload configuration for client
  */
-export function generateTusUploadConfig(videoId: string, expirationHours = 24) {
+export async function generateTusUploadConfig(videoId: string, expirationHours = 24) {
   const { apiKey, libraryId } = getBunnyConfig();
-  const expirationTime = Date.now() + expirationHours * 60 * 60 * 1000;
+
+  // Expiration time must be in seconds (Unix timestamp), not milliseconds
+  const expirationTime = Math.floor(Date.now() / 1000) + expirationHours * 60 * 60;
+
+  // Per Bunny docs: signature = SHA256(library_id + api_key + expiration_time + video_id)
+  const signature = await generateTusSignature(libraryId, apiKey, expirationTime, videoId);
+
+  // Debug logging - remove after confirming it works
+  console.log('[BUNNY_TUS] Generating TUS config:', {
+    libraryId,
+    videoId,
+    expirationTime,
+    signaturePreview: signature.substring(0, 20) + '...',
+  });
 
   return {
     endpoint: 'https://video.bunnycdn.com/tusupload',
     headers: {
-      AuthorizationSignature: apiKey, // Bunny uses this for TUS auth
+      AuthorizationSignature: signature,
       AuthorizationExpire: expirationTime.toString(),
       VideoId: videoId,
       LibraryId: libraryId,

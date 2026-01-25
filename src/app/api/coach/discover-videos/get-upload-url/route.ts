@@ -11,7 +11,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import { createBunnyVideo, getOrCreateCollection } from '@/lib/bunny-stream';
+import { createBunnyVideo, getOrCreateCollection, generateTusUploadConfig } from '@/lib/bunny-stream';
 import type { UserRole, OrgRole, ClerkPublicMetadata } from '@/types';
 
 // Accepted video extensions
@@ -87,10 +87,10 @@ export async function POST(request: NextRequest) {
     const prefix = isPreview ? 'preview' : 'video';
     const videoTitle = `${prefix}_${timestamp}_${fileName}`;
 
-    const { videoId, libraryId } = await createBunnyVideo(videoTitle, collectionId);
+    const { videoId } = await createBunnyVideo(videoTitle, collectionId);
 
-    // Generate TUS upload configuration
-    const expirationTime = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    // Generate TUS upload configuration with proper SHA256 signature
+    const tusConfig = await generateTusUploadConfig(videoId);
 
     console.log(
       `[DISCOVER_VIDEO_UPLOAD] Created Bunny video ${videoId} for: ${fileName}, org: ${organizationId}, isPreview: ${isPreview}`
@@ -98,13 +98,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       videoId,
-      tusEndpoint: 'https://video.bunnycdn.com/tusupload',
-      tusHeaders: {
-        AuthorizationSignature: process.env.BUNNY_API_KEY,
-        AuthorizationExpire: expirationTime.toString(),
-        VideoId: videoId,
-        LibraryId: libraryId,
-      },
+      tusEndpoint: tusConfig.endpoint,
+      tusHeaders: tusConfig.headers,
       isPreview,
     });
   } catch (error) {

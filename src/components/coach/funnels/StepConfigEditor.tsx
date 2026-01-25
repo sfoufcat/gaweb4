@@ -10,6 +10,7 @@ import { IntakeConfigSelect } from '../intake/IntakeConfigSelect';
 import { nanoid } from 'nanoid';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
+import { DiscardUploadDialog } from '@/components/ui/DiscardUploadDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LandingPageEditor, type LandingPageFormData } from '@/components/shared/LandingPageEditor';
 import { InfluencePromptEditor } from './InfluencePromptEditor';
@@ -55,6 +56,51 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
   );
   const [isSaving, setIsSaving] = useState(false);
 
+  // Track pending Bunny video IDs (uploaded but not yet saved)
+  const [pendingBunnyVideoIds, setPendingBunnyVideoIds] = useState<string[]>([]);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const hasPendingUploads = pendingBunnyVideoIds.length > 0;
+
+  const trackBunnyVideo = (videoId: string) => {
+    setPendingBunnyVideoIds((prev) => [...prev, videoId]);
+  };
+
+  const deletePendingVideos = async () => {
+    setIsDeleting(true);
+    try {
+      await Promise.all(
+        pendingBunnyVideoIds.map((videoId) =>
+          fetch(`/api/coach/bunny-video/${videoId}`, { method: 'DELETE' }).catch((err) =>
+            console.warn(`Failed to delete orphaned video ${videoId}:`, err)
+          )
+        )
+      );
+    } finally {
+      setIsDeleting(false);
+      setPendingBunnyVideoIds([]);
+    }
+  };
+
+  const handleClose = () => {
+    if (hasPendingUploads) {
+      setShowDiscardDialog(true);
+      return;
+    }
+    onClose();
+  };
+
+  const handleDiscardConfirm = async () => {
+    await deletePendingVideos();
+    setShowDiscardDialog(false);
+    onClose();
+  };
+
+  const handleDiscardCancel = () => {
+    setShowDiscardDialog(false);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     // Clean up tracking config - only include non-empty values
@@ -69,6 +115,8 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
         if (tracking.customHtml) cleanedTracking.customHtml = tracking.customHtml;
       }
     }
+    // Clear pending video IDs - they're now saved
+    setPendingBunnyVideoIds([]);
     await onSave(config, stepName.trim() || undefined, influencePrompt, cleanedTracking);
     setIsSaving(false);
   };
@@ -91,7 +139,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
       case 'transformation':
         return <PlanRevealConfigEditor config={config} onChange={setConfig} />;
       case 'explainer':
-        return <ExplainerConfigEditor config={config} onChange={setConfig} />;
+        return <ExplainerConfigEditor config={config} onChange={setConfig} onBunnyVideoCreated={trackBunnyVideo} />;
       case 'landing_page':
         return <LandingPageConfigEditor config={config} onChange={setConfig} onClose={onClose} />;
       case 'upsell':
@@ -100,7 +148,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
         return <DownsellConfigEditor config={config} onChange={setConfig} />;
       case 'info':
         // Legacy support - use ExplainerConfigEditor for info steps too
-        return <ExplainerConfigEditor config={config} onChange={setConfig} />;
+        return <ExplainerConfigEditor config={config} onChange={setConfig} onBunnyVideoCreated={trackBunnyVideo} />;
       case 'success':
         return <SuccessConfigEditor config={config} onChange={setConfig} />;
       case 'scheduling':
@@ -120,7 +168,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => e.target === e.currentTarget && handleClose()}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
@@ -135,7 +183,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
               {step.type.replace(/_/g, ' ')} Configuration
             </h3>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-white/10 rounded-lg transition-colors"
             >
               <X className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
@@ -293,7 +341,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
         {/* Footer */}
         <div className="p-6 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex gap-3">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="flex-1 py-2 px-4 text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg transition-colors"
           >
             Cancel
@@ -310,7 +358,19 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
     </motion.div>
   );
 
-  return createPortal(content, document.body);
+  return (
+    <>
+      {createPortal(content, document.body)}
+      <DiscardUploadDialog
+        isOpen={showDiscardDialog}
+        onStay={handleDiscardCancel}
+        onDiscard={handleDiscardConfirm}
+        isDeleting={isDeleting}
+        title="Discard Uploaded Video?"
+        description="You have an uploaded video that hasn't been saved. If you leave now, the video will be permanently deleted."
+      />
+    </>
+  );
 }
 
 // Question Config Editor
@@ -1004,7 +1064,7 @@ const LAYOUT_OPTIONS: { value: ExplainerLayout; label: string; icon: React.React
   },
 ];
 
-function ExplainerConfigEditor({ config, onChange }: { config: Record<string, unknown>; onChange: (c: Record<string, unknown>) => void }) {
+function ExplainerConfigEditor({ config, onChange, onBunnyVideoCreated }: { config: Record<string, unknown>; onChange: (c: Record<string, unknown>) => void; onBunnyVideoCreated?: (videoId: string) => void }) {
   const mediaType = (config.mediaType as ExplainerMediaType) || 'image';
   const layout = (config.layout as ExplainerLayout) || 'media_top';
   const isFullscreen = layout === 'fullscreen';
@@ -1028,11 +1088,23 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
         return (
           <MediaUpload
             value={config.videoUrl as string || ''}
-            onChange={(url) => onChange({ ...config, videoUrl: url })}
+            onChange={(url) => onChange({
+              ...config,
+              videoUrl: url,
+              // Clear thumbnail when video is removed
+              videoThumbnailUrl: url ? config.videoThumbnailUrl : ''
+            })}
             folder="programs"
             type="video"
             label="Video"
             uploadEndpoint="/api/coach/org-upload-media"
+            onBunnyVideoCreated={onBunnyVideoCreated}
+            onThumbnailReady={(thumbnailUrl) => {
+              // Only set auto-thumbnail if no custom override exists
+              if (!config.videoThumbnailUrl) {
+                onChange({ ...config, videoThumbnailUrl: thumbnailUrl });
+              }
+            }}
           />
         );
       

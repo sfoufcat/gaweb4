@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
+import { DiscardUploadDialog } from '@/components/ui/DiscardUploadDialog';
+import { ThumbnailWithFallback } from '@/lib/video-thumbnail';
 import { getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
 import { ResourceSettingsModal } from '@/components/admin/ResourceSettingsModal';
 import {
@@ -90,6 +92,56 @@ export function CourseEditor({
   const [activeTab, setActiveTab] = useState<'overview' | 'content'>(isEditing ? 'overview' : 'content');
   const [deleteModuleIndex, setDeleteModuleIndex] = useState<number | null>(null);
   const [deleteLessonInfo, setDeleteLessonInfo] = useState<{ moduleIndex: number; lessonIndex: number } | null>(null);
+
+  // Track pending Bunny video IDs (uploaded but not yet saved)
+  const [pendingBunnyVideoIds, setPendingBunnyVideoIds] = useState<string[]>([]);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const hasPendingUploads = pendingBunnyVideoIds.length > 0;
+
+  const deletePendingVideos = async () => {
+    setIsDeleting(true);
+    try {
+      await Promise.all(
+        pendingBunnyVideoIds.map((videoId) =>
+          fetch(`/api/coach/bunny-video/${videoId}`, { method: 'DELETE' }).catch((err) =>
+            console.warn(`Failed to delete orphaned video ${videoId}:`, err)
+          )
+        )
+      );
+    } finally {
+      setIsDeleting(false);
+      setPendingBunnyVideoIds([]);
+    }
+  };
+
+  const handleClose = () => {
+    if (hasPendingUploads) {
+      setShowDiscardDialog(true);
+      return;
+    }
+    onClose();
+  };
+
+  const handleDiscardConfirm = async () => {
+    await deletePendingVideos();
+    setShowDiscardDialog(false);
+    onClose();
+  };
+
+  const handleDiscardCancel = () => {
+    setShowDiscardDialog(false);
+  };
+
+  const trackBunnyVideo = (videoId: string) => {
+    setPendingBunnyVideoIds((prev) => [...prev, videoId]);
+  };
+
+  const clearPendingVideo = (videoUrl: string) => {
+    // Extract videoId from Bunny URL if possible (format: .../{videoId}/...)
+    // Clear all pending videos when a save happens (simpler approach)
+  };
 
   const [formData, setFormData] = useState({
     title: '',
@@ -187,6 +239,8 @@ export function CourseEditor({
         throw new Error(error.error || 'Failed to save course');
       }
 
+      // Clear pending video IDs - they're now saved
+      setPendingBunnyVideoIds([]);
       onSave();
       onClose();
     } catch (err) {
@@ -308,7 +362,7 @@ export function CourseEditor({
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 -ml-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors flex-shrink-0"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -399,7 +453,7 @@ export function CourseEditor({
 
             <Button
               variant="outline"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={saving}
               className="hidden sm:inline-flex border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#262b35] font-albert"
             >
@@ -668,12 +722,15 @@ export function CourseEditor({
                   <MediaUpload
                     value={selectedLesson.videoUrl || ''}
                     onChange={async (url) => {
+                      // Clear thumbnail when video is removed
+                      if (!url) {
+                        updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: '', videoThumbnailUrl: '', durationMinutes: undefined });
+                        return;
+                      }
                       updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url });
-                      if (url) {
-                        const duration = await fetchVideoDuration(url);
-                        if (duration) {
-                          updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url, durationMinutes: duration });
-                        }
+                      const duration = await fetchVideoDuration(url);
+                      if (duration) {
+                        updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoUrl: url, durationMinutes: duration });
                       }
                     }}
                     folder="courses/lessons"
@@ -681,6 +738,13 @@ export function CourseEditor({
                     uploadEndpoint={uploadEndpoint}
                     hideLabel
                     aspectRatio="16:9"
+                    onBunnyVideoCreated={trackBunnyVideo}
+                    onThumbnailReady={(thumbnailUrl) => {
+                      // Only set auto-thumbnail if no custom override exists
+                      if (!selectedLesson.videoThumbnailUrl) {
+                        updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoThumbnailUrl: thumbnailUrl });
+                      }
+                    }}
                   />
                 </div>
 
@@ -693,7 +757,14 @@ export function CourseEditor({
                       <span className="text-xs text-brand-accent ml-1">(Set)</span>
                     )}
                   </summary>
-                  <div className="mt-3">
+                  <div className="mt-3 space-y-3">
+                    {/* Show auto-generated thumbnail preview if set */}
+                    {selectedLesson.videoThumbnailUrl && selectedLesson.videoThumbnailUrl.includes('thumbnail.jpg') && (
+                      <ThumbnailWithFallback
+                        src={selectedLesson.videoThumbnailUrl}
+                        alt="Auto-generated thumbnail"
+                      />
+                    )}
                     <MediaUpload
                       value={selectedLesson.videoThumbnailUrl || ''}
                       onChange={(url) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, videoThumbnailUrl: url })}
@@ -703,7 +774,7 @@ export function CourseEditor({
                       hideLabel
                       aspectRatio="16:9"
                     />
-                    <p className="text-xs text-[#9ca3af] mt-2 font-albert">
+                    <p className="text-xs text-[#9ca3af] font-albert">
                       Optional. If not set, the video&apos;s first frame will be used.
                     </p>
                   </div>
@@ -811,6 +882,16 @@ export function CourseEditor({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Discard Upload Dialog */}
+      <DiscardUploadDialog
+        isOpen={showDiscardDialog}
+        onStay={handleDiscardCancel}
+        onDiscard={handleDiscardConfirm}
+        isDeleting={isDeleting}
+        title="Discard Uploaded Videos?"
+        description="You have uploaded videos that haven't been saved. If you leave now, these videos will be permanently deleted."
+      />
     </div>
   );
 }

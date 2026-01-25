@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { DiscardUploadDialog } from '@/components/ui/DiscardUploadDialog';
 import { cn } from '@/lib/utils';
 
 interface Client {
@@ -53,6 +54,7 @@ export function RecordingUpload({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
   const handleFileSelect = useCallback((selectedFile: File) => {
     // Validate file type
@@ -190,15 +192,37 @@ export function RecordingUpload({
     }
   };
 
+  // Check if there's an in-progress upload that would be lost
+  const hasActiveUpload = status === 'uploading' || status === 'processing';
+
   const handleReset = () => {
+    // If uploading or processing, show confirmation dialog
+    if (hasActiveUpload) {
+      setShowDiscardDialog(true);
+      return;
+    }
+    doReset();
+  };
+
+  const doReset = () => {
     setFile(null);
     setClientId('');
     setStatus('idle');
     setProgress(0);
     setError(null);
+    setShowDiscardDialog(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleDiscardConfirm = () => {
+    setShowDiscardDialog(false);
+    doReset();
+  };
+
+  const handleDiscardCancel = () => {
+    setShowDiscardDialog(false);
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -385,6 +409,15 @@ export function RecordingUpload({
           </Button>
         </div>
       )}
+
+      {/* Discard Upload Dialog */}
+      <DiscardUploadDialog
+        isOpen={showDiscardDialog}
+        onStay={handleDiscardCancel}
+        onDiscard={handleDiscardConfirm}
+        title="Cancel Upload?"
+        description="You have an upload in progress. If you cancel now, the upload will be stopped and you'll need to start over."
+      />
     </div>
   );
 }
