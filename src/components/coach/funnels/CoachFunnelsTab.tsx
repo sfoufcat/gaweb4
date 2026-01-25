@@ -1005,7 +1005,7 @@ export function CoachFunnelsTab({ programId, initialFunnelId, onFunnelSelect }: 
           isOpen={showCreateWizard}
           onClose={() => setShowCreateWizard(false)}
           programs={programs}
-          initialTargetType={activeTab !== 'content' ? activeTab : undefined}
+          initialTargetType={activeTab !== 'content' && activeTab !== 'all' ? activeTab : undefined}
           initialContentType={activeTab === 'content' ? selectedContentType : undefined}
           onSaved={() => {
             setShowCreateWizard(false);

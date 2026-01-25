@@ -30,7 +30,7 @@ interface RouteParams {
  */
 export async function POST(req: Request, { params }: RouteParams) {
   try {
-    const { funnelSlug } = await params;
+    const { orgSlug, funnelSlug } = await params;
     const body = await req.json();
 
     const {
@@ -122,7 +122,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       .get();
 
     let hostUserId = 'system';
-    let hostName = orgData.name || orgSlug;
+    let hostName = orgSlug;
 
     if (!coachesSnapshot.empty) {
       const coachData = coachesSnapshot.docs[0].data();
@@ -252,7 +252,6 @@ export async function POST(req: Request, { params }: RouteParams) {
 
       // Intake-specific fields
       intakeCallConfigId: config.id,
-      intakeFunnelId: funnel.id, // Link to the funnel for tracking
       intakeData: customFields || {},
       prospectEmail: email.toLowerCase().trim(),
       prospectName: name.trim(),
