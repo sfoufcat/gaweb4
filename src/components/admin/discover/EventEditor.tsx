@@ -323,6 +323,8 @@ export interface EventEditorProps {
   uploadEndpoint: string;
   programsApiEndpoint: string;
   apiEndpoint: string;
+  /** For recurring events: 'single' = editing this instance, 'series' = editing all */
+  editMode?: 'single' | 'series';
 }
 
 export function EventEditor({
@@ -332,6 +334,7 @@ export function EventEditor({
   uploadEndpoint,
   programsApiEndpoint,
   apiEndpoint,
+  editMode,
 }: EventEditorProps) {
   const isEditing = !!event;
 
@@ -771,11 +774,22 @@ export function EventEditor({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Event Type Badge */}
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+            {/* Event Type Badge - desktop only */}
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
               <Globe className="w-3.5 h-3.5" />
               Community Event
             </span>
+
+            {/* Edit Mode Badge - desktop only (for recurring events) */}
+            {editMode && (
+              <span className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                editMode === 'series'
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                  : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+              }`}>
+                {editMode === 'series' ? 'Editing all events' : 'Editing this event'}
+              </span>
+            )}
 
             {/* External Link (only for existing events) */}
             {isEditing && event && (
@@ -839,6 +853,23 @@ export function EventEditor({
               )}
             </Button>
           </div>
+        </div>
+
+        {/* Mobile badges - below header */}
+        <div className="sm:hidden flex flex-wrap gap-2 px-4 py-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+            <Globe className="w-3.5 h-3.5" />
+            Community Event
+          </span>
+          {editMode && (
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+              editMode === 'series'
+                ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+            }`}>
+              {editMode === 'series' ? 'Editing all events' : 'Editing this event'}
+            </span>
+          )}
         </div>
       </div>
 

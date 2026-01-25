@@ -13,6 +13,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
 import type { OrgSettings, ContentPurchaseType } from '@/types';
+import { createInvoiceFromPayment } from '@/lib/invoice-generator';
 
 // Lazy initialization of Stripe
 let _stripe: Stripe | null = null;
@@ -202,6 +203,20 @@ export async function POST(request: NextRequest) {
     };
 
     const purchaseRef = await adminDb.collection('user_content_purchases').add(purchaseData);
+
+    // Create invoice for content purchase
+    createInvoiceFromPayment({
+      userId,
+      organizationId: metadata.organizationId || content?.organizationId || '',
+      paymentType: 'content_purchase',
+      referenceId: purchaseRef.id,
+      referenceName: content?.title || 'Content purchase',
+      amountPaid: paymentIntent.amount || 0,
+      currency: paymentIntent.currency || 'usd',
+      stripePaymentIntentId: paymentIntentId,
+    }).catch(err => {
+      console.error('[CONFIRM_PURCHASE] Failed to create invoice:', err);
+    });
 
     console.log(
       `[CONFIRM_PURCHASE] Created purchase record: User ${userId} purchased ${contentType}/${contentId}, purchaseId: ${purchaseRef.id}`

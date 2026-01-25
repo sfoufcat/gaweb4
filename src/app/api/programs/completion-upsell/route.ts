@@ -13,6 +13,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
 import type { OrgSettings, Program } from '@/types';
 import { enrollUserInProduct } from '@/lib/enrollments/enrollUser';
+import { createInvoiceFromPayment } from '@/lib/invoice-generator';
 
 // Lazy initialization of Stripe
 let _stripe: Stripe | null = null;
@@ -249,6 +250,22 @@ export async function POST(request: NextRequest) {
     console.log(
       `[COMPLETION_UPSELL] Successfully purchased upsell for user ${userId} - program ${programId} - enrollment ${enrollResult.enrollmentId}`
     );
+
+    // Create invoice for completion upsell
+    if (enrollResult.enrollmentId && program.priceInCents > 0) {
+      createInvoiceFromPayment({
+        userId,
+        organizationId: program.organizationId,
+        paymentType: 'program_enrollment',
+        referenceId: enrollResult.enrollmentId,
+        referenceName: `${program.name} (Completion Offer)`,
+        amountPaid: program.priceInCents,
+        currency: program.currency || 'usd',
+        stripePaymentIntentId: paymentIntent.id,
+      }).catch(err => {
+        console.error('[COMPLETION_UPSELL] Failed to create invoice:', err);
+      });
+    }
 
     return NextResponse.json({
       success: true,

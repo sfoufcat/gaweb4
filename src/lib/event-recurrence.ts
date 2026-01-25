@@ -19,10 +19,138 @@
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { scheduleEventJobs } from './event-notifications';
+import { createZoomMeeting, deleteZoomMeeting } from './integrations/zoom';
+import { createGoogleMeetMeeting, deleteGoogleMeetEvent } from './integrations/google-meet';
 import type { UnifiedEvent, RecurrencePattern, ProgramEnrollment, ProgramWeek } from '@/types';
 
 // Default look-ahead for generating instances (in days)
 const DEFAULT_LOOK_AHEAD_DAYS = 14;
+
+// ============================================================================
+// External Meeting Helper Functions
+// ============================================================================
+
+interface MeetingCreationResult {
+  success: boolean;
+  meetingUrl?: string;
+  meetingId?: string;
+  error?: string;
+}
+
+/**
+ * Create a Zoom or Google Meet meeting for a specific event instance.
+ * Falls back gracefully if integration is disconnected.
+ */
+async function createMeetingForInstance(
+  orgId: string,
+  provider: 'zoom' | 'google_meet' | 'stream' | 'manual',
+  details: {
+    title: string;
+    startDateTime: string;
+    durationMinutes: number;
+    timezone: string;
+    clientName?: string;
+    description?: string;
+  }
+): Promise<MeetingCreationResult> {
+  // Only create meetings for Zoom and Google Meet
+  if (provider !== 'zoom' && provider !== 'google_meet') {
+    return { success: true };
+  }
+
+  const topic = details.clientName
+    ? `${details.title} with ${details.clientName}`
+    : details.title;
+
+  try {
+    if (provider === 'zoom') {
+      const result = await createZoomMeeting(orgId, {
+        topic,
+        startTime: details.startDateTime,
+        duration: details.durationMinutes,
+        timezone: details.timezone,
+        agenda: details.description,
+      });
+
+      if (!result.success) {
+        console.warn(`[EVENT_RECURRENCE] Zoom meeting creation failed: ${result.error}`);
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        meetingUrl: result.meetingUrl,
+        meetingId: result.meetingId,
+      };
+    }
+
+    if (provider === 'google_meet') {
+      const endTime = new Date(
+        new Date(details.startDateTime).getTime() + details.durationMinutes * 60 * 1000
+      ).toISOString();
+
+      const result = await createGoogleMeetMeeting(orgId, {
+        summary: topic,
+        startTime: details.startDateTime,
+        endTime,
+        timezone: details.timezone,
+        description: details.description,
+      });
+
+      if (!result.success) {
+        console.warn(`[EVENT_RECURRENCE] Google Meet creation failed: ${result.error}`);
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        meetingUrl: result.meetingUrl,
+        meetingId: result.eventId, // Google uses eventId
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error(`[EVENT_RECURRENCE] Meeting creation failed for ${provider}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Meeting creation failed',
+    };
+  }
+}
+
+/**
+ * Delete an external meeting (Zoom or Google Meet).
+ * Best-effort: logs errors but doesn't throw.
+ */
+async function deleteExternalMeeting(
+  orgId: string,
+  provider: string | undefined,
+  externalId: string
+): Promise<void> {
+  if (!provider || !externalId) return;
+
+  try {
+    if (provider === 'zoom') {
+      const result = await deleteZoomMeeting(orgId, externalId);
+      if (!result.success) {
+        console.warn(`[EVENT_RECURRENCE] Failed to delete Zoom meeting ${externalId}: ${result.error}`);
+      } else {
+        console.log(`[EVENT_RECURRENCE] Deleted Zoom meeting ${externalId}`);
+      }
+    } else if (provider === 'google_meet') {
+      const result = await deleteGoogleMeetEvent(orgId, externalId);
+      if (!result.success) {
+        console.warn(`[EVENT_RECURRENCE] Failed to delete Google Meet event ${externalId}: ${result.error}`);
+      } else {
+        console.log(`[EVENT_RECURRENCE] Deleted Google Meet event ${externalId}`);
+      }
+    }
+  } catch (error) {
+    // Best-effort: log but don't throw
+    console.error(`[EVENT_RECURRENCE] Error deleting ${provider} meeting ${externalId}:`, error);
+  }
+}
 
 // ============================================================================
 // Week Linking Helper Functions
@@ -166,17 +294,25 @@ function getNextWeeklyOccurrence(
   timezone: string
 ): Date {
   const next = new Date(afterDate);
-  
+
   // Find the next occurrence of the target day
   const currentDay = next.getDay();
   let daysToAdd = dayOfWeek - currentDay;
-  
-  if (daysToAdd <= 0) {
+
+  if (daysToAdd < 0) {
+    // Target day already passed this week
     daysToAdd += 7;
+  } else if (daysToAdd === 0) {
+    // Same day of week - check if event time has already passed
+    const eventTimeToday = setTimeInTimezone(new Date(afterDate), hours, minutes, timezone);
+    if (afterDate >= eventTimeToday) {
+      // Event time has passed today, move to next week
+      daysToAdd = 7;
+    }
   }
-  
+
   next.setDate(next.getDate() + daysToAdd);
-  
+
   return setTimeInTimezone(next, hours, minutes, timezone);
 }
 
@@ -316,37 +452,74 @@ export async function generateRecurringInstances(
   if (!parentEvent.isRecurring || !parentEvent.recurrence) {
     return [];
   }
-  
+
   const now = new Date();
-  const lookAheadEnd = new Date(now.getTime() + lookAheadDays * 24 * 60 * 60 * 1000);
-  
-  // Get existing instances to avoid duplicates
-  const existingInstancesSnapshot = await adminDb
+
+  // If there's a count limit, extend lookAhead to ensure we can generate all instances
+  // For weekly events with count=4, we need at least 4 weeks (28 days)
+  // Use a generous multiplier based on frequency to ensure we have enough range
+  let effectiveLookAheadDays = lookAheadDays;
+  if (parentEvent.recurrence.count) {
+    const frequency = parentEvent.recurrence.frequency;
+    const daysPerOccurrence = frequency === 'daily' ? 1
+      : frequency === 'weekly' ? 7
+      : frequency === 'biweekly' ? 14
+      : 30; // monthly
+    // Add buffer to ensure we can generate all count instances
+    const minDaysNeeded = parentEvent.recurrence.count * daysPerOccurrence + 7;
+    effectiveLookAheadDays = Math.max(lookAheadDays, minDaysNeeded);
+  }
+
+  const lookAheadEnd = new Date(now.getTime() + effectiveLookAheadDays * 24 * 60 * 60 * 1000);
+
+  // Get ALL existing instances to track count limit (not just future ones)
+  const allInstancesSnapshot = await adminDb
     .collection('events')
     .where('parentEventId', '==', parentEvent.id)
-    .where('instanceDate', '>=', now.toISOString().split('T')[0])
     .get();
-  
+
+  const existingCount = allInstancesSnapshot.size;
   const existingDates = new Set(
-    existingInstancesSnapshot.docs.map(doc => doc.data().instanceDate)
+    allInstancesSnapshot.docs.map(doc => doc.data().instanceDate)
   );
-  
+
+  // Calculate how many more instances we can create based on count limit
+  const countLimit = parentEvent.recurrence.count;
+  const maxToCreate = countLimit
+    ? Math.max(0, countLimit - existingCount)
+    : Infinity;
+
+  if (maxToCreate === 0) {
+    console.log(`[EVENT_RECURRENCE] Count limit reached for ${parentEvent.id} (${existingCount}/${countLimit})`);
+    return [];
+  }
+
   // Generate occurrences
   const occurrences = generateOccurrencesBetween(
     parentEvent.recurrence,
     now,
     lookAheadEnd
   );
-  
+
   const createdIds: string[] = [];
-  
+
   for (const occurrence of occurrences) {
+    // Check if we've hit the count limit
+    if (countLimit && (existingCount + createdIds.length) >= countLimit) {
+      console.log(`[EVENT_RECURRENCE] Count limit reached during generation for ${parentEvent.id}`);
+      break;
+    }
+
     const instanceDate = occurrence.toISOString().split('T')[0];
-    
-    // Skip if instance already exists for this date
+
+    // Skip if instance already exists for this date (including ones created in this run)
     if (existingDates.has(instanceDate)) {
+      console.log(`[EVENT_RECURRENCE] Skipping duplicate instance for ${instanceDate}`);
       continue;
     }
+
+    // Mark this date as used to prevent duplicates within the same run
+    existingDates.add(instanceDate);
     
     // Try to find the program week for this instance if it's a program-related call
     let programWeekId: string | undefined;
@@ -382,6 +555,38 @@ export async function generateRecurringInstances(
       }
     }
 
+    // Create unique meeting for this instance if using Zoom or Google Meet
+    let instanceMeetingLink: string | undefined;
+    let instanceExternalMeetingId: string | undefined;
+
+    if (
+      parentEvent.meetingProvider &&
+      ['zoom', 'google_meet'].includes(parentEvent.meetingProvider) &&
+      parentEvent.organizationId
+    ) {
+      const meetingResult = await createMeetingForInstance(
+        parentEvent.organizationId,
+        parentEvent.meetingProvider as 'zoom' | 'google_meet',
+        {
+          title: parentEvent.title,
+          startDateTime: occurrence.toISOString(),
+          durationMinutes: parentEvent.durationMinutes || 60,
+          timezone: parentEvent.timezone || 'UTC',
+          clientName: parentEvent.clientName,
+          description: parentEvent.description,
+        }
+      );
+
+      if (meetingResult.success && meetingResult.meetingUrl) {
+        instanceMeetingLink = meetingResult.meetingUrl;
+        instanceExternalMeetingId = meetingResult.meetingId;
+        console.log(`[EVENT_RECURRENCE] Created ${parentEvent.meetingProvider} meeting for instance ${instanceDate}`);
+      } else {
+        // Meeting creation failed - instance will still be created but without unique link
+        console.warn(`[EVENT_RECURRENCE] Could not create meeting for instance ${instanceDate}, using parent's link`);
+      }
+    }
+
     // Create instance document
     const instanceData: Omit<UnifiedEvent, 'id'> = {
       ...parentEvent,
@@ -396,6 +601,9 @@ export async function generateRecurringInstances(
       endDateTime: parentEvent.durationMinutes
         ? new Date(occurrence.getTime() + parentEvent.durationMinutes * 60 * 1000).toISOString()
         : undefined,
+      // Use instance-specific meeting link if created, otherwise fall back to parent's
+      meetingLink: instanceMeetingLink ?? parentEvent.meetingLink,
+      externalMeetingId: instanceExternalMeetingId ?? parentEvent.externalMeetingId,
       status: 'confirmed',
       // Reset voting for instances (they inherit confirmation from parent)
       votingConfig: undefined,
@@ -542,58 +750,88 @@ export async function updateFutureInstances(
 /**
  * Cancel all future instances of a recurring event.
  * Used when the parent event is canceled or deleted.
+ * Also cleans up external meetings (Zoom, Google Meet).
  */
-export async function cancelFutureInstances(parentEventId: string): Promise<number> {
+export async function cancelFutureInstances(parentEventId: string): Promise<{ count: number; cancelledIds: string[] }> {
   const now = new Date().toISOString();
-  
+
   // Get future instances
   const instancesSnapshot = await adminDb
     .collection('events')
     .where('parentEventId', '==', parentEventId)
     .where('startDateTime', '>=', now)
     .get();
-  
+
   if (instancesSnapshot.empty) {
-    return 0;
+    return { count: 0, cancelledIds: [] };
   }
-  
+
   const batch = adminDb.batch();
-  
+  const cancelledIds: string[] = [];
+
   for (const doc of instancesSnapshot.docs) {
+    const eventData = doc.data() as UnifiedEvent;
+    cancelledIds.push(doc.id);
+
+    // Delete external meeting if exists (best-effort, don't block on failure)
+    if (eventData.externalMeetingId && eventData.organizationId) {
+      deleteExternalMeeting(
+        eventData.organizationId,
+        eventData.meetingProvider,
+        eventData.externalMeetingId
+      ).catch(err => {
+        console.error(`[EVENT_RECURRENCE] Error cleaning up meeting for ${doc.id}:`, err);
+      });
+    }
+
     batch.update(doc.ref, {
       status: 'canceled',
       updatedAt: FieldValue.serverTimestamp(),
     });
   }
-  
+
   await batch.commit();
-  
+
   console.log(`[EVENT_RECURRENCE] Canceled ${instancesSnapshot.size} future instances of ${parentEventId}`);
-  return instancesSnapshot.size;
+  return { count: instancesSnapshot.size, cancelledIds };
 }
 
 /**
  * Delete all instances of a recurring event.
  * Used when the parent event is permanently deleted.
+ * Also cleans up external meetings (Zoom, Google Meet).
  */
 export async function deleteAllInstances(parentEventId: string): Promise<number> {
   const instancesSnapshot = await adminDb
     .collection('events')
     .where('parentEventId', '==', parentEventId)
     .get();
-  
+
   if (instancesSnapshot.empty) {
     return 0;
   }
-  
+
   const batch = adminDb.batch();
-  
+
   for (const doc of instancesSnapshot.docs) {
+    const eventData = doc.data() as UnifiedEvent;
+
+    // Delete external meeting if exists (best-effort, don't block on failure)
+    if (eventData.externalMeetingId && eventData.organizationId) {
+      deleteExternalMeeting(
+        eventData.organizationId,
+        eventData.meetingProvider,
+        eventData.externalMeetingId
+      ).catch(err => {
+        console.error(`[EVENT_RECURRENCE] Error cleaning up meeting for ${doc.id}:`, err);
+      });
+    }
+
     batch.delete(doc.ref);
   }
-  
+
   await batch.commit();
-  
+
   console.log(`[EVENT_RECURRENCE] Deleted ${instancesSnapshot.size} instances of ${parentEventId}`);
   return instancesSnapshot.size;
 }

@@ -14,6 +14,7 @@ interface UseSchedulingEventsReturn {
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  removeEvents: (eventIds: string[]) => void;
 }
 
 /**
@@ -71,11 +72,17 @@ export function useSchedulingEvents(options: UseSchedulingEventsOptions): UseSch
     fetchEvents();
   }, [fetchEvents]);
 
+  // Optimistically remove events from local state (e.g., after cancellation)
+  const removeEvents = useCallback((eventIds: string[]) => {
+    setEvents(prev => prev.filter(e => !eventIds.includes(e.id)));
+  }, []);
+
   return {
     events,
     isLoading,
     error,
     refetch: fetchEvents,
+    removeEvents,
   };
 }
 
@@ -199,7 +206,7 @@ interface UseSchedulingActionsReturn {
   proposeCall: (options: ProposeCallOptions) => Promise<UnifiedEvent>;
   requestCall: (options: RequestCallOptions) => Promise<UnifiedEvent>;
   respondToProposal: (options: RespondOptions) => Promise<UnifiedEvent>;
-  cancelEvent: (eventId: string, reason?: string) => Promise<void>;
+  cancelEvent: (eventId: string, reason?: string, scope?: 'single' | 'future') => Promise<{ cancelledCount: number }>;
   rescheduleEvent: (options: RescheduleOptions) => Promise<UnifiedEvent>;
   isLoading: boolean;
   error: string | null;
@@ -293,7 +300,11 @@ export function useSchedulingActions(): UseSchedulingActionsReturn {
     }
   }, []);
 
-  const cancelEvent = useCallback(async (eventId: string, reason?: string): Promise<void> => {
+  const cancelEvent = useCallback(async (
+    eventId: string,
+    reason?: string,
+    scope: 'single' | 'future' = 'single'
+  ): Promise<{ cancelledCount: number; cancelledIds: string[] }> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -301,13 +312,19 @@ export function useSchedulingActions(): UseSchedulingActionsReturn {
       const response = await fetch('/api/scheduling/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId, reason }),
+        body: JSON.stringify({ eventId, reason, scope }),
       });
 
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to cancel event');
       }
+
+      const data = await response.json();
+      return {
+        cancelledCount: data.cancelledCount || 1,
+        cancelledIds: data.cancelledIds || [eventId],
+      };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to cancel';
       setError(message);

@@ -12,6 +12,7 @@ import { addUserToOrganization } from '@/lib/clerk-organizations';
 import type { CoachingStatus, CoachingPlan, FlowSession, Program, ProgramEnrollment, ProgramInvite, NewProgramEnrollmentStatus, CoachTier, CoachSubscriptionStatus, Squad, SquadMember } from '@/types';
 import { TIER_CALL_CREDITS } from '@/types';
 import { checkExistingEnrollment } from '@/lib/enrollment-check';
+import { createInvoiceFromPayment, markInvoiceRefunded } from '@/lib/invoice-generator';
 
 // =============================================================================
 // CLERK ORG METADATA SYNC
@@ -268,6 +269,24 @@ export async function POST(req: Request) {
           await handleCreditPurchasePaymentSucceeded(paymentIntent);
         } else {
           console.log(`[STRIPE_WEBHOOK] payment_intent.succeeded - paymentIntentId: ${paymentIntent.id} (not a funnel, content, or credit payment, skipping)`);
+        }
+        break;
+      }
+
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        console.log(`[STRIPE_WEBHOOK] charge.refunded - chargeId: ${charge.id}, paymentIntentId: ${charge.payment_intent}`);
+
+        // Mark invoice as refunded if this charge is linked to a payment intent
+        if (charge.payment_intent) {
+          const paymentIntentId = typeof charge.payment_intent === 'string'
+            ? charge.payment_intent
+            : charge.payment_intent.id;
+
+          const isFullRefund = charge.refunded && charge.amount_refunded === charge.amount;
+          markInvoiceRefunded(paymentIntentId, charge.amount_refunded, isFullRefund).catch((err) => {
+            console.error('[STRIPE_WEBHOOK] Failed to mark invoice as refunded:', err);
+          });
         }
         break;
       }
@@ -1303,6 +1322,9 @@ async function handleSubscriptionRenewal(invoice: Stripe.Invoice) {
     const tier = (orgSettings.billing?.tier as CoachTier) || 'starter';
 
     await resetCreditsForOrg(orgId, tier, invoice);
+
+    // Create invoice for subscription renewal
+    await createRenewalInvoice(invoice, orgId, tier);
     return;
   }
 
@@ -1317,6 +1339,9 @@ async function handleSubscriptionRenewal(invoice: Stripe.Invoice) {
   const tier = (orgSettings?.billing?.tier as CoachTier) || 'starter';
 
   await resetCreditsForOrg(organizationId, tier, invoice);
+
+  // Create invoice for subscription renewal
+  await createRenewalInvoice(invoice, organizationId, tier);
 }
 
 /**
@@ -1350,6 +1375,53 @@ async function resetCreditsForOrg(orgId: string, tier: CoachTier, invoice: Strip
   }, { merge: true });
 
   console.log(`[STRIPE_WEBHOOK] Reset credits for org ${orgId}: ${callCredits} calls (${allocatedMinutes} min), tier: ${tier}`);
+}
+
+/**
+ * Create invoice for subscription renewal
+ */
+async function createRenewalInvoice(invoice: Stripe.Invoice, orgId: string, tier: string) {
+  if (!invoice.amount_paid || invoice.amount_paid <= 0) {
+    return; // Skip $0 renewals
+  }
+
+  const subscriptionId = typeof invoice.subscription === 'string'
+    ? invoice.subscription
+    : invoice.subscription?.id;
+
+  // Find the user who owns this organization (coach)
+  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+  if (!customerId) {
+    console.log('[STRIPE_WEBHOOK] No customer ID in renewal invoice');
+    return;
+  }
+
+  // Look up user by Stripe customer ID
+  const userQuery = await adminDb
+    .collection('users')
+    .where('stripeCustomerId', '==', customerId)
+    .limit(1)
+    .get();
+
+  if (userQuery.empty) {
+    console.log(`[STRIPE_WEBHOOK] No user found for customer ${customerId}`);
+    return;
+  }
+
+  const userId = userQuery.docs[0].id;
+
+  createInvoiceFromPayment({
+    userId,
+    organizationId: orgId,
+    paymentType: 'subscription_renewal',
+    referenceId: subscriptionId || invoice.id,
+    referenceName: `${tier.charAt(0).toUpperCase() + tier.slice(1)} Plan Renewal`,
+    amountPaid: invoice.amount_paid,
+    currency: invoice.currency || 'usd',
+    stripeInvoiceId: invoice.id,
+  }).catch(err => {
+    console.error('[STRIPE_WEBHOOK] Failed to create renewal invoice:', err);
+  });
 }
 
 /**
@@ -1590,6 +1662,23 @@ async function handleFunnelPaymentSucceeded(paymentIntent: Stripe.PaymentIntent)
       now
     );
   }
+
+  // Create invoice for the funnel payment (async, don't block webhook)
+  const invoiceOrgId = flowSession.organizationId || organizationId;
+  if (invoiceOrgId) {
+    createInvoiceFromPayment({
+      userId,
+      organizationId: invoiceOrgId,
+      paymentType: 'funnel_payment',
+      referenceId: enrollmentRef.id,
+      referenceName: program.name || 'Program enrollment',
+      amountPaid: paymentIntent.amount || program.priceInCents || 0,
+      currency: paymentIntent.currency || 'usd',
+      stripePaymentIntentId: paymentIntent.id,
+    }).catch((err) => {
+      console.error('[STRIPE_WEBHOOK] Failed to create invoice for funnel payment:', err);
+    });
+  }
 }
 
 /**
@@ -1734,6 +1823,33 @@ async function handleContentPurchaseSucceeded(paymentIntent: Stripe.PaymentInten
   // Process order bumps if any
   if (orderBumpsJson) {
     await processOrderBumps(userId, organizationId || '', paymentIntent.id, orderBumpsJson, now);
+  }
+
+  // Create invoice for the content purchase (async, don't block webhook)
+  if (organizationId) {
+    // Get content name for invoice
+    let contentName = `${contentType} purchase`;
+    try {
+      const contentDoc = await adminDb.collection('content').doc(contentId).get();
+      if (contentDoc.exists) {
+        contentName = contentDoc.data()?.title || contentName;
+      }
+    } catch {
+      // Use default name
+    }
+
+    createInvoiceFromPayment({
+      userId,
+      organizationId,
+      paymentType: 'content_purchase',
+      referenceId: purchaseRef.id,
+      referenceName: contentName,
+      amountPaid: paymentIntent.amount || 0,
+      currency: paymentIntent.currency || 'usd',
+      stripePaymentIntentId: paymentIntent.id,
+    }).catch((err) => {
+      console.error('[STRIPE_WEBHOOK] Failed to create invoice for content purchase:', err);
+    });
   }
 }
 
@@ -2141,11 +2257,27 @@ async function handleSquadSubscriptionCheckoutCompleted(session: Stripe.Checkout
   }
 
   console.log(`[STRIPE_WEBHOOK] User ${userId} successfully joined squad ${squadId} with subscription ${subscriptionId}`);
+
+  // Create invoice for the squad subscription (async, don't block webhook)
+  if (organizationId) {
+    createInvoiceFromPayment({
+      userId,
+      organizationId,
+      paymentType: 'squad_subscription',
+      referenceId: squadId,
+      referenceName: squad.name || 'Squad membership',
+      amountPaid: session.amount_total || 0,
+      currency: session.currency || 'usd',
+      stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id,
+    }).catch((err) => {
+      console.error('[STRIPE_WEBHOOK] Failed to create invoice for squad subscription:', err);
+    });
+  }
 }
 
 /**
  * Handle program subscription checkout completion
- * 
+ *
  * Called when a user completes checkout for a recurring program enrollment.
  * Creates enrollment with subscription tracking.
  */
@@ -2281,6 +2413,23 @@ async function handleProgramSubscriptionCheckoutCompleted(session: Stripe.Checko
       orderBumpsJson,
       now
     );
+  }
+
+  // Create invoice for the program subscription (async, don't block webhook)
+  const invoiceOrgId = organizationId || program.organizationId;
+  if (invoiceOrgId) {
+    createInvoiceFromPayment({
+      userId,
+      organizationId: invoiceOrgId,
+      paymentType: 'program_enrollment',
+      referenceId: enrollmentRef.id,
+      referenceName: program.name || 'Program enrollment',
+      amountPaid: session.amount_total || program.priceInCents || 0,
+      currency: session.currency || 'usd',
+      stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id,
+    }).catch((err) => {
+      console.error('[STRIPE_WEBHOOK] Failed to create invoice for program subscription:', err);
+    });
   }
 }
 

@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
 import type { UnifiedEvent, CoachCallSettings, UserCallCredits } from '@/types';
+import { createInvoiceFromPayment } from '@/lib/invoice-generator';
 
 let _stripe: Stripe | null = null;
 
@@ -252,6 +253,22 @@ export async function PUT(request: NextRequest) {
         paidAt: now,
         updatedAt: now,
       });
+
+      // Create invoice for paid call (only for Stripe payments, not credits)
+      if (event.paymentIntentId && event.priceInCents && event.priceInCents > 0) {
+        createInvoiceFromPayment({
+          userId,
+          organizationId: orgId || '',
+          paymentType: 'scheduled_call',
+          referenceId: eventId,
+          referenceName: event.title || 'Coaching call',
+          amountPaid: event.priceInCents,
+          currency: 'usd',
+          stripePaymentIntentId: event.paymentIntentId,
+        }).catch(err => {
+          console.error('[SCHEDULING_PAYMENT_PUT] Failed to create invoice:', err);
+        });
+      }
 
       return NextResponse.json({
         success: true,

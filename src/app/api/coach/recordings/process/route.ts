@@ -36,6 +36,8 @@ const isPdf = (fileName: string): boolean => fileName.toLowerCase().endsWith('.p
  * - programEnrollmentId?: Enrollment context
  * - programId?: Program ID (for cohort mode)
  * - weekId?: Week ID (for cohort mode)
+ * - eventId?: Event ID to link the summary to (for calendar integration)
+ * - squadId?: Squad ID (for squad calls)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -69,6 +71,8 @@ export async function POST(request: NextRequest) {
       programEnrollmentId,
       programId,
       weekId,
+      eventId,
+      squadId,
     } = body;
 
     if (!storagePath || !fileName || !fileSize) {
@@ -78,9 +82,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Either clientUserId (individual) OR cohortId (group) is required
-    if (!clientUserId && !cohortId) {
-      return NextResponse.json({ error: 'clientUserId or cohortId is required' }, { status: 400 });
+    // Either clientUserId (individual) OR cohortId (group) OR eventId (calendar) is required
+    if (!clientUserId && !cohortId && !eventId) {
+      return NextResponse.json({ error: 'clientUserId, cohortId, or eventId is required' }, { status: 400 });
     }
 
     const isFilePdf = isPdf(fileName);
@@ -156,7 +160,7 @@ export async function POST(request: NextRequest) {
         ? 'video'
         : 'audio';
 
-    const recordingData: Omit<UploadedRecording, 'id'> = {
+    const recordingData: Omit<UploadedRecording, 'id'> & { eventId?: string; squadId?: string } = {
       organizationId,
       uploadedBy: userId,
       clientUserId: clientUserId || undefined,
@@ -164,6 +168,8 @@ export async function POST(request: NextRequest) {
       cohortId: cohortId || undefined,
       programId: programId || undefined,
       weekId: weekId || undefined,
+      eventId: eventId || undefined,
+      squadId: squadId || undefined,
       fileName,
       fileUrl,
       fileSizeBytes: fileSize,
@@ -202,7 +208,8 @@ export async function POST(request: NextRequest) {
           userId,
           clientUserId,
           programEnrollmentId,
-          cohortContext
+          cohortContext,
+          eventId
         );
       } else {
         await processRecording(
@@ -213,7 +220,8 @@ export async function POST(request: NextRequest) {
           clientUserId,
           programEnrollmentId,
           estimatedMinutes,
-          cohortContext
+          cohortContext,
+          eventId
         );
       }
 
@@ -224,7 +232,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: finalData?.status === 'completed',
         recordingId,
-        callSummaryId: finalData?.callSummaryId || null,
+        summaryId: finalData?.callSummaryId || null,
+        callSummaryId: finalData?.callSummaryId || null, // Keep for backwards compat
         status: finalData?.status || 'unknown',
         message: finalData?.status === 'completed'
           ? 'Recording processed successfully.'
@@ -267,7 +276,8 @@ async function processRecording(
   clientUserId: string | null,
   programEnrollmentId: string | null,
   estimatedMinutes: number,
-  cohortContext: CohortContext | null
+  cohortContext: CohortContext | null,
+  eventId?: string
 ): Promise<void> {
   const recordingRef = adminDb
     .collection('organizations')
@@ -381,6 +391,11 @@ async function processRecording(
       );
     }
 
+    // Link summary to event if eventId provided (calendar integration)
+    if (eventId && summaryResult.summaryId) {
+      await linkSummaryToEvent(eventId, summaryResult.summaryId);
+    }
+
     console.log(`[RECORDING_PROCESS] Completed processing ${recordingId}`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -410,7 +425,8 @@ async function processPdfUpload(
   coachUserId: string,
   clientUserId: string | null,
   programEnrollmentId: string | null,
-  cohortContext: CohortContext | null
+  cohortContext: CohortContext | null,
+  eventId?: string
 ): Promise<void> {
   const recordingRef = adminDb
     .collection('organizations')
@@ -533,6 +549,11 @@ async function processPdfUpload(
       );
     }
 
+    // Link summary to event if eventId provided (calendar integration)
+    if (eventId && summaryResult.summaryId) {
+      await linkSummaryToEvent(eventId, summaryResult.summaryId);
+    }
+
     console.log(`[RECORDING_PROCESS] Completed processing PDF ${recordingId}`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -618,5 +639,25 @@ async function updateCohortWeekContent(
   } catch (error) {
     console.error('[COHORT_WEEK_CONTENT] Error updating instance:', error);
     // Don't throw - this is a secondary operation and shouldn't fail the main upload
+  }
+}
+
+/**
+ * Link a call summary to a calendar event
+ * Updates the event's callSummaryId field
+ */
+async function linkSummaryToEvent(
+  eventId: string,
+  summaryId: string
+): Promise<void> {
+  try {
+    await adminDb.collection('events').doc(eventId).update({
+      callSummaryId: summaryId,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    console.log(`[RECORDING_PROCESS] Linked summary ${summaryId} to event ${eventId}`);
+  } catch (error) {
+    console.error(`[RECORDING_PROCESS] Failed to link summary to event:`, error);
+    // Don't throw - the summary was still created successfully
   }
 }

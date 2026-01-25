@@ -30,6 +30,7 @@ import {
   Globe,
   FileText,
   Rocket,
+  Phone,
   BookOpen,
   Video,
   Download,
@@ -51,23 +52,26 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import type { Funnel, Program, ProgramInvite } from '@/types';
+import type { Funnel, Program, ProgramInvite, IntakeCallConfig } from '@/types';
+import { IntakeConfigWizard } from './intake/IntakeConfigWizard';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
 import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
 import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 
 type DialogView = 'list' | 'create' | 'bulk';
-type WizardStep = 'welcome' | 'target-type' | 'program-choice' | 'content-select' | 'program-type' | 'program-structure' | 'program-details' | 'cohort-setup' | 'funnel-setup' | 'create-invite';
+type WizardStep = 'welcome' | 'target-type' | 'program-choice' | 'content-select' | 'intake-select' | 'program-type' | 'program-structure' | 'program-details' | 'cohort-setup' | 'funnel-setup' | 'create-invite';
 
 interface WizardData {
-  // Target type (program or content)
-  targetType: 'program' | 'content';
+  // Target type (program, content, or intake)
+  targetType: 'program' | 'content' | 'intake';
   programChoice: 'existing' | 'new';
   selectedProgramId?: string;
   contentType?: 'article' | 'course' | 'event' | 'download';
   selectedContentId?: string;
   selectedContentName?: string;
+  // Intake
+  selectedIntakeConfigId?: string;
   // Program type
   programType: 'individual' | 'group';
   // Structure
@@ -97,6 +101,7 @@ const DEFAULT_WIZARD_DATA: WizardData = {
   contentType: undefined,
   selectedContentId: undefined,
   selectedContentName: undefined,
+  selectedIntakeConfigId: undefined,
   programType: 'individual',
   durationType: 'fixed',
   durationWeeks: 12,
@@ -123,6 +128,9 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [intakeConfigs, setIntakeConfigs] = useState<IntakeCallConfig[]>([]);
+  const [isLoadingIntakeConfigs, setIsLoadingIntakeConfigs] = useState(false);
+  const [showIntakeConfigWizard, setShowIntakeConfigWizard] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -138,7 +146,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
   const [wizardStep, setWizardStep] = useState<WizardStep>(() => {
     if (typeof window !== 'undefined') {
       const saved = sessionStorage.getItem('inviteWizardStep');
-      if (saved && ['welcome', 'target-type', 'program-choice', 'content-select', 'program-type', 'program-structure', 'program-details', 'cohort-setup', 'funnel-setup', 'create-invite'].includes(saved)) {
+      if (saved && ['welcome', 'target-type', 'program-choice', 'content-select', 'intake-select', 'program-type', 'program-structure', 'program-details', 'cohort-setup', 'funnel-setup', 'create-invite'].includes(saved)) {
         return saved as WizardStep;
       }
     }
@@ -304,6 +312,21 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
     }
   }, [selectedFunnelId]);
 
+  const fetchIntakeConfigs = useCallback(async () => {
+    try {
+      setIsLoadingIntakeConfigs(true);
+      const response = await fetch('/api/coach/intake-configs');
+      if (!response.ok) throw new Error('Failed to fetch intake configs');
+      const data = await response.json();
+      setIntakeConfigs(data.configs || []);
+    } catch (err) {
+      console.error('Failed to fetch intake configs:', err);
+      setIntakeConfigs([]);
+    } finally {
+      setIsLoadingIntakeConfigs(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       fetchData();
@@ -360,6 +383,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
       case 'welcome': return 'target-type';
       case 'target-type':
         if (wizardData.targetType === 'content') return 'content-select';
+        if (wizardData.targetType === 'intake') return 'intake-select';
         // If program and programs exist, ask to use existing or create new
         if (programs.length > 0) return 'program-choice';
         return 'program-type';
@@ -367,6 +391,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
         if (wizardData.programChoice === 'existing') return 'funnel-setup';
         return 'program-type';
       case 'content-select': return 'funnel-setup';
+      case 'intake-select': return 'funnel-setup';
       case 'program-type': return 'program-structure';
       case 'program-structure': return 'program-details';
       case 'program-details':
@@ -382,6 +407,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
       case 'target-type': return 'welcome';
       case 'program-choice': return 'target-type';
       case 'content-select': return 'target-type';
+      case 'intake-select': return 'target-type';
       case 'program-type':
         // Go back to program-choice if it existed, otherwise target-type
         if (programs.length > 0 && wizardData.targetType === 'program') return 'program-choice';
@@ -391,6 +417,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
       case 'cohort-setup': return 'program-details';
       case 'funnel-setup':
         if (wizardData.targetType === 'content') return 'content-select';
+        if (wizardData.targetType === 'intake') return 'intake-select';
         if (wizardData.programChoice === 'existing') return 'program-choice';
         return wizardData.programType === 'group' ? 'cohort-setup' : 'program-details';
       case 'create-invite': return 'funnel-setup';
@@ -406,6 +433,8 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
         return wizardData.programChoice === 'new' || !!wizardData.selectedProgramId;
       case 'content-select':
         return !!wizardData.contentType && !!wizardData.selectedContentId;
+      case 'intake-select':
+        return !!wizardData.selectedIntakeConfigId;
       case 'program-type': return true;
       case 'program-structure':
         return wizardData.durationWeeks >= 1 && wizardData.numModules >= 1;
@@ -432,7 +461,11 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
       let funnelName: string;
 
       // Handle different target types and program choices
-      if (wizardData.targetType === 'content') {
+      if (wizardData.targetType === 'intake') {
+        // INTAKE FLOW: Create funnel for intake call
+        const selectedConfig = intakeConfigs.find(c => c.id === wizardData.selectedIntakeConfigId);
+        funnelName = `Book ${selectedConfig?.name || 'Intake Call'}`;
+      } else if (wizardData.targetType === 'content') {
         // CONTENT FLOW: Create funnel for content
         funnelName = `Access ${wizardData.selectedContentName || 'Content'}`;
       } else if (wizardData.programChoice === 'existing' && wizardData.selectedProgramId) {
@@ -508,7 +541,10 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
         isDefault: true,
       };
 
-      if (wizardData.targetType === 'content') {
+      if (wizardData.targetType === 'intake') {
+        funnelPayload.targetType = 'intake';
+        funnelPayload.intakeConfigId = wizardData.selectedIntakeConfigId;
+      } else if (wizardData.targetType === 'content') {
         funnelPayload.targetType = 'content';
         funnelPayload.contentType = wizardData.contentType;
         funnelPayload.contentId = wizardData.selectedContentId;
@@ -583,9 +619,11 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
       // Generate the link based on access type
       const funnelSlug = funnelData.funnel.slug;
 
-      // Build the base URL - content uses /content/ path, programs use /join/
+      // Build the base URL - intake uses /book/, content uses /content/, programs use /join/
       let baseUrl: string;
-      if (wizardData.targetType === 'content') {
+      if (wizardData.targetType === 'intake') {
+        baseUrl = `${window.location.origin}/book/${funnelSlug}`;
+      } else if (wizardData.targetType === 'content') {
         baseUrl = `${window.location.origin}/content/${funnelSlug}`;
       } else {
         baseUrl = `${window.location.origin}/join/${programSlug}/${funnelSlug}`;
@@ -940,6 +978,11 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
 
   // Get wizard steps based on current flow
   const getWizardSteps = (): WizardStep[] => {
+    // Intake flow: welcome -> target-type -> intake-select -> funnel-setup
+    if (wizardData.targetType === 'intake') {
+      return ['welcome', 'target-type', 'intake-select', 'funnel-setup'];
+    }
+
     // Content flow: welcome -> target-type -> content-select -> funnel-setup
     if (wizardData.targetType === 'content') {
       return ['welcome', 'target-type', 'content-select', 'funnel-setup'];
@@ -1142,7 +1185,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                     Choose the type of experience for your clients
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-3">
                   {/* Program Card */}
                   <button
                     onClick={() => {
@@ -1150,28 +1193,61 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                       // Navigate on click - if programs exist, go to program-choice, else program-type
                       setWizardStep(programs.length > 0 ? 'program-choice' : 'program-type');
                     }}
-                    className={`group relative flex flex-col items-center justify-center text-center aspect-square p-5 rounded-2xl border-2 transition-all ${
+                    className={`group relative flex flex-col items-center justify-center text-center aspect-square p-4 rounded-2xl border-2 transition-all ${
                       wizardData.targetType === 'program'
                         ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10 shadow-[0_4px_24px_rgba(160,120,85,0.15)]'
                         : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50 hover:shadow-lg'
                     }`}
                   >
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 transition-all ${
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-2 transition-all ${
                       wizardData.targetType === 'program'
                         ? 'bg-brand-accent/20 shadow-[0_0_20px_rgba(160,120,85,0.2)]'
                         : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
                     }`}>
-                      <Rocket className={`w-7 h-7 ${wizardData.targetType === 'program' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                      <Rocket className={`w-6 h-6 ${wizardData.targetType === 'program' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
                     </div>
-                    <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+                    <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-0.5">
                       Program
                     </h3>
-                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert leading-snug">
-                      Structured journey with tasks & check-ins
+                    <p className="text-[10px] text-[#5f5a55] dark:text-[#b2b6c2] font-albert leading-snug">
+                      Structured journey with tasks
                     </p>
                     {wizardData.targetType === 'program' && (
-                      <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center shadow-[0_2px_8px_rgba(160,120,85,0.3)]">
-                        <Check className="w-3.5 h-3.5 text-white" />
+                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center shadow-[0_2px_8px_rgba(160,120,85,0.3)]">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Intake Card */}
+                  <button
+                    onClick={() => {
+                      updateWizardData({ targetType: 'intake' });
+                      fetchIntakeConfigs();
+                      setWizardStep('intake-select');
+                    }}
+                    className={`group relative flex flex-col items-center justify-center text-center aspect-square p-4 rounded-2xl border-2 transition-all ${
+                      wizardData.targetType === 'intake'
+                        ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10 shadow-[0_4px_24px_rgba(160,120,85,0.15)]'
+                        : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50 hover:shadow-lg'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-2 transition-all ${
+                      wizardData.targetType === 'intake'
+                        ? 'bg-brand-accent/20 shadow-[0_0_20px_rgba(160,120,85,0.2)]'
+                        : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                    }`}>
+                      <Phone className={`w-6 h-6 ${wizardData.targetType === 'intake' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                    </div>
+                    <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-0.5">
+                      Intake Call
+                    </h3>
+                    <p className="text-[10px] text-[#5f5a55] dark:text-[#b2b6c2] font-albert leading-snug">
+                      Schedule a discovery call
+                    </p>
+                    {wizardData.targetType === 'intake' && (
+                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center shadow-[0_2px_8px_rgba(160,120,85,0.3)]">
+                        <Check className="w-3 h-3 text-white" />
                       </div>
                     )}
                   </button>
@@ -1182,28 +1258,28 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                       updateWizardData({ targetType: 'content' });
                       setWizardStep('content-select');
                     }}
-                    className={`group relative flex flex-col items-center justify-center text-center aspect-square p-5 rounded-2xl border-2 transition-all ${
+                    className={`group relative flex flex-col items-center justify-center text-center aspect-square p-4 rounded-2xl border-2 transition-all ${
                       wizardData.targetType === 'content'
                         ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10 shadow-[0_4px_24px_rgba(160,120,85,0.15)]'
                         : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50 hover:shadow-lg'
                     }`}
                   >
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 transition-all ${
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-2 transition-all ${
                       wizardData.targetType === 'content'
                         ? 'bg-brand-accent/20 shadow-[0_0_20px_rgba(160,120,85,0.2)]'
                         : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
                     }`}>
-                      <FileText className={`w-7 h-7 ${wizardData.targetType === 'content' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                      <FileText className={`w-6 h-6 ${wizardData.targetType === 'content' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
                     </div>
-                    <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+                    <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-0.5">
                       Resource
                     </h3>
-                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert leading-snug">
-                      Article, course, event, or download
+                    <p className="text-[10px] text-[#5f5a55] dark:text-[#b2b6c2] font-albert leading-snug">
+                      Article, course, or download
                     </p>
                     {wizardData.targetType === 'content' && (
-                      <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center shadow-[0_2px_8px_rgba(160,120,85,0.3)]">
-                        <Check className="w-3.5 h-3.5 text-white" />
+                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center shadow-[0_2px_8px_rgba(160,120,85,0.3)]">
+                        <Check className="w-3 h-3 text-white" />
                       </div>
                     )}
                   </button>
@@ -1216,6 +1292,9 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                       if (wizardData.targetType === 'program') {
                         // If programs exist, go to program-choice, else straight to program-type
                         setWizardStep(programs.length > 0 ? 'program-choice' : 'program-type');
+                      } else if (wizardData.targetType === 'intake') {
+                        fetchIntakeConfigs();
+                        setWizardStep('intake-select');
                       } else {
                         setWizardStep('content-select');
                       }
@@ -1490,6 +1569,107 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                     )}
                   </div>
                 )}
+              </motion.div>
+            )}
+
+            {/* Intake Select Step */}
+            {wizardStep === 'intake-select' && (
+              <motion.div
+                key="intake-select"
+                variants={fadeVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.15 }}
+                className="space-y-6"
+              >
+                <div className="text-center mb-4">
+                  <h3 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-recoleta mb-2">
+                    Select an intake call
+                  </h3>
+                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                    Choose which intake call prospects will book
+                  </p>
+                </div>
+
+                {isLoadingIntakeConfigs ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="w-7 h-7 animate-spin text-brand-accent" />
+                  </div>
+                ) : intakeConfigs.length === 0 ? (
+                  <div className="p-6 rounded-2xl bg-[#faf8f6] dark:bg-[#1d222b] border border-[#e1ddd8] dark:border-[#262b35] text-center">
+                    <Phone className="w-12 h-12 text-[#a7a39e] dark:text-[#7d8190] mx-auto mb-3" />
+                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
+                      No intake calls configured yet
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowIntakeConfigWizard(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create your first intake call
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {intakeConfigs.map((config) => {
+                      const isSelected = wizardData.selectedIntakeConfigId === config.id;
+                      return (
+                        <button
+                          key={config.id}
+                          type="button"
+                          onClick={() => updateWizardData({ selectedIntakeConfigId: config.id })}
+                          className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
+                            isSelected
+                              ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10 shadow-[0_4px_20px_rgba(160,120,85,0.12)]'
+                              : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50 hover:shadow-md'
+                          }`}
+                        >
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                            isSelected ? 'bg-brand-accent/20' : 'bg-[#f3f1ef] dark:bg-[#262b35]'
+                          }`}>
+                            <Phone className={`w-5 h-5 ${isSelected ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                              {config.name}
+                            </h4>
+                            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert flex items-center gap-2">
+                              <Clock className="w-3.5 h-3.5" />
+                              {config.duration} minutes
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <div className="w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center shrink-0">
+                              <Check className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() => setShowIntakeConfigWizard(true)}
+                      className="w-full flex items-center justify-center gap-2 py-3 text-sm text-brand-accent hover:text-brand-accent/80 font-medium font-albert transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create new intake call
+                    </button>
+                  </div>
+                )}
+
+                {/* Intake Config Wizard Modal */}
+                <IntakeConfigWizard
+                  isOpen={showIntakeConfigWizard}
+                  onClose={() => setShowIntakeConfigWizard(false)}
+                  onSuccess={(newConfig) => {
+                    setIntakeConfigs(prev => [...prev, newConfig]);
+                    updateWizardData({ selectedIntakeConfigId: newConfig.id });
+                    setShowIntakeConfigWizard(false);
+                  }}
+                />
               </motion.div>
             )}
 

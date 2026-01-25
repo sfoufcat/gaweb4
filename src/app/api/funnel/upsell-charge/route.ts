@@ -3,6 +3,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { enrollUserInProduct } from '@/lib/enrollments';
+import { createInvoiceFromPayment } from '@/lib/invoice-generator';
 import { 
   checkExistingEnrollment, 
   checkExistingSquadMembership, 
@@ -443,6 +444,22 @@ export async function POST(req: Request) {
 
     const logUser = effectiveUserId ? `user ${effectiveUserId}` : `guest session ${flowSessionId}`;
     console.log(`[UPSELL_CHARGE] Successfully charged ${priceInCents} cents for ${step.type} from ${logUser}`);
+
+    // Create invoice for upsell/downsell (only for authenticated users with immediate enrollment)
+    if (effectiveUserId && !isGuestCheckout && priceInCents > 0) {
+      createInvoiceFromPayment({
+        userId: effectiveUserId,
+        organizationId: session.organizationId,
+        paymentType: 'funnel_payment',
+        referenceId: enrollmentId || stepId,
+        referenceName: `${step.type === 'upsell' ? 'Upsell' : 'Downsell'}: ${stepConfig.productName || stepConfig.productId}`,
+        amountPaid: priceInCents,
+        currency: 'usd',
+        stripePaymentIntentId: paymentIntent.id,
+      }).catch(err => {
+        console.error('[UPSELL_CHARGE] Failed to create invoice:', err);
+      });
+    }
 
     return NextResponse.json({
       success: true,

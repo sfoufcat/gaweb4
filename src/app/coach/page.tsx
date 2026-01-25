@@ -27,10 +27,14 @@ import { CoachCheckInsTab } from '@/components/coach/checkins';
 import { CoachOnboardingFlowTab } from '@/components/coach/onboarding-flow';
 import { CoachPlanTab } from '@/components/coach/CoachPlanTab';
 import { DiscountCodesTab } from '@/components/coach/DiscountCodesTab';
+import { InvoicesTab } from '@/components/coach/InvoicesTab';
 import { AnalyticsDashboard } from '@/components/coach/analytics';
 import { CoachSupportTab } from '@/components/coach/support';
+import { IntakesPanel } from '@/components/coach/IntakesPanel';
 import { FeatureTour } from '@/components/coach/onboarding';
 import { AvailabilityEditor, CalendarView } from '@/components/scheduling';
+import { EventEditor } from '@/components/admin/discover/EventEditor';
+import type { DiscoverEvent } from '@/types/discover';
 import { CallPricingSettings } from '@/components/coach/CallPricingSettings';
 import { IntegrationsTab } from '@/components/coach/settings';
 // IntakeCallsTab removed - intake configs now accessible via Funnels → Intake tab or Schedule button
@@ -48,7 +52,7 @@ import { IntegrationsTab } from '@/components/coach/settings';
  */
 
 // Valid tab values
-type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'website' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'integrations' | 'customize' | 'plan' | 'support';
+type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'website' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'integrations' | 'customize' | 'plan' | 'support' | 'invoices';
 const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'website', 'checkins', 'onboarding', 'channels', 'scheduling', 'integrations', 'customize', 'plan', 'support'];
 
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
@@ -63,13 +67,26 @@ function SchedulingTab({ initialSubTab }: { initialSubTab?: string | null }) {
   const [activeSubTab, setActiveSubTab] = useState<'calendar' | 'availability' | 'pricing'>(
     (initialSubTab as 'calendar' | 'availability' | 'pricing') || 'calendar'
   );
+  const [editEvent, setEditEvent] = useState<DiscoverEvent | null>(null);
+  const [calendarDisplayMode, setCalendarDisplayMode] = useState<'calendar' | 'list'>('calendar');
+
+  // Handle edit event - stores the display mode to restore on close
+  const handleEditEvent = (event: DiscoverEvent, displayMode: 'calendar' | 'list') => {
+    setCalendarDisplayMode(displayMode);
+    setEditEvent(event);
+  };
+
+  // Get edit mode for recurring events
+  const editMode = editEvent && 'editMode' in editEvent
+    ? ((editEvent as DiscoverEvent & { editMode?: string }).editMode === 'series' ? 'series' : 'single')
+    : undefined;
 
   return (
     <div className="space-y-6">
-      {/* Sub-navigation */}
+      {/* Sub-navigation - always visible */}
       <div className="flex gap-2 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
         <button
-          onClick={() => setActiveSubTab('calendar')}
+          onClick={() => { setActiveSubTab('calendar'); setEditEvent(null); }}
           className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
             activeSubTab === 'calendar'
               ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
@@ -79,7 +96,7 @@ function SchedulingTab({ initialSubTab }: { initialSubTab?: string | null }) {
           Calendar
         </button>
         <button
-          onClick={() => setActiveSubTab('availability')}
+          onClick={() => { setActiveSubTab('availability'); setEditEvent(null); }}
           className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
             activeSubTab === 'availability'
               ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
@@ -89,27 +106,40 @@ function SchedulingTab({ initialSubTab }: { initialSubTab?: string | null }) {
           Availability
         </button>
         <button
-          onClick={() => setActiveSubTab('pricing')}
+          onClick={() => { setActiveSubTab('pricing'); setEditEvent(null); }}
           className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
             activeSubTab === 'pricing'
               ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
               : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
           }`}
         >
-          Call Pricing
+          <span className="hidden sm:inline">Call Pricing</span>
+          <span className="sm:hidden">Pricing</span>
         </button>
       </div>
 
-      {/* Content */}
-      <div key={activeSubTab} className="animate-fadeIn bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
-        {activeSubTab === 'calendar' ? (
-          <CalendarView mode="coach" />
-        ) : activeSubTab === 'availability' ? (
-          <AvailabilityEditor />
-        ) : (
-          <CallPricingSettings />
-        )}
-      </div>
+      {/* Content - EventEditor replaces only the container when editing */}
+      {editEvent ? (
+        <EventEditor
+          event={editEvent}
+          onClose={() => setEditEvent(null)}
+          onSave={() => setEditEvent(null)}
+          apiEndpoint="/api/coach/events"
+          uploadEndpoint="/api/upload"
+          programsApiEndpoint="/api/coach/org-programs"
+          editMode={editEvent.isRecurring ? editMode : undefined}
+        />
+      ) : (
+        <div key={activeSubTab} className="animate-fadeIn bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+          {activeSubTab === 'calendar' ? (
+            <CalendarView mode="coach" onEditEvent={handleEditEvent} initialDisplayMode={calendarDisplayMode} />
+          ) : activeSubTab === 'availability' ? (
+            <AvailabilityEditor />
+          ) : (
+            <CallPricingSettings />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -956,7 +986,7 @@ export default function CoachPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as CoachTab)} className="w-full">
-          {/* Clients Tab - Consolidated Users + Coaching Clients */}
+          {/* Clients Tab - Consolidated Users + Coaching Clients with Intakes Sub-tab */}
           <TabsContent value="clients" className="animate-fadeIn">
             {selectedClientId ? (
               <>
@@ -974,23 +1004,49 @@ export default function CoachPage() {
                 />
               </>
             ) : (
-              <AdminUsersTab
-                currentUserRole={role || 'user'}
-                apiEndpoint={
-                  isLimitedOrgCoach
-                    ? '/api/coach/my-clients'  // Limited: only their assigned clients
-                    : role === 'coach'
-                      ? '/api/coach/org-users'  // Full access: all org users
-                      : '/api/admin/users'      // Admin: all users
-                }
-                onSelectUser={(userId) => handleClientSelect(userId)}
-                headerTitle="Clients"
-                showOrgRole={hasFullAccess && (role === 'coach' || orgRole === 'super_coach')}
-                currentUserOrgRole={orgRole}
-                readOnly={isLimitedOrgCoach}
-                visibleColumns={isLimitedOrgCoach ? ['avatar', 'name', 'email', 'coach', 'programs', 'created'] : COACH_DASHBOARD_COLUMNS}
-                showInviteButton={!isLimitedOrgCoach}
-              />
+              <Tabs defaultValue="all-clients" className="w-full">
+                {/* Sub-tabs for Clients section */}
+                <TabsList className="mb-6 bg-[#f5f3f0] dark:bg-[#1d222b] p-1 rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+                  <TabsTrigger
+                    value="all-clients"
+                    className="px-4 py-2 text-sm font-medium font-albert rounded-lg data-[state=active]:bg-white data-[state=active]:dark:bg-[#262b35] data-[state=active]:shadow-sm transition-all"
+                  >
+                    All Clients
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="intakes"
+                    className="px-4 py-2 text-sm font-medium font-albert rounded-lg data-[state=active]:bg-white data-[state=active]:dark:bg-[#262b35] data-[state=active]:shadow-sm transition-all"
+                  >
+                    Intakes
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* All Clients Sub-tab */}
+                <TabsContent value="all-clients" className="mt-0">
+                  <AdminUsersTab
+                    currentUserRole={role || 'user'}
+                    apiEndpoint={
+                      isLimitedOrgCoach
+                        ? '/api/coach/my-clients'  // Limited: only their assigned clients
+                        : role === 'coach'
+                          ? '/api/coach/org-users'  // Full access: all org users
+                          : '/api/admin/users'      // Admin: all users
+                    }
+                    onSelectUser={(userId) => handleClientSelect(userId)}
+                    headerTitle="Clients"
+                    showOrgRole={hasFullAccess && (role === 'coach' || orgRole === 'super_coach')}
+                    currentUserOrgRole={orgRole}
+                    readOnly={isLimitedOrgCoach}
+                    visibleColumns={isLimitedOrgCoach ? ['avatar', 'name', 'email', 'coach', 'programs', 'created'] : COACH_DASHBOARD_COLUMNS}
+                    showInviteButton={!isLimitedOrgCoach}
+                  />
+                </TabsContent>
+
+                {/* Intakes Sub-tab */}
+                <TabsContent value="intakes" className="mt-0">
+                  <IntakesPanel onSelectClient={(clientId) => handleClientSelect(clientId)} />
+                </TabsContent>
+              </Tabs>
             )}
           </TabsContent>
 
@@ -1077,6 +1133,13 @@ export default function CoachPage() {
                 initialSquadId={initialAnalyticsSquadId}
                 onSquadSelect={handleAnalyticsSquadSelect}
               />
+            </div>
+          </TabsContent>
+
+          {/* Invoices & Payments Tab */}
+          <TabsContent value="invoices" className="animate-fadeIn">
+            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+              <InvoicesTab />
             </div>
           </TabsContent>
 

@@ -3,7 +3,7 @@
 import { cn } from '@/lib/utils';
 
 // Tab types from coach page
-export type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'website' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'integrations' | 'customize' | 'plan' | 'support';
+export type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'website' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'integrations' | 'customize' | 'plan' | 'support' | 'invoices';
 
 export interface NavItem {
   value: CoachTab;
@@ -47,6 +47,7 @@ export const FULL_NAV_GROUPS: NavGroup[] = [
   {
     name: 'Business',
     items: [
+      { value: 'invoices', label: 'Invoices & Payments' },
       { value: 'referrals', label: 'Referrals' },
       { value: 'discounts', label: 'Discounts' },
       // HIDDEN: Integrations disabled - integrations now available in Scheduling

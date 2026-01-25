@@ -20,8 +20,15 @@ import {
   CalendarX2,
   FileText,
   PlayCircle,
+  PhoneIncoming,
 } from 'lucide-react';
-import type { UnifiedEvent } from '@/types';
+import Link from 'next/link';
+import type { UnifiedEvent, CallSummary } from '@/types';
+import { InlineRecordingUpload } from './InlineRecordingUpload';
+import { InlineSummaryPreview } from './InlineSummaryPreview';
+import { GenerateSummaryButton } from './GenerateSummaryButton';
+import { MeetingProviderSelector, type MeetingProviderType } from './MeetingProviderSelector';
+import { normalizeUrl } from '@/lib/url-utils';
 
 interface EventDetailPopupProps {
   event: UnifiedEvent;
@@ -44,6 +51,12 @@ interface EventDetailPopupProps {
   onViewSummary?: (summaryId: string) => void;
   /** Whether a cancel operation is in progress */
   isCancelling?: boolean;
+  /** Callback to edit event (for community/cohort events) */
+  onEdit?: (event: UnifiedEvent) => void;
+  /** Pre-fetched inline summary for display */
+  inlineSummary?: CallSummary | null;
+  /** Callback when recording is uploaded and summary is generated */
+  onRecordingUploaded?: (eventId: string, summaryId: string) => void;
 }
 
 /**
@@ -67,6 +80,9 @@ export function EventDetailPopup({
   onCancel,
   onViewSummary,
   isCancelling = false,
+  onEdit,
+  inlineSummary,
+  onRecordingUploaded,
 }: EventDetailPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
   const [computedPosition, setComputedPosition] = useState<{ top: number; left: number } | null>(null);
@@ -77,10 +93,23 @@ export function EventDetailPopup({
   const [isSavingLink, setIsSavingLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
 
+  // Provider selector state for editing
+  const getInitialProvider = (): MeetingProviderType => {
+    if (event.locationType === 'chat' || event.meetingProvider === 'stream') return 'in_app';
+    if (event.meetingProvider === 'zoom') return 'zoom';
+    if (event.meetingProvider === 'google_meet') return 'google_meet';
+    return 'manual';
+  };
+  const [selectedProvider, setSelectedProvider] = useState<MeetingProviderType>(getInitialProvider);
+
+  // Determine if in-app option should be available (1:1 and intake calls only)
+  const allowInAppOption = event.eventType === 'coaching_1on1' || event.eventType === 'intake_call';
+
   // Update input when event changes
   useEffect(() => {
     setMeetingLinkInput(event.meetingLink || '');
-  }, [event.meetingLink]);
+    setSelectedProvider(getInitialProvider());
+  }, [event.meetingLink, event.meetingProvider, event.locationType]);
 
   // Determine if event is in the past
   const isPastEvent = useMemo(() => {
@@ -100,7 +129,7 @@ export function EventDetailPopup({
   const hasSummary = !!event.callSummaryId;
   const hasRecording = !!event.recordingUrl;
 
-  // Save meeting link
+  // Save meeting link/provider
   const handleSaveMeetingLink = useCallback(async () => {
     if (isSavingLink) return;
 
@@ -108,10 +137,38 @@ export function EventDetailPopup({
     setLinkError(null);
 
     try {
+      // Build update payload based on selected provider
+      const updatePayload: {
+        meetingLink?: string | null;
+        meetingProvider?: string;
+        locationType?: string;
+      } = {};
+
+      if (selectedProvider === 'in_app') {
+        updatePayload.locationType = 'chat';
+        updatePayload.meetingProvider = 'stream';
+        updatePayload.meetingLink = null;
+      } else if (selectedProvider === 'zoom') {
+        updatePayload.locationType = 'online';
+        updatePayload.meetingProvider = 'zoom';
+        // Note: For Zoom with connection, link is auto-generated on call creation
+        // For editing existing events, keep the current link or use manual
+        updatePayload.meetingLink = normalizeUrl(meetingLinkInput) || null;
+      } else if (selectedProvider === 'google_meet') {
+        updatePayload.locationType = 'online';
+        updatePayload.meetingProvider = 'google_meet';
+        updatePayload.meetingLink = normalizeUrl(meetingLinkInput) || null;
+      } else {
+        // Manual
+        updatePayload.locationType = 'online';
+        updatePayload.meetingProvider = 'manual';
+        updatePayload.meetingLink = normalizeUrl(meetingLinkInput) || null;
+      }
+
       const response = await fetch(`/api/events/${event.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ meetingLink: meetingLinkInput.trim() || null }),
+        body: JSON.stringify(updatePayload),
       });
 
       if (!response.ok) {
@@ -126,7 +183,7 @@ export function EventDetailPopup({
     } finally {
       setIsSavingLink(false);
     }
-  }, [event.id, meetingLinkInput, isSavingLink, onEventUpdated]);
+  }, [event.id, meetingLinkInput, selectedProvider, isSavingLink, onEventUpdated]);
 
   // Calculate optimal position after popup renders (so we know its size)
   useLayoutEffect(() => {
@@ -302,12 +359,28 @@ export function EventDetailPopup({
               </h3>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="flex-shrink-0 p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Edit button - only for community/cohort events when host */}
+            {isHost && onEdit && !isPastEvent && !isPending &&
+             (event.eventType === 'community_event' || event.eventType === 'cohort_call') && (
+              <button
+                onClick={() => {
+                  onEdit(event);
+                  onClose();
+                }}
+                className="flex-shrink-0 p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                title="Edit event"
+              >
+                <Edit2 className="w-5 h-5" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -328,6 +401,11 @@ export function EventDetailPopup({
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
                 <Users className="w-3.5 h-3.5" />
                 Cohort Event
+              </span>
+            ) : event.eventType === 'intake_call' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300">
+                <PhoneIncoming className="w-3.5 h-3.5" />
+                Intake Call
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
@@ -360,18 +438,17 @@ export function EventDetailPopup({
           {!isPending && (
             <div className="space-y-2">
               {isEditingLink ? (
-                // Editing mode - show input
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="url"
-                      value={meetingLinkInput}
-                      onChange={(e) => setMeetingLinkInput(e.target.value)}
-                      placeholder="https://zoom.us/j/... or https://meet.google.com/..."
-                      className="flex-1 px-3 py-2 text-sm bg-[#f9f8f7] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent"
-                      autoFocus
-                    />
-                  </div>
+                // Editing mode - show provider selector
+                <div className="space-y-3">
+                  <MeetingProviderSelector
+                    allowInApp={allowInAppOption}
+                    value={selectedProvider}
+                    onChange={setSelectedProvider}
+                    manualLink={meetingLinkInput}
+                    onManualLinkChange={setMeetingLinkInput}
+                    savedMeetingLink={event.meetingLink}
+                    label="Meeting Location"
+                  />
                   {linkError && (
                     <p className="text-xs text-red-500">{linkError}</p>
                   )}
@@ -380,6 +457,7 @@ export function EventDetailPopup({
                       onClick={() => {
                         setIsEditingLink(false);
                         setMeetingLinkInput(event.meetingLink || '');
+                        setSelectedProvider(getInitialProvider());
                         setLinkError(null);
                       }}
                       disabled={isSavingLink}
@@ -570,8 +648,16 @@ export function EventDetailPopup({
           {/* Past Event Actions */}
           {isPastEvent && !isPending && (
             <div className="pt-3 mt-3 border-t border-[#e1ddd8] dark:border-[#262b35] space-y-2">
-              {/* View Summary Button */}
-              {hasSummary && onViewSummary && (
+              {/* Inline Summary Preview (if summary exists and pre-fetched) */}
+              {hasSummary && inlineSummary && onViewSummary && (
+                <InlineSummaryPreview
+                  summary={inlineSummary}
+                  onViewFull={() => onViewSummary(event.callSummaryId!)}
+                />
+              )}
+
+              {/* View Summary Button (fallback if no inline summary data) */}
+              {hasSummary && !inlineSummary && onViewSummary && (
                 <button
                   onClick={() => onViewSummary(event.callSummaryId!)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
@@ -595,11 +681,43 @@ export function EventDetailPopup({
                 </a>
               )}
 
-              {/* No summary message */}
-              {!hasSummary && !hasRecording && (
+              {/* Generate Summary Button (recording exists but no summary, host only) */}
+              {hasRecording && !hasSummary && isHost && (
+                <GenerateSummaryButton
+                  eventId={event.id}
+                  durationMinutes={event.durationMinutes || 60}
+                  onGenerated={(summaryId) => {
+                    onRecordingUploaded?.(event.id, summaryId);
+                  }}
+                />
+              )}
+
+              {/* Upload Recording Option (host only, no recording and no summary) */}
+              {!hasRecording && !hasSummary && isHost && (
+                <InlineRecordingUpload
+                  eventId={event.id}
+                  clientUserId={event.clientUserId}
+                  cohortId={event.cohortId}
+                  squadId={event.squadId}
+                  onUploadComplete={(summaryId) => {
+                    onRecordingUploaded?.(event.id, summaryId);
+                  }}
+                />
+              )}
+
+              {/* No summary message (non-host only, no recording) */}
+              {!hasSummary && !hasRecording && !isHost && (
                 <div className="flex items-center justify-center gap-2 px-4 py-3 text-[#5f5a55] dark:text-[#b2b6c2] text-sm">
                   <FileText className="w-4 h-4" />
                   No summary available
+                </div>
+              )}
+
+              {/* Recording available message (non-host, has recording but no summary) */}
+              {hasRecording && !hasSummary && !isHost && (
+                <div className="flex items-center justify-center gap-2 px-4 py-3 text-[#5f5a55] dark:text-[#b2b6c2] text-sm">
+                  <FileText className="w-4 h-4" />
+                  No summary available yet
                 </div>
               )}
             </div>
@@ -640,17 +758,26 @@ export function EventDetailPopup({
           )}
         </div>
 
-        {/* Footer for non-pending future events with meeting link */}
-        {!isPending && !isPastEvent && event.meetingLink && (
+        {/* Footer for non-pending future events with meeting link or in-app call */}
+        {!isPending && !isPastEvent && (event.meetingLink || event.locationType === 'chat' || event.meetingProvider === 'stream') && (
           <div className="sticky bottom-0 px-5 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
-            <a
-              href={event.meetingLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full text-center px-4 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 transition-colors"
-            >
-              Join Meeting
-            </a>
+            {event.meetingLink ? (
+              <a
+                href={event.meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full text-center px-4 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 transition-colors"
+              >
+                Join Meeting
+              </a>
+            ) : (
+              <Link
+                href={`/call/event-${event.id}`}
+                className="block w-full text-center px-4 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 transition-colors"
+              >
+                Join Call
+              </Link>
+            )}
           </div>
         )}
       </div>

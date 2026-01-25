@@ -19,6 +19,7 @@ import { useCallUsage, formatCallUsageStatus, formatExtraCallPrice } from '@/hoo
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
 import { MeetingProviderSelector, type MeetingProviderType, isMeetingProviderReady } from './MeetingProviderSelector';
+import { normalizeUrl } from '@/lib/url-utils';
 import { DatePicker } from '@/components/ui/date-picker';
 import { BrandedRadio } from '@/components/ui/checkbox';
 import type { ProgramEnrollment, ProgramInstance } from '@/types';
@@ -302,7 +303,7 @@ export function ScheduleCallModal({
         timezone: string;
         startDate: string;
         endDate?: string;
-        occurrences?: number;
+        count?: number;
       } | undefined = undefined;
 
       if (recurrence !== 'none') {
@@ -319,7 +320,7 @@ export function ScheduleCallModal({
         } else if (recurrenceEnd === 'specific_date' && recurrenceEndDate) {
           recurrenceConfig.endDate = recurrenceEndDate;
         } else if (recurrenceEnd === 'occurrences') {
-          recurrenceConfig.occurrences = recurrenceOccurrences;
+          recurrenceConfig.count = recurrenceOccurrences;
         }
       }
 
@@ -400,7 +401,7 @@ export function ScheduleCallModal({
         }
       } else if (meetingProvider === 'manual' || useManualOverride) {
         // Manual link
-        finalMeetingUrl = manualMeetingLink.trim();
+        finalMeetingUrl = normalizeUrl(manualMeetingLink);
         finalMeetingProvider = 'manual';
       }
 

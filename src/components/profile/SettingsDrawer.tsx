@@ -4,6 +4,7 @@ import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useClerk } from '@clerk/nextjs';
 import type { EmailPreferences } from '@/types';
+import { InvoicesSection } from './InvoicesSection';
 
 interface SettingsDrawerProps {
   isOpen: boolean;
@@ -271,6 +272,9 @@ export function SettingsDrawer({
                             : 'No payment history yet'}
                         </p>
                       </div>
+
+                      {/* Section C2: Invoices */}
+                      <InvoicesSection className="mb-8" />
 
                       {/* Section D: Manage Account */}
                       <div className="mb-8">

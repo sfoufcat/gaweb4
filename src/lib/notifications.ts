@@ -88,6 +88,8 @@ const NOTIFICATION_TYPE_TO_SYSTEM_KEY: Record<NotificationType, keyof OrgSystemN
   intake_call_booked: null,
   intake_call_rescheduled: null,
   intake_call_cancelled: null,
+  // Event update notifications - always sent
+  meeting_link_changed: null,
 };
 
 /**
@@ -144,6 +146,7 @@ export interface NotifyUserInput {
     programId?: string;
     weekId?: string;
     clientName?: string;
+    eventId?: string;
   };
 }
 

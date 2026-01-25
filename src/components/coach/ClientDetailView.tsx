@@ -37,6 +37,7 @@ import {
   GraduationCap,
   Loader2,
   Info,
+  Receipt,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -71,6 +72,7 @@ import {
 import { SendDMModal, type DMRecipient } from '@/components/coach/SendDMModal';
 import { ScheduleCallModal } from '@/components/scheduling';
 import { DatePicker } from '@/components/ui/date-picker';
+import { ClientInvoicesPanel } from '@/components/coach/ClientInvoicesPanel';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import type { 
   ClientCoachingData, 
@@ -2098,6 +2100,27 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Invoices Section */}
+      <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => toggleSection('invoices')}
+          className="w-full flex items-center justify-between p-5 hover:bg-[#faf8f6]/50 dark:hover:bg-[#11141b]/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-brand-accent" />
+            <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
+              Invoices
+            </h3>
+          </div>
+          {expandedSections.invoices ? <ChevronUp className="w-5 h-5 text-[#5f5a55]" /> : <ChevronDown className="w-5 h-5 text-[#5f5a55]" />}
+        </button>
+        {expandedSections.invoices && user && (
+          <div className="px-5 pb-5">
+            <ClientInvoicesPanel userId={user.id} isDemoMode={isDemoMode} />
           </div>
         )}
       </div>

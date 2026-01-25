@@ -39,6 +39,7 @@ import { EventsListView, EVENT_TYPE_FILTER_OPTIONS, type EventTypeFilter } from 
 import { CreateEventModal } from './CreateEventModal';
 import { IntakeConfigEditor, IntakeConfigList, ScheduleIntakeModal } from '@/components/coach/intake';
 import { CallSummaryViewModal } from '@/components/coach/programs/CallSummaryViewModal';
+import type { DiscoverEvent } from '@/types/discover';
 import type { UnifiedEvent, ClientCoachingData, FirebaseUser, IntakeCallConfig, CallSummary } from '@/types';
 import {
   Dialog,
@@ -92,6 +93,8 @@ interface CalendarViewProps {
   onScheduleClick?: (date: Date) => void;
   /** Initial display mode - calendar or list view */
   initialDisplayMode?: DisplayMode;
+  /** Callback when editing a community/cohort event - receives DiscoverEvent and current display mode */
+  onEditEvent?: (event: DiscoverEvent, displayMode: DisplayMode) => void;
 }
 
 const VIEW_MODES = [
@@ -128,6 +131,11 @@ const EVENT_TYPE_COLORS: Record<string, { bg: string; border: string; text: stri
     border: 'border-blue-300 dark:border-blue-700',
     text: 'text-blue-700 dark:text-blue-300',
   },
+  intake_call: {
+    bg: 'bg-teal-100 dark:bg-teal-900/20',
+    border: 'border-teal-300 dark:border-teal-700',
+    text: 'text-teal-700 dark:text-teal-300',
+  },
 };
 
 // Colors for pending proposals (override event type colors)
@@ -146,6 +154,63 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; icon: typeof Che
   declined: { bg: 'bg-red-100', text: 'text-red-700', icon: XCircle },
   cancelled: { bg: 'bg-gray-100', text: 'text-gray-500', icon: XCircle },
 };
+
+// Helper to convert UnifiedEvent to DiscoverEvent for EventEditor
+function unifiedEventToDiscoverEvent(event: UnifiedEvent): DiscoverEvent {
+  // Extract date and time from startDateTime
+  const startDate = new Date(event.startDateTime);
+  const date = event.startDateTime.split('T')[0]; // YYYY-MM-DD
+  const startTime = startDate.toTimeString().slice(0, 5); // HH:mm
+
+  // Calculate end time
+  const endDate = event.endDateTime
+    ? new Date(event.endDateTime)
+    : new Date(startDate.getTime() + (event.durationMinutes || 60) * 60000);
+  const endTime = endDate.toTimeString().slice(0, 5);
+
+  // Map meetingProvider (handle 'stream' which DiscoverEvent doesn't support)
+  const meetingProvider = event.meetingProvider === 'stream' ? 'manual' : event.meetingProvider;
+
+  return {
+    id: event.id,
+    title: event.title || '',
+    coverImageUrl: event.coverImageUrl || '',
+    date,
+    startTime,
+    endTime,
+    timezone: event.timezone || 'America/New_York',
+    startDateTime: event.startDateTime,
+    endDateTime: event.endDateTime,
+    durationMinutes: event.durationMinutes,
+    meetingLink: event.meetingLink,
+    locationType: event.locationType === 'chat' ? 'online' : event.locationType,
+    locationLabel: event.locationLabel || '',
+    shortDescription: event.description || '',
+    longDescription: event.description || '',
+    bulletPoints: event.bulletPoints || [],
+    additionalInfo: {
+      type: event.additionalInfo?.type || '',
+      language: event.additionalInfo?.language || '',
+      difficulty: event.additionalInfo?.difficulty || '',
+    },
+    zoomLink: event.meetingLink,
+    meetingProvider,
+    hostName: event.hostName || '',
+    hostAvatarUrl: event.hostAvatarUrl,
+    featured: event.featured,
+    category: event.category,
+    programIds: event.programIds,
+    organizationId: event.organizationId,
+    attendeeIds: event.attendeeIds || [],
+    maxAttendees: event.maxAttendees,
+    createdAt: event.createdAt || new Date().toISOString(),
+    updatedAt: event.updatedAt || new Date().toISOString(),
+    isRecurring: event.isRecurring ?? !!event.recurrence,
+    priceInCents: event.priceInCents,
+    currency: event.currency,
+    isPublic: event.isPublic,
+  };
+}
 
 // Schedule type options (matching FunnelWizardModal card design)
 const SCHEDULE_TYPES = [
@@ -499,7 +564,7 @@ function ClientPickerModal({
  * A full calendar view for coaches and users to see their scheduled events.
  * Supports month, week, and day views.
  */
-export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMode = 'calendar' }: CalendarViewProps) {
+export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMode = 'calendar', onEditEvent }: CalendarViewProps) {
   const { user } = useUser();
   const currentUserId = user?.id;
 
@@ -537,10 +602,16 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
 
+  // Recurring cancel dialog states
+  const [showRecurringCancelDialog, setShowRecurringCancelDialog] = useState(false);
+  const [pendingCancelEvent, setPendingCancelEvent] = useState<UnifiedEvent | null>(null);
+
   // Call summary modal states
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<CallSummary | null>(null);
   const [isFetchingSummary, setIsFetchingSummary] = useState(false);
+  // Inline summary for EventDetailPopup
+  const [inlineSummary, setInlineSummary] = useState<CallSummary | null>(null);
 
   // Client picker and schedule modal states
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -552,6 +623,11 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
   const [selectedScheduleType, setSelectedScheduleType] = useState<ScheduleType | null>(null);
   const [showGroupEventModal, setShowGroupEventModal] = useState(false);
   const [showScheduleIntakeModal, setShowScheduleIntakeModal] = useState(false);
+
+  // Event editor states (for community/cohort events)
+  const [editEvent, setEditEvent] = useState<UnifiedEvent | null>(null);
+  const [showRecurringEditDialog, setShowRecurringEditDialog] = useState(false);
+  const [pendingEditEvent, setPendingEditEvent] = useState<UnifiedEvent | null>(null);
 
   const { respondToProposal, cancelEvent } = useSchedulingActions();
 
@@ -597,7 +673,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
   }, [currentDate, viewMode]);
 
   // Fetch events
-  const { events, isLoading, error, refetch } = useSchedulingEvents({
+  const { events, isLoading, error, refetch, removeEvents } = useSchedulingEvents({
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
     role: mode === 'coach' ? 'host' : 'all',
@@ -676,12 +752,26 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
   }, [currentDate, viewMode]);
 
   // Handle event click - show detail popup
-  const handleEventClick = useCallback((event: UnifiedEvent, e: React.MouseEvent) => {
+  const handleEventClick = useCallback(async (event: UnifiedEvent, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedEvent(event);
     // Get position for desktop popup - use click coordinates directly
     setPopupPosition({ x: e.clientX, y: e.clientY + 8 });
-  }, []);;;;
+
+    // Fetch inline summary if event has a callSummaryId (for past events)
+    setInlineSummary(null); // Reset previous
+    if (event.callSummaryId) {
+      try {
+        const res = await fetch(`/api/coach/call-summaries/${event.callSummaryId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setInlineSummary(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch inline summary:', err);
+      }
+    }
+  }, []);
 
   // Handle respond to proposal
   const handleRespond = useCallback(async (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => {
@@ -752,32 +842,110 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
     refetchProposals();
   }, [refetch, refetchProposals]);
 
-  // Handle cancel button click
+  // Handle cancel button click - check if recurring first
   const handleCancelClick = useCallback(() => {
-    if (selectedEvent) {
+    if (!selectedEvent) return;
+
+    // Check if this is a recurring event or an instance of one
+    if (selectedEvent.isRecurring || selectedEvent.parentEventId) {
+      setPendingCancelEvent(selectedEvent);
+      setShowRecurringCancelDialog(true);
+    } else {
       setCancelEventId(selectedEvent.id);
       setCancelReason('');
     }
   }, [selectedEvent]);
 
-  // Handle cancel confirmation
+  // Handle recurring cancel choice
+  const handleRecurringCancelChoice = useCallback(async (scope: 'single' | 'future') => {
+    if (!pendingCancelEvent) return;
+
+    setShowRecurringCancelDialog(false);
+    setIsCancelling(true);
+
+    try {
+      const result = await cancelEvent(pendingCancelEvent.id, undefined, scope);
+      // Optimistically remove cancelled events from the calendar
+      removeEvents(result.cancelledIds);
+      setPendingCancelEvent(null);
+      setSelectedEvent(null);
+      refetchProposals();
+    } catch (err) {
+      console.error('Failed to cancel recurring event:', err);
+      // On error, refetch to restore correct state
+      refetch();
+    } finally {
+      setIsCancelling(false);
+    }
+  }, [pendingCancelEvent, cancelEvent, removeEvents, refetch, refetchProposals]);
+
+  // Handle cancel confirmation (for non-recurring)
   const handleCancelConfirm = useCallback(async () => {
     if (!cancelEventId) return;
 
     setIsCancelling(true);
     try {
-      await cancelEvent(cancelEventId, cancelReason.trim() || undefined);
+      const result = await cancelEvent(cancelEventId, cancelReason.trim() || undefined, 'single');
+      // Optimistically remove cancelled event from the calendar
+      removeEvents(result.cancelledIds);
       setCancelEventId(null);
       setCancelReason('');
       setSelectedEvent(null);
-      refetch();
       refetchProposals();
     } catch (err) {
       console.error('Failed to cancel event:', err);
+      // On error, refetch to restore correct state
+      refetch();
     } finally {
       setIsCancelling(false);
     }
-  }, [cancelEventId, cancelReason, cancelEvent, refetch, refetchProposals]);
+  }, [cancelEventId, cancelReason, cancelEvent, removeEvents, refetch, refetchProposals]);
+
+  // Handle edit event click (from EventDetailPopup)
+  const handleEditEvent = useCallback((event: UnifiedEvent) => {
+    // Check if it's a recurring event (recurrence is a RecurrencePattern object)
+    if (event.recurrence || event.isRecurring) {
+      // Show dialog to choose: edit this instance or all
+      setPendingEditEvent(event);
+      setShowRecurringEditDialog(true);
+    } else {
+      // Non-recurring: edit directly
+      if (onEditEvent) {
+        onEditEvent(unifiedEventToDiscoverEvent(event), displayMode);
+      } else {
+        setEditEvent(event);
+      }
+    }
+    setSelectedEvent(null);
+  }, [onEditEvent, displayMode]);
+
+  // Handle recurring edit choice
+  const handleRecurringEditChoice = useCallback((choice: 'single' | 'series') => {
+    if (!pendingEditEvent) return;
+
+    const eventToEdit = choice === 'single'
+      ? pendingEditEvent
+      : { ...pendingEditEvent, editMode: 'series' } as UnifiedEvent & { editMode: string };
+
+    if (onEditEvent) {
+      onEditEvent(unifiedEventToDiscoverEvent(eventToEdit), displayMode);
+    } else {
+      setEditEvent(eventToEdit);
+    }
+    setShowRecurringEditDialog(false);
+    setPendingEditEvent(null);
+  }, [pendingEditEvent, onEditEvent, displayMode]);
+
+  // Handle edit event close
+  const handleEditEventClose = useCallback(() => {
+    setEditEvent(null);
+  }, []);
+
+  // Handle edit event save
+  const handleEditEventSave = useCallback(() => {
+    setEditEvent(null);
+    refetch();
+  }, [refetch]);
 
   // Handle view summary click
   const handleViewSummary = useCallback(async (summaryId: string) => {
@@ -800,6 +968,28 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
     setSummaryModalOpen(false);
     setSummaryData(null);
   }, []);
+
+  // Handle recording uploaded (summary generated from EventDetailPopup)
+  const handleRecordingUploaded = useCallback(async (eventId: string, summaryId: string) => {
+    // Refetch events to get updated event with callSummaryId
+    await refetch();
+
+    // Fetch the new summary for inline display
+    try {
+      const res = await fetch(`/api/coach/call-summaries/${summaryId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setInlineSummary(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch new summary:', err);
+    }
+
+    // Update selectedEvent with new callSummaryId
+    if (selectedEvent?.id === eventId) {
+      setSelectedEvent(prev => prev ? { ...prev, callSummaryId: summaryId } : null);
+    }
+  }, [refetch, selectedEvent]);
 
   // Generate calendar grid for month view
   const calendarDays = useMemo(() => {
@@ -1017,6 +1207,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
               startDate={dateRange.startDate}
               endDate={dateRange.endDate}
               typeFilter={eventTypeFilter}
+              onEditEvent={onEditEvent}
             />
           </motion.div>
         ) : (
@@ -1070,6 +1261,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
                         case 'coaching_1on1': return 'bg-brand-accent';
                         case 'squad_call': return 'bg-blue-500';
                         case 'community_event': return 'bg-green-500';
+                        case 'intake_call': return 'bg-teal-500';
                         default: return 'bg-brand-accent';
                       }
                     });
@@ -1349,6 +1541,9 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
           onCancel={handleCancelClick}
           onViewSummary={handleViewSummary}
           isCancelling={isCancelling}
+          onEdit={isCoach ? handleEditEvent : undefined}
+          inlineSummary={inlineSummary}
+          onRecordingUploaded={handleRecordingUploaded}
         />
       )}
 
@@ -1391,8 +1586,8 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
               This will cancel the event and notify all participants. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="py-4">
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-2">
+          <div className="py-2">
+            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5">
               Reason (optional)
             </label>
             <textarea
@@ -1422,6 +1617,42 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
         onClose={handleSummaryModalClose}
         summary={summaryData}
       />
+
+      {/* Recurring Event Cancel Dialog */}
+      <AlertDialog open={showRecurringCancelDialog} onOpenChange={(open) => {
+        if (!open && !isCancelling) {
+          setShowRecurringCancelDialog(false);
+          setPendingCancelEvent(null);
+        }
+      }}>
+        <AlertDialogContent className="sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Recurring Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              This is a recurring event. Would you like to cancel just this occurrence or all future events in the series?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel disabled={isCancelling}>
+              Keep Event
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleRecurringCancelChoice('single')}
+              disabled={isCancelling}
+              className="bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]"
+            >
+              {isCancelling ? 'Cancelling...' : 'Cancel This Event'}
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => handleRecurringCancelChoice('future')}
+              disabled={isCancelling}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isCancelling ? 'Cancelling...' : 'Cancel All Future'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Schedule Type Picker - Dialog on desktop, Drawer on mobile (FunnelWizardModal design) */}
       {isMobile ? (
@@ -1602,6 +1833,44 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
           refetch();
         }}
       />
+
+      {/* Recurring Event Edit Dialog */}
+      <AlertDialog open={showRecurringEditDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowRecurringEditDialog(false);
+          setPendingEditEvent(null);
+        }
+      }}>
+        <AlertDialogContent className="sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Edit Recurring Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              This is a recurring event. Would you like to edit just this occurrence or all events in the series?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => {
+              setShowRecurringEditDialog(false);
+              setPendingEditEvent(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleRecurringEditChoice('single')}
+              className="bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]"
+            >
+              Edit This Event
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => handleRecurringEditChoice('series')}
+              className="bg-brand-accent hover:bg-brand-accent/90"
+            >
+              Edit All Events
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }

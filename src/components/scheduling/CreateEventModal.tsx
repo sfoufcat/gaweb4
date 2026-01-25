@@ -36,6 +36,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import { MeetingProviderSelector, MeetingProviderType, isMeetingProviderReady } from './MeetingProviderSelector';
+import { normalizeUrl } from '@/lib/url-utils';
 import type { RecurrenceFrequency, Squad, ProgramCohort } from '@/types';
 
 interface CreateEventModalProps {
@@ -427,7 +428,7 @@ export function CreateEventModal({
           setIsCreatingMeeting(false);
         }
       } else {
-        finalMeetingUrl = manualMeetingLink.trim() || undefined;
+        finalMeetingUrl = normalizeUrl(manualMeetingLink) || undefined;
         // For events, we don't use 'in_app' so this will always be 'manual', 'zoom', or 'google_meet'
         finalMeetingProvider = meetingProvider === 'in_app' ? 'manual' : meetingProvider;
       }
@@ -441,7 +442,7 @@ export function CreateEventModal({
         timezone: resolvedTimezone,
         startDate: date,
         endDate: recurrenceEndType === 'specific_date' ? recurrenceEndDate : undefined,
-        occurrences: recurrenceEndType === 'occurrences' ? recurrenceOccurrences : undefined,
+        count: recurrenceEndType === 'occurrences' ? recurrenceOccurrences : undefined,
       } : undefined;
 
       // Determine IDs based on event type

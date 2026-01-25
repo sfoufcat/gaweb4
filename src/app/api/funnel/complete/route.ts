@@ -8,6 +8,7 @@ import { assignUserToSquad, updateUserSquadReference } from '@/lib/squad-assignm
 import { archiveOldSquadMemberships } from '@/lib/program-engine';
 import { grantReferralReward, linkReferredUser, completeReferral } from '@/lib/referral-rewards';
 import { enrollUserInProduct } from '@/lib/enrollments';
+import { createInvoiceFromPayment } from '@/lib/invoice-generator';
 
 /**
  * POST /api/funnel/complete
@@ -258,6 +259,22 @@ export async function POST(req: Request) {
     };
 
     const enrollmentRef = await adminDb.collection('program_enrollments').add(enrollmentData);
+
+    // Create invoice for prepaid enrollments (paid outside Stripe)
+    if (invite?.paymentStatus === 'pre_paid' && invite.prePaidAmount && invite.prePaidAmount > 0) {
+      createInvoiceFromPayment({
+        userId,
+        organizationId: session.organizationId,
+        paymentType: 'program_enrollment',
+        referenceId: enrollmentRef.id,
+        referenceName: `${program.name || 'Program'} (Prepaid)`,
+        amountPaid: invite.prePaidAmount,
+        currency: program.currency || 'usd',
+        // No stripePaymentIntentId - prepaid offline
+      }).catch(err => {
+        console.error('[FUNNEL_COMPLETE] Failed to create prepaid invoice:', err);
+      });
+    }
 
     // Mark flow session as completed
     await sessionRef.update({

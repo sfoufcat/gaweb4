@@ -19,6 +19,7 @@ import { useAvailableSlots } from '@/hooks/useAvailability';
 import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
 import { MeetingProviderSelector, type MeetingProviderType, isMeetingProviderReady } from './MeetingProviderSelector';
+import { normalizeUrl } from '@/lib/url-utils';
 import { DatePicker } from '@/components/ui/date-picker';
 
 /**
@@ -325,7 +326,7 @@ export function ScheduleCohortEventModal({
           setIsCreatingMeeting(false);
         }
       } else if (meetingProvider === 'manual' || useManualOverride) {
-        meetingUrl = manualMeetingLink.trim();
+        meetingUrl = normalizeUrl(manualMeetingLink);
         finalMeetingProvider = 'manual';
       }
 
@@ -346,7 +347,7 @@ export function ScheduleCohortEventModal({
         } else if (recurrenceEnd === 'specific_date' && recurrenceEndDate) {
           (recurrencePattern as { endDate?: string }).endDate = recurrenceEndDate;
         } else if (recurrenceEnd === 'occurrences') {
-          (recurrencePattern as { occurrences?: number }).occurrences = recurrenceOccurrences;
+          (recurrencePattern as { count?: number }).count = recurrenceOccurrences;
         }
       }
 

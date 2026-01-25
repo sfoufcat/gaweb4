@@ -50,6 +50,7 @@ import { ChatButton } from '@/components/chat/ChatButton';
 import { ThemeToggle } from '@/components/theme';
 import { ViewSwitcher } from '@/components/shared/ViewSwitcher';
 import { useCurrentUserStoryAvailability } from '@/hooks/useUserStoryAvailability';
+import { useStoryViewTracking, generateStoryContentData, useStoryViewStatus } from '@/hooks/useStoryViewTracking';
 import { Progress } from '@/components/ui/progress';
 import { CoachGoalModal, CoachGoalData } from './CoachGoalModal';
 import { NewProgramModal } from './programs/NewProgramModal';
@@ -1473,6 +1474,29 @@ export function CoachHomePage() {
   const storyAvailability = useCurrentUserStoryAvailability();
   const currentUserId = user?.id || '';
 
+  // Story view tracking for current user's own story
+  const { markStoryAsViewed } = useStoryViewTracking();
+
+  // Generate full content data for smart view tracking
+  const ownContentData = useMemo(() => generateStoryContentData(
+    storyAvailability.data.hasTasksToday,
+    storyAvailability.data.hasDayClosed,
+    storyAvailability.data.tasks?.length || 0,
+    storyAvailability.data.hasWeekClosed,
+    storyAvailability.data.userPostedStories?.length || 0
+  ), [storyAvailability.data]);
+
+  const hasViewedFromHook = useStoryViewStatus(currentUserId, ownContentData);
+  const hasViewedOwnStory = storyAvailability.hasStory && storyAvailability.contentHash
+    ? hasViewedFromHook
+    : false;
+
+  const handleOwnStoryViewed = useCallback(() => {
+    if (currentUserId) {
+      markStoryAsViewed(currentUserId, ownContentData);
+    }
+  }, [currentUserId, markStoryAsViewed, ownContentData]);
+
   useEffect(() => {
     setMounted(true);
     const hour = new Date().getHours();
@@ -1789,6 +1813,9 @@ export function CoachHomePage() {
               eveningCheckIn={storyAvailability.data.eveningCheckIn}
               hasWeekClosed={storyAvailability.data.hasWeekClosed}
               weeklyReflection={storyAvailability.data.weeklyReflection}
+              hasViewed={hasViewedOwnStory}
+              contentHash={storyAvailability.contentHash}
+              onStoryViewed={handleOwnStoryViewed}
               size="md"
             />
             <Link href="/profile" className="text-left hover:opacity-80 transition-opacity min-w-0">

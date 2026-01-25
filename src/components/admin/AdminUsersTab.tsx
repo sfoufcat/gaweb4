@@ -1136,7 +1136,7 @@ export function AdminUsersTab({
                 value={clientFilter}
                 onValueChange={(value) => handleFilterChange(value as ClientFilter)}
               >
-                <SelectTrigger className="w-[140px] bg-[#f3f1ef] dark:bg-[#1e222a] border-transparent text-sm font-albert">
+                <SelectTrigger className="w-[140px] h-auto py-1.5 bg-[#f3f1ef] dark:bg-[#1e222a] border-transparent text-sm font-albert">
                   <Filter className="w-4 h-4 mr-2 text-[#5f5a55] dark:text-[#7d8190]" />
                   <SelectValue placeholder="All Clients" />
                 </SelectTrigger>

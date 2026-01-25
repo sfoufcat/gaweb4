@@ -2052,7 +2052,9 @@ export type NotificationType =
   // Intake call notifications (for coaches)
   | 'intake_call_booked'
   | 'intake_call_rescheduled'
-  | 'intake_call_cancelled';
+  | 'intake_call_cancelled'
+  // Event update notifications
+  | 'meeting_link_changed';
 
 export interface Notification {
   id: string;
@@ -2070,6 +2072,7 @@ export interface Notification {
     programId?: string;      // For call_summary_fill_week
     weekId?: string;         // For call_summary_fill_week
     clientName?: string;     // For call_summary_fill_week
+    eventId?: string;        // For meeting_link_changed
   };
 }
 
@@ -5175,6 +5178,8 @@ export interface UnifiedEvent {
   prospectPhone?: string;                // Optional phone
   funnelSessionId?: string;              // If booked via funnel
   bookingTokenId?: string;               // For cancel/reschedule links
+  convertedToUserId?: string;            // If prospect became a client (FK to users)
+  convertedAt?: string;                  // ISO timestamp of conversion
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PARTICIPANTS
@@ -6361,4 +6366,133 @@ export type {
 
 // Note: These fields should be merged into the existing Task interface
 // during migration. For now, they're defined separately to avoid breaking changes.
+
+
+// ============================================================================
+// INVOICING TYPES
+// ============================================================================
+
+/** Payment type that generated the invoice */
+export type InvoicePaymentType =
+  | 'program_enrollment'
+  | 'content_purchase'
+  | 'squad_subscription'
+  | 'funnel_payment'
+  | 'subscription_renewal'
+  | 'scheduled_call';
+
+/** Invoice status */
+export type InvoiceStatus = 'paid' | 'refunded' | 'partial_refund';
+
+/** Invoice line item */
+export interface InvoiceLineItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;  // In cents
+  total: number;      // In cents
+}
+
+/** Business address for invoices */
+export interface InvoiceBusinessAddress {
+  line1: string;
+  line2?: string;
+  city: string;
+  state?: string;
+  postalCode: string;
+  country: string;
+}
+
+/**
+ * Invoice record
+ * Stored in Firestore 'invoices' collection
+ *
+ * Generated automatically for every payment (program enrollments, content purchases,
+ * squad subscriptions, funnel payments, subscription renewals).
+ */
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;           // Format: "{PREFIX}-{YYYYMM}-{SEQUENCE}" e.g., "COACH-202501-0001"
+  organizationId: string;          // Coach's organization
+  userId: string;                  // Client who paid
+
+  // What was purchased
+  paymentType: InvoicePaymentType;
+  referenceId: string;             // enrollment ID, purchase ID, or membership ID
+  referenceName: string;           // Program/content/squad name for display
+
+  // Line items
+  lineItems: InvoiceLineItem[];
+
+  // Amounts (all in cents)
+  subtotal: number;
+  taxAmount: number;               // 0 if no tax
+  taxRate?: number;                // Percentage if applicable
+  total: number;
+  currency: string;                // 'usd', 'eur', etc.
+
+  // Payment info
+  stripePaymentIntentId?: string;
+  stripeInvoiceId?: string;        // If from Stripe subscription
+  paidAt: string;                  // ISO timestamp
+  paymentMethod?: string;          // "card ending in 4242"
+
+  // PDF storage
+  pdfUrl?: string;                 // Firebase Storage URL
+  pdfGeneratedAt?: string;
+
+  // Email tracking
+  emailSentAt?: string;
+  emailTo?: string;
+
+  // Status
+  status: InvoiceStatus;
+  refundedAmount?: number;         // In cents, if partially/fully refunded
+
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Invoice settings per organization
+ * Stored in Firestore 'invoice_settings' collection
+ * Document ID = organizationId
+ *
+ * Coaches configure their business info, tax settings, and invoice branding.
+ */
+export interface InvoiceSettings {
+  id: string;                      // Same as organizationId
+  organizationId: string;
+
+  // Business info (shown on invoices)
+  businessName: string;            // Legal business name
+  businessAddress?: InvoiceBusinessAddress;
+  taxId?: string;                  // VAT, EIN, etc.
+  businessEmail?: string;          // Contact email on invoice
+  businessPhone?: string;
+
+  // Branding
+  logoUrl?: string;                // Override org logo for invoices
+
+  // Invoice numbering
+  invoicePrefix?: string;          // Default: first 5 chars of org name
+  lastInvoiceSequence: number;     // Counter for invoice numbering
+
+  // Tax settings
+  taxEnabled: boolean;             // Default: false
+  defaultTaxRate?: number;         // Percentage
+  taxLabel?: string;               // "VAT", "GST", "Sales Tax"
+
+  // Email settings
+  autoSendInvoices: boolean;       // Default: true
+  invoiceEmailSubject?: string;    // Custom subject line
+  invoiceEmailBody?: string;       // Custom email body template
+
+  // Footer text
+  invoiceFooter?: string;          // Custom footer (payment terms, etc.)
+
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+}
 

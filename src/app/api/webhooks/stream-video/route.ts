@@ -2,15 +2,14 @@
  * Stream Video Webhook Handler
  *
  * Handles webhooks from Stream Video for call recording events.
- * Triggers transcription and AI summary generation when recordings are ready.
+ * Saves recording URL and marks event as 'ready' for on-demand summary generation.
+ * Summaries are generated when coach clicks "Get Summary" button.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { transcribeCallWithGroq, checkCreditsAvailable, deductCredits, refundCredits, calculateCreditsUsed } from '@/lib/platform-transcription';
-import { processCallSummary } from '@/lib/ai/call-summary';
 
 // =============================================================================
 // TYPES
@@ -199,164 +198,39 @@ async function handleRecordingReady(payload: StreamWebhookPayload): Promise<void
     return;
   }
 
-  // Get organization settings to check if auto-generate is enabled
-  const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
-  if (!orgDoc.exists) {
-    console.error(`[STREAM_VIDEO_WEBHOOK] Organization ${organizationId} not found`);
-    return;
-  }
-
-  const orgData = orgDoc.data();
-  const summarySettings = orgData?.summarySettings;
-
-  // Check if auto-generate is enabled (default to true if not set)
-  const autoGenerate = summarySettings?.autoGenerate !== false;
-
-  // If event exists, check for per-event override
-  let shouldGenerate = autoGenerate;
+  // Update event with recording info - mark as 'ready' for on-demand summary generation
+  // NO auto-summary generation - coach must click "Get Summary" button
   if (eventId) {
     const eventDoc = await adminDb.collection('events').doc(eventId).get();
     if (eventDoc.exists) {
-      const eventData = eventDoc.data();
-      if (typeof eventData?.generateSummary === 'boolean') {
-        shouldGenerate = eventData.generateSummary;
-      }
-
-      // Update event with recording info
       await adminDb.collection('events').doc(eventId).update({
         hasCallRecording: true,
         recordingUrl,
-        recordingStatus: 'ready',
+        recordingStatus: 'ready', // Ready for user to click "Get Summary"
         streamVideoCallId: callId,
         updatedAt: FieldValue.serverTimestamp(),
       });
+      console.log(`[STREAM_VIDEO_WEBHOOK] Saved recording URL for event ${eventId}, ready for summary generation`);
     }
   }
 
-  if (!shouldGenerate) {
-    console.log(`[STREAM_VIDEO_WEBHOOK] Summary generation disabled for this call`);
-    return;
-  }
-
-  // Determine if this is a program call (for enrollment tracking)
-  const isProgramCall = !!(call.custom?.instanceId || call.custom?.isProgramCall);
-
-  // ALL calls require coach org credits (for recording + summary)
-  const creditsNeeded = calculateCreditsUsed(durationSeconds);
-  const { available, remainingMinutes } = await checkCreditsAvailable(organizationId, creditsNeeded);
-
-  if (!available) {
-    console.log(`[STREAM_VIDEO_WEBHOOK] Insufficient credits (need ${creditsNeeded}, have ${remainingMinutes})`);
-    return;
-  }
-
-  // Deduct org credits before processing
-  const deductResult = await deductCredits(organizationId, creditsNeeded);
-  if (!deductResult.success) {
-    console.error(`[STREAM_VIDEO_WEBHOOK] Failed to deduct credits: ${deductResult.error}`);
-    return;
-  }
-
-  const creditsDeducted = creditsNeeded;
-  console.log(`[STREAM_VIDEO_WEBHOOK] Deducted ${creditsNeeded} org credits${isProgramCall ? ' (program call)' : ''}`);
-
-  // Get enrollment ID from event for program calls
-  let enrollmentId: string | undefined;
-
-  try {
-    // Get participant info
-    const hostUserId = call.created_by.id;
-    const hostName = call.created_by.name || 'Coach';
-    const clientUserId = call.custom?.clientUserId || participants.find(p => p.user_id !== hostUserId)?.user_id;
-    const clientName = participants.find(p => p.user_id === clientUserId)?.user?.name;
-
-    // Fetch event to get program instance linking fields and enrollmentId
-    let instanceId: string | undefined;
-    let weekIndex: number | undefined;
-    let dayIndex: number | undefined;
-    let callUsageDeducted = false;
-
-    if (eventId) {
-      const eventDoc = await adminDb.collection('events').doc(eventId).get();
-      if (eventDoc.exists) {
-        const eventData = eventDoc.data();
-        instanceId = eventData?.instanceId;
-        weekIndex = eventData?.weekIndex;
-        dayIndex = eventData?.dayIndex;
-        enrollmentId = eventData?.enrollmentId;
-        callUsageDeducted = eventData?.callUsageDeducted === true;
-      }
-    }
-
-    // Start transcription
-    const transcriptionResult = await transcribeCallWithGroq(
-      organizationId,
+  // Also save to organization's recordings collection for calls without events
+  await adminDb
+    .collection('organizations')
+    .doc(organizationId)
+    .collection('call_recordings')
+    .doc(callId)
+    .set({
       callId,
       recordingUrl,
-      eventId
-    );
+      eventId: eventId || null,
+      createdBy: call.created_by.id,
+      durationSeconds,
+      status: 'ready',
+      createdAt: FieldValue.serverTimestamp(),
+    });
 
-    if (!transcriptionResult.success || !transcriptionResult.transcriptionId) {
-      throw new Error(transcriptionResult.error || 'Transcription failed');
-    }
-
-    // Wait for transcription to complete (poll for status)
-    // In production, this would be better handled via a separate queue/worker
-    const transcriptionId = transcriptionResult.transcriptionId;
-    await waitForTranscription(organizationId, transcriptionId);
-
-    // Process call summary
-    const summaryResult = await processCallSummary(
-      organizationId,
-      callId,
-      transcriptionId,
-      {
-        eventId,
-        hostUserId,
-        hostName,
-        clientUserId,
-        clientName,
-        programId: call.custom?.programId,
-        programEnrollmentId: call.custom?.programEnrollmentId,
-        recordingUrl,
-        callStartedAt: call.created_at,
-        callEndedAt: call.ended_at || new Date().toISOString(),
-        // Program instance linking
-        instanceId,
-        weekIndex,
-        dayIndex,
-      }
-    );
-
-    if (summaryResult.success && summaryResult.summaryId && eventId) {
-      // Update event with summary ID
-      await adminDb.collection('events').doc(eventId).update({
-        callSummaryId: summaryResult.summaryId,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-    }
-
-    // For program calls: deduct from client's call allowance (enrollment.callUsage)
-    if (isProgramCall && enrollmentId && eventId && !callUsageDeducted) {
-      try {
-        await deductEnrollmentCallUsage(enrollmentId, eventId);
-        console.log(`[STREAM_VIDEO_WEBHOOK] Deducted call from enrollment ${enrollmentId}`);
-      } catch (deductError) {
-        // Log but don't fail - the call was successful, just usage tracking failed
-        console.error(`[STREAM_VIDEO_WEBHOOK] Failed to deduct enrollment usage:`, deductError);
-      }
-    }
-
-    console.log(`[STREAM_VIDEO_WEBHOOK] Successfully processed recording for call ${callId}`);
-  } catch (error) {
-    // Refund credits on failure (only if credits were deducted)
-    if (creditsDeducted > 0) {
-      await refundCredits(organizationId, creditsDeducted);
-      console.error(`[STREAM_VIDEO_WEBHOOK] Error processing recording, ${creditsDeducted} credits refunded:`, error);
-    } else {
-      console.error(`[STREAM_VIDEO_WEBHOOK] Error processing recording:`, error);
-    }
-  }
+  console.log(`[STREAM_VIDEO_WEBHOOK] Recording saved for call ${callId}, awaiting summary generation`);
 }
 
 /**
@@ -383,134 +257,3 @@ async function handleCallEnded(payload: StreamWebhookPayload): Promise<void> {
   }
 }
 
-/**
- * Wait for transcription to complete
- * Polls the transcription status until it's completed or failed
- */
-async function waitForTranscription(
-  orgId: string,
-  transcriptionId: string,
-  maxAttempts = 60,
-  intervalMs = 5000
-): Promise<void> {
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const doc = await adminDb
-      .collection('organizations')
-      .doc(orgId)
-      .collection('platform_transcriptions')
-      .doc(transcriptionId)
-      .get();
-
-    if (!doc.exists) {
-      throw new Error('Transcription not found');
-    }
-
-    const status = doc.data()?.status;
-
-    if (status === 'completed') {
-      return;
-    }
-
-    if (status === 'failed') {
-      throw new Error(doc.data()?.error || 'Transcription failed');
-    }
-
-    // Wait before next poll
-    await new Promise(resolve => setTimeout(resolve, intervalMs));
-  }
-
-  throw new Error('Transcription timeout');
-}
-
-/**
- * Get the start of the current week (Monday 00:00:00 UTC)
- */
-function getWeekStart(date: Date = new Date()): Date {
-  const d = new Date(date);
-  const day = d.getUTCDay();
-  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-  d.setUTCDate(diff);
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
-}
-
-/**
- * Deduct a call from the client's enrollment call allowance
- * Called after a program call is successfully processed
- */
-async function deductEnrollmentCallUsage(
-  enrollmentId: string,
-  eventId: string
-): Promise<void> {
-  await adminDb.runTransaction(async (transaction) => {
-    // Fetch enrollment
-    const enrollmentRef = adminDb.collection('program_enrollments').doc(enrollmentId);
-    const enrollmentDoc = await transaction.get(enrollmentRef);
-
-    if (!enrollmentDoc.exists) {
-      throw new Error('Enrollment not found');
-    }
-
-    // Fetch event to check if already deducted
-    const eventRef = adminDb.collection('events').doc(eventId);
-    const eventDoc = await transaction.get(eventRef);
-
-    if (!eventDoc.exists) {
-      throw new Error('Event not found');
-    }
-
-    // If already deducted, skip
-    if (eventDoc.data()?.callUsageDeducted === true) {
-      return;
-    }
-
-    const enrollment = enrollmentDoc.data();
-    const callUsage = enrollment?.callUsage || {};
-    const now = new Date();
-    const nowIso = now.toISOString();
-
-    // Calculate rolling 30-day window
-    let windowStart = callUsage.windowStart;
-    let callsInWindow = callUsage.callsInWindow || 0;
-
-    if (windowStart) {
-      const windowEnd = new Date(new Date(windowStart).getTime() + 30 * 24 * 60 * 60 * 1000);
-      if (now > windowEnd) {
-        // Window expired, reset
-        windowStart = nowIso;
-        callsInWindow = 0;
-      }
-    } else {
-      // No existing window, start now
-      windowStart = nowIso;
-    }
-
-    // Calculate weekly usage
-    const currentWeekStart = getWeekStart(now);
-    let weekStart = callUsage.weekStart;
-    let callsThisWeek = callUsage.callsThisWeek || 0;
-
-    if (!weekStart || new Date(weekStart) < currentWeekStart) {
-      // New week, reset
-      weekStart = currentWeekStart.toISOString();
-      callsThisWeek = 0;
-    }
-
-    // Update enrollment with incremented usage
-    transaction.update(enrollmentRef, {
-      callUsage: {
-        windowStart,
-        callsInWindow: callsInWindow + 1,
-        weekStart,
-        callsThisWeek: callsThisWeek + 1,
-        lastCallAt: nowIso,
-      },
-      updatedAt: nowIso,
-    });
-
-    // Mark event as deducted
-    transaction.update(eventRef, {
-      callUsageDeducted: true,
-    });
-  });
-}

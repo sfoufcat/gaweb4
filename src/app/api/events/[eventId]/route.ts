@@ -12,6 +12,9 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { scheduleEventJobs, cancelEventJobs, rescheduleEventJobs } from '@/lib/event-notifications';
 import { updateFutureInstances, cancelFutureInstances, deleteAllInstances } from '@/lib/event-recurrence';
+import { notifyMeetingLinkChanged } from '@/lib/event-update-notifications';
+import { createZoomMeeting } from '@/lib/integrations/zoom';
+import { createGoogleMeetMeeting } from '@/lib/integrations/google-meet';
 import type { UnifiedEvent, EventVote } from '@/types';
 
 // ============================================================================
@@ -140,6 +143,10 @@ export async function PATCH(
     // Check if time is being changed
     const timeChanged = body.startDateTime && body.startDateTime !== existingEvent.startDateTime;
 
+    // Track meeting link/location changes for notifications
+    const oldMeetingLink = existingEvent.meetingLink;
+    const oldLocationType = existingEvent.locationType;
+
     // Build update object
     const updateData: Partial<UnifiedEvent> = {
       updatedAt: new Date().toISOString(),
@@ -148,7 +155,7 @@ export async function PATCH(
     // Allow updating specific fields
     const allowedFields = [
       'title', 'description', 'startDateTime', 'endDateTime', 'timezone', 'durationMinutes',
-      'locationType', 'locationLabel', 'meetingLink',
+      'locationType', 'locationLabel', 'meetingLink', 'meetingProvider', 'externalMeetingId',
       'visibility', 'maxAttendees', 'coverImageUrl', 'bulletPoints', 'additionalInfo',
       'recordingUrl', 'chatChannelId', 'sendChatReminders',
       'recurrence', 'isRecurring',
@@ -159,6 +166,64 @@ export async function PATCH(
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
         (updateData as Record<string, unknown>)[field] = body[field];
+      }
+    }
+
+    // Auto-create meeting if provider is set to zoom/google_meet but no link provided
+    const newProvider = updateData.meetingProvider || existingEvent.meetingProvider;
+    const newLink = updateData.meetingLink;
+    const shouldAutoCreateMeeting =
+      body.meetingProvider !== undefined && // Provider is being set
+      ['zoom', 'google_meet'].includes(newProvider as string) &&
+      !newLink && // No link provided
+      !body.meetingLink && // Not explicitly setting a link
+      existingEvent.organizationId; // Has org context
+
+    if (shouldAutoCreateMeeting && existingEvent.organizationId) {
+      try {
+        const startDateTime = (updateData.startDateTime || existingEvent.startDateTime) as string;
+        const durationMinutes = (updateData.durationMinutes || existingEvent.durationMinutes || 60) as number;
+        const timezone = (updateData.timezone || existingEvent.timezone || 'UTC') as string;
+        const title = (updateData.title || existingEvent.title) as string;
+
+        if (newProvider === 'zoom') {
+          const result = await createZoomMeeting(existingEvent.organizationId, {
+            topic: title,
+            startTime: startDateTime,
+            duration: durationMinutes,
+            timezone,
+          });
+
+          if (result.success && result.meetingUrl) {
+            updateData.meetingLink = result.meetingUrl;
+            updateData.externalMeetingId = result.meetingId;
+            console.log(`[EVENT_PATCH] Auto-created Zoom meeting for event ${eventId}`);
+          } else {
+            console.warn(`[EVENT_PATCH] Failed to auto-create Zoom meeting: ${result.error}`);
+          }
+        } else if (newProvider === 'google_meet') {
+          const endTime = new Date(
+            new Date(startDateTime).getTime() + durationMinutes * 60 * 1000
+          ).toISOString();
+
+          const result = await createGoogleMeetMeeting(existingEvent.organizationId, {
+            summary: title,
+            startTime: startDateTime,
+            endTime,
+            timezone,
+          });
+
+          if (result.success && result.meetingUrl) {
+            updateData.meetingLink = result.meetingUrl;
+            updateData.externalMeetingId = result.eventId;
+            console.log(`[EVENT_PATCH] Auto-created Google Meet for event ${eventId}`);
+          } else {
+            console.warn(`[EVENT_PATCH] Failed to auto-create Google Meet: ${result.error}`);
+          }
+        }
+      } catch (error) {
+        console.error('[EVENT_PATCH] Error auto-creating meeting:', error);
+        // Don't fail the update, just log the error
       }
     }
 
@@ -174,6 +239,26 @@ export async function PATCH(
     // If this is a recurring parent and updateFuture is true, update instances
     if (existingEvent.isRecurring && body.updateFutureInstances) {
       await updateFutureInstances(eventId, updateData);
+    }
+
+    // Notify attendees if meeting link or location type changed
+    const newMeetingLink = updateData.meetingLink ?? existingEvent.meetingLink;
+    const newLocationType = updateData.locationType ?? existingEvent.locationType;
+    const meetingLinkChanged = body.meetingLink !== undefined && oldMeetingLink !== newMeetingLink;
+    const locationTypeChanged = body.locationType !== undefined && oldLocationType !== newLocationType;
+
+    if (meetingLinkChanged || locationTypeChanged) {
+      const updatedEvent = { ...existingEvent, ...updateData } as UnifiedEvent;
+      // Fire and forget - don't block the response
+      notifyMeetingLinkChanged({
+        event: updatedEvent,
+        oldLink: oldMeetingLink,
+        newLink: newMeetingLink,
+        oldLocationType,
+        newLocationType,
+      }).catch(err => {
+        console.error('[EVENT_PATCH] Failed to send meeting link change notifications:', err);
+      });
     }
 
     console.log(`[EVENT_PATCH] Updated event ${eventId}`);

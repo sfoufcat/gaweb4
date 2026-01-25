@@ -395,6 +395,10 @@ export async function GET(request: NextRequest) {
     // Filter out events without valid startDateTime (safety check)
     events = events.filter(e => e && e.startDateTime);
 
+    // Filter out recurring parent events - only show their instances
+    // Parent events have isRecurring=true, instances have parentEventId set
+    events = events.filter(e => !e.isRecurring);
+
     // Sort by start time
     events.sort((a, b) => {
       const aTime = a.startDateTime ? new Date(a.startDateTime).getTime() : 0;
