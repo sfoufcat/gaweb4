@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ReactPlayer = require('react-player').default as any;
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2 } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VideoPlayerProps {
@@ -40,6 +40,7 @@ export function VideoPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -165,6 +166,7 @@ export function VideoPlayer({
         onBuffer={() => setIsBuffering(true)}
         onBufferEnd={() => setIsBuffering(false)}
         onStart={() => setHasStarted(true)}
+        onError={() => setHasError(true)}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         config={{ file: { attributes: { poster, preload: 'metadata' } } } as any}
       />
@@ -178,14 +180,23 @@ export function VideoPlayer({
       )}
 
       {/* Buffering Indicator */}
-      {isBuffering && (
+      {isBuffering && !hasError && (
         <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/30">
           <Loader2 className="w-12 h-12 text-white animate-spin" />
         </div>
       )}
 
-      {/* Big Play Button (before playing) */}
-      {!hasStarted && (
+      {/* Error Indicator */}
+      {hasError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/70">
+          <AlertCircle className="w-12 h-12 text-red-400 mb-3" />
+          <p className="text-white/80 font-medium">Video unavailable</p>
+          <p className="text-white/50 text-sm mt-1">Unable to load video</p>
+        </div>
+      )}
+
+      {/* Big Play Button (before playing, hide on error) */}
+      {!hasStarted && !hasError && (
         <button
           onClick={handlePlayPause}
           className="absolute inset-0 flex items-center justify-center z-20 group/play"
@@ -196,7 +207,8 @@ export function VideoPlayer({
         </button>
       )}
 
-      {/* Controls Overlay */}
+      {/* Controls Overlay - hide when error */}
+      {!hasError && (
       <div
         className={cn(
           'absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent transition-opacity duration-300 z-30',
@@ -274,7 +286,7 @@ export function VideoPlayer({
                 step={0.1}
                 value={muted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-0 group-hover/volume:w-20 transition-all duration-200 h-1 appearance-none bg-white/30 rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
+                className="w-0 group-hover/volume:w-20 transition-all duration-200 h-1 appearance-none bg-white/30 rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0"
               />
             </div>
 
@@ -297,6 +309,7 @@ export function VideoPlayer({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

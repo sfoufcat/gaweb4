@@ -27,6 +27,7 @@ import { Search, X, Plus, Play, Clock, Loader2, AlertCircle, CheckCircle2, Penci
 import type { DiscoverVideo, VideoStatus } from '@/types/discover';
 import { CreateVideoModal } from './CreateVideoModal';
 import { MediaUpload } from '@/components/admin/MediaUpload';
+import { VideoPlayer } from '@/components/video/VideoPlayer';
 
 // Simplified Edit Dialog (for existing videos)
 interface VideoEditDialogProps {
@@ -285,6 +286,299 @@ function VideoEditDialog({
   );
 }
 
+// Video Player Dialog with inline editing
+interface VideoPlayerDialogProps {
+  video: DiscoverVideo;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  apiEndpoint: string;
+  programsApiEndpoint: string;
+}
+
+function VideoPlayerDialog({
+  video,
+  isOpen,
+  onClose,
+  onSave,
+  apiEndpoint,
+  programsApiEndpoint,
+}: VideoPlayerDialogProps) {
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    customThumbnailUrl: '',
+    programIds: [] as string[],
+    pricing: getDefaultPricingData() as ContentPricingData,
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+
+  useEffect(() => {
+    if (video && isOpen) {
+      setFormData({
+        title: video.title || '',
+        description: video.description || '',
+        customThumbnailUrl: video.customThumbnailUrl || '',
+        programIds: video.programIds || [],
+        pricing: {
+          priceInCents: video.priceInCents ?? null,
+          currency: video.currency || 'USD',
+          purchaseType: (video.purchaseType as 'popup' | 'landing_page') || 'popup',
+          isPublic: video.isPublic !== false,
+        },
+      });
+      setError(null);
+      setHasChanges(false);
+    }
+  }, [video, isOpen]);
+
+  const handleFieldChange = (updates: Partial<typeof formData>) => {
+    setFormData((prev) => ({ ...prev, ...updates }));
+    setHasChanges(true);
+  };
+
+  const handleSave = async () => {
+    if (!hasChanges) return;
+    
+    setSaving(true);
+    setError(null);
+
+    try {
+      if (!formData.title) {
+        throw new Error('Title is required');
+      }
+
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        customThumbnailUrl: formData.customThumbnailUrl || null,
+        programIds: formData.programIds,
+        priceInCents: formData.pricing.priceInCents,
+        currency: formData.pricing.currency,
+        purchaseType: formData.pricing.purchaseType,
+        isPublic: formData.pricing.isPublic,
+      };
+
+      const response = await fetch(`${apiEndpoint}/${video.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save video');
+      }
+
+      setHasChanges(false);
+      onSave();
+    } catch (err) {
+      console.error('Error saving video:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save video');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (hasChanges) {
+      handleSave().then(() => onClose());
+    } else {
+      onClose();
+    }
+  };
+
+  const content = (
+    <div className="flex flex-col h-full max-h-[90vh]">
+      {/* Header with title and close button */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
+        <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate pr-4">
+          {formData.title || 'Untitled Video'}
+        </h2>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {video.videoStatus === 'ready' && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 rounded-full">
+              <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400" />
+              <span className="text-xs font-medium text-green-700 dark:text-green-400 font-albert">Ready</span>
+            </div>
+          )}
+          {video.videoStatus === 'encoding' && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+              <Loader2 className="w-3 h-3 text-amber-600 dark:text-amber-400 animate-spin" />
+              <span className="text-xs font-medium text-amber-700 dark:text-amber-400 font-albert">Processing</span>
+            </div>
+          )}
+          {video.videoStatus === 'failed' && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 rounded-full">
+              <AlertCircle className="w-3 h-3 text-red-600 dark:text-red-400" />
+              <span className="text-xs font-medium text-red-700 dark:text-red-400 font-albert">Failed</span>
+            </div>
+          )}
+          <button
+            onClick={handleClose}
+            className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Scrollable content area */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Video Player - edge to edge */}
+        <div className="bg-black">
+        {video.playbackUrl && video.videoStatus === 'ready' ? (
+          <VideoPlayer
+            src={video.playbackUrl}
+            poster={video.customThumbnailUrl || video.thumbnailUrl}
+            aspectRatio="16:9"
+          />
+        ) : (
+          <div className="aspect-video flex items-center justify-center bg-[#1a1a1a]">
+            {video.videoStatus === 'encoding' ? (
+              <div className="text-center">
+                <Loader2 className="w-12 h-12 text-white/50 animate-spin mx-auto mb-3" />
+                <p className="text-white/70 font-albert">Video is processing...</p>
+                <p className="text-white/50 text-sm font-albert mt-1">This may take a few minutes</p>
+              </div>
+            ) : video.videoStatus === 'failed' ? (
+              <div className="text-center">
+                <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                <p className="text-white/70 font-albert">Video processing failed</p>
+                <p className="text-white/50 text-sm font-albert mt-1">Please try uploading again</p>
+              </div>
+            ) : (
+              <div className="text-center">
+                <Play className="w-12 h-12 text-white/30 mx-auto mb-3" />
+                <p className="text-white/50 font-albert">Video not available</p>
+              </div>
+            )}
+          </div>
+        )}
+        </div>
+
+        {/* Editable Fields */}
+        <div className="p-5 space-y-5">
+        {/* Title & Description - Inline Editable */}
+        <div>
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) => handleFieldChange({ title: e.target.value })}
+            placeholder="Video title..."
+            className="w-full text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-0 outline-none placeholder:text-[#a7a39e] dark:placeholder:text-[#5f6470] focus:ring-0"
+          />
+          <textarea
+            value={formData.description}
+            onChange={(e) => handleFieldChange({ description: e.target.value })}
+            placeholder="Add a description..."
+            rows={2}
+            className="w-full mt-3 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert bg-transparent border-0 outline-none placeholder:text-[#a7a39e] dark:placeholder:text-[#5f6470] focus:ring-0 resize-none"
+          />
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+              <p className="text-sm text-red-600 dark:text-red-400 font-albert">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Thumbnail */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+            Thumbnail
+          </label>
+          <MediaUpload
+            value={formData.customThumbnailUrl}
+            onChange={(url) => handleFieldChange({ customThumbnailUrl: url })}
+            folder="courses"
+            type="image"
+            uploadEndpoint="/api/coach/org-upload-media"
+            hideLabel
+            aspectRatio="16:9"
+            collapsiblePreview
+          />
+          <p className="text-xs text-[#8c8a87] dark:text-[#6b6f7b] mt-1.5 font-albert">
+            Leave empty to use auto-generated thumbnail
+          </p>
+        </div>
+
+        {/* Programs */}
+        <div>
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+            Programs
+          </label>
+          <ProgramSelector
+            value={formData.programIds}
+            onChange={(programIds) => handleFieldChange({ programIds })}
+            placeholder="Link to programs..."
+            programsApiEndpoint={programsApiEndpoint}
+          />
+        </div>
+
+        {/* Pricing */}
+        <ContentPricingFields
+          value={formData.pricing}
+          onChange={(pricing) => handleFieldChange({ pricing })}
+        />
+        </div>
+      </div>
+
+      {/* Footer with save status */}
+      <div className="p-4 border-t border-[#e1ddd8] dark:border-[#262b35] flex items-center justify-between flex-shrink-0">
+        <div className="text-sm text-[#8c8a87] dark:text-[#6b6f7b] font-albert">
+          {saving ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </span>
+          ) : hasChanges ? (
+            <span className="text-amber-600 dark:text-amber-400">Unsaved changes</span>
+          ) : (
+            <span className="text-green-600 dark:text-green-400 flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4" />
+              All changes saved
+            </span>
+          )}
+        </div>
+        <Button
+          onClick={handleSave}
+          disabled={!hasChanges || saving}
+          className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert disabled:opacity-50"
+        >
+          {saving ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden border-0" hideCloseButton>
+          <VisuallyHidden>
+            <DialogTitle>Video Player</DialogTitle>
+          </VisuallyHidden>
+          {content}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Drawer open={isOpen} onOpenChange={(open) => !open && handleClose()} shouldScaleBackground={false}>
+      <DrawerContent className="max-h-[95dvh] border-0 overflow-hidden" hideHandle>{content}</DrawerContent>
+    </Drawer>
+  );
+}
+
 // Format duration in seconds to mm:ss or hh:mm:ss
 function formatDuration(seconds?: number): string {
   if (!seconds) return '--:--';
@@ -311,7 +605,7 @@ export function AdminVideosSection({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [videoToEdit, setVideoToEdit] = useState<DiscoverVideo | null>(null);
+  const [videoToPlay, setVideoToPlay] = useState<DiscoverVideo | null>(null);
   const [videoToDelete, setVideoToDelete] = useState<DiscoverVideo | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -512,12 +806,18 @@ export function AdminVideosSection({
                       </div>
                     )}
 
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none" />
+
                     {/* Play overlay */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center">
+                    <button
+                      onClick={() => setVideoToPlay(video)}
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                    >
+                      <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center hover:scale-105 transition-transform">
                         <Play className="w-6 h-6 text-[#1a1a1a] ml-1" />
                       </div>
-                    </div>
+                    </button>
 
                     {/* Duration badge */}
                     {typeof video.durationSeconds === 'number' && video.durationSeconds > 0 ? (
@@ -568,7 +868,7 @@ export function AdminVideosSection({
                       {/* Actions */}
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button
-                          onClick={() => setVideoToEdit(video)}
+                          onClick={() => setVideoToPlay(video)}
                           className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
                           title="Edit video"
                         >
@@ -600,12 +900,12 @@ export function AdminVideosSection({
         programsApiEndpoint={programsApiEndpoint}
       />
 
-      {/* Edit Video Dialog (simplified) */}
-      {videoToEdit && (
-        <VideoEditDialog
-          video={videoToEdit}
-          isOpen={!!videoToEdit}
-          onClose={() => setVideoToEdit(null)}
+      {/* Video Player Dialog (with inline editing) */}
+      {videoToPlay && (
+        <VideoPlayerDialog
+          video={videoToPlay}
+          isOpen={!!videoToPlay}
+          onClose={() => setVideoToPlay(null)}
           onSave={fetchVideos}
           apiEndpoint={apiEndpoint}
           programsApiEndpoint={programsApiEndpoint}

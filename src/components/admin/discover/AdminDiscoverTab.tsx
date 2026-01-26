@@ -91,27 +91,34 @@ export function AdminDiscoverTab({
               <ChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {isDropdownOpen && (
-              <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-[#262b35] rounded-xl shadow-lg border border-[#e5e2df] dark:border-[#3a3f4b] py-1 z-50">
-                {tabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => {
-                      setActiveSubTab(tab.id);
-                      setIsDropdownOpen(false);
-                    }}
-                    className={`w-full px-3 py-2 text-left text-sm font-medium font-albert flex items-center gap-2 ${
-                      activeSubTab === tab.id
-                        ? 'bg-[#f3f1ef] dark:bg-[#1e222a] text-[#1a1a1a] dark:text-[#f5f5f8]'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
-                    }`}
-                  >
-                    {tab.icon}
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div
+              className={`absolute right-0 mt-1 w-48 bg-white dark:bg-[#262b35] rounded-xl shadow-lg border border-[#e5e2df] dark:border-[#3a3f4b] py-1 z-50 origin-top-right transition-all duration-200 ease-out ${
+                isDropdownOpen
+                  ? 'opacity-100 scale-100 translate-y-0'
+                  : 'opacity-0 scale-95 -translate-y-1 pointer-events-none'
+              }`}
+            >
+              {tabs.map((tab, index) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveSubTab(tab.id);
+                    setIsDropdownOpen(false);
+                  }}
+                  className={`w-full px-3 py-2 text-left text-sm font-medium font-albert flex items-center gap-2 transition-colors duration-150 ${
+                    activeSubTab === tab.id
+                      ? 'bg-[#f3f1ef] dark:bg-[#1e222a] text-[#1a1a1a] dark:text-[#f5f5f8]'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a]'
+                  }`}
+                  style={{
+                    transitionDelay: isDropdownOpen ? `${index * 25}ms` : '0ms'
+                  }}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

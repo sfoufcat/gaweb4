@@ -40,7 +40,6 @@ interface VideoWizardData {
   title: string;
   description: string;
   bunnyVideoId: string;
-  discoverVideoId: string; // Firestore doc ID (placeholder created on upload)
   thumbnailUrl: string; // Auto-generated from Bunny
   // Step 2: Details
   thumbnailOption: ThumbnailOption;
@@ -56,7 +55,6 @@ const DEFAULT_WIZARD_DATA: VideoWizardData = {
   title: '',
   description: '',
   bunnyVideoId: '',
-  discoverVideoId: '',
   thumbnailUrl: '',
   thumbnailOption: 'auto',
   customThumbnailUrl: '',
@@ -190,12 +188,11 @@ export function CreateVideoModal({
   }, []);
 
   // Upload video to Bunny via TUS
-  // Returns { bunnyVideoId, discoverVideoId } for main videos, or { bunnyVideoId } for previews
   const uploadVideoToBunny = async (
     file: File,
     isPreview: boolean,
     onProgress: (progress: number) => void
-  ): Promise<{ bunnyVideoId: string; discoverVideoId?: string }> => {
+  ): Promise<string> => {
     const urlResponse = await fetch('/api/coach/discover-videos/get-upload-url', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -211,7 +208,7 @@ export function CreateVideoModal({
       throw new Error(error.error || 'Failed to get upload URL');
     }
 
-    const { videoId, discoverVideoId, tusEndpoint, tusHeaders } = await urlResponse.json();
+    const { videoId, tusEndpoint, tusHeaders } = await urlResponse.json();
 
     // Debug: Log what we received from server
     console.log('[VIDEO_UPLOAD] TUS config:', {
@@ -254,10 +251,10 @@ export function CreateVideoModal({
           onProgress(percentage);
         },
         onSuccess: () => {
-          console.log('[VIDEO_UPLOAD] Upload complete:', videoId, 'discoverVideoId:', discoverVideoId);
+          console.log('[VIDEO_UPLOAD] Upload complete:', videoId);
           // Track this video ID as pending (uploaded but not yet saved)
           setPendingBunnyVideoIds((prev) => [...prev, videoId]);
-          resolve({ bunnyVideoId: videoId, discoverVideoId });
+          resolve(videoId);
         },
       });
 
@@ -287,10 +284,10 @@ export function CreateVideoModal({
         setIsUploading(true);
         setUploadError(null);
         try {
-          const { bunnyVideoId, discoverVideoId } = await uploadVideoToBunny(mainVideoFile, false, setMainUploadProgress);
-          updateWizardData({ bunnyVideoId, discoverVideoId: discoverVideoId || '' });
+          const videoId = await uploadVideoToBunny(mainVideoFile, false, setMainUploadProgress);
+          updateWizardData({ bunnyVideoId: videoId });
           // Fetch thumbnail after upload
-          fetchThumbnail(bunnyVideoId);
+          fetchThumbnail(videoId);
           setStep('details');
         } catch (error) {
           setUploadError(error instanceof Error ? error.message : 'Upload failed');
@@ -319,14 +316,11 @@ export function CreateVideoModal({
       // Upload preview video if file selected
       if (previewVideoFile && !previewBunnyVideoId) {
         setIsUploading(true);
-        const result = await uploadVideoToBunny(previewVideoFile, true, setPreviewUploadProgress);
-        previewBunnyVideoId = result.bunnyVideoId;
+        previewBunnyVideoId = await uploadVideoToBunny(previewVideoFile, true, setPreviewUploadProgress);
         setIsUploading(false);
       }
 
       const videoData = {
-        // If we have a discoverVideoId from placeholder, include it to update existing doc
-        id: wizardData.discoverVideoId || undefined,
         title: wizardData.title,
         description: wizardData.description,
         bunnyVideoId: wizardData.bunnyVideoId,
@@ -504,7 +498,6 @@ export function CreateVideoModal({
             ) : step === 'details' ? (
               <>
                 Create Video
-                <Sparkles className="w-4 h-4" />
               </>
             ) : (
               <>

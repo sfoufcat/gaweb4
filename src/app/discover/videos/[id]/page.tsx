@@ -305,7 +305,7 @@ export default function VideoDetailPage({ params }: VideoPageProps) {
       </section>
 
       {/* Purchase Sheet */}
-      {video.priceInCents && video.priceInCents > 0 && (
+      {video.priceInCents != null && video.priceInCents > 0 && (
         <ContentPurchaseSheet
           open={showPurchaseSheet}
           onOpenChange={setShowPurchaseSheet}

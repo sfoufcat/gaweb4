@@ -55,7 +55,7 @@ export function AdminCoursesSection({
   const [courseToDelete, setCourseToDelete] = useState<DiscoverCourse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 9;
 
   // View mode state: 'list' or 'editor'
   const [viewMode, setViewMode] = useState<'list' | 'editor'>('list');
@@ -65,6 +65,9 @@ export function AdminCoursesSection({
 
   // Track last processed course ID to prevent re-opening after close
   const lastProcessedCourseId = useRef<string | null>(null);
+
+  // Track if we're closing - prevents race condition with async URL update
+  const isClosingRef = useRef(false);
 
   // Derive endpoints from API endpoint - use coach endpoints for coach routes
   const isCoachContext = apiEndpoint.includes('/coach/');
@@ -106,6 +109,19 @@ export function AdminCoursesSection({
 
   // Handle initial course ID from URL
   useEffect(() => {
+    // Never process while in editor mode - prevents accidental re-opening
+    if (viewMode === 'editor') return;
+
+    // Skip if we're in the process of closing (URL update is async)
+    if (isClosingRef.current) {
+      // Reset the flag once URL has caught up (initialCourseId is now null)
+      if (!initialCourseId) {
+        isClosingRef.current = false;
+        lastProcessedCourseId.current = null;
+      }
+      return;
+    }
+
     // Skip if we've already processed this courseId (prevents re-opening after close)
     if (initialCourseId === lastProcessedCourseId.current) return;
 
@@ -161,6 +177,8 @@ export function AdminCoursesSection({
 
   // Handle closing editor
   const handleCloseEditor = () => {
+    // Mark that we're closing - prevents useEffect from re-opening before URL updates
+    isClosingRef.current = true;
     setViewMode('list');
     setSelectedCourse(null);
     setIsCreating(false);
@@ -269,14 +287,20 @@ export function AdminCoursesSection({
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-[#faf8f6] dark:bg-[#11141b] rounded-xl overflow-hidden">
-              <div className="h-40 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+            <div key={i} className="bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] overflow-hidden">
+              <div className="aspect-video bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
               <div className="p-4 space-y-3">
                 <div className="h-5 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
                 <div className="h-4 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                <div className="flex gap-2">
-                  <div className="h-5 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
-                  <div className="h-5 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-3">
+                    <div className="h-4 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                    <div className="h-4 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                  </div>
+                  <div className="flex gap-1">
+                    <div className="w-8 h-8 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+                    <div className="w-8 h-8 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -408,97 +432,104 @@ export function AdminCoursesSection({
         </div>
 
         {/* Course Cards */}
-        <div className="divide-y divide-[#e8e4df] dark:divide-[#262b35]">
-          {paginatedCourses.map(course => (
-            <div
-              key={course.id}
-              onClick={() => handleEditCourse(course)}
-              className="flex items-center gap-4 p-3 bg-white dark:bg-[#171b22] hover:bg-[#faf8f6] dark:hover:bg-[#1c2028] cursor-pointer transition-all group first:rounded-t-xl last:rounded-b-xl"
-            >
-              {/* Cover Image */}
-              <div className="relative w-20 h-14 sm:w-24 sm:h-16 rounded-lg overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
-                {course.coverImageUrl ? (
-                  <Image
-                    src={course.coverImageUrl}
-                    alt={course.title}
-                    fill
-                    className="object-cover"
-                    sizes="96px"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-[#a7a39e] dark:text-[#5f6470]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
+        <div className="p-4 sm:p-6">
+          {filteredCourses.length === 0 ? (
+            <div className="py-12 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f3f1ef] dark:bg-[#1e222a] flex items-center justify-center">
+                <svg className="w-8 h-8 text-[#9ca3af]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                {searchQuery
+                  ? 'No courses found'
+                  : 'No courses yet. Create your first course to get started.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {paginatedCourses.map(course => (
+                <div
+                  key={course.id}
+                  onClick={() => handleEditCourse(course)}
+                  className="group bg-[#faf8f6] dark:bg-[#11141b] rounded-xl overflow-hidden border border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50 transition-colors cursor-pointer"
+                >
+                  {/* Cover Image */}
+                  <div className="relative aspect-video bg-gradient-to-br from-blue-500 to-indigo-600 overflow-hidden">
+                    {course.coverImageUrl ? (
+                      <Image
+                        src={course.coverImageUrl}
+                        alt={course.title}
+                        fill
+                        className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center transition-transform duration-500 ease-out group-hover:scale-[1.03]">
+                        <svg className="w-12 h-12 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                      </div>
+                    )}
+
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none" />
                   </div>
-                )}
-              </div>
 
-              {/* Course Info */}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-brand-accent transition-colors">
-                  {course.title}
-                </h3>
-                <div className="flex items-center gap-x-4 mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  <span className="inline-flex items-center gap-1">
-                    <Layers className="w-3.5 h-3.5" />
-                    {course.totalModules || course.modules?.length || 0} modules
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <PlayCircle className="w-3.5 h-3.5" />
-                    {course.totalLessons || course.modules?.reduce((sum, m) => sum + m.lessons.length, 0) || 0} lessons
-                  </span>
+                  {/* Course Info */}
+                  <div className="p-4">
+                    <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {course.title}
+                    </h3>
+                    {course.shortDescription && (
+                      <p className="mt-1 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert line-clamp-2">
+                        {course.shortDescription}
+                      </p>
+                    )}
+
+                    {/* Metadata + Actions row */}
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                        <span className="inline-flex items-center gap-1">
+                          <Layers className="w-3.5 h-3.5" />
+                          {course.totalModules || course.modules?.length || 0} modules
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <PlayCircle className="w-3.5 h-3.5" />
+                          {course.totalLessons || course.modules?.reduce((sum, m) => sum + m.lessons.length, 0) || 0} lessons
+                        </span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditCourse(course);
+                          }}
+                          className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
+                          title="Edit course"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCourseToDelete(course);
+                          }}
+                          className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                          title="Delete course"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              {/* Badges */}
-              <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                {course.featured && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-albert">
-                    Featured
-                  </span>
-                )}
-                {course.trending && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-albert">
-                    Trending
-                  </span>
-                )}
-              </div>
-
-              {/* Action Icons */}
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditCourse(course);
-                  }}
-                  className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
-                  title="Edit"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCourseToDelete(course);
-                  }}
-                  className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                  title="Delete"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-
-        {filteredCourses.length === 0 && (
-          <div className="px-3 pb-3">
-            <div className="p-12 text-center">
-              <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No courses found</p>
-            </div>
-          </div>
-        )}
 
         {/* Pagination */}
         {totalPages > 1 && (

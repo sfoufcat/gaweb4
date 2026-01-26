@@ -265,11 +265,11 @@ export default function CoachPage() {
     } else {
       url.searchParams.set('tab', newTab);
     }
-    // Only clear selection params that don't belong to the new tab
-    if (newTab !== 'programs') url.searchParams.delete('programId');
-    if (newTab !== 'squads') url.searchParams.delete('squadId');
-    if (newTab !== 'funnels') url.searchParams.delete('funnelId');
-    if (newTab !== 'checkins') url.searchParams.delete('flowId');
+    // Always clear selection params when switching tabs (user should start fresh)
+    url.searchParams.delete('programId');
+    url.searchParams.delete('squadId');
+    url.searchParams.delete('funnelId');
+    url.searchParams.delete('flowId');
     if (newTab !== 'clients') {
       url.searchParams.delete('clientId');
       url.searchParams.delete('clientFilter');
