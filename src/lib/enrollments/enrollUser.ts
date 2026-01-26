@@ -443,14 +443,15 @@ async function findOrCreateSquadForProgram(
   cohortId: string,
   userId: string
 ): Promise<string> {
-  const SQUAD_CAPACITY = 12;
   const now = new Date().toISOString();
+  // Use program's squadCapacity, undefined means unlimited
+  const squadCapacity = program.squadCapacity;
 
   // Get cohort details
   const cohortDoc = await adminDb.collection('program_cohorts').doc(cohortId).get();
   const cohort = cohortDoc.exists ? cohortDoc.data() as ProgramCohort : null;
 
-  // Find existing squad with space
+  // Find existing squad with space (or any squad if unlimited)
   const squadsSnapshot = await adminDb
     .collection('squads')
     .where('programId', '==', program.id)
@@ -460,9 +461,10 @@ async function findOrCreateSquadForProgram(
   for (const squadDoc of squadsSnapshot.docs) {
     const squad = squadDoc.data() as Squad;
     const memberCount = squad.memberIds?.length || 0;
-    const capacity = squad.capacity || SQUAD_CAPACITY;
-    
-    if (memberCount < capacity) {
+
+    // If unlimited capacity (undefined), always use existing squad
+    // Otherwise check if under capacity
+    if (!squadCapacity || memberCount < squadCapacity) {
       return squadDoc.id;
     }
   }
@@ -481,7 +483,7 @@ async function findOrCreateSquadForProgram(
     organizationId: program.organizationId,
     programId: program.id,
     cohortId,
-    capacity: SQUAD_CAPACITY,
+    capacity: squadCapacity, // undefined = unlimited
     isAutoCreated: true,
     squadNumber,
     createdAt: now,

@@ -64,9 +64,14 @@ Your role is to extract actionable insights from coaching calls to help coaches 
 Guidelines:
 - Be concise but comprehensive
 - Focus on actionable insights
-- Identify concrete next steps
+- Identify concrete next steps with timing/frequency when mentioned
 - Note any breakthroughs or challenges
 - Keep the tone professional and supportive
+
+IMPORTANT: Extract timing/frequency information for action items:
+- If coach says "do this every day" or "daily" → frequency: "daily"
+- If coach says "do this once" or mentions no frequency → frequency: "once"
+- If coach says "by Thursday", "on Friday", "before Monday" → frequency: "specific_day", targetDayName: "Thursday"
 
 Output must be valid JSON matching this structure:
 {
@@ -84,7 +89,9 @@ Output must be valid JSON matching this structure:
       "description": "What needs to be done",
       "assignedTo": "client" | "coach" | "both",
       "priority": "high" | "medium" | "low",
-      "category": "optional category"
+      "category": "optional category",
+      "frequency": "daily" | "once" | "specific_day",
+      "targetDayName": "Monday" (only if frequency is "specific_day")
     }
   ],
   "followUpQuestions": ["Question 1?", "Question 2?", ...]
@@ -149,10 +156,11 @@ export async function generateCallSummary(
     throw new Error('Failed to parse AI response as JSON');
   }
 
-  // Add IDs to action items if missing
+  // Add IDs and default frequency to action items if missing
   result.actionItems = result.actionItems.map((item, index) => ({
     ...item,
     id: item.id || `action-${index + 1}`,
+    frequency: item.frequency || 'once',  // Default to 'once' if not specified
   }));
 
   return result;
@@ -776,4 +784,534 @@ export async function markSummaryReviewed(
       reviewedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
+}
+
+// =============================================================================
+// AUTO-FILL WEEK FROM SUMMARY
+// =============================================================================
+
+import { buildDaySpecificFillPrompt } from './prompts';
+import { validateWeekFillDaySpecificResult, type WeekFillDaySpecificResult } from './schemas';
+
+interface AutoFillContext {
+  programId: string;
+  instanceId: string;
+  weekIndex: number;
+  autoFillTarget: 'current' | 'next' | 'until_call';
+  cohortId?: string;
+  enrollment?: ProgramEnrollment;
+}
+
+interface WeekFillPlan {
+  weekIndex: number;
+  weekNumber: number;
+  daysToFill: number[];  // 1-7 within this week
+}
+
+interface FillConfig {
+  weeks: WeekFillPlan[];
+  totalDays: number;
+  skipWeekends: boolean;
+}
+
+/**
+ * Calculate which weeks and days to fill based on the target option
+ * Supports multi-week fills for "until next call" and "next week"
+ */
+async function calculateFillConfig(
+  target: 'current' | 'next' | 'until_call',
+  programId: string,
+  instanceId: string,
+  currentWeekIndex: number,
+  cohortId?: string,
+  enrollment?: ProgramEnrollment,
+  skipWeekends?: boolean
+): Promise<FillConfig> {
+  const startDate = enrollment?.startedAt ? new Date(enrollment.startedAt) : new Date();
+  const today = new Date();
+
+  // Get instance for week data
+  const instanceDoc = await adminDb.collection('program_instances').doc(instanceId).get();
+  const instance = instanceDoc.data() as ProgramInstance | undefined;
+  const totalWeeks = instance?.weeks?.length || 1;
+
+  // Calculate today's position
+  const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  const daysPerWeek = skipWeekends ? 5 : 7;
+
+  // Find which week "today" falls in
+  let todayWeekIndex = currentWeekIndex;
+  let todayDayInWeek = 1;
+
+  if (instance?.weeks) {
+    for (let i = 0; i < instance.weeks.length; i++) {
+      const week = instance.weeks[i];
+      const weekStart = week.startDayIndex || (i * 7 + 1);
+      const weekEnd = week.endDayIndex || ((i + 1) * 7);
+      if (daysSinceStart >= weekStart - 1 && daysSinceStart < weekEnd) {
+        todayWeekIndex = i;
+        todayDayInWeek = Math.max(1, Math.min(7, daysSinceStart - weekStart + 2));
+        break;
+      }
+    }
+  }
+
+  const weeks: WeekFillPlan[] = [];
+
+  if (target === 'current') {
+    // Fill remaining days of current week only
+    const currentWeek = instance?.weeks?.[todayWeekIndex];
+    const maxDay = skipWeekends ? 5 : 7;
+    const daysToFill: number[] = [];
+    for (let d = todayDayInWeek; d <= maxDay; d++) {
+      if (!skipWeekends || d <= 5) {
+        daysToFill.push(d);
+      }
+    }
+    if (daysToFill.length > 0) {
+      weeks.push({
+        weekIndex: todayWeekIndex,
+        weekNumber: currentWeek?.weekNumber || todayWeekIndex + 1,
+        daysToFill,
+      });
+    }
+  } else if (target === 'next') {
+    // Fill all days of next week only
+    const nextWeekIndex = todayWeekIndex + 1;
+    if (nextWeekIndex < totalWeeks) {
+      const nextWeek = instance?.weeks?.[nextWeekIndex];
+      weeks.push({
+        weekIndex: nextWeekIndex,
+        weekNumber: nextWeek?.weekNumber || nextWeekIndex + 1,
+        daysToFill: skipWeekends ? [1, 2, 3, 4, 5] : [1, 2, 3, 4, 5, 6, 7],
+      });
+    }
+  } else {
+    // Until next call - may span multiple weeks
+    const nextCallDate = await getNextCallDate(programId, cohortId);
+    let daysUntilCall = 7; // Default to 7 days if no call found
+
+    if (nextCallDate) {
+      daysUntilCall = Math.ceil((nextCallDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    // Fill from today until the call (or 7 days if no call)
+    let remainingDays = daysUntilCall;
+    let weekIdx = todayWeekIndex;
+    let dayInWeek = todayDayInWeek;
+
+    while (remainingDays > 0 && weekIdx < totalWeeks) {
+      const week = instance?.weeks?.[weekIdx];
+      const maxDay = skipWeekends ? 5 : 7;
+      const daysToFill: number[] = [];
+
+      // For first week, start from today; for subsequent weeks, start from day 1
+      const startDay = weekIdx === todayWeekIndex ? dayInWeek : 1;
+
+      for (let d = startDay; d <= maxDay && remainingDays > 0; d++) {
+        if (!skipWeekends || d <= 5) {
+          daysToFill.push(d);
+          remainingDays--;
+        }
+      }
+
+      if (daysToFill.length > 0) {
+        weeks.push({
+          weekIndex: weekIdx,
+          weekNumber: week?.weekNumber || weekIdx + 1,
+          daysToFill,
+        });
+      }
+
+      weekIdx++;
+      dayInWeek = 1; // Next week starts from day 1
+    }
+  }
+
+  // Ensure at least one day
+  if (weeks.length === 0) {
+    const currentWeek = instance?.weeks?.[todayWeekIndex];
+    weeks.push({
+      weekIndex: todayWeekIndex,
+      weekNumber: currentWeek?.weekNumber || todayWeekIndex + 1,
+      daysToFill: [todayDayInWeek],
+    });
+  }
+
+  const totalDays = weeks.reduce((sum, w) => sum + w.daysToFill.length, 0);
+
+  return { weeks, totalDays, skipWeekends: skipWeekends || false };
+}
+
+/**
+ * Get the next scheduled call date for a program/cohort
+ */
+async function getNextCallDate(programId: string, cohortId?: string): Promise<Date | null> {
+  try {
+    const now = new Date();
+    let query = adminDb
+      .collection('events')
+      .where('programId', '==', programId)
+      .where('startDateTime', '>', now.toISOString())
+      .where('status', '==', 'confirmed')
+      .orderBy('startDateTime', 'asc')
+      .limit(1) as FirebaseFirestore.Query;
+
+    if (cohortId) {
+      query = adminDb
+        .collection('events')
+        .where('programId', '==', programId)
+        .where('cohortId', '==', cohortId)
+        .where('startDateTime', '>', now.toISOString())
+        .where('status', '==', 'confirmed')
+        .orderBy('startDateTime', 'asc')
+        .limit(1);
+    }
+
+    const snapshot = await query.get();
+    if (snapshot.empty) {
+      return null;
+    }
+
+    const eventData = snapshot.docs[0].data();
+    return new Date(eventData.startDateTime);
+  } catch (error) {
+    console.error('[Auto-Fill] Error getting next call date:', error);
+    return null;
+  }
+}
+
+/**
+ * Build source content from summary data for the prompt
+ */
+function buildSourceContent(summaryData: CallSummary): string {
+  const parts: string[] = [];
+
+  if (summaryData.summary.executive) {
+    parts.push(`Executive Summary: ${summaryData.summary.executive}`);
+  }
+
+  if (summaryData.summary.keyDiscussionPoints?.length) {
+    parts.push(`\nKey Discussion Points:\n${summaryData.summary.keyDiscussionPoints.map(p => `- ${p}`).join('\n')}`);
+  }
+
+  if (summaryData.summary.clientProgress) {
+    parts.push(`\nClient Progress: ${summaryData.summary.clientProgress}`);
+  }
+
+  if (summaryData.summary.challenges?.length) {
+    parts.push(`\nChallenges:\n${summaryData.summary.challenges.map(c => `- ${c}`).join('\n')}`);
+  }
+
+  if (summaryData.summary.breakthroughs?.length) {
+    parts.push(`\nBreakthroughs:\n${summaryData.summary.breakthroughs.map(b => `- ${b}`).join('\n')}`);
+  }
+
+  if (summaryData.summary.coachingNotes) {
+    parts.push(`\nCoaching Notes: ${summaryData.summary.coachingNotes}`);
+  }
+
+  return parts.join('\n');
+}
+
+/**
+ * Generate a unique ID for tasks
+ */
+function generateTaskId(): string {
+  return `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Auto-fill weeks from call summary
+ * Called after a summary is generated with autoFillWeek enabled
+ * Supports multi-week fills for "until next call"
+ */
+export async function autoFillWeekFromSummary(
+  orgId: string,
+  summaryId: string,
+  context: AutoFillContext
+): Promise<{ success: boolean; error?: string; daysUpdated?: number; weeksUpdated?: number }> {
+  try {
+    console.log(`[Auto-Fill] Starting auto-fill for summary ${summaryId}, instance ${context.instanceId}, target: ${context.autoFillTarget}`);
+
+    // 1. Get program settings
+    const programDoc = await adminDb.collection('programs').doc(context.programId).get();
+    const program = programDoc.data() as Program | undefined;
+    const skipWeekends = program?.includeWeekends === false;
+
+    // 2. Get instance
+    const instanceDoc = await adminDb.collection('program_instances').doc(context.instanceId).get();
+    const instance = instanceDoc.data() as ProgramInstance | undefined;
+    if (!instance) {
+      return { success: false, error: 'Instance not found' };
+    }
+
+    // 3. Get summary with action items
+    const summaryDoc = await adminDb
+      .collection('organizations')
+      .doc(orgId)
+      .collection('call_summaries')
+      .doc(summaryId)
+      .get();
+    const summaryData = summaryDoc.data() as CallSummary | undefined;
+    if (!summaryData) {
+      return { success: false, error: 'Summary not found' };
+    }
+
+    // 4. Calculate which weeks and days to fill (supports multi-week)
+    const fillConfig = await calculateFillConfig(
+      context.autoFillTarget,
+      context.programId,
+      context.instanceId,
+      context.weekIndex,
+      context.cohortId,
+      context.enrollment,
+      skipWeekends
+    );
+
+    console.log(`[Auto-Fill] Fill config: ${fillConfig.weeks.length} weeks, ${fillConfig.totalDays} total days`);
+    fillConfig.weeks.forEach(w => {
+      console.log(`[Auto-Fill]   Week ${w.weekNumber} (index ${w.weekIndex}): days ${w.daysToFill.join(', ')}`);
+    });
+
+    // 5. Build source content with action items
+    const sourceContent = buildSourceContent(summaryData);
+
+    // 6. Build flat list of all days to fill (for AI prompt)
+    // Format: "W1D3" = Week 1, Day 3; "W2D1" = Week 2, Day 1
+    const allDaysToFill: string[] = [];
+    for (const weekPlan of fillConfig.weeks) {
+      for (const day of weekPlan.daysToFill) {
+        allDaysToFill.push(`W${weekPlan.weekNumber}D${day}`);
+      }
+    }
+
+    // 7. Generate tasks for all days at once
+    const { system, user } = buildMultiWeekFillPrompt(
+      {
+        content: sourceContent,
+        actionItems: summaryData.actionItems,
+      },
+      {
+        programName: program?.name,
+        weekPlans: fillConfig.weeks,
+        skipWeekends: fillConfig.skipWeekends,
+        allDaysToFill,
+      }
+    );
+
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      system,
+      messages: [{ role: 'user', content: user }],
+    });
+
+    // Extract text content
+    const textContent = message.content.find((c) => c.type === 'text');
+    if (!textContent || textContent.type !== 'text') {
+      return { success: false, error: 'No text response from AI' };
+    }
+
+    // 8. Parse response
+    let result: MultiWeekFillResult;
+    try {
+      let jsonStr = textContent.text;
+      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1].trim();
+      }
+      result = JSON.parse(jsonStr) as MultiWeekFillResult;
+    } catch (parseError) {
+      console.error('[Auto-Fill] Failed to parse response:', textContent.text);
+      return { success: false, error: 'Failed to parse AI response' };
+    }
+
+    // 9. Apply to instance - update each week
+    const weeks = [...(instance.weeks || [])];
+    let totalDaysUpdated = 0;
+    let weeksUpdated = 0;
+
+    for (const weekPlan of fillConfig.weeks) {
+      const weekKey = `week_${weekPlan.weekNumber}`;
+      const weekData = result.weeks?.[weekKey];
+
+      if (!weekData || !weeks[weekPlan.weekIndex]) {
+        continue;
+      }
+
+      const week = { ...weeks[weekPlan.weekIndex] };
+      const days = [...(week.days || [])];
+
+      // Update each day in this week
+      for (const [dayIndexStr, dayData] of Object.entries(weekData.days || {})) {
+        const targetDayIndex = parseInt(dayIndexStr, 10); // 1-7 (day of week)
+
+        // Find the day by its dayIndex property (1-7), not array position
+        const dayArrayIndex = days.findIndex(d => d.dayIndex === targetDayIndex);
+
+        if (dayArrayIndex !== -1 && days[dayArrayIndex]) {
+          const newTasks = (dayData.tasks || []).map((t: { label: string; type?: string; isPrimary?: boolean; estimatedMinutes?: number; notes?: string }) => ({
+            id: generateTaskId(),
+            label: t.label,
+            type: (t.type === 'learning' || t.type === 'admin' || t.type === 'habit' ? t.type : 'task') as 'task' | 'habit' | 'learning' | 'admin',
+            isPrimary: t.isPrimary || false,
+            estimatedMinutes: t.estimatedMinutes,
+            notes: t.notes,
+          }));
+
+          days[dayArrayIndex] = {
+            ...days[dayArrayIndex],
+            tasks: newTasks,
+          };
+          totalDaysUpdated++;
+          console.log(`[Auto-Fill] Updated week ${weekPlan.weekNumber} day ${targetDayIndex} with ${newTasks.length} tasks`);
+        }
+      }
+
+      week.days = days;
+      if (weekData.theme) week.theme = weekData.theme;
+      if (weekData.description) week.description = weekData.description;
+      if (weekData.currentFocus) week.currentFocus = weekData.currentFocus;
+      week.fillSource = {
+        type: 'call_summary',
+        sourceId: summaryId,
+        generatedAt: new Date().toISOString(),
+      };
+
+      weeks[weekPlan.weekIndex] = week;
+      weeksUpdated++;
+    }
+
+    await adminDb.collection('program_instances').doc(context.instanceId).update({
+      weeks,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    console.log(`[Auto-Fill] Filled ${totalDaysUpdated} days across ${weeksUpdated} weeks from summary ${summaryId}`);
+
+    return { success: true, daysUpdated: totalDaysUpdated, weeksUpdated };
+  } catch (error) {
+    console.error('[Auto-Fill] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+// Multi-week fill result type
+interface MultiWeekFillResult {
+  weeks: {
+    [weekKey: string]: {
+      days: {
+        [dayIndex: string]: {
+          tasks: Array<{
+            label: string;
+            type?: string;
+            isPrimary?: boolean;
+            estimatedMinutes?: number;
+            notes?: string;
+          }>;
+        };
+      };
+      theme?: string;
+      description?: string;
+      currentFocus?: string[];
+    };
+  };
+}
+
+/**
+ * Build prompt for multi-week fill
+ */
+function buildMultiWeekFillPrompt(
+  source: { content: string; actionItems?: CallSummaryActionItem[] },
+  context: {
+    programName?: string;
+    weekPlans: WeekFillPlan[];
+    skipWeekends: boolean;
+    allDaysToFill: string[];
+  }
+): { system: string; user: string } {
+  const weekendNote = context.skipWeekends ? 'This program is weekdays only (Mon-Fri).' : '';
+
+  // Format action items with frequency hints
+  const actionItemsHint = source.actionItems?.length
+    ? `\nACTION ITEMS FROM CALL (with frequency hints):\n${source.actionItems.map(item =>
+        `- ${item.description} [${item.frequency || 'once'}${item.targetDayName ? `, target: ${item.targetDayName}` : ''}] (${item.priority} priority, assigned to: ${item.assignedTo})`
+      ).join('\n')}`
+    : '';
+
+  // Build week structure info
+  const weekStructure = context.weekPlans.map(w =>
+    `Week ${w.weekNumber}: fill days ${w.daysToFill.join(', ')}`
+  ).join('\n');
+
+  const system = `You are a coaching assistant creating a multi-week plan from call insights.
+
+Your job is to create tasks for specific days across multiple weeks based on frequency hints from the call summary.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON matching the exact schema provided.
+2. "daily" tasks → add to ALL days across ALL weeks being filled
+3. "once" tasks → place on ONE day only (spread across weeks if multiple "once" tasks)
+4. "specific_day" tasks → place on the correct day name (e.g., "Friday" goes on day 5)
+5. Keep task labels concise but actionable (under 100 characters)
+6. 1-4 tasks per day is ideal, max 8 per day
+
+TASK TYPES:
+- "task": General action item (default)
+- "habit": Behavior to practice regularly
+- "learning": Learning or reflection exercise
+- "admin": Administrative task
+
+OUTPUT SCHEMA:
+{
+  "weeks": {
+    "week_1": {
+      "days": {
+        "3": { "tasks": [...] },
+        "4": { "tasks": [...] },
+        "5": { "tasks": [...] }
+      },
+      "theme": "optional theme",
+      "currentFocus": ["focus1", "focus2"]
+    },
+    "week_2": {
+      "days": {
+        "1": { "tasks": [...] },
+        "2": { "tasks": [...] }
+      }
+    }
+  }
+}
+
+TASK FORMAT:
+{ "label": string, "type": "task"|"habit"|"learning"|"admin", "isPrimary": boolean, "estimatedMinutes": number?, "notes": string? }`;
+
+  const user = `Generate tasks for multiple weeks from the following call summary.
+
+PROGRAM CONTEXT:
+${context.programName ? `Program: "${context.programName}"` : ''}
+${weekendNote}
+
+WEEKS TO FILL:
+${weekStructure}
+
+Day index mapping: Day 1 = Monday, Day 2 = Tuesday, Day 3 = Wednesday, Day 4 = Thursday, Day 5 = Friday${!context.skipWeekends ? ', Day 6 = Saturday, Day 7 = Sunday' : ''}
+${actionItemsHint}
+
+CALL SUMMARY CONTENT:
+${source.content}
+
+PLACEMENT INSTRUCTIONS:
+- For "daily" frequency tasks: add to EVERY day listed above (across all weeks)
+- For "once" frequency tasks: place on one day, spread across weeks if multiple
+- For "specific_day" tasks with targetDayName: place on that day in the appropriate week
+- Client-assigned tasks should become actual tasks; coach tasks are optional notes
+
+Remember: Output ONLY the JSON object. No explanations, no markdown formatting.`;
+
+  return { system, user };
 }

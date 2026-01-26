@@ -1512,7 +1512,8 @@ export interface ContentProgress {
 }
 
 // Week Resource Assignment Types
-export type ResourceDayTag = 'week' | 'daily' | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+// Supports single day (number), multiple days (number[]), or preset options
+export type ResourceDayTag = 'week' | 'daily' | number | number[];
 
 export interface WeekResourceAssignment {
   id: string;                     // Unique ID for this assignment
@@ -1534,6 +1535,9 @@ export interface WeekResourceAssignment {
   description?: string;           // Coach note about why this is assigned
   isRequired?: boolean;           // Must complete to progress
   order?: number;                 // Sort order within day
+
+  // For multi-day courses: maps lessonId to day number for auto-spreading
+  lessonDayMapping?: Record<string, number>;
 }
 
 /**
@@ -5227,6 +5231,8 @@ export interface UnifiedEvent {
   recordingStatus?: 'recording' | 'processing' | 'ready' | 'failed';
   streamVideoCallId?: string;            // Stream Video call ID
   autoGenerateSummary?: boolean;         // Auto-generate summary when recording available (uses 1 credit)
+  autoFillWeek?: boolean;                // Auto-fill week from summary after generation
+  autoFillTarget?: 'current' | 'next' | 'until_call';  // Which week(s) to fill (default: 'until_call')
   bunnyVideoId?: string;                 // Bunny Stream video ID for uploaded recordings
   meetingUrl?: string;                   // Zoom/Google Meet/manual link
   meetingProvider?: 'zoom' | 'google_meet' | 'stream' | 'manual';
@@ -6027,6 +6033,10 @@ export interface CallSummaryActionItem {
   assignedTo: 'client' | 'coach' | 'both';
   priority: 'high' | 'medium' | 'low';
   category?: string;
+  // Frequency/timing for day-specific task placement
+  frequency?: 'daily' | 'once' | 'specific_day';
+  targetDayOffset?: number;  // 0 = today/first day, 1 = tomorrow, etc.
+  targetDayName?: string;    // "Friday", "Monday" for readability
 }
 
 /**

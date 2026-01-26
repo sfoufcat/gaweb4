@@ -175,6 +175,8 @@ export function CreateEventModal({
 
   // Step 1: Additional option
   const [autoGenerateSummary, setAutoGenerateSummary] = useState(false);
+  const [autoFillWeek, setAutoFillWeek] = useState(false);
+  const [autoFillTarget, setAutoFillTarget] = useState<'current' | 'next' | 'until_call'>('until_call');
   const [showCreditPurchaseModal, setShowCreditPurchaseModal] = useState(false);
 
   // Credits for AI summary
@@ -570,6 +572,8 @@ export function CreateEventModal({
         isCoachLed: true,
         coverImageUrl: coverImageUrl || undefined,
         autoGenerateSummary: autoGenerateSummary || undefined,
+        autoFillWeek: (autoGenerateSummary && autoFillWeek) || undefined,
+        autoFillTarget: (autoGenerateSummary && autoFillWeek) ? autoFillTarget : undefined,
       };
 
       const response = await fetch('/api/events', {
@@ -749,6 +753,69 @@ export function CreateEventModal({
                   </button>
                 )}
               </div>
+
+              {/* Auto-fill Week Option (only in program context when auto-summary is enabled) */}
+              {autoGenerateSummary && isProgramContext && (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => setAutoFillWeek(!autoFillWeek)}
+                    className={`w-full flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                      autoFillWeek
+                        ? 'border-brand-accent bg-brand-accent/5'
+                        : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                    }`}
+                  >
+                    <div className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                      autoFillWeek
+                        ? 'border-brand-accent bg-brand-accent'
+                        : 'border-[#d1ccc6] dark:border-[#3a4150]'
+                    }`}>
+                      {autoFillWeek && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        Fill week from summary
+                      </span>
+                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                        Auto-populate tasks with day-specific placement based on call insights
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Fill target options */}
+                  {autoFillWeek && (
+                    <div className="pl-8 space-y-2">
+                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-medium">Add tasks to:</p>
+                      {[
+                        { value: 'current' as const, label: 'Current week' },
+                        { value: 'next' as const, label: 'Next week' },
+                        { value: 'until_call' as const, label: 'Until next call' },
+                      ].map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setAutoFillTarget(opt.value)}
+                          className={`w-full flex items-center gap-2 p-2 rounded-lg transition-colors ${
+                            autoFillTarget === opt.value ? 'bg-brand-accent/10' : 'hover:bg-[#f5f3f0] dark:hover:bg-[#1e2129]'
+                          }`}
+                        >
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            autoFillTarget === opt.value ? 'border-brand-accent' : 'border-[#d1ccc6] dark:border-[#3a4150]'
+                          }`}>
+                            {autoFillTarget === opt.value && (
+                              <div className="w-2 h-2 rounded-full bg-brand-accent" />
+                            )}
+                          </div>
+                          <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">{opt.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
           )}
 

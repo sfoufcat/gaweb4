@@ -295,6 +295,59 @@ export const weekFillResultSchema = z.object({
 
 export type WeekFillResult = z.infer<typeof weekFillResultSchema>;
 
+// =============================================================================
+// DAY-SPECIFIC FILL SCHEMAS (for auto-fill from call summary)
+// =============================================================================
+
+export const dayTaskSchema = z.object({
+  label: nonEmptyString.max(100, 'Task label must be 100 characters or less'),
+  type: z.enum(['task', 'habit', 'learning', 'admin']).default('task'),
+  isPrimary: z.boolean().default(false),
+  estimatedMinutes: z.number().min(5).max(120).optional(),
+  notes: z.string().max(200, 'Task notes must be 200 characters or less').optional(),
+});
+
+export const dayContentSchema = z.object({
+  tasks: z.array(dayTaskSchema).max(8, 'Can have at most 8 tasks per day'),
+});
+
+export const weekFillDaySpecificSchema = z.object({
+  days: z.record(
+    z.string(), // Key: "1", "2", ... "7" (day index as string)
+    dayContentSchema
+  ),
+  weekTheme: z.string().max(50, 'Week theme must be 50 characters or less').optional(),
+  weekDescription: z.string().max(200, 'Week description must be 200 characters or less').optional(),
+  currentFocus: z.array(z.string().max(100)).max(3, 'Can have at most 3 focus areas').optional(),
+});
+
+export type DayTask = z.infer<typeof dayTaskSchema>;
+export type DayContent = z.infer<typeof dayContentSchema>;
+export type WeekFillDaySpecificResult = z.infer<typeof weekFillDaySpecificSchema>;
+
+/**
+ * Validate a day-specific week fill result
+ */
+export function validateWeekFillDaySpecificResult(draft: unknown): {
+  success: boolean;
+  data?: WeekFillDaySpecificResult;
+  errors?: Array<{ path: string; message: string }>;
+} {
+  const result = weekFillDaySpecificSchema.safeParse(draft);
+
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+
+  return {
+    success: false,
+    errors: result.error.issues.map((err) => ({
+      path: String(err.path.join('.')),
+      message: err.message,
+    })),
+  };
+}
+
 /**
  * Validate a week fill result
  */

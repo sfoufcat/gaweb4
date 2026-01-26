@@ -1152,7 +1152,7 @@ export function WeekEditor({
         // Use the dashboard API to get content completion data
         const url = clientUserId
           ? `/api/coach/org-programs/${programId}/dashboard/client/${clientUserId}`
-          : `/api/coach/org-programs/${programId}/dashboard`;
+          : `/api/coach/org-programs/${programId}/dashboard${cohortId ? `?cohortId=${cohortId}` : ''}`;
 
         const res = await fetch(url);
         if (!res.ok) return;
@@ -3449,6 +3449,7 @@ export function WeekEditor({
           programId={programId}
           includeWeekends={includeWeekends}
           contentCompletion={contentCompletion}
+          calendarStartDate={weekCalendarStartDate}
         />
       </CollapsibleSection>
 

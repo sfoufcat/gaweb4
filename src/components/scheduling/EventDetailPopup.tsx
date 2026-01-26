@@ -27,6 +27,7 @@ import type { UnifiedEvent, CallSummary } from '@/types';
 import { InlineRecordingUpload } from './InlineRecordingUpload';
 import { InlineSummaryPreview } from './InlineSummaryPreview';
 import { GenerateSummaryButton } from './GenerateSummaryButton';
+import { FillWeekFromSummaryButton } from './FillWeekFromSummaryButton';
 import { MeetingProviderSelector, type MeetingProviderType } from './MeetingProviderSelector';
 import { normalizeUrl } from '@/lib/url-utils';
 
@@ -688,6 +689,16 @@ export function EventDetailPopup({
                   durationMinutes={event.durationMinutes || 60}
                   onGenerated={(summaryId) => {
                     onRecordingUploaded?.(event.id, summaryId);
+                  }}
+                />
+              )}
+
+              {/* Fill Week from Summary Button (has summary, program context, host only) */}
+              {hasSummary && event.programId && event.instanceId && isHost && (
+                <FillWeekFromSummaryButton
+                  eventId={event.id}
+                  onFilled={() => {
+                    onEventUpdated?.();
                   }}
                 />
               )}

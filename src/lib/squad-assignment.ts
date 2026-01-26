@@ -10,7 +10,7 @@ import { getStreamServerClient } from '@/lib/stream-server';
 import { clerkClient } from '@clerk/nextjs/server';
 import type { Squad, Program } from '@/types';
 
-const DEFAULT_SQUAD_CAPACITY = 10;
+// NOTE: undefined squadCapacity = unlimited (no auto-splitting)
 
 interface AssignUserToSquadParams {
   userId: string;
@@ -41,7 +41,7 @@ interface AssignmentResult {
 export async function assignUserToSquad(params: AssignUserToSquadParams): Promise<AssignmentResult> {
   const { userId, programId, cohortId, organizationId, program, targetSquadId } = params;
   
-  const squadCapacity = program.squadCapacity || DEFAULT_SQUAD_CAPACITY;
+  const squadCapacity = program.squadCapacity; // undefined = unlimited
   const now = new Date().toISOString();
   
   // Get user info from Clerk for squad member creation
@@ -83,17 +83,19 @@ export async function assignUserToSquad(params: AssignUserToSquadParams): Promis
       .get();
   }
   
-  // Find squad with available capacity
+  // Find squad with available capacity (or any squad if unlimited)
   for (const doc of squadsSnapshot.docs) {
     const squadData = doc.data() as Squad;
     const memberCount = squadData.memberIds?.length || 0;
-    const capacity = squadData.capacity || squadCapacity;
-    
-    if (memberCount < capacity) {
+    const capacity = squadData.capacity ?? squadCapacity; // use squad's capacity or program's capacity
+
+    // If unlimited capacity (undefined), always use existing squad
+    // Otherwise check if under capacity
+    if (!capacity || memberCount < capacity) {
       // Found a squad with room - add user
       const success = await addUserToExistingSquad(doc.id, userId, clerkUser, now);
       if (success) {
-        console.log(`[SQUAD_ASSIGNMENT] Added user ${userId} to existing squad ${doc.id} (${memberCount + 1}/${capacity})`);
+        console.log(`[SQUAD_ASSIGNMENT] Added user ${userId} to existing squad ${doc.id} (${memberCount + 1}/${capacity ?? '∞'})`);
         return { squadId: doc.id, isNewSquad: false, squadName: squadData.name };
       }
     }
@@ -239,7 +241,7 @@ async function createNewSquad(params: CreateNewSquadParams): Promise<string | nu
       organizationId,
       programId,
       cohortId: cohortId || null,
-      capacity: program.squadCapacity || DEFAULT_SQUAD_CAPACITY,
+      capacity: program.squadCapacity, // undefined = unlimited
       isAutoCreated: true,
       squadNumber,
       createdAt: now,

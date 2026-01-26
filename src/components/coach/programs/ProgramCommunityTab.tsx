@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Users, MessageCircle, Edit2, Loader2 } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Users, MessageCircle, Edit2, Loader2, ChevronDown, Check } from 'lucide-react';
 import type { Squad, SquadMember } from '@/types';
 import { SquadMemberList } from '@/components/squad/SquadMemberList';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface SquadWithDetails extends Squad {
   memberCount: number;
@@ -24,6 +29,8 @@ interface ProgramCommunityTabProps {
   programType: 'individual' | 'group';
   clientCommunityEnabled?: boolean;
   onCommunityEnabled?: () => void;
+  /** Selected cohort ID from parent (for group programs) */
+  selectedCohortId?: string | null;
 }
 
 export function ProgramCommunityTab({
@@ -31,8 +38,9 @@ export function ProgramCommunityTab({
   programType,
   clientCommunityEnabled,
   onCommunityEnabled,
+  selectedCohortId,
 }: ProgramCommunityTabProps) {
-  const [squads, setSquads] = useState<SquadWithDetails[]>([]);
+  const [allSquads, setAllSquads] = useState<SquadWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSquad, setSelectedSquad] = useState<SquadWithDetails | null>(null);
@@ -41,9 +49,35 @@ export function ProgramCommunityTab({
   const [savingName, setSavingName] = useState(false);
   const { openChatSheet } = useChatSheet();
 
+  // Squad selector state (when multiple squads)
+  const [squadSelectorOpen, setSquadSelectorOpen] = useState(false);
+
   // Enable community dialog state
   const [showEnableDialog, setShowEnableDialog] = useState(false);
   const [enabling, setEnabling] = useState(false);
+
+  // Filter squads by selected cohort (for group programs)
+  const filteredSquads = useMemo(() => {
+    if (programType === 'individual') {
+      return allSquads;
+    }
+    if (!selectedCohortId) {
+      return [];
+    }
+    return allSquads.filter(s => s.cohortId === selectedCohortId);
+  }, [allSquads, selectedCohortId, programType]);
+
+  // Auto-select first squad when filtered squads change
+  useEffect(() => {
+    if (filteredSquads.length > 0 && !selectedSquad) {
+      setSelectedSquad(filteredSquads[0]);
+    } else if (filteredSquads.length > 0 && selectedSquad && !filteredSquads.find(s => s.id === selectedSquad.id)) {
+      // Selected squad not in filtered list, reset to first
+      setSelectedSquad(filteredSquads[0]);
+    } else if (filteredSquads.length === 0) {
+      setSelectedSquad(null);
+    }
+  }, [filteredSquads]);
 
   // Fetch squads for this program
   useEffect(() => {
@@ -58,12 +92,7 @@ export function ProgramCommunityTab({
         }
 
         const data = await response.json();
-        setSquads(data.squads || []);
-
-        // Auto-select first squad if only one exists
-        if (data.squads?.length === 1) {
-          setSelectedSquad(data.squads[0]);
-        }
+        setAllSquads(data.squads || []);
       } catch (err) {
         console.error('Error fetching program squads:', err);
         setError(err instanceof Error ? err.message : 'Failed to load squads');
@@ -117,7 +146,7 @@ export function ProgramCommunityTab({
 
       // Update local state
       setSelectedSquad(prev => prev ? { ...prev, name: squadName.trim() } : null);
-      setSquads(prev => prev.map(s => s.id === selectedSquad.id ? { ...s, name: squadName.trim() } : s));
+      setAllSquads(prev => prev.map(s => s.id === selectedSquad.id ? { ...s, name: squadName.trim() } : s));
       setEditingName(false);
     } catch (err) {
       console.error('Error updating squad name:', err);
@@ -158,10 +187,7 @@ export function ProgramCommunityTab({
       const squadsResponse = await fetch(`/api/coach/org-squads?programId=${programId}`);
       if (squadsResponse.ok) {
         const data = await squadsResponse.json();
-        setSquads(data.squads || []);
-        if (data.squads?.length === 1) {
-          setSelectedSquad(data.squads[0]);
-        }
+        setAllSquads(data.squads || []);
       }
       setLoading(false);
     } catch (err) {
@@ -188,7 +214,38 @@ export function ProgramCommunityTab({
     );
   }
 
-  if (squads.length === 0) {
+  // For group programs - cohort selected but no squads yet
+  if (programType === 'group' && selectedCohortId && filteredSquads.length === 0) {
+    return (
+      <div className="text-center py-12 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
+        <Users className="w-12 h-12 text-[#d1ccc5] dark:text-[#7d8190] mx-auto mb-3" />
+        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+          No squads in this cohort yet
+        </h3>
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1 max-w-sm mx-auto">
+          Squads will be created automatically when clients enroll in this cohort
+        </p>
+      </div>
+    );
+  }
+
+  // For group programs - no cohort selected
+  if (programType === 'group' && !selectedCohortId) {
+    return (
+      <div className="text-center py-12 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
+        <Users className="w-12 h-12 text-[#d1ccc5] dark:text-[#7d8190] mx-auto mb-3" />
+        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+          Select a cohort
+        </h3>
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1 max-w-sm mx-auto">
+          Use the cohort selector above to view squads for a specific cohort
+        </p>
+      </div>
+    );
+  }
+
+  // For individual programs without community enabled
+  if (programType === 'individual' && filteredSquads.length === 0) {
     return (
       <>
         <div className="text-center py-12 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
@@ -197,12 +254,9 @@ export function ProgramCommunityTab({
             No community squads yet
           </h3>
           <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1 max-w-sm mx-auto">
-            {programType === 'group'
-              ? 'Squads will be created automatically when clients enroll in cohorts'
-              : 'Create a shared space for all your clients to connect and support each other'
-            }
+            Create a shared space for all your clients to connect and support each other
           </p>
-          {programType === 'individual' && !clientCommunityEnabled && (
+          {!clientCommunityEnabled && (
             <Button
               onClick={() => setShowEnableDialog(true)}
               className="mt-4"
@@ -298,126 +352,187 @@ export function ProgramCommunityTab({
     );
   }
 
-  // Single squad view (most common for individual programs)
-  if (squads.length === 1 || selectedSquad) {
-    const squad = selectedSquad || squads[0];
+  const squad = selectedSquad || filteredSquads[0];
 
-    return (
-      <div className="space-y-6">
-        {/* Squad Header */}
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4 flex-1">
-              {/* Squad Avatar */}
-              <div className="w-14 h-14 rounded-2xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-                {squad.avatarUrl ? (
-                  <img
-                    src={squad.avatarUrl}
-                    alt={squad.name}
-                    className="w-full h-full rounded-2xl object-cover"
-                  />
-                ) : (
-                  <Users className="w-7 h-7 text-brand-accent" />
-                )}
-              </div>
-
-              {/* Squad Name (editable) */}
-              <div className="flex-1">
-                {editingName ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={squadName}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSquadName(e.target.value)}
-                      className="max-w-xs px-3 py-2 text-sm bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
-                      autoFocus
-                      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                        if (e.key === 'Enter') handleSaveName();
-                        if (e.key === 'Escape') {
-                          setEditingName(false);
-                          setSquadName(squad.name);
-                        }
-                      }}
-                    />
-                    <Button
-                      size="sm"
-                      onClick={handleSaveName}
-                      disabled={savingName || !squadName.trim()}
-                    >
-                      {savingName ? 'Saving...' : 'Save'}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setEditingName(false);
-                        setSquadName(squad.name);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                      {squad.name}
-                    </h3>
-                    <button
-                      onClick={() => {
-                        setSquadName(squad.name);
-                        setEditingName(true);
-                      }}
-                      className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors"
-                      title="Edit squad name"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-                  {squad.memberCount || 0} members
-                </p>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              {squad.chatChannelId && (
-                <button
-                  onClick={() => handleOpenChat(squad)}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Go to chat
-                </button>
+  return (
+    <div className="space-y-6">
+      {/* Header with squad info */}
+      <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+            {/* Squad Avatar */}
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+              {squad?.avatarUrl ? (
+                <img
+                  src={squad.avatarUrl}
+                  alt={squad.name}
+                  className="w-full h-full rounded-2xl object-cover"
+                />
+              ) : (
+                <Users className="w-6 h-6 sm:w-7 sm:h-7 text-brand-accent" />
               )}
             </div>
+
+            {/* Squad Name / Selector */}
+            <div className="flex-1 min-w-0">
+              {editingName && squad ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input
+                    type="text"
+                    value={squadName}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSquadName(e.target.value)}
+                    className="max-w-[200px] sm:max-w-xs px-3 py-2 text-sm bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
+                    autoFocus
+                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === 'Enter') handleSaveName();
+                      if (e.key === 'Escape') {
+                        setEditingName(false);
+                        setSquadName(squad.name);
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleSaveName}
+                    disabled={savingName || !squadName.trim()}
+                  >
+                    {savingName ? 'Saving...' : 'Save'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setEditingName(false);
+                      setSquadName(squad.name);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                  {/* Squad Selector (when multiple squads) */}
+                  {filteredSquads.length > 1 ? (
+                    <Popover open={squadSelectorOpen} onOpenChange={setSquadSelectorOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className="h-8 sm:h-9 justify-between border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] max-w-[180px] sm:max-w-none"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm font-medium truncate">{squad?.name || 'Select squad'}</span>
+                          </div>
+                          <ChevronDown className="w-3.5 h-3.5 opacity-50 ml-2 flex-shrink-0" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[280px] p-1" align="start">
+                        {filteredSquads.map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => {
+                              setSelectedSquad({ ...s, members: undefined }); // Reset members to refetch
+                              setSquadSelectorOpen(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] text-left"
+                          >
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                              selectedSquad?.id === s.id
+                                ? 'bg-brand-accent border-brand-accent'
+                                : 'border-[#d1cdc8] dark:border-[#3a4150]'
+                            }`}>
+                              {selectedSquad?.id === s.id && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">{s.name}</span>
+                                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                                  {s.memberCount || 0} members
+                                </span>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                  ) : squad && (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                        {squad.name}
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setSquadName(squad.name);
+                          setEditingName(true);
+                        }}
+                        className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors flex-shrink-0"
+                        title="Edit squad name"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="flex items-center gap-3 mt-1">
+                {squad && (
+                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                    {squad.memberCount || 0} members
+                  </p>
+                )}
+                {/* Mobile: Chat icon below title */}
+                {squad?.chatChannelId && (
+                  <button
+                    onClick={() => handleOpenChat(squad)}
+                    className="sm:hidden inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[13px] font-medium text-white transition-colors"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    Chat
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop: Actions */}
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+            {squad?.chatChannelId && (
+              <button
+                onClick={() => handleOpenChat(squad)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Go to chat
+              </button>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Squad Stats */}
-        {(squad.avgAlignment !== undefined || squad.streak !== undefined) && (
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 text-center">
-              <p className="text-2xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                {squad.avgAlignment ?? 0}%
-              </p>
-              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                Avg. Alignment
-              </p>
-            </div>
-            <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 text-center">
-              <p className="text-2xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                🔥 {squad.streak ?? 0}
-              </p>
-              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                Day Streak
-              </p>
-            </div>
+      {/* Squad Stats */}
+      {squad && (squad.avgAlignment !== undefined || squad.streak !== undefined) && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 text-center">
+            <p className="text-2xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              {squad.avgAlignment ?? 0}%
+            </p>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              Avg. Alignment
+            </p>
           </div>
-        )}
+          <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 text-center">
+            <p className="text-2xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              🔥 {squad.streak ?? 0}
+            </p>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              Day Streak
+            </p>
+          </div>
+        </div>
+      )}
 
-        {/* Members List */}
+      {/* Members List */}
+      {squad && (
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
           <h4 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
             Members
@@ -436,69 +551,7 @@ export function ProgramCommunityTab({
             </div>
           )}
         </div>
-
-        {/* Back button if multiple squads */}
-        {squads.length > 1 && (
-          <Button
-            variant="ghost"
-            onClick={() => setSelectedSquad(null)}
-            className="text-[#5f5a55] dark:text-[#b2b6c2]"
-          >
-            ← Back to all squads
-          </Button>
-        )}
-      </div>
-    );
-  }
-
-  // Multiple squads grid (for group programs with multiple cohorts)
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-        Select a squad to view members and manage community settings
-      </p>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {squads.map((squad) => (
-          <button
-            key={squad.id}
-            onClick={() => setSelectedSquad(squad)}
-            className="text-left bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 hover:border-brand-accent transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-                {squad.avatarUrl ? (
-                  <img
-                    src={squad.avatarUrl}
-                    alt={squad.name}
-                    className="w-full h-full rounded-xl object-cover"
-                  />
-                ) : (
-                  <Users className="w-5 h-5 text-brand-accent" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                  {squad.name}
-                </h4>
-                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                  {squad.memberCount || 0} members
-                </p>
-              </div>
-            </div>
-
-            {/* Quick stats */}
-            <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                {squad.avgAlignment ?? 0}% aligned
-              </span>
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                🔥 {squad.streak ?? 0}
-              </span>
-            </div>
-          </button>
-        ))}
-      </div>
+      )}
     </div>
   );
 }

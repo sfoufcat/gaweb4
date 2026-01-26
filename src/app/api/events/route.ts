@@ -515,6 +515,11 @@ export async function POST(request: NextRequest) {
       date: body.date,
       startTime: body.startTime,
       endTime: body.endTime,
+
+      // AI Summary & Auto-fill
+      autoGenerateSummary: body.autoGenerateSummary,
+      autoFillWeek: body.autoFillWeek,
+      autoFillTarget: body.autoFillTarget,
     });
 
     console.log(`[EVENTS_POST] Created event ${eventId} (${body.eventType})`);

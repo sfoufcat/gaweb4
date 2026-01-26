@@ -136,6 +136,11 @@ export interface CreateEventCoreParams {
   meetingProvider?: string;
   externalMeetingId?: string;
   recordingUrl?: string;
+
+  // AI Summary & Auto-fill
+  autoGenerateSummary?: boolean;
+  autoFillWeek?: boolean;
+  autoFillTarget?: 'current' | 'next' | 'until_call';
 }
 
 export interface CreateEventCoreResult {
@@ -296,6 +301,11 @@ export async function createEventCore(params: CreateEventCoreParams): Promise<Cr
     // Meeting provider
     meetingProvider: params.meetingProvider || undefined,
     externalMeetingId: params.externalMeetingId || undefined,
+
+    // AI Summary & Auto-fill
+    autoGenerateSummary: params.autoGenerateSummary || undefined,
+    autoFillWeek: params.autoFillWeek || undefined,
+    autoFillTarget: params.autoFillTarget || undefined,
 
     // Timestamps
     createdAt: now,

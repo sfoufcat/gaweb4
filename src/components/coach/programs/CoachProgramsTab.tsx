@@ -957,7 +957,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     currency: string;
     subscriptionEnabled: boolean;
     billingInterval: 'monthly' | 'quarterly' | 'yearly';
-    squadCapacity: number;
+    squadCapacity: number | undefined;
     coachInSquads: boolean;
     assignedCoachIds: string[];
     isActive: boolean;
@@ -985,7 +985,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     currency: 'usd',
     subscriptionEnabled: false,
     billingInterval: 'monthly',
-    squadCapacity: 10,
+    squadCapacity: undefined,
     coachInSquads: true,
     assignedCoachIds: [],
     isActive: true,
@@ -2879,7 +2879,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         currency: program.currency,
         subscriptionEnabled: program.durationType === 'evergreen' ? (program.subscriptionEnabled || false) : false,
         billingInterval: program.billingInterval || 'monthly',
-        squadCapacity: program.squadCapacity || 10,
+        squadCapacity: program.squadCapacity,
         coachInSquads: program.coachInSquads !== false,
         assignedCoachIds: program.assignedCoachIds || [],
         isActive: program.isActive,
@@ -2915,7 +2915,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         currency: 'usd',
         subscriptionEnabled: false,
         billingInterval: 'monthly',
-        squadCapacity: 10,
+        squadCapacity: undefined,
         coachInSquads: true,
         assignedCoachIds: [],
         isActive: true,
@@ -4071,10 +4071,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   />
                 </div>
 
-                {/* Row 2: Template/Cohort Selector - only on overview/days pages */}
-                {(viewMode === 'days' || viewMode === 'overview') && (
+                {/* Row 2: Template/Cohort Selector - on overview/days/community pages */}
+                {(viewMode === 'days' || viewMode === 'overview' || viewMode === 'community') && (
                   <div className="flex items-center w-full">
-                    {selectedProgram?.type === 'individual' ? (
+                    {viewMode === 'community' ? (
+                      // Community tab - cohort selector for group programs only
+                      selectedProgram?.type === 'group' && programCohorts.length > 0 ? (
+                        <CohortSelector
+                          className="w-full"
+                          size="large"
+                          cohorts={programCohorts}
+                          value={cohortViewContext}
+                          onChange={(context) => {
+                            setCohortViewContext(context);
+                          }}
+                          loading={loadingDetails}
+                        />
+                      ) : null
+                    ) : selectedProgram?.type === 'individual' ? (
                       <ClientSelector
                         className="w-full"
                         size="large"
@@ -4169,8 +4183,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     )}
                   </div>
 
-                  {/* Divider - only show on content/overview tabs */}
-                  {(viewMode === 'days' || viewMode === 'overview') && (
+                  {/* Divider - only show on content/overview/community tabs */}
+                  {(viewMode === 'days' || viewMode === 'overview' || viewMode === 'community') && (
                     <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
                   )}
                 </div>
@@ -4178,8 +4192,21 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 {/* Selectors + Controls */}
                 <div className="flex items-center gap-2 min-w-0 flex-1 justify-between">
                   {/* Client/Cohort Selector */}
-                  <div className={viewMode !== 'days' && viewMode !== 'overview' ? 'invisible' : ''}>
-                    {selectedProgram?.type === 'individual' ? (
+                  <div className={viewMode !== 'days' && viewMode !== 'overview' && viewMode !== 'community' ? 'invisible' : ''}>
+                    {viewMode === 'community' ? (
+                      // Community tab - cohort selector without template option (for group programs only)
+                      selectedProgram?.type === 'group' && programCohorts.length > 0 ? (
+                        <CohortSelector
+                          cohorts={programCohorts}
+                          value={cohortViewContext}
+                          onChange={(context) => {
+                            setCohortViewContext(context);
+                          }}
+                          loading={loadingDetails}
+                          className="max-w-[200px] flex-shrink-0"
+                        />
+                      ) : null
+                    ) : selectedProgram?.type === 'individual' ? (
                       <ClientSelector
                         enrollments={programEnrollments}
                         value={clientViewContext}
@@ -4537,7 +4564,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           {program.type === 'group' && (
                             <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
                               <Users className="w-3 h-3 text-brand-accent" />
-                              {program.squadCapacity}/squad
+                              {program.squadCapacity ?? '∞'}/squad
                             </span>
                           )}
                         </div>
@@ -4679,7 +4706,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           {program.type === 'group' && (
                             <span className="meta-pill text-[#5f5a55] dark:text-[#b2b6c2]">
                               <Users className="w-3 h-3 text-brand-accent" />
-                              {program.squadCapacity}/squad
+                              {program.squadCapacity ?? '∞'}/squad
                             </span>
                           )}
                         </div>
@@ -4828,6 +4855,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             programId={selectedProgram!.id}
             programType={selectedProgram!.type}
             clientCommunityEnabled={selectedProgram!.clientCommunityEnabled}
+            selectedCohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : null}
             onCommunityEnabled={() => {
               // Update local state to reflect community is now enabled
               setSelectedProgram(prev => prev ? { ...prev, clientCommunityEnabled: true } : null);
@@ -6588,14 +6616,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           </label>
                           <input
                             type="number"
-                            value={programFormData.squadCapacity}
-                            onChange={(e) => setProgramFormData({ ...programFormData, squadCapacity: parseInt(e.target.value) || 10 })}
+                            value={programFormData.squadCapacity ?? ''}
+                            onChange={(e) => setProgramFormData({ ...programFormData, squadCapacity: e.target.value ? parseInt(e.target.value) : undefined })}
                             min={2}
                             max={100}
+                            placeholder="Unlimited"
                             className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                           />
                           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-                            New squads auto-created when this limit is reached
+                            {programFormData.squadCapacity ? 'New squads auto-created when this limit is reached' : 'Leave empty for unlimited members per squad'}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
@@ -7515,7 +7544,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             currency: 'usd',
             subscriptionEnabled: false,
             billingInterval: 'monthly',
-            squadCapacity: 10,
+            squadCapacity: undefined,
             coachInSquads: true,
             assignedCoachIds: [],
             isActive: true,

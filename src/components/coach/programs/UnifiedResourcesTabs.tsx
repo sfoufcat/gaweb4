@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { DayCourseSelector } from './DayCourseSelector';
 import { ResourceLinkDropdown } from './ResourceLinkDropdown';
+import { ResourceCadenceModal, getResourceCadenceLabel } from './ResourceCadenceModal';
 import type { WeekResourceAssignment, ResourceDayTag, DayCourseAssignment } from '@/types';
 import type { DiscoverCourse, DiscoverVideo } from '@/types/discover';
 
@@ -87,86 +88,37 @@ interface UnifiedResourcesTabsProps {
 
   // Content completion data by resourceId (for showing "X/Y completed" badges)
   contentCompletion?: Map<string, ContentCompletionData>;
+
+  // Calendar start date for displaying weekday names in cadence modal
+  calendarStartDate?: string;
 }
 
-// DayTag selector dropdown - uses portal to escape overflow:hidden containers
-function DayTagSelector({
+// Cadence trigger button - opens the cadence modal
+function CadenceTriggerButton({
   value,
-  onChange,
-  includeWeekends = true,
+  onClick,
+  calendarStartDate,
 }: {
   value: ResourceDayTag;
-  onChange: (value: ResourceDayTag) => void;
-  includeWeekends?: boolean;
+  onClick: () => void;
+  calendarStartDate?: string;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
-
-  const options = includeWeekends
-    ? DAY_TAG_OPTIONS
-    : DAY_TAG_OPTIONS.filter(opt => opt.value !== 6 && opt.value !== 7);
-
-  const currentOption = options.find(opt => opt.value === value) || options[0];
-
-  // Update dropdown position when opening
-  useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + 4,
-        left: rect.left,
-      });
-    }
-  }, [isOpen]);
+  const label = getResourceCadenceLabel(value, calendarStartDate);
 
   return (
-    <div className="relative">
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#8c8c8c] dark:text-[#7d8190] bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg hover:bg-[#e8e4df] dark:hover:bg-[#262b35] transition-colors"
-      >
-        <Calendar className="w-3 h-3" />
-        <span>{currentOption.label}</span>
-        <ChevronDown className={cn('w-3 h-3 transition-transform', isOpen && 'rotate-180')} />
-      </button>
-
-      {isOpen && typeof document !== 'undefined' && createPortal(
-        <>
-          <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)} />
-          <div
-            className="fixed z-[9999] min-w-[120px] py-1 bg-white dark:bg-[#1e222a] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] shadow-lg max-h-[280px] overflow-y-auto"
-            style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
-          >
-            {options.map((option) => (
-              <button
-                key={String(option.value)}
-                type="button"
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className={cn(
-                  'w-full px-3 py-1.5 text-left text-sm font-albert transition-colors',
-                  option.value === value
-                    ? 'bg-brand-accent/10 text-brand-accent'
-                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </>,
-        document.body
-      )}
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#8c8c8c] dark:text-[#7d8190] bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg hover:bg-[#e8e4df] dark:hover:bg-[#262b35] transition-colors"
+    >
+      <Calendar className="w-3 h-3" />
+      <span className="max-w-[80px] truncate">{label}</span>
+      <ChevronDown className="w-3 h-3" />
+    </button>
   );
 }
 
-// Linked item display with dayTag selector and optional completion badge
+// Linked item display with cadence modal trigger and optional completion badge
 function LinkedResourceItem({
   assignment,
   title,
@@ -175,6 +127,8 @@ function LinkedResourceItem({
   onDayTagChange,
   includeWeekends,
   completion,
+  courseInfo,
+  calendarStartDate,
 }: {
   assignment: WeekResourceAssignment;
   title: string;
@@ -183,41 +137,57 @@ function LinkedResourceItem({
   onDayTagChange: (dayTag: ResourceDayTag) => void;
   includeWeekends?: boolean;
   completion?: ContentCompletionData;
+  courseInfo?: { totalLessons: number; title?: string };
+  calendarStartDate?: string;
 }) {
+  const [cadenceModalOpen, setCadenceModalOpen] = useState(false);
+
   return (
-    <div className="flex items-center gap-3 p-3 bg-white dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] group">
-      <Icon className="w-4 h-4 text-brand-accent flex-shrink-0" />
-      <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-        {title}
-      </span>
-      {/* Completion badge */}
-      {completion && completion.totalCount > 0 && (
-        <span
-          className={cn(
-            'text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap',
-            completion.completedCount === completion.totalCount
-              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-              : completion.completedCount > 0
-              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-              : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#8c8c8c] dark:text-[#7d8190]'
-          )}
-        >
-          {completion.completedCount}/{completion.totalCount}
+    <>
+      <div className="flex items-center gap-3 p-3 bg-white dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] group">
+        <Icon className="w-4 h-4 text-brand-accent flex-shrink-0" />
+        <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+          {title}
         </span>
-      )}
-      <DayTagSelector
+        {/* Completion badge */}
+        {completion && completion.totalCount > 0 && (
+          <span
+            className={cn(
+              'text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap',
+              completion.completedCount === completion.totalCount
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                : completion.completedCount > 0
+                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#8c8c8c] dark:text-[#7d8190]'
+            )}
+          >
+            {completion.completedCount}/{completion.totalCount}
+          </span>
+        )}
+        <CadenceTriggerButton
+          value={assignment.dayTag}
+          onClick={() => setCadenceModalOpen(true)}
+          calendarStartDate={calendarStartDate}
+        />
+        <button
+          type="button"
+          onClick={onRemove}
+          className="p-1.5 text-[#a7a39e] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <ResourceCadenceModal
+        open={cadenceModalOpen}
+        onOpenChange={setCadenceModalOpen}
         value={assignment.dayTag}
         onChange={onDayTagChange}
         includeWeekends={includeWeekends}
+        courseInfo={courseInfo}
+        calendarStartDate={calendarStartDate}
       />
-      <button
-        type="button"
-        onClick={onRemove}
-        className="p-1.5 text-[#a7a39e] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-      >
-        <X className="w-4 h-4" />
-      </button>
-    </div>
+    </>
   );
 }
 
@@ -233,6 +203,7 @@ export function UnifiedResourcesTabs({
   programId,
   includeWeekends = true,
   contentCompletion,
+  calendarStartDate,
 }: UnifiedResourcesTabsProps) {
   const [activeTab, setActiveTab] = useState<ResourceType>('courses');
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
@@ -309,12 +280,52 @@ export function UnifiedResourcesTabs({
     );
   };
 
-  // Update dayTag
+  // Generate lesson-to-day mapping for multi-day course assignments
+  const generateLessonDayMapping = (
+    courseId: string,
+    days: number[]
+  ): Record<string, number> | undefined => {
+    if (days.length < 2) return undefined;
+
+    const course = availableCourses.find(c => c.id === courseId);
+    if (!course?.modules) return undefined;
+
+    // Collect all lesson IDs in order
+    const lessonIds: string[] = [];
+    course.modules.forEach(mod => {
+      mod.lessons?.forEach(lesson => {
+        lessonIds.push(lesson.id);
+      });
+    });
+
+    if (lessonIds.length === 0) return undefined;
+
+    // Distribute lessons across selected days
+    const mapping: Record<string, number> = {};
+    const lessonsPerDay = Math.ceil(lessonIds.length / days.length);
+
+    lessonIds.forEach((lessonId, index) => {
+      const dayIndex = Math.min(Math.floor(index / lessonsPerDay), days.length - 1);
+      mapping[lessonId] = days[dayIndex];
+    });
+
+    return mapping;
+  };
+
+  // Update dayTag (and generate lesson mapping for multi-day courses)
   const updateDayTag = (assignmentId: string, dayTag: ResourceDayTag) => {
     onResourceAssignmentsChange(
-      resourceAssignments.map((a) =>
-        a.id === assignmentId ? { ...a, dayTag } : a
-      )
+      resourceAssignments.map((a) => {
+        if (a.id !== assignmentId) return a;
+
+        // Generate lesson mapping if this is a course with multi-day selection
+        let lessonDayMapping: Record<string, number> | undefined;
+        if (a.resourceType === 'course' && Array.isArray(dayTag) && dayTag.length >= 2) {
+          lessonDayMapping = generateLessonDayMapping(a.resourceId, dayTag);
+        }
+
+        return { ...a, dayTag, lessonDayMapping };
+      })
     );
   };
 
@@ -538,11 +549,16 @@ export function UnifiedResourcesTabs({
         {/* Courses Tab */}
         {activeTab === 'courses' && (
           <div className="space-y-3">
-            {/* Show course assignments with dayTag selector */}
+            {/* Show course assignments with cadence modal */}
             {assignmentsByType.course.length > 0 && (
               <div className="space-y-2 mb-4">
                 {assignmentsByType.course.map((assignment) => {
                   const course = availableCourses.find(c => c.id === assignment.resourceId);
+                  // Count total lessons for the course (used for spread info in cadence modal)
+                  const totalLessons = course?.modules?.reduce(
+                    (sum, mod) => sum + (mod.lessons?.length || 0),
+                    0
+                  ) || 0;
                   return (
                     <LinkedResourceItem
                       key={assignment.id}
@@ -553,6 +569,8 @@ export function UnifiedResourcesTabs({
                       onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
                       includeWeekends={includeWeekends}
                       completion={contentCompletion?.get(assignment.resourceId)}
+                      courseInfo={{ totalLessons, title: course?.title }}
+                      calendarStartDate={calendarStartDate}
                     />
                   );
                 })}
@@ -583,6 +601,7 @@ export function UnifiedResourcesTabs({
                       onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
                       includeWeekends={includeWeekends}
                       completion={contentCompletion?.get(assignment.resourceId)}
+                      calendarStartDate={calendarStartDate}
                     />
                   );
                 })}
@@ -632,6 +651,7 @@ export function UnifiedResourcesTabs({
                     onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
                     includeWeekends={includeWeekends}
                     completion={contentCompletion?.get(assignment.resourceId)}
+                    calendarStartDate={calendarStartDate}
                   />
                 ))}
               </div>
@@ -679,6 +699,7 @@ export function UnifiedResourcesTabs({
                     onRemove={() => removeResource(assignment.id)}
                     onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
                     includeWeekends={includeWeekends}
+                    calendarStartDate={calendarStartDate}
                   />
                 ))}
               </div>
@@ -726,6 +747,7 @@ export function UnifiedResourcesTabs({
                     onRemove={() => removeResource(assignment.id)}
                     onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
                     includeWeekends={includeWeekends}
+                    calendarStartDate={calendarStartDate}
                   />
                 ))}
               </div>
@@ -773,6 +795,7 @@ export function UnifiedResourcesTabs({
                     onRemove={() => removeResource(assignment.id)}
                     onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
                     includeWeekends={includeWeekends}
+                    calendarStartDate={calendarStartDate}
                   />
                 ))}
               </div>

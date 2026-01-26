@@ -544,7 +544,96 @@ Remember: Output ONLY the JSON object. No explanations, no markdown formatting.`
   return { system: WEEK_FILL_SYSTEM_PROMPT, user };
 }
 
+// =============================================================================
+// DAY-SPECIFIC FILL GENERATION (from call summary with frequency-aware placement)
+// =============================================================================
 
+import type { CallSummaryActionItem } from '@/types';
+
+const DAY_SPECIFIC_FILL_SYSTEM_PROMPT = `You are a coaching assistant creating a week plan from call insights.
+
+Your job is to create tasks for specific days based on frequency hints from the call summary.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON matching the exact schema provided.
+2. "daily" tasks → add to ALL days in the fill range
+3. "once" tasks → spread across different days evenly
+4. "specific_day" tasks → place on the correct day (convert day name to day index)
+5. Keep task labels concise but actionable (under 100 characters)
+6. 1-4 tasks per day is ideal, max 8 per day
+
+TASK TYPES:
+- "task": General action item (default)
+- "habit": Behavior to practice regularly
+- "learning": Learning or reflection exercise
+- "admin": Administrative task
+
+OUTPUT SCHEMA:
+{
+  "days": {
+    "1": { "tasks": [...] },
+    "2": { "tasks": [...] },
+    ...
+  },
+  "weekTheme": string?,
+  "weekDescription": string?,
+  "currentFocus": [string, string?, string?]
+}
+
+TASK FORMAT:
+{ "label": string, "type": "task"|"habit"|"learning"|"admin", "isPrimary": boolean, "estimatedMinutes": number?, "notes": string? }`;
+
+export interface DaySpecificFillContext {
+  programName?: string;
+  weekNumber: number;
+  daysToFill: number[];  // [1, 2, 3, 4, 5] for Mon-Fri
+  skipWeekends: boolean;
+  todayDayIndex: number;  // What day index is "today"
+}
+
+export function buildDaySpecificFillPrompt(
+  source: { content: string; actionItems?: CallSummaryActionItem[] },
+  context: DaySpecificFillContext
+): { system: string; user: string } {
+  const daysStr = context.daysToFill.join(', ');
+  const weekendNote = context.skipWeekends ? 'This program is weekdays only (Mon-Fri).' : '';
+
+  // Format action items with frequency hints
+  const actionItemsHint = source.actionItems?.length
+    ? `\nACTION ITEMS FROM CALL (with frequency hints):\n${source.actionItems.map(item =>
+        `- ${item.description} [${item.frequency || 'once'}${item.targetDayName ? `, target: ${item.targetDayName}` : ''}] (${item.priority} priority, assigned to: ${item.assignedTo})`
+      ).join('\n')}`
+    : '';
+
+  const user = `Generate day-specific tasks from the following call summary.
+
+PROGRAM CONTEXT:
+${context.programName ? `Program: "${context.programName}"` : ''}
+Week: ${context.weekNumber}
+Days to fill: ${daysStr}
+Today is Day ${context.todayDayIndex}
+${weekendNote}
+
+DAY INDEX MAPPING:
+Day 1 = Monday, Day 2 = Tuesday, Day 3 = Wednesday, Day 4 = Thursday, Day 5 = Friday
+${!context.skipWeekends ? 'Day 6 = Saturday, Day 7 = Sunday' : ''}
+${actionItemsHint}
+
+CALL SUMMARY CONTENT:
+${source.content}
+
+PLACEMENT INSTRUCTIONS:
+- For "daily" frequency tasks: add to ALL days (${daysStr})
+- For "once" frequency tasks: spread across different days
+- For "specific_day" tasks with targetDayName: convert day name to index and place there
+- If a specific day is outside the fill range, put on the closest available day
+- Tasks should start from today (Day ${context.todayDayIndex})
+- Client-assigned tasks should become actual tasks; coach tasks are optional notes
+
+Remember: Output ONLY the JSON object. No explanations, no markdown formatting.`;
+
+  return { system: DAY_SPECIFIC_FILL_SYSTEM_PROMPT, user };
+}
 
 
 

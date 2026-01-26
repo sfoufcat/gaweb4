@@ -14,8 +14,8 @@ import {
   refundCredits,
   calculateCreditsUsed,
 } from '@/lib/platform-transcription';
-import { processCallSummary } from '@/lib/ai/call-summary';
-import type { UnifiedEvent } from '@/types';
+import { processCallSummary, autoFillWeekFromSummary } from '@/lib/ai/call-summary';
+import type { UnifiedEvent, ProgramEnrollment } from '@/types';
 
 // Default duration if we can't calculate (30 minutes)
 const DEFAULT_DURATION_SECONDS = 1800;
@@ -208,6 +208,50 @@ export async function generateSummaryForEvent(
       });
 
       console.log(`[GENERATE_SUMMARY] Successfully generated summary for event ${eventId}`);
+
+      // Auto-fill week from summary if enabled
+      if (event.autoFillWeek && event.instanceId && event.programId) {
+        try {
+          // Get enrollment data if available
+          let enrollment: ProgramEnrollment | undefined;
+          if (event.enrollmentId) {
+            const enrollmentDoc = await adminDb
+              .collection('program_enrollments')
+              .doc(event.enrollmentId)
+              .get();
+            if (enrollmentDoc.exists) {
+              enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
+            }
+          }
+
+          // Calculate week index from event data or default to 0
+          const weekIndex = event.weekIndex ?? 0;
+
+          const fillResult = await autoFillWeekFromSummary(
+            organizationId,
+            summaryResult.summaryId,
+            {
+              programId: event.programId,
+              instanceId: event.instanceId,
+              weekIndex,
+              autoFillTarget: event.autoFillTarget || 'until_call',
+              cohortId: event.cohortId,
+              enrollment,
+            }
+          );
+
+          if (fillResult.success) {
+            console.log(`[GENERATE_SUMMARY] Auto-filled ${fillResult.daysUpdated} days for event ${eventId}`);
+          } else {
+            // Log error but don't fail the summary generation
+            console.error(`[GENERATE_SUMMARY] Auto-fill failed for event ${eventId}:`, fillResult.error);
+            // Fall back to notification (existing behavior)
+          }
+        } catch (autoFillError) {
+          // Log error but don't fail the summary generation
+          console.error(`[GENERATE_SUMMARY] Auto-fill error for event ${eventId}:`, autoFillError);
+        }
+      }
 
       return {
         success: true,
