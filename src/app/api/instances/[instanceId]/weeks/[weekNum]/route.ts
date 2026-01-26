@@ -612,6 +612,15 @@ export async function PATCH(
           dailyTasks.push(task);
         } else if (dayTag === 'spread') {
           spreadTasks.push(task);
+        } else if (Array.isArray(dayTag)) {
+          // Multiple specific days - add task to each specified day
+          for (const dayNum of dayTag) {
+            if (dayNum >= 1 && dayNum <= numDays) {
+              const existing = specificDayTasks.get(dayNum) || [];
+              existing.push(task);
+              specificDayTasks.set(dayNum, existing);
+            }
+          }
         } else if (typeof dayTag === 'number' && dayTag >= 1 && dayTag <= numDays) {
           const existing = specificDayTasks.get(dayTag) || [];
           existing.push(task);

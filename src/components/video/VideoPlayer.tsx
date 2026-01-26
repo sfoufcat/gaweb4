@@ -166,14 +166,16 @@ export function VideoPlayer({
         onBuffer={() => setIsBuffering(true)}
         onBufferEnd={() => setIsBuffering(false)}
         onStart={() => setHasStarted(true)}
-        onError={() => setHasError(true)}
+        onError={(e: unknown) => {
+          console.error('[VideoPlayer] Playback error:', e);
+          setHasError(true);
+        }}
         config={{
           file: {
             attributes: {
               poster,
               preload: 'metadata',
               playsInline: true,
-              crossOrigin: 'anonymous',
             },
             forceHLS: src?.includes('.m3u8'),
           },

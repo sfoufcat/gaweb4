@@ -117,7 +117,7 @@ interface TaskMemberInfo {
 
 // Sortable task component for drag-and-drop weekly tasks
 // Day tag type for task assignment
-type DayTagValue = 'auto' | 'spread' | 'daily' | number; // number = specific day 1-7
+type DayTagValue = 'auto' | 'spread' | 'daily' | number | number[]; // number = specific day 1-7, number[] = multiple days
 
 // Stable default values to prevent infinite loops from new object references on each render
 const EMPTY_ARRAY: never[] = [];
@@ -521,9 +521,9 @@ function SortableWeeklyTask({
                     {dayTag === 'daily' && <Check className="w-5 h-5 text-brand-accent flex-shrink-0" />}
                   </button>
 
-                  {/* Specific day section */}
+                  {/* Specific day section - multi-select toggle */}
                   <div className="pt-3 mt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                    <p className="text-xs font-semibold text-[#3d3a36] dark:text-[#d1d5db] mb-3">Or pick a specific day</p>
+                    <p className="text-xs font-semibold text-[#3d3a36] dark:text-[#d1d5db] mb-3">Or pick specific days</p>
                     <div className="grid grid-cols-7 gap-2">
                       {Array.from({ length: daysInWeek }, (_, i) => {
                         const dayNum = i + 1;
@@ -537,12 +537,41 @@ function SortableWeeklyTask({
                           dayLabel = WEEKDAYS_SHORT[dayDate.getDay()];
                           fullDayLabel = WEEKDAYS_FULL[dayDate.getDay()];
                         }
-                        const isSelected = dayTag === dayNum;
+                        // Support both single number and array of numbers
+                        const isSelected = Array.isArray(dayTag)
+                          ? dayTag.includes(dayNum)
+                          : dayTag === dayNum;
                         return (
                           <button
                             key={dayNum}
                             type="button"
-                            onClick={() => { onDayTagChange(index, dayNum); setCadenceModalOpen(false); }}
+                            onClick={() => {
+                              // Toggle day in/out of selection (multi-select mode)
+                              let newDayTag: number | number[] | 'auto';
+                              if (Array.isArray(dayTag)) {
+                                if (dayTag.includes(dayNum)) {
+                                  // Remove day from array
+                                  const filtered = dayTag.filter(d => d !== dayNum);
+                                  newDayTag = filtered.length === 1 ? filtered[0] : filtered.length === 0 ? 'auto' : filtered;
+                                } else {
+                                  // Add day to array
+                                  newDayTag = [...dayTag, dayNum].sort((a, b) => a - b);
+                                }
+                              } else if (typeof dayTag === 'number') {
+                                if (dayTag === dayNum) {
+                                  // Deselect single day → back to auto
+                                  newDayTag = 'auto';
+                                } else {
+                                  // Add second day → create array
+                                  newDayTag = [dayTag, dayNum].sort((a, b) => a - b);
+                                }
+                              } else {
+                                // Was auto/spread/daily, select single day
+                                newDayTag = dayNum;
+                              }
+                              onDayTagChange(index, newDayTag as number | number[]);
+                              // Don't close modal - allow multiple selections
+                            }}
                             className={cn(
                               "aspect-square rounded-xl text-sm font-medium transition-all flex flex-col items-center justify-center border",
                               isSelected
@@ -647,9 +676,9 @@ function SortableWeeklyTask({
                     {dayTag === 'daily' && <Check className="w-5 h-5 text-brand-accent flex-shrink-0" />}
                   </button>
 
-                  {/* Specific day section */}
+                  {/* Specific day section - multi-select toggle */}
                   <div className="pt-3 mt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                    <p className="text-xs font-semibold text-[#3d3a36] dark:text-[#d1d5db] mb-3">Or pick a specific day</p>
+                    <p className="text-xs font-semibold text-[#3d3a36] dark:text-[#d1d5db] mb-3">Or pick specific days</p>
                     <div className="grid grid-cols-7 gap-2">
                       {Array.from({ length: daysInWeek }, (_, i) => {
                         const dayNum = i + 1;
@@ -663,12 +692,41 @@ function SortableWeeklyTask({
                           dayLabel = WEEKDAYS_SHORT[dayDate.getDay()];
                           fullDayLabel = WEEKDAYS_FULL[dayDate.getDay()];
                         }
-                        const isSelected = dayTag === dayNum;
+                        // Support both single number and array of numbers
+                        const isSelected = Array.isArray(dayTag)
+                          ? dayTag.includes(dayNum)
+                          : dayTag === dayNum;
                         return (
                           <button
                             key={dayNum}
                             type="button"
-                            onClick={() => { onDayTagChange(index, dayNum); setCadenceModalOpen(false); }}
+                            onClick={() => {
+                              // Toggle day in/out of selection (multi-select mode)
+                              let newDayTag: number | number[] | 'auto';
+                              if (Array.isArray(dayTag)) {
+                                if (dayTag.includes(dayNum)) {
+                                  // Remove day from array
+                                  const filtered = dayTag.filter(d => d !== dayNum);
+                                  newDayTag = filtered.length === 1 ? filtered[0] : filtered.length === 0 ? 'auto' : filtered;
+                                } else {
+                                  // Add day to array
+                                  newDayTag = [...dayTag, dayNum].sort((a, b) => a - b);
+                                }
+                              } else if (typeof dayTag === 'number') {
+                                if (dayTag === dayNum) {
+                                  // Deselect single day → back to auto
+                                  newDayTag = 'auto';
+                                } else {
+                                  // Add second day → create array
+                                  newDayTag = [dayTag, dayNum].sort((a, b) => a - b);
+                                }
+                              } else {
+                                // Was auto/spread/daily, select single day
+                                newDayTag = dayNum;
+                              }
+                              onDayTagChange(index, newDayTag as number | number[]);
+                              // Don't close modal - allow multiple selections
+                            }}
                             className={cn(
                               "aspect-square rounded-xl text-sm font-medium transition-all flex flex-col items-center justify-center border",
                               isSelected
@@ -1337,7 +1395,13 @@ export function WeekEditor({
   useEffect(() => {
     // Helper to normalize tasks for comparison
     const normalizeTasks = (tasks: ProgramTaskTemplate[] | undefined) =>
-      (tasks || []).map(t => ({ id: t.id, label: t.label, isPrimary: t.isPrimary, dayTag: t.dayTag }));
+      (tasks || []).map(t => ({
+        id: t.id,
+        label: t.label,
+        isPrimary: t.isPrimary,
+        // Coerce dayTag for comparison - arrays become strings
+        dayTag: Array.isArray(t.dayTag) ? t.dayTag.join(',') : t.dayTag
+      }));
 
     const weekTasksNormalized = normalizeTasks(week.weeklyTasks);
 
@@ -1621,7 +1685,13 @@ export function WeekEditor({
 
     // Helper to normalize tasks for comparison
     const normalizeTasks = (tasks: ProgramTaskTemplate[] | undefined) =>
-      (tasks || []).map(t => ({ id: t.id, label: t.label, isPrimary: t.isPrimary, dayTag: t.dayTag }));
+      (tasks || []).map(t => ({
+        id: t.id,
+        label: t.label,
+        isPrimary: t.isPrimary,
+        // Coerce dayTag for comparison - arrays become strings
+        dayTag: Array.isArray(t.dayTag) ? t.dayTag.join(',') : t.dayTag
+      }));
 
     const weekTasksNormalized = normalizeTasks(week.weeklyTasks);
     const formTasksNormalized = normalizeTasks(formData.weeklyTasks);
@@ -2169,6 +2239,15 @@ export function WeekEditor({
         dailyTasks.push(task);
       } else if (dayTag === 'spread') {
         spreadTasks.push(task);
+      } else if (Array.isArray(dayTag)) {
+        // Multiple specific days - add task to each specified day
+        for (const dayNum of dayTag) {
+          if (dayNum >= 1 && dayNum <= numDays) {
+            const existing = specificDayTasks.get(dayNum) || [];
+            existing.push(task);
+            specificDayTasks.set(dayNum, existing);
+          }
+        }
       } else if (typeof dayTag === 'number' && dayTag >= 1 && dayTag <= numDays) {
         const existing = specificDayTasks.get(dayTag) || [];
         existing.push(task);

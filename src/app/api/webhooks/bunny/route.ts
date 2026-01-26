@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
     const payload: BunnyWebhookPayload = await request.json();
     const { VideoGuid: videoId, Status: status, Length: durationSeconds } = payload;
 
-    console.log(`[BUNNY_WEBHOOK] Received webhook for video ${videoId}, status: ${status}`);
+    console.log(`[BUNNY_WEBHOOK] Received webhook for video ${videoId}, status: ${status}, duration: ${durationSeconds}s, title: ${payload.Title}`);
+    console.log(`[BUNNY_WEBHOOK] Full payload:`, JSON.stringify(payload));
 
     // Only process finished (4), error (5), or failed (6) statuses
     if (status !== 4 && status !== 5 && status !== 6) {
@@ -175,6 +176,7 @@ export async function POST(request: NextRequest) {
 
     // Check org-scoped courses (in orgs/{orgId}/courses collection)
     // This handles multi-tenant course videos
+    // Requires COLLECTION_GROUP index on courses.bunnyVideoIds
     let orgCoursesSnapshot;
     try {
       orgCoursesSnapshot = await adminDb
@@ -183,7 +185,8 @@ export async function POST(request: NextRequest) {
         .limit(1)
         .get();
     } catch (queryError) {
-      console.error(`[BUNNY_WEBHOOK] Failed to query org courses (collectionGroup):`, queryError);
+      // Index may not exist yet - log and continue
+      console.warn(`[BUNNY_WEBHOOK] collectionGroup courses query failed (index may be missing):`, queryError);
       orgCoursesSnapshot = { empty: true, docs: [] };
     }
 
@@ -193,7 +196,6 @@ export async function POST(request: NextRequest) {
       const courseData = courseDoc.data();
 
       try {
-        // Verify doc still exists
         const currentDoc = await courseRef.get();
         if (!currentDoc.exists) {
           console.warn(`[BUNNY_WEBHOOK] Org course ${courseDoc.id} no longer exists, skipping update`);

@@ -66,6 +66,7 @@
     "hast-util-to-jsx-runtime": "^2.3.6",
     "hast-util-to-string": "^3.0.1",
     "hast-util-whitespace": "^3.0.0",
+    "hls.js": "^1.6.15",
     "html-react-parser": "^5.2.10",
     "jose": "^6.1.2",
     "jspdf": "^4.0.0",

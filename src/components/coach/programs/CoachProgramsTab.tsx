@@ -4169,8 +4169,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     )}
                   </div>
 
-                  {/* Divider */}
-                  <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
+                  {/* Divider - only show on content/overview tabs */}
+                  {(viewMode === 'days' || viewMode === 'overview') && (
+                    <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] flex-shrink-0" />
+                  )}
                 </div>
 
                 {/* Selectors + Controls */}
