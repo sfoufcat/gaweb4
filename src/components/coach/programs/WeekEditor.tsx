@@ -2140,10 +2140,16 @@ export function WeekEditor({
 
     // Initialize days with existing tasks from props (day-level tasks)
     // and clear any previous week-sourced tasks
+    // Build a set of weekly task labels for faster lookup
+    const weeklyTaskLabels = new Set(formData.weeklyTasks.map(t => t.label));
+
     const computedDays = Array.from({ length: numDays }, (_, i) => {
       const existingDay = days[i];
       // Filter out week-sourced tasks from existing days to avoid double-counting
-      const dayLevelTasks = (existingDay?.tasks || []).filter(t => t.source !== 'week');
+      // Also filter out tasks whose labels match weekly tasks (for backwards compat with old data)
+      const dayLevelTasks = (existingDay?.tasks || []).filter(t =>
+        t.source !== 'week' && !weeklyTaskLabels.has(t.label)
+      );
       return {
         ...existingDay,
         dayIndex: i + 1,

@@ -588,10 +588,16 @@ export async function PATCH(
       // IMPORTANT: Always clear old 'week' source tasks from days first
       const numDays = daysToUpdate.length;
 
+      // Build a set of weekly task labels for backwards compat filtering
+      const weeklyTaskLabels = new Set(weeklyTasks.map(t => t.label));
+
       // Step 1: Clear all week-sourced tasks from all days
+      // Also clear tasks matching weekly task labels (for backwards compat with old data without source)
       for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
         const existingTasks = daysToUpdate[dayIdx].tasks || [];
-        daysToUpdate[dayIdx].tasks = existingTasks.filter(t => !t.source || t.source !== 'week');
+        daysToUpdate[dayIdx].tasks = existingTasks.filter(t =>
+          t.source !== 'week' && !weeklyTaskLabels.has(t.label)
+        );
       }
 
       // Step 2: Categorize tasks by their dayTag

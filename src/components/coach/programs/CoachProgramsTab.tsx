@@ -5382,69 +5382,51 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
             <div className="flex flex-col lg:flex-row lg:items-stretch min-h-[500px]">
               {/* Left Panel: Cohorts Sidebar */}
-              <div className="lg:w-80 xl:w-96 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-[#e1ddd8] dark:border-[#262b35] flex flex-col">
+              <div className="lg:w-80 xl:w-96 lg:flex-shrink-0 lg:border-r border-[#e1ddd8] dark:border-[#262b35] flex flex-col">
                 {/* Sidebar Header */}
                 <div className="p-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                       Cohorts
                     </h3>
-                    <div className="flex items-center gap-1">
-                      {/* Expandable search for mobile */}
-                      <div className="md:hidden flex items-center">
-                        <AnimatePresence mode="wait">
-                          {isMembersSearchExpanded ? (
-                            <motion.div
-                              key="search-expanded"
-                              initial={{ width: 0, opacity: 0 }}
-                              animate={{ width: 160, opacity: 1 }}
-                              exit={{ width: 0, opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="relative overflow-hidden"
+                    <div className="flex items-center gap-1 h-8">
+                      {/* Expandable search - same on mobile and desktop */}
+                      <div className="relative flex items-center h-8">
+                        {isMembersSearchExpanded ? (
+                          <motion.div
+                            initial={{ width: 32, opacity: 0 }}
+                            animate={{ width: 140, opacity: 1 }}
+                            transition={{ duration: 0.12, ease: "easeOut" }}
+                            className="relative flex items-center h-8"
+                          >
+                            <Search className="absolute left-2 w-3.5 h-3.5 text-[#a7a39e] pointer-events-none" />
+                            <input
+                              ref={membersSearchInputRef}
+                              type="text"
+                              placeholder="Search..."
+                              value={membersSearch}
+                              onChange={(e) => setMembersSearch(e.target.value)}
+                              onBlur={() => { if (!membersSearch) setIsMembersSearchExpanded(false); }}
+                              className="w-full h-8 pl-7 pr-7 text-sm bg-[#f5f3f0] dark:bg-[#0d1017] rounded-lg focus:outline-none placeholder:text-[#a7a39e]"
+                            />
+                            <button
+                              onClick={() => { setMembersSearch(''); setIsMembersSearchExpanded(false); }}
+                              className="absolute right-1.5 p-0.5 text-[#a7a39e] hover:text-[#5f5a55]"
                             >
-                              <input
-                                ref={membersSearchInputRef}
-                                type="text"
-                                placeholder="Search..."
-                                value={membersSearch}
-                                onChange={(e) => setMembersSearch(e.target.value)}
-                                onBlur={() => { if (!membersSearch) setIsMembersSearchExpanded(false); }}
-                                className="w-full pl-3 pr-8 py-1.5 text-sm bg-[#faf8f6] dark:bg-[#0d1017] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-accent"
-                              />
-                              <button
-                                onClick={() => { setMembersSearch(''); setIsMembersSearchExpanded(false); }}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#a7a39e]"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </motion.div>
-                          ) : (
-                            <motion.button
-                              key="search-icon"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              onClick={() => {
-                                setIsMembersSearchExpanded(true);
-                                setTimeout(() => membersSearchInputRef.current?.focus(), 100);
-                              }}
-                              className="p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                            >
-                              <Search className="w-4 h-4" />
-                            </motion.button>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                      {/* Desktop search */}
-                      <div className="hidden md:block relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#a7a39e]" />
-                        <input
-                          type="text"
-                          placeholder="Search..."
-                          value={membersSearch}
-                          onChange={(e) => setMembersSearch(e.target.value)}
-                          className="w-36 pl-8 pr-3 py-1.5 text-sm bg-[#faf8f6] dark:bg-[#0d1017] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-accent placeholder:text-[#a7a39e]"
-                        />
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </motion.div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setIsMembersSearchExpanded(true);
+                              setTimeout(() => membersSearchInputRef.current?.focus(), 50);
+                            }}
+                            className="flex items-center justify-center w-8 h-8 text-[#8a8580] hover:text-[#5f5a55] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                          >
+                            <Search className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                       <button
                         onClick={() => handleOpenCohortModal()}
@@ -5492,13 +5474,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                   {cohort.name}
                                 </h4>
                                 <span className={cn(
-                                  "px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide flex-shrink-0",
-                                  cohort.status === 'active' && "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
-                                  cohort.status === 'upcoming' && "bg-brand-accent/10 text-brand-accent",
-                                  cohort.status === 'completed' && "bg-[#f0eeec] text-[#6b6560] dark:bg-[#2a303c] dark:text-[#7a8290]",
-                                  cohort.status === 'archived' && "bg-[#f0eeec] text-[#8a8580] dark:bg-[#2a303c] dark:text-[#6b7280]"
+                                  "px-1.5 py-0.5 rounded-md text-[10px] font-medium tracking-wide flex-shrink-0",
+                                  cohort.status === 'active' && "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400",
+                                  cohort.status === 'upcoming' && "bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400",
+                                  cohort.status === 'completed' && "bg-[#f5f4f2] text-[#7a7570] dark:bg-[#2a303c] dark:text-[#7a8290]",
+                                  cohort.status === 'archived' && "bg-[#f5f4f2] text-[#9a9590] dark:bg-[#2a303c] dark:text-[#6b7280]"
                                 )}>
-                                  {cohort.status}
+                                  {cohort.status === 'active' ? 'Active' : cohort.status === 'upcoming' ? 'Upcoming' : cohort.status === 'completed' ? 'Completed' : 'Archived'}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1.5 text-[13px] text-[#8a8580] dark:text-[#7a8290]">
