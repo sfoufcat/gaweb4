@@ -21,6 +21,7 @@ import { calculateProgramDayForDate } from '@/lib/calendar-weeks';
 import { MeetingProviderSelector, type MeetingProviderType, isMeetingProviderReady } from './MeetingProviderSelector';
 import { normalizeUrl } from '@/lib/url-utils';
 import { DatePicker } from '@/components/ui/date-picker';
+import { SessionCalendarPicker } from './SessionCalendarPicker';
 import { BrandedRadio } from '@/components/ui/checkbox';
 import type { ProgramEnrollment, ProgramInstance } from '@/types';
 
@@ -625,90 +626,65 @@ export function ScheduleCallModal({
             </div>
 
             <div className="p-4 space-y-4">
-              {slotsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 text-brand-accent animate-spin" />
-                </div>
-              ) : availableDates.length === 0 ? (
-                <p className="text-center text-[#a7a39e] dark:text-[#7d8190] py-8">
-                  No available time slots. Please update your availability settings.
-                </p>
-              ) : (
-                <>
-                  {/* Date Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                      Date
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {availableDates.slice(0, 14).map(date => (
+              {/* Calendar Picker */}
+              <SessionCalendarPicker
+                value={selectedDate}
+                onChange={(date) => {
+                  setSelectedDate(date);
+                  setSelectedTime('');
+                }}
+                availableSlots={slots}
+                isLoading={slotsLoading}
+                className="border-0"
+              />
+
+              {/* Time Selection */}
+              {selectedDate && slotsByDate[selectedDate] && (
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                    Time
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {slotsByDate[selectedDate].map((slot, index) => {
+                      const time = new Date(slot.start).toTimeString().slice(0, 5);
+                      // Check if this time slot is already selected/proposed
+                      const isSelected = proposedSlots.some(s => s.date === selectedDate && s.startTime === time);
+                      return (
                         <button
-                          key={date}
+                          key={index}
                           onClick={() => {
-                            setSelectedDate(date);
-                            setSelectedTime('');
+                            setSelectedTime(time);
+                            // Auto-add the time slot
+                            const startDateTime = new Date(`${selectedDate}T${time}`);
+                            const endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
+                            const newSlot: ProposedTimeSlot = {
+                              id: `slot_${Date.now()}`,
+                              date: selectedDate,
+                              startTime: time,
+                              endTime: endDateTime.toTimeString().slice(0, 5),
+                            };
+                            if (mode === 'confirm') {
+                              // Replace - single slot only for confirm mode
+                              setProposedSlots([newSlot]);
+                            } else {
+                              // Append for propose mode (avoid duplicates)
+                              if (!isSelected) {
+                                setProposedSlots(prev => [...prev, newSlot]);
+                              }
+                            }
                           }}
                           className={`px-3 py-2 rounded-lg font-albert text-sm transition-colors ${
-                            selectedDate === date
+                            isSelected
                               ? 'bg-brand-accent text-white'
                               : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]'
                           }`}
                         >
-                          {formatDate(date)}
+                          {formatTime(time)}
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-
-                  {/* Time Selection */}
-                  {selectedDate && slotsByDate[selectedDate] && (
-                    <div>
-                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                        Time
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {slotsByDate[selectedDate].map((slot, index) => {
-                          const time = new Date(slot.start).toTimeString().slice(0, 5);
-                          // Check if this time slot is already selected/proposed
-                          const isSelected = proposedSlots.some(s => s.date === selectedDate && s.startTime === time);
-                          return (
-                            <button
-                              key={index}
-                              onClick={() => {
-                                setSelectedTime(time);
-                                // Auto-add the time slot
-                                const startDateTime = new Date(`${selectedDate}T${time}`);
-                                const endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
-                                const newSlot: ProposedTimeSlot = {
-                                  id: `slot_${Date.now()}`,
-                                  date: selectedDate,
-                                  startTime: time,
-                                  endTime: endDateTime.toTimeString().slice(0, 5),
-                                };
-                                if (mode === 'confirm') {
-                                  // Replace - single slot only for confirm mode
-                                  setProposedSlots([newSlot]);
-                                } else {
-                                  // Append for propose mode (avoid duplicates)
-                                  if (!isSelected) {
-                                    setProposedSlots(prev => [...prev, newSlot]);
-                                  }
-                                }
-                              }}
-                              className={`px-3 py-2 rounded-lg font-albert text-sm transition-colors ${
-                                isSelected
-                                  ? 'bg-brand-accent text-white'
-                                  : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]'
-                              }`}
-                            >
-                              {formatTime(time)}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </>
+                </div>
               )}
             </div>
           </div>

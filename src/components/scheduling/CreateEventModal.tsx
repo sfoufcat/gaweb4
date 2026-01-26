@@ -38,6 +38,7 @@ import { useCoachIntegrations } from '@/hooks/useCoachIntegrations';
 import { MeetingProviderSelector, MeetingProviderType, isMeetingProviderReady } from './MeetingProviderSelector';
 import { normalizeUrl } from '@/lib/url-utils';
 import { useAvailableSlots } from '@/hooks/useAvailability';
+import { SessionCalendarPicker } from './SessionCalendarPicker';
 import { useOrgCredits } from '@/hooks/useOrgCredits';
 import { Sparkles } from 'lucide-react';
 import { CreditPurchaseModal } from '@/components/coach/CreditPurchaseModal';
@@ -54,7 +55,9 @@ interface CreateEventModalProps {
   onSuccess?: (event: any) => void;
 }
 
-type WizardStep = 'info' | 'details';
+// For normal flow: 3 steps (info → meeting → schedule)
+// For program context: 2 steps (info → schedule with meeting)
+type WizardStep = 'info' | 'meeting' | 'schedule';
 
 const DURATION_OPTIONS = [
   { value: 30, label: '30 min' },
@@ -105,11 +108,16 @@ interface ProgramWithCohorts {
 }
 
 /**
- * CreateEventModal - 3-Step Wizard matching NewProgramModal design
+ * CreateEventModal - Wizard for creating events
  *
- * Step 1: Basic Info - Title, description, cover image
- * Step 2: Event Type + Meeting Provider - Select type, show cohort/squad selector if needed, configure meeting
- * Step 3: Schedule - Date, time, duration, timezone, recurrence
+ * Normal flow (3 steps):
+ * - Step 1 (info): Title, description, cover image, AI options
+ * - Step 2 (meeting): Event type, program/cohort selector, meeting provider
+ * - Step 3 (schedule): Calendar picker, time slots, duration, timezone, recurrence
+ *
+ * Program context flow (2 steps) - when programId and cohortId are provided:
+ * - Step 1 (info): Title, description, cover image, AI options
+ * - Step 2 (schedule): Calendar picker, time slots, meeting link, duration, timezone, recurrence
  */
 export function CreateEventModal({
   isOpen,
@@ -361,8 +369,8 @@ export function CreateEventModal({
       return true;
     }
 
-    if (currentStep === 'details') {
-      // Check if cohort/squad is selected when required (only for non-program context)
+    if (currentStep === 'meeting') {
+      // Check if cohort/squad is selected when required
       if (eventType === 'cohort_call' && !selectedCohortId) {
         setError('Please select a cohort');
         return false;
@@ -384,6 +392,24 @@ export function CreateEventModal({
           return false;
         }
       }
+      return true;
+    }
+
+    if (currentStep === 'schedule') {
+      // For program context, also validate meeting here
+      if (isProgramContext) {
+        const integrations = { zoom: { connected: zoom.connected }, googleMeet: { connected: googleMeet.connected } };
+        if (!isMeetingProviderReady(meetingProvider, integrations, useManualOverride, manualMeetingLink)) {
+          if (meetingProvider === 'manual' && !manualMeetingLink.trim()) {
+            setError('Please enter a meeting link');
+            return false;
+          }
+          if ((meetingProvider === 'zoom' || meetingProvider === 'google_meet') && useManualOverride && !manualMeetingLink.trim()) {
+            setError('Please enter a meeting link or disable manual override');
+            return false;
+          }
+        }
+      }
 
       // Schedule validation
       if (!date || !time) {
@@ -400,28 +426,51 @@ export function CreateEventModal({
     return true;
   };
 
-  // Navigate steps
+  // Navigate steps - different flow for program context vs normal
   const goToNextStep = () => {
-    console.log('[goToNextStep]', { step, eventType, selectedCohortId, selectedProgramId, selectedSquadId });
     if (!validateStep(step)) return;
 
-    if (step === 'info') setStep('details');
+    if (isProgramContext) {
+      // Program context: info → schedule (2 steps)
+      if (step === 'info') setStep('schedule');
+    } else {
+      // Normal flow: info → meeting → schedule (3 steps)
+      if (step === 'info') setStep('meeting');
+      else if (step === 'meeting') setStep('schedule');
+    }
   };
 
   const goToPrevStep = () => {
     setError(null);
-    if (step === 'details') setStep('info');
+    if (isProgramContext) {
+      // Program context: schedule → info
+      if (step === 'schedule') setStep('info');
+    } else {
+      // Normal flow: schedule → meeting → info
+      if (step === 'schedule') setStep('meeting');
+      else if (step === 'meeting') setStep('info');
+    }
   };
 
-  // Get step index for progress dots (2-step wizard)
+  // Get step index for progress dots
   const getStepIndex = () => {
-    const steps: WizardStep[] = ['info', 'details'];
-    return steps.indexOf(step);
+    if (isProgramContext) {
+      // 2-step flow: info, schedule
+      const steps: WizardStep[] = ['info', 'schedule'];
+      return steps.indexOf(step);
+    } else {
+      // 3-step flow: info, meeting, schedule
+      const steps: WizardStep[] = ['info', 'meeting', 'schedule'];
+      return steps.indexOf(step);
+    }
   };
+
+  // Total steps for progress dots
+  const totalSteps = isProgramContext ? 2 : 3;
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!validateStep('details')) return;
+    if (!validateStep('schedule')) return;
     if (isSubmitting) return;
 
     setError(null);
@@ -622,11 +671,13 @@ export function CreateEventModal({
           <div>
             <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
               {step === 'info' && 'Create Event'}
-              {step === 'details' && 'Meeting & Schedule'}
+              {step === 'meeting' && 'Event Type & Meeting'}
+              {step === 'schedule' && 'Schedule'}
             </h2>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
               {step === 'info' && 'Set up your event details'}
-              {step === 'details' && 'Configure meeting and pick a time'}
+              {step === 'meeting' && 'Choose event type and meeting provider'}
+              {step === 'schedule' && 'Pick a date and time'}
             </p>
           </div>
         </div>
@@ -819,10 +870,10 @@ export function CreateEventModal({
             </motion.div>
           )}
 
-          {/* Step 2: Meeting & Schedule (combined) */}
-          {step === 'details' && (
+          {/* Step 2: Meeting (only for non-program context) */}
+          {step === 'meeting' && !isProgramContext && (
             <motion.div
-              key="details"
+              key="meeting"
               variants={fadeVariants}
               initial="initial"
               animate="animate"
@@ -830,8 +881,7 @@ export function CreateEventModal({
               transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
               className="space-y-5"
             >
-              {/* Event Type - Card Selection (hidden in program context) */}
-              {!isProgramContext && (
+              {/* Event Type - Card Selection */}
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
                   Event Type
@@ -891,12 +941,9 @@ export function CreateEventModal({
                   })}
                 </div>
               </div>
-              )}
 
-              {/* Animated container for conditional selectors (hidden in program context) */}
-              {!isProgramContext && (
-              <AnimatePresence mode="wait">
               {/* Program & Cohort Selector (when cohort_call is selected) */}
+              <AnimatePresence mode="wait">
               {eventType === 'cohort_call' && (
                 <motion.div
                   key="cohort-selector"
@@ -1096,101 +1143,7 @@ export function CreateEventModal({
                   </div>
                 </motion.div>
               )}
-
-              {/* HIDDEN: Standalone squads disabled - squads now managed via Program > Community */}
               </AnimatePresence>
-              )}
-
-              {/* Date & Time Selection (moved to top) */}
-              <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
-                <div className="px-4 py-3 bg-[#f3f1ef] dark:bg-[#1e222a] border-b border-[#e1ddd8] dark:border-[#262b35]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                      <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                        Select Date & Time
-                      </span>
-                    </div>
-                    {coachTimezone && (
-                      <div className="flex items-center gap-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                        <Globe className="w-3 h-3" />
-                        <span>{coachTimezone.split('/').pop()?.replace(/_/g, ' ')}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="p-4 space-y-4">
-                  {slotsLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 text-brand-accent animate-spin" />
-                    </div>
-                  ) : availableDates.length === 0 ? (
-                    <p className="text-center text-[#a7a39e] dark:text-[#7d8190] py-8">
-                      No available time slots. Please update your availability settings.
-                    </p>
-                  ) : (
-                    <>
-                      {/* Date Selection - Pills */}
-                      <div>
-                        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                          Date
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {availableDates.slice(0, 14).map(d => (
-                            <button
-                              key={d}
-                              type="button"
-                              onClick={() => {
-                                setDate(d);
-                                setTime(''); // Reset time when date changes
-                              }}
-                              className={`px-3 py-2 rounded-lg font-albert text-sm transition-colors ${
-                                date === d
-                                  ? 'bg-brand-accent text-white'
-                                  : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]'
-                              }`}
-                            >
-                              {formatDateDisplay(d)}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Time Selection */}
-                      {date && (
-                        <div>
-                          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                            Time
-                          </label>
-                          {timeSlotsForDate.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {timeSlotsForDate.map((slot) => (
-                                <button
-                                  key={slot.start}
-                                  type="button"
-                                  onClick={() => setTime(slot.time)}
-                                  className={`px-3 py-2 rounded-lg font-albert text-sm transition-colors ${
-                                    time === slot.time
-                                      ? 'bg-brand-accent text-white'
-                                      : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]'
-                                  }`}
-                                >
-                                  {slot.label}
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-sm text-[#8a8580] dark:text-[#6b7280] italic">
-                              No available time slots for this date
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
 
               {/* Meeting Provider */}
               <MeetingProviderSelector
@@ -1203,6 +1156,75 @@ export function CreateEventModal({
                 onUseManualOverrideChange={setUseManualOverride}
                 label="Meeting Link"
               />
+            </motion.div>
+          )}
+
+          {/* Step 3: Schedule (or Step 2 for program context) */}
+          {step === 'schedule' && (
+            <motion.div
+              key="schedule"
+              variants={fadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="space-y-5"
+            >
+              {/* Calendar Picker */}
+              <SessionCalendarPicker
+                value={date}
+                onChange={(d) => {
+                  setDate(d);
+                  setTime(''); // Reset time when date changes
+                }}
+                availableSlots={availableSlots}
+                isLoading={slotsLoading}
+              />
+
+              {/* Time Selection */}
+              {date && (
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                    Time
+                  </label>
+                  {timeSlotsForDate.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {timeSlotsForDate.map((slot) => (
+                        <button
+                          key={slot.start}
+                          type="button"
+                          onClick={() => setTime(slot.time)}
+                          className={`px-3 py-2 rounded-lg font-albert text-sm transition-colors ${
+                            time === slot.time
+                              ? 'bg-brand-accent text-white'
+                              : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]'
+                          }`}
+                        >
+                          {slot.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[#8a8580] dark:text-[#6b7280] italic">
+                      No available time slots for this date
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Meeting Provider (only for program context - it's on step 2 for normal flow) */}
+              {isProgramContext && (
+                <MeetingProviderSelector
+                  allowInApp={false}
+                  value={meetingProvider}
+                  onChange={setMeetingProvider}
+                  manualLink={manualMeetingLink}
+                  onManualLinkChange={setManualMeetingLink}
+                  useManualOverride={useManualOverride}
+                  onUseManualOverrideChange={setUseManualOverride}
+                  label="Meeting Link"
+                />
+              )}
 
               {/* Duration */}
               <div>
@@ -1368,9 +1390,9 @@ export function CreateEventModal({
       {/* Footer */}
       <div className="px-6 py-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <div className="flex items-center justify-between">
-          {/* Progress Indicator - 2 dots */}
+          {/* Progress Indicator - dynamic dots */}
           <div className="flex items-center gap-2">
-            {[0, 1].map((i) => (
+            {Array.from({ length: totalSteps }).map((_, i) => (
               <div
                 key={i}
                 className={`w-2 h-2 rounded-full transition-colors ${
@@ -1383,7 +1405,7 @@ export function CreateEventModal({
           </div>
 
           {/* Action Button */}
-          {step === 'details' ? (
+          {step === 'schedule' ? (
             <button
               type="button"
               onClick={handleSubmit}

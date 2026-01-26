@@ -171,6 +171,7 @@ export async function GET(request: NextRequest) {
         coachId: data.coachId || null,
         organizationId: data.organizationId,
         programId: data.programId || null,
+        cohortId: data.cohortId || null,
         capacity: data.capacity,
         priceInCents: data.priceInCents || 0,
         currency: data.currency || 'usd',

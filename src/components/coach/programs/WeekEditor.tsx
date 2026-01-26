@@ -1159,6 +1159,19 @@ export function WeekEditor({
 
         const data = await res.json();
 
+        console.log('[WeekEditor] Content completion API response:', {
+          url,
+          clientUserId,
+          cohortId,
+          hasCurrentWeekContent: !!data.currentWeekContent,
+          currentWeekContentModules: data.currentWeekContent?.modules?.length || 0,
+          currentWeekContentArticles: data.currentWeekContent?.articles?.length || 0,
+          hasContentCompletion: !!data.contentCompletion,
+          contentCompletionCount: data.contentCompletion?.length || 0,
+          contentCompletion: data.contentCompletion,
+          currentWeekContent: data.currentWeekContent,
+        });
+
         // Build completion map from the response
         const completionMap = new Map<string, ContentCompletionData>();
 
@@ -1191,6 +1204,11 @@ export function WeekEditor({
             });
           });
         }
+
+        console.log('[WeekEditor] Built completion map:', {
+          mapSize: completionMap.size,
+          entries: Array.from(completionMap.entries()),
+        });
 
         setContentCompletion(completionMap);
       } catch (err) {

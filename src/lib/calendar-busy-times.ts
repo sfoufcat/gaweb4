@@ -260,8 +260,8 @@ async function refreshMicrosoftToken(
   integrationId: string,
   refreshToken: string
 ): Promise<string | null> {
-  const clientId = process.env.MICROSOFT_CLIENT_ID;
-  const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
+  const clientId = process.env.MICROSOFT_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.MICROSOFT_OAUTH_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
     console.error('[MICROSOFT_TOKEN_REFRESH] Missing OAuth credentials');
